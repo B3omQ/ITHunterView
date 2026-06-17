@@ -1,0 +1,164 @@
+## ============================================================
+##  .NET / ASP.NET Core
+## ============================================================
+
+# Build outputs
+bin/
+obj/
+out/
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+!**/packages/repositories.config
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Publish output
+publish/
+**/publish/
+
+## ============================================================
+##  Visual Studio
+## ============================================================
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio temp/cache/options
+.vs/
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+
+# Visual Studio test results
+TestResult.xml
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.testlog
+
+# Benchmark results
+BenchmarkDotNet.Artifacts/
+
+## ============================================================
+##  JetBrains Rider
+## ============================================================
+
+.idea/
+*.sln.iml
+
+## ============================================================
+##  VS Code
+## ============================================================
+
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+## ============================================================
+##  ASP.NET Core — Secrets & Sensitive config
+## ============================================================
+
+# User secrets (local dev only — KHÔNG commit)
+**/Properties/launchSettings.json
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.json
+appsettings.json
+
+# Secret files
+*.pfx
+*.p12
+*.key
+secrets.json
+
+## ============================================================
+##  Entity Framework Core
+## ============================================================
+
+# EF Core migration snapshots do NOT need to be ignored
+# but the database files do
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+## ============================================================
+##  Docker
+## ============================================================
+
+.dockerignore
+
+## ============================================================
+##  OS-specific
+## ============================================================
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+
+## ============================================================
+##  Logs & Diagnostics
+## ============================================================
+
+logs/
+*.log
+*.log.*
+*.trace
+crash.*.log
+nlog*.config.bak
+
+## ============================================================
+##  Environment & CI
+## ============================================================
+
+.env
+.env.*
+!.env.example
+
+## ============================================================
+##  Misc
+## ============================================================
+
+# Coverage reports
+coverage/
+*.coverage
+*.coveragexml
+lcov.info
+
+# Node (nếu sau này thêm frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
