@@ -25,8 +25,7 @@ namespace ITHunterview.Service.Utils
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim("FullName", user.FullName)
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
             var expiryMinutes = int.Parse(jwtSettings["ExpiryMinutes"] ?? "60");
