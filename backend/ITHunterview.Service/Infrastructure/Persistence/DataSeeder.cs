@@ -14,8 +14,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 var user = new User
                 {
                     Email = "admin@ithunterview.com",
-                    FullName = "Admin ITHunterview",
-                    PasswordHash = PasswordHasher.HashPassword("123456")
+                    PasswordHash = PasswordHasher.HashPassword("123456"),
+                    Status = ITHunterview.Domain.Enums.UserStatus.ACTIVE
                 };
 
                 context.Users.Add(user);

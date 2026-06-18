@@ -35,8 +35,8 @@ namespace ITHunterview.WebAPI.Controllers
             var user = new ITHunterview.Domain.Entities.User
             {
                 Email = "test@example.com",
-                FullName = "Test User",
-                PasswordHash = ITHunterview.Service.Utils.PasswordHasher.HashPassword("123456")
+                PasswordHash = ITHunterview.Service.Utils.PasswordHasher.HashPassword("123456"),
+                Status = ITHunterview.Domain.Enums.UserStatus.ACTIVE
             };
             await userRepository.AddUserAsync(user);
             return Ok("User seeded. Email: test@example.com, Password: 123456");

@@ -43,11 +43,9 @@ namespace ITHunterview.Service.UseCase
             var refreshToken = new RefreshToken
             {
                 Token = refreshTokenString,
-                JwtId = Guid.NewGuid().ToString(),
-                IsUsed = false,
                 IsRevoked = false,
                 UserId = user.Id,
-                ExpiryDate = DateTime.UtcNow.AddDays(7)
+                ExpiresAt = DateTime.UtcNow.AddDays(7)
             };
 
             await _tokenRepository.AddRefreshTokenAsync(refreshToken);
@@ -58,7 +56,7 @@ namespace ITHunterview.Service.UseCase
                 RefreshToken = refreshTokenString,
                 UserId = user.Id,
                 Email = user.Email,
-                FullName = user.FullName
+                FullName = user.Email // FullName removed from DB, defaulting to Email
             };
 
             return new ResponseBase<LoginResponseDto>(response);
