@@ -1,0 +1,2 @@
+# forms/ — chứa các form component dùng ≥3 nơi
+# ví dụ: SkillSelector.tsx, RichTextEditor.tsx

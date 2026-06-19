@@ -24,13 +24,13 @@ export default function LoginPage() {
     setError("")
     setLoading(true)
     try {
-      const res = await authService.login(email, password)
+      const res = await authService.login({ email, password })
       if (!res.success || !res.data) {
         setError(res.message ?? "Đăng nhập thất bại")
         return
       }
       
-      const payload = res.data.data;
+      const payload = res.data;
       const user = {
         id: payload.userId,
         email: payload.email,

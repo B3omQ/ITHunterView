@@ -3,85 +3,84 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
-  LayoutDashboard,
-  User,
-  Briefcase,
-  Bookmark,
-  Bell,
-  Settings,
-  HelpCircle,
-  LogOut,
-  ChevronRight,
-  Users,
-  FileText,
-  Building2,
-  Shield,
-  BarChart3,
-  BrainCircuit,
+  LayoutDashboard, User, Briefcase, Bookmark, Bell, Settings, HelpCircle, LogOut,
+  ChevronRight, Users, FileText, Building2, Shield, BarChart3, BrainCircuit,
+  ClipboardList, Database, CreditCard, MessageSquare,
 } from "lucide-react"
 import { useAuthStore } from "@/store/auth.store"
 import { Logo } from "@/components/layout/Logo"
+import { APP_ROUTES } from "@/lib/constants"
 
-interface NavItem {
-  label: string
-  href: string
-  icon: React.ReactNode
-  badge?: number
-  children?: NavItem[]
+// ---- Lucide icon map ----
+const ICONS: Record<string, React.ReactNode> = {
+  LayoutDashboard: <LayoutDashboard size={18} />,
+  User: <User size={18} />,
+  Briefcase: <Briefcase size={18} />,
+  Bookmark: <Bookmark size={18} />,
+  Bell: <Bell size={18} />,
+  Settings: <Settings size={18} />,
+  Users: <Users size={18} />,
+  FileText: <FileText size={18} />,
+  Building2: <Building2 size={18} />,
+  Shield: <Shield size={18} />,
+  BarChart3: <BarChart3 size={18} />,
+  BrainCircuit: <BrainCircuit size={18} />,
+  ClipboardList: <ClipboardList size={18} />,
+  Database: <Database size={18} />,
+  CreditCard: <CreditCard size={18} />,
+  MessageSquare: <MessageSquare size={18} />,
 }
 
-function getCandidateNav(base: string): NavItem[] {
-  return [
-    { label: "Dashboard", href: `${base}/dashboard`, icon: <LayoutDashboard size={18} /> },
-    { label: "My Profile", href: `${base}/profile`, icon: <User size={18} /> },
-    { label: "Job Listings", href: `${base}/jobs`, icon: <Briefcase size={18} /> },
-    { label: "Saved Jobs", href: `${base}/saved-jobs`, icon: <Bookmark size={18} /> },
-    { label: "Notifications", href: `${base}/notifications`, icon: <Bell size={18} />, badge: 3 },
-    { label: "Settings", href: `/shared/settings`, icon: <Settings size={18} /> },
-  ]
-}
+// ---- Nav definitions per role ----
+type NavItem = { label: string; href: string; icon: string; badge?: number }
 
-function getRecruiterNav(base: string): NavItem[] {
-  return [
-    { label: "Dashboard", href: `${base}/dashboard`, icon: <LayoutDashboard size={18} /> },
-    { label: "My Profile", href: `${base}/profile`, icon: <User size={18} /> },
-    { label: "Job Postings", href: `${base}/jobs`, icon: <Briefcase size={18} /> },
-    { label: "Applications", href: `${base}/applications`, icon: <FileText size={18} /> },
-    { label: "Candidates", href: `${base}/candidates`, icon: <Users size={18} /> },
-    { label: "Notifications", href: `${base}/notifications`, icon: <Bell size={18} />, badge: 2 },
-    { label: "Settings", href: `/shared/settings`, icon: <Settings size={18} /> },
-  ]
-}
+const CANDIDATE_NAV: NavItem[] = [
+  { label: "Dashboard", href: APP_ROUTES.CANDIDATE.DASHBOARD, icon: "LayoutDashboard" },
+  { label: "My Profile", href: APP_ROUTES.CANDIDATE.PROFILE, icon: "User" },
+  { label: "Job Listings", href: APP_ROUTES.CANDIDATE.JOBS, icon: "Briefcase" },
+  { label: "My Resume", href: APP_ROUTES.CANDIDATE.RESUME, icon: "FileText" },
+  { label: "CV Optimizer", href: APP_ROUTES.CANDIDATE.CV_OPTIMIZER, icon: "BrainCircuit" },
+  { label: "Applications", href: APP_ROUTES.CANDIDATE.APPLICATIONS, icon: "ClipboardList" },
+  { label: "Notifications", href: APP_ROUTES.CANDIDATE.NOTIFICATIONS, icon: "Bell", badge: 3 },
+  { label: "Settings", href: APP_ROUTES.CANDIDATE.SETTINGS, icon: "Settings" },
+]
 
-function getAdminNav(base: string): NavItem[] {
-  return [
-    { label: "Dashboard", href: `${base}/dashboard`, icon: <LayoutDashboard size={18} /> },
-    { label: "Users", href: `${base}/users`, icon: <Users size={18} /> },
-    { label: "Companies", href: `${base}/companies`, icon: <Building2 size={18} /> },
-    { label: "Job Reviews", href: `${base}/job-reviews`, icon: <Briefcase size={18} /> },
-    { label: "Analytics", href: `${base}/analytics`, icon: <BarChart3 size={18} /> },
-    { label: "System Config", href: `${base}/config`, icon: <Shield size={18} /> },
-    { label: "Settings", href: `/shared/settings`, icon: <Settings size={18} /> },
-  ]
-}
+const RECRUITER_NAV: NavItem[] = [
+  { label: "Dashboard", href: APP_ROUTES.RECRUITER.DASHBOARD, icon: "LayoutDashboard" },
+  { label: "Company", href: APP_ROUTES.RECRUITER.COMPANY, icon: "Building2" },
+  { label: "Job Postings", href: APP_ROUTES.RECRUITER.JOBS, icon: "Briefcase" },
+  { label: "Analytics", href: APP_ROUTES.RECRUITER.ANALYTICS, icon: "BarChart3" },
+  { label: "Notifications", href: APP_ROUTES.RECRUITER.NOTIFICATIONS, icon: "Bell", badge: 2 },
+  { label: "Settings", href: APP_ROUTES.RECRUITER.SETTINGS, icon: "Settings" },
+]
 
-function getStaffNav(base: string): NavItem[] {
-  return [
-    { label: "Dashboard", href: `${base}/dashboard`, icon: <LayoutDashboard size={18} /> },
-    { label: "AI Interviews", href: `${base}/interviews`, icon: <BrainCircuit size={18} /> },
-    { label: "Question Bank", href: `${base}/questions`, icon: <FileText size={18} /> },
-    { label: "Reports", href: `${base}/reports`, icon: <BarChart3 size={18} /> },
-    { label: "Notifications", href: `${base}/notifications`, icon: <Bell size={18} /> },
-    { label: "Settings", href: `/shared/settings`, icon: <Settings size={18} /> },
-  ]
-}
+const STAFF_NAV: NavItem[] = [
+  { label: "Dashboard", href: APP_ROUTES.STAFF.DASHBOARD, icon: "LayoutDashboard" },
+  { label: "AI Config", href: APP_ROUTES.STAFF.AI_CONFIG, icon: "BrainCircuit" },
+  { label: "Prompts", href: APP_ROUTES.STAFF.PROMPTS, icon: "MessageSquare" },
+  { label: "Question Bank", href: APP_ROUTES.STAFF.QUESTION_BANK, icon: "FileText" },
+  { label: "Audit Logs", href: APP_ROUTES.STAFF.AUDIT_LOGS, icon: "ClipboardList" },
+  { label: "Notifications", href: APP_ROUTES.STAFF.NOTIFICATIONS, icon: "Bell" },
+  { label: "Settings", href: APP_ROUTES.STAFF.SETTINGS, icon: "Settings" },
+]
+
+const ADMIN_NAV: NavItem[] = [
+  { label: "Dashboard", href: APP_ROUTES.ADMIN.DASHBOARD, icon: "LayoutDashboard" },
+  { label: "Accounts", href: APP_ROUTES.ADMIN.ACCOUNTS, icon: "Users" },
+  { label: "Companies", href: APP_ROUTES.ADMIN.COMPANIES, icon: "Building2" },
+  { label: "Master Data", href: APP_ROUTES.ADMIN.MASTER_DATA, icon: "Database" },
+  { label: "Subscriptions", href: APP_ROUTES.ADMIN.SUBSCRIPTIONS, icon: "CreditCard" },
+  { label: "Finance", href: APP_ROUTES.ADMIN.FINANCE, icon: "BarChart3" },
+  { label: "Notifications", href: APP_ROUTES.ADMIN.NOTIFICATIONS, icon: "Bell" },
+  { label: "Settings", href: APP_ROUTES.ADMIN.SETTINGS, icon: "Settings" },
+]
 
 function getNavItems(role: string): NavItem[] {
   switch (role.toLowerCase()) {
-    case "admin":     return getAdminNav("/admin")
-    case "staff":     return getStaffNav("/staff")
-    case "recruiter": return getRecruiterNav("/recruiter")
-    default:          return getCandidateNav("/candidate")
+    case "admin":     return ADMIN_NAV
+    case "staff":     return STAFF_NAV
+    case "recruiter": return RECRUITER_NAV
+    default:          return CANDIDATE_NAV
   }
 }
 
@@ -93,17 +92,13 @@ export function Sidebar() {
   const navItems = getNavItems(user?.role?.name ?? "candidate")
 
   const handleLogout = async () => {
-    // Call backend logout if implemented, for now just clear store
     logout()
-    router.push('/login')
+    router.push("/login")
   }
 
   const isActive = (href: string) => {
     if (href === pathname) return true
-    // Exact match for dashboard root, prefix for sub-pages
-    if (href.endsWith("/dashboard")) {
-      return pathname === href
-    }
+    if (href.endsWith("/dashboard")) return pathname === href
     return pathname.startsWith(href)
   }
 
@@ -118,7 +113,7 @@ export function Sidebar() {
       {user && (
         <div className="px-4 py-4 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full  font-semibold text-sm flex-shrink-0">
+            <div className="w-9 h-9 rounded-full font-semibold text-sm flex-shrink-0 flex items-center justify-center bg-primary/10 text-primary">
               {user.fullName?.charAt(0)?.toUpperCase() || user.email.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
@@ -146,7 +141,7 @@ export function Sidebar() {
               }`}
             >
               <span className={active ? "text-primary" : "text-muted-foreground group-hover:text-sidebar-foreground transition-colors"}>
-                {item.icon}
+                {ICONS[item.icon]}
               </span>
               <span className="flex-1 truncate">{item.label}</span>
               {item.badge !== undefined && (
@@ -169,7 +164,7 @@ export function Sidebar() {
           className="flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-all"
         >
           <HelpCircle size={18} />
-          Help & Support
+          Help &amp; Support
         </Link>
         <button
           id="sidebar-logout"
