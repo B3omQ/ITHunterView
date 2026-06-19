@@ -289,22 +289,18 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("id");
 
                     b.Property<string>("AboutMe")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("about_me");
 
                     b.Property<string>("AvatarUrl")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("avatar_url");
 
                     b.Property<string>("FirstName")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("first_name");
 
                     b.Property<string>("GithubUrl")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("github_url");
 
@@ -313,27 +309,22 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("is_visible_to_recruiters");
 
                     b.Property<string>("LastName")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("last_name");
 
                     b.Property<string>("LinkedinUrl")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("linkedIn_url");
 
                     b.Property<string>("Location")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("location");
 
                     b.Property<string>("Phone")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("phone");
 
                     b.Property<string>("PortfolioUrl")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("portfolio_url");
 
@@ -342,6 +333,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
 
                     b.ToTable("candidate_profiles");
                 });
@@ -620,6 +614,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("email_verification_tokens");
                 });
@@ -1177,6 +1173,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("UserId");
+
                     b.ToTable("password_resets");
                 });
 
@@ -1270,7 +1268,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("id");
 
                     b.Property<string>("AvatarUrl")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("avatar_url");
 
@@ -1279,17 +1276,14 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("company_id");
 
                     b.Property<string>("FullName")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("full_name");
 
                     b.Property<string>("Phone")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("phone");
 
                     b.Property<string>("PositionTitle")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("position_title");
 
@@ -1298,6 +1292,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
 
                     b.ToTable("recruiter_profiles");
                 });
@@ -1609,6 +1606,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
+                    b.HasIndex("RoleId");
+
                     b.ToTable("users");
                 });
 
@@ -1759,6 +1758,50 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.ToTable("user_wallets");
                 });
 
+            modelBuilder.Entity("ITHunterview.Domain.Entities.CandidateProfiles", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.User", "User")
+                        .WithOne("CandidateProfile")
+                        .HasForeignKey("ITHunterview.Domain.Entities.CandidateProfiles", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.EmailVerificationTokens", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.PasswordResets", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.RecruiterProfiles", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.User", "User")
+                        .WithOne("RecruiterProfile")
+                        .HasForeignKey("ITHunterview.Domain.Entities.RecruiterProfiles", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("ITHunterview.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("ITHunterview.Domain.Entities.User", "User")
@@ -1772,6 +1815,25 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.User", b =>
                 {
+                    b.HasOne("ITHunterview.Domain.Entities.Roles", "Role")
+                        .WithMany("Users")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.Roles", b =>
+                {
+                    b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.User", b =>
+                {
+                    b.Navigation("CandidateProfile");
+
+                    b.Navigation("RecruiterProfile");
+
                     b.Navigation("RefreshTokens");
                 });
 #pragma warning restore 612, 618
