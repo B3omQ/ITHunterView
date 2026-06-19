@@ -1,9 +1,9 @@
 "use client"
 
-import { useAuth } from "@/providers/AuthProvider"
+import { useAuthStore } from "@/store/auth.store"
 
 export default function ProfileSettingsPage() {
-  const { user } = useAuth()
+  const { user } = useAuthStore()
 
   return (
     <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
@@ -45,3 +45,4 @@ export default function ProfileSettingsPage() {
     </div>
   )
 }
+

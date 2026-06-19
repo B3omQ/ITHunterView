@@ -19,9 +19,8 @@ import {
   BarChart3,
   BrainCircuit,
 } from "lucide-react"
-import { useAuth } from "@/providers/AuthProvider"
-import { authApi } from "@/api/auth"
-import { Logo } from "@/components/Logo"
+import { useAuthStore } from "@/store/auth.store"
+import { Logo } from "@/components/layout/Logo"
 
 interface NavItem {
   label: string
@@ -33,79 +32,76 @@ interface NavItem {
 
 function getCandidateNav(base: string): NavItem[] {
   return [
-    { label: "Dashboard", href: `${base}`, icon: <LayoutDashboard size={18} /> },
+    { label: "Dashboard", href: `${base}/dashboard`, icon: <LayoutDashboard size={18} /> },
     { label: "My Profile", href: `${base}/profile`, icon: <User size={18} /> },
     { label: "Job Listings", href: `${base}/jobs`, icon: <Briefcase size={18} /> },
     { label: "Saved Jobs", href: `${base}/saved-jobs`, icon: <Bookmark size={18} /> },
     { label: "Notifications", href: `${base}/notifications`, icon: <Bell size={18} />, badge: 3 },
-    { label: "Settings", href: `/dashboard/settings`, icon: <Settings size={18} /> },
+    { label: "Settings", href: `/shared/settings`, icon: <Settings size={18} /> },
   ]
 }
 
 function getRecruiterNav(base: string): NavItem[] {
   return [
-    { label: "Dashboard", href: `${base}`, icon: <LayoutDashboard size={18} /> },
+    { label: "Dashboard", href: `${base}/dashboard`, icon: <LayoutDashboard size={18} /> },
     { label: "My Profile", href: `${base}/profile`, icon: <User size={18} /> },
     { label: "Job Postings", href: `${base}/jobs`, icon: <Briefcase size={18} /> },
     { label: "Applications", href: `${base}/applications`, icon: <FileText size={18} /> },
     { label: "Candidates", href: `${base}/candidates`, icon: <Users size={18} /> },
     { label: "Notifications", href: `${base}/notifications`, icon: <Bell size={18} />, badge: 2 },
-    { label: "Settings", href: `/dashboard/settings`, icon: <Settings size={18} /> },
+    { label: "Settings", href: `/shared/settings`, icon: <Settings size={18} /> },
   ]
 }
 
 function getAdminNav(base: string): NavItem[] {
   return [
-    { label: "Dashboard", href: `${base}`, icon: <LayoutDashboard size={18} /> },
+    { label: "Dashboard", href: `${base}/dashboard`, icon: <LayoutDashboard size={18} /> },
     { label: "Users", href: `${base}/users`, icon: <Users size={18} /> },
     { label: "Companies", href: `${base}/companies`, icon: <Building2 size={18} /> },
     { label: "Job Reviews", href: `${base}/job-reviews`, icon: <Briefcase size={18} /> },
     { label: "Analytics", href: `${base}/analytics`, icon: <BarChart3 size={18} /> },
     { label: "System Config", href: `${base}/config`, icon: <Shield size={18} /> },
-    { label: "Settings", href: `/dashboard/settings`, icon: <Settings size={18} /> },
+    { label: "Settings", href: `/shared/settings`, icon: <Settings size={18} /> },
   ]
 }
 
 function getStaffNav(base: string): NavItem[] {
   return [
-    { label: "Dashboard", href: `${base}`, icon: <LayoutDashboard size={18} /> },
+    { label: "Dashboard", href: `${base}/dashboard`, icon: <LayoutDashboard size={18} /> },
     { label: "AI Interviews", href: `${base}/interviews`, icon: <BrainCircuit size={18} /> },
     { label: "Question Bank", href: `${base}/questions`, icon: <FileText size={18} /> },
     { label: "Reports", href: `${base}/reports`, icon: <BarChart3 size={18} /> },
     { label: "Notifications", href: `${base}/notifications`, icon: <Bell size={18} /> },
-    { label: "Settings", href: `/dashboard/settings`, icon: <Settings size={18} /> },
+    { label: "Settings", href: `/shared/settings`, icon: <Settings size={18} /> },
   ]
 }
 
 function getNavItems(role: string): NavItem[] {
   switch (role.toLowerCase()) {
-    case "admin":     return getAdminNav("/dashboard/admin")
-    case "staff":     return getStaffNav("/dashboard/staff")
-    case "recruiter": return getRecruiterNav("/dashboard/recruiter")
-    default:          return getCandidateNav("/dashboard/candidate")
+    case "admin":     return getAdminNav("/admin")
+    case "staff":     return getStaffNav("/staff")
+    case "recruiter": return getRecruiterNav("/recruiter")
+    default:          return getCandidateNav("/candidate")
   }
 }
 
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, logout } = useAuth()
+  const { user, logout } = useAuthStore()
 
-  const navItems = getNavItems(user?.role ?? "candidate")
+  const navItems = getNavItems(user?.role?.name ?? "candidate")
 
   const handleLogout = async () => {
-    const refreshToken = localStorage.getItem("refreshToken")
-    if (refreshToken) {
-      await authApi.logout(refreshToken).catch(() => {})
-    }
+    // Call backend logout if implemented, for now just clear store
     logout()
+    router.push('/login')
   }
 
   const isActive = (href: string) => {
     if (href === pathname) return true
     // Exact match for dashboard root, prefix for sub-pages
-    if (href.endsWith("/dashboard/candidate") || href.endsWith("/dashboard/admin") ||
-        href.endsWith("/dashboard/recruiter") || href.endsWith("/dashboard/staff")) {
+    if (href.endsWith("/dashboard")) {
       return pathname === href
     }
     return pathname.startsWith(href)
@@ -129,7 +125,7 @@ export function Sidebar() {
               <p className="text-sm font-semibold text-sidebar-foreground truncate">
                 {user.fullName || user.email}
               </p>
-              <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
+              <p className="text-xs text-muted-foreground capitalize">{user.role?.name || "Candidate"}</p>
             </div>
           </div>
         </div>

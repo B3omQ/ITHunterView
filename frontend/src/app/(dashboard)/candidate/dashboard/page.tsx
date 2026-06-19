@@ -1,10 +1,10 @@
 "use client"
 
-import { useAuth } from "@/providers/AuthProvider"
+import { useAuthStore } from "@/store/auth.store"
 import { Briefcase, FileText, Bell, TrendingUp, Star, Clock } from "lucide-react"
 
 export default function CandidateDashboard() {
-  const { user } = useAuth()
+  const { user } = useAuthStore()
 
   const stats = [
     { label: "Applications Sent", value: "12", icon: <FileText size={20} />, color: "from-indigo-500 to-violet-600", change: "+3 this week" },
@@ -94,3 +94,4 @@ export default function CandidateDashboard() {
     </div>
   )
 }
+

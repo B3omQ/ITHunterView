@@ -4,10 +4,10 @@ import { useState } from "react"
 import Link from "next/link"
 import { Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
 import { authApi } from "@/api/auth"
-import { useAuth } from "@/providers/AuthProvider"
+import { useAuthStore } from "@/store/auth.store"
 
 export default function SecuritySettingsPage() {
-  const { logout } = useAuth()
+  const { logout } = useAuthStore()
 
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -165,3 +165,4 @@ export default function SecuritySettingsPage() {
     </div>
   )
 }
+

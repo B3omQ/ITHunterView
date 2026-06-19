@@ -1,10 +1,10 @@
 "use client"
 
-import { useAuth } from "@/providers/AuthProvider"
+import { useAuthStore } from "@/store/auth.store"
 import { Briefcase, Users, Eye, CheckCircle, Clock, TrendingUp } from "lucide-react"
 
 export default function RecruiterDashboard() {
-  const { user } = useAuth()
+  const { user } = useAuthStore()
 
   const stats = [
     { label: "Active Jobs", value: "8", icon: <Briefcase size={20} />, color: "from-indigo-500 to-violet-600", change: "2 pending review" },
@@ -84,3 +84,4 @@ export default function RecruiterDashboard() {
     </div>
   )
 }
+
