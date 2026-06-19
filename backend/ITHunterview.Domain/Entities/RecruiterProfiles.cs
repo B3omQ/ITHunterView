@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -10,7 +9,7 @@ namespace ITHunterview.Domain.Entities
     {
         [Key]
         [Column("id")]
-        public Guid Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
 
         [Column("user_id")]
         public Guid UserId { get; set; }
@@ -19,16 +18,18 @@ namespace ITHunterview.Domain.Entities
         public Guid? CompanyId { get; set; }
 
         [Column("full_name")]
-        public string FullName { get; set; }
+        public string? FullName { get; set; }
 
         [Column("phone")]
-        public string Phone { get; set; }
+        public string? Phone { get; set; }
 
         [Column("position_title")]
-        public string PositionTitle { get; set; }
+        public string? PositionTitle { get; set; }
 
         [Column("avatar_url")]
-        public string AvatarUrl { get; set; }
+        public string? AvatarUrl { get; set; }
 
+        // Navigation
+        public User User { get; set; } = null!;
     }
 }
