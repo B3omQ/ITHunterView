@@ -25,7 +25,12 @@ namespace ITHunterview.Service.Utils
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                // Role claim for Authorization policies
+                new Claim(ClaimTypes.Role, user.Role?.Name ?? string.Empty),
+                // Custom claim for easy access
+                new Claim("userId", user.Id.ToString()),
+                new Claim("role", user.Role?.Name ?? string.Empty)
             };
 
             if (user.Role != null)
@@ -52,6 +57,17 @@ namespace ITHunterview.Service.Utils
             using var rng = RandomNumberGenerator.Create();
             rng.GetBytes(randomNumber);
             return Convert.ToBase64String(randomNumber);
+        }
+
+        public static string GenerateSecureToken()
+        {
+            var randomNumber = new byte[32];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+            return Convert.ToBase64String(randomNumber)
+                .Replace("+", "-")
+                .Replace("/", "_")
+                .Replace("=", "");
         }
     }
 }

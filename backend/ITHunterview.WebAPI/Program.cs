@@ -9,11 +9,11 @@ using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// ─── Core Services ────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// Build NpgsqlDataSource with all PostgreSQL enum type mappings
+// ─── Database ─────────────────────────────────────────────────────────────────
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(
     builder.Configuration.GetConnectionString("DefaultConnection"));
 dataSourceBuilder.MapEnum<UserStatus>("user_status");
@@ -45,8 +45,10 @@ builder.Services.AddDbContext<ITHunterviewContext>(options =>
            .ConfigureWarnings(w => w.Ignore(
                Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
+// ─── Application Services ─────────────────────────────────────────────────────
 builder.Services.AddApplicationServices();
 
+// ─── JWT Authentication ───────────────────────────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 builder.Services.AddAuthentication(options =>
 {
@@ -67,26 +69,41 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// ─── RBAC Authorization Policies ─────────────────────────────────────────────
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly",        p => p.RequireRole("admin"));
+    options.AddPolicy("StaffOnly",        p => p.RequireRole("staff"));
+    options.AddPolicy("RecruiterOnly",    p => p.RequireRole("recruiter"));
+    options.AddPolicy("CandidateOnly",    p => p.RequireRole("candidate"));
+    options.AddPolicy("StaffOrAdmin",     p => p.RequireRole("admin", "staff"));
+    options.AddPolicy("RecruiterOrAdmin", p => p.RequireRole("admin", "staff", "recruiter"));
+    options.AddPolicy("AllRoles",         p => p.RequireRole("admin", "staff", "recruiter", "candidate"));
+});
+
+// ─── CORS ─────────────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        policy.SetIsOriginAllowed(origin => true)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
 var app = builder.Build();
 
+// ─── DB Migration & Seeding ───────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     try
     {
         var context = services.GetRequiredService<ITHunterviewContext>();
-        // Ensure Database is created/migrated before seeding (optional but good practice)
         await context.Database.MigrateAsync();
-        
-        await ITHunterview.Service.Infrastructure.Persistence.DataSeeder.SeedAsync(context);
+        await DataSeeder.SeedAsync(context);
     }
     catch (Exception ex)
     {
@@ -95,7 +112,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Configure the HTTP request pipeline.
+// ─── Middleware Pipeline ──────────────────────────────────────────────────────
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -103,10 +120,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors();
 app.UseHttpsRedirection();
-
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();

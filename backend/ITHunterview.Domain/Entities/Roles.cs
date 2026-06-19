@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -13,7 +12,9 @@ namespace ITHunterview.Domain.Entities
         public int Id { get; set; }
 
         [Column("name")]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
+        // Navigation
+        public ICollection<User> Users { get; set; } = new List<User>();
     }
 }

@@ -1,0 +1,17 @@
+using System.Threading.Tasks;
+
+namespace ITHunterview.Service.Interface.Service
+{
+    public class GoogleUserInfo
+    {
+        public string GoogleId { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string? Name { get; set; }
+        public string? Picture { get; set; }
+    }
+
+    public interface IGoogleAuthService
+    {
+        Task<GoogleUserInfo?> VerifyGoogleTokenAsync(string idToken);
+    }
+}
