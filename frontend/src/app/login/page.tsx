@@ -27,26 +27,40 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const res = await fetch("http://localhost:5059/api/auth/login", {
+      const res = await fetch("http://localhost:50504/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       })
 
+      if (!res.ok) {
+        // Try to parse error response as JSON, fallback to status text
+        try {
+          const errorData = await res.json()
+          setError(errorData.message || `Login failed (${res.status})`)
+        } catch {
+          setError(`Login failed: ${res.statusText} (${res.status})`)
+        }
+        return
+      }
+
       const data = await res.json()
 
-      if (!res.ok || !data.success) {
+      if (!data.success) {
         setError(data.message || "Failed to login")
         return
       }
 
-      // Save token (basic implementation)
+      // Save token and user info
       localStorage.setItem("accessToken", data.data.accessToken)
       localStorage.setItem("refreshToken", data.data.refreshToken)
-      
+      localStorage.setItem("userRole", data.data.roleName || "")
+      localStorage.setItem("userEmail", data.data.email || "")
+
       router.push("/") // Redirect to home on success
     } catch (err) {
-      setError("An unexpected error occurred.")
+      console.error("Login error:", err)
+      setError("Unable to connect to the server. Please ensure the backend is running.")
     } finally {
       setLoading(false)
     }
@@ -66,21 +80,21 @@ export default function LoginPage() {
             {error && <div className="text-sm font-medium text-red-500">{error}</div>}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="m@example.com" 
-                required 
+              <Input
+                id="email"
+                type="email"
+                placeholder="m@example.com"
+                required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                required 
+              <Input
+                id="password"
+                type="password"
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />

@@ -78,5 +78,7 @@ namespace ITHunterview.Domain.Entities
         [Column("deleted_at")]
         public DateTime? DeletedAt { get; set; }
 
+        // Navigation properties
+        public ICollection<JobSkillRequirements> JobSkills { get; set; } = new List<JobSkillRequirements>();
     }
 }

@@ -24,6 +24,7 @@ namespace ITHunterview.Domain.Entities
         public DateTime? DeactiveAt { get; set; }
         
         // Navigation properties
+        public Roles? Role { get; set; }
         public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     }
 }

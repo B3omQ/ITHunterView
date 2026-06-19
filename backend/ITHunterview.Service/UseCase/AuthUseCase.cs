@@ -56,7 +56,8 @@ namespace ITHunterview.Service.UseCase
                 RefreshToken = refreshTokenString,
                 UserId = user.Id,
                 Email = user.Email,
-                FullName = user.Email // FullName removed from DB, defaulting to Email
+                FullName = user.Email, // FullName removed from DB, defaulting to Email
+                RoleName = user.Role?.Name
             };
 
             return new ResponseBase<LoginResponseDto>(response);

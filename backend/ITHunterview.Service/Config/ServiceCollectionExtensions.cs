@@ -13,9 +13,13 @@ namespace ITHunterview.Service.Config
             // Register repositories
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<ITokenRepository, TokenRepository>();
+            services.AddScoped<IJobPostingRepository, JobPostingRepository>();
+            services.AddScoped<ISkillRepository, SkillRepository>();
 
             // Register use cases
             services.AddScoped<IAuthUseCase, AuthUseCase>();
+            services.AddScoped<IJobPostingsUseCase, JobPostingsUseCase>();
+            services.AddScoped<ISkillsUseCase, SkillsUseCase>();
 
             return services;
         }

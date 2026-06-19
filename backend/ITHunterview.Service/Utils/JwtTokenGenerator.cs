@@ -21,12 +21,17 @@ namespace ITHunterview.Service.Utils
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var claims = new[]
+            var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
+
+            if (user.Role != null)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, user.Role.Name));
+            }
 
             var expiryMinutes = int.Parse(jwtSettings["ExpiryMinutes"] ?? "60");
 

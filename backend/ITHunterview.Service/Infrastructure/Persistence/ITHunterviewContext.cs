@@ -88,6 +88,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 entity.Property(e => e.Email).IsRequired().HasMaxLength(256);
                 entity.HasIndex(e => e.Email).IsUnique();
                 entity.Property(e => e.PasswordHash).IsRequired();
+                
+                entity.HasOne(e => e.Role)
+                      .WithMany()
+                      .HasForeignKey(e => e.RoleId)
+                      .OnDelete(DeleteBehavior.SetNull);
             });
 
             modelBuilder.Entity<RefreshToken>(entity =>
@@ -103,7 +108,18 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             });
             modelBuilder.Entity<RolePermissions>().HasKey(rp => new { rp.RoleId, rp.PermissionId });
             modelBuilder.Entity<UserSkills>().HasKey(us => new { us.UserId, us.SkillId });
-            modelBuilder.Entity<JobSkillRequirements>().HasKey(jsr => new { jsr.JobId, jsr.SkillId });
+            modelBuilder.Entity<JobSkillRequirements>(entity =>
+            {
+                entity.HasKey(jsr => new { jsr.JobId, jsr.SkillId });
+                entity.HasOne(jsr => jsr.JobPosting)
+                      .WithMany(j => j.JobSkills)
+                      .HasForeignKey(jsr => jsr.JobId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(jsr => jsr.Skill)
+                      .WithMany()
+                      .HasForeignKey(jsr => jsr.SkillId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
             modelBuilder.Entity<UserSavedJobs>().HasKey(usj => new { usj.UserId, usj.JobId });
         }
     }
