@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
+using ITHunterview.Service.DTOs.Job;
 
 namespace ITHunterview.Service.Interface.Persistence
 {
@@ -16,7 +17,8 @@ namespace ITHunterview.Service.Interface.Persistence
             int pageSize);
         Task AddAsync(JobPostings job);
         Task UpdateAsync(JobPostings job);
-        Task SyncJobSkillsAsync(Guid jobId, List<JobSkillRequirements> newSkills);
         Task<Guid?> GetRecruiterCompanyIdAsync(Guid recruiterId);
+        Task<List<JobSkillRequirementDto>> GetSkillsByJobIdAsync(Guid jobId);
+        Task UpdateJobSkillsAsync(Guid jobId, List<JobSkillRequirementInputDto> skills);
     }
 }

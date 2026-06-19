@@ -17,8 +17,5 @@ namespace ITHunterview.Domain.Entities
         [Column("is_mandatory")]
         public bool IsMandatory { get; set; }
 
-        // Navigation properties
-        public Skills Skill { get; set; }
-        public JobPostings JobPosting { get; set; }
     }
 }

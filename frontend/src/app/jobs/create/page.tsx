@@ -1,0 +1,475 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { ArrowLeft, Plus, X, Sparkles, AlertCircle, Check } from "lucide-react"
+
+export default function CreateJobPage() {
+  const router = useRouter()
+  const [formData, setFormData] = useState({
+    jobCode: "",
+    title: "",
+    categoryId: "",
+    location: "",
+    jobType: "FULL_TIME",
+    status: "DRAFT",
+    minSalary: "",
+    maxSalary: "",
+    currency: "USD",
+    description: "",
+    responsibilities: "",
+    requirements: "",
+    benefits: "",
+  })
+
+  const [categories, setCategories] = useState<any[]>([])
+  const [availableSkills, setAvailableSkills] = useState<any[]>([])
+  const [selectedSkills, setSelectedSkills] = useState<Array<{ skillId: number; name: string; isMandatory: boolean }>>([])
+  
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [searchSkill, setSearchSkill] = useState("")
+
+  // Fetch categories and skills
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const catRes = await fetch("http://localhost:50504/api/jobcategories")
+        const catData = await catRes.json()
+        if (catRes.ok && catData.success) {
+          setCategories(catData.data || [])
+          // Set default category if available
+          if (catData.data?.length > 0) {
+            setFormData(prev => ({ ...prev, categoryId: catData.data[0].id.toString() }))
+          }
+        }
+
+        const skillRes = await fetch("http://localhost:50504/api/skills")
+        const skillData = await skillRes.json()
+        if (skillRes.ok && skillData.success) {
+          setAvailableSkills(skillData.data || [])
+        }
+      } catch (err) {
+        console.error("Failed to load metadata:", err)
+      }
+    }
+    fetchData()
+  }, [])
+
+  const getAuthHeaders = () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null
+    return {
+      "Content-Type": "application/json",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {})
+    }
+  }
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  // Skill Selection Handlers
+  const addSkill = (skill: any, isMandatory: boolean) => {
+    if (selectedSkills.some(s => s.skillId === skill.id)) {
+      // Toggle mandatory status if already selected
+      setSelectedSkills(prev =>
+        prev.map(s => s.skillId === skill.id ? { ...s, isMandatory } : s)
+      )
+    } else {
+      setSelectedSkills(prev => [...prev, { skillId: skill.id, name: skill.name, isMandatory }])
+    }
+    setSearchSkill("")
+  }
+
+  const removeSkill = (skillId: number) => {
+    setSelectedSkills(prev => prev.filter(s => s.skillId !== skillId))
+  }
+
+  const handleSubmit = async (statusVal: "DRAFT" | "PUBLISHED") => {
+    setError("")
+    setLoading(true)
+
+    try {
+      const payload = {
+        ...formData,
+        status: statusVal,
+        categoryId: formData.categoryId ? Number(formData.categoryId) : null,
+        minSalary: formData.minSalary ? Number(formData.minSalary) : null,
+        maxSalary: formData.maxSalary ? Number(formData.maxSalary) : null,
+        skills: selectedSkills.map(s => ({ skillId: s.skillId, isMandatory: s.isMandatory }))
+      }
+
+      const res = await fetch("http://localhost:50504/api/jobpostings", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      })
+
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to create job posting")
+      }
+
+      router.push("/jobs")
+    } catch (err: any) {
+      setError(err.message || "An error occurred while creating the job posting.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Filter skills based on search term
+  const filteredAvailableSkills = availableSkills.filter(
+    skill => 
+      skill.name.toLowerCase().includes(searchSkill.toLowerCase()) &&
+      !selectedSkills.some(s => s.skillId === skill.id)
+  )
+
+  const mustHaveSkills = selectedSkills.filter(s => s.isMandatory)
+  const niceToHaveSkills = selectedSkills.filter(s => !s.isMandatory)
+
+  return (
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 py-10 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
+      <div className="max-w-4xl mx-auto space-y-6">
+        
+        {/* Back Button & Header */}
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => router.push("/jobs")}
+            className="rounded-full bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-xs"
+          >
+            <ArrowLeft className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight">Create New IT Job Position</h1>
+            <p className="text-zinc-500 dark:text-zinc-400 text-sm">Post a new opening to recruit candidates</p>
+          </div>
+        </div>
+
+        {error && (
+          <div className="flex items-center gap-3 text-sm font-medium text-red-500 bg-red-50 dark:bg-red-950/30 p-4 rounded-xl border border-red-200 dark:border-red-900">
+            <AlertCircle className="h-5 w-5 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
+          <CardHeader className="border-b border-zinc-200/60 dark:border-zinc-800/60 pb-6">
+            <CardTitle className="text-lg font-bold text-zinc-900 dark:text-zinc-50">Job Details Form</CardTitle>
+            <CardDescription>Fill in the required information for the job listing.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="title" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Title *</Label>
+                <Input
+                  id="title"
+                  name="title"
+                  placeholder="e.g. Senior Frontend Developer (React)"
+                  required
+                  value={formData.title}
+                  onChange={handleChange}
+                  className="focus-visible:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="jobCode" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Code *</Label>
+                <Input
+                  id="jobCode"
+                  name="jobCode"
+                  placeholder="e.g. FE-3005 (Leave blank for auto-generation)"
+                  value={formData.jobCode}
+                  onChange={handleChange}
+                  className="focus-visible:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="categoryId" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Category *</Label>
+                <select
+                  id="categoryId"
+                  name="categoryId"
+                  className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
+                  value={formData.categoryId}
+                  onChange={handleChange}
+                >
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.parentId ? `— ${cat.name}` : cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="jobType" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Type *</Label>
+                <select
+                  id="jobType"
+                  name="jobType"
+                  className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
+                  value={formData.jobType}
+                  onChange={handleChange}
+                >
+                  <option value="FULL_TIME">Full Time</option>
+                  <option value="PART_TIME">Part Time</option>
+                  <option value="CONTRACT">Contract</option>
+                  <option value="FREELANCE">Freelance</option>
+                  <option value="INTERNSHIP">Internship</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="location" className="font-semibold text-zinc-700 dark:text-zinc-300">Location *</Label>
+                <Input
+                  id="location"
+                  name="location"
+                  placeholder="e.g. Remote, Hanoi, Hybrid"
+                  required
+                  value={formData.location}
+                  onChange={handleChange}
+                  className="focus-visible:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="minSalary" className="font-semibold text-zinc-700 dark:text-zinc-300">Min Salary</Label>
+                <Input
+                  id="minSalary"
+                  name="minSalary"
+                  type="number"
+                  placeholder="e.g. 1000"
+                  value={formData.minSalary}
+                  onChange={handleChange}
+                  className="focus-visible:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="maxSalary" className="font-semibold text-zinc-700 dark:text-zinc-300">Max Salary</Label>
+                <Input
+                  id="maxSalary"
+                  name="maxSalary"
+                  type="number"
+                  placeholder="e.g. 2500"
+                  value={formData.maxSalary}
+                  onChange={handleChange}
+                  className="focus-visible:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="currency" className="font-semibold text-zinc-700 dark:text-zinc-300">Currency</Label>
+                <Input
+                  id="currency"
+                  name="currency"
+                  placeholder="USD"
+                  value={formData.currency}
+                  onChange={handleChange}
+                  className="focus-visible:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <hr className="border-zinc-200/60 dark:border-zinc-800/60" />
+
+            {/* Standardized Skill Dictionary Section */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-1.5">
+                  <Sparkles className="h-4.5 w-4.5 text-blue-500" />
+                  Standardized Skill Dictionary
+                </h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Specify Must-have and Nice-to-have technical skills from standard list.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-zinc-50/50 dark:bg-zinc-900/30 p-4 rounded-xl border border-zinc-200/60 dark:border-zinc-800/60">
+                {/* Must-have skills list */}
+                <div className="space-y-2">
+                  <Label className="font-bold text-xs uppercase tracking-wider text-blue-600 dark:text-blue-400">Must-have Skills</Label>
+                  <div className="min-h-[100px] border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg p-2 bg-white dark:bg-zinc-950 flex flex-wrap gap-1.5 items-start content-start">
+                    {mustHaveSkills.length > 0 ? (
+                      mustHaveSkills.map(s => (
+                        <span key={s.skillId} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/50 px-2 py-1 rounded text-xs font-semibold">
+                          {s.name}
+                          <button type="button" onClick={() => removeSkill(s.skillId)} className="hover:text-blue-900 dark:hover:text-blue-200">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-zinc-400 p-2">Drag or select skills as Must-have</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Nice-to-have skills list */}
+                <div className="space-y-2">
+                  <Label className="font-bold text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Nice-to-have Skills</Label>
+                  <div className="min-h-[100px] border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg p-2 bg-white dark:bg-zinc-950 flex flex-wrap gap-1.5 items-start content-start">
+                    {niceToHaveSkills.length > 0 ? (
+                      niceToHaveSkills.map(s => (
+                        <span key={s.skillId} className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/50 px-2 py-1 rounded text-xs font-semibold">
+                          {s.name}
+                          <button type="button" onClick={() => removeSkill(s.skillId)} className="hover:text-emerald-900 dark:hover:text-emerald-200">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-zinc-400 p-2">Drag or select skills as Nice-to-have</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Skill Selector Input & Dropdown */}
+              <div className="relative">
+                <Label htmlFor="searchSkill" className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Add Skills from dictionary</Label>
+                <Input
+                  id="searchSkill"
+                  placeholder="Type to search e.g. React, Docker, Python..."
+                  value={searchSkill}
+                  onChange={(e) => setSearchSkill(e.target.value)}
+                  className="mt-1 focus-visible:ring-blue-500"
+                />
+
+                {searchSkill.trim() && (
+                  <div className="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-lg p-2 space-y-1">
+                    {filteredAvailableSkills.length > 0 ? (
+                      filteredAvailableSkills.map((skill) => (
+                        <div key={skill.id} className="flex items-center justify-between p-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md transition-all">
+                          <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{skill.name} <span className="text-xs text-zinc-400">({skill.categoryName || "Other"})</span></span>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => addSkill(skill, true)}
+                              className="h-7 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400"
+                            >
+                              + Must-have
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => addSkill(skill, false)}
+                              className="h-7 text-xs bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400"
+                            >
+                              + Nice-to-have
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center text-xs text-zinc-400 py-3">No matching skills found in dictionary.</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <hr className="border-zinc-200/60 dark:border-zinc-800/60" />
+
+            <div className="space-y-2">
+              <Label htmlFor="description" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Description *</Label>
+              <textarea
+                id="description"
+                name="description"
+                rows={4}
+                required
+                placeholder="Describe the job role, duties, and typical day-to-day work..."
+                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                value={formData.description}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="responsibilities" className="font-semibold text-zinc-700 dark:text-zinc-300">Key Responsibilities</Label>
+              <textarea
+                id="responsibilities"
+                name="responsibilities"
+                rows={3}
+                placeholder="List major responsibilities (e.g. design scalable microservices, manage CI/CD)..."
+                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                value={formData.responsibilities}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="requirements" className="font-semibold text-zinc-700 dark:text-zinc-300">Detailed Requirements</Label>
+              <textarea
+                id="requirements"
+                name="requirements"
+                rows={3}
+                placeholder="List specific qualifications, experience level, degree, or other requirements..."
+                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                value={formData.requirements}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="benefits" className="font-semibold text-zinc-700 dark:text-zinc-300">Perks & Benefits</Label>
+              <textarea
+                id="benefits"
+                name="benefits"
+                rows={3}
+                placeholder="List key benefits (e.g. 13th month salary, health insurance, flexible working hours)..."
+                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                value={formData.benefits}
+                onChange={handleChange}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-3 pt-2">
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={() => router.push("/jobs")} 
+            disabled={loading}
+            className="border-zinc-200/80 dark:border-zinc-800/80 hover:bg-zinc-100"
+          >
+            Cancel
+          </Button>
+          <Button 
+            type="button" 
+            variant="secondary"
+            onClick={() => handleSubmit("DRAFT")} 
+            disabled={loading}
+            className="bg-zinc-200 hover:bg-zinc-300 text-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-200"
+          >
+            {loading ? "Saving..." : "Save as Draft"}
+          </Button>
+          <Button 
+            type="button" 
+            onClick={() => handleSubmit("PUBLISHED")} 
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/10"
+          >
+            {loading ? "Publishing..." : "Publish & Submit Review"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}

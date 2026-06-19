@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.Interface.Persistence;
+using ITHunterview.Service.DTOs.Job;
 using Microsoft.EntityFrameworkCore;
 
 namespace ITHunterview.Service.Infrastructure.Persistence
@@ -20,10 +21,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
         public async Task<JobPostings?> GetByIdAsync(Guid id)
         {
-            return await _context.JobPostings
-                .Include(j => j.JobSkills)
-                    .ThenInclude(js => js.Skill)
-                .FirstOrDefaultAsync(j => j.Id == id && j.DeletedAt == null);
+            return await _context.JobPostings.FirstOrDefaultAsync(j => j.Id == id && j.DeletedAt == null);
         }
 
         public async Task<(List<JobPostings> Items, int TotalCount)> GetPagedAsync(
@@ -66,18 +64,44 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             await _context.SaveChangesAsync();
         }
 
-        public async Task SyncJobSkillsAsync(Guid jobId, List<JobSkillRequirements> newSkills)
-        {
-            var existingSkills = await _context.JobSkillRequirements.Where(js => js.JobId == jobId).ToListAsync();
-            _context.JobSkillRequirements.RemoveRange(existingSkills);
-            _context.JobSkillRequirements.AddRange(newSkills);
-            await _context.SaveChangesAsync();
-        }
-
         public async Task<Guid?> GetRecruiterCompanyIdAsync(Guid recruiterId)
         {
             var profile = await _context.RecruiterProfiles.FirstOrDefaultAsync(rp => rp.UserId == recruiterId);
             return profile?.CompanyId;
+        }
+
+        public async Task<List<JobSkillRequirementDto>> GetSkillsByJobIdAsync(Guid jobId)
+        {
+            return await (from jsr in _context.JobSkillRequirements
+                          join s in _context.Skills on jsr.SkillId equals s.Id
+                          where jsr.JobId == jobId
+                          select new JobSkillRequirementDto
+                          {
+                              SkillId = jsr.SkillId,
+                              SkillName = s.Name,
+                              IsMandatory = jsr.IsMandatory
+                          }).ToListAsync();
+        }
+
+        public async Task UpdateJobSkillsAsync(Guid jobId, List<JobSkillRequirementInputDto> skills)
+        {
+            // Remove existing skills
+            var existing = _context.JobSkillRequirements.Where(jsr => jsr.JobId == jobId);
+            _context.JobSkillRequirements.RemoveRange(existing);
+
+            // Add new ones
+            if (skills != null && skills.Any())
+            {
+                var newRequirements = skills.Select(s => new JobSkillRequirements
+                {
+                    JobId = jobId,
+                    SkillId = s.SkillId,
+                    IsMandatory = s.IsMandatory
+                });
+                _context.JobSkillRequirements.AddRange(newRequirements);
+            }
+
+            await _context.SaveChangesAsync();
         }
     }
 }

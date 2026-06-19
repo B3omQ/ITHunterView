@@ -108,18 +108,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             });
             modelBuilder.Entity<RolePermissions>().HasKey(rp => new { rp.RoleId, rp.PermissionId });
             modelBuilder.Entity<UserSkills>().HasKey(us => new { us.UserId, us.SkillId });
-            modelBuilder.Entity<JobSkillRequirements>(entity =>
-            {
-                entity.HasKey(jsr => new { jsr.JobId, jsr.SkillId });
-                entity.HasOne(jsr => jsr.JobPosting)
-                      .WithMany(j => j.JobSkills)
-                      .HasForeignKey(jsr => jsr.JobId)
-                      .OnDelete(DeleteBehavior.Cascade);
-                entity.HasOne(jsr => jsr.Skill)
-                      .WithMany()
-                      .HasForeignKey(jsr => jsr.SkillId)
-                      .OnDelete(DeleteBehavior.Cascade);
-            });
+            modelBuilder.Entity<JobSkillRequirements>().HasKey(jsr => new { jsr.JobId, jsr.SkillId });
             modelBuilder.Entity<UserSavedJobs>().HasKey(usj => new { usj.UserId, usj.JobId });
         }
     }

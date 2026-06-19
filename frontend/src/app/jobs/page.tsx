@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -15,10 +16,9 @@ import {
   ChevronRight,
   Loader2
 } from "lucide-react"
-import JobFormModal from "@/components/jobs/JobFormModal"
-import JobDetailModal from "@/components/jobs/JobDetailModal"
 
 export default function JobPostingsPage() {
+  const router = useRouter()
   const [jobs, setJobs] = useState<any[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [page, setPage] = useState(1)
@@ -26,12 +26,6 @@ export default function JobPostingsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [status, setStatus] = useState("ALL")
   const [loading, setLoading] = useState(false)
-
-  // Modals state
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [isDetailOpen, setIsDetailOpen] = useState(false)
-  const [selectedJob, setSelectedJob] = useState<any>(null)
-  const [formTitle, setFormTitle] = useState("")
 
   const pageSize = 7 // Matches mockup showing 7 items
 
@@ -103,73 +97,16 @@ export default function JobPostingsPage() {
     }
   }
 
-  // Handle Form Submit (Create/Edit)
-  const handleFormSubmit = async (formData: any) => {
-    const isEdit = !!selectedJob
-    const url = isEdit 
-      ? `http://localhost:50504/api/jobpostings/${selectedJob.id}`
-      : `http://localhost:50504/api/jobpostings`
-    const method = isEdit ? "PUT" : "POST"
-
-    const res = await fetch(url, {
-      method,
-      headers: getAuthHeaders(),
-      body: JSON.stringify(formData),
-    })
-
-    const data = await res.json()
-    if (!res.ok || !data.success) {
-      throw new Error(data.message || "Operation failed")
-    }
-
-    fetchJobs()
-  }
-
   const openCreateModal = () => {
-    setSelectedJob(null)
-    setFormTitle("Create New Job")
-    setIsFormOpen(true)
+    router.push("/jobs/create")
   }
 
-  const openEditModal = async (jobId: string) => {
-    setLoading(true)
-    try {
-      const res = await fetch(`http://localhost:50504/api/jobpostings/${jobId}`, {
-        headers: getAuthHeaders()
-      })
-      const data = await res.json()
-      if (res.ok && data.success) {
-        setSelectedJob(data.data)
-        setFormTitle("Edit Job Posting")
-        setIsFormOpen(true)
-      } else {
-        alert(data.message || "Failed to load job details")
-      }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
+  const openEditModal = (jobId: string) => {
+    router.push(`/jobs/${jobId}/edit`)
   }
 
-  const openViewModal = async (jobId: string) => {
-    setLoading(true)
-    try {
-      const res = await fetch(`http://localhost:50504/api/jobpostings/${jobId}`, {
-        headers: getAuthHeaders()
-      })
-      const data = await res.json()
-      if (res.ok && data.success) {
-        setSelectedJob(data.data)
-        setIsDetailOpen(true)
-      } else {
-        alert(data.message || "Failed to load job details")
-      }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
+  const openViewModal = (jobId: string) => {
+    router.push(`/jobs/${jobId}`)
   }
 
   // Helpers for pagination calculations
@@ -419,21 +356,6 @@ export default function JobPostingsPage() {
         </div>
       </div>
 
-      {/* Form Dialog Modal */}
-      <JobFormModal
-        isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
-        onSubmit={handleFormSubmit}
-        initialData={selectedJob}
-        title={formTitle}
-      />
-
-      {/* Detail Dialog Modal */}
-      <JobDetailModal
-        isOpen={isDetailOpen}
-        onClose={() => setIsDetailOpen(false)}
-        job={selectedJob}
-      />
     </div>
   )
 }

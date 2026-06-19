@@ -39,7 +39,7 @@ namespace ITHunterview.Service.DTOs.Job
         public int ViewCount { get; set; }
         public DateTime? PublishedAt { get; set; }
         public DateTime CreatedAt { get; set; }
-        public List<JobSkillDto> Skills { get; set; } = new List<JobSkillDto>();
+        public System.Collections.Generic.List<JobSkillRequirementDto> Skills { get; set; } = new();
     }
 
     public class CreateJobPostingDto
@@ -57,7 +57,7 @@ namespace ITHunterview.Service.DTOs.Job
         public string Location { get; set; } = string.Empty;
         public JobType JobType { get; set; }
         public JobStatus Status { get; set; } = JobStatus.DRAFT;
-        public List<JobSkillDto> Skills { get; set; } = new List<JobSkillDto>();
+        public System.Collections.Generic.List<JobSkillRequirementInputDto>? Skills { get; set; }
     }
 
     public class UpdateJobPostingDto
@@ -75,6 +75,19 @@ namespace ITHunterview.Service.DTOs.Job
         public string Location { get; set; } = string.Empty;
         public JobType JobType { get; set; }
         public JobStatus Status { get; set; }
-        public List<JobSkillDto> Skills { get; set; } = new List<JobSkillDto>();
+        public System.Collections.Generic.List<JobSkillRequirementInputDto>? Skills { get; set; }
+    }
+
+    public class JobSkillRequirementDto
+    {
+        public int SkillId { get; set; }
+        public string SkillName { get; set; } = string.Empty;
+        public bool IsMandatory { get; set; }
+    }
+
+    public class JobSkillRequirementInputDto
+    {
+        public int SkillId { get; set; }
+        public bool IsMandatory { get; set; }
     }
 }

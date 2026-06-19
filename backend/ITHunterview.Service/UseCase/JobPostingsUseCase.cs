@@ -65,6 +65,7 @@ namespace ITHunterview.Service.UseCase
             }
 
             var detail = MapToDetailDto(job);
+            detail.Skills = await _jobPostingRepository.GetSkillsByJobIdAsync(id);
             return new ResponseBase<JobPostingDetailDto>(detail);
         }
 
@@ -101,16 +102,15 @@ namespace ITHunterview.Service.UseCase
                 UpdatedAt = DateTime.UtcNow
             };
 
-            job.JobSkills = dto.Skills.Select(s => new JobSkillRequirements
-            {
-                JobId = job.Id,
-                SkillId = s.SkillId,
-                IsMandatory = s.IsMandatory
-            }).ToList();
-
             await _jobPostingRepository.AddAsync(job);
 
+            if (dto.Skills != null && dto.Skills.Any())
+            {
+                await _jobPostingRepository.UpdateJobSkillsAsync(job.Id, dto.Skills);
+            }
+
             var detail = MapToDetailDto(job);
+            detail.Skills = await _jobPostingRepository.GetSkillsByJobIdAsync(job.Id);
             return new ResponseBase<JobPostingDetailDto>(detail, "Job posting created successfully.");
         }
 
@@ -147,16 +147,13 @@ namespace ITHunterview.Service.UseCase
 
             await _jobPostingRepository.UpdateAsync(job);
 
-            var newSkills = dto.Skills.Select(s => new JobSkillRequirements
+            if (dto.Skills != null)
             {
-                JobId = job.Id,
-                SkillId = s.SkillId,
-                IsMandatory = s.IsMandatory
-            }).ToList();
-            await _jobPostingRepository.SyncJobSkillsAsync(job.Id, newSkills);
+                await _jobPostingRepository.UpdateJobSkillsAsync(job.Id, dto.Skills);
+            }
 
-            var updatedJob = await _jobPostingRepository.GetByIdAsync(id);
-            var detail = MapToDetailDto(updatedJob!);
+            var detail = MapToDetailDto(job);
+            detail.Skills = await _jobPostingRepository.GetSkillsByJobIdAsync(job.Id);
             return new ResponseBase<JobPostingDetailDto>(detail, "Job posting updated successfully.");
         }
 
@@ -199,13 +196,7 @@ namespace ITHunterview.Service.UseCase
                 ApplicationCount = j.ApplicationCount,
                 ViewCount = j.ViewCount,
                 PublishedAt = j.PublishedAt,
-                CreatedAt = j.CreatedAt,
-                Skills = j.JobSkills?.Select(js => new JobSkillDto
-                {
-                    SkillId = js.SkillId,
-                    SkillName = js.Skill?.Name ?? string.Empty,
-                    IsMandatory = js.IsMandatory
-                }).ToList() ?? new List<JobSkillDto>()
+                CreatedAt = j.CreatedAt
             };
         }
     }
