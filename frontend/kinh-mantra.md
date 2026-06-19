@@ -1,4 +1,3 @@
-kiểm tra 1 lần nữa:
 # ITHunterview — Frontend Architecture Rules
 > Context cho AI codegen. Next.js 16 App Router · TypeScript strict · shadcn/ui · TanStack Query · Zustand (auth/ui only)
 
