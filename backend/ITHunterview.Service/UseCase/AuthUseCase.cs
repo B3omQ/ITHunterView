@@ -376,6 +376,46 @@ namespace ITHunterview.Service.UseCase
                 AvatarUrl = avatarUrl
             };
 
+            // Ghi nhận log đăng nhập thành công
+            try
+            {
+                var httpContext = _httpContextAccessor.HttpContext;
+                string ipAddress = "unknown";
+                string userAgent = "unknown";
+
+                if (httpContext != null)
+                {
+                    ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                    var rawUserAgent = httpContext.Request.Headers["User-Agent"].ToString();
+                    userAgent = string.IsNullOrEmpty(rawUserAgent) ? "unknown" : rawUserAgent;
+                    var fingerprint = httpContext.Request.Headers["X-Device-Fingerprint"].ToString();
+                    if (!string.IsNullOrEmpty(fingerprint))
+                    {
+                        userAgent = $"{userAgent} [Fingerprint: {fingerprint}]";
+                    }
+                }
+
+                var log = new UserActivityLogs
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = user.Id,
+                    ActorRole = user.Role?.Name ?? "anonymous",
+                    ActionCategory = ActivityLogCategory.AUTH,
+                    ActorEmail = user.Email,
+                    Action = "Đăng nhập thành công vào hệ thống.",
+                    Status = ActivityLogStatus.SUCCESS,
+                    IpAddress = ipAddress,
+                    UserAgent = userAgent,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _auditLogRepository.AddActivityLogAsync(log);
+            }
+            catch
+            {
+                // Tránh làm gián đoạn luồng trả về token nếu ghi log thất bại
+            }
+
             return new ResponseBase<LoginResponseDto>(response, "Đăng nhập thành công.");
         }
 

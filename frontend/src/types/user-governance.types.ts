@@ -64,19 +64,6 @@ export interface UserDetailDto {
   recruiterProfile: RecruiterProfileDetailDto | null;
 }
 
-export interface UserActivityLogDto {
-  id: string;
-  userId: string | null;
-  actorRole: string;
-  actionCategory: ActivityLogCategory;
-  actorEmail: string;
-  action: string;
-  status: ActivityLogStatus;
-  ipAddress: string;
-  userAgent: string;
-  createdAt: string;
-}
-
 export interface UpdateUserStatusDto {
   status: UserStatus;
   reason: string;
