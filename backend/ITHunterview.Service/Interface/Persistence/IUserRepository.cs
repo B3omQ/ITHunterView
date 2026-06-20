@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
+using ITHunterview.Domain.Enums;
 
 namespace ITHunterview.Service.Interface.Persistence
 {
@@ -12,5 +14,12 @@ namespace ITHunterview.Service.Interface.Persistence
         Task<User?> GetUserWithRoleByEmailAsync(string email);
         Task AddUserAsync(User user);
         Task UpdateUserAsync(User user);
+        Task<(List<User> Items, int Total)> GetPagedUsersAsync(int page, int pageSize, string? search, int? roleId, UserStatus? status);
+        Task<User?> GetUserDetailWithCompanyAsync(Guid userId);
+        Task AddActivityLogAsync(UserActivityLogs log);
+        Task<(List<UserActivityLogs> Items, int Total)> GetPagedActivityLogsAsync(int page, int pageSize, string? search, ActivityLogCategory? category, ActivityLogStatus? status);
+        Task<bool> RoleExistsAsync(int roleId);
+        Task<string?> GetRoleNameAsync(int roleId);
+        Task<int> PurgeActivityLogsAsync(DateTime cutoffDate);
     }
 }
