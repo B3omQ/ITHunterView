@@ -18,7 +18,19 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         private readonly IHttpContextAccessor _httpContextAccessor;
         private static readonly HashSet<string> SensitiveFields = new(StringComparer.OrdinalIgnoreCase)
         {
-            "PasswordHash", "Password", "Token", "Secret", "PrivateKey", "AccessToken", "RefreshToken"
+            "PasswordHash", "Password", "Token", "Secret", "PrivateKey", "AccessToken", "RefreshToken",
+            "OtpCode", "VerificationToken", "ResetToken", "SocialId", "VerifyToken"
+        };
+
+        private static readonly HashSet<Type> ExcludedTypes = new()
+        {
+            typeof(UserActivityLogs),
+            typeof(RefreshToken),
+            typeof(EmailVerificationTokens),
+            typeof(PasswordResets),
+            typeof(Notifications),
+            typeof(SysEmailLogs),
+            typeof(AiApiUsageLogs)
         };
 
         public AuditLogInterceptor(IHttpContextAccessor httpContextAccessor)
@@ -38,7 +50,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             var context = eventData.Context;
             var entries = context.ChangeTracker.Entries()
-                .Where(e => e.Entity.GetType() != typeof(UserActivityLogs) &&
+                .Where(e => !ExcludedTypes.Contains(e.Entity.GetType()) &&
                             (e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted))
                 .ToList();
 
@@ -84,6 +96,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 var operationType = entry.State.ToString().ToUpper();
                 if (operationType == "ADDED") operationType = "CREATE";
                 if (operationType == "MODIFIED") operationType = "UPDATE";
+                if (operationType == "DELETED") operationType = "DELETE";
 
                 var snapshotDiff = GetSnapshotDiff(entry);
 

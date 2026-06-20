@@ -50,15 +50,3 @@ export function useUpdateUserRole() {
   });
 }
 
-export function useUserActivityLogs(params: {
-  page?: number;
-  pageSize?: number;
-  search?: string;
-  category?: string;
-  status?: string;
-}) {
-  return useQuery({
-    queryKey: ['activity-logs', params],
-    queryFn: ({ signal }) => userGovernanceService.getPagedActivityLogs(params, signal),
-  });
-}

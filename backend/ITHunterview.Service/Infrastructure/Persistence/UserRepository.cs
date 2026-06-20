@@ -97,46 +97,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 .FirstOrDefaultAsync(u => u.Id == userId);
         }
 
-        public async Task AddActivityLogAsync(UserActivityLogs log)
-        {
-            _context.UserActivityLogs.Add(log);
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task<(List<UserActivityLogs> Items, int Total)> GetPagedActivityLogsAsync(int page, int pageSize, string? search, ActivityLogCategory? category, ActivityLogStatus? status)
-        {
-            var query = _context.UserActivityLogs.AsNoTracking();
-
-            if (category.HasValue)
-            {
-                query = query.Where(l => l.ActionCategory == category.Value);
-            }
-
-            if (status.HasValue)
-            {
-                query = query.Where(l => l.Status == status.Value);
-            }
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                query = query.Where(l =>
-                    EF.Functions.ILike(l.ActorEmail, $"%{search}%") ||
-                    EF.Functions.ILike(l.Action, $"%{search}%") ||
-                    EF.Functions.ILike(l.IpAddress, $"%{search}%") ||
-                    EF.Functions.ILike(l.UserAgent, $"%{search}%")
-                );
-            }
-
-            int total = await query.CountAsync();
-            var items = await query
-                .OrderByDescending(l => l.CreatedAt)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return (items, total);
-        }
-
         public Task<bool> RoleExistsAsync(int roleId)
             => _context.Roles.AnyAsync(r => r.Id == roleId);
 
@@ -144,13 +104,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         {
             var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == roleId);
             return role?.Name;
-        }
-
-        public async Task<int> PurgeActivityLogsAsync(DateTime cutoffDate)
-        {
-            return await _context.UserActivityLogs
-                .Where(log => log.CreatedAt < cutoffDate)
-                .ExecuteDeleteAsync();
         }
     }
 }
