@@ -91,23 +91,21 @@ namespace ITHunterview.Service.UseCase
                 Status = UserStatus.PENDING_VERIFICATION,
                 CreatedAt = DateTime.UtcNow
             };
-            await _userRepository.AddUserAsync(user);
 
             // Create profile
             if (roleType == "candidate")
             {
-                var profile = new CandidateProfiles
+                user.CandidateProfile = new CandidateProfiles
                 {
-                    UserId = user.Id,
                     IsVisibleToRecruiters = true
                 };
-                // We need a profile repository or save via context directly
-                // For now we use a minimal approach through the user repository
             }
             else if (roleType == "recruiter")
             {
-                // RecruiterProfile created with empty data; company linked later
+                user.RecruiterProfile = new RecruiterProfiles();
             }
+
+            await _userRepository.AddUserAsync(user);
 
             // Send verification email
             var verifyToken = JwtTokenGenerator.GenerateSecureToken();
@@ -162,6 +160,19 @@ namespace ITHunterview.Service.UseCase
                     Status = UserStatus.ACTIVE, // Google accounts are pre-verified
                     CreatedAt = DateTime.UtcNow
                 };
+
+                if (roleType == "candidate")
+                {
+                    user.CandidateProfile = new CandidateProfiles
+                    {
+                        IsVisibleToRecruiters = true
+                    };
+                }
+                else if (roleType == "recruiter")
+                {
+                    user.RecruiterProfile = new RecruiterProfiles();
+                }
+
                 await _userRepository.AddUserAsync(user);
 
                 // Reload with role

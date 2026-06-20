@@ -174,6 +174,25 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             modelBuilder.Entity<UserSkills>().HasKey(us => new { us.UserId, us.SkillId });
             modelBuilder.Entity<JobSkillRequirements>().HasKey(jsr => new { jsr.JobId, jsr.SkillId });
             modelBuilder.Entity<UserSavedJobs>().HasKey(usj => new { usj.UserId, usj.JobId });
+
+            // Majors
+            modelBuilder.Entity<Majors>(entity =>
+            {
+                entity.HasIndex(e => e.Code)
+                      .IsUnique()
+                      .HasFilter("deleted_at IS NULL");
+
+                entity.HasIndex(e => e.NormalizedName);
+            });
+
+            // Skills
+            modelBuilder.Entity<Skills>(entity =>
+            {
+                entity.HasIndex(e => e.NormalizedName);
+            });
+
+            // Global Query Filters for Soft Delete
+            modelBuilder.Entity<Majors>().HasQueryFilter(m => m.DeletedAt == null);
         }
     }
 }
