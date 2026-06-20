@@ -16,7 +16,8 @@ builder.Services.AddDbContext<ITHunterviewContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // ─── Application Services ─────────────────────────────────────────────────────
-builder.Services.AddApplicationServices();
+builder.Services.Configure<ITHunterview.Service.Config.CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+builder.Services.AddApplicationServices(builder.Configuration);
 
 // ─── JWT Authentication ───────────────────────────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
