@@ -49,7 +49,7 @@ namespace ITHunterview.Service.UseCase
             var result = new PagedResult<SkillDto>
             {
                 Items = skillDtos,
-                TotalItems = total,
+                Total = total,
                 Page = page,
                 PageSize = pageSize
             };

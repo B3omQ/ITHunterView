@@ -16,8 +16,13 @@ builder.Services.AddControllers()
 builder.Services.AddOpenApi();
 
 // ─── Database ─────────────────────────────────────────────────────────────────
-builder.Services.AddDbContext<ITHunterviewContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<AuditLogInterceptor>();
+builder.Services.AddDbContext<ITHunterviewContext>((sp, options) =>
+{
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+           .AddInterceptors(sp.GetRequiredService<AuditLogInterceptor>());
+});
 
 // ─── Application Services ─────────────────────────────────────────────────────
 builder.Services.AddApplicationServices();
@@ -90,6 +95,8 @@ using (var scope = app.Services.CreateScope())
 }
 
 // ─── Middleware Pipeline ──────────────────────────────────────────────────────
+app.UseMiddleware<ITHunterview.WebAPI.Middlewares.ExceptionMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

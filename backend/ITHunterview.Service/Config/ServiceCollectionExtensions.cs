@@ -21,6 +21,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ISkillRepository, SkillRepository>();
             services.AddScoped<ISkillCategoryRepository, SkillCategoryRepository>();
             services.AddScoped<IMajorRepository, MajorRepository>();
+            services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
             // Application Services
             services.AddScoped<IEmailService, EmailService>();
@@ -31,6 +32,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ISkillUseCase, SkillUseCase>();
             services.AddScoped<IMajorUseCase, MajorUseCase>();
             services.AddScoped<IUserGovernanceUseCase, UserGovernanceUseCase>();
+            services.AddScoped<IAuditLogUseCase, AuditLogUseCase>();
 
             return services;
         }
