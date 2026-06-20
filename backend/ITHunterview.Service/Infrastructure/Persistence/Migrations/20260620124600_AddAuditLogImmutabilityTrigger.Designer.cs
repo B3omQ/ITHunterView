@@ -3,6 +3,7 @@ using System;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ITHunterviewContext))]
-    partial class ITHunterviewContextModelSnapshot : ModelSnapshot
+    [Migration("20260620124600_AddAuditLogImmutabilityTrigger")]
+    partial class AddAuditLogImmutabilityTrigger
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -23,7 +26,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "activity_log_category", new[] { "auth", "system", "data_mutation", "security" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "activity_log_status", new[] { "success", "fail" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "application_status", new[] { "applied", "viewed", "shortlisted", "interviewing", "offered", "hired", "rejected", "withdrawn" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "company_status", new[] { "draft", "pending", "verified", "rejected" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "company_status", new[] { "pending", "verified", "rejected" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "company_verification_method", new[] { "business_registration", "poa_and_id" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "credit_transaction_type", new[] { "topup", "deduct", "refund", "bonus" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "difficulty_level", new[] { "easy", "medium", "hard" });
@@ -146,8 +149,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
+                        .HasColumnType("text")
                         .HasColumnName("name");
 
                     b.Property<Guid>("UserId")
@@ -155,8 +157,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("candidate_certifications");
                 });
@@ -217,10 +217,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("MajorId");
-
-                    b.HasIndex("UserId");
-
                     b.ToTable("candidate_educations");
                 });
 
@@ -272,8 +268,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
+                        .HasColumnType("text")
                         .HasColumnName("title");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -285,10 +280,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("candidate_experiences");
                 });
@@ -597,8 +588,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("cvs");
                 });
@@ -1749,8 +1738,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.HasKey("UserId", "SkillId");
 
-                    b.HasIndex("SkillId");
-
                     b.ToTable("user_skills");
                 });
 
@@ -1810,59 +1797,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.ToTable("user_wallets");
                 });
 
-            modelBuilder.Entity("ITHunterview.Domain.Entities.CandidateCertifications", b =>
-                {
-                    b.HasOne("ITHunterview.Domain.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("ITHunterview.Domain.Entities.CandidateEducations", b =>
-                {
-                    b.HasOne("ITHunterview.Domain.Entities.Majors", null)
-                        .WithMany()
-                        .HasForeignKey("MajorId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("ITHunterview.Domain.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("ITHunterview.Domain.Entities.CandidateExperiences", b =>
-                {
-                    b.HasOne("ITHunterview.Domain.Entities.Companies", null)
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("ITHunterview.Domain.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("ITHunterview.Domain.Entities.CandidateProfiles", b =>
                 {
                     b.HasOne("ITHunterview.Domain.Entities.User", "User")
                         .WithOne("CandidateProfile")
                         .HasForeignKey("ITHunterview.Domain.Entities.CandidateProfiles", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("ITHunterview.Domain.Entities.Cvs", b =>
-                {
-                    b.HasOne("ITHunterview.Domain.Entities.User", "User")
-                        .WithMany("Cvs")
-                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1930,17 +1869,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Navigation("Role");
                 });
 
-            modelBuilder.Entity("ITHunterview.Domain.Entities.UserSkills", b =>
-                {
-                    b.HasOne("ITHunterview.Domain.Entities.Skills", "Skill")
-                        .WithMany()
-                        .HasForeignKey("SkillId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Skill");
-                });
-
             modelBuilder.Entity("ITHunterview.Domain.Entities.Roles", b =>
                 {
                     b.Navigation("Users");
@@ -1949,8 +1877,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("ITHunterview.Domain.Entities.User", b =>
                 {
                     b.Navigation("CandidateProfile");
-
-                    b.Navigation("Cvs");
 
                     b.Navigation("RecruiterProfile");
 

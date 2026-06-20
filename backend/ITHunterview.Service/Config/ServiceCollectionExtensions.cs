@@ -20,11 +20,13 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IEmailVerificationRepository, EmailVerificationRepository>();
             services.AddScoped<IPasswordResetRepository, PasswordResetRepository>();
+
             services.AddScoped<ICvRepository, CvRepository>();
             services.AddScoped<ICompanyRepository, CompanyRepository>();
             services.AddScoped<ISkillRepository, SkillRepository>();
             services.AddScoped<ISkillCategoryRepository, SkillCategoryRepository>();
             services.AddScoped<IMajorRepository, MajorRepository>();
+            services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
             // Repositories — Candidate Profile
             services.AddScoped<ICandidateProfileRepository, CandidateProfileRepository>();
@@ -33,6 +35,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICandidateEducationRepository, CandidateEducationRepository>();
             services.AddScoped<ICandidateCertificationRepository, CandidateCertificationRepository>();
 
+
             // Application Services
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IGoogleAuthService, GoogleAuthService>();
@@ -40,11 +43,14 @@ namespace ITHunterview.Service.Config
 
             // Use Cases — Auth
             services.AddScoped<IAuthUseCase, AuthUseCase>();
+
             services.AddScoped<ICvUseCase, CvUseCase>();
             services.AddScoped<ICompanyUseCase, CompanyUseCase>();
             services.AddScoped<ISkillUseCase, SkillUseCase>();
             services.AddScoped<IMajorUseCase, MajorUseCase>();
             services.AddScoped<IUserGovernanceUseCase, UserGovernanceUseCase>();
+            services.AddScoped<IAuditLogUseCase, AuditLogUseCase>();
+
 
             // Use Cases — Candidate Profile
             services.AddScoped<ICandidateProfileUseCase, CandidateProfileUseCase>();
@@ -52,6 +58,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICandidateExperienceUseCase, CandidateExperienceUseCase>();
             services.AddScoped<ICandidateEducationUseCase, CandidateEducationUseCase>();
             services.AddScoped<ICandidateCertificationUseCase, CandidateCertificationUseCase>();
+
 
             return services;
         }

@@ -23,6 +23,7 @@ namespace ITHunterview.Service.UseCase
             _userRepository = userRepository;
             _tokenRepository = tokenRepository;
             _cache = cache;
+            _auditLogRepository = auditLogRepository;
         }
 
         public async Task<ResponseBase<PagedResult<UserDto>>> GetPagedUsersAsync(int page, int pageSize, string? search, int? roleId, UserStatus? status)
@@ -55,6 +56,7 @@ namespace ITHunterview.Service.UseCase
             var result = new PagedResult<UserDto>
             {
                 Items = dtos,
+                Total = total,
                 TotalItems = total,
                 Page = page,
                 PageSize = pageSize
@@ -387,7 +389,7 @@ namespace ITHunterview.Service.UseCase
                 CreatedAt = DateTime.UtcNow
             };
 
-            await _userRepository.AddActivityLogAsync(log);
+            await _auditLogRepository.AddActivityLogAsync(log);
         }
     }
 }
