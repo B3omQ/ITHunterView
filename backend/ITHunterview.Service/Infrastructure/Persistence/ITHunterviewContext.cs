@@ -123,6 +123,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
+            // Cvs
+            modelBuilder.Entity<Cvs>(entity =>
+            {
+                entity.HasOne(c => c.User)
+                      .WithMany(u => u.Cvs)
+                      .HasForeignKey(c => c.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
             // CandidateProfiles
             modelBuilder.Entity<CandidateProfiles>(entity =>
             {
@@ -145,6 +154,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                       .WithOne(u => u.RecruiterProfile)
                       .HasForeignKey<RecruiterProfiles>(rp => rp.UserId)
                       .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(rp => rp.Company)
+                      .WithMany()
+                      .HasForeignKey(rp => rp.CompanyId)
+                      .OnDelete(DeleteBehavior.SetNull);
             });
 
             // EmailVerificationTokens
@@ -230,6 +244,24 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                       .HasForeignKey(e => e.UserId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
+            // Majors
+            modelBuilder.Entity<Majors>(entity =>
+            {
+                entity.HasIndex(e => e.Code)
+                      .IsUnique()
+                      .HasFilter("deleted_at IS NULL");
+
+                entity.HasIndex(e => e.NormalizedName);
+            });
+
+            // Skills
+            modelBuilder.Entity<Skills>(entity =>
+            {
+                entity.HasIndex(e => e.NormalizedName);
+            });
+
+            // Global Query Filters for Soft Delete
+            modelBuilder.Entity<Majors>().HasQueryFilter(m => m.DeletedAt == null);
         }
     }
 }

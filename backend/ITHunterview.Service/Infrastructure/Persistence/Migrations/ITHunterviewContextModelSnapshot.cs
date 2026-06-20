@@ -23,7 +23,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "activity_log_category", new[] { "auth", "system", "data_mutation", "security" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "activity_log_status", new[] { "success", "fail" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "application_status", new[] { "applied", "viewed", "shortlisted", "interviewing", "offered", "hired", "rejected", "withdrawn" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "company_status", new[] { "pending", "verified", "rejected" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "company_status", new[] { "draft", "pending", "verified", "rejected" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "company_verification_method", new[] { "business_registration", "poa_and_id" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "credit_transaction_type", new[] { "topup", "deduct", "refund", "bonus" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "difficulty_level", new[] { "easy", "medium", "hard" });
@@ -586,6 +586,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("UserId");
+
                     b.ToTable("cvs");
                 });
 
@@ -1095,16 +1097,31 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("name");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("normalized_name");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasFilter("deleted_at IS NULL");
+
+                    b.HasIndex("NormalizedName");
 
                     b.ToTable("majors");
                 });
@@ -1293,6 +1310,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("UserId")
                         .IsUnique();
 
@@ -1421,6 +1440,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("name");
 
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("normalized_name");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
@@ -1430,6 +1454,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("NormalizedName");
 
                     b.ToTable("skills");
                 });
@@ -1769,6 +1795,17 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("ITHunterview.Domain.Entities.Cvs", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.User", "User")
+                        .WithMany("Cvs")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("ITHunterview.Domain.Entities.EmailVerificationTokens", b =>
                 {
                     b.HasOne("ITHunterview.Domain.Entities.User", "User")
@@ -1793,11 +1830,18 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.RecruiterProfiles", b =>
                 {
+                    b.HasOne("ITHunterview.Domain.Entities.Companies", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ITHunterview.Domain.Entities.User", "User")
                         .WithOne("RecruiterProfile")
                         .HasForeignKey("ITHunterview.Domain.Entities.RecruiterProfiles", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Company");
 
                     b.Navigation("User");
                 });
@@ -1831,6 +1875,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("ITHunterview.Domain.Entities.User", b =>
                 {
                     b.Navigation("CandidateProfile");
+
+                    b.Navigation("Cvs");
 
                     b.Navigation("RecruiterProfile");
 
