@@ -145,6 +145,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                       .WithOne(u => u.RecruiterProfile)
                       .HasForeignKey<RecruiterProfiles>(rp => rp.UserId)
                       .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(rp => rp.Company)
+                      .WithMany()
+                      .HasForeignKey(rp => rp.CompanyId)
+                      .OnDelete(DeleteBehavior.SetNull);
             });
 
             // EmailVerificationTokens

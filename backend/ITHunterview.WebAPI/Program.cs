@@ -21,6 +21,8 @@ builder.Services.AddDbContext<ITHunterviewContext>(options =>
 
 // ─── Application Services ─────────────────────────────────────────────────────
 builder.Services.AddApplicationServices();
+builder.Services.AddMemoryCache();
+builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.LogCleanupBackgroundService>();
 
 // ─── JWT Authentication ───────────────────────────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -96,6 +98,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors();
 app.UseHttpsRedirection();
 app.UseAuthentication();
+app.UseMiddleware<ITHunterview.WebAPI.Middlewares.UserStatusCheckMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 

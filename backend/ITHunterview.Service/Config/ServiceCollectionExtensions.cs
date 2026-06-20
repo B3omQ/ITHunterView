@@ -30,6 +30,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IAuthUseCase, AuthUseCase>();
             services.AddScoped<ISkillUseCase, SkillUseCase>();
             services.AddScoped<IMajorUseCase, MajorUseCase>();
+            services.AddScoped<IUserGovernanceUseCase, UserGovernanceUseCase>();
 
             return services;
         }
