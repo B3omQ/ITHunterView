@@ -23,21 +23,23 @@ namespace ITHunterview.Service.UseCase
             var company = new Companies
             {
                 Id = Guid.NewGuid(),
-                Name = dto.Name,
-                TaxCode = dto.TaxCode,
-                HeadquartersAddress = dto.HeadquartersAddress,
-                Industry = dto.Industry,
-                CompanySize = dto.CompanySize,
-                Description = dto.Description,
-                Website = dto.Website,
-                LogoUrl = dto.LogoUrl,
-                Status = CompanyStatus.PENDING,
+                Name = dto.Name ?? "",
+                TaxCode = dto.TaxCode ?? "",
+                HeadquartersAddress = dto.HeadquartersAddress ?? "",
+                Industry = dto.Industry ?? "",
+                CompanySize = dto.CompanySize ?? "",
+                Description = dto.Description ?? "",
+                Website = dto.Website ?? "",
+                LogoUrl = dto.LogoUrl ?? "",
+                VerificationDocumentUrl = "",
+                Status = CompanyStatus.DRAFT,
                 CreatedBy = userId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
             var createdCompany = await _companyRepository.CreateAsync(company);
+            await _companyRepository.LinkCompanyToRecruiterAsync(createdCompany.Id, userId);
 
             return MapToDto(createdCompany);
         }
@@ -52,11 +54,22 @@ namespace ITHunterview.Service.UseCase
 
             company.VerificationMethod = dto.VerificationMethod;
             company.VerificationDocumentUrl = dto.VerificationDocumentUrl;
-            // Status remains PENDING for manual admin verification
+            company.TaxCode = dto.TaxCode;
+            company.Name = dto.CompanyName;
+            company.HeadquartersAddress = dto.HeadquartersAddress;
+            company.Status = CompanyStatus.PENDING;
             company.UpdatedBy = userId;
             company.UpdatedAt = DateTime.UtcNow;
 
             await _companyRepository.UpdateAsync(company);
+
+            return MapToDto(company);
+        }
+
+        public async Task<CompanyDto?> GetMyCompanyAsync(Guid userId)
+        {
+            var company = await _companyRepository.GetByUserIdAsync(userId);
+            if (company == null) return null;
 
             return MapToDto(company);
         }

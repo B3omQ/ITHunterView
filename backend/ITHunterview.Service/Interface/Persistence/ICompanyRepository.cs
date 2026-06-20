@@ -9,5 +9,7 @@ namespace ITHunterview.Service.Interface.Persistence
         Task<Companies> CreateAsync(Companies company);
         Task UpdateAsync(Companies company);
         Task<Companies?> GetByIdAsync(Guid id);
+        Task<Companies?> GetByUserIdAsync(Guid userId);
+        Task LinkCompanyToRecruiterAsync(Guid companyId, Guid userId);
     }
 }

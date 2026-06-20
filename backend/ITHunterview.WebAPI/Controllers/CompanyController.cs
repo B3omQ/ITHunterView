@@ -22,7 +22,7 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Recruiter")]
+        [Authorize(Roles = "recruiter")]
         public async Task<ActionResult<ResponseBase<CompanyDto>>> Create([FromBody] CreateCompanyDto dto)
         {
             var userIdStr = User.FindFirstValue("userId");
@@ -36,7 +36,7 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpPost("{id:guid}/verify")]
-        [Authorize(Roles = "Recruiter")]
+        [Authorize(Roles = "recruiter")]
         public async Task<ActionResult<ResponseBase<CompanyDto>>> Verify(Guid id, [FromBody] VerifyCompanyDto dto)
         {
             var userIdStr = User.FindFirstValue("userId");
@@ -47,6 +47,25 @@ namespace ITHunterview.WebAPI.Controllers
 
             var company = await _companyUseCase.VerifyCompanyAsync(id, dto, userId);
             return Ok(new ResponseBase<CompanyDto>(company, "Company verification info updated successfully"));
+        }
+
+        [HttpGet("me")]
+        [Authorize(Roles = "recruiter")]
+        public async Task<ActionResult<ResponseBase<CompanyDto>>> GetMyCompany()
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized(new ResponseBase<CompanyDto>("Unauthorized"));
+            }
+
+            var company = await _companyUseCase.GetMyCompanyAsync(userId);
+            if (company == null)
+            {
+                return NotFound(new ResponseBase<CompanyDto>("Company not found"));
+            }
+
+            return Ok(new ResponseBase<CompanyDto>(company, "Company retrieved successfully"));
         }
     }
 }

@@ -8,5 +8,6 @@ namespace ITHunterview.Service.Interface.UseCase
     {
         Task<CompanyDto> CreateCompanyAsync(CreateCompanyDto dto, Guid userId);
         Task<CompanyDto> VerifyCompanyAsync(Guid companyId, VerifyCompanyDto dto, Guid userId);
+        Task<CompanyDto?> GetMyCompanyAsync(Guid userId);
     }
 }
