@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
+import { useJobDetails } from "@/hooks/useJobs"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { 
@@ -20,44 +20,9 @@ import {
 export default function JobDetailPage() {
   const router = useRouter()
   const params = useParams()
-  const id = params.id as string
+  const id = params.jobId as string
 
-  const [job, setJob] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
-
-  const getAuthHeaders = () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null
-    return {
-      "Content-Type": "application/json",
-      ...(token ? { "Authorization": `Bearer ${token}` } : {})
-    }
-  }
-
-  useEffect(() => {
-    if (!id) return
-
-    const fetchJobDetails = async () => {
-      try {
-        const res = await fetch(`http://localhost:50504/api/jobpostings/${id}`, {
-          headers: getAuthHeaders(),
-        })
-        const data = await res.json()
-        if (res.ok && data.success) {
-          setJob(data.data)
-        } else {
-          setError(data.message || "Failed to load job details")
-        }
-      } catch (err) {
-        console.error(err)
-        setError("Error fetching details from server.")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchJobDetails()
-  }, [id])
+  const { job, loading, error } = useJobDetails(id)
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "N/A"
@@ -97,7 +62,7 @@ export default function JobDetailPage() {
       <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 py-10 px-4">
         <div className="text-center max-w-md bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
           <p className="text-red-500 font-semibold mb-4">{error || "Job Posting not found."}</p>
-          <Button onClick={() => router.push("/jobs")} className="bg-blue-600 hover:bg-blue-700 text-white">
+          <Button onClick={() => router.push("/recruiter/jobs")} className="bg-blue-600 hover:bg-blue-700 text-white">
             Go back to Jobs List
           </Button>
         </div>
@@ -118,7 +83,7 @@ export default function JobDetailPage() {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => router.push("/jobs")}
+              onClick={() => router.push("/recruiter/jobs")}
               className="rounded-full bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-xs"
             >
               <ArrowLeft className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
@@ -130,7 +95,7 @@ export default function JobDetailPage() {
           </div>
 
           <Button
-            onClick={() => router.push(`/jobs/${job.id}/edit`)}
+            onClick={() => router.push(`/recruiter/jobs/${job.id}/edit`)}
             className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md shadow-blue-500/10 gap-1.5"
           >
             <Pencil className="h-4 w-4" />

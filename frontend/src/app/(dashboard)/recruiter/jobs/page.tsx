@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import { useJobs } from "@/hooks/useJobs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -19,94 +19,40 @@ import {
 
 export default function JobPostingsPage() {
   const router = useRouter()
-  const [jobs, setJobs] = useState<any[]>([])
-  const [totalCount, setTotalCount] = useState(0)
-  const [page, setPage] = useState(1)
-  const [search, setSearch] = useState("")
-  const [debouncedSearch, setDebouncedSearch] = useState("")
-  const [status, setStatus] = useState("ALL")
-  const [loading, setLoading] = useState(false)
-
   const pageSize = 7 // Matches mockup showing 7 items
-
-  // Debounce search input
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(search)
-      setPage(1) // Reset to first page on search
-    }, 400)
-    return () => clearTimeout(handler)
-  }, [search])
-
-  // Get Auth headers helper
-  const getAuthHeaders = () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null
-    return {
-      "Content-Type": "application/json",
-      ...(token ? { "Authorization": `Bearer ${token}` } : {})
-    }
-  }
-
-  // Fetch jobs from API
-  const fetchJobs = useCallback(async () => {
-    setLoading(true)
-    try {
-      const statusParam = status !== "ALL" ? `&status=${status}` : ""
-      const searchParam = debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : ""
-      const url = `http://localhost:50504/api/jobpostings?page=${page}&pageSize=${pageSize}${statusParam}${searchParam}`
-      
-      const res = await fetch(url, {
-        method: "GET",
-        headers: getAuthHeaders(),
-      })
-      const data = await res.json()
-      if (res.ok && data.success) {
-        setJobs(data.data.items || [])
-        setTotalCount(data.data.totalCount || 0)
-      } else {
-        console.error("Failed to fetch jobs:", data.message)
-      }
-    } catch (err) {
-      console.error("Error fetching jobs:", err)
-    } finally {
-      setLoading(false)
-    }
-  }, [page, debouncedSearch, status])
-
-  useEffect(() => {
-    fetchJobs()
-  }, [fetchJobs])
+  
+  const {
+    jobs,
+    totalCount,
+    page,
+    setPage,
+    search,
+    setSearch,
+    status,
+    setStatus,
+    loading,
+    closeJob
+  } = useJobs(1, pageSize)
 
   // Handle Close Job Posting
   const handleCloseJob = async (id: string) => {
     if (!confirm("Are you sure you want to close this job posting? This action will set its status to Closed.")) return
-    try {
-      const res = await fetch(`http://localhost:50504/api/jobpostings/${id}/close`, {
-        method: "PATCH",
-        headers: getAuthHeaders(),
-      })
-      const data = await res.json()
-      if (res.ok && data.success) {
-        fetchJobs()
-      } else {
-        alert(data.message || "Failed to close job posting")
-      }
-    } catch (err) {
-      console.error(err)
-      alert("Error closing job")
+    const res = await closeJob(id)
+    if (!res.success) {
+      alert(res.message || "Failed to close job posting")
     }
   }
 
   const openCreateModal = () => {
-    router.push("/jobs/create")
+    router.push("/recruiter/jobs/new")
   }
 
   const openEditModal = (jobId: string) => {
-    router.push(`/jobs/${jobId}/edit`)
+    router.push(`/recruiter/jobs/${jobId}/edit`)
   }
 
   const openViewModal = (jobId: string) => {
-    router.push(`/jobs/${jobId}`)
+    router.push(`/recruiter/jobs/${jobId}`)
   }
 
   // Helpers for pagination calculations

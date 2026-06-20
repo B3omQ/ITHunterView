@@ -1,18 +1,16 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useRouter } from "next/navigation"
+import { useJobMetadata, useJobDetails } from "@/hooks/useJobs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { ArrowLeft, Plus, X, Sparkles, AlertCircle, Loader2 } from "lucide-react"
+import { ArrowLeft, Plus, X, Sparkles, AlertCircle, Check } from "lucide-react"
 
-export default function EditJobPage() {
+export default function CreateJobPage() {
   const router = useRouter()
-  const params = useParams()
-  const id = params.id as string
-
   const [formData, setFormData] = useState({
     jobCode: "",
     title: "",
@@ -29,85 +27,21 @@ export default function EditJobPage() {
     benefits: "",
   })
 
-  const [categories, setCategories] = useState<any[]>([])
-  const [availableSkills, setAvailableSkills] = useState<any[]>([])
-  const [selectedSkills, setSelectedSkills] = useState<Array<{ skillId: number; name: string; isMandatory: boolean }>>([])
+  const { categories, availableSkills, loading: metadataLoading, error: metadataError } = useJobMetadata()
+  const { createJob, saving, error: saveError, setError } = useJobDetails()
   
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
+  const [selectedSkills, setSelectedSkills] = useState<Array<{ skillId: number; name: string; isMandatory: boolean }>>([])
   const [searchSkill, setSearchSkill] = useState("")
 
-  const getAuthHeaders = () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null
-    return {
-      "Content-Type": "application/json",
-      ...(token ? { "Authorization": `Bearer ${token}` } : {})
-    }
-  }
+  const loading = metadataLoading || saving
+  const error = metadataError || saveError
 
-  // Fetch metadata and existing job posting data
+  // Automatically select the first category once categories are loaded
   useEffect(() => {
-    if (!id) return
-
-    const fetchData = async () => {
-      try {
-        // Fetch categories
-        const catRes = await fetch("http://localhost:50504/api/jobcategories")
-        const catData = await catRes.json()
-        if (catRes.ok && catData.success) {
-          setCategories(catData.data || [])
-        }
-
-        // Fetch skills dictionary
-        const skillRes = await fetch("http://localhost:50504/api/skills")
-        const skillData = await skillRes.json()
-        if (skillRes.ok && skillData.success) {
-          setAvailableSkills(skillData.data || [])
-        }
-
-        // Fetch job details
-        const jobRes = await fetch(`http://localhost:50504/api/jobpostings/${id}`, {
-          headers: getAuthHeaders(),
-        })
-        const jobData = await jobRes.json()
-        if (jobRes.ok && jobData.success) {
-          const j = jobData.data
-          setFormData({
-            jobCode: j.jobCode || "",
-            title: j.title || "",
-            categoryId: j.categoryId ? j.categoryId.toString() : "",
-            location: j.location || "",
-            jobType: j.jobType || "FULL_TIME",
-            status: j.status || "DRAFT",
-            minSalary: j.minSalary ? j.minSalary.toString() : "",
-            maxSalary: j.maxSalary ? j.maxSalary.toString() : "",
-            currency: j.currency || "USD",
-            description: j.description || "",
-            responsibilities: j.responsibilities || "",
-            requirements: j.requirements || "",
-            benefits: j.benefits || "",
-          })
-          
-          if (j.skills) {
-            setSelectedSkills(j.skills.map((s: any) => ({
-              skillId: s.skillId,
-              name: s.skillName,
-              isMandatory: s.isMandatory
-            })))
-          }
-        } else {
-          setError(jobData.message || "Failed to load job details")
-        }
-      } catch (err) {
-        console.error("Failed to load edit details:", err)
-        setError("Error fetching details from server.")
-      } finally {
-        setLoading(false)
-      }
+    if (categories.length > 0 && !formData.categoryId) {
+      setFormData(prev => ({ ...prev, categoryId: categories[0].id.toString() }))
     }
-    fetchData()
-  }, [id])
+  }, [categories, formData.categoryId])
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -132,42 +66,25 @@ export default function EditJobPage() {
     setSelectedSkills(prev => prev.filter(s => s.skillId !== skillId))
   }
 
-  const handleUpdate = async (statusVal?: string) => {
-    setError("")
-    setSaving(true)
+  const handleSubmit = async (statusVal: "DRAFT" | "PUBLISHED") => {
+    const payload = {
+      ...formData,
+      status: statusVal,
+      categoryId: formData.categoryId ? Number(formData.categoryId) : null,
+      minSalary: formData.minSalary ? Number(formData.minSalary) : null,
+      maxSalary: formData.maxSalary ? Number(formData.maxSalary) : null,
+      skills: selectedSkills.map(s => ({ skillId: s.skillId, isMandatory: s.isMandatory }))
+    }
 
-    try {
-      const payload = {
-        ...formData,
-        status: statusVal || formData.status,
-        categoryId: formData.categoryId ? Number(formData.categoryId) : null,
-        minSalary: formData.minSalary ? Number(formData.minSalary) : null,
-        maxSalary: formData.maxSalary ? Number(formData.maxSalary) : null,
-        skills: selectedSkills.map(s => ({ skillId: s.skillId, isMandatory: s.isMandatory }))
-      }
-
-      const res = await fetch(`http://localhost:50504/api/jobpostings/${id}`, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(payload),
-      })
-
-      const data = await res.json()
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || "Failed to update job posting")
-      }
-
-      router.push("/jobs")
-    } catch (err: any) {
-      setError(err.message || "An error occurred while updating the job posting.")
-    } finally {
-      setSaving(false)
+    const res = await createJob(payload)
+    if (res.success) {
+      router.push("/recruiter/jobs")
     }
   }
 
   // Filter skills based on search term
   const filteredAvailableSkills = availableSkills.filter(
-    skill => 
+    skill =>
       skill.name.toLowerCase().includes(searchSkill.toLowerCase()) &&
       !selectedSkills.some(s => s.skillId === skill.id)
   )
@@ -175,34 +92,23 @@ export default function EditJobPage() {
   const mustHaveSkills = selectedSkills.filter(s => s.isMandatory)
   const niceToHaveSkills = selectedSkills.filter(s => !s.isMandatory)
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-        <div className="text-center space-y-2">
-          <Loader2 className="h-8 w-8 text-blue-500 animate-spin mx-auto" />
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading Job Details...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 py-10 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
       <div className="max-w-4xl mx-auto space-y-6">
-        
+
         {/* Back Button & Header */}
         <div className="flex items-center gap-3">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => router.push("/jobs")}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.push("/recruiter/jobs")}
             className="rounded-full bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-xs"
           >
             <ArrowLeft className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
           </Button>
           <div>
-            <h1 className="text-2xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight">Edit Job Position</h1>
-            <p className="text-zinc-500 dark:text-zinc-400 text-sm">Update job description, parameters and skills</p>
+            <h1 className="text-2xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight">Create New IT Job Position</h1>
+            <p className="text-zinc-500 dark:text-zinc-400 text-sm">Post a new opening to recruit candidates</p>
           </div>
         </div>
 
@@ -216,7 +122,7 @@ export default function EditJobPage() {
         <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader className="border-b border-zinc-200/60 dark:border-zinc-800/60 pb-6">
             <CardTitle className="text-lg font-bold text-zinc-900 dark:text-zinc-50">Job Details Form</CardTitle>
-            <CardDescription>Make changes to update the job posting.</CardDescription>
+            <CardDescription>Fill in the required information for the job listing.</CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -225,7 +131,7 @@ export default function EditJobPage() {
                 <Input
                   id="title"
                   name="title"
-                  placeholder="e.g. Senior Frontend Developer"
+                  placeholder="e.g. Senior Frontend Developer (React)"
                   required
                   value={formData.title}
                   onChange={handleChange}
@@ -238,8 +144,7 @@ export default function EditJobPage() {
                 <Input
                   id="jobCode"
                   name="jobCode"
-                  placeholder="e.g. FE-3005"
-                  required
+                  placeholder="e.g. FE-3005 (Leave blank for auto-generation)"
                   value={formData.jobCode}
                   onChange={handleChange}
                   className="focus-visible:ring-blue-500"
@@ -336,21 +241,6 @@ export default function EditJobPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="status" className="font-semibold text-zinc-700 dark:text-zinc-300">Status</Label>
-              <select
-                id="status"
-                name="status"
-                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-955 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
-                value={formData.status}
-                onChange={handleChange}
-              >
-                <option value="DRAFT">Draft</option>
-                <option value="PUBLISHED">Active / Published</option>
-                <option value="CLOSED">Closed</option>
-              </select>
-            </div>
-
             <hr className="border-zinc-200/60 dark:border-zinc-800/60" />
 
             {/* Standardized Skill Dictionary Section */}
@@ -367,7 +257,7 @@ export default function EditJobPage() {
                 {/* Must-have skills list */}
                 <div className="space-y-2">
                   <Label className="font-bold text-xs uppercase tracking-wider text-blue-600 dark:text-blue-400">Must-have Skills</Label>
-                  <div className="min-h-[100px] border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg p-2 bg-white dark:bg-zinc-955 flex flex-wrap gap-1.5 items-start content-start">
+                  <div className="min-h-[100px] border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg p-2 bg-white dark:bg-zinc-950 flex flex-wrap gap-1.5 items-start content-start">
                     {mustHaveSkills.length > 0 ? (
                       mustHaveSkills.map(s => (
                         <span key={s.skillId} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/50 px-2 py-1 rounded text-xs font-semibold">
@@ -378,7 +268,7 @@ export default function EditJobPage() {
                         </span>
                       ))
                     ) : (
-                      <span className="text-xs text-zinc-400 p-2">No Must-have skills selected</span>
+                      <span className="text-xs text-zinc-400 p-2">Drag or select skills as Must-have</span>
                     )}
                   </div>
                 </div>
@@ -386,7 +276,7 @@ export default function EditJobPage() {
                 {/* Nice-to-have skills list */}
                 <div className="space-y-2">
                   <Label className="font-bold text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Nice-to-have Skills</Label>
-                  <div className="min-h-[100px] border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg p-2 bg-white dark:bg-zinc-955 flex flex-wrap gap-1.5 items-start content-start">
+                  <div className="min-h-[100px] border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg p-2 bg-white dark:bg-zinc-950 flex flex-wrap gap-1.5 items-start content-start">
                     {niceToHaveSkills.length > 0 ? (
                       niceToHaveSkills.map(s => (
                         <span key={s.skillId} className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/50 px-2 py-1 rounded text-xs font-semibold">
@@ -397,7 +287,7 @@ export default function EditJobPage() {
                         </span>
                       ))
                     ) : (
-                      <span className="text-xs text-zinc-400 p-2">No Nice-to-have skills selected</span>
+                      <span className="text-xs text-zinc-400 p-2">Drag or select skills as Nice-to-have</span>
                     )}
                   </div>
                 </div>
@@ -426,7 +316,7 @@ export default function EditJobPage() {
                               size="sm"
                               variant="outline"
                               onClick={() => addSkill(skill, true)}
-                              className="h-7 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 dark:bg-blue-955/30 dark:text-blue-400"
+                              className="h-7 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400"
                             >
                               + Must-have
                             </Button>
@@ -435,7 +325,7 @@ export default function EditJobPage() {
                               size="sm"
                               variant="outline"
                               onClick={() => addSkill(skill, false)}
-                              className="h-7 text-xs bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-200 dark:bg-emerald-955/30 dark:text-emerald-400"
+                              className="h-7 text-xs bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400"
                             >
                               + Nice-to-have
                             </Button>
@@ -472,8 +362,8 @@ export default function EditJobPage() {
                 id="responsibilities"
                 name="responsibilities"
                 rows={3}
-                placeholder="List major responsibilities..."
-                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-955 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                placeholder="List major responsibilities (e.g. design scalable microservices, manage CI/CD)..."
+                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 value={formData.responsibilities}
                 onChange={handleChange}
               />
@@ -485,8 +375,8 @@ export default function EditJobPage() {
                 id="requirements"
                 name="requirements"
                 rows={3}
-                placeholder="List requirements..."
-                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-955 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                placeholder="List specific qualifications, experience level, degree, or other requirements..."
+                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 value={formData.requirements}
                 onChange={handleChange}
               />
@@ -498,8 +388,8 @@ export default function EditJobPage() {
                 id="benefits"
                 name="benefits"
                 rows={3}
-                placeholder="List benefits..."
-                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-955 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                placeholder="List key benefits (e.g. 13th month salary, health insurance, flexible working hours)..."
+                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 value={formData.benefits}
                 onChange={handleChange}
               />
@@ -509,22 +399,31 @@ export default function EditJobPage() {
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 pt-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={() => router.push("/jobs")} 
-            disabled={saving}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push("/recruiter/jobs")}
+            disabled={loading}
             className="border-zinc-200/80 dark:border-zinc-800/80 hover:bg-zinc-100"
           >
             Cancel
           </Button>
-          <Button 
-            type="button" 
-            onClick={() => handleUpdate()} 
-            disabled={saving}
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => handleSubmit("DRAFT")}
+            disabled={loading}
+            className="bg-zinc-200 hover:bg-zinc-300 text-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-200"
+          >
+            {loading ? "Saving..." : "Save as Draft"}
+          </Button>
+          <Button
+            type="button"
+            onClick={() => handleSubmit("PUBLISHED")}
+            disabled={loading}
             className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/10"
           >
-            {saving ? "Saving Changes..." : "Save Change"}
+            {loading ? "Publishing..." : "Publish & Submit Review"}
           </Button>
         </div>
       </div>

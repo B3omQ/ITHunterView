@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:51148"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:50504"
 
 export interface LoginResponse {
   accessToken: string
