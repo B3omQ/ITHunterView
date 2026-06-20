@@ -28,5 +28,6 @@ namespace ITHunterview.Domain.Entities
         public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
         public CandidateProfiles? CandidateProfile { get; set; }
         public RecruiterProfiles? RecruiterProfile { get; set; }
+        public ICollection<Cvs> Cvs { get; set; } = new List<Cvs>();
     }
 }

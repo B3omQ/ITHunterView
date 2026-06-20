@@ -50,6 +50,7 @@ namespace ITHunterview.Service.UseCase
             {
                 Items = skillDtos,
                 Total = total,
+                TotalItems = total,
                 Page = page,
                 PageSize = pageSize
             };

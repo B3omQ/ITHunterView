@@ -123,6 +123,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
+            // Cvs
+            modelBuilder.Entity<Cvs>(entity =>
+            {
+                entity.HasOne(c => c.User)
+                      .WithMany(u => u.Cvs)
+                      .HasForeignKey(c => c.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
             // CandidateProfiles
             modelBuilder.Entity<CandidateProfiles>(entity =>
             {
@@ -180,6 +189,61 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             modelBuilder.Entity<JobSkillRequirements>().HasKey(jsr => new { jsr.JobId, jsr.SkillId });
             modelBuilder.Entity<UserSavedJobs>().HasKey(usj => new { usj.UserId, usj.JobId });
 
+            // UserSkills navigation -> Skills
+            modelBuilder.Entity<UserSkills>(entity =>
+            {
+                entity.HasOne(us => us.Skill)
+                      .WithMany()
+                      .HasForeignKey(us => us.SkillId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // CandidateExperiences
+            modelBuilder.Entity<CandidateExperiences>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Title).IsRequired().HasMaxLength(255);
+
+                entity.HasOne<User>()
+                      .WithMany()
+                      .HasForeignKey(e => e.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne<Companies>()
+                      .WithMany()
+                      .HasForeignKey(e => e.CompanyId)
+                      .IsRequired(false)
+                      .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // CandidateEducations
+            modelBuilder.Entity<CandidateEducations>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.HasOne<User>()
+                      .WithMany()
+                      .HasForeignKey(e => e.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne<Majors>()
+                      .WithMany()
+                      .HasForeignKey(e => e.MajorId)
+                      .IsRequired(false)
+                      .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // CandidateCertifications
+            modelBuilder.Entity<CandidateCertifications>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
+
+                entity.HasOne<User>()
+                      .WithMany()
+                      .HasForeignKey(e => e.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
             // Majors
             modelBuilder.Entity<Majors>(entity =>
             {

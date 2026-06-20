@@ -39,6 +39,7 @@ namespace ITHunterview.Service.UseCase
             {
                 Items = dtos,
                 Total = total,
+                TotalItems = total,
                 Page = page,
                 PageSize = pageSize
             };

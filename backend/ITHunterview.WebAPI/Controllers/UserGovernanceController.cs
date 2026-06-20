@@ -115,5 +115,20 @@ namespace ITHunterview.WebAPI.Controllers
 
             return Ok(result);
         }
+
+        /// <summary>
+        /// Xem lịch sử thao tác của các quản trị viên/hệ thống (Audit Trail)
+        /// </summary>
+        [HttpGet("activity-logs")]
+        public async Task<IActionResult> GetPagedActivityLogs(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? search = null,
+            [FromQuery] ActivityLogCategory? category = null,
+            [FromQuery] ActivityLogStatus? status = null)
+        {
+            var result = await _userUseCase.GetPagedActivityLogsAsync(page, pageSize, search, category, status);
+            return Ok(result);
+        }
     }
 }
