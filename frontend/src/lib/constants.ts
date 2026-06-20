@@ -12,7 +12,7 @@ export const APP_ROUTES = {
     DASHBOARD: '/candidate/dashboard',
     PROFILE: '/candidate/profile',
     JOBS: '/candidate/jobs',
-    RESUME: '/candidate/resume',
+    RESUME: '/candidate/resumes',
     CV_OPTIMIZER: '/candidate/cv-optimizer',
     INTERVIEW: '/candidate/interview',
     APPLICATIONS: '/candidate/applications',

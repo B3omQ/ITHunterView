@@ -42,7 +42,7 @@ export default function LoginPage() {
       router.push(getDashboardPath(user.role.name));
     } catch (err: any) {
       console.error("Login error details:", err)
-      setError(`Lỗi kết nối: ${err.message || "Không thể kết nối đến máy chủ."}`)
+      setError(err.response?.data?.message || err.response?.data?.Message || `Lỗi kết nối: ${err.message || "Không thể kết nối đến máy chủ."}`)
     } finally {
       setLoading(false)
     }
