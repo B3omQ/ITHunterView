@@ -20,6 +20,8 @@ builder.Services.AddDbContext<ITHunterviewContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // ─── Application Services ─────────────────────────────────────────────────────
+builder.Services.Configure<ITHunterview.Service.Config.CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddApplicationServices();
 builder.Services.AddMemoryCache();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.LogCleanupBackgroundService>();

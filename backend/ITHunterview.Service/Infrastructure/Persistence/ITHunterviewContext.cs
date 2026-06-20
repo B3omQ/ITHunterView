@@ -123,6 +123,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
+            // Cvs
+            modelBuilder.Entity<Cvs>(entity =>
+            {
+                entity.HasOne(c => c.User)
+                      .WithMany(u => u.Cvs)
+                      .HasForeignKey(c => c.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
             // CandidateProfiles
             modelBuilder.Entity<CandidateProfiles>(entity =>
             {
