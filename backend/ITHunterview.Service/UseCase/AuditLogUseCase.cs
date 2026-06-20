@@ -47,9 +47,9 @@ namespace ITHunterview.Service.UseCase
                 startDate ??= endDate.Value.AddDays(-7);
 
                 var duration = endDate.Value - startDate.Value;
-                if (duration.TotalDays < 1.0 || duration.TotalDays > 30.0)
+                if (duration.TotalDays <= 0 || duration.TotalDays > 30.0)
                 {
-                    return new ResponseBase<PagedResult<AuditLogDto>>("Khoảng thời gian truy xuất log phải từ 1 đến tối đa 30 ngày.");
+                    return new ResponseBase<PagedResult<AuditLogDto>>("Khoảng thời gian truy xuất quá lớn. Vui lòng giới hạn phạm vi tìm kiếm trong vòng 30 ngày để đảm bảo hiệu năng");
                 }
             }
 

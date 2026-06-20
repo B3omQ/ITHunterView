@@ -67,7 +67,13 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 actorRole = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ??
                             httpContext.User.FindFirst("role")?.Value ?? "system";
                 ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-                userAgent = httpContext.Request.Headers["User-Agent"].ToString() ?? "unknown";
+                var rawUserAgent = httpContext.Request.Headers["User-Agent"].ToString();
+                userAgent = string.IsNullOrEmpty(rawUserAgent) ? "unknown" : rawUserAgent;
+                var fingerprint = httpContext.Request.Headers["X-Device-Fingerprint"].ToString();
+                if (!string.IsNullOrEmpty(fingerprint))
+                {
+                    userAgent = $"{userAgent} [Fingerprint: {fingerprint}]";
+                }
             }
 
             var logs = new List<UserActivityLogs>();

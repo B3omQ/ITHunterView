@@ -9,6 +9,15 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = authStore.getState().accessToken; // rỗng với Guest — interceptor tự bỏ qua
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  if (typeof window !== 'undefined') {
+    let fingerprint = localStorage.getItem('X-Device-Fingerprint');
+    if (!fingerprint) {
+      fingerprint = 'fp_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('X-Device-Fingerprint', fingerprint);
+    }
+    config.headers['X-Device-Fingerprint'] = fingerprint;
+  }
   return config;
 });
 
