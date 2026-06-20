@@ -27,5 +27,8 @@ namespace ITHunterview.Domain.Entities
         [Column("updated_by")]
         public Guid? UpdatedBy { get; set; }
 
+        [Column("normalized_name")]
+        public string NormalizedName { get; set; }
+
     }
 }

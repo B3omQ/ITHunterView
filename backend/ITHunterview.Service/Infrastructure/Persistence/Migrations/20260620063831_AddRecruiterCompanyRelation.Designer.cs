@@ -3,6 +3,7 @@ using System;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ITHunterviewContext))]
-    partial class ITHunterviewContextModelSnapshot : ModelSnapshot
+    [Migration("20260620063831_AddRecruiterCompanyRelation")]
+    partial class AddRecruiterCompanyRelation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -23,7 +26,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "activity_log_category", new[] { "auth", "system", "data_mutation", "security" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "activity_log_status", new[] { "success", "fail" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "application_status", new[] { "applied", "viewed", "shortlisted", "interviewing", "offered", "hired", "rejected", "withdrawn" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "company_status", new[] { "draft", "pending", "verified", "rejected" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "company_status", new[] { "pending", "verified", "rejected" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "company_verification_method", new[] { "business_registration", "poa_and_id" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "credit_transaction_type", new[] { "topup", "deduct", "refund", "bonus" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "difficulty_level", new[] { "easy", "medium", "hard" });
@@ -585,8 +588,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("cvs");
                 });
@@ -1795,17 +1796,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("ITHunterview.Domain.Entities.Cvs", b =>
-                {
-                    b.HasOne("ITHunterview.Domain.Entities.User", "User")
-                        .WithMany("Cvs")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("ITHunterview.Domain.Entities.EmailVerificationTokens", b =>
                 {
                     b.HasOne("ITHunterview.Domain.Entities.User", "User")
@@ -1875,8 +1865,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("ITHunterview.Domain.Entities.User", b =>
                 {
                     b.Navigation("CandidateProfile");
-
-                    b.Navigation("Cvs");
 
                     b.Navigation("RecruiterProfile");
 
