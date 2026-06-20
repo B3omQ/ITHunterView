@@ -22,7 +22,6 @@ builder.Services.AddDbContext<ITHunterviewContext>(options =>
 // ─── Application Services ─────────────────────────────────────────────────────
 builder.Services.Configure<ITHunterview.Service.Config.CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
 builder.Services.AddApplicationServices(builder.Configuration);
-builder.Services.AddApplicationServices();
 builder.Services.AddMemoryCache();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.LogCleanupBackgroundService>();
 
@@ -64,7 +63,7 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        var frontendUrl = builder.Configuration["FrontendUrl"] ?? "http://localhost:31000";
+        var frontendUrl = builder.Configuration["FrontendUrl"] ?? "http://localhost:3000";
         policy.WithOrigins(frontendUrl)
               .AllowAnyHeader()
               .AllowAnyMethod()
