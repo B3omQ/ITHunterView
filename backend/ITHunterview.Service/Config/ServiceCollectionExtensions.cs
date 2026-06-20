@@ -14,7 +14,7 @@ namespace ITHunterview.Service.Config
     {
         public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
         {
-            // Repositories
+            // Repositories — Auth
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<ITokenRepository, TokenRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
@@ -26,18 +26,32 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ISkillCategoryRepository, SkillCategoryRepository>();
             services.AddScoped<IMajorRepository, MajorRepository>();
 
+            // Repositories — Candidate Profile
+            services.AddScoped<ICandidateProfileRepository, CandidateProfileRepository>();
+            services.AddScoped<ICandidateSkillRepository, CandidateSkillRepository>();
+            services.AddScoped<ICandidateExperienceRepository, CandidateExperienceRepository>();
+            services.AddScoped<ICandidateEducationRepository, CandidateEducationRepository>();
+            services.AddScoped<ICandidateCertificationRepository, CandidateCertificationRepository>();
+
             // Application Services
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IGoogleAuthService, GoogleAuthService>();
             services.AddScoped<IFileUploadService, CloudinaryService>();
 
-            // Use Cases
+            // Use Cases — Auth
             services.AddScoped<IAuthUseCase, AuthUseCase>();
             services.AddScoped<ICvUseCase, CvUseCase>();
             services.AddScoped<ICompanyUseCase, CompanyUseCase>();
             services.AddScoped<ISkillUseCase, SkillUseCase>();
             services.AddScoped<IMajorUseCase, MajorUseCase>();
             services.AddScoped<IUserGovernanceUseCase, UserGovernanceUseCase>();
+
+            // Use Cases — Candidate Profile
+            services.AddScoped<ICandidateProfileUseCase, CandidateProfileUseCase>();
+            services.AddScoped<ICandidateSkillUseCase, CandidateSkillUseCase>();
+            services.AddScoped<ICandidateExperienceUseCase, CandidateExperienceUseCase>();
+            services.AddScoped<ICandidateEducationUseCase, CandidateEducationUseCase>();
+            services.AddScoped<ICandidateCertificationUseCase, CandidateCertificationUseCase>();
 
             return services;
         }
