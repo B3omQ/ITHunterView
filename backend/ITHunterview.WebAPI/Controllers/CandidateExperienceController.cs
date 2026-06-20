@@ -9,7 +9,7 @@ namespace ITHunterview.WebAPI.Controllers
 {
     [ApiController]
     [Route("api/v1/candidate/profile/experiences")]
-    [Authorize(Roles = "Candidate")]
+    [Authorize(Roles = "candidate")]
     public class CandidateExperienceController : ControllerBase
     {
         private readonly ICandidateExperienceUseCase _expUseCase;

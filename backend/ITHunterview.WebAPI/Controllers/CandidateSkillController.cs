@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ITHunterview.WebAPI.Controllers
 {
     [ApiController]
-    [Authorize(Roles = "Candidate")]
+    [Authorize(Roles = "candidate")]
     public class CandidateSkillController : ControllerBase
     {
         private readonly ICandidateSkillUseCase _skillUseCase;
