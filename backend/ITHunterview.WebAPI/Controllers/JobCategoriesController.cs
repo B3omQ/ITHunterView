@@ -1,10 +1,9 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.DTOs.Common;
+using ITHunterview.Service.DTOs.Job;
+using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace ITHunterview.WebAPI.Controllers
 {
@@ -12,32 +11,18 @@ namespace ITHunterview.WebAPI.Controllers
     [Route("api/[controller]")]
     public class JobCategoriesController : ControllerBase
     {
-        private readonly ITHunterviewContext _context;
+        private readonly IJobCategoriesUseCase _jobCategoriesUseCase;
 
-        public JobCategoriesController(ITHunterviewContext context)
+        public JobCategoriesController(IJobCategoriesUseCase jobCategoriesUseCase)
         {
-            _context = context;
+            _jobCategoriesUseCase = jobCategoriesUseCase;
         }
 
         [HttpGet]
         public async Task<ActionResult<ResponseBase<List<CategoryDto>>>> GetCategories()
         {
-            var categories = await _context.JobCategories
-                .Select(c => new CategoryDto
-                {
-                    Id = c.Id,
-                    Name = c.Name,
-                    ParentId = c.ParentId
-                }).ToListAsync();
-
-            return Ok(new ResponseBase<List<CategoryDto>>(categories));
+            var result = await _jobCategoriesUseCase.GetCategoriesAsync();
+            return Ok(result);
         }
-    }
-
-    public class CategoryDto
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public int? ParentId { get; set; }
     }
 }

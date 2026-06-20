@@ -19,6 +19,8 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IEmailVerificationRepository, EmailVerificationRepository>();
             services.AddScoped<IPasswordResetRepository, PasswordResetRepository>();
+            services.AddScoped<IJobCategoryRepository, JobCategoryRepository>();
+            services.AddScoped<ISkillRepository, SkillRepository>();
 
             // Application Services
             services.AddScoped<IEmailService, EmailService>();
@@ -27,6 +29,9 @@ namespace ITHunterview.Service.Config
             // Use Cases
             services.AddScoped<IAuthUseCase, AuthUseCase>();
             services.AddScoped<IJobPostingsUseCase, JobPostingsUseCase>();
+            services.AddScoped<IJobCategoriesUseCase, JobCategoriesUseCase>();
+            services.AddScoped<ISkillsUseCase, SkillsUseCase>();
+            services.AddScoped<IUserUseCase, UserUseCase>();
 
             return services;
         }

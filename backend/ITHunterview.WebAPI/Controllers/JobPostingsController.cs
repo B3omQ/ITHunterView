@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Job;
-using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,12 +14,12 @@ namespace ITHunterview.WebAPI.Controllers
     public class JobPostingsController : ControllerBase
     {
         private readonly IJobPostingsUseCase _jobPostingsUseCase;
-        private readonly IUserRepository _userRepository;
+        private readonly IUserUseCase _userUseCase;
 
-        public JobPostingsController(IJobPostingsUseCase jobPostingsUseCase, IUserRepository userRepository)
+        public JobPostingsController(IJobPostingsUseCase jobPostingsUseCase, IUserUseCase userUseCase)
         {
             _jobPostingsUseCase = jobPostingsUseCase;
-            _userRepository = userRepository;
+            _userUseCase = userUseCase;
         }
 
         [HttpGet]
@@ -84,24 +83,12 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(result);
         }
 
-        private async Task<Guid> ResolveRecruiterIdAsync()
+        private Task<Guid> ResolveRecruiterIdAsync()
         {
             var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
                             ?? User.FindFirst("sub")?.Value;
             
-            if (Guid.TryParse(userIdStr, out var parsedId))
-            {
-                return parsedId;
-            }
-
-            // Fallback for development/testing: use the first seeded recruiter
-            var fallbackUser = await _userRepository.GetUserByEmailAsync("recruiter1@ithunterview.com");
-            if (fallbackUser != null)
-            {
-                return fallbackUser.Id;
-            }
-
-            return Guid.Empty;
+            return _userUseCase.ResolveRecruiterIdAsync(userIdStr);
         }
     }
 }

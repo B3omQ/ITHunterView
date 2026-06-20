@@ -100,19 +100,22 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // ─── DB Migration & Seeding ───────────────────────────────────────────────────
-using (var scope = app.Services.CreateScope())
+if (!app.Environment.IsEnvironment("Testing"))
 {
-    var services = scope.ServiceProvider;
-    try
+    using (var scope = app.Services.CreateScope())
     {
-        var context = services.GetRequiredService<ITHunterviewContext>();
-        await context.Database.MigrateAsync();
-        await DataSeeder.SeedAsync(context);
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred seeding the DB.");
+        var services = scope.ServiceProvider;
+        try
+        {
+            var context = services.GetRequiredService<ITHunterviewContext>();
+            await context.Database.MigrateAsync();
+            await DataSeeder.SeedAsync(context);
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "An error occurred seeding the DB.");
+        }
     }
 }
 
