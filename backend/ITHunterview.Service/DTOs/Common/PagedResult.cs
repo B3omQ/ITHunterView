@@ -7,8 +7,10 @@ namespace ITHunterview.Service.DTOs.Common
     {
         public List<T> Items { get; set; } = new List<T>();
         public int TotalCount { get; set; }
+        public int Total { get; set; }
+        public int TotalItems { get; set; }
         public int Page { get; set; }
         public int PageSize { get; set; }
-        public int TotalPages => PageSize > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 0;
+        public int TotalPages => PageSize > 0 ? (int)Math.Ceiling((double)Math.Max(Math.Max(TotalCount, Total), TotalItems) / PageSize) : 0;
     }
 }

@@ -24,13 +24,13 @@ export default function LoginPage() {
     setError("")
     setLoading(true)
     try {
-      const res = await authService.login(email, password)
+      const res = await authService.login({ email, password })
       if (!res.success || !res.data) {
         setError(res.message ?? "Đăng nhập thất bại")
         return
       }
       
-      const payload = res.data.data;
+      const payload = res.data;
       const user = {
         id: payload.userId,
         email: payload.email,
@@ -42,7 +42,7 @@ export default function LoginPage() {
       router.push(getDashboardPath(user.role.name));
     } catch (err: any) {
       console.error("Login error details:", err)
-      setError(`Lỗi kết nối: ${err.message || "Không thể kết nối đến máy chủ."}`)
+      setError(err.response?.data?.message || err.response?.data?.Message || `Lỗi kết nối: ${err.message || "Không thể kết nối đến máy chủ."}`)
     } finally {
       setLoading(false)
     }

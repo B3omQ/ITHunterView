@@ -42,5 +42,6 @@ namespace ITHunterview.Domain.Entities
         [Column("deleted_at")]
         public DateTime? DeletedAt { get; set; }
 
+        public User User { get; set; } = null!;
     }
 }

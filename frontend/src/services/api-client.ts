@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useAuthStore } from '@/store/auth.store';
+import { authStore } from '@/store/auth.store';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:50504',
@@ -7,8 +7,17 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().accessToken;
+  const token = authStore.getState().accessToken; // rỗng với Guest — interceptor tự bỏ qua
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  if (typeof window !== 'undefined') {
+    let fingerprint = localStorage.getItem('X-Device-Fingerprint');
+    if (!fingerprint) {
+      fingerprint = 'fp_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('X-Device-Fingerprint', fingerprint);
+    }
+    config.headers['X-Device-Fingerprint'] = fingerprint;
+  }
   return config;
 });
 
@@ -16,7 +25,7 @@ api.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error.response?.status === 401) {
-      useAuthStore.getState().logout();
+      authStore.getState().logout();
       if (typeof window !== 'undefined') {
         window.location.href = '/login';
       }

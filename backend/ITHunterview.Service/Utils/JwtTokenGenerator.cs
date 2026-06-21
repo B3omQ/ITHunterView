@@ -38,7 +38,10 @@ namespace ITHunterview.Service.Utils
                 claims.Add(new Claim(ClaimTypes.Role, user.Role.Name));
             }
 
-            var expiryMinutes = int.Parse(jwtSettings["ExpiryMinutes"] ?? "60");
+            if (!int.TryParse(jwtSettings["ExpiryMinutes"], out var expiryMinutes))
+            {
+                expiryMinutes = 60;
+            }
 
             var token = new JwtSecurityToken(
                 issuer: jwtSettings["Issuer"],

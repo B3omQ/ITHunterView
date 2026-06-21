@@ -17,5 +17,7 @@ namespace ITHunterview.Domain.Entities
         [Column("proficiency_level")]
         public int? ProficiencyLevel { get; set; }
 
+        // Navigation
+        public Skills Skill { get; set; } = null!;
     }
 }

@@ -18,6 +18,9 @@ builder.Services.AddControllers()
 builder.Services.AddOpenApi();
 
 // ─── Database ─────────────────────────────────────────────────────────────────
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<AuditLogInterceptor>();
+
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(
     builder.Configuration.GetConnectionString("DefaultConnection"));
 dataSourceBuilder.MapEnum<UserStatus>("user_status");
@@ -44,13 +47,19 @@ dataSourceBuilder.MapEnum<ActivityLogCategory>("activity_log_category");
 dataSourceBuilder.MapEnum<ActivityLogStatus>("activity_log_status");
 var dataSource = dataSourceBuilder.Build();
 
-builder.Services.AddDbContext<ITHunterviewContext>(options =>
+builder.Services.AddDbContext<ITHunterviewContext>((sp, options) =>
+{
     options.UseNpgsql(dataSource)
+           .AddInterceptors(sp.GetRequiredService<AuditLogInterceptor>())
            .ConfigureWarnings(w => w.Ignore(
-               Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
+               Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+});
 
 // ─── Application Services ─────────────────────────────────────────────────────
-builder.Services.AddApplicationServices();
+builder.Services.Configure<ITHunterview.Service.Config.CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+builder.Services.AddApplicationServices(builder.Configuration);
+builder.Services.AddMemoryCache();
+builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.LogCleanupBackgroundService>();
 
 // ─── JWT Authentication ───────────────────────────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -90,7 +99,8 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.SetIsOriginAllowed(origin => true)
+        var frontendUrl = builder.Configuration["FrontendUrl"] ?? "http://localhost:3000";
+        policy.WithOrigins(frontendUrl)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -120,14 +130,20 @@ if (!app.Environment.IsEnvironment("Testing"))
 }
 
 // ─── Middleware Pipeline ──────────────────────────────────────────────────────
+app.UseMiddleware<ITHunterview.WebAPI.Middlewares.ExceptionMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
 app.UseCors();
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseAuthentication();
+app.UseMiddleware<ITHunterview.WebAPI.Middlewares.UserStatusCheckMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import ReactQueryProvider from "@/providers/ReactQueryProvider"
+import ReactQueryProvider from "@/lib/ReactQueryProvider"
 
 const inter = Inter({
   variable: "--font-inter",
