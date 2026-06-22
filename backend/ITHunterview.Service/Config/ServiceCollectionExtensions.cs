@@ -66,6 +66,12 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICandidateEducationUseCase, CandidateEducationUseCase>();
             services.AddScoped<ICandidateCertificationUseCase, CandidateCertificationUseCase>();
 
+            // Job Search & Saved Jobs
+            services.AddScoped<IJobSearchRepository, JobSearchRepository>();
+            services.AddScoped<IUserSavedJobRepository, UserSavedJobRepository>();
+            services.AddScoped<IPublicJobUseCase, PublicJobUseCase>();
+            services.AddScoped<ICandidateJobUseCase, CandidateJobUseCase>();
+
 
             return services;
         }
