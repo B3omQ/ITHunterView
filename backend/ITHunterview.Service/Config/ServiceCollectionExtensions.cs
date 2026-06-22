@@ -23,6 +23,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IPasswordResetRepository, PasswordResetRepository>();
             services.AddScoped<IJobCategoryRepository, JobCategoryRepository>();
             services.AddScoped<ISkillRepository, SkillRepository>();
+            services.AddScoped<IJobApplicationRepository, JobApplicationRepository>();
 
             services.AddScoped<ICvRepository, CvRepository>();
             services.AddScoped<ICompanyRepository, CompanyRepository>();
@@ -50,6 +51,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IJobCategoriesUseCase, JobCategoriesUseCase>();
             services.AddScoped<ISkillsUseCase, SkillsUseCase>();
             services.AddScoped<IUserUseCase, UserUseCase>();
+            services.AddScoped<IJobApplicationUseCase, JobApplicationUseCase>();
 
             services.AddScoped<ICvUseCase, CvUseCase>();
             services.AddScoped<ICompanyUseCase, CompanyUseCase>();
