@@ -26,5 +26,35 @@ namespace ITHunterview.WebAPI.Controllers
             var result = await _jobApplicationUseCase.GetApplicantsByJobIdAsync(jobId, page, pageSize);
             return Ok(new ResponseBase<PagedResult<ApplicantDto>>(result));
         }
+
+        [HttpPost("apply")]
+        [Authorize]
+        public async Task<ActionResult<ResponseBase<bool>>> ApplyForJob([FromBody] CreateJobApplicationRequestDto request)
+        {
+            var userIdStr = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized(new ResponseBase<bool>(false, "Unauthorized."));
+            }
+
+            var result = await _jobApplicationUseCase.ApplyForJobAsync(userId, request);
+            return Ok(new ResponseBase<bool>(result));
+        }
+
+        [HttpPut("{id:guid}/status")]
+        [Authorize(Policy = "RecruiterOnly")] // Assuming only recruiters can update status
+        public async Task<ActionResult<ResponseBase<bool>>> UpdateApplicationStatus(Guid id, [FromBody] UpdateApplicationStatusRequestDto request)
+        {
+            var result = await _jobApplicationUseCase.UpdateStatusAsync(id, request.Status);
+            return Ok(new ResponseBase<bool>(result, "Status updated successfully"));
+        }
+
+        [HttpGet("{id:guid}")]
+        [Authorize(Policy = "RecruiterOnly")]
+        public async Task<ActionResult<ResponseBase<JobApplicationDetailDto>>> GetApplicationDetail(Guid id)
+        {
+            var result = await _jobApplicationUseCase.GetApplicationDetailAsync(id);
+            return Ok(new ResponseBase<JobApplicationDetailDto>(result));
+        }
     }
 }

@@ -19,3 +19,17 @@ export interface ApplicantDto {
   avatarUrl?: string;
   cvId?: string;
 }
+
+export interface JobApplicationDetailDto {
+  id: string;
+  candidateId: string;
+  candidateName: string;
+  email: string;
+  status: ApplicationStatus;
+  applyDate: string;
+  avatarUrl?: string;
+  coverLetter?: string;
+  cvId?: string;
+  cvUrl?: string;
+  cvFileName?: string;
+}

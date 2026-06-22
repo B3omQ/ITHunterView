@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using ITHunterview.Domain.Entities;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.JobApplication;
 using ITHunterview.Service.Interface.Persistence;
@@ -48,6 +49,67 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 Page = page,
                 PageSize = pageSize
             };
+        }
+
+        public async Task<JobApplications> CreateAsync(JobApplications entity)
+        {
+            await _context.JobApplications.AddAsync(entity);
+            await _context.SaveChangesAsync();
+            return entity;
+        }
+
+        public async Task<bool> HasCandidateAppliedAsync(Guid candidateId, Guid jobId)
+        {
+            return await _context.JobApplications.AnyAsync(x => x.CandidateId == candidateId && x.JobId == jobId);
+        }
+
+        public async Task<JobApplications?> GetByIdAsync(Guid id)
+        {
+            return await _context.JobApplications.FirstOrDefaultAsync(x => x.Id == id);
+        }
+
+        public async Task UpdateAsync(JobApplications entity)
+        {
+            _context.JobApplications.Update(entity);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<JobApplicationDetailDto?> GetApplicationDetailAsync(Guid id)
+        {
+            var query = from application in _context.JobApplications
+                        join profile in _context.CandidateProfiles on application.CandidateId equals profile.Id
+                        join user in _context.Users on profile.UserId equals user.Id
+                        where application.Id == id
+                        select new { application, profile, user };
+
+            var result = await query.FirstOrDefaultAsync();
+
+            if (result == null) return null;
+
+            var dto = new JobApplicationDetailDto
+            {
+                Id = result.application.Id,
+                CandidateId = result.profile.Id,
+                CandidateName = result.profile.FirstName + " " + result.profile.LastName,
+                Email = result.user.Email,
+                Status = result.application.Status,
+                ApplyDate = result.application.CreatedAt,
+                AvatarUrl = result.profile.AvatarUrl,
+                CoverLetter = result.application.CoverLetter,
+                CvId = result.application.CvId
+            };
+
+            if (result.application.CvId.HasValue)
+            {
+                var cv = await _context.Cvs.FirstOrDefaultAsync(c => c.Id == result.application.CvId.Value);
+                if (cv != null)
+                {
+                    dto.CvUrl = cv.FileUrl;
+                    dto.CvFileName = cv.FileName;
+                }
+            }
+
+            return dto;
         }
     }
 }

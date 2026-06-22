@@ -238,7 +238,38 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 }
                 await context.SaveChangesAsync();
             }
+
+            // Seed profiles for candidate users if missing
+            if (candidateRole != null)
+            {
+                var candidates = context.Users.Where(u => u.RoleId == candidateRole.Id).ToList();
+                var avatarBase = new[] { "boy", "girl" };
+                int avatarIdx = 1;
+                foreach (var c in candidates)
+                {
+                    if (!context.CandidateProfiles.Any(cp => cp.UserId == c.Id))
+                    {
+                        var firstName = $"Candidate";
+                        var lastName = c.Email.Split('@')[0]; // e.g. "candidate1"
+                        context.CandidateProfiles.Add(new CandidateProfiles
+                        {
+                            Id = Guid.NewGuid(),
+                            UserId = c.Id,
+                            FirstName = firstName,
+                            LastName = lastName,
+                            Phone = $"09{avatarIdx:D8}",
+                            Location = "Ho Chi Minh City",
+                            AboutMe = "Passionate software developer looking for opportunities.",
+                            AvatarUrl = $"https://avatar.iran.liara.run/public/{avatarIdx % 50 + 1}",
+                            IsVisibleToRecruiters = true
+                        });
+                        avatarIdx++;
+                    }
+                }
+                await context.SaveChangesAsync();
+            }
         }
+
 
         private static async Task SeedJobCategoriesAsync(ITHunterviewContext context)
         {

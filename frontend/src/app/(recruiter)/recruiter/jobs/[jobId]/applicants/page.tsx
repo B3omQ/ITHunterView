@@ -14,8 +14,13 @@ import {
   Calendar,
   Eye,
   Filter,
-  Users
+  Users,
+  FileText,
+  Download
 } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { toast } from "sonner"
+import { JobApplicationDetailDto } from "@/types/job-application.types"
 
 export default function JobApplicantsPage() {
   const router = useRouter()
@@ -30,6 +35,11 @@ export default function JobApplicantsPage() {
   const [pageSize] = useState(10)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Detail Modal State
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [selectedDetail, setSelectedDetail] = useState<JobApplicationDetailDto | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
 
   useEffect(() => {
     const fetchApplicants = async () => {
@@ -61,27 +71,44 @@ export default function JobApplicantsPage() {
     })
   }
 
-  const getStatusBadge = (status: ApplicationStatus) => {
-    switch (status) {
-      case ApplicationStatus.APPLIED:
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">Applied</span>
-      case ApplicationStatus.VIEWED:
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">Viewed</span>
-      case ApplicationStatus.SHORTLISTED:
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Shortlisted</span>
-      case ApplicationStatus.INTERVIEWING:
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">Interviewing</span>
-      case ApplicationStatus.OFFERED:
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Offered</span>
-      case ApplicationStatus.HIRED:
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-200">Hired</span>
-      case ApplicationStatus.REJECTED:
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">Rejected</span>
-      case ApplicationStatus.WITHDRAWN:
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-zinc-100 text-zinc-600 border border-zinc-200">Withdrawn</span>
-      default:
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-zinc-100 text-zinc-600 border border-zinc-200">{status}</span>
+  const handleStatusChange = async (applicantId: string, newStatus: ApplicationStatus) => {
+    try {
+      await JobApplicationService.updateApplicationStatus(applicantId, newStatus)
+      toast.success("Status updated successfully")
+      // Update local state
+      setApplicants(prev => prev.map(a => a.id === applicantId ? { ...a, status: newStatus } : a))
+    } catch (err) {
+      toast.error("Failed to update status")
     }
+  }
+
+  const handleViewProfile = async (applicantId: string) => {
+    setDetailModalOpen(true)
+    setDetailLoading(true)
+    setSelectedDetail(null)
+    try {
+      const detail = await JobApplicationService.getApplicationDetail(applicantId)
+      setSelectedDetail(detail)
+    } catch (err) {
+      toast.error("Failed to load application details.")
+      setDetailModalOpen(false)
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
+  const renderStatusSelect = (applicant: ApplicantDto) => {
+    return (
+      <select 
+        value={applicant.status}
+        onChange={(e) => handleStatusChange(applicant.id, e.target.value as ApplicationStatus)}
+        className="text-xs font-semibold bg-zinc-50 border border-zinc-200 text-zinc-700 rounded-md py-1.5 px-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+      >
+        {Object.values(ApplicationStatus).map(status => (
+          <option key={status} value={status}>{status}</option>
+        ))}
+      </select>
+    )
   }
 
   const totalPages = Math.ceil(totalCount / pageSize)
@@ -187,16 +214,11 @@ export default function JobApplicantsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(applicant.status)}
+                        {renderStatusSelect(applicant)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <Button 
-                          onClick={() => {
-                            // Currently we don't have a specific candidate profile view implemented.
-                            // You can navigate to CV view or a candidate profile view if it exists.
-                            // router.push(`/recruiter/candidates/${applicant.candidateId}`);
-                            alert("View profile feature coming soon!")
-                          }}
+                          onClick={() => handleViewProfile(applicant.id)}
                           className="bg-slate-900 hover:bg-slate-800 text-white h-8 text-xs px-3 font-semibold shadow-sm"
                         >
                           <Eye className="h-3.5 w-3.5 mr-1.5" />
@@ -234,6 +256,74 @@ export default function JobApplicantsPage() {
             </div>
           )}
         </Card>
+
+        {/* Application Details Modal */}
+        <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
+          <DialogContent className="sm:max-w-[600px] bg-white">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-zinc-900">Application Details</DialogTitle>
+            </DialogHeader>
+            
+            <div className="py-4 space-y-6">
+              {detailLoading ? (
+                <div className="flex flex-col items-center justify-center py-10 space-y-3">
+                  <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+                  <p className="text-sm text-zinc-500">Loading details...</p>
+                </div>
+              ) : selectedDetail ? (
+                <>
+                  <div className="flex items-center gap-4 border-b border-zinc-100 pb-4">
+                    <div className="h-16 w-16 rounded-full bg-zinc-200 border border-zinc-300 overflow-hidden shrink-0 flex items-center justify-center">
+                      {selectedDetail.avatarUrl ? (
+                        <img src={selectedDetail.avatarUrl} alt={selectedDetail.candidateName} className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-2xl font-bold text-zinc-500">{selectedDetail.candidateName?.charAt(0) || "U"}</span>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-zinc-900">{selectedDetail.candidateName}</h3>
+                      <p className="text-sm text-zinc-500 flex items-center gap-1.5 mt-1">
+                        <Mail className="h-4 w-4" /> {selectedDetail.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-zinc-900">Cover Letter</h4>
+                    <div className="bg-zinc-50 p-4 rounded-lg border border-zinc-200/60 text-sm text-zinc-700 whitespace-pre-wrap min-h-[100px]">
+                      {selectedDetail.coverLetter || <span className="text-zinc-400 italic">No cover letter provided.</span>}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-zinc-900">Resume / CV</h4>
+                    {selectedDetail.cvUrl ? (
+                      <div className="flex items-center justify-between bg-blue-50/50 border border-blue-100 p-4 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-8 w-8 text-blue-600" />
+                          <div>
+                            <p className="text-sm font-medium text-zinc-900">{selectedDetail.cvFileName || "candidate_cv.pdf"}</p>
+                            <p className="text-xs text-zinc-500">View or download attached document</p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" className="bg-white" onClick={() => window.open(selectedDetail.cvUrl, '_blank')}>
+                          <Download className="h-4 w-4 mr-2" /> Download
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="bg-zinc-50 p-4 rounded-lg border border-zinc-200/60 flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-zinc-400" />
+                        <span className="text-sm text-zinc-500 italic">No CV attached.</span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="py-10 text-center text-zinc-500">Failed to load details.</div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )

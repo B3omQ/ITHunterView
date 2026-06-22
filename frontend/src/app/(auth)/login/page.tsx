@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react"
 import { authService } from "@/services/auth.service"
@@ -9,8 +9,10 @@ import { useAuthStore } from "@/store/auth.store"
 import { getDashboardPath } from "@/lib/constants"
 import { Logo } from "@/components/layout/Logo"
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirect')
   const { setAuth } = useAuthStore()
 
   const [email, setEmail] = useState("")
@@ -39,7 +41,7 @@ export default function LoginPage() {
         avatarUrl: payload.avatarUrl
       };
       setAuth(payload.accessToken, user);
-      router.push(getDashboardPath(user.role.name));
+      router.push(redirectTo || getDashboardPath(user.role.name));
     } catch (err: any) {
       console.error("Login error details:", err)
       setError(err.response?.data?.message || err.response?.data?.Message || `Lỗi kết nối: ${err.message || "Không thể kết nối đến máy chủ."}`)
@@ -179,6 +181,14 @@ export default function LoginPage() {
       
     </div>
   )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center" />}>
+      <LoginForm />
+    </Suspense>
+  );
 }
 
 function GoogleIcon() {

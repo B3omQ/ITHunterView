@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useJobDetail } from '@/hooks/useJobDetail';
 import { PageLoader } from '@/components/shared/PageLoader';
@@ -8,20 +8,46 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, DollarSign, Calendar, Briefcase, ChevronLeft, Bookmark } from 'lucide-react';
+import { useAuthStore } from '@/store/auth.store';
+import { ApplyJobModal } from '@/components/jobs/ApplyJobModal';
 
 export default function PublicJobDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { data, isLoading, isError } = useJobDetail(params.id as string, false);
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
 
   if (isLoading) return <PageLoader />;
   if (isError || !data?.data) return <EmptyState title="Job not found" description="This job posting may have expired or been removed." />;
 
   const job = data.data;
 
+  const handleApplyClick = () => {
+    // Get fresh auth state from the store directly to avoid hydration issues
+    const { accessToken, user } = useAuthStore.getState();
+    const isAuthenticated = !!accessToken;
+
+    if (!isAuthenticated) {
+      router.push(`/login?redirect=/jobs/${params.id}`);
+      return;
+    }
+
+    // Check if user is a candidate
+    if (user?.role?.name?.toLowerCase() !== 'candidate') {
+      alert('Only candidates can apply for jobs.');
+      return;
+    }
+
+    setIsApplyModalOpen(true);
+  };
+
   const handleSaveClick = () => {
-    // Redirect to login for public users
-    router.push('/login');
+    const { accessToken } = useAuthStore.getState();
+    if (!accessToken) {
+      router.push(`/login?redirect=/jobs/${params.id}`);
+      return;
+    }
+    // Save job logic here if any
   };
 
   return (
@@ -47,9 +73,9 @@ export default function PublicJobDetailPage() {
                 <p className="text-xl text-primary font-medium">{job.companyName}</p>
               </div>
             </div>
-            
+
             <div className="flex flex-col gap-3 w-full md:w-auto">
-              <Button size="lg" className="w-full">Apply Now</Button>
+              <Button size="lg" className="w-full" onClick={handleApplyClick}>Apply Now</Button>
               <Button size="lg" variant="outline" className="w-full" onClick={handleSaveClick}>
                 <Bookmark className="w-4 h-4 mr-2" /> Save Job
               </Button>
@@ -62,7 +88,7 @@ export default function PublicJobDetailPage() {
             </span>
             {(job.minSalary || job.maxSalary) && (
               <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 rounded-md">
-                <DollarSign className="w-4 h-4 text-primary" /> 
+                <DollarSign className="w-4 h-4 text-primary" />
                 {job.minSalary ? `${job.minSalary}` : 'Up to'} - {job.maxSalary ? `${job.maxSalary}` : 'Negotiable'} {job.currency}
               </span>
             )}
@@ -111,6 +137,16 @@ export default function PublicJobDetailPage() {
           </section>
         </div>
       </div>
+
+      <ApplyJobModal
+        isOpen={isApplyModalOpen}
+        onClose={() => setIsApplyModalOpen(false)}
+        jobId={job.id}
+        jobTitle={job.title}
+        onSuccess={() => {
+          // You could optionally refetch the job detail or change button state here
+        }}
+      />
     </div>
   );
 }
