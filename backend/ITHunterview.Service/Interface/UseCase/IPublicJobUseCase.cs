@@ -7,5 +7,6 @@ namespace ITHunterview.Service.Interface.UseCase
     public interface IPublicJobUseCase
     {
         Task<PaginatedDataResponse<JobCardDto>> SearchJobsAsync(JobSearchQueryDto query);
+        Task<ResponseBase<JobDetailViewDto>> GetJobDetailAsync(System.Guid jobId);
     }
 }

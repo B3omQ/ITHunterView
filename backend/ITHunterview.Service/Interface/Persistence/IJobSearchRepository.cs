@@ -8,5 +8,6 @@ namespace ITHunterview.Service.Interface.Persistence
     public interface IJobSearchRepository
     {
         Task<PaginatedDataResponse<JobCardDto>> SearchJobsAsync(JobSearchQueryDto query, Guid? userId = null);
+        Task<JobDetailViewDto?> GetJobDetailAsync(Guid jobId, Guid? userId = null);
     }
 }

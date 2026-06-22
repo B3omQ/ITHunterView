@@ -70,5 +70,15 @@ namespace ITHunterview.Service.UseCase
 
             await _userSavedJobRepository.DeleteAsync(userId, jobId);
         }
+
+        public async Task<ResponseBase<JobDetailViewDto>> GetJobDetailAsync(Guid jobId, Guid userId)
+        {
+            var job = await _jobSearchRepository.GetJobDetailAsync(jobId, userId);
+            if (job == null)
+            {
+                return new ResponseBase<JobDetailViewDto>("Job not found or not published.");
+            }
+            return new ResponseBase<JobDetailViewDto>(job);
+        }
     }
 }

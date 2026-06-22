@@ -29,6 +29,18 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(result);
         }
 
+        [HttpGet("jobs/{id}")]
+        public async Task<ActionResult<ResponseBase<JobDetailViewDto>>> GetJobDetail(Guid id)
+        {
+            var userId = GetUserId();
+            var result = await _candidateJobUseCase.GetJobDetailAsync(id, userId);
+            if (!result.Success)
+            {
+                return NotFound(result);
+            }
+            return Ok(result);
+        }
+
         [HttpGet("saved-jobs")]
         public async Task<ActionResult<PaginatedDataResponse<SavedJobDto>>> GetSavedJobs(
             [FromQuery] int page = 1,

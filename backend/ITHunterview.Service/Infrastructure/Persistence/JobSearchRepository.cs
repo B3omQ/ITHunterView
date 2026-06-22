@@ -103,5 +103,56 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             return response;
         }
+
+        public async Task<JobDetailViewDto?> GetJobDetailAsync(Guid jobId, Guid? userId = null)
+        {
+            var jobWithCompany = await (from job in _context.JobPostings
+                                        join company in _context.Companies on job.CompanyId equals company.Id
+                                        where job.Id == jobId && job.Status == JobStatus.PUBLISHED
+                                        select new { job, company }).FirstOrDefaultAsync();
+
+            if (jobWithCompany == null)
+            {
+                return null;
+            }
+
+            var skillIds = await _context.JobSkillRequirements
+                .Where(jsr => jsr.JobId == jobId)
+                .Select(jsr => jsr.SkillId)
+                .ToListAsync();
+
+            var skills = await _context.Skills
+                .Where(s => skillIds.Contains(s.Id))
+                .Select(s => s.Name)
+                .ToListAsync();
+
+            bool isSaved = false;
+            if (userId.HasValue)
+            {
+                isSaved = await _context.UserSavedJobs
+                    .AnyAsync(usj => usj.UserId == userId.Value && usj.JobId == jobId);
+            }
+
+            return new JobDetailViewDto
+            {
+                Id = jobWithCompany.job.Id,
+                Title = jobWithCompany.job.Title,
+                CompanyName = jobWithCompany.company.Name,
+                CompanyId = jobWithCompany.company.Id,
+                LogoUrl = jobWithCompany.company.LogoUrl,
+                Description = jobWithCompany.job.Description,
+                Responsibilities = jobWithCompany.job.Responsibilities,
+                Requirements = jobWithCompany.job.Requirements,
+                Benefits = jobWithCompany.job.Benefits,
+                MinSalary = jobWithCompany.job.MinSalary,
+                MaxSalary = jobWithCompany.job.MaxSalary,
+                Currency = jobWithCompany.job.Currency,
+                Location = jobWithCompany.job.Location,
+                JobType = jobWithCompany.job.JobType.ToString().ToLower(),
+                PublishedAt = jobWithCompany.job.PublishedAt,
+                IsSaved = isSaved,
+                Skills = skills
+            };
+        }
     }
 }

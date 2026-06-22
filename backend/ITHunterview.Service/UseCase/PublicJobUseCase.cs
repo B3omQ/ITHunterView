@@ -19,5 +19,15 @@ namespace ITHunterview.Service.UseCase
         {
             return await _jobSearchRepository.SearchJobsAsync(query);
         }
+
+        public async Task<ResponseBase<JobDetailViewDto>> GetJobDetailAsync(System.Guid jobId)
+        {
+            var job = await _jobSearchRepository.GetJobDetailAsync(jobId);
+            if (job == null)
+            {
+                return new ResponseBase<JobDetailViewDto>("Job not found or not published.");
+            }
+            return new ResponseBase<JobDetailViewDto>(job);
+        }
     }
 }

@@ -23,5 +23,16 @@ namespace ITHunterview.WebAPI.Controllers
             var result = await _publicJobUseCase.SearchJobsAsync(query);
             return Ok(result);
         }
+
+        [HttpGet("{id}")]
+        public async Task<ActionResult<ResponseBase<JobDetailViewDto>>> GetJobDetail(Guid id)
+        {
+            var result = await _publicJobUseCase.GetJobDetailAsync(id);
+            if (!result.Success)
+            {
+                return NotFound(result);
+            }
+            return Ok(result);
+        }
     }
 }

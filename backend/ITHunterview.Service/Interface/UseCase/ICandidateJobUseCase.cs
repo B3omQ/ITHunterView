@@ -11,5 +11,6 @@ namespace ITHunterview.Service.Interface.UseCase
         Task<PaginatedDataResponse<SavedJobDto>> GetSavedJobsAsync(Guid userId, int page, int pageSize);
         Task SaveJobAsync(Guid userId, Guid jobId);
         Task UnsaveJobAsync(Guid userId, Guid jobId);
+        Task<ResponseBase<JobDetailViewDto>> GetJobDetailAsync(Guid jobId, Guid userId);
     }
 }
