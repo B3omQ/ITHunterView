@@ -4,13 +4,12 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff, Loader2, AlertCircle, CheckCircle2, ChevronDown } from "lucide-react"
-import { authApi } from "@/api/auth"
-import { useAuth, getDashboardPath } from "@/providers/AuthProvider"
-import { Logo } from "@/components/Logo"
+import { authService } from "@/services/auth.service"
+import { getDashboardPath } from "@/lib/constants"
+import { Logo } from "@/components/layout/Logo"
 
 export default function RegisterPage() {
   const router = useRouter()
-  const { login } = useAuth()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -38,7 +37,7 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
-      const res = await authApi.register(email, password, confirmPassword, roleType)
+      const res = await authService.register({ email, password, confirmPassword, roleType })
       if (!res.success) {
         setError(res.message ?? "Đăng ký thất bại")
         return

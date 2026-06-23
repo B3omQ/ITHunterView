@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useState } from "react"
+import { Suspense, useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react"
@@ -35,15 +35,23 @@ function LoginForm() {
         window.history.replaceState(null, "", window.location.pathname)
         localStorage.removeItem("google_auth_role")
 
-        authApi
+        authService
           .googleAuth(idToken, state)
           .then((res) => {
             if (!res.success || !res.data) {
               setError(res.message ?? "Đăng nhập Google thất bại")
               return
             }
-            login(res.data)
-            router.push(getDashboardPath(res.data.role))
+            const payload = res.data
+            const user = {
+              id: payload.userId,
+              email: payload.email,
+              fullName: payload.fullName,
+              role: { name: payload.role },
+              avatarUrl: payload.avatarUrl,
+            }
+            setAuth(payload.accessToken, user)
+            router.push(getDashboardPath(user.role.name))
           })
           .catch((err: any) => {
             console.error("Google auth error:", err)
@@ -54,7 +62,7 @@ function LoginForm() {
           })
       }
     }
-  }, [router, login])
+  }, [router, setAuth])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

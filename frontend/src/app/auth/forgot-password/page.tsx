@@ -3,8 +3,8 @@
 import { useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Loader2, AlertCircle, Mail, CheckCircle2 } from "lucide-react"
-import { authApi } from "@/api/auth"
-import { Logo } from "@/components/Logo"
+import { authService } from "@/services/auth.service"
+import { Logo } from "@/components/layout/Logo"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
     setError("")
     setLoading(true)
     try {
-      const res = await authApi.forgotPassword(email)
+      const res = await authService.forgotPassword({ email })
       setSent(true)
     } catch (err: any) {
       console.error("Forgot password error:", err)

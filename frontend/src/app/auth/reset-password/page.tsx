@@ -4,8 +4,8 @@ import { useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Eye, EyeOff, Loader2, AlertCircle, KeyRound, CheckCircle2 } from "lucide-react"
-import { authApi } from "@/api/auth"
-import { Logo } from "@/components/Logo"
+import { authService } from "@/services/auth.service"
+import { Logo } from "@/components/layout/Logo"
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams()
@@ -37,7 +37,7 @@ export default function ResetPasswordPage() {
 
     setLoading(true)
     try {
-      const res = await authApi.resetPassword(token, email, newPassword, confirmNewPassword)
+      const res = await authService.resetPassword({ token, email, newPassword, confirmNewPassword })
       if (!res.success) {
         setError(res.message ?? "Đặt lại mật khẩu thất bại.")
         return

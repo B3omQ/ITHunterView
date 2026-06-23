@@ -1,9 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { useAuth, getDashboardPath } from "@/providers/AuthProvider"
-import { Logo } from "@/components/Logo"
+import { Logo } from "@/components/layout/Logo"
+import { useAuthStore } from "@/store/auth.store"
+import { getDashboardPath } from "@/lib/constants"
+
 
 // Inline SVG Icon components to prevent Next.js + Turbopack compilation hang
 function SearchIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
@@ -107,9 +109,14 @@ function LayoutDashboardIcon({ size = 16, className = "" }: { size?: number; cla
 }
 
 export default function Home() {
-  const { user, logout } = useAuth()
+  const { user, logout } = useAuthStore()
   const [searchTitle, setSearchTitle] = useState("")
   const [searchLoc, setSearchLoc] = useState("")
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const featuredJobs = [
     {
@@ -185,10 +192,17 @@ export default function Home() {
           </nav>
 
           <div className="flex items-center gap-3">
-            {user ? (
+            {/* Only render auth buttons after mount to prevent hydration mismatch */}
+            {!mounted ? (
+              // Skeleton placeholder — same size as actual buttons, invisible
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-24 rounded-xl bg-transparent" />
+                <div className="h-10 w-28 rounded-xl bg-transparent" />
+              </div>
+            ) : user ? (
               <>
                 <Link
-                  href={getDashboardPath(user.role)}
+                  href={getDashboardPath(user.role?.name)}
                   className="flex items-center gap-1.5 h-10 px-4 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-all"
                 >
                   <LayoutDashboardIcon size={16} className="text-muted-foreground" />
