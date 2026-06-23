@@ -31,5 +31,8 @@ namespace ITHunterview.Domain.Entities
 
         // Navigation
         public User User { get; set; } = null!;
+
+        [ForeignKey("CompanyId")]
+        public Companies? Company { get; set; }
     }
 }

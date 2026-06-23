@@ -21,7 +21,7 @@ namespace ITHunterview.Service.Utils
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var claims = new[]
+            var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
@@ -33,7 +33,15 @@ namespace ITHunterview.Service.Utils
                 new Claim("role", user.Role?.Name ?? string.Empty)
             };
 
-            var expiryMinutes = int.Parse(jwtSettings["ExpiryMinutes"] ?? "60");
+            if (user.Role != null)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, user.Role.Name));
+            }
+
+            if (!int.TryParse(jwtSettings["ExpiryMinutes"], out var expiryMinutes))
+            {
+                expiryMinutes = 60;
+            }
 
             var token = new JwtSecurityToken(
                 issuer: jwtSettings["Issuer"],

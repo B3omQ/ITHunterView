@@ -1,0 +1,12 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using ITHunterview.Service.DTOs.Common;
+using ITHunterview.Service.DTOs.Skill;
+
+namespace ITHunterview.Service.Interface.UseCase
+{
+    public interface ISkillsUseCase
+    {
+        Task<ResponseBase<List<SkillDto>>> GetActiveSkillsAsync();
+    }
+}

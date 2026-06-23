@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import { AuthProvider } from "@/providers/AuthProvider"
+import ReactQueryProvider from "@/lib/ReactQueryProvider"
 
 const inter = Inter({
   variable: "--font-inter",
@@ -22,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full`}>
       <body className="min-h-full flex flex-col antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        <ReactQueryProvider>{children}</ReactQueryProvider>
       </body>
     </html>
   )

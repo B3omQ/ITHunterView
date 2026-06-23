@@ -190,7 +190,86 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 context.Users.AddRange(usersToAdd);
                 await context.SaveChangesAsync();
             }
+
+            // Seed default company if none exists
+            var company = context.Companies.FirstOrDefault();
+            if (company == null)
+            {
+                company = new Companies
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "ITHunterView Corp",
+                    TaxCode = "0102030405",
+                    HeadquartersAddress = "123 Dev Street, Tech City",
+                    Industry = "Information Technology",
+                    CompanySize = "100-500",
+                    Description = "Leading tech recruitment platform",
+                    Website = "https://ithunterview.com",
+                    LogoUrl = "https://logo.clearbit.com/ithunterview.com",
+                    VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION,
+                    VerificationDocumentUrl = "https://document.com/license.pdf",
+                    Status = CompanyStatus.VERIFIED,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                context.Companies.Add(company);
+                await context.SaveChangesAsync();
+            }
+
+            // Seed profiles for recruiter users if missing
+            if (recruiterRole != null)
+            {
+                var recruiters = context.Users.Where(u => u.RoleId == recruiterRole.Id).ToList();
+                foreach (var r in recruiters)
+                {
+                    if (!context.RecruiterProfiles.Any(rp => rp.UserId == r.Id))
+                    {
+                        context.RecruiterProfiles.Add(new RecruiterProfiles
+                        {
+                            Id = Guid.NewGuid(),
+                            UserId = r.Id,
+                            CompanyId = company.Id,
+                            FullName = $"Recruiter {r.Email.Split('@')[0]}",
+                            PositionTitle = "HR Manager",
+                            Phone = "0987654321",
+                            AvatarUrl = "https://avatar.iran.liara.run/public/30"
+                        });
+                    }
+                }
+                await context.SaveChangesAsync();
+            }
+
+            // Seed profiles for candidate users if missing
+            if (candidateRole != null)
+            {
+                var candidates = context.Users.Where(u => u.RoleId == candidateRole.Id).ToList();
+                var avatarBase = new[] { "boy", "girl" };
+                int avatarIdx = 1;
+                foreach (var c in candidates)
+                {
+                    if (!context.CandidateProfiles.Any(cp => cp.UserId == c.Id))
+                    {
+                        var firstName = $"Candidate";
+                        var lastName = c.Email.Split('@')[0]; // e.g. "candidate1"
+                        context.CandidateProfiles.Add(new CandidateProfiles
+                        {
+                            Id = Guid.NewGuid(),
+                            UserId = c.Id,
+                            FirstName = firstName,
+                            LastName = lastName,
+                            Phone = $"09{avatarIdx:D8}",
+                            Location = "Ho Chi Minh City",
+                            AboutMe = "Passionate software developer looking for opportunities.",
+                            AvatarUrl = $"https://avatar.iran.liara.run/public/{avatarIdx % 50 + 1}",
+                            IsVisibleToRecruiters = true
+                        });
+                        avatarIdx++;
+                    }
+                }
+                await context.SaveChangesAsync();
+            }
         }
+
 
         private static async Task SeedJobCategoriesAsync(ITHunterviewContext context)
         {
