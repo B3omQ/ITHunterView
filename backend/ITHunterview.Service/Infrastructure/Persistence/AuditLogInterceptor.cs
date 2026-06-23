@@ -46,6 +46,128 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             _auditLogQueue = auditLogQueue;
         }
 
+        public override InterceptionResult<int> SavingChanges(
+            DbContextEventData eventData,
+            InterceptionResult<int> result)
+        {
+            if (eventData.Context == null)
+            {
+                return base.SavingChanges(eventData, result);
+            }
+
+            var context = eventData.Context;
+            var entries = context.ChangeTracker.Entries()
+                .Where(e => !ExcludedTypes.Contains(e.Entity.GetType()) &&
+                            (e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted))
+                .ToList();
+
+            if (!entries.Any())
+            {
+                return base.SavingChanges(eventData, result);
+            }
+
+            var actorUserId = _actorProvider.ActorUserId;
+            var actorEmail = _actorProvider.ActorEmail;
+            var actorRole = _actorProvider.ActorRole;
+            var ipAddress = _actorProvider.IpAddress;
+            var userAgent = _actorProvider.UserAgent;
+
+            var logs = new List<UserActivityLogs>();
+            var utcNow = DateTime.UtcNow;
+
+            foreach (var entry in entries)
+            {
+                if (entry.State == EntityState.Added)
+                {
+                    var createdAtProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "CreatedAt");
+                    if (createdAtProp != null && (createdAtProp.CurrentValue == null || (DateTime)createdAtProp.CurrentValue == default))
+                        createdAtProp.CurrentValue = utcNow;
+
+                    var createdByProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "CreatedBy");
+                    if (createdByProp != null && createdByProp.CurrentValue == null && actorUserId.HasValue)
+                        createdByProp.CurrentValue = actorUserId.Value;
+                }
+                else if (entry.State == EntityState.Modified)
+                {
+                    var updatedAtProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "UpdatedAt");
+                    if (updatedAtProp != null)
+                        updatedAtProp.CurrentValue = utcNow;
+
+                    var updatedByProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "UpdatedBy");
+                    if (updatedByProp != null && actorUserId.HasValue)
+                        updatedByProp.CurrentValue = actorUserId.Value;
+                }
+
+                var tableName = entry.Metadata.GetTableName() ?? entry.Entity.GetType().Name;
+                var operationType = entry.State.ToString().ToUpper();
+                if (operationType == "ADDED") operationType = "CREATE";
+                if (operationType == "MODIFIED") operationType = "UPDATE";
+                if (operationType == "DELETED") operationType = "DELETE";
+
+                var snapshotDiff = GetSnapshotDiff(entry);
+
+                var log = new UserActivityLogs
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = actorUserId,
+                    ActorRole = actorRole,
+                    ActionCategory = ActivityLogCategory.DATA_MUTATION,
+                    ActorEmail = actorEmail,
+                    Action = $"Thực hiện {operationType} trên bảng {tableName}",
+                    Status = ActivityLogStatus.SUCCESS,
+                    IpAddress = ipAddress,
+                    UserAgent = userAgent,
+                    CreatedAt = DateTime.UtcNow,
+                    TableName = tableName,
+                    OperationType = operationType,
+                    SnapshotDiff = snapshotDiff
+                };
+
+                logs.Add(log);
+            }
+
+            if (logs.Any())
+            {
+                _pendingLogs.Value = logs;
+            }
+
+            return base.SavingChanges(eventData, result);
+        }
+
+        public override int SavedChanges(
+            SaveChangesCompletedEventData eventData,
+            int result)
+        {
+            var logs = _pendingLogs.Value;
+            if (logs != null)
+            {
+                foreach (var log in logs)
+                {
+                    log.Status = ActivityLogStatus.SUCCESS;
+                    _auditLogQueue.QueueBackgroundWorkItem(log);
+                }
+                _pendingLogs.Value = null;
+            }
+            return base.SavedChanges(eventData, result);
+        }
+
+        public override void SaveChangesFailed(
+            DbContextErrorEventData eventData)
+        {
+            var logs = _pendingLogs.Value;
+            if (logs != null)
+            {
+                foreach (var log in logs)
+                {
+                    log.Status = ActivityLogStatus.FAIL;
+                    log.Action = $"{log.Action} [Lỗi: {eventData.Exception.Message}]";
+                    _auditLogQueue.QueueBackgroundWorkItem(log);
+                }
+                _pendingLogs.Value = null;
+            }
+            base.SaveChangesFailed(eventData);
+        }
+
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
             DbContextEventData eventData,
             InterceptionResult<int> result,
@@ -196,8 +318,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 }
                 else if (entry.State == EntityState.Modified)
                 {
+                    var keyValues = entry.Properties
+                        .Where(p => p.Metadata.IsPrimaryKey())
+                        .ToDictionary(
+                            p => p.Metadata.Name,
+                            p => MaskSensitiveData(p.Metadata.Name, p.CurrentValue)
+                        );
+
                     var changes = entry.Properties
-                        .Where(p => p.IsModified)
+                        .Where(p => p.IsModified && !p.Metadata.IsPrimaryKey())
                         .ToDictionary(
                             p => p.Metadata.Name,
                             p => new
@@ -206,7 +335,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                                 @new = MaskSensitiveData(p.Metadata.Name, p.CurrentValue)
                             }
                         );
-                    return JsonSerializer.Serialize(new { changes }, options);
+                    return JsonSerializer.Serialize(new { keys = keyValues, changes }, options);
                 }
             }
             catch (Exception ex)

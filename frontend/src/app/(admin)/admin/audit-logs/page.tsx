@@ -96,8 +96,8 @@ export default function AuditLogsPage() {
   }, [startDateStr, endDateStr]);
 
   // Formats Dates to ISO for API
-  const startIso = startDateStr ? new Date(`${startDateStr}T00:00:00Z`).toISOString() : undefined;
-  const endIso = endDateStr ? new Date(`${endDateStr}T23:59:59Z`).toISOString() : undefined;
+  const startIso = startDateStr ? new Date(`${startDateStr}T00:00:00`).toISOString() : undefined;
+  const endIso = endDateStr ? new Date(`${endDateStr}T23:59:59`).toISOString() : undefined;
 
   // Fetch data
   const { data, isLoading, isError, refetch } = useAuditLogs({
@@ -155,8 +155,10 @@ export default function AuditLogsPage() {
         return 'bg-amber-500/5 text-amber-700 dark:text-amber-400 border border-amber-500/20';
       case 'SECURITY':
         return 'bg-violet-500/5 text-violet-700 dark:text-violet-400 border border-violet-500/20';
-      case 'ACCESS':
-        return 'bg-cyan-500/5 text-cyan-700 dark:text-cyan-400 border border-cyan-500/20';
+      case 'AUTH':
+        return 'bg-blue-500/5 text-blue-700 dark:text-blue-400 border border-blue-500/20';
+      case 'SYSTEM':
+        return 'bg-zinc-500/5 text-zinc-700 dark:text-zinc-400 border border-zinc-500/20';
       default:
         return 'bg-muted text-muted-foreground border border-border';
     }
@@ -283,8 +285,8 @@ export default function AuditLogsPage() {
               <option className="bg-background text-foreground" value="SECURITY">
                 SECURITY (Bảo mật)
               </option>
-              <option className="bg-background text-foreground" value="ACCESS">
-                ACCESS (Truy cập)
+              <option className="bg-background text-foreground" value="AUTH">
+                AUTH (Xác thực)
               </option>
               <option className="bg-background text-foreground" value="SYSTEM">
                 SYSTEM (Hệ thống)

@@ -13,8 +13,9 @@ namespace ITHunterview.Service.Infrastructure.Infrastructure
 
         public AuditLogQueue()
         {
-            _queue = Channel.CreateUnbounded<UserActivityLogs>(new UnboundedChannelOptions
+            _queue = Channel.CreateBounded<UserActivityLogs>(new BoundedChannelOptions(10000)
             {
+                FullMode = BoundedChannelFullMode.Wait,
                 SingleReader = true,
                 SingleWriter = false
             });
@@ -33,6 +34,18 @@ namespace ITHunterview.Service.Infrastructure.Infrastructure
         public ValueTask<UserActivityLogs> DequeueAsync(CancellationToken cancellationToken)
         {
             return _queue.Reader.ReadAsync(cancellationToken);
+        }
+
+        public ValueTask<bool> WaitToReadAsync(CancellationToken cancellationToken)
+        {
+            return _queue.Reader.WaitToReadAsync(cancellationToken);
+        }
+
+        public bool TryDequeue(out UserActivityLogs? logItem)
+        {
+            var success = _queue.Reader.TryRead(out var item);
+            logItem = item;
+            return success;
         }
     }
 }

@@ -8,5 +8,7 @@ namespace ITHunterview.Service.Interface.Infrastructure
     {
         void QueueBackgroundWorkItem(UserActivityLogs logItem);
         ValueTask<UserActivityLogs> DequeueAsync(CancellationToken cancellationToken);
+        ValueTask<bool> WaitToReadAsync(CancellationToken cancellationToken);
+        bool TryDequeue(out UserActivityLogs? logItem);
     }
 }

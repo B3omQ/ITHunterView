@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ITHunterview.Domain.Entities;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,18 +32,38 @@ namespace ITHunterview.WebAPI.BackgroundServices
         {
             _logger.LogInformation("Audit Log Processor Background Service is starting.");
 
+            var batch = new List<UserActivityLogs>();
+            const int batchSize = 50;
+            var flushInterval = TimeSpan.FromSeconds(2);
+            var lastFlushTime = DateTime.UtcNow;
+
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
-                    var logItem = await _auditLogQueue.DequeueAsync(stoppingToken);
-
-                    using (var scope = _serviceProvider.CreateScope())
+                    if (await _auditLogQueue.WaitToReadAsync(stoppingToken))
                     {
-                        var context = scope.ServiceProvider.GetRequiredService<ITHunterviewContext>();
-                        context.UserActivityLogs.Add(logItem);
-                        await context.SaveChangesAsync(stoppingToken);
+                        while (_auditLogQueue.TryDequeue(out var logItem))
+                        {
+                            if (logItem != null)
+                            {
+                                batch.Add(logItem);
+                                if (batch.Count >= batchSize)
+                                {
+                                    await FlushBatchAsync(batch, stoppingToken);
+                                    lastFlushTime = DateTime.UtcNow;
+                                }
+                            }
+                        }
                     }
+
+                    if (batch.Any() && DateTime.UtcNow - lastFlushTime >= flushInterval)
+                    {
+                        await FlushBatchAsync(batch, stoppingToken);
+                        lastFlushTime = DateTime.UtcNow;
+                    }
+
+                    await Task.Delay(100, stoppingToken);
                 }
                 catch (OperationCanceledException)
                 {
@@ -52,7 +75,42 @@ namespace ITHunterview.WebAPI.BackgroundServices
                 }
             }
 
+            // Flush remaining logs on shutdown
+            if (batch.Any())
+            {
+                try
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    await FlushBatchAsync(batch, cts.Token);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error occurred flushing remaining logs during shutdown.");
+                }
+            }
+
             _logger.LogInformation("Audit Log Processor Background Service is stopping.");
+        }
+
+        private async Task FlushBatchAsync(List<UserActivityLogs> batch, CancellationToken cancellationToken)
+        {
+            try
+            {
+                using (var scope = _serviceProvider.CreateScope())
+                {
+                    var context = scope.ServiceProvider.GetRequiredService<ITHunterviewContext>();
+                    context.UserActivityLogs.AddRange(batch);
+                    await context.SaveChangesAsync(cancellationToken);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to flush a batch of {Count} audit logs to database.", batch.Count);
+            }
+            finally
+            {
+                batch.Clear();
+            }
         }
     }
 }
