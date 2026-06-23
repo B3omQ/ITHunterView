@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useCandidateJobs } from '@/hooks/useCandidateJobs';
 import { useJobActions } from '@/hooks/useJobActions';
 import { JobCard } from '@/components/shared/JobCard';
@@ -11,8 +12,16 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, SearchX } from 'lucide-react';
 import type { JobSearchQuery } from '@/types/job.types';
 
-export default function CandidateJobsPage() {
-  const [query, setQuery] = useState<JobSearchQuery>({ page: 1, pageSize: 9 });
+function CandidateJobsContent() {
+  const searchParams = useSearchParams();
+  
+  const [query, setQuery] = useState<JobSearchQuery>({ 
+    page: 1, 
+    pageSize: 9,
+    keyword: searchParams.get('query') || undefined,
+    location: searchParams.get('location') || undefined
+  });
+
   const { data, isLoading, isError } = useCandidateJobs(query);
   const { saveJob, unsaveJob, isSaving, isUnsaving } = useJobActions();
 
@@ -86,5 +95,13 @@ export default function CandidateJobsPage() {
         <EmptyState title="No jobs found" description="Try adjusting your search filters to find more jobs." icon={<SearchX className="w-12 h-12 text-slate-300" />} />
       )}
     </div>
+  );
+}
+
+export default function CandidateJobsPage() {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <CandidateJobsContent />
+    </Suspense>
   );
 }

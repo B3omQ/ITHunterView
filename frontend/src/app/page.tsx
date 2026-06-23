@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Logo } from "@/components/layout/Logo"
 import { useAuthStore } from "@/store/auth.store"
 import { getDashboardPath } from "@/lib/constants"
+import { PublicHeader } from "@/components/layout/PublicHeader"
 
 
 // Inline SVG Icon components to prevent Next.js + Turbopack compilation hang
@@ -109,6 +111,7 @@ function LayoutDashboardIcon({ size = 16, className = "" }: { size?: number; cla
 }
 
 export default function Home() {
+  const router = useRouter()
   const { user, logout } = useAuthStore()
   const [searchTitle, setSearchTitle] = useState("")
   const [searchLoc, setSearchLoc] = useState("")
@@ -117,6 +120,15 @@ export default function Home() {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  const handleSearch = () => {
+    const params = new URLSearchParams()
+    if (searchTitle.trim()) params.append("query", searchTitle.trim())
+    if (searchLoc.trim()) params.append("location", searchLoc.trim())
+    
+    const queryString = params.toString()
+    router.push(queryString ? `/jobs?${queryString}` : '/jobs')
+  }
 
   const featuredJobs = [
     {
@@ -179,62 +191,9 @@ export default function Home() {
   const popularSearches = ["Frontend Developer", "Data Analyst", "Mobile Dev", "DevOps"]
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground overflow-x-hidden">
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/85 backdrop-blur-md border-b border-border transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Logo size="md" href="/" />
-
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
-            <Link href="#jobs" className="hover:text-foreground transition-colors">Jobs</Link>
-            <Link href="#mock-interview" className="hover:text-foreground transition-colors">Mock Interview</Link>
-            <Link href="#pricing" className="hover:text-foreground transition-colors">Pricing</Link>
-          </nav>
-
-          <div className="flex items-center gap-3">
-            {/* Only render auth buttons after mount to prevent hydration mismatch */}
-            {!mounted ? (
-              // Skeleton placeholder — same size as actual buttons, invisible
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-24 rounded-xl bg-transparent" />
-                <div className="h-10 w-28 rounded-xl bg-transparent" />
-              </div>
-            ) : user ? (
-              <>
-                <Link
-                  href={getDashboardPath(user.role?.name)}
-                  className="flex items-center gap-1.5 h-10 px-4 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-all"
-                >
-                  <LayoutDashboardIcon size={16} className="text-muted-foreground" />
-                  <span>Dashboard</span>
-                </Link>
-                <button
-                  onClick={logout}
-                  className="h-10 w-10 flex items-center justify-center rounded-xl border border-border hover:bg-red-500/10 hover:text-red-500 transition-all cursor-pointer"
-                  title="Logout"
-                >
-                  <LogOutIcon size={16} />
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="h-10 px-4 rounded-xl text-sm font-medium text-foreground hover:bg-muted flex items-center justify-center transition-all"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/auth/register"
-                  className="h-10 px-4 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground text-sm font-medium flex items-center justify-center shadow-sm transition-all"
-                >
-                  Get Started
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      <PublicHeader />
 
       {/* Hero Section */}
       <section className="relative pt-20 pb-16 md:pt-28 md:pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full text-center">
@@ -262,6 +221,7 @@ export default function Home() {
               placeholder="Job title, keywords, company..."
               value={searchTitle}
               onChange={(e) => setSearchTitle(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="w-full bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground py-1 text-foreground"
             />
           </div>
@@ -273,11 +233,15 @@ export default function Home() {
               placeholder="Location (Hanoi, Ho Chi Minh...)"
               value={searchLoc}
               onChange={(e) => setSearchLoc(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="w-full bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground py-1 text-foreground"
             />
           </div>
 
-          <button className="h-11 px-6 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer">
+          <button 
+            onClick={handleSearch}
+            className="h-11 px-6 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
             <SearchIcon size={16} />
             <span>Search Jobs</span>
           </button>
@@ -289,7 +253,10 @@ export default function Home() {
           {popularSearches.map((tag) => (
             <button
               key={tag}
-              onClick={() => setSearchTitle(tag)}
+              onClick={() => {
+                setSearchTitle(tag)
+                router.push(`/jobs?query=${encodeURIComponent(tag)}`)
+              }}
               className="px-3 py-1 rounded-lg border border-border bg-card hover:border-primary/50 text-muted-foreground hover:text-primary transition-all cursor-pointer"
             >
               {tag}

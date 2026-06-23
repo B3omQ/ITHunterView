@@ -6,39 +6,39 @@ export const jobService = {
   // Public APIs
   getPublicJobs: (query?: JobSearchQuery) =>
     api
-      .get<PaginatedDataResponse<JobCardDto>>('/public/jobs', { params: query })
+      .get<PaginatedDataResponse<JobCardDto>>('/api/public/jobs', { params: query })
       .then((r) => r.data),
 
   getPublicJobDetail: (id: string) =>
     api
-      .get<ApiResponse<JobDetailViewDto>>(`/public/jobs/${id}`)
+      .get<ApiResponse<JobDetailViewDto>>(`/api/public/jobs/${id}`)
       .then((r) => r.data),
 
   // Candidate APIs
   getCandidateJobs: (query?: JobSearchQuery) =>
     api
-      .get<PaginatedDataResponse<JobCardDto>>('/candidate/jobs', { params: query })
+      .get<PaginatedDataResponse<JobCardDto>>('/api/candidate/jobs', { params: query })
       .then((r) => r.data),
 
   getCandidateJobDetail: (id: string) =>
     api
-      .get<ApiResponse<JobDetailViewDto>>(`/candidate/jobs/${id}`)
+      .get<ApiResponse<JobDetailViewDto>>(`/api/candidate/jobs/${id}`)
       .then((r) => r.data),
 
   getSavedJobs: (page = 1, pageSize = 10) =>
     api
-      .get<PaginatedDataResponse<SavedJobDto>>('/candidate/saved-jobs', {
+      .get<PaginatedDataResponse<SavedJobDto>>('/api/candidate/saved-jobs', {
         params: { page, pageSize },
       })
       .then((r) => r.data),
 
   saveJob: (jobId: string) =>
     api
-      .post<ApiResponse<void>>('/candidate/saved-jobs', { jobId })
+      .post<ApiResponse<void>>('/api/candidate/saved-jobs', { jobId })
       .then((r) => r.data),
 
   unsaveJob: (jobId: string) =>
     api
-      .delete<void>(`/candidate/saved-jobs/${jobId}`)
+      .delete<void>(`/api/candidate/saved-jobs/${jobId}`)
       .then((r) => r.data),
 };

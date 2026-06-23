@@ -23,12 +23,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             var jobsQuery = _context.JobPostings
                 .Where(j => j.Status == JobStatus.PUBLISHED);
 
-            if (!string.IsNullOrEmpty(query.Keyword))
-            {
-                var lowerKeyword = query.Keyword.ToLower();
-                jobsQuery = jobsQuery.Where(j => j.Title.ToLower().Contains(lowerKeyword));
-            }
-
             if (!string.IsNullOrEmpty(query.Location))
             {
                 var lowerLocation = query.Location.ToLower();
@@ -48,6 +42,14 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             var queryable = from job in jobsQuery
                             join company in _context.Companies on job.CompanyId equals company.Id
                             select new { job, company };
+
+            if (!string.IsNullOrEmpty(query.Keyword))
+            {
+                var lowerKeyword = query.Keyword.ToLower();
+                queryable = queryable.Where(x => 
+                    (x.job.Title != null && x.job.Title.ToLower().Contains(lowerKeyword)) || 
+                    (x.company.Name != null && x.company.Name.ToLower().Contains(lowerKeyword)));
+            }
 
             var totalItems = await queryable.CountAsync();
 

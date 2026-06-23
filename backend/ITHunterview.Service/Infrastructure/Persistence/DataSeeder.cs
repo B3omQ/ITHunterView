@@ -17,6 +17,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             await SeedSkillsAsync(context);
             await SeedMajorsAsync(context);
             await SeedSubscriptionsAsync(context);
+            await SeedJobPostingsAsync(context);
         }
 
         private static async Task SeedRolesAndPermissionsAsync(ITHunterviewContext context)
@@ -471,6 +472,54 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 };
                 context.Subscriptions.AddRange(subs);
                 await context.SaveChangesAsync();
+            }
+        }
+
+        private static async Task SeedJobPostingsAsync(ITHunterviewContext context)
+        {
+            if (!context.JobPostings.Any())
+            {
+                var recruiterRole = context.Roles.FirstOrDefault(r => r.Name == "recruiter");
+                var recruiter = context.Users.FirstOrDefault(u => u.RoleId == recruiterRole.Id);
+                var company = context.Companies.FirstOrDefault();
+                var category = context.JobCategories.FirstOrDefault(c => c.ParentId != null);
+
+                if (recruiter != null && company != null && category != null)
+                {
+                    var jobs = new List<JobPostings>();
+                    var random = new System.Random();
+
+                    for (int i = 1; i <= 10; i++)
+                    {
+                        jobs.Add(new JobPostings
+                        {
+                            Id = System.Guid.NewGuid(),
+                            JobCode = $"JB-{random.Next(1000, 9999)}",
+                            RecruiterId = recruiter.Id,
+                            CompanyId = company.Id,
+                            CategoryId = category.Id,
+                            Title = $"Software Engineer {i}",
+                            Description = "We are looking for a talented Software Engineer to join our team...",
+                            Responsibilities = "- Develop high-quality software design and architecture\n- Identify, prioritize and execute tasks in the software development life cycle",
+                            Requirements = "- Proven experience as a Software Engineer or Software Developer\n- Experience with software design and development in a test-driven environment",
+                            Benefits = "- Competitive salary\n- Health insurance\n- Paid time off",
+                            MinSalary = 1000 + (i * 100),
+                            MaxSalary = 2000 + (i * 100),
+                            Currency = "USD",
+                            Location = "Ho Chi Minh City",
+                            JobType = JobType.FULL_TIME,
+                            Status = JobStatus.PUBLISHED,
+                            ApplicationCount = random.Next(0, 50),
+                            ViewCount = random.Next(100, 1000),
+                            PublishedAt = System.DateTime.UtcNow.AddDays(-i),
+                            CreatedAt = System.DateTime.UtcNow.AddDays(-i),
+                            UpdatedAt = System.DateTime.UtcNow.AddDays(-i)
+                        });
+                    }
+
+                    context.JobPostings.AddRange(jobs);
+                    await context.SaveChangesAsync();
+                }
             }
         }
     }
