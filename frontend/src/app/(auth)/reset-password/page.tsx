@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Eye, EyeOff, Loader2, AlertCircle, KeyRound, CheckCircle2 } from "lucide-react"
 import { authService } from "@/services/auth.service"
 import { Logo } from "@/components/layout/Logo"
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -178,5 +178,13 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 size={24} className="animate-spin text-primary" /></div>}>
+      <ResetPasswordContent />
+    </Suspense>
   )
 }

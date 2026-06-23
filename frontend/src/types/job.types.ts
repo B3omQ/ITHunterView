@@ -19,6 +19,7 @@ export interface JobCardDto {
   jobType: string;
   publishedAt?: string;
   isSaved?: boolean;
+  skills?: string[];
 }
 
 export interface SavedJobDto {
