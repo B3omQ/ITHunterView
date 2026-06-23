@@ -37,7 +37,6 @@ export default function ForgotPasswordPage() {
         <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
           {!sent ? (
             <>
-              {/* Icon */}
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-5">
                 <Mail size={22} className="text-primary" />
               </div>
@@ -74,7 +73,7 @@ export default function ForgotPasswordPage() {
                   id="forgot-submit"
                   type="submit"
                   disabled={loading}
-                  className="btn-primary-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
+                  className="w-full h-11 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none transition-all"
                 >
                   {loading ? (
                     <><Loader2 size={16} className="animate-spin" /> Sending…</>
