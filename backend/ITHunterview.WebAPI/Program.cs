@@ -20,8 +20,11 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuditLogInterceptor>();
 builder.Services.AddDbContext<ITHunterviewContext>((sp, options) =>
 {
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
-           .AddInterceptors(sp.GetRequiredService<AuditLogInterceptor>());
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        b => b.MigrationsAssembly("ITHunterview.Service")
+    )
+    .AddInterceptors(sp.GetRequiredService<AuditLogInterceptor>());
 });
 
 // ─── Application Services ─────────────────────────────────────────────────────

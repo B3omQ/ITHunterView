@@ -27,6 +27,8 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ISkillCategoryRepository, SkillCategoryRepository>();
             services.AddScoped<IMajorRepository, MajorRepository>();
             services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+            services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+            services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
 
             // Repositories — Candidate Profile
             services.AddScoped<ICandidateProfileRepository, CandidateProfileRepository>();
@@ -50,6 +52,9 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IMajorUseCase, MajorUseCase>();
             services.AddScoped<IUserGovernanceUseCase, UserGovernanceUseCase>();
             services.AddScoped<IAuditLogUseCase, AuditLogUseCase>();
+            services.AddScoped<ISubscriptionAdminUseCase, SubscriptionAdminUseCase>();
+            services.AddScoped<ICoinConfigUseCase, CoinConfigUseCase>();
+            services.AddScoped<ICandidateFeatureUsageUseCase, CandidateFeatureUsageUseCase>();
 
 
             // Use Cases — Candidate Profile

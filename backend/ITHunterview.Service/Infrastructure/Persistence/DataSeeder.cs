@@ -367,26 +367,42 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 {
                     new Subscriptions 
                     { 
-                        Name = "Free", 
+                        Name = "Candidate Free", 
                         Price = 0, 
                         DurationDays = 36500, 
-                        FeaturesConfig = "{\"max_active_jobs\": 1, \"ai_interview_credits\": 2, \"cv_match_per_month\": 5}",
+                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":2,\"mockInterviewLimit\":0,\"cvOptimizeLimit\":0}",
                         Status = SubscriptionStatus.ACTIVE
                     },
                     new Subscriptions 
                     { 
-                        Name = "Premium", 
-                        Price = 299000, 
+                        Name = "Candidate Premium", 
+                        Price = 99000, 
                         DurationDays = 30, 
-                        FeaturesConfig = "{\"max_active_jobs\": 10, \"ai_interview_credits\": 20, \"cv_match_per_month\": 50}",
+                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":30,\"mockInterviewLimit\":10,\"cvOptimizeLimit\":10}",
                         Status = SubscriptionStatus.ACTIVE
                     },
                     new Subscriptions 
                     { 
-                        Name = "Enterprise", 
-                        Price = 1499000, 
+                        Name = "Recruiter Free", 
+                        Price = 0, 
+                        DurationDays = 36500, 
+                        FeaturesConfig = "{\"role\":\"RECRUITER\",\"activeJobPostings\":1,\"activeSourcingLimit\":5,\"highlightedJobs\":0,\"analytics\":false}",
+                        Status = SubscriptionStatus.ACTIVE
+                    },
+                    new Subscriptions 
+                    { 
+                        Name = "Recruiter Premium", 
+                        Price = 499000, 
                         DurationDays = 30, 
-                        FeaturesConfig = "{\"max_active_jobs\": -1, \"ai_interview_credits\": -1, \"cv_match_per_month\": -1}",
+                        FeaturesConfig = "{\"role\":\"RECRUITER\",\"activeJobPostings\":10,\"activeSourcingLimit\":50,\"highlightedJobs\":3,\"analytics\":true}",
+                        Status = SubscriptionStatus.ACTIVE
+                    },
+                    new Subscriptions 
+                    { 
+                        Name = "Recruiter Enterprise", 
+                        Price = 1999000, 
+                        DurationDays = 30, 
+                        FeaturesConfig = "{\"role\":\"RECRUITER\",\"activeJobPostings\":-1,\"activeSourcingLimit\":-1,\"highlightedJobs\":-1,\"analytics\":true}",
                         Status = SubscriptionStatus.ACTIVE
                     }
                 };

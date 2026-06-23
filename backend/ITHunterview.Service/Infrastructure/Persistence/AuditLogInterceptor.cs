@@ -90,8 +90,33 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             var logs = new List<UserActivityLogs>();
 
+            var utcNow = DateTime.UtcNow;
+
             foreach (var entry in entries)
             {
+                // Tự động gán các trường Audit (CreatedAt, UpdatedAt, CreatedBy, UpdatedBy)
+                if (entry.State == EntityState.Added)
+                {
+                    var createdAtProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "CreatedAt");
+                    if (createdAtProp != null && (createdAtProp.CurrentValue == null || (DateTime)createdAtProp.CurrentValue == default))
+                        createdAtProp.CurrentValue = utcNow;
+
+                    var createdByProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "CreatedBy");
+                    if (createdByProp != null && createdByProp.CurrentValue == null && actorUserId.HasValue)
+                        createdByProp.CurrentValue = actorUserId.Value;
+                }
+                else if (entry.State == EntityState.Modified)
+                {
+                    var updatedAtProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "UpdatedAt");
+                    if (updatedAtProp != null)
+                        updatedAtProp.CurrentValue = utcNow;
+
+                    var updatedByProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "UpdatedBy");
+                    if (updatedByProp != null && actorUserId.HasValue)
+                        updatedByProp.CurrentValue = actorUserId.Value;
+                }
+
+
                 var tableName = entry.Metadata.GetTableName() ?? entry.Entity.GetType().Name;
                 var operationType = entry.State.ToString().ToUpper();
                 if (operationType == "ADDED") operationType = "CREATE";
