@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ITHunterview.WebAPI.Controllers
 {
     [ApiController]
-    [Route("public/jobs")]
+    [Route("api/public/jobs")]
     public class PublicJobsController : ControllerBase
     {
         private readonly IPublicJobUseCase _publicJobUseCase;

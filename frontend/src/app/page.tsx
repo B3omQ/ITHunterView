@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Logo } from "@/components/layout/Logo"
 import { useAuthStore } from "@/store/auth.store"
 import { getDashboardPath } from "@/lib/constants"
@@ -110,6 +111,7 @@ function LayoutDashboardIcon({ size = 16, className = "" }: { size?: number; cla
 }
 
 export default function Home() {
+  const router = useRouter()
   const { user, logout } = useAuthStore()
   const [searchTitle, setSearchTitle] = useState("")
   const [searchLoc, setSearchLoc] = useState("")
@@ -118,6 +120,15 @@ export default function Home() {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  const handleSearch = () => {
+    const params = new URLSearchParams()
+    if (searchTitle.trim()) params.append("query", searchTitle.trim())
+    if (searchLoc.trim()) params.append("location", searchLoc.trim())
+    
+    const queryString = params.toString()
+    router.push(queryString ? `/jobs?${queryString}` : '/jobs')
+  }
 
   const featuredJobs = [
     {
@@ -210,6 +221,7 @@ export default function Home() {
               placeholder="Job title, keywords, company..."
               value={searchTitle}
               onChange={(e) => setSearchTitle(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="w-full bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground py-1 text-foreground"
             />
           </div>
@@ -221,11 +233,15 @@ export default function Home() {
               placeholder="Location (Hanoi, Ho Chi Minh...)"
               value={searchLoc}
               onChange={(e) => setSearchLoc(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="w-full bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground py-1 text-foreground"
             />
           </div>
 
-          <button className="h-11 px-6 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer">
+          <button 
+            onClick={handleSearch}
+            className="h-11 px-6 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
             <SearchIcon size={16} />
             <span>Search Jobs</span>
           </button>
@@ -237,7 +253,10 @@ export default function Home() {
           {popularSearches.map((tag) => (
             <button
               key={tag}
-              onClick={() => setSearchTitle(tag)}
+              onClick={() => {
+                setSearchTitle(tag)
+                router.push(`/jobs?query=${encodeURIComponent(tag)}`)
+              }}
               className="px-3 py-1 rounded-lg border border-border bg-card hover:border-primary/50 text-muted-foreground hover:text-primary transition-all cursor-pointer"
             >
               {tag}
