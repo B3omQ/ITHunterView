@@ -25,7 +25,7 @@ namespace ITHunterview.Service.UseCase
             _configRepository = configRepository;
         }
 
-        public async Task<bool> TryConsumeFeatureAsync(Guid userId, string featureKey)
+        public async Task<bool> TryConsumeFeatureAsync(Guid userId, string featureKey, string? referenceId = null)
         {
             if (string.IsNullOrEmpty(featureKey))
                 throw new ArgumentException("Feature key không được để trống", nameof(featureKey));
@@ -83,31 +83,28 @@ namespace ITHunterview.Service.UseCase
             }
 
             // 2. Không có Subscription hoặc đã hết hạn mức -> Tiêu tốn Coin từ ví Pay-as-you-go
-            var costConfig = await _configRepository.GetByKeyAsync(FeatureCostsKey);
-            CoinFeatureCostsDto costs;
-            if (costConfig != null && !string.IsNullOrEmpty(costConfig.ConfigValue))
+            // Truy vấn từ bảng chuyên biệt CoinFeatures
+            var dbFeature = await _context.CoinFeatures
+                .AsNoTracking()
+                .FirstOrDefaultAsync(cf => cf.FeatureKey == featureKey);
+
+            int coinCost;
+            if (dbFeature != null)
             {
-                try
-                {
-                    costs = JsonSerializer.Deserialize<CoinFeatureCostsDto>(costConfig.ConfigValue, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? GetDefaultCosts();
-                }
-                catch
-                {
-                    costs = GetDefaultCosts();
-                }
+                coinCost = dbFeature.CoinCost;
             }
             else
             {
-                costs = GetDefaultCosts();
+                // Fallback default
+                var defaultCosts = GetDefaultCosts();
+                coinCost = featureKey switch
+                {
+                    "CvJdMatching" => defaultCosts.CvJdMatching,
+                    "MockInterview" => defaultCosts.MockInterview,
+                    "CvOptimize" => defaultCosts.CvOptimize,
+                    _ => 0
+                };
             }
-
-            int coinCost = featureKey switch
-            {
-                "CvJdMatching" => costs.CvJdMatching,
-                "MockInterview" => costs.MockInterview,
-                "CvOptimize" => costs.CvOptimize,
-                _ => 0
-            };
 
             if (coinCost == 0)
             {
@@ -148,6 +145,13 @@ namespace ITHunterview.Service.UseCase
                     wallet.UpdatedAt = DateTime.UtcNow;
                     _context.UserWallets.Update(wallet);
 
+                    // Parse reference GUID nếu có
+                    Guid? refGuid = null;
+                    if (!string.IsNullOrEmpty(referenceId) && Guid.TryParse(referenceId, out var parsedGuid))
+                    {
+                        refGuid = parsedGuid;
+                    }
+
                     // Tạo lịch sử giao dịch Coin
                     var creditTx = new CreditTransactions
                     {
@@ -155,6 +159,7 @@ namespace ITHunterview.Service.UseCase
                         WalletId = wallet.Id,
                         Amount = -coinCost,
                         TransactionType = CreditTransactionType.DEDUCT,
+                        ReferenceId = refGuid,
                         Description = $"Sử dụng {coinCost} Coin cho tính năng {GetFeatureFriendlyName(featureKey)}",
                         CreatedAt = DateTime.UtcNow
                     };

@@ -11,6 +11,6 @@ namespace ITHunterview.Service.Interface.UseCase
         /// <param name="userId">Id của Candidate</param>
         /// <param name="featureKey">Tên tính năng ("CvJdMatching", "MockInterview", "CvOptimize")</param>
         /// <returns>True nếu cho phép thực hiện (đã trừ quota hoặc trừ coin thành công), ngược lại quăng Exception</returns>
-        Task<bool> TryConsumeFeatureAsync(Guid userId, string featureKey);
+        Task<bool> TryConsumeFeatureAsync(Guid userId, string featureKey, string? referenceId = null);
     }
 }

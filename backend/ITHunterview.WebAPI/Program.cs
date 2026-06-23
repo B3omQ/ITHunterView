@@ -17,6 +17,8 @@ builder.Services.AddOpenApi();
 
 // ─── Database ─────────────────────────────────────────────────────────────────
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ITHunterview.Service.Interface.Infrastructure.IActorProvider, ITHunterview.Service.Infrastructure.Infrastructure.ActorProvider>();
+builder.Services.AddSingleton<ITHunterview.Service.Interface.Infrastructure.IAuditLogQueue, ITHunterview.Service.Infrastructure.Infrastructure.AuditLogQueue>();
 builder.Services.AddScoped<AuditLogInterceptor>();
 builder.Services.AddDbContext<ITHunterviewContext>((sp, options) =>
 {
@@ -32,6 +34,7 @@ builder.Services.Configure<ITHunterview.Service.Config.CloudinarySettings>(build
 builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddMemoryCache();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.LogCleanupBackgroundService>();
+builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.AuditLogProcessor>();
 
 // ─── JWT Authentication ───────────────────────────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");

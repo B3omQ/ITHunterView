@@ -17,6 +17,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             await SeedSkillsAsync(context);
             await SeedMajorsAsync(context);
             await SeedSubscriptionsAsync(context);
+            await SeedCoinConfigAsync(context);
         }
 
         private static async Task SeedRolesAndPermissionsAsync(ITHunterviewContext context)
@@ -407,6 +408,35 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     }
                 };
                 context.Subscriptions.AddRange(subs);
+                await context.SaveChangesAsync();
+            }
+        }
+
+        private static async Task SeedCoinConfigAsync(ITHunterviewContext context)
+        {
+            // Seed CoinFeatures
+            if (!context.CoinFeatures.Any())
+            {
+                var features = new List<CoinFeatures>
+                {
+                    new CoinFeatures { FeatureKey = "CvJdMatching", CoinCost = 2, Description = "So khớp CV-JD AI" },
+                    new CoinFeatures { FeatureKey = "MockInterview", CoinCost = 10, Description = "Phỏng vấn thử AI Mock Interview" },
+                    new CoinFeatures { FeatureKey = "CvOptimize", CoinCost = 3, Description = "Tối ưu hóa CV AI" }
+                };
+                context.CoinFeatures.AddRange(features);
+                await context.SaveChangesAsync();
+            }
+
+            // Seed CoinPackages
+            if (!context.CoinPackages.Any())
+            {
+                var packages = new List<CoinPackages>
+                {
+                    new CoinPackages { Id = Guid.Parse("00000000-0000-0000-0000-000000000020"), Name = "Gói nạp 20 Coin", Coins = 20, Price = 39000, IsActive = true },
+                    new CoinPackages { Id = Guid.Parse("00000000-0000-0000-0000-000000000050"), Name = "Gói nạp 50 Coin", Coins = 50, Price = 89000, IsActive = true },
+                    new CoinPackages { Id = Guid.Parse("00000000-0000-0000-0000-000000000120"), Name = "Gói nạp 120 Coin", Coins = 120, Price = 199000, IsActive = true }
+                };
+                context.CoinPackages.AddRange(packages);
                 await context.SaveChangesAsync();
             }
         }

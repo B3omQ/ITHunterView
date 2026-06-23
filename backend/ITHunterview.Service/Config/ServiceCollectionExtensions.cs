@@ -55,6 +55,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ISubscriptionAdminUseCase, SubscriptionAdminUseCase>();
             services.AddScoped<ICoinConfigUseCase, CoinConfigUseCase>();
             services.AddScoped<ICandidateFeatureUsageUseCase, CandidateFeatureUsageUseCase>();
+            services.AddScoped<IWalletUseCase, WalletUseCase>();
 
 
             // Use Cases — Candidate Profile

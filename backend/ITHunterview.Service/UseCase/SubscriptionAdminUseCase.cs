@@ -129,77 +129,74 @@ namespace ITHunterview.Service.UseCase
 
         public async Task<ResponseBase<SubscriptionDto>> UpdateSubscriptionAsync(int id, UpdateSubscriptionDto dto, Guid userId)
         {
-            var subscription = await _subscriptionRepository.GetByIdAsync(id);
-            if (subscription == null)
+            using var transaction = await _subscriptionRepository.BeginTransactionAsync();
+            try
             {
-                return new ResponseBase<SubscriptionDto>("Gói dịch vụ không tồn tại.");
-            }
-
-            var isUsed = await _subscriptionRepository.IsSubscriptionUsedAsync(id);
-            if (isUsed)
-            {
-                // Kiểm tra xem có thay đổi các thuộc tính nhạy cảm hay không
-                var oldConfig = DeserializeConfig(subscription.FeaturesConfig);
-                var isPriceChanged = subscription.Price != dto.Price;
-                var isDurationChanged = subscription.DurationDays != dto.DurationDays;
-                var isConfigChanged = !AreConfigsEqual(oldConfig, dto.FeaturesConfig);
-
-                if (isPriceChanged || isDurationChanged || isConfigChanged)
+                var subscription = await _subscriptionRepository.GetByIdForUpdateAsync(id);
+                if (subscription == null)
                 {
-                    return new ResponseBase<SubscriptionDto>(
-                        "Không thể sửa đổi giá, thời hạn hoặc các giới hạn tính năng của gói dịch vụ đã bán (đã có người đăng ký). Hãy nhân bản (Duplicate) thành gói mới và thay đổi.");
+                    return new ResponseBase<SubscriptionDto>("Gói dịch vụ không tồn tại.");
                 }
 
-                // Gói đã bán chỉ được sửa Name (và UpdatedBy)
-                subscription.Name = dto.Name.Trim();
-                subscription.UpdatedBy = userId;
-                await _subscriptionRepository.UpdateAsync(subscription);
-            }
-            else
-            {
-                // Gói chưa bán, cho phép sửa tất cả. Dùng Atomic Update để chặn Race Condition.
-                SanitizeFeaturesConfig(dto.FeaturesConfig);
-                
-                var updateEntity = new Subscriptions
+                var isUsed = await _subscriptionRepository.IsSubscriptionUsedAsync(id);
+                if (isUsed)
                 {
-                    Id = id,
-                    Price = dto.Price,
-                    DurationDays = dto.DurationDays,
-                    FeaturesConfig = SerializeConfig(dto.FeaturesConfig)
+                    // Kiểm tra xem có thay đổi các thuộc tính nhạy cảm hay không
+                    var oldConfig = DeserializeConfig(subscription.FeaturesConfig);
+                    var isPriceChanged = subscription.Price != dto.Price;
+                    var isDurationChanged = subscription.DurationDays != dto.DurationDays;
+                    var isConfigChanged = !AreConfigsEqual(oldConfig, dto.FeaturesConfig);
+
+                    if (isPriceChanged || isDurationChanged || isConfigChanged)
+                    {
+                        return new ResponseBase<SubscriptionDto>(
+                            "Không thể sửa đổi giá, thời hạn hoặc các giới hạn tính năng của gói dịch vụ đã bán (đã có người đăng ký). Hãy nhân bản (Duplicate) thành gói mới và thay đổi.");
+                    }
+
+                    // Gói đã bán chỉ được sửa Name (và UpdatedBy)
+                    subscription.Name = dto.Name.Trim();
+                    subscription.UpdatedBy = userId;
+                    await _subscriptionRepository.UpdateAsync(subscription);
+                }
+                else
+                {
+                    // Gói chưa bán, cho phép sửa tất cả.
+                    SanitizeFeaturesConfig(dto.FeaturesConfig);
+
+                    subscription.Name = dto.Name.Trim();
+                    subscription.Price = dto.Price;
+                    subscription.DurationDays = dto.DurationDays;
+                    subscription.FeaturesConfig = SerializeConfig(dto.FeaturesConfig);
+                    subscription.UpdatedBy = userId;
+                    
+                    await _subscriptionRepository.UpdateAsync(subscription);
+                }
+
+                await transaction.CommitAsync();
+
+                var updatedConfig = DeserializeConfig(subscription.FeaturesConfig);
+                var resultDto = new SubscriptionDto
+                {
+                    Id = subscription.Id,
+                    Name = subscription.Name,
+                    Price = subscription.Price,
+                    DurationDays = subscription.DurationDays,
+                    FeaturesConfig = updatedConfig,
+                    Status = subscription.Status,
+                    CreatedBy = subscription.CreatedBy,
+                    UpdatedBy = subscription.UpdatedBy,
+                    CreatedAt = subscription.CreatedAt,
+                    UpdatedAt = subscription.UpdatedAt,
+                    IsUsed = isUsed
                 };
 
-                var affectedRows = await _subscriptionRepository.UpdateUnusedSubscriptionAsync(updateEntity);
-                if (affectedRows == 0)
-                {
-                    return new ResponseBase<SubscriptionDto>("Giao dịch thất bại do gói dịch vụ vừa phát sinh lượt đăng ký mới. Vui lòng tải lại trang.");
-                }
-
-                // Sau khi Atomic Update thành công các field nhạy cảm, update Name và trigger SaveChangesInterceptor cho Audit Log
-                subscription.Name = dto.Name.Trim();
-                subscription.Price = updateEntity.Price;
-                subscription.DurationDays = updateEntity.DurationDays;
-                subscription.FeaturesConfig = updateEntity.FeaturesConfig;
-                subscription.UpdatedBy = userId;
-                await _subscriptionRepository.UpdateAsync(subscription);
+                return new ResponseBase<SubscriptionDto>(resultDto, "Cập nhật gói dịch vụ thành công.");
             }
-
-            var updatedConfig = DeserializeConfig(subscription.FeaturesConfig);
-            var resultDto = new SubscriptionDto
+            catch (Exception)
             {
-                Id = subscription.Id,
-                Name = subscription.Name,
-                Price = subscription.Price,
-                DurationDays = subscription.DurationDays,
-                FeaturesConfig = updatedConfig,
-                Status = subscription.Status,
-                CreatedBy = subscription.CreatedBy,
-                UpdatedBy = subscription.UpdatedBy,
-                CreatedAt = subscription.CreatedAt,
-                UpdatedAt = subscription.UpdatedAt,
-                IsUsed = isUsed
-            };
-
-            return new ResponseBase<SubscriptionDto>(resultDto, "Cập nhật gói dịch vụ thành công.");
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task<ResponseBase<SubscriptionDto>> UpdateStatusAsync(int id, SubscriptionStatus status, Guid userId)

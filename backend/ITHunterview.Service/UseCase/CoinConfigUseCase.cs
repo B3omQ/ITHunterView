@@ -1,63 +1,58 @@
 using System;
 using System.Collections.Generic;
-using System.Text.Json;
+using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.CoinConfig;
-using ITHunterview.Service.Interface.Persistence;
+using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.UseCase;
 
 namespace ITHunterview.Service.UseCase
 {
     public class CoinConfigUseCase : ICoinConfigUseCase
     {
-        private readonly ISystemConfigRepository _configRepository;
-        private const string FeatureCostsKey = "candidate_coin_feature_costs";
-        private const string PackagesKey = "candidate_coin_packages";
+        private readonly ITHunterviewContext _context;
 
-        public CoinConfigUseCase(ISystemConfigRepository configRepository)
+        public CoinConfigUseCase(ITHunterviewContext context)
         {
-            _configRepository = configRepository;
+            _context = context;
         }
 
         public async Task<ResponseBase<UpdateCoinConfigDto>> GetCoinConfigAsync()
         {
             var result = new UpdateCoinConfigDto();
 
-            // Lấy chi phí tính năng
-            var featureCostConfig = await _configRepository.GetByKeyAsync(FeatureCostsKey);
-            if (featureCostConfig != null && !string.IsNullOrEmpty(featureCostConfig.ConfigValue))
+            // 1. Lấy chi phí tính năng từ bảng coin_features
+            var dbFeatures = await _context.CoinFeatures.AsNoTracking().ToListAsync();
+            result.FeatureCosts = new CoinFeatureCostsDto
             {
-                try
-                {
-                    result.FeatureCosts = JsonSerializer.Deserialize<CoinFeatureCostsDto>(featureCostConfig.ConfigValue, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? GetDefaultFeatureCosts();
-                }
-                catch
-                {
-                    result.FeatureCosts = GetDefaultFeatureCosts();
-                }
-            }
-            else
-            {
-                result.FeatureCosts = GetDefaultFeatureCosts();
-            }
+                CvJdMatching = dbFeatures.FirstOrDefault(f => f.FeatureKey == "CvJdMatching")?.CoinCost ?? 2,
+                MockInterview = dbFeatures.FirstOrDefault(f => f.FeatureKey == "MockInterview")?.CoinCost ?? 10,
+                CvOptimize = dbFeatures.FirstOrDefault(f => f.FeatureKey == "CvOptimize")?.CoinCost ?? 3
+            };
 
-            // Lấy danh sách gói nạp coin
-            var packagesConfig = await _configRepository.GetByKeyAsync(PackagesKey);
-            if (packagesConfig != null && !string.IsNullOrEmpty(packagesConfig.ConfigValue))
+            // 2. Lấy danh sách gói nạp coin từ bảng coin_packages
+            var dbPackages = await _context.CoinPackages
+                .AsNoTracking()
+                .OrderBy(p => p.Price)
+                .ToListAsync();
+
+            if (dbPackages.Count > 0)
             {
-                try
+                result.Packages = dbPackages.Select(p => new CoinPackageDto
                 {
-                    result.Packages = JsonSerializer.Deserialize<List<CoinPackageDto>>(packagesConfig.ConfigValue, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? GetDefaultPackages();
-                }
-                catch
-                {
-                    result.Packages = GetDefaultPackages();
-                }
+                    Id = p.Id.ToString("D"),
+                    Name = p.Name,
+                    Coins = p.Coins,
+                    Price = p.Price,
+                    IsActive = p.IsActive
+                }).ToList();
             }
             else
             {
+                // Fallback default packages if DB is empty
                 result.Packages = GetDefaultPackages();
             }
 
@@ -88,39 +83,97 @@ namespace ITHunterview.Service.UseCase
                     return new ResponseBase<UpdateCoinConfigDto>("Giá của gói nạp phải lớn hơn 0");
             }
 
-            // Serialize và lưu cấu hình chi phí tính năng
-            var featureCostJson = JsonSerializer.Serialize(dto.FeatureCosts);
-            var featureCostConfig = new SystemConfigs
+            using (var transaction = await _context.Database.BeginTransactionAsync())
             {
-                ConfigKey = FeatureCostsKey,
-                ConfigValue = featureCostJson,
-                Description = "Cấu hình chi phí Coin cho các tính năng của Candidate",
-                UpdatedBy = actorUserId
-            };
-            await _configRepository.SaveAsync(featureCostConfig);
+                try
+                {
+                    // 1. Cập nhật CoinFeatures
+                    var existingFeatures = await _context.CoinFeatures.ToListAsync();
+                    var featuresToUpdate = new List<(string Key, int Cost, string Desc)>
+                    {
+                        ("CvJdMatching", dto.FeatureCosts.CvJdMatching, "So khớp CV-JD AI"),
+                        ("MockInterview", dto.FeatureCosts.MockInterview, "Phỏng vấn thử AI Mock Interview"),
+                        ("CvOptimize", dto.FeatureCosts.CvOptimize, "Tối ưu hóa CV AI")
+                    };
 
-            // Serialize và lưu cấu hình gói nạp Coin
-            var packagesJson = JsonSerializer.Serialize(dto.Packages);
-            var packagesConfig = new SystemConfigs
-            {
-                ConfigKey = PackagesKey,
-                ConfigValue = packagesJson,
-                Description = "Cấu hình danh sách các gói nạp Coin cho Candidate",
-                UpdatedBy = actorUserId
-            };
-            await _configRepository.SaveAsync(packagesConfig);
+                    foreach (var f in featuresToUpdate)
+                    {
+                        var dbFeature = existingFeatures.FirstOrDefault(x => x.FeatureKey == f.Key);
+                        if (dbFeature != null)
+                        {
+                            dbFeature.CoinCost = f.Cost;
+                            dbFeature.Description = f.Desc;
+                            dbFeature.UpdatedBy = actorUserId;
+                            dbFeature.UpdatedAt = DateTime.UtcNow;
+                            _context.CoinFeatures.Update(dbFeature);
+                        }
+                        else
+                        {
+                            var newFeature = new CoinFeatures
+                            {
+                                FeatureKey = f.Key,
+                                CoinCost = f.Cost,
+                                Description = f.Desc,
+                                UpdatedBy = actorUserId,
+                                UpdatedAt = DateTime.UtcNow
+                            };
+                            _context.CoinFeatures.Add(newFeature);
+                        }
+                    }
+
+                    // 2. Cập nhật CoinPackages
+                    var existingPackages = await _context.CoinPackages.ToListAsync();
+                    var dtoPackageIds = dto.Packages.Select(p => Guid.Parse(p.Id)).ToList();
+
+                    // Xóa các gói không có trong danh sách cập nhật mới
+                    var toDelete = existingPackages.Where(p => !dtoPackageIds.Contains(p.Id)).ToList();
+                    if (toDelete.Any())
+                    {
+                        _context.CoinPackages.RemoveRange(toDelete);
+                    }
+
+                    // Cập nhật hoặc thêm mới các gói nạp
+                    foreach (var pkgDto in dto.Packages)
+                    {
+                        var pkgId = Guid.Parse(pkgDto.Id);
+                        var dbPkg = existingPackages.FirstOrDefault(p => p.Id == pkgId);
+                        if (dbPkg != null)
+                        {
+                            dbPkg.Name = pkgDto.Name;
+                            dbPkg.Coins = pkgDto.Coins;
+                            dbPkg.Price = pkgDto.Price;
+                            dbPkg.IsActive = pkgDto.IsActive;
+                            dbPkg.UpdatedBy = actorUserId;
+                            dbPkg.UpdatedAt = DateTime.UtcNow;
+                            _context.CoinPackages.Update(dbPkg);
+                        }
+                        else
+                        {
+                            var newPkg = new CoinPackages
+                            {
+                                Id = pkgId,
+                                Name = pkgDto.Name,
+                                Coins = pkgDto.Coins,
+                                Price = pkgDto.Price,
+                                IsActive = pkgDto.IsActive,
+                                UpdatedBy = actorUserId,
+                                UpdatedAt = DateTime.UtcNow
+                            };
+                            _context.CoinPackages.Add(newPkg);
+                        }
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                }
+                catch (Exception)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
 
             return new ResponseBase<UpdateCoinConfigDto>(dto, "Cập nhật cấu hình Coin thành công");
-        }
-
-        private CoinFeatureCostsDto GetDefaultFeatureCosts()
-        {
-            return new CoinFeatureCostsDto
-            {
-                CvJdMatching = 2,
-                MockInterview = 10,
-                CvOptimize = 3
-            };
         }
 
         private List<CoinPackageDto> GetDefaultPackages()

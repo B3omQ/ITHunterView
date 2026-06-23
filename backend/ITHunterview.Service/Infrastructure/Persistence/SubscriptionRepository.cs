@@ -36,6 +36,18 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             return _context.Subscriptions.FirstOrDefaultAsync(x => x.Id == id);
         }
 
+        public async Task<Subscriptions?> GetByIdForUpdateAsync(int id)
+        {
+            return await _context.Subscriptions
+                .FromSqlRaw("SELECT * FROM subscriptions WHERE id = {0} FOR UPDATE", id)
+                .SingleOrDefaultAsync();
+        }
+
+        public async Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginTransactionAsync()
+        {
+            return await _context.Database.BeginTransactionAsync();
+        }
+
         public async Task<List<Subscriptions>> GetAllAsync(string? role, SubscriptionStatus? status)
         {
             var query = _context.Subscriptions.AsNoTracking();
