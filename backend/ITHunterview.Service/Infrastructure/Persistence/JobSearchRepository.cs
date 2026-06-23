@@ -59,6 +59,17 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 .Take(query.PageSize)
                 .ToListAsync();
 
+            var pagedJobIds = pagedResults.Select(x => x.job.Id).ToList();
+
+            var jobSkills = await (from jsr in _context.JobSkillRequirements
+                                   join s in _context.Skills on jsr.SkillId equals s.Id
+                                   where pagedJobIds.Contains(jsr.JobId)
+                                   select new { jsr.JobId, s.Name })
+                                  .ToListAsync();
+            
+            var skillLookup = jobSkills.GroupBy(x => x.JobId)
+                                       .ToDictionary(g => g.Key, g => g.Select(x => x.Name).ToList());
+
             var jobCards = pagedResults.Select(x => new JobCardDto
             {
                 Id = x.job.Id,
@@ -71,14 +82,14 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 Location = x.job.Location,
                 JobType = x.job.JobType.ToString().ToLower(), // as requested like full_time
                 PublishedAt = x.job.PublishedAt,
-                IsSaved = false 
+                IsSaved = false,
+                Skills = skillLookup.ContainsKey(x.job.Id) ? skillLookup[x.job.Id] : new List<string>()
             }).ToList();
 
-            if (userId.HasValue && jobCards.Any())
+            if (userId.HasValue && pagedJobIds.Any())
             {
-                var jobIds = jobCards.Select(j => j.Id).ToList();
                 var savedJobIds = await _context.UserSavedJobs
-                    .Where(usj => usj.UserId == userId.Value && jobIds.Contains(usj.JobId))
+                    .Where(usj => usj.UserId == userId.Value && pagedJobIds.Contains(usj.JobId))
                     .Select(usj => usj.JobId)
                     .ToListAsync();
 
