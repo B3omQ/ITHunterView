@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useCoinConfig, useUpdateCoinConfig } from '@/hooks/useSubscription';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -90,10 +90,10 @@ export function CoinConfigTab() {
   const { data, isLoading } = useCoinConfig();
   const updateMutation = useUpdateCoinConfig();
 
-  // Refs cho form chi phí AI nhằm tránh re-render khi gõ phím
-  const cvJdMatchingRef = useRef<HTMLInputElement>(null);
-  const mockInterviewRef = useRef<HTMLInputElement>(null);
-  const cvOptimizeRef = useRef<HTMLInputElement>(null);
+  // State chi phí AI có kiểm soát (Controlled state)
+  const [cvJdMatching, setCvJdMatching] = useState<number>(2);
+  const [mockInterview, setMockInterview] = useState<number>(10);
+  const [cvOptimize, setCvOptimize] = useState<number>(3);
 
   // State danh sách các gói nạp coin
   const [packages, setPackages] = useState<CoinPackageDto[]>([]);
@@ -102,15 +102,9 @@ export function CoinConfigTab() {
   useEffect(() => {
     if (data?.data) {
       const config = data.data;
-      if (cvJdMatchingRef.current) {
-        cvJdMatchingRef.current.value = String(config.featureCosts?.cvJdMatching ?? 2);
-      }
-      if (mockInterviewRef.current) {
-        mockInterviewRef.current.value = String(config.featureCosts?.mockInterview ?? 10);
-      }
-      if (cvOptimizeRef.current) {
-        cvOptimizeRef.current.value = String(config.featureCosts?.cvOptimize ?? 3);
-      }
+      setCvJdMatching(config.featureCosts?.cvJdMatching ?? 2);
+      setMockInterview(config.featureCosts?.mockInterview ?? 10);
+      setCvOptimize(config.featureCosts?.cvOptimize ?? 3);
       setPackages(config.packages || []);
     }
   }, [data]);
@@ -146,9 +140,9 @@ export function CoinConfigTab() {
 
   // Xử lý submit lưu cấu hình lên API
   const handleSave = () => {
-    const cvJdMatchingCost = Number(cvJdMatchingRef.current?.value ?? 0);
-    const mockInterviewCost = Number(mockInterviewRef.current?.value ?? 0);
-    const cvOptimizeCost = Number(cvOptimizeRef.current?.value ?? 0);
+    const cvJdMatchingCost = cvJdMatching;
+    const mockInterviewCost = mockInterview;
+    const cvOptimizeCost = cvOptimize;
 
     // Validate cơ bản
     if (cvJdMatchingCost < 0 || mockInterviewCost < 0 || cvOptimizeCost < 0) {
@@ -227,7 +221,8 @@ export function CoinConfigTab() {
                 <Input
                   type="number"
                   min="0"
-                  ref={cvJdMatchingRef}
+                  value={cvJdMatching}
+                  onChange={(e) => setCvJdMatching(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="pr-12"
                 />
                 <span className="absolute right-3 text-xs font-semibold text-neutral-400">Coin</span>
@@ -240,7 +235,8 @@ export function CoinConfigTab() {
                 <Input
                   type="number"
                   min="0"
-                  ref={mockInterviewRef}
+                  value={mockInterview}
+                  onChange={(e) => setMockInterview(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="pr-12"
                 />
                 <span className="absolute right-3 text-xs font-semibold text-neutral-400">Coin</span>
@@ -253,7 +249,8 @@ export function CoinConfigTab() {
                 <Input
                   type="number"
                   min="0"
-                  ref={cvOptimizeRef}
+                  value={cvOptimize}
+                  onChange={(e) => setCvOptimize(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="pr-12"
                 />
                 <span className="absolute right-3 text-xs font-semibold text-neutral-400">Coin</span>
