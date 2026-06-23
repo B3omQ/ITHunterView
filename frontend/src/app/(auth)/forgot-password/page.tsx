@@ -95,7 +95,6 @@ export default function ForgotPasswordPage() {
             </>
           ) : (
             <>
-              {/* Success state */}
               <div className="w-12 h-12 rounded-xl bg-green-500/15 flex items-center justify-center mb-5">
                 <CheckCircle2 size={22} className="text-green-400" />
               </div>

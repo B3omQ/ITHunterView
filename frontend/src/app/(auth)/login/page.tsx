@@ -164,7 +164,7 @@ function LoginForm() {
                   Password
                 </label>
                 <Link
-                  href="/auth/forgot-password"
+                  href="/forgot-password"
                   className="text-xs text-primary hover:text-primary/80 transition-colors"
                 >
                   Forgot password?
@@ -229,7 +229,7 @@ function LoginForm() {
           {/* Footer */}
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
-            <Link href="/auth/register" className="text-primary hover:text-primary/80 font-medium transition-colors">
+            <Link href="/register" className="text-primary hover:text-primary/80 font-medium transition-colors">
               Sign up
             </Link>
           </p>

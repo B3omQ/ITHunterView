@@ -60,7 +60,7 @@ export default function ResetPasswordPage() {
           <p className="text-sm text-muted-foreground mb-5">
             This password reset link is invalid or has expired.
           </p>
-          <Link href="/auth/forgot-password" className="text-primary hover:text-primary/80 text-sm">
+          <Link href="/forgot-password" className="text-primary hover:text-primary/80 text-sm">
             Request a new link →
           </Link>
         </div>
