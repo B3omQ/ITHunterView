@@ -15,6 +15,12 @@ namespace ITHunterview.Service.Service
 
         public CloudinaryService(IOptions<CloudinarySettings> config)
         {
+            if (string.IsNullOrEmpty(config.Value.CloudName) || config.Value.CloudName == "your-cloud-name")
+            {
+                // Bypassed for local testing
+                return;
+            }
+
             var acc = new Account(
                 config.Value.CloudName,
                 config.Value.ApiKey,
@@ -25,6 +31,12 @@ namespace ITHunterview.Service.Service
 
         public async Task<string> UploadFileAsync(Stream fileStream, string fileName, string folderName)
         {
+            // Tạm thời trả về link ảo nếu chưa cài đặt Cloudinary, không ảnh hưởng đến code gốc bên dưới
+            if (_cloudinary == null)
+            {
+                return $"https://dummyimage.com/cv-mock/{folderName}/{fileName}";
+            }
+
             if (fileStream == null || fileStream.Length == 0)
             {
                 throw new ArgumentException("File is empty or null");

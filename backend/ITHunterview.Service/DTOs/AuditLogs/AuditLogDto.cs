@@ -1,8 +1,8 @@
 using System;
 
-namespace ITHunterview.Service.DTOs.UserGovernance
+namespace ITHunterview.Service.DTOs.AuditLogs
 {
-    public class UserActivityLogDto
+    public class AuditLogDto
     {
         public Guid Id { get; set; }
         public Guid? UserId { get; set; }
@@ -14,5 +14,10 @@ namespace ITHunterview.Service.DTOs.UserGovernance
         public string IpAddress { get; set; } = string.Empty;
         public string UserAgent { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
+        
+        // Trực quan hóa dữ liệu kiểm toán CUD
+        public string? TableName { get; set; }
+        public string? OperationType { get; set; }
+        public string? SnapshotDiff { get; set; }
     }
 }

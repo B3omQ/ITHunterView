@@ -17,12 +17,14 @@ namespace ITHunterview.Service.UseCase
         private readonly IUserRepository _userRepository;
         private readonly ITokenRepository _tokenRepository;
         private readonly IMemoryCache _cache;
-
-        public UserGovernanceUseCase(IUserRepository userRepository, ITokenRepository tokenRepository, IMemoryCache cache)
+        private readonly IAuditLogRepository _auditLogRepository;
+ 
+        public UserGovernanceUseCase(IAuditLogRepository auditLogRepository,IUserRepository userRepository, ITokenRepository tokenRepository, IMemoryCache cache)
         {
             _userRepository = userRepository;
             _tokenRepository = tokenRepository;
             _cache = cache;
+            _auditLogRepository = auditLogRepository;
         }
 
         public async Task<ResponseBase<PagedResult<UserDto>>> GetPagedUsersAsync(int page, int pageSize, string? search, int? roleId, UserStatus? status)
@@ -55,6 +57,7 @@ namespace ITHunterview.Service.UseCase
             var result = new PagedResult<UserDto>
             {
                 Items = dtos,
+                Total = total,
                 TotalItems = total,
                 Page = page,
                 PageSize = pageSize
@@ -320,43 +323,6 @@ namespace ITHunterview.Service.UseCase
             }
         }
 
-        public async Task<ResponseBase<PagedResult<UserActivityLogDto>>> GetPagedActivityLogsAsync(
-            int page, 
-            int pageSize, 
-            string? search, 
-            ActivityLogCategory? category, 
-            ActivityLogStatus? status)
-        {
-            if (page < 1) page = 1;
-            if (pageSize < 1) pageSize = 10;
-
-            var (items, total) = await _userRepository.GetPagedActivityLogsAsync(page, pageSize, search, category, status);
-
-            var dtos = items.Select(l => new UserActivityLogDto
-            {
-                Id = l.Id,
-                UserId = l.UserId,
-                ActorRole = l.ActorRole,
-                ActionCategory = l.ActionCategory.ToString(),
-                ActorEmail = l.ActorEmail,
-                Action = l.Action,
-                Status = l.Status.ToString(),
-                IpAddress = l.IpAddress,
-                UserAgent = l.UserAgent,
-                CreatedAt = l.CreatedAt
-            }).ToList();
-
-            var result = new PagedResult<UserActivityLogDto>
-            {
-                Items = dtos,
-                TotalItems = total,
-                Page = page,
-                PageSize = pageSize
-            };
-
-            return new ResponseBase<PagedResult<UserActivityLogDto>>(result);
-        }
-
         public async Task<UserStatus?> GetUserStatusAsync(Guid userId)
         {
             var user = await _userRepository.GetUserByIdAsync(userId);
@@ -387,7 +353,7 @@ namespace ITHunterview.Service.UseCase
                 CreatedAt = DateTime.UtcNow
             };
 
-            await _userRepository.AddActivityLogAsync(log);
+            await _auditLogRepository.AddActivityLogAsync(log);
         }
     }
 }

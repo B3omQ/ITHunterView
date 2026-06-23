@@ -39,5 +39,13 @@ namespace ITHunterview.Domain.Entities
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }
 
+        [Column("table_name")]
+        public string? TableName { get; set; }
+
+        [Column("operation_type")]
+        public string? OperationType { get; set; }
+
+        [Column("snapshot_diff")]
+        public string? SnapshotDiff { get; set; }
     }
 }

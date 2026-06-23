@@ -1,0 +1,510 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import {
+  Search,
+  Clock,
+  Database,
+  Trash2,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Shield,
+  AlertTriangle,
+  CheckCircle,
+  RefreshCw,
+} from 'lucide-react';
+import { useAuditLogs, usePurgeAuditLogs } from '@/hooks/useAuditLogs';
+import { AuditLogDto } from '@/types/audit-log.types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { LogDetailsModal } from './components/log-details-modal';
+import { PurgeModal } from './components/purge-modal';
+
+export default function AuditLogsPage() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selectedOperation, setSelectedOperation] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+
+  // Date filter (Default: Last 7 days)
+  const getPastDateStr = (daysAgo: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    return d.toISOString().split('T')[0];
+  };
+  const getTodayStr = () => new Date().toISOString().split('T')[0];
+
+  const [startDateStr, setStartDateStr] = useState<string>(getPastDateStr(7));
+  const [endDateStr, setEndDateStr] = useState<string>(getTodayStr());
+  const [dateError, setDateError] = useState<string>('');
+
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
+  // Selected Log for detail Modal
+  const [selectedLog, setSelectedLog] = useState<AuditLogDto | null>(null);
+  const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
+  const [purgeDays, setPurgeDays] = useState(30);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'warning';
+  } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
+    setToast({ message, type });
+  };
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Validate dates
+  useEffect(() => {
+    if (startDateStr && endDateStr) {
+      const start = new Date(startDateStr);
+      const end = new Date(endDateStr);
+      const diffTime = end.getTime() - start.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 0) {
+        setDateError('Ngày bắt đầu không được sau ngày kết thúc.');
+      } else if (diffDays > 30) {
+        setDateError(
+          'Khoảng thời gian quá lớn. Vui lòng giới hạn phạm vi tìm kiếm trong vòng 30 ngày để đảm bảo hiệu năng.'
+        );
+      } else {
+        setDateError('');
+      }
+    } else {
+      setDateError('');
+    }
+  }, [startDateStr, endDateStr]);
+
+  // Formats Dates to ISO for API
+  const startIso = startDateStr ? new Date(`${startDateStr}T00:00:00Z`).toISOString() : undefined;
+  const endIso = endDateStr ? new Date(`${endDateStr}T23:59:59Z`).toISOString() : undefined;
+
+  // Fetch data
+  const { data, isLoading, isError, refetch } = useAuditLogs({
+    page,
+    pageSize,
+    search: debouncedSearch || undefined,
+    operationType: selectedOperation || undefined,
+    category: selectedCategory || undefined,
+    startDate: dateError ? undefined : startIso,
+    endDate: dateError ? undefined : endIso,
+  });
+
+  const purgeMutation = usePurgeAuditLogs();
+
+  const handlePurgeSubmit = (days: number) => {
+    if (days < 1) {
+      showToast('Số ngày lưu trữ tối thiểu phải là 1 ngày.', 'error');
+      return;
+    }
+
+    purgeMutation.mutate(days, {
+      onSuccess: (res) => {
+        if (res.success) {
+          showToast(res.message || `Đã dọn dẹp logs cũ hơn ${days} ngày thành công.`, 'success');
+          setIsPurgeModalOpen(false);
+        } else {
+          showToast(res.message || 'Có lỗi xảy ra khi dọn dẹp logs.', 'error');
+        }
+      },
+      onError: (err: any) => {
+        showToast(
+          err.response?.data?.message || 'Có lỗi xảy ra khi gọi API dọn dẹp logs.',
+          'error'
+        );
+      },
+    });
+  };
+
+  const getOperationBadgeColor = (op: string | null) => {
+    switch (op?.toUpperCase()) {
+      case 'CREATE':
+        return 'bg-emerald-500/5 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20';
+      case 'UPDATE':
+        return 'bg-blue-500/5 text-blue-700 dark:text-blue-400 border border-blue-500/20';
+      case 'DELETE':
+        return 'bg-rose-500/5 text-rose-700 dark:text-rose-400 border border-rose-500/20';
+      default:
+        return 'bg-muted text-muted-foreground border border-border';
+    }
+  };
+
+  const getCategoryBadgeColor = (cat: string) => {
+    switch (cat.toUpperCase()) {
+      case 'DATA_MUTATION':
+        return 'bg-amber-500/5 text-amber-700 dark:text-amber-400 border border-amber-500/20';
+      case 'SECURITY':
+        return 'bg-violet-500/5 text-violet-700 dark:text-violet-400 border border-violet-500/20';
+      case 'ACCESS':
+        return 'bg-cyan-500/5 text-cyan-700 dark:text-cyan-400 border border-cyan-500/20';
+      default:
+        return 'bg-muted text-muted-foreground border border-border';
+    }
+  };
+
+  const totalPages = data?.data?.totalPages || 0;
+  const items = data?.data?.items || [];
+  const totalItems = data?.data?.total || 0;
+
+  return (
+    <div className="min-h-screen bg-background text-foreground p-6">
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${
+              toast.type === 'success'
+                ? 'bg-emerald-500/5 text-emerald-700 dark:text-emerald-400 border-emerald-500/20'
+                : toast.type === 'error'
+                ? 'bg-rose-500/5 text-rose-700 dark:text-rose-400 border-rose-500/20'
+                : 'bg-amber-500/5 text-amber-700 dark:text-amber-400 border-amber-500/20'
+            }`}
+          >
+            {toast.type === 'success' ? (
+              <CheckCircle className="h-5 w-5 text-emerald-500" />
+            ) : (
+              <AlertTriangle className="h-5 w-5 text-rose-500" />
+            )}
+            <span className="text-sm font-medium">{toast.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <Shield className="h-7 w-7 text-primary" />
+            Platform Safety & Audit Logs
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Ghi nhận và giám sát hành vi biến đổi dữ liệu (CUD) và các sự kiện an ninh cốt lõi của
+            hệ thống.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => refetch()}
+            className="text-muted-foreground hover:text-foreground cursor-pointer"
+            title="Làm mới dữ liệu"
+          >
+            <RefreshCw className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => setIsPurgeModalOpen(true)}
+            className="font-medium cursor-pointer"
+          >
+            <Trash2 className="h-4 w-4" />
+            Dọn dẹp logs
+          </Button>
+        </div>
+      </div>
+
+      {/* Filters Board */}
+      <div className="bg-card border border-border rounded-xl p-5 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Keyword Search */}
+          <div className="relative flex items-center">
+            <Search className="absolute left-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Email, hành động, bảng, IP..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 cursor-text"
+            />
+          </div>
+
+          {/* Operation type */}
+          <div>
+            <select
+              value={selectedOperation}
+              onChange={(e) => {
+                setSelectedOperation(e.target.value);
+                setPage(1);
+              }}
+              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm text-foreground transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+            >
+              <option className="bg-background text-foreground" value="">
+                -- Mọi thao tác (CUD) --
+              </option>
+              <option className="bg-background text-foreground" value="CREATE">
+                CREATE (Tạo mới)
+              </option>
+              <option className="bg-background text-foreground" value="UPDATE">
+                UPDATE (Sửa đổi)
+              </option>
+              <option className="bg-background text-foreground" value="DELETE">
+                DELETE (Xoá bỏ)
+              </option>
+            </select>
+          </div>
+
+          {/* Category */}
+          <div>
+            <select
+              value={selectedCategory}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value);
+                setPage(1);
+              }}
+              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm text-foreground transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+            >
+              <option className="bg-background text-foreground" value="">
+                -- Mọi danh mục --
+              </option>
+              <option className="bg-background text-foreground" value="DATA_MUTATION">
+                DATA_MUTATION (Thay đổi dữ liệu)
+              </option>
+              <option className="bg-background text-foreground" value="SECURITY">
+                SECURITY (Bảo mật)
+              </option>
+              <option className="bg-background text-foreground" value="ACCESS">
+                ACCESS (Truy cập)
+              </option>
+              <option className="bg-background text-foreground" value="SYSTEM">
+                SYSTEM (Hệ thống)
+              </option>
+            </select>
+          </div>
+
+          {/* Time Filter - Start Date */}
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="start-date-input" className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
+              <Clock className="h-3 w-3" /> Ngày bắt đầu
+            </Label>
+            <Input
+              id="start-date-input"
+              type="date"
+              value={startDateStr}
+              onChange={(e) => {
+                setStartDateStr(e.target.value);
+                setPage(1);
+              }}
+              className="cursor-text"
+            />
+          </div>
+
+          {/* Time Filter - End Date */}
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="end-date-input" className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
+              <Clock className="h-3 w-3" /> Ngày kết thúc
+            </Label>
+            <Input
+              id="end-date-input"
+              type="date"
+              value={endDateStr}
+              onChange={(e) => {
+                setEndDateStr(e.target.value);
+                setPage(1);
+              }}
+              className="cursor-text"
+            />
+          </div>
+        </div>
+
+        {dateError && (
+          <div className="flex items-center gap-2 mt-3 text-amber-600 dark:text-amber-400 text-xs">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>{dateError}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Main Table Content */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <Loader2 className="h-10 w-10 text-primary animate-spin" />
+            <span className="text-muted-foreground text-sm">
+              Đang tải danh sách logs kiểm toán...
+            </span>
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-rose-500">
+            <AlertTriangle className="h-10 w-10 text-rose-500" />
+            <span className="text-sm font-medium">Có lỗi xảy ra khi tải dữ liệu log.</span>
+            <Button
+              variant="outline"
+              onClick={() => refetch()}
+              className="text-xs font-semibold cursor-pointer"
+            >
+              Thử lại
+            </Button>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+            <Database className="h-12 w-12 text-muted-foreground/60 mb-3" />
+            <span className="text-sm">Không tìm thấy bất kỳ logs nào thoả mãn bộ lọc.</span>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead className="bg-muted/40 text-muted-foreground uppercase text-xs font-bold border-b border-border">
+                  <tr>
+                    <th className="p-4">Thời gian (UTC)</th>
+                    <th className="p-4">Actor (Email / Role)</th>
+                    <th className="p-4 text-center">Thao tác</th>
+                    <th className="p-4">Hành động</th>
+                    <th className="p-4">Đối tượng (Bảng)</th>
+                    <th className="p-4">Địa chỉ IP</th>
+                    <th className="p-4 text-center">Chi tiết</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60 text-xs">
+                  {items.map((log: AuditLogDto) => (
+                    <tr key={log.id} className="hover:bg-muted/10 transition-colors group">
+                      <td className="p-4 font-mono text-[11px] text-muted-foreground">
+                        {new Date(log.createdAt).toISOString().replace('T', ' ').substring(0, 19)}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex flex-col">
+                          <span className="text-foreground font-medium">{log.actorEmail}</span>
+                          <span className="text-[10px] text-primary font-semibold uppercase mt-0.5 tracking-wider">
+                            {log.actorRole}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-center">
+                        {log.operationType ? (
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold tracking-wider ${getOperationBadgeColor(
+                              log.operationType
+                            )}`}
+                          >
+                            {log.operationType}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className="text-foreground font-medium">{log.action}</span>
+                          <span
+                            className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium ${getCategoryBadgeColor(
+                              log.actionCategory
+                            )}`}
+                          >
+                            {log.actionCategory}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        {log.tableName ? (
+                          <span className="font-mono text-[10px] bg-muted px-2 py-1 rounded text-muted-foreground border border-border">
+                            {log.tableName}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground italic text-[11px]">
+                            Không áp dụng
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-4 font-mono text-muted-foreground">{log.ipAddress}</td>
+                      <td className="p-4 text-center">
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          onClick={() => setSelectedLog(log)}
+                          className="text-muted-foreground hover:text-foreground cursor-pointer"
+                          title="Xem chi tiết"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination UI */}
+            <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-card">
+              <span className="text-xs text-muted-foreground">
+                Hiển thị{' '}
+                <span className="font-semibold text-foreground">
+                  {(page - 1) * pageSize + 1}
+                </span>{' '}
+                -{' '}
+                <span className="font-semibold text-foreground">
+                  {Math.min(page * pageSize, totalItems)}
+                </span>{' '}
+                trong tổng số{' '}
+                <span className="font-semibold text-foreground">{totalItems}</span> bản ghi logs
+              </span>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                  disabled={page === 1}
+                  className="cursor-pointer"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs text-foreground font-medium px-2">
+                  Trang {page} / {totalPages || 1}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                  disabled={page >= totalPages}
+                  className="cursor-pointer"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Log Detail Modal */}
+      <LogDetailsModal
+        log={selectedLog}
+        onClose={() => setSelectedLog(null)}
+        getOperationBadgeColor={getOperationBadgeColor}
+        getCategoryBadgeColor={getCategoryBadgeColor}
+      />
+
+      {/* Purge Confirmation Modal */}
+      <PurgeModal
+        isOpen={isPurgeModalOpen}
+        onClose={() => setIsPurgeModalOpen(false)}
+        onSubmit={handlePurgeSubmit}
+        isPending={purgeMutation.isPending}
+        purgeDays={purgeDays}
+        setPurgeDays={setPurgeDays}
+        getPastDateStr={getPastDateStr}
+      />
+    </div>
+  );
+}

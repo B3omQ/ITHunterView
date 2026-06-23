@@ -71,6 +71,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Master Data", href: APP_ROUTES.ADMIN.MASTER_DATA, icon: "Database" },
   { label: "Subscriptions", href: APP_ROUTES.ADMIN.SUBSCRIPTIONS, icon: "CreditCard" },
   { label: "Finance", href: APP_ROUTES.ADMIN.FINANCE, icon: "BarChart3" },
+  { label: "Platform Safety", href: APP_ROUTES.ADMIN.AUDIT_LOGS, icon: "Shield" },
   { label: "Notifications", href: APP_ROUTES.ADMIN.NOTIFICATIONS, icon: "Bell" },
   { label: "Settings", href: APP_ROUTES.ADMIN.SETTINGS, icon: "Settings" },
 ]
