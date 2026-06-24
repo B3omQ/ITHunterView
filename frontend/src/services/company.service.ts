@@ -12,6 +12,9 @@ export const companyService = {
   verifyCompanyLegal: (id: string, dto: VerifyCompanyDto) => 
     api.post<ApiResponse<Company>>(`/api/companies/${id}/verify`, dto).then(res => res.data.data),
 
+  submitUpdateRequest: (id: string, dto: VerifyCompanyDto) => 
+    api.post<ApiResponse<Company>>(`/api/companies/${id}/update-request`, dto).then(res => res.data.data),
+
   getPagedCompanies: (params: { page?: number; pageSize?: number; search?: string; status?: string }) =>
     api.get<ApiResponse<PaginatedResponse<Company>>>('/api/companies', { params }).then(res => res.data.data),
 

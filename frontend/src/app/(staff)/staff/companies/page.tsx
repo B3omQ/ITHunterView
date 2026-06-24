@@ -36,6 +36,7 @@ import {
 const STATUS_FILTERS = [
   { value: 'ALL', label: 'All' },
   { value: 'PENDING', label: 'Pending Review' },
+  { value: 'PENDING_UPDATE', label: 'Pending Update' },
   { value: 'VERIFIED', label: 'Verified' },
   { value: 'REJECTED', label: 'Rejected' }
 ];
@@ -56,6 +57,15 @@ export default function StaffCompaniesPage() {
     company: Company;
     targetStatus: 'VERIFIED' | 'REJECTED';
   } | null>(null);
+
+  const [rejectReasonInput, setRejectReasonInput] = useState('');
+
+  // Clear reject reason when modal closes
+  useEffect(() => {
+    if (!confirmAction) {
+      setRejectReasonInput('');
+    }
+  }, [confirmAction]);
 
   // Debounce search query
   useEffect(() => {
@@ -83,10 +93,18 @@ export default function StaffCompaniesPage() {
   const { mutateAsync: updateStatus, isPending: isUpdating } = useUpdateCompanyStatus();
 
   const handleStatusUpdate = async (companyId: string, status: 'VERIFIED' | 'REJECTED') => {
+    if (status === 'REJECTED' && !rejectReasonInput.trim()) {
+      toast.error('Please provide a reason for the rejection.');
+      return;
+    }
+
     try {
       await updateStatus({
         id: companyId,
-        dto: { status }
+        dto: { 
+          status,
+          rejectReason: status === 'REJECTED' ? rejectReasonInput.trim() : undefined
+        }
       });
       toast.success(
         status === 'VERIFIED' 
@@ -96,13 +114,46 @@ export default function StaffCompaniesPage() {
       
       // Update selected company status in detail modal if open
       if (selectedCompany && selectedCompany.id === companyId) {
-        setSelectedCompany({
-          ...selectedCompany,
-          status
-        });
+        if (selectedCompany.hasPendingChange) {
+          if (status === 'VERIFIED') {
+            setSelectedCompany({
+              ...selectedCompany,
+              name: selectedCompany.pendingName || selectedCompany.name,
+              taxCode: selectedCompany.pendingTaxCode || selectedCompany.taxCode,
+              headquartersAddress: selectedCompany.pendingHeadquartersAddress || selectedCompany.headquartersAddress,
+              verificationMethod: selectedCompany.pendingVerificationMethod || selectedCompany.verificationMethod,
+              verificationDocumentUrl: selectedCompany.pendingVerificationDocumentUrl || selectedCompany.verificationDocumentUrl,
+              hasPendingChange: false,
+              pendingName: undefined,
+              pendingTaxCode: undefined,
+              pendingHeadquartersAddress: undefined,
+              pendingVerificationMethod: undefined,
+              pendingVerificationDocumentUrl: undefined,
+              rejectReason: undefined
+            });
+          } else {
+            setSelectedCompany({
+              ...selectedCompany,
+              hasPendingChange: false,
+              pendingName: undefined,
+              pendingTaxCode: undefined,
+              pendingHeadquartersAddress: undefined,
+              pendingVerificationMethod: undefined,
+              pendingVerificationDocumentUrl: undefined,
+              rejectReason: rejectReasonInput.trim()
+            });
+          }
+        } else {
+          setSelectedCompany({
+            ...selectedCompany,
+            status,
+            rejectReason: status === 'REJECTED' ? rejectReasonInput.trim() : undefined
+          });
+        }
       }
       
       setConfirmAction(null);
+      setRejectReasonInput('');
     } catch (err) {
       toast.error('An error occurred while updating the company verification status.');
     }
@@ -265,7 +316,11 @@ export default function StaffCompaniesPage() {
                       {company.headquartersAddress || '-'}
                     </td>
                     <td className="px-4 py-4">
-                      <CompanyStatusBadge status={company.status} />
+                      <CompanyStatusBadge 
+                        status={company.status} 
+                        hasPendingChange={company.hasPendingChange} 
+                        rejectReason={company.rejectReason} 
+                      />
                     </td>
                     <td className="px-4 py-4 text-center">
                       <div className="flex items-center justify-center gap-2">
@@ -282,7 +337,7 @@ export default function StaffCompaniesPage() {
                           Details
                         </Button>
 
-                        {company.status === 'PENDING' && (
+                        {(company.status === 'PENDING' || company.hasPendingChange) && (
                           <>
                             <Button
                               variant="default"
@@ -390,73 +445,61 @@ export default function StaffCompaniesPage() {
                   <h3 className="font-bold text-lg text-foreground line-clamp-2">{selectedCompany.name}</h3>
                   <p className="text-xs text-muted-foreground mt-1">{selectedCompany.industry}</p>
                 </div>
-                <CompanyStatusBadge status={selectedCompany.status} />
+                <CompanyStatusBadge 
+                  status={selectedCompany.status} 
+                  hasPendingChange={selectedCompany.hasPendingChange} 
+                />
               </div>
 
               {/* Right Column: Detailed info */}
-              <div className="col-span-2 space-y-4 text-sm">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs text-muted-foreground font-semibold">Tax Code</label>
-                    <p className="font-mono font-medium text-foreground mt-0.5">{selectedCompany.taxCode || 'Not provided'}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground font-semibold">Company Size</label>
-                    <p className="font-medium text-foreground mt-0.5">{selectedCompany.companySize || 'Not provided'}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs text-muted-foreground font-semibold">Headquarters Address</label>
-                    <p className="font-medium text-foreground mt-0.5">{selectedCompany.headquartersAddress || 'Not provided'}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground font-semibold">Submitted By (Applicant)</label>
-                    <p className="font-medium text-foreground mt-0.5">
-                      {selectedCompany.createdByName ? (
-                        <span className="flex flex-col">
-                          <span className="font-semibold">{selectedCompany.createdByName}</span>
-                          <span className="text-xs text-muted-foreground">{selectedCompany.createdByEmail}</span>
-                        </span>
-                      ) : (
-                        'N/A'
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                {selectedCompany.website && (
-                  <div>
-                    <label className="text-xs text-muted-foreground font-semibold">Website</label>
-                    <p className="mt-0.5">
-                      <a
-                        href={selectedCompany.website.startsWith('http') ? selectedCompany.website : `https://${selectedCompany.website}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline inline-flex items-center gap-1 font-medium"
-                      >
-                        {selectedCompany.website}
-                        <ExternalLink size={12} />
-                      </a>
-                    </p>
-                  </div>
-                )}
-
-                <div>
-                  <label className="text-xs text-muted-foreground font-semibold">Description</label>
-                  <p className="text-muted-foreground text-xs mt-1 leading-relaxed max-h-[120px] overflow-y-auto pr-1">
-                    {selectedCompany.description || 'No description available.'}
-                  </p>
-                </div>
-
-                <div className="border-t border-border pt-4 space-y-3 bg-muted/30 p-3 rounded-xl border">
-                  <h4 className="font-bold text-xs text-foreground uppercase tracking-wider">Legal Documents & Verification</h4>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              {selectedCompany.hasPendingChange ? (
+                <div className="col-span-2 space-y-4 text-sm max-h-[450px] overflow-y-auto pr-2">
+                  <div className="grid grid-cols-2 gap-4 border-b border-border pb-2 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
                     <div>
-                      <span className="text-muted-foreground">Verification Method:</span>
-                      <p className="font-semibold text-foreground mt-0.5">
+                      <h4 className="font-bold text-xs text-muted-foreground uppercase tracking-wider">Current Verified Info</h4>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-xs text-primary uppercase tracking-wider">Requested Changes</h4>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 p-1">
+                    <div className={selectedCompany.name !== selectedCompany.pendingName ? "bg-rose-50/70 border border-rose-100 p-2.5 rounded-xl" : "p-2.5"}>
+                      <label className="text-xs text-muted-foreground font-semibold">Company Name</label>
+                      <p className="font-semibold text-foreground mt-0.5">{selectedCompany.name}</p>
+                    </div>
+                    <div className={selectedCompany.name !== selectedCompany.pendingName ? "bg-emerald-50/70 border border-emerald-100 p-2.5 rounded-xl" : "p-2.5"}>
+                      <label className="text-xs text-emerald-800 font-semibold">Company Name (Pending)</label>
+                      <p className="font-bold text-foreground mt-0.5">{selectedCompany.pendingName || selectedCompany.name}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 p-1">
+                    <div className={selectedCompany.taxCode !== selectedCompany.pendingTaxCode ? "bg-rose-50/70 border border-rose-100 p-2.5 rounded-xl" : "p-2.5"}>
+                      <label className="text-xs text-muted-foreground font-semibold">Tax Code</label>
+                      <p className="font-mono font-medium text-foreground mt-0.5">{selectedCompany.taxCode || 'Not provided'}</p>
+                    </div>
+                    <div className={selectedCompany.taxCode !== selectedCompany.pendingTaxCode ? "bg-emerald-50/70 border border-emerald-100 p-2.5 rounded-xl" : "p-2.5"}>
+                      <label className="text-xs text-emerald-800 font-semibold">Tax Code (Pending)</label>
+                      <p className="font-mono font-bold text-foreground mt-0.5">{selectedCompany.pendingTaxCode || selectedCompany.taxCode || 'Not provided'}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 p-1">
+                    <div className={selectedCompany.headquartersAddress !== selectedCompany.pendingHeadquartersAddress ? "bg-rose-50/70 border border-rose-100 p-2.5 rounded-xl" : "p-2.5"}>
+                      <label className="text-xs text-muted-foreground font-semibold">Headquarters Address</label>
+                      <p className="font-medium text-foreground mt-0.5">{selectedCompany.headquartersAddress || 'Not provided'}</p>
+                    </div>
+                    <div className={selectedCompany.headquartersAddress !== selectedCompany.pendingHeadquartersAddress ? "bg-emerald-50/70 border border-emerald-100 p-2.5 rounded-xl" : "p-2.5"}>
+                      <label className="text-xs text-emerald-800 font-semibold">Headquarters Address (Pending)</label>
+                      <p className="font-bold text-foreground mt-0.5">{selectedCompany.pendingHeadquartersAddress || selectedCompany.headquartersAddress || 'Not provided'}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 p-1">
+                    <div className={selectedCompany.verificationMethod !== selectedCompany.pendingVerificationMethod ? "bg-rose-50/70 border border-rose-100 p-2.5 rounded-xl" : "p-2.5"}>
+                      <label className="text-xs text-muted-foreground font-semibold">Verification Method</label>
+                      <p className="font-medium text-foreground mt-0.5">
                         {selectedCompany.verificationMethod === 'BUSINESS_REGISTRATION'
                           ? 'Business Registration License'
                           : selectedCompany.verificationMethod === 'POA_AND_ID'
@@ -464,9 +507,21 @@ export default function StaffCompaniesPage() {
                           : 'Not selected'}
                       </p>
                     </div>
+                    <div className={selectedCompany.verificationMethod !== selectedCompany.pendingVerificationMethod ? "bg-emerald-50/70 border border-emerald-100 p-2.5 rounded-xl" : "p-2.5"}>
+                      <label className="text-xs text-emerald-800 font-semibold">Verification Method (Pending)</label>
+                      <p className="font-bold text-foreground mt-0.5">
+                        {selectedCompany.pendingVerificationMethod === 'BUSINESS_REGISTRATION'
+                          ? 'Business Registration License'
+                          : selectedCompany.pendingVerificationMethod === 'POA_AND_ID'
+                          ? 'Power of Attorney & ID Card'
+                          : 'Not selected'}
+                      </p>
+                    </div>
+                  </div>
 
-                    <div>
-                      <span className="text-muted-foreground">Attached Document:</span>
+                  <div className="grid grid-cols-2 gap-4 p-2 bg-muted/40 rounded-xl border border-border">
+                    <div className="p-2">
+                      <label className="text-xs text-muted-foreground font-semibold">Verification Document</label>
                       <p className="mt-0.5">
                         {selectedCompany.verificationDocumentUrl ? (
                           <a
@@ -476,17 +531,150 @@ export default function StaffCompaniesPage() {
                             className="inline-flex items-center gap-1.5 text-primary hover:underline font-bold"
                           >
                             <FileText size={14} />
-                            <span>Download / View Document</span>
+                            <span>Original Doc</span>
                             <ExternalLink size={10} />
                           </a>
                         ) : (
-                          <span className="text-muted-foreground italic">No document uploaded</span>
+                          <span className="text-muted-foreground italic">No document</span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="p-2">
+                      <label className="text-xs text-emerald-800 font-semibold">Verification Document (Pending)</label>
+                      <p className="mt-0.5">
+                        {selectedCompany.pendingVerificationDocumentUrl ? (
+                          <a
+                            href={selectedCompany.pendingVerificationDocumentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-emerald-600 hover:underline font-bold"
+                          >
+                            <FileText size={14} />
+                            <span>Pending Doc</span>
+                            <ExternalLink size={10} />
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground italic">No pending document</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-border pt-4 grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-muted-foreground font-semibold">Company Size</label>
+                      <p className="font-medium text-foreground mt-0.5">{selectedCompany.companySize || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground font-semibold">Submitted By</label>
+                      <p className="font-medium text-foreground mt-0.5">
+                        {selectedCompany.createdByName ? (
+                          <span className="flex flex-col">
+                            <span className="font-semibold">{selectedCompany.createdByName}</span>
+                            <span className="text-xs text-muted-foreground">{selectedCompany.createdByEmail}</span>
+                          </span>
+                        ) : (
+                          'N/A'
                         )}
                       </p>
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="col-span-2 space-y-4 text-sm">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-muted-foreground font-semibold">Tax Code</label>
+                      <p className="font-mono font-medium text-foreground mt-0.5">{selectedCompany.taxCode || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground font-semibold">Company Size</label>
+                      <p className="font-medium text-foreground mt-0.5">{selectedCompany.companySize || 'Not provided'}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-muted-foreground font-semibold">Headquarters Address</label>
+                      <p className="font-medium text-foreground mt-0.5">{selectedCompany.headquartersAddress || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground font-semibold">Submitted By (Applicant)</label>
+                      <p className="font-medium text-foreground mt-0.5">
+                        {selectedCompany.createdByName ? (
+                          <span className="flex flex-col">
+                            <span className="font-semibold">{selectedCompany.createdByName}</span>
+                            <span className="text-xs text-muted-foreground">{selectedCompany.createdByEmail}</span>
+                          </span>
+                        ) : (
+                          'N/A'
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedCompany.website && (
+                    <div>
+                      <label className="text-xs text-muted-foreground font-semibold">Website</label>
+                      <p className="mt-0.5">
+                        <a
+                          href={selectedCompany.website.startsWith('http') ? selectedCompany.website : `https://${selectedCompany.website}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline inline-flex items-center gap-1 font-medium"
+                        >
+                          {selectedCompany.website}
+                          <ExternalLink size={12} />
+                        </a>
+                      </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-xs text-muted-foreground font-semibold">Description</label>
+                    <p className="text-muted-foreground text-xs mt-1 leading-relaxed max-h-[120px] overflow-y-auto pr-1">
+                      {selectedCompany.description || 'No description available.'}
+                    </p>
+                  </div>
+
+                  <div className="border-t border-border pt-4 space-y-3 bg-muted/30 p-3 rounded-xl border">
+                    <h4 className="font-bold text-xs text-foreground uppercase tracking-wider">Legal Documents & Verification</h4>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-muted-foreground">Verification Method:</span>
+                        <p className="font-semibold text-foreground mt-0.5">
+                          {selectedCompany.verificationMethod === 'BUSINESS_REGISTRATION'
+                            ? 'Business Registration License'
+                            : selectedCompany.verificationMethod === 'POA_AND_ID'
+                            ? 'Power of Attorney & ID Card'
+                            : 'Not selected'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <span className="text-muted-foreground">Attached Document:</span>
+                        <p className="mt-0.5">
+                          {selectedCompany.verificationDocumentUrl ? (
+                            <a
+                              href={selectedCompany.verificationDocumentUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-primary hover:underline font-bold"
+                            >
+                              <FileText size={14} />
+                              <span>Download / View Document</span>
+                              <ExternalLink size={10} />
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground italic">No document uploaded</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <DialogFooter className="flex sm:justify-between items-center border-t border-border pt-4">
@@ -494,7 +682,7 @@ export default function StaffCompaniesPage() {
                 Close
               </Button>
               
-              {selectedCompany.status === 'PENDING' && (
+              {(selectedCompany.status === 'PENDING' || selectedCompany.hasPendingChange) && (
                 <div className="flex gap-2">
                   <Button
                     variant="destructive"
@@ -537,11 +725,27 @@ export default function StaffCompaniesPage() {
                 Confirm Action
               </DialogTitle>
               <DialogDescription>
-                Are you sure you want to {confirmAction.targetStatus === 'VERIFIED' ? 'APPROVE' : 'REJECT'} the company{' '}
+                Are you sure you want to {confirmAction.targetStatus === 'VERIFIED' ? 'APPROVE' : 'REJECT'}{' '}
+                {confirmAction.company.hasPendingChange ? 'the pending update request for' : 'the company'}{' '}
                 <strong>{confirmAction.company.name}</strong>?
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter>
+
+            {confirmAction.targetStatus === 'REJECTED' && (
+              <div className="mt-4 space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground block">
+                  Rejection Reason (Required)
+                </label>
+                <textarea
+                  className="w-full min-h-[80px] p-2.5 border border-border rounded-xl text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all bg-background text-foreground"
+                  placeholder="Provide details about why the registration or change request is being rejected..."
+                  value={rejectReasonInput}
+                  onChange={(e) => setRejectReasonInput(e.target.value)}
+                />
+              </div>
+            )}
+
+            <DialogFooter className="mt-6">
               <Button
                 variant="ghost"
                 onClick={() => setConfirmAction(null)}

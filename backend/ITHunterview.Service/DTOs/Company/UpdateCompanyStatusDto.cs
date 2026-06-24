@@ -7,5 +7,6 @@ namespace ITHunterview.Service.DTOs.Company
     {
         [Required(ErrorMessage = "Trạng thái công ty là bắt buộc")]
         public CompanyStatus Status { get; set; }
+        public string? RejectReason { get; set; }
     }
 }

@@ -13,6 +13,6 @@ namespace ITHunterview.Service.Interface.Persistence
         Task<Companies?> GetByIdAsync(Guid id);
         Task<Companies?> GetByUserIdAsync(Guid userId);
         Task LinkCompanyToRecruiterAsync(Guid companyId, Guid userId);
-        Task<(List<Companies> items, int total)> GetPagedCompaniesAsync(int page, int pageSize, string? search, CompanyStatus? status);
+        Task<(List<Companies> items, int total)> GetPagedCompaniesAsync(int page, int pageSize, string? search, string? status);
     }
 }

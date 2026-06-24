@@ -31,6 +31,17 @@ export function useVerifyCompanyLegal() {
   });
 }
 
+export function useSubmitCompanyUpdateRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: VerifyCompanyDto }) => 
+      companyService.submitUpdateRequest(id, dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-company'] });
+    },
+  });
+}
+
 export function useCompanies(params: { page?: number; pageSize?: number; search?: string; status?: string }) {
   return useQuery({
     queryKey: ['companies', params],
