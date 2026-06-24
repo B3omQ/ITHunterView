@@ -17,7 +17,6 @@ export const metadata: Metadata = {
   keywords: "IT recruitment, tech jobs, AI interview, software developer jobs",
 }
 
-import { Toaster } from "sonner"
 
 export default function RootLayout({
   children,
