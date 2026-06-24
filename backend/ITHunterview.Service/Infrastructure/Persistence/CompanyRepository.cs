@@ -64,16 +64,31 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             }
         }
 
-        public async Task<(List<Companies> items, int total)> GetPagedCompaniesAsync(int page, int pageSize, string? search, CompanyStatus? status)
+        public async Task<(List<Companies> items, int total)> GetPagedCompaniesAsync(int page, int pageSize, string? search, string? status)
         {
             var query = _context.Companies.AsQueryable();
 
             // Filter out soft-deleted companies
             query = query.Where(c => c.DeletedAt == null);
 
-            if (status.HasValue)
+            if (!string.IsNullOrEmpty(status))
             {
-                query = query.Where(c => c.Status == status.Value);
+                if (status.Equals("PENDING", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(c => c.Status == CompanyStatus.PENDING && !c.HasPendingChange);
+                }
+                else if (status.Equals("PENDING_UPDATE", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(c => c.HasPendingChange == true);
+                }
+                else if (status.Equals("VERIFIED", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(c => c.Status == CompanyStatus.VERIFIED && !c.HasPendingChange);
+                }
+                else if (Enum.TryParse<CompanyStatus>(status, true, out var companyStatus))
+                {
+                    query = query.Where(c => c.Status == companyStatus);
+                }
             }
 
             if (!string.IsNullOrEmpty(search))

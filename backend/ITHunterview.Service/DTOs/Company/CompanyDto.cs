@@ -17,6 +17,13 @@ namespace ITHunterview.Service.DTOs.Company
         public CompanyVerificationMethod VerificationMethod { get; set; }
         public string VerificationDocumentUrl { get; set; } = string.Empty;
         public CompanyStatus Status { get; set; }
+        public string? PendingName { get; set; }
+        public string? PendingTaxCode { get; set; }
+        public string? PendingHeadquartersAddress { get; set; }
+        public CompanyVerificationMethod? PendingVerificationMethod { get; set; }
+        public string? PendingVerificationDocumentUrl { get; set; }
+        public string? RejectReason { get; set; }
+        public bool HasPendingChange { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public string CreatedByEmail { get; set; } = string.Empty;

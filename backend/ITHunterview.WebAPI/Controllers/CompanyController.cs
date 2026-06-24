@@ -75,7 +75,7 @@ namespace ITHunterview.WebAPI.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10,
             [FromQuery] string? search = null,
-            [FromQuery] CompanyStatus? status = null)
+            [FromQuery] string? status = null)
         {
             var result = await _companyUseCase.GetPagedCompaniesAsync(page, pageSize, search, status);
             return Ok(result);
@@ -93,6 +93,20 @@ namespace ITHunterview.WebAPI.Controllers
 
             var company = await _companyUseCase.UpdateCompanyStatusAsync(id, dto, userId);
             return Ok(new ResponseBase<CompanyDto>(company, "Company status updated successfully"));
+        }
+
+        [HttpPost("{id:guid}/update-request")]
+        [Authorize(Roles = "recruiter")]
+        public async Task<ActionResult<ResponseBase<CompanyDto>>> SubmitUpdateRequest(Guid id, [FromBody] VerifyCompanyDto dto)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized(new ResponseBase<CompanyDto>("Unauthorized"));
+            }
+
+            var company = await _companyUseCase.SubmitUpdateRequestAsync(id, dto, userId);
+            return Ok(new ResponseBase<CompanyDto>(company, "Company update request submitted successfully"));
         }
     }
 }

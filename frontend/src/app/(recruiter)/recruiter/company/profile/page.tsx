@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 import {
   Form,
@@ -54,6 +55,7 @@ const INDUSTRIES = [
 const COMPANY_SIZES = ['1-10', '11-50', '51-200', '201-500', '500+'];
 
 export default function CompanyProfilePage() {
+  const router = useRouter();
   const { data: company, isLoading: isFetchingCompany } = useGetMyCompany();
   const { mutateAsync: updateProfile, isPending: isUpdating } = useCreateOrUpdateProfile();
   
@@ -114,6 +116,7 @@ export default function CompanyProfilePage() {
     try {
       await updateProfile(values);
       toast.success('Company profile saved successfully!');
+      router.push('/recruiter/company');
     } catch (error) {
       toast.error('Failed to save company profile');
     }
@@ -127,7 +130,7 @@ export default function CompanyProfilePage() {
   const currentLogo = form.watch('logoUrl');
 
   return (
-    <div className="grid md:grid-cols-[1fr_400px] gap-8">
+    <div className="grid md:grid-cols-[minmax(0,1fr)_400px] gap-8 w-full">
       <div className="bg-card rounded-xl border p-6">
         <h2 className="text-xl font-semibold mb-6">Company Details</h2>
         
@@ -163,8 +166,17 @@ export default function CompanyProfilePage() {
                 <FormItem>
                   <FormLabel>Company Name *</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Acme Technologies Inc." {...field} />
+                    <Input 
+                      placeholder="e.g. Acme Technologies Inc." 
+                      {...field} 
+                      disabled={company?.status === 'VERIFIED'} 
+                    />
                   </FormControl>
+                  {company?.status === 'VERIFIED' && (
+                    <p className="text-xs text-amber-600 mt-1 font-medium">
+                      Company name has been verified. To change it, please submit an update request in the Legal tab.
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -257,8 +269,15 @@ export default function CompanyProfilePage() {
             <div className="flex items-center justify-between pt-6 border-t">
               <p className="text-sm text-muted-foreground">All changes are saved automatically when you click Save.</p>
               <div className="flex items-center gap-3">
-                <Button type="button" variant="outline">Preview as Candidate</Button>
-                <Button type="submit" disabled={isUpdating || isUploading}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => router.push('/recruiter/company')}
+                  className="cursor-pointer"
+                >
+                  Return
+                </Button>
+                <Button type="submit" disabled={isUpdating || isUploading} className="cursor-pointer">
                   {isUpdating ? 'Saving...' : 'Save Company Profile'}
                 </Button>
               </div>

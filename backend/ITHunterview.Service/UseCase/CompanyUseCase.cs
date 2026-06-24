@@ -86,7 +86,65 @@ namespace ITHunterview.Service.UseCase
                 throw new KeyNotFoundException("Company not found");
             }
 
-            company.Status = dto.Status;
+            if (company.HasPendingChange)
+            {
+                if (dto.Status == CompanyStatus.VERIFIED)
+                {
+                    // approve pending changes
+                    company.Name = company.PendingName ?? company.Name;
+                    company.TaxCode = company.PendingTaxCode ?? company.TaxCode;
+                    company.HeadquartersAddress = company.PendingHeadquartersAddress ?? company.HeadquartersAddress;
+                    if (company.PendingVerificationMethod.HasValue)
+                    {
+                        company.VerificationMethod = company.PendingVerificationMethod.Value;
+                    }
+                    company.VerificationDocumentUrl = company.PendingVerificationDocumentUrl ?? company.VerificationDocumentUrl;
+
+                    // clear pending changes
+                    company.PendingName = null;
+                    company.PendingTaxCode = null;
+                    company.PendingHeadquartersAddress = null;
+                    company.PendingVerificationMethod = null;
+                    company.PendingVerificationDocumentUrl = null;
+                    company.HasPendingChange = false;
+                    company.RejectReason = null;
+                }
+                else if (dto.Status == CompanyStatus.REJECTED)
+                {
+                    // reject pending changes
+                    if (string.IsNullOrEmpty(dto.RejectReason))
+                    {
+                        throw new ArgumentException("Rejection reason is required when rejecting changes.");
+                    }
+
+                    // clear pending changes but keep main verified data, set reject reason
+                    company.PendingName = null;
+                    company.PendingTaxCode = null;
+                    company.PendingHeadquartersAddress = null;
+                    company.PendingVerificationMethod = null;
+                    company.PendingVerificationDocumentUrl = null;
+                    company.HasPendingChange = false;
+                    company.RejectReason = dto.RejectReason;
+                }
+            }
+            else
+            {
+                // standard verification flow
+                company.Status = dto.Status;
+                if (dto.Status == CompanyStatus.REJECTED)
+                {
+                    if (string.IsNullOrEmpty(dto.RejectReason))
+                    {
+                        throw new ArgumentException("Rejection reason is required when rejecting.");
+                    }
+                    company.RejectReason = dto.RejectReason;
+                }
+                else if (dto.Status == CompanyStatus.VERIFIED)
+                {
+                    company.RejectReason = null;
+                }
+            }
+
             company.UpdatedBy = userId;
             company.UpdatedAt = DateTime.UtcNow;
 
@@ -119,7 +177,34 @@ namespace ITHunterview.Service.UseCase
             return resDto;
         }
 
-        public async Task<ResponseBase<PagedResult<CompanyDto>>> GetPagedCompaniesAsync(int page, int pageSize, string? search, CompanyStatus? status)
+        public async Task<CompanyDto> SubmitUpdateRequestAsync(Guid companyId, VerifyCompanyDto dto, Guid userId)
+        {
+            var company = await _companyRepository.GetByIdAsync(companyId);
+            if (company == null)
+            {
+                throw new KeyNotFoundException("Company not found");
+            }
+
+            if (company.Status != CompanyStatus.VERIFIED)
+            {
+                throw new InvalidOperationException("Only verified companies can request updates to legal information.");
+            }
+
+            company.PendingName = dto.CompanyName;
+            company.PendingTaxCode = dto.TaxCode;
+            company.PendingHeadquartersAddress = dto.HeadquartersAddress;
+            company.PendingVerificationMethod = dto.VerificationMethod;
+            company.PendingVerificationDocumentUrl = dto.VerificationDocumentUrl;
+            company.HasPendingChange = true;
+            company.UpdatedBy = userId;
+            company.UpdatedAt = DateTime.UtcNow;
+
+            await _companyRepository.UpdateAsync(company);
+
+            return MapToDto(company);
+        }
+
+        public async Task<ResponseBase<PagedResult<CompanyDto>>> GetPagedCompaniesAsync(int page, int pageSize, string? search, string? status)
         {
             var (items, total) = await _companyRepository.GetPagedCompaniesAsync(page, pageSize, search, status);
 
@@ -181,6 +266,13 @@ namespace ITHunterview.Service.UseCase
                 VerificationMethod = company.VerificationMethod,
                 VerificationDocumentUrl = company.VerificationDocumentUrl,
                 Status = company.Status,
+                PendingName = company.PendingName,
+                PendingTaxCode = company.PendingTaxCode,
+                PendingHeadquartersAddress = company.PendingHeadquartersAddress,
+                PendingVerificationMethod = company.PendingVerificationMethod,
+                PendingVerificationDocumentUrl = company.PendingVerificationDocumentUrl,
+                RejectReason = company.RejectReason,
+                HasPendingChange = company.HasPendingChange,
                 CreatedAt = company.CreatedAt,
                 UpdatedAt = company.UpdatedAt
             };

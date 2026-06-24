@@ -18,6 +18,13 @@ export interface Company {
   updatedAt: string;
   createdByEmail?: string;
   createdByName?: string;
+  pendingName?: string;
+  pendingTaxCode?: string;
+  pendingHeadquartersAddress?: string;
+  pendingVerificationMethod?: CompanyVerificationMethod;
+  pendingVerificationDocumentUrl?: string;
+  rejectReason?: string;
+  hasPendingChange?: boolean;
 }
 
 export interface CreateCompanyDto {
@@ -41,4 +48,5 @@ export interface VerifyCompanyDto {
 
 export interface UpdateCompanyStatusDto {
   status: CompanyStatus;
+  rejectReason?: string;
 }
