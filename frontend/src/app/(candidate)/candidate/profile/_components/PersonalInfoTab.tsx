@@ -8,7 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Globe, Mail, Phone, MapPin, AlignLeft, User } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Globe, Mail, Phone, MapPin, AlignLeft, User, AlertTriangle } from 'lucide-react';
 
 const LinkedinIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -55,6 +63,9 @@ export function PersonalInfoTab() {
   const [portfolioUrl, setPortfolioUrl] = useState('');
   const [linkedInUrl, setLinkedInUrl] = useState('');
   const [githubUrl, setGithubUrl] = useState('');
+  
+  // Modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Sync form states with API response data
   const resetForm = () => {
@@ -88,6 +99,16 @@ export function PersonalInfoTab() {
     );
   }
 
+  const isDirty =
+    firstName !== (info?.firstName || '') ||
+    lastName !== (info?.lastName || '') ||
+    phone !== (info?.phone || '') ||
+    location !== (info?.location || '') ||
+    aboutMe !== (info?.aboutMe || '') ||
+    portfolioUrl !== (info?.portfolioUrl || '') ||
+    linkedInUrl !== (info?.linkedInUrl || '') ||
+    githubUrl !== (info?.githubUrl || '');
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     updateInfo({
@@ -103,11 +124,21 @@ export function PersonalInfoTab() {
   };
 
   const handleDiscard = () => {
+    if (isDirty) {
+      setShowConfirmModal(true);
+    } else {
+      resetForm();
+    }
+  };
+
+  const confirmDiscard = () => {
     resetForm();
+    setShowConfirmModal(false);
   };
 
   return (
-    <form onSubmit={handleSave} className="space-y-6">
+    <>
+      <form onSubmit={handleSave} className="space-y-6">
       {/* Basic Information */}
       <Card className="border border-border/40 bg-card/60 backdrop-blur-md rounded-xl shadow-md overflow-hidden">
         <CardHeader className="border-b border-border/10 pb-4">
@@ -280,19 +311,49 @@ export function PersonalInfoTab() {
           type="button"
           variant="outline"
           onClick={handleDiscard}
-          disabled={isPending}
+          disabled={!isDirty || isPending}
           className="border-border/60 hover:bg-muted/40 transition-all font-semibold rounded-lg"
         >
           Discard Changes
         </Button>
         <Button
           type="submit"
-          disabled={isPending || firstName.trim() === '' || lastName.trim() === ''}
+          disabled={!isDirty || isPending || firstName.trim() === '' || lastName.trim() === ''}
           className="bg-primary hover:bg-primary/95 transition-all text-primary-foreground font-semibold px-6 shadow-md shadow-primary/20 rounded-lg flex items-center gap-2"
         >
           {isPending ? 'Saving...' : 'Save Changes'}
         </Button>
       </div>
     </form>
+
+      {/* Confirmation Modal */}
+      <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Discard Changes?
+            </DialogTitle>
+            <DialogDescription>
+              You have unsaved changes in your personal information. Are you sure you want to discard them? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDiscard}
+            >
+              Discard Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
