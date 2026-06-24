@@ -11,10 +11,9 @@ import { Progress } from '@/components/ui/progress';
 
 interface ProfileHeaderProps {
   summary: ProfileSummary;
-  currentTab: string;
 }
 
-export function ProfileHeader({ summary, currentTab }: ProfileHeaderProps) {
+export function ProfileHeader({ summary }: ProfileHeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { mutate: updateVisibility, isPending: isUpdatingVisibility } = useUpdateVisibility();
   const { mutate: uploadAvatar, isPending: isUploadingAvatar } = useUploadAvatar();
@@ -47,8 +46,6 @@ export function ProfileHeader({ summary, currentTab }: ProfileHeaderProps) {
       return 'Last saved recently';
     }
   };
-
-  const showProgress = currentTab !== 'personal-info';
 
   return (
     <Card className="relative overflow-hidden border border-border/40 bg-card/60 backdrop-blur-md p-6 md:p-8 rounded-2xl shadow-xl flex flex-col md:flex-row gap-6 md:gap-8 items-start md:items-center justify-between transition-all duration-300 hover:shadow-2xl">
@@ -138,23 +135,6 @@ export function ProfileHeader({ summary, currentTab }: ProfileHeaderProps) {
           </div>
         </div>
 
-        {/* Profile Completion Progress */}
-        {showProgress && (
-          <div className="space-y-2 w-full sm:flex-1 md:flex-initial">
-            <div className="flex items-center justify-between text-xs sm:text-sm font-semibold">
-              <span className="text-muted-foreground">Profile Completion</span>
-              <span className="text-primary font-mono font-bold">
-                {summary.profileCompletionPercentage}%
-              </span>
-            </div>
-            <Progress value={summary.profileCompletionPercentage} className="h-2 bg-muted shadow-inner" />
-            {summary.completionHint && (
-              <p className="text-[11px] sm:text-xs text-muted-foreground italic text-right">
-                {summary.completionHint}
-              </p>
-            )}
-          </div>
-        )}
       </div>
     </Card>
   );

@@ -5,8 +5,6 @@ export interface ProfileSummary {
   currentTitle: string | null;
   location: string | null;
   isVisibleToRecruiters: boolean;
-  profileCompletionPercentage: number;
-  completionHint: string | null;
   lastSavedAt: string | null;
 }
 
