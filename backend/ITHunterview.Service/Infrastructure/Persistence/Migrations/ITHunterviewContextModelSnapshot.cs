@@ -352,6 +352,74 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.ToTable("candidate_profiles");
                 });
 
+            modelBuilder.Entity("ITHunterview.Domain.Entities.CoinFeatures", b =>
+                {
+                    b.Property<string>("FeatureKey")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("feature_key");
+
+                    b.Property<int>("CoinCost")
+                        .HasColumnType("integer")
+                        .HasColumnName("coin_cost");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("FeatureKey");
+
+                    b.ToTable("coin_features");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.CoinPackages", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Coins")
+                        .HasColumnType("integer")
+                        .HasColumnName("coins");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("numeric")
+                        .HasColumnName("price");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("coin_packages");
+                });
+
             modelBuilder.Entity("ITHunterview.Domain.Entities.Companies", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1509,6 +1577,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
@@ -1519,12 +1591,13 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("FeaturesConfig")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasColumnType("jsonb")
                         .HasColumnName("features_config");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.Property<decimal>("Price")
@@ -1534,6 +1607,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
@@ -1717,7 +1794,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("operation_type");
 
                     b.Property<string>("SnapshotDiff")
-                        .HasColumnType("text")
+                        .HasColumnType("jsonb")
                         .HasColumnName("snapshot_diff");
 
                     b.Property<int>("Status")
@@ -1738,6 +1815,14 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("OperationType");
+
+                    b.HasIndex("TableName");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("user_activity_logs");
                 });

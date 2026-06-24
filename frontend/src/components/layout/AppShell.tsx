@@ -24,7 +24,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [accessToken, user, router]);
 
   if (!mounted || !accessToken || !user) {
-    return <PageLoader message="Đang tải..." />;
+    return <PageLoader message="Loading..." />;
   }
 
   return (

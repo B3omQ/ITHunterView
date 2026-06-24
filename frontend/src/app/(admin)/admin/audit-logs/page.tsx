@@ -82,10 +82,10 @@ export default function AuditLogsPage() {
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
       if (diffDays < 0) {
-        setDateError('Ngày bắt đầu không được sau ngày kết thúc.');
+        setDateError('Start date cannot be after end date.');
       } else if (diffDays > 30) {
         setDateError(
-          'Khoảng thời gian quá lớn. Vui lòng giới hạn phạm vi tìm kiếm trong vòng 30 ngày để đảm bảo hiệu năng.'
+          'Time range too large. Please limit search range within 30 days to ensure performance.'
         );
       } else {
         setDateError('');
@@ -96,8 +96,8 @@ export default function AuditLogsPage() {
   }, [startDateStr, endDateStr]);
 
   // Formats Dates to ISO for API
-  const startIso = startDateStr ? new Date(`${startDateStr}T00:00:00Z`).toISOString() : undefined;
-  const endIso = endDateStr ? new Date(`${endDateStr}T23:59:59Z`).toISOString() : undefined;
+  const startIso = startDateStr ? new Date(`${startDateStr}T00:00:00`).toISOString() : undefined;
+  const endIso = endDateStr ? new Date(`${endDateStr}T23:59:59`).toISOString() : undefined;
 
   // Fetch data
   const { data, isLoading, isError, refetch } = useAuditLogs({
@@ -114,22 +114,22 @@ export default function AuditLogsPage() {
 
   const handlePurgeSubmit = (days: number) => {
     if (days < 1) {
-      showToast('Số ngày lưu trữ tối thiểu phải là 1 ngày.', 'error');
+      showToast('Minimum retention period is 1 day.', 'error');
       return;
     }
 
     purgeMutation.mutate(days, {
       onSuccess: (res) => {
         if (res.success) {
-          showToast(res.message || `Đã dọn dẹp logs cũ hơn ${days} ngày thành công.`, 'success');
+          showToast(res.message || `Logs older than ${days} days successfully purged.`, 'success');
           setIsPurgeModalOpen(false);
         } else {
-          showToast(res.message || 'Có lỗi xảy ra khi dọn dẹp logs.', 'error');
+          showToast(res.message || 'An error occurred while purging logs.', 'error');
         }
       },
       onError: (err: any) => {
         showToast(
-          err.response?.data?.message || 'Có lỗi xảy ra khi gọi API dọn dẹp logs.',
+          err.response?.data?.message || 'An error occurred when calling purge logs API.',
           'error'
         );
       },
@@ -155,8 +155,10 @@ export default function AuditLogsPage() {
         return 'bg-amber-500/5 text-amber-700 dark:text-amber-400 border border-amber-500/20';
       case 'SECURITY':
         return 'bg-violet-500/5 text-violet-700 dark:text-violet-400 border border-violet-500/20';
-      case 'ACCESS':
-        return 'bg-cyan-500/5 text-cyan-700 dark:text-cyan-400 border border-cyan-500/20';
+      case 'AUTH':
+        return 'bg-blue-500/5 text-blue-700 dark:text-blue-400 border border-blue-500/20';
+      case 'SYSTEM':
+        return 'bg-zinc-500/5 text-zinc-700 dark:text-zinc-400 border border-zinc-500/20';
       default:
         return 'bg-muted text-muted-foreground border border-border';
     }
@@ -198,8 +200,7 @@ export default function AuditLogsPage() {
             Platform Safety & Audit Logs
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Ghi nhận và giám sát hành vi biến đổi dữ liệu (CUD) và các sự kiện an ninh cốt lõi của
-            hệ thống.
+            Record and monitor data mutation (CUD) behaviors and core security events of the system.
           </p>
         </div>
 
@@ -209,7 +210,7 @@ export default function AuditLogsPage() {
             size="icon"
             onClick={() => refetch()}
             className="text-muted-foreground hover:text-foreground cursor-pointer"
-            title="Làm mới dữ liệu"
+            title="Refresh data"
           >
             <RefreshCw className="h-5 w-5" />
           </Button>
@@ -219,7 +220,7 @@ export default function AuditLogsPage() {
             className="font-medium cursor-pointer"
           >
             <Trash2 className="h-4 w-4" />
-            Dọn dẹp logs
+            Purge logs
           </Button>
         </div>
       </div>
@@ -232,7 +233,7 @@ export default function AuditLogsPage() {
             <Search className="absolute left-3 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Email, hành động, bảng, IP..."
+              placeholder="Email, action, table, IP..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 cursor-text"
@@ -250,16 +251,16 @@ export default function AuditLogsPage() {
               className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm text-foreground transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
             >
               <option className="bg-background text-foreground" value="">
-                -- Mọi thao tác (CUD) --
+                -- All Operations (CUD) --
               </option>
               <option className="bg-background text-foreground" value="CREATE">
-                CREATE (Tạo mới)
+                CREATE (Create)
               </option>
               <option className="bg-background text-foreground" value="UPDATE">
-                UPDATE (Sửa đổi)
+                UPDATE (Update)
               </option>
               <option className="bg-background text-foreground" value="DELETE">
-                DELETE (Xoá bỏ)
+                DELETE (Delete)
               </option>
             </select>
           </div>
@@ -275,19 +276,19 @@ export default function AuditLogsPage() {
               className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm text-foreground transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
             >
               <option className="bg-background text-foreground" value="">
-                -- Mọi danh mục --
+                -- All Categories --
               </option>
               <option className="bg-background text-foreground" value="DATA_MUTATION">
-                DATA_MUTATION (Thay đổi dữ liệu)
+                DATA_MUTATION (Data Mutation)
               </option>
               <option className="bg-background text-foreground" value="SECURITY">
-                SECURITY (Bảo mật)
+                SECURITY (Security)
               </option>
-              <option className="bg-background text-foreground" value="ACCESS">
-                ACCESS (Truy cập)
+              <option className="bg-background text-foreground" value="AUTH">
+                AUTH (Authentication)
               </option>
               <option className="bg-background text-foreground" value="SYSTEM">
-                SYSTEM (Hệ thống)
+                SYSTEM (System)
               </option>
             </select>
           </div>
@@ -295,7 +296,7 @@ export default function AuditLogsPage() {
           {/* Time Filter - Start Date */}
           <div className="flex flex-col gap-1">
             <Label htmlFor="start-date-input" className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
-              <Clock className="h-3 w-3" /> Ngày bắt đầu
+              <Clock className="h-3 w-3" /> Start Date
             </Label>
             <Input
               id="start-date-input"
@@ -312,7 +313,7 @@ export default function AuditLogsPage() {
           {/* Time Filter - End Date */}
           <div className="flex flex-col gap-1">
             <Label htmlFor="end-date-input" className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
-              <Clock className="h-3 w-3" /> Ngày kết thúc
+              <Clock className="h-3 w-3" /> End Date
             </Label>
             <Input
               id="end-date-input"
@@ -341,25 +342,25 @@ export default function AuditLogsPage() {
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="h-10 w-10 text-primary animate-spin" />
             <span className="text-muted-foreground text-sm">
-              Đang tải danh sách logs kiểm toán...
+              Loading audit logs...
             </span>
           </div>
         ) : isError ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3 text-rose-500">
             <AlertTriangle className="h-10 w-10 text-rose-500" />
-            <span className="text-sm font-medium">Có lỗi xảy ra khi tải dữ liệu log.</span>
+            <span className="text-sm font-medium">An error occurred while loading log data.</span>
             <Button
               variant="outline"
               onClick={() => refetch()}
               className="text-xs font-semibold cursor-pointer"
             >
-              Thử lại
+              Try again
             </Button>
           </div>
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <Database className="h-12 w-12 text-muted-foreground/60 mb-3" />
-            <span className="text-sm">Không tìm thấy bất kỳ logs nào thoả mãn bộ lọc.</span>
+            <span className="text-sm">No logs found matching the filters.</span>
           </div>
         ) : (
           <>
@@ -367,13 +368,13 @@ export default function AuditLogsPage() {
               <table className="w-full text-left text-sm border-collapse">
                 <thead className="bg-muted/40 text-muted-foreground uppercase text-xs font-bold border-b border-border">
                   <tr>
-                    <th className="p-4">Thời gian (UTC)</th>
+                    <th className="p-4">Time (UTC)</th>
                     <th className="p-4">Actor (Email / Role)</th>
-                    <th className="p-4 text-center">Thao tác</th>
-                    <th className="p-4">Hành động</th>
-                    <th className="p-4">Đối tượng (Bảng)</th>
-                    <th className="p-4">Địa chỉ IP</th>
-                    <th className="p-4 text-center">Chi tiết</th>
+                    <th className="p-4 text-center">Operation</th>
+                    <th className="p-4">Action</th>
+                    <th className="p-4">Target (Table)</th>
+                    <th className="p-4">IP Address</th>
+                    <th className="p-4 text-center">Details</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60 text-xs">
@@ -422,7 +423,7 @@ export default function AuditLogsPage() {
                           </span>
                         ) : (
                           <span className="text-muted-foreground italic text-[11px]">
-                            Không áp dụng
+                            N/A
                           </span>
                         )}
                       </td>
@@ -433,7 +434,7 @@ export default function AuditLogsPage() {
                           size="icon-sm"
                           onClick={() => setSelectedLog(log)}
                           className="text-muted-foreground hover:text-foreground cursor-pointer"
-                          title="Xem chi tiết"
+                          title="View details"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -447,7 +448,7 @@ export default function AuditLogsPage() {
             {/* Pagination UI */}
             <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-card">
               <span className="text-xs text-muted-foreground">
-                Hiển thị{' '}
+                Showing{' '}
                 <span className="font-semibold text-foreground">
                   {(page - 1) * pageSize + 1}
                 </span>{' '}
@@ -455,8 +456,8 @@ export default function AuditLogsPage() {
                 <span className="font-semibold text-foreground">
                   {Math.min(page * pageSize, totalItems)}
                 </span>{' '}
-                trong tổng số{' '}
-                <span className="font-semibold text-foreground">{totalItems}</span> bản ghi logs
+                of{' '}
+                <span className="font-semibold text-foreground">{totalItems}</span> audit logs
               </span>
 
               <div className="flex items-center gap-2">
@@ -470,7 +471,7 @@ export default function AuditLogsPage() {
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <span className="text-xs text-foreground font-medium px-2">
-                  Trang {page} / {totalPages || 1}
+                  Page {page} / {totalPages || 1}
                 </span>
                 <Button
                   variant="outline"

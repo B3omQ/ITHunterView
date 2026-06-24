@@ -40,7 +40,7 @@ export function PurgeModal({
           <div className="flex items-center justify-between px-6 py-4 border-b border-border">
             <div className="flex items-center gap-2.5 text-destructive">
               <AlertTriangle className="h-5 w-5" />
-              <h3 className="text-sm font-bold text-foreground">Xác nhận dọn dẹp logs</h3>
+              <h3 className="text-sm font-bold text-foreground">Purge Logs Confirmation</h3>
             </div>
             <Button
               type="button"
@@ -56,14 +56,14 @@ export function PurgeModal({
           {/* Body */}
           <div className="p-6 space-y-4 text-xs">
             <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive rounded-lg leading-relaxed font-medium">
-              <strong className="text-destructive block mb-1">CẢNH BÁO QUAN TRỌNG:</strong>
-              Hành động này sẽ xoá hoàn toàn các bản ghi logs kiểm toán cũ hơn số ngày quy định. Dữ
-              liệu logs sau khi bị xoá sẽ không thể khôi phục lại.
+              <strong className="text-destructive block mb-1">IMPORTANT WARNING:</strong>
+              This action will permanently delete all audit log records older than the specified number of days.
+              Once deleted, this log data cannot be recovered.
             </div>
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="purge-days-input" className="text-xs text-muted-foreground font-medium">
-                Giữ lại logs trong phạm vi (ngày):
+                Keep logs within (days):
               </Label>
               <Input
                 id="purge-days-input"
@@ -75,7 +75,7 @@ export function PurgeModal({
                 className="w-full cursor-text"
               />
               <p className="text-[10px] text-muted-foreground mt-1">
-                Các logs có thời gian tạo trước ngày {getPastDateStr(purgeDays)} sẽ bị xoá vĩnh viễn.
+                Logs created before {getPastDateStr(purgeDays)} will be permanently deleted.
               </p>
             </div>
           </div>
@@ -83,7 +83,7 @@ export function PurgeModal({
           {/* Footer */}
           <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted/10">
             <Button type="button" variant="outline" size="default" onClick={onClose} className="cursor-pointer">
-              Huỷ bỏ
+              Cancel
             </Button>
             <Button
               type="submit"
@@ -93,7 +93,7 @@ export function PurgeModal({
               className="font-semibold cursor-pointer"
             >
               {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Thực hiện xoá
+              Purge
             </Button>
           </div>
         </form>

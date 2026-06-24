@@ -5,6 +5,7 @@ import type {
   UserDetailDto,
   UpdateUserStatusDto,
   UpdateUserRoleDto,
+  CreateStaffDto,
 } from '@/types/user-governance.types';
 
 export const userGovernanceService = {
@@ -35,5 +36,10 @@ export const userGovernanceService = {
   updateUserRole: (payload: { id: string; dto: UpdateUserRoleDto }) =>
     api
       .put<ApiResponse<any>>(`/api/user-governance/users/${payload.id}/role`, payload.dto)
+      .then((res) => res.data),
+
+  createStaff: (dto: CreateStaffDto) =>
+    api
+      .post<ApiResponse<string>>('/api/user-governance/staff', dto)
       .then((res) => res.data),
 };
