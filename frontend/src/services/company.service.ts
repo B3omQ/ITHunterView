@@ -1,11 +1,6 @@
 import api from './api-client';
-import { Company, CreateCompanyDto, VerifyCompanyDto } from '@/types/company.types';
-
-export interface ApiResponse<T> {
-  data: T;
-  message: string;
-  success: boolean;
-}
+import { Company, CreateCompanyDto, VerifyCompanyDto, UpdateCompanyStatusDto } from '@/types/company.types';
+import { ApiResponse, PaginatedResponse } from '@/types/api.types';
 
 export const companyService = {
   getMyCompany: () => 
@@ -16,4 +11,10 @@ export const companyService = {
     
   verifyCompanyLegal: (id: string, dto: VerifyCompanyDto) => 
     api.post<ApiResponse<Company>>(`/api/companies/${id}/verify`, dto).then(res => res.data.data),
+
+  getPagedCompanies: (params: { page?: number; pageSize?: number; search?: string; status?: string }) =>
+    api.get<ApiResponse<PaginatedResponse<Company>>>('/api/companies', { params }).then(res => res.data.data),
+
+  updateCompanyStatus: ({ id, dto }: { id: string; dto: UpdateCompanyStatusDto }) =>
+    api.put<ApiResponse<Company>>(`/api/companies/${id}/status`, dto).then(res => res.data.data),
 };

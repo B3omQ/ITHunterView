@@ -19,5 +19,7 @@ namespace ITHunterview.Service.DTOs.Company
         public CompanyStatus Status { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public string CreatedByEmail { get; set; } = string.Empty;
+        public string CreatedByName { get; set; } = string.Empty;
     }
 }

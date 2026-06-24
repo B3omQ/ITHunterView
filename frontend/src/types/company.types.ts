@@ -16,6 +16,8 @@ export interface Company {
   status: CompanyStatus;
   createdAt: string;
   updatedAt: string;
+  createdByEmail?: string;
+  createdByName?: string;
 }
 
 export interface CreateCompanyDto {
@@ -35,4 +37,8 @@ export interface VerifyCompanyDto {
   taxCode: string;
   companyName: string;
   headquartersAddress: string;
+}
+
+export interface UpdateCompanyStatusDto {
+  status: CompanyStatus;
 }
