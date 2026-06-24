@@ -133,5 +133,18 @@ namespace ITHunterview.WebAPI.Controllers
             var result = await _authUseCase.VerifyEmailAsync(token);
             return result.Success ? Ok(result) : BadRequest(result);
         }
+
+        /// <summary>
+        /// Gửi lại email xác thực khi link cũ hết hạn
+        /// </summary>
+        [HttpPost("resend-verification")]
+        public async Task<ActionResult<ResponseBase>> ResendVerification([FromBody] ForgotPasswordRequestDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var result = await _authUseCase.ResendVerificationEmailAsync(request.Email);
+            return Ok(result); // Always 200 to prevent email enumeration
+        }
     }
 }

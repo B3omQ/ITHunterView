@@ -94,7 +94,31 @@ namespace ITHunterview.Service.UseCase
             // Check duplicate email
             var existing = await _userRepository.GetUserByEmailAsync(request.Email);
             if (existing != null)
+            {
+                // If account exists but not yet verified → resend verification email
+                if (existing.Status == UserStatus.PENDING_VERIFICATION)
+                {
+                    var newToken = JwtTokenGenerator.GenerateSecureToken();
+                    await _emailVerificationRepository.AddTokenAsync(new EmailVerificationTokens
+                    {
+                        UserId = existing.Id,
+                        Token = newToken,
+                        ExpiresAt = DateTime.UtcNow.AddHours(24)
+                    });
+                    try { await _emailService.SendVerificationEmailAsync(existing.Email, newToken); }
+                    catch { /* log in production */ }
+
+                    // Return success-like response so frontend redirects to verify-email page
+                    return new ResponseBase<LoginResponseDto>
+                    {
+                        Success = true,
+                        Message = "PENDING_VERIFICATION|Tài khoản chưa được xác thực. Chúng tôi đã gửi lại email xác thực."
+                    };
+                }
+
+                // Active or banned account
                 return new ResponseBase<LoginResponseDto>("Email này đã được sử dụng.");
+            }
 
             // Get role
             var role = await _roleRepository.GetByNameAsync(roleType);
@@ -332,6 +356,36 @@ namespace ITHunterview.Service.UseCase
             await _emailVerificationRepository.MarkUsedAsync(verifyRecord.Id);
 
             return ResponseBase.Ok("Xác thực email thành công! Bạn có thể đăng nhập ngay bây giờ.");
+        }
+
+        // ─── RESEND VERIFICATION EMAIL ───────────────────────────────────────────
+        public async Task<ResponseBase> ResendVerificationEmailAsync(string email)
+        {
+            var user = await _userRepository.GetUserByEmailAsync(email);
+
+            // Always return OK to prevent email enumeration
+            if (user == null || user.Status == UserStatus.ACTIVE)
+                return ResponseBase.Ok("Nếu email tồn tại và chưa xác thực, chúng tôi đã gửi lại link xác thực.");
+
+            // Invalidate old tokens by creating a new one (old ones will expire naturally)
+            var verifyToken = JwtTokenGenerator.GenerateSecureToken();
+            await _emailVerificationRepository.AddTokenAsync(new EmailVerificationTokens
+            {
+                UserId = user.Id,
+                Token = verifyToken,
+                ExpiresAt = DateTime.UtcNow.AddHours(24)
+            });
+
+            try
+            {
+                await _emailService.SendVerificationEmailAsync(user.Email, verifyToken);
+            }
+            catch
+            {
+                // Don't fail if email sending fails; log in production
+            }
+
+            return ResponseBase.Ok("Nếu email tồn tại và chưa xác thực, chúng tôi đã gửi lại link xác thực.");
         }
 
         // ─── PRIVATE HELPER ──────────────────────────────────────────────────────

@@ -38,14 +38,20 @@ export default function RegisterPage() {
     setLoading(true)
     try {
       const res = await authService.register({ email, password, confirmPassword, roleType })
+
+      // Backend gửi lại email xác thực cho tài khoản chưa verify
+      if (res.success && res.message?.startsWith("PENDING_VERIFICATION")) {
+        router.push(`/verify-email?email=${encodeURIComponent(email)}&resent=1`)
+        return
+      }
+
       if (!res.success) {
         setError(res.message ?? "Đăng ký thất bại")
         return
       }
-      setSuccess(
-        res.message ??
-        "Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản."
-      )
+
+      // Tài khoản mới tạo thành công
+      router.push(`/verify-email?email=${encodeURIComponent(email)}&registered=1`)
     } catch (err: any) {
       console.error("Register error:", err)
       setError(`Lỗi kết nối: ${err.message || "Không thể kết nối đến máy chủ."}`)

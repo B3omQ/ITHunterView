@@ -57,6 +57,11 @@ export const authService = {
       .get<ApiResponse<null>>(`/api/auth/verify-email?token=${encodeURIComponent(token)}`)
       .then((r) => r.data),
 
+  resendVerification: (email: string) =>
+    api
+      .post<ApiResponse<null>>('/api/auth/resend-verification', { email })
+      .then((r) => r.data),
+
   getMe: () =>
     api.get<ApiResponse<User>>('/api/me').then((r) => r.data),
 };
