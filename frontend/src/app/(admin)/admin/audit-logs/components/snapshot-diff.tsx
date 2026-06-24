@@ -11,7 +11,7 @@ export function SnapshotDiff({ diffStr, operation }: SnapshotDiffProps) {
   if (!diffStr) {
     return (
       <p className="text-muted-foreground italic text-xs">
-        Không ghi nhận thay đổi cấu trúc/dữ liệu hoặc không có payload diff.
+        No structural/data changes recorded or no payload diff.
       </p>
     );
   }
@@ -27,7 +27,7 @@ export function SnapshotDiff({ diffStr, operation }: SnapshotDiffProps) {
       if (changeEntries.length === 0) {
         return (
           <p className="text-muted-foreground italic text-xs">
-            Không có trường nào bị sửa đổi giá trị.
+            No fields had modified values.
           </p>
         );
       }
@@ -36,9 +36,9 @@ export function SnapshotDiff({ diffStr, operation }: SnapshotDiffProps) {
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-muted/80 text-muted-foreground uppercase text-[10px] tracking-wider font-semibold border-b border-border">
               <tr>
-                <th className="p-2.5 border-r border-border">Trường dữ liệu</th>
-                <th className="p-2.5 bg-rose-500/5 text-rose-700 dark:text-rose-400 border-r border-border">Giá trị cũ</th>
-                <th className="p-2.5 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400">Giá trị mới</th>
+                <th className="p-2.5 border-r border-border">Field</th>
+                <th className="p-2.5 bg-rose-500/5 text-rose-700 dark:text-rose-400 border-r border-border">Old Value</th>
+                <th className="p-2.5 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400">New Value</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60 font-mono text-[11px]">
@@ -74,8 +74,8 @@ export function SnapshotDiff({ diffStr, operation }: SnapshotDiffProps) {
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-muted/80 text-muted-foreground uppercase text-[10px] tracking-wider font-semibold border-b border-border">
               <tr>
-                <th className="p-2.5 border-r border-border">Trường dữ liệu</th>
-                <th className="p-2.5">Giá trị ghi nhận</th>
+                <th className="p-2.5 border-r border-border">Field</th>
+                <th className="p-2.5">Recorded Value</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60 font-mono text-[11px]">

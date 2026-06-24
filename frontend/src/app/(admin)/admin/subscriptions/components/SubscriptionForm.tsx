@@ -25,9 +25,9 @@ import { Switch } from '@/components/ui/switch';
 import type { SubscriptionDto, CreateSubscriptionDto } from '@/types/subscription.types';
 
 const formSchema = z.object({
-  name: z.string().min(1, 'Tên gói không được để trống').max(100),
-  price: z.coerce.number().min(0, 'Giá không được âm'),
-  durationDays: z.coerce.number().min(1, 'Thời hạn tối thiểu là 1 ngày'),
+  name: z.string().min(1, 'Package name is required').max(100),
+  price: z.coerce.number().min(0, 'Price cannot be negative'),
+  durationDays: z.coerce.number().min(1, 'Duration must be at least 1 day'),
   role: z.enum(['CANDIDATE', 'RECRUITER']),
   // Candidate AI limits
   cvMatchLimit: z.coerce.number().nullable().optional(),
@@ -138,9 +138,9 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Tên gói dịch vụ</FormLabel>
+              <FormLabel>Service Package Name</FormLabel>
               <FormControl>
-                <Input placeholder="Ví dụ: Premium Candidate Monthly" {...field} />
+                <Input placeholder="Example: Premium Candidate Monthly" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -154,7 +154,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
             name="price"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Giá bán (VND)</FormLabel>
+                <FormLabel>Price (VND)</FormLabel>
                 <FormControl>
                   <Input type="number" disabled={isUsed} {...field} />
                 </FormControl>
@@ -169,7 +169,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
             name="durationDays"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Thời hạn (ngày)</FormLabel>
+                <FormLabel>Duration (days)</FormLabel>
                 <FormControl>
                   <Input type="number" disabled={isUsed} {...field} />
                 </FormControl>
@@ -185,7 +185,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
           name="role"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Đối tượng áp dụng</FormLabel>
+              <FormLabel>Target Audience</FormLabel>
               <Select
                 disabled={isUsed || isEdit}
                 onValueChange={field.onChange}
@@ -193,12 +193,12 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Chọn vai trò" />
+                    <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="CANDIDATE">Ứng viên (Candidate)</SelectItem>
-                  <SelectItem value="RECRUITER">Nhà tuyển dụng (Recruiter)</SelectItem>
+                  <SelectItem value="CANDIDATE">Candidate</SelectItem>
+                  <SelectItem value="RECRUITER">Recruiter</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -208,7 +208,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
 
         {/* Conditionally Render Fields based on Role */}
         <div className="p-4 border rounded-lg bg-neutral-50/50 space-y-4">
-          <h4 className="text-sm font-semibold text-neutral-900 mb-2">Cấu hình giới hạn tính năng</h4>
+          <h4 className="text-sm font-semibold text-neutral-900 mb-2">Feature Limit Configuration</h4>
           
           {selectedRole === 'CANDIDATE' && (
             <div className="space-y-4">
@@ -218,7 +218,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                 name="cvMatchLimit"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Lượt matching CV - JD mỗi tháng</FormLabel>
+                    <FormLabel>CV-JD Match Limit per Month</FormLabel>
                     <FormControl>
                       <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
                     </FormControl>
@@ -232,7 +232,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                 name="mockInterviewLimit"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Lượt Phỏng vấn giả lập mỗi tháng</FormLabel>
+                    <FormLabel>Mock Interview Limit per Month</FormLabel>
                     <FormControl>
                       <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
                     </FormControl>
@@ -246,7 +246,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                 name="cvOptimizeLimit"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Lượt tối ưu CV mỗi tháng</FormLabel>
+                    <FormLabel>CV Optimization Limit per Month</FormLabel>
                     <FormControl>
                       <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
                     </FormControl>
@@ -265,7 +265,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                 name="activeJobPostings"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Số tin tuyển dụng hoạt động tối đa</FormLabel>
+                    <FormLabel>Maximum Active Job Postings</FormLabel>
                     <FormControl>
                       <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
                     </FormControl>
@@ -279,7 +279,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                 name="activeSourcingLimit"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Lượt sourcing ứng viên mỗi tháng</FormLabel>
+                    <FormLabel>Candidate Sourcing Limit per Month</FormLabel>
                     <FormControl>
                       <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
                     </FormControl>
@@ -293,7 +293,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                 name="highlightedJobs"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Số tin nổi bật tối đa</FormLabel>
+                    <FormLabel>Maximum Highlighted Jobs</FormLabel>
                     <FormControl>
                       <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
                     </FormControl>
@@ -308,7 +308,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                 render={({ field }) => (
                   <FormItem className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-white">
                     <div className="space-y-0.5">
-                      <FormLabel>Tính năng báo cáo/phân tích chuyên sâu</FormLabel>
+                      <FormLabel>Advanced Analytics &amp; Reporting</FormLabel>
                     </div>
                     <FormControl>
                       <Switch
@@ -326,13 +326,13 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
 
         {isUsed && (
           <p className="text-xs text-amber-600 font-medium">
-            * Gói này đã phát sinh giao dịch. Chỉ cho phép chỉnh sửa Tên gói. Để thay đổi các giới hạn hoặc giá, hãy dùng tính năng Nhân bản (Duplicate) thành gói mới.
+            * This package has active transactions. Only the package name can be edited. To change prices or limits, please duplicate this package to create a new one.
           </p>
         )}
 
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? 'Đang xử lý...' : isEdit ? 'Lưu thay đổi' : 'Tạo gói'}
+            {isLoading ? 'Processing...' : isEdit ? 'Save Changes' : 'Create Package'}
           </Button>
         </div>
       </form>

@@ -41,15 +41,15 @@ export default function SubscriptionsAdminPage() {
         {
           onSuccess: (res) => {
             if (res.success) {
-              toast.success('Cập nhật gói thành công');
+              toast.success('Subscription package updated successfully');
               setIsDialogOpen(false);
               setEditingSub(null);
             } else {
-              toast.error(res.message || 'Cập nhật thất bại');
+              toast.error(res.message || 'Failed to update package');
             }
           },
           onError: (err: any) => {
-            toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
+            toast.error(err.response?.data?.message || 'An error occurred');
           },
         }
       );
@@ -57,14 +57,14 @@ export default function SubscriptionsAdminPage() {
       createMutation.mutate(formData, {
         onSuccess: (res) => {
           if (res.success) {
-            toast.success('Tạo gói thành công ở trạng thái INACTIVE');
+            toast.success('Subscription package created successfully in INACTIVE status');
             setIsDialogOpen(false);
           } else {
-            toast.error(res.message || 'Tạo thất bại');
+            toast.error(res.message || 'Failed to create package');
           }
         },
         onError: (err: any) => {
-          toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
+          toast.error(err.response?.data?.message || 'An error occurred');
         },
       });
     }
@@ -74,9 +74,9 @@ export default function SubscriptionsAdminPage() {
     duplicateMutation.mutate(id, {
       onSuccess: (res) => {
         if (res.success) {
-          toast.success('Nhân bản gói thành công (Bản sao mặc định ở trạng thái INACTIVE)');
+          toast.success('Package duplicated successfully (default copy in INACTIVE status)');
         } else {
-          toast.error(res.message || 'Nhân bản thất bại');
+          toast.error(res.message || 'Failed to duplicate package');
         }
       },
     });
@@ -89,9 +89,9 @@ export default function SubscriptionsAdminPage() {
       {
         onSuccess: (res) => {
           if (res.success) {
-            toast.success(`Đã đổi trạng thái gói sang ${nextStatus}`);
+            toast.success(`Package status changed to ${nextStatus}`);
           } else {
-            toast.error(res.message || 'Thay đổi trạng thái thất bại');
+            toast.error(res.message || 'Failed to change status');
           }
         },
       }
@@ -106,9 +106,9 @@ export default function SubscriptionsAdminPage() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Cấu hình Subscription &amp; Coin</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Subscription &amp; Coin Configuration</h1>
           <p className="text-sm text-muted-foreground">
-            Quản lý gói cước subscription, hạn mức AI và cấu hình ví coin cho Ứng viên.
+            Manage subscription packages, AI limits, and coin wallet configurations.
           </p>
         </div>
       </div>
@@ -119,31 +119,31 @@ export default function SubscriptionsAdminPage() {
             value="subscriptions"
             className="rounded-none border-b-2 border-transparent data-[active]:border-neutral-950 data-[active]:bg-transparent px-4 py-2 font-semibold text-sm transition-all"
           >
-            Gói Subscription
+            Subscription Packages
           </TabsTrigger>
           <TabsTrigger
             value="coin-config"
             className="rounded-none border-b-2 border-transparent data-[active]:border-neutral-950 data-[active]:bg-transparent px-4 py-2 font-semibold text-sm transition-all"
           >
-            Cấu hình Coin
+            Coin Configuration
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="subscriptions" className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-lg font-bold text-neutral-800">Danh sách gói dịch vụ</h2>
-              <p className="text-xs text-muted-foreground">Cấu hình hạn mức tính năng AI cho từng đối tượng sử dụng.</p>
+              <h2 className="text-lg font-bold text-neutral-800">Service Packages List</h2>
+              <p className="text-xs text-muted-foreground">Configure AI feature limits for each target role.</p>
             </div>
 
             <Dialog open={isDialogOpen} onOpenChange={(open) => {
               setIsDialogOpen(open);
               if (!open) setEditingSub(null);
             }}>
-              <DialogTrigger render={<Button onClick={() => setEditingSub(null)}>Thêm gói mới</Button>} />
+              <DialogTrigger render={<Button onClick={() => setEditingSub(null)}>Add New Package</Button>} />
               <DialogContent className="max-w-lg overflow-y-auto max-h-[90vh]">
                 <DialogHeader>
-                  <DialogTitle>{editingSub ? 'Chỉnh sửa gói dịch vụ' : 'Tạo gói dịch vụ mới'}</DialogTitle>
+                  <DialogTitle>{editingSub ? 'Edit Service Package' : 'Create New Service Package'}</DialogTitle>
                 </DialogHeader>
                 <SubscriptionForm
                   initialData={editingSub}
@@ -157,29 +157,29 @@ export default function SubscriptionsAdminPage() {
           {/* Filters */}
           <div className="flex gap-4 items-center bg-neutral-50 p-4 rounded-xl border">
             <div className="flex flex-col space-y-1">
-              <span className="text-xs font-semibold text-neutral-500">Đối tượng (Role)</span>
+              <span className="text-xs font-semibold text-neutral-500">Target (Role)</span>
               <Select value={roleFilter} onValueChange={(val) => setRoleFilter(val ?? 'ALL')}>
                 <SelectTrigger className="w-[180px] bg-white">
-                  <SelectValue placeholder="Chọn vai trò" />
+                  <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">Tất cả</SelectItem>
-                  <SelectItem value="CANDIDATE">Ứng viên</SelectItem>
-                  <SelectItem value="RECRUITER">Nhà tuyển dụng</SelectItem>
+                  <SelectItem value="ALL">All</SelectItem>
+                  <SelectItem value="CANDIDATE">Candidate</SelectItem>
+                  <SelectItem value="RECRUITER">Recruiter</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="flex flex-col space-y-1">
-              <span className="text-xs font-semibold text-neutral-500">Trạng thái</span>
+              <span className="text-xs font-semibold text-neutral-500">Status</span>
               <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val ?? 'ALL')}>
                 <SelectTrigger className="w-[180px] bg-white">
-                  <SelectValue placeholder="Chọn trạng thái" />
+                  <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">Tất cả</SelectItem>
-                  <SelectItem value="ACTIVE">Hoạt động</SelectItem>
-                  <SelectItem value="INACTIVE">Vô hiệu hóa</SelectItem>
+                  <SelectItem value="ALL">All</SelectItem>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="INACTIVE">Inactive</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -188,21 +188,21 @@ export default function SubscriptionsAdminPage() {
           {/* Data Table */}
           <div className="border rounded-xl bg-white shadow-sm overflow-hidden relative">
             {isLoading ? (
-              <div className="p-8 text-center text-muted-foreground text-sm">Đang tải danh sách...</div>
+              <div className="p-8 text-center text-muted-foreground text-sm">Loading list...</div>
             ) : !data?.data?.items?.length ? (
-              <div className="p-8 text-center text-muted-foreground text-sm">Không tìm thấy gói dịch vụ nào.</div>
+              <div className="p-8 text-center text-muted-foreground text-sm">No service packages found.</div>
             ) : (
               <div className={isFetching ? "opacity-60 pointer-events-none transition-opacity duration-200" : "transition-opacity duration-200"}>
                 <Table>
                   <TableHeader className="bg-neutral-50">
                     <TableRow>
-                      <TableHead>Tên gói</TableHead>
-                      <TableHead>Đối tượng</TableHead>
-                      <TableHead>Giá bán</TableHead>
-                      <TableHead>Thời hạn</TableHead>
-                      <TableHead>Trạng thái</TableHead>
-                      <TableHead>Giao dịch</TableHead>
-                      <TableHead className="text-right">Hành động</TableHead>
+                      <TableHead>Package Name</TableHead>
+                      <TableHead>Target Role</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead>Duration</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Transactions</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -215,12 +215,12 @@ export default function SubscriptionsAdminPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium">{formatPrice(sub.price)}</TableCell>
-                        <TableCell>{sub.durationDays} ngày</TableCell>
+                        <TableCell>{sub.durationDays} days</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Switch
-                              checked={sub.status === 'ACTIVE'}
-                              onCheckedChange={() => handleToggleStatus(sub.id, sub.status)}
+                                checked={sub.status === 'ACTIVE'}
+                                onCheckedChange={() => handleToggleStatus(sub.id, sub.status)}
                             />
                             <span className="text-xs text-neutral-500">
                               {sub.status === 'ACTIVE' ? 'Active' : 'Inactive'}
@@ -229,7 +229,7 @@ export default function SubscriptionsAdminPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant={sub.isUsed ? 'outline' : 'secondary'} className={sub.isUsed ? 'border-amber-200 text-amber-700 bg-amber-50' : 'bg-neutral-100 text-neutral-600'}>
-                            {sub.isUsed ? 'Đã có gd' : 'Chưa bán'}
+                            {sub.isUsed ? 'Sold' : 'Not Sold'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right space-x-2">
@@ -241,14 +241,14 @@ export default function SubscriptionsAdminPage() {
                               setIsDialogOpen(true);
                             }}
                           >
-                            Sửa
+                            Edit
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleDuplicate(sub.id)}
                           >
-                            Nhân bản
+                            Duplicate
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -268,7 +268,7 @@ export default function SubscriptionsAdminPage() {
                 disabled={page === 1}
                 onClick={() => setPage((p) => p - 1)}
               >
-                Trang trước
+                Previous
               </Button>
               <Button
                 variant="outline"
@@ -276,7 +276,7 @@ export default function SubscriptionsAdminPage() {
                 disabled={page * pageSize >= data.data.totalItems}
                 onClick={() => setPage((p) => p + 1)}
               >
-                Trang sau
+                Next
               </Button>
             </div>
           )}

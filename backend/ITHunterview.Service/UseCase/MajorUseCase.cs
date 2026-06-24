@@ -52,13 +52,13 @@ namespace ITHunterview.Service.UseCase
             var isNameDuplicate = await _majorRepository.ExistsByNameAsync(dto.Name);
             if (isNameDuplicate)
             {
-                return new ResponseBase<MajorDto>("Tên chuyên ngành đã tồn tại.");
+                return new ResponseBase<MajorDto>("Major name already exists.");
             }
 
             var isCodeDuplicate = await _majorRepository.ExistsByCodeAsync(dto.Code);
             if (isCodeDuplicate)
             {
-                return new ResponseBase<MajorDto>("Mã chuyên ngành đã tồn tại.");
+                return new ResponseBase<MajorDto>("Major code already exists.");
             }
 
             var major = new Majors
@@ -79,7 +79,7 @@ namespace ITHunterview.Service.UseCase
                 CreatedBy = major.CreatedBy
             };
 
-            return new ResponseBase<MajorDto>(resultDto, "Thêm chuyên ngành mới thành công.");
+            return new ResponseBase<MajorDto>(resultDto, "Major created successfully.");
         }
 
         public async Task<ResponseBase<MajorDto>> UpdateMajorAsync(int id, UpdateMajorDto dto, Guid userId)
@@ -87,19 +87,19 @@ namespace ITHunterview.Service.UseCase
             var major = await _majorRepository.GetByIdAsync(id);
             if (major == null)
             {
-                return new ResponseBase<MajorDto>("Chuyên ngành không tồn tại.");
+                return new ResponseBase<MajorDto>("Major does not exist.");
             }
 
             var isNameDuplicate = await _majorRepository.ExistsByNameAsync(dto.Name, id);
             if (isNameDuplicate)
             {
-                return new ResponseBase<MajorDto>("Tên chuyên ngành đã tồn tại.");
+                return new ResponseBase<MajorDto>("Major name already exists.");
             }
 
             var isCodeDuplicate = await _majorRepository.ExistsByCodeAsync(dto.Code, id);
             if (isCodeDuplicate)
             {
-                return new ResponseBase<MajorDto>("Mã chuyên ngành đã tồn tại.");
+                return new ResponseBase<MajorDto>("Major code already exists.");
             }
 
             major.Name = dto.Name.Trim();
@@ -118,7 +118,7 @@ namespace ITHunterview.Service.UseCase
                 UpdatedBy = major.UpdatedBy
             };
 
-            return new ResponseBase<MajorDto>(resultDto, "Cập nhật chuyên ngành thành công.");
+            return new ResponseBase<MajorDto>(resultDto, "Major updated successfully.");
         }
 
         public async Task<ResponseBase> DeleteMajorAsync(int id, Guid userId)
@@ -126,17 +126,17 @@ namespace ITHunterview.Service.UseCase
             var major = await _majorRepository.GetByIdAsync(id);
             if (major == null)
             {
-                return ResponseBase.Fail("Chuyên ngành không tồn tại.");
+                return ResponseBase.Fail("Major does not exist.");
             }
 
             var isInUse = await _majorRepository.IsMajorInUseAsync(id);
             if (isInUse)
             {
-                return ResponseBase.Fail("Không thể xóa chuyên ngành này vì đang có ứng viên đang theo học ngành này.");
+                return ResponseBase.Fail("Cannot delete this major because there are candidates enrolled in it.");
             }
 
             await _majorRepository.DeleteAsync(major, userId);
-            return ResponseBase.Ok("Xóa chuyên ngành thành công.");
+            return ResponseBase.Ok("Major deleted successfully.");
         }
 
         public async Task<ResponseBase<MajorDto>> RestoreMajorAsync(int id, Guid userId)
@@ -144,20 +144,20 @@ namespace ITHunterview.Service.UseCase
             var major = await _majorRepository.GetDeletedByIdAsync(id);
             if (major == null)
             {
-                return new ResponseBase<MajorDto>("Chuyên ngành đã xóa không tồn tại hoặc không bị xóa.");
+                return new ResponseBase<MajorDto>("The deleted major does not exist or has not been deleted.");
             }
 
             // Check if name/code restored will conflict with active records
             var isNameDuplicate = await _majorRepository.ExistsByNameAsync(major.Name);
             if (isNameDuplicate)
             {
-                return new ResponseBase<MajorDto>("Không thể khôi phục vì tên chuyên ngành này đã tồn tại ở bản ghi khác đang hoạt động.");
+                return new ResponseBase<MajorDto>("Cannot restore because this major name already exists in another active record.");
             }
 
             var isCodeDuplicate = await _majorRepository.ExistsByCodeAsync(major.Code);
             if (isCodeDuplicate)
             {
-                return new ResponseBase<MajorDto>("Không thể khôi phục vì mã chuyên ngành này đã tồn tại ở bản ghi khác đang hoạt động.");
+                return new ResponseBase<MajorDto>("Cannot restore because this major code already exists in another active record.");
             }
 
             major.DeletedAt = null;
@@ -173,7 +173,7 @@ namespace ITHunterview.Service.UseCase
                 UpdatedBy = major.UpdatedBy
             };
 
-            return new ResponseBase<MajorDto>(resultDto, "Khôi phục chuyên ngành thành công.");
+            return new ResponseBase<MajorDto>(resultDto, "Major restored successfully.");
         }
     }
 }

@@ -36,7 +36,7 @@ function PackageRow({ pkg, index, onUpdate, onRemove }: PackageRowProps) {
           value={localName}
           onChange={(e) => setLocalName(e.target.value)}
           onBlur={() => onUpdate(index, 'name', localName)}
-          placeholder="Ví dụ: Gói nạp 20 Coin"
+          placeholder="Example: Top-up 20 Coins"
           className="h-9"
         />
       </TableCell>
@@ -68,7 +68,7 @@ function PackageRow({ pkg, index, onUpdate, onRemove }: PackageRowProps) {
             onCheckedChange={(checked) => onUpdate(index, 'isActive', checked)}
           />
           <span className="text-xs text-neutral-500">
-            {pkg.isActive ? 'Bật' : 'Tắt'}
+            {pkg.isActive ? 'Active' : 'Inactive'}
           </span>
         </div>
       </TableCell>
@@ -79,7 +79,7 @@ function PackageRow({ pkg, index, onUpdate, onRemove }: PackageRowProps) {
           onClick={() => onRemove(index)}
           className="text-red-500 hover:text-red-700 hover:bg-red-50"
         >
-          Xóa
+          Delete
         </Button>
       </TableCell>
     </TableRow>
@@ -113,7 +113,7 @@ export function CoinConfigTab() {
   const handleAddPackage = () => {
     const newPkg: CoinPackageDto = {
       id: Math.random().toString(36).substring(2, 9), // ID tạm thời
-      name: `Gói nạp mới`,
+      name: `New Top-up Package`,
       coins: 50,
       price: 99000,
       isActive: true,
@@ -146,26 +146,26 @@ export function CoinConfigTab() {
 
     // Validate cơ bản
     if (cvJdMatchingCost < 0 || mockInterviewCost < 0 || cvOptimizeCost < 0) {
-      toast.error('Chi phí tính năng AI không được nhỏ hơn 0');
+      toast.error('AI feature cost cannot be negative');
       return;
     }
 
     if (packages.length === 0) {
-      toast.error('Phải cấu hình tối thiểu 1 gói nạp Coin');
+      toast.error('At least 1 coin package must be configured');
       return;
     }
 
     for (const pkg of packages) {
       if (!pkg.name.trim()) {
-        toast.error('Tên gói nạp Coin không được để trống');
+        toast.error('Coin package name is required');
         return;
       }
       if (pkg.coins <= 0) {
-        toast.error(`Gói "${pkg.name}" phải có số Coin lớn hơn 0`);
+        toast.error(`Package "${pkg.name}" must have more than 0 coins`);
         return;
       }
       if (pkg.price <= 0) {
-        toast.error(`Gói "${pkg.name}" phải có giá tiền lớn hơn 0`);
+        toast.error(`Package "${pkg.name}" must have a price greater than 0`);
         return;
       }
     }
@@ -188,19 +188,19 @@ export function CoinConfigTab() {
     updateMutation.mutate(payload, {
       onSuccess: (res) => {
         if (res.success) {
-          toast.success('Cập nhật cấu hình Coin thành công');
+          toast.success('Coin configuration updated successfully');
         } else {
-          toast.error(res.message || 'Cập nhật thất bại');
+          toast.error(res.message || 'Update failed');
         }
       },
       onError: (err: any) => {
-        toast.error(err.response?.data?.message || 'Lỗi khi gửi yêu cầu cập nhật');
+        toast.error(err.response?.data?.message || 'Error sending update request');
       },
     });
   };
 
   if (isLoading) {
-    return <div className="p-8 text-center text-muted-foreground text-sm">Đang tải cấu hình Coin...</div>;
+    return <div className="p-8 text-center text-muted-foreground text-sm">Loading coin configuration...</div>;
   }
 
   return (
@@ -210,13 +210,13 @@ export function CoinConfigTab() {
         {/* Card 1: AI Cost Configuration */}
         <Card className="md:col-span-1 border-neutral-200/80 shadow-sm">
           <CardHeader className="border-b bg-neutral-50/50">
-            <CardTitle className="text-lg font-bold text-neutral-800">Chi phí AI (Coin)</CardTitle>
-            <CardDescription>Cấu hình số coin tiêu tốn cho mỗi lần sử dụng dịch vụ AI.</CardDescription>
+            <CardTitle className="text-lg font-bold text-neutral-800">AI Costs (Coins)</CardTitle>
+            <CardDescription>Configure the number of coins consumed per AI service usage.</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
             
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-neutral-700">So khớp CV - JD</label>
+              <label className="text-sm font-semibold text-neutral-700">CV-JD Matching</label>
               <div className="relative flex items-center">
                 <Input
                   type="number"
@@ -244,7 +244,7 @@ export function CoinConfigTab() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-neutral-700">Tối ưu hóa CV</label>
+              <label className="text-sm font-semibold text-neutral-700">CV Optimization</label>
               <div className="relative flex items-center">
                 <Input
                   type="number"
@@ -258,7 +258,7 @@ export function CoinConfigTab() {
             </div>
 
             <div className="pt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200/50 rounded-lg p-3">
-              Tỷ giá nạp mặc định được quy ước là <strong>1 Coin = 2,000 VND</strong> khi thiết lập các gói ví nạp.
+              The default top-up rate is set at <strong>1 Coin = 2,000 VND</strong> when configuring wallet top-up packages.
             </div>
           </CardContent>
         </Card>
@@ -267,11 +267,11 @@ export function CoinConfigTab() {
         <Card className="md:col-span-2 border-neutral-200/80 shadow-sm">
           <CardHeader className="border-b bg-neutral-50/50 flex flex-row items-center justify-between space-y-0">
             <div>
-              <CardTitle className="text-lg font-bold text-neutral-800">Các gói nạp Coin</CardTitle>
-              <CardDescription>Quản lý danh sách các mệnh giá nạp coin hiển thị cho ứng viên.</CardDescription>
+              <CardTitle className="text-lg font-bold text-neutral-800">Coin Top-up Packages</CardTitle>
+              <CardDescription>Manage the list of coin top-up amounts displayed to candidates.</CardDescription>
             </div>
             <Button size="sm" onClick={handleAddPackage} className="bg-neutral-900 text-white hover:bg-neutral-800">
-              Thêm gói nạp
+              Add Package
             </Button>
           </CardHeader>
           <CardContent className="pt-6">
@@ -279,10 +279,10 @@ export function CoinConfigTab() {
               <Table>
                 <TableHeader className="bg-neutral-50">
                   <TableRow>
-                    <TableHead className="w-[40%]">Tên gói nạp</TableHead>
-                    <TableHead className="w-[15%]">Số Coin</TableHead>
-                    <TableHead className="w-[20%]">Mệnh giá (VND)</TableHead>
-                    <TableHead className="w-[15%]">Trạng thái</TableHead>
+                    <TableHead className="w-[40%]">Package Name</TableHead>
+                    <TableHead className="w-[15%]">Coins Amount</TableHead>
+                    <TableHead className="w-[20%]">Price (VND)</TableHead>
+                    <TableHead className="w-[15%]">Status</TableHead>
                     <TableHead className="w-[10%] text-right"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -310,7 +310,7 @@ export function CoinConfigTab() {
           disabled={updateMutation.isPending}
           className="bg-neutral-900 text-white hover:bg-neutral-800 px-6"
         >
-          {updateMutation.isPending ? 'Đang lưu thay đổi...' : 'Lưu tất cả cấu hình'}
+          {updateMutation.isPending ? 'Saving changes...' : 'Save All Configuration'}
         </Button>
       </div>
     </div>
