@@ -50,7 +50,7 @@ function LoginForm() {
               role: { name: payload.role },
               avatarUrl: payload.avatarUrl,
             }
-            setAuth(payload.accessToken, user)
+            setAuth(payload.accessToken, payload.refreshToken, user)
             router.push(getDashboardPath(user.role.name))
           })
           .catch((err: any) => {
@@ -83,7 +83,7 @@ function LoginForm() {
         role: { name: payload.role },
         avatarUrl: payload.avatarUrl
       };
-      setAuth(payload.accessToken, user);
+      setAuth(payload.accessToken, payload.refreshToken, user);
       router.push(redirectTo || getDashboardPath(user.role.name));
     } catch (err: any) {
       console.error("Login error details:", err)

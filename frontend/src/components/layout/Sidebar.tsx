@@ -94,7 +94,7 @@ export function Sidebar() {
   const navItems = getNavItems(user?.role?.name ?? "candidate")
 
   const handleLogout = async () => {
-    logout()
+    await logout()
     router.push("/login")
   }
 

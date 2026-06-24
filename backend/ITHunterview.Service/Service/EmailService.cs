@@ -20,7 +20,7 @@ namespace ITHunterview.Service.Service
         public async Task SendVerificationEmailAsync(string toEmail, string verificationToken)
         {
             var frontendUrl = _configuration["FrontendUrl"] ?? "http://localhost:3000";
-            var verifyLink = $"{frontendUrl}/auth/verify-email?token={verificationToken}";
+            var verifyLink = $"{frontendUrl}/verify-email?token={verificationToken}";
 
             var subject = "Xác thực tài khoản ITHunterView";
             var body = $@"
@@ -43,7 +43,7 @@ namespace ITHunterview.Service.Service
         public async Task SendPasswordResetEmailAsync(string toEmail, string resetToken)
         {
             var frontendUrl = _configuration["FrontendUrl"] ?? "http://localhost:3000";
-            var resetLink = $"{frontendUrl}/auth/reset-password?token={resetToken}&email={Uri.EscapeDataString(toEmail)}";
+            var resetLink = $"{frontendUrl}/reset-password?token={resetToken}&email={Uri.EscapeDataString(toEmail)}";
 
             var subject = "Đặt lại mật khẩu ITHunterView";
             var body = $@"
