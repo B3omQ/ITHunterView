@@ -38,6 +38,7 @@ namespace ITHunterview.Service.UseCase
             var result = new PagedResult<MajorDto>
             {
                 Items = dtos,
+                Total = total,
                 TotalItems = total,
                 Page = page,
                 PageSize = pageSize

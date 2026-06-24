@@ -45,6 +45,27 @@ namespace ITHunterview.Domain.Entities
         [Column("status")]
         public CompanyStatus Status { get; set; }
 
+        [Column("pending_name")]
+        public string? PendingName { get; set; }
+
+        [Column("pending_tax_code")]
+        public string? PendingTaxCode { get; set; }
+
+        [Column("pending_headquarters_address")]
+        public string? PendingHeadquartersAddress { get; set; }
+
+        [Column("pending_verification_method")]
+        public CompanyVerificationMethod? PendingVerificationMethod { get; set; }
+
+        [Column("pending_verification_document_url")]
+        public string? PendingVerificationDocumentUrl { get; set; }
+
+        [Column("reject_reason")]
+        public string? RejectReason { get; set; }
+
+        [Column("has_pending_change")]
+        public bool HasPendingChange { get; set; } = false;
+
         [Column("created_by")]
         public Guid? CreatedBy { get; set; }
 

@@ -23,7 +23,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "activity_log_category", new[] { "auth", "system", "data_mutation", "security" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "activity_log_status", new[] { "success", "fail" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "application_status", new[] { "applied", "viewed", "shortlisted", "interviewing", "offered", "hired", "rejected", "withdrawn" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "company_status", new[] { "pending", "verified", "rejected" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "company_status", new[] { "draft", "pending", "verified", "rejected" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "company_verification_method", new[] { "business_registration", "poa_and_id" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "credit_transaction_type", new[] { "topup", "deduct", "refund", "bonus" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "difficulty_level", new[] { "easy", "medium", "hard" });
@@ -146,7 +146,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
                         .HasColumnName("name");
 
                     b.Property<Guid>("UserId")
@@ -154,6 +155,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("candidate_certifications");
                 });
@@ -214,6 +217,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("MajorId");
+
+                    b.HasIndex("UserId");
+
                     b.ToTable("candidate_educations");
                 });
 
@@ -265,7 +272,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
                         .HasColumnName("title");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -277,6 +285,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("candidate_experiences");
                 });
@@ -369,6 +381,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
+                    b.Property<bool>("HasPendingChange")
+                        .HasColumnType("boolean")
+                        .HasColumnName("has_pending_change");
+
                     b.Property<string>("HeadquartersAddress")
                         .IsRequired()
                         .HasColumnType("text")
@@ -388,6 +404,30 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("name");
+
+                    b.Property<string>("PendingHeadquartersAddress")
+                        .HasColumnType("text")
+                        .HasColumnName("pending_headquarters_address");
+
+                    b.Property<string>("PendingName")
+                        .HasColumnType("text")
+                        .HasColumnName("pending_name");
+
+                    b.Property<string>("PendingTaxCode")
+                        .HasColumnType("text")
+                        .HasColumnName("pending_tax_code");
+
+                    b.Property<string>("PendingVerificationDocumentUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("pending_verification_document_url");
+
+                    b.Property<int?>("PendingVerificationMethod")
+                        .HasColumnType("integer")
+                        .HasColumnName("pending_verification_method");
+
+                    b.Property<string>("RejectReason")
+                        .HasColumnType("text")
+                        .HasColumnName("reject_reason");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
@@ -1672,9 +1712,21 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("ip_address");
 
+                    b.Property<string>("OperationType")
+                        .HasColumnType("text")
+                        .HasColumnName("operation_type");
+
+                    b.Property<string>("SnapshotDiff")
+                        .HasColumnType("text")
+                        .HasColumnName("snapshot_diff");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
+
+                    b.Property<string>("TableName")
+                        .HasColumnType("text")
+                        .HasColumnName("table_name");
 
                     b.Property<string>("UserAgent")
                         .IsRequired()
@@ -1724,6 +1776,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("proficiency_level");
 
                     b.HasKey("UserId", "SkillId");
+
+                    b.HasIndex("SkillId");
 
                     b.ToTable("user_skills");
                 });
@@ -1782,6 +1836,43 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("user_wallets");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.CandidateCertifications", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.CandidateEducations", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.Majors", null)
+                        .WithMany()
+                        .HasForeignKey("MajorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ITHunterview.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.CandidateExperiences", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.Companies", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ITHunterview.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.CandidateProfiles", b =>
@@ -1865,6 +1956,17 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.UserSkills", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.Skills", "Skill")
+                        .WithMany()
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Skill");
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.Roles", b =>

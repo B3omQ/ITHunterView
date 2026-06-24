@@ -22,7 +22,7 @@ export function useLogin() {
         role: { name: payload.role },
         avatarUrl: payload.avatarUrl,
       };
-      setAuth(payload.accessToken, user);
+      setAuth(payload.accessToken, payload.refreshToken, user);
       router.push(getDashboardPath(user.role.name));
     },
   });

@@ -17,6 +17,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             await SeedSkillsAsync(context);
             await SeedMajorsAsync(context);
             await SeedSubscriptionsAsync(context);
+            await SeedJobPostingsAsync(context);
         }
 
         private static async Task SeedRolesAndPermissionsAsync(ITHunterviewContext context)
@@ -190,7 +191,112 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 context.Users.AddRange(usersToAdd);
                 await context.SaveChangesAsync();
             }
+
+            // Seed companies if none exists
+            var companies = context.Companies.ToList();
+            if (companies.Count < 3)
+            {
+                var comp1 = new Companies
+                {
+                    Id = Guid.NewGuid(), Name = "ITHunterView Corp", TaxCode = "0102030405", HeadquartersAddress = "123 Dev Street, Tech City",
+                    Industry = "Information Technology", CompanySize = "100-500", Description = "Leading tech recruitment platform",
+                    Website = "https://ithunterview.com", LogoUrl = "https://logo.clearbit.com/ithunterview.com",
+                    VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license1.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+                };
+                var comp2 = new Companies
+                {
+                    Id = Guid.NewGuid(), Name = "FPT Software", TaxCode = "0102030406", HeadquartersAddress = "F-Town, HCMC",
+                    Industry = "Software Outsourcing", CompanySize = "1000+", Description = "Global technology and IT services provider",
+                    Website = "https://fptsoftware.com", LogoUrl = "https://logo.clearbit.com/fptsoftware.com",
+                    VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license2.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+                };
+                var comp3 = new Companies
+                {
+                    Id = Guid.NewGuid(), Name = "VNG Corporation", TaxCode = "0102030407", HeadquartersAddress = "VNG Campus, HCMC",
+                    Industry = "Internet & Technology", CompanySize = "1000+", Description = "Vietnam's leading tech firm",
+                    Website = "https://vng.com.vn", LogoUrl = "https://logo.clearbit.com/vng.com.vn",
+                    VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license3.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+                };
+                
+                context.Companies.AddRange(comp1, comp2, comp3);
+                await context.SaveChangesAsync();
+                companies = new List<Companies> { comp1, comp2, comp3 };
+            }
+
+            // Seed profiles for recruiter users if missing
+            if (recruiterRole != null)
+            {
+                // ONLY map profiles for the default seeded recruiters. Do NOT touch user-registered recruiters!
+                var seededEmails = new List<string> { "recruiter1@ithunterview.com", "recruiter2@ithunterview.com", "recruiter3@ithunterview.com" };
+                var recruiters = context.Users
+                    .Where(u => u.RoleId == recruiterRole.Id && seededEmails.Contains(u.Email))
+                    .OrderBy(u => u.Email)
+                    .ToList();
+
+                for (int i = 0; i < recruiters.Count; i++)
+                {
+                    var r = recruiters[i];
+                    var existingProfile = context.RecruiterProfiles.FirstOrDefault(rp => rp.UserId == r.Id);
+                    Companies compToAssign;
+                    if (i == 0) compToAssign = companies.FirstOrDefault(c => c.Name.Contains("ITHunterView")) ?? companies.First();
+                    else if (i == 1) compToAssign = companies.FirstOrDefault(c => c.Name.Contains("FPT")) ?? companies.First();
+                    else if (i == 2) compToAssign = companies.FirstOrDefault(c => c.Name.Contains("VNG")) ?? companies.First();
+                    else compToAssign = companies.First();
+
+                    if (existingProfile == null)
+                    {
+                        context.RecruiterProfiles.Add(new RecruiterProfiles
+                        {
+                            Id = Guid.NewGuid(),
+                            UserId = r.Id,
+                            CompanyId = compToAssign.Id,
+                            FullName = $"Recruiter {r.Email.Split('@')[0]}",
+                            PositionTitle = "HR Manager",
+                            Phone = "0987654321",
+                            AvatarUrl = $"https://avatar.iran.liara.run/public/{30 + i}"
+                        });
+                    }
+                    else
+                    {
+                        // Force update CompanyId for existing profiles to ensure separation
+                        existingProfile.CompanyId = compToAssign.Id;
+                        context.RecruiterProfiles.Update(existingProfile);
+                    }
+                }
+                await context.SaveChangesAsync();
+            }
+
+            // Seed profiles for candidate users if missing
+            if (candidateRole != null)
+            {
+                var candidates = context.Users.Where(u => u.RoleId == candidateRole.Id).ToList();
+                var avatarBase = new[] { "boy", "girl" };
+                int avatarIdx = 1;
+                foreach (var c in candidates)
+                {
+                    if (!context.CandidateProfiles.Any(cp => cp.UserId == c.Id))
+                    {
+                        var firstName = $"Candidate";
+                        var lastName = c.Email.Split('@')[0]; // e.g. "candidate1"
+                        context.CandidateProfiles.Add(new CandidateProfiles
+                        {
+                            Id = Guid.NewGuid(),
+                            UserId = c.Id,
+                            FirstName = firstName,
+                            LastName = lastName,
+                            Phone = $"09{avatarIdx:D8}",
+                            Location = "Ho Chi Minh City",
+                            AboutMe = "Passionate software developer looking for opportunities.",
+                            AvatarUrl = $"https://avatar.iran.liara.run/public/{avatarIdx % 50 + 1}",
+                            IsVisibleToRecruiters = true
+                        });
+                        avatarIdx++;
+                    }
+                }
+                await context.SaveChangesAsync();
+            }
         }
+
 
         private static async Task SeedJobCategoriesAsync(ITHunterviewContext context)
         {
@@ -271,7 +377,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 };
                 context.SkillCategories.AddRange(categories);
                 await context.SaveChangesAsync();
+            }
                 
+            if (!context.Skills.Any())
+            {
                 var cProg = context.SkillCategories.First(c => c.Name == "Programming Language").Id;
                 var cFram = context.SkillCategories.First(c => c.Name == "Framework & Library").Id;
                 var cDb = context.SkillCategories.First(c => c.Name == "Database").Id;
@@ -334,6 +443,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     new Skills { CategoryId = cTool, Name = "Git", Status = SkillStatus.ACTIVE }
                 };
 
+                foreach (var skill in skills)
+                {
+                    skill.NormalizedName = StringNormalizationHelper.NormalizeITTerm(skill.Name);
+                }
+
                 context.Skills.AddRange(skills);
                 await context.SaveChangesAsync();
             }
@@ -354,6 +468,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     new Majors { Name = "Computer Networks and Data Communication", Code = "NET" },
                     new Majors { Name = "Artificial Intelligence", Code = "AI" }
                 };
+                foreach (var major in majors)
+                {
+                    major.NormalizedName = StringNormalizationHelper.NormalizeITTerm(major.Name);
+                }
                 context.Majors.AddRange(majors);
                 await context.SaveChangesAsync();
             }
@@ -392,6 +510,54 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 };
                 context.Subscriptions.AddRange(subs);
                 await context.SaveChangesAsync();
+            }
+        }
+
+        private static async Task SeedJobPostingsAsync(ITHunterviewContext context)
+        {
+            if (!context.JobPostings.Any())
+            {
+                var recruiterRole = context.Roles.FirstOrDefault(r => r.Name == "recruiter");
+                var recruiter = context.Users.FirstOrDefault(u => u.RoleId == recruiterRole.Id);
+                var company = context.Companies.FirstOrDefault();
+                var category = context.JobCategories.FirstOrDefault(c => c.ParentId != null);
+
+                if (recruiter != null && company != null && category != null)
+                {
+                    var jobs = new List<JobPostings>();
+                    var random = new System.Random();
+
+                    for (int i = 1; i <= 10; i++)
+                    {
+                        jobs.Add(new JobPostings
+                        {
+                            Id = System.Guid.NewGuid(),
+                            JobCode = $"JB-{random.Next(1000, 9999)}",
+                            RecruiterId = recruiter.Id,
+                            CompanyId = company.Id,
+                            CategoryId = category.Id,
+                            Title = $"Software Engineer {i}",
+                            Description = "We are looking for a talented Software Engineer to join our team...",
+                            Responsibilities = "- Develop high-quality software design and architecture\n- Identify, prioritize and execute tasks in the software development life cycle",
+                            Requirements = "- Proven experience as a Software Engineer or Software Developer\n- Experience with software design and development in a test-driven environment",
+                            Benefits = "- Competitive salary\n- Health insurance\n- Paid time off",
+                            MinSalary = 1000 + (i * 100),
+                            MaxSalary = 2000 + (i * 100),
+                            Currency = "USD",
+                            Location = "Ho Chi Minh City",
+                            JobType = JobType.FULL_TIME,
+                            Status = JobStatus.PUBLISHED,
+                            ApplicationCount = random.Next(0, 50),
+                            ViewCount = random.Next(100, 1000),
+                            PublishedAt = System.DateTime.UtcNow.AddDays(-i),
+                            CreatedAt = System.DateTime.UtcNow.AddDays(-i),
+                            UpdatedAt = System.DateTime.UtcNow.AddDays(-i)
+                        });
+                    }
+
+                    context.JobPostings.AddRange(jobs);
+                    await context.SaveChangesAsync();
+                }
             }
         }
     }

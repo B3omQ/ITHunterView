@@ -16,5 +16,6 @@ namespace ITHunterview.Service.Interface.UseCase
         Task<ResponseBase> ForgotPasswordAsync(ForgotPasswordRequestDto request);
         Task<ResponseBase> ResetPasswordAsync(ResetPasswordRequestDto request);
         Task<ResponseBase> VerifyEmailAsync(string token);
+        Task<ResponseBase> ResendVerificationEmailAsync(string email);
     }
 }

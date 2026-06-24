@@ -56,8 +56,8 @@ namespace ITHunterview.WebAPI.BackgroundServices
 
             using (var scope = _serviceProvider.CreateScope())
             {
-                var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
-                var deletedCount = await userRepository.PurgeActivityLogsAsync(cutoffDate);
+                var auditLogRepository = scope.ServiceProvider.GetRequiredService<IAuditLogRepository>();
+                var deletedCount = await auditLogRepository.PurgeActivityLogsAsync(cutoffDate);
                 _logger.LogInformation("Successfully purged {Count} logs older than {CutoffDate}.", deletedCount, cutoffDate);
             }
         }

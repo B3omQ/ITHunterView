@@ -30,6 +30,7 @@ export const APP_ROUTES = {
   },
   STAFF: {
     DASHBOARD: '/staff/dashboard',
+    COMPANIES: '/staff/companies',
     AI_CONFIG: '/staff/ai-config',
     PROMPTS: '/staff/prompts',
     QUESTION_BANK: '/staff/question-bank',
@@ -44,6 +45,7 @@ export const APP_ROUTES = {
     MASTER_DATA: '/admin/master-data',
     SUBSCRIPTIONS: '/admin/subscriptions',
     FINANCE: '/admin/finance',
+    AUDIT_LOGS: '/admin/audit-logs',
     SETTINGS: '/admin/settings',
     NOTIFICATIONS: '/admin/notifications',
   },
@@ -86,6 +88,7 @@ export const ROLE_MENUS: Record<string, Array<{ label: string; href: string; ico
   ],
   staff: [
     { label: 'Dashboard', href: APP_ROUTES.STAFF.DASHBOARD, icon: 'LayoutDashboard' },
+    { label: 'Companies', href: APP_ROUTES.STAFF.COMPANIES, icon: 'Building2' },
     { label: 'AI Config', href: APP_ROUTES.STAFF.AI_CONFIG, icon: 'BrainCircuit' },
     { label: 'Prompts', href: APP_ROUTES.STAFF.PROMPTS, icon: 'MessageSquare' },
     { label: 'Question Bank', href: APP_ROUTES.STAFF.QUESTION_BANK, icon: 'FileText' },
@@ -100,6 +103,7 @@ export const ROLE_MENUS: Record<string, Array<{ label: string; href: string; ico
     { label: 'Master Data', href: APP_ROUTES.ADMIN.MASTER_DATA, icon: 'Database' },
     { label: 'Subscriptions', href: APP_ROUTES.ADMIN.SUBSCRIPTIONS, icon: 'CreditCard' },
     { label: 'Finance', href: APP_ROUTES.ADMIN.FINANCE, icon: 'BarChart3' },
+    { label: 'Platform Safety', href: APP_ROUTES.ADMIN.AUDIT_LOGS, icon: 'Shield' },
     { label: 'Notifications', href: APP_ROUTES.ADMIN.NOTIFICATIONS, icon: 'Bell' },
     { label: 'Settings', href: APP_ROUTES.ADMIN.SETTINGS, icon: 'Settings' },
   ],
