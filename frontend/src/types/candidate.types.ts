@@ -4,7 +4,6 @@ export interface ProfileSummary {
   avatarUrl: string | null;
   location: string | null;
   isVisibleToRecruiters: boolean;
-  lastSavedAt: string | null;
 }
 
 export interface UpdateVisibilityRequest {

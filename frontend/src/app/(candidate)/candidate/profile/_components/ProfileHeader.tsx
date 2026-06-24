@@ -33,19 +33,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
     updateVisibility({ isVisibleToRecruiters: checked });
   };
 
-  // Định dạng thời gian lưu gần nhất
-  const formatLastSaved = (dateStr: string | null) => {
-    if (!dateStr) return 'Not saved yet';
-    try {
-      const date = new Date(dateStr);
-      return `Last saved: ${date.toLocaleDateString()} ${date.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      })}`;
-    } catch {
-      return 'Last saved recently';
-    }
-  };
+
 
   return (
     <Card className="relative overflow-hidden border border-border/40 bg-card/60 backdrop-blur-md p-6 md:p-8 rounded-2xl shadow-xl flex flex-col md:flex-row gap-6 md:gap-8 items-start md:items-center justify-between transition-all duration-300 hover:shadow-2xl">
@@ -105,10 +93,6 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
                 {summary.location}
               </span>
             )}
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
-            <span className="font-mono text-muted-foreground/75">
-              {formatLastSaved(summary.lastSavedAt)}
-            </span>
           </div>
         </div>
       </div>

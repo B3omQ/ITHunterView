@@ -7,6 +7,5 @@ namespace ITHunterview.Service.DTOs.CandidateProfile
         public string? AvatarUrl { get; set; }
         public string? Location { get; set; }
         public bool IsVisibleToRecruiters { get; set; }
-        public DateTime? LastSavedAt { get; set; }
     }
 }

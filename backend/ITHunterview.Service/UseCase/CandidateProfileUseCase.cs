@@ -105,16 +105,6 @@ namespace ITHunterview.Service.UseCase
         {
             var profile = await GetOrCreateProfileAsync(userId);
 
-            var experiences = await _expRepo.GetByUserIdAsync(userId);
-            var educations = await _eduRepo.GetByUserIdAsync(userId);
-
-            // lastSavedAt = max updated_at từ tất cả related records
-            var timestamps = new List<DateTime?>();
-            timestamps.Add(profile.User?.UpdatedAt);
-            timestamps.AddRange(experiences.Select(e => (DateTime?)e.UpdatedAt));
-            timestamps.AddRange(educations.Select(e => (DateTime?)e.UpdatedAt));
-            var lastSavedAt = timestamps.Where(t => t.HasValue).Max(t => t);
-
             return new ProfileSummaryResponseDto
             {
                 Id = profile.Id,
@@ -122,8 +112,7 @@ namespace ITHunterview.Service.UseCase
                     .Where(s => !string.IsNullOrWhiteSpace(s))),
                 AvatarUrl = profile.AvatarUrl,
                 Location = profile.Location,
-                IsVisibleToRecruiters = profile.IsVisibleToRecruiters,
-                LastSavedAt = lastSavedAt
+                IsVisibleToRecruiters = profile.IsVisibleToRecruiters
             };
         }
 
