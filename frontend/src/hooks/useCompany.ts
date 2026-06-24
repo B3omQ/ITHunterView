@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { companyService } from '@/services/company.service';
-import { CreateCompanyDto, VerifyCompanyDto } from '@/types/company.types';
+import { CreateCompanyDto, VerifyCompanyDto, UpdateCompanyStatusDto } from '@/types/company.types';
 
 export function useGetMyCompany() {
   return useQuery({
@@ -26,6 +26,25 @@ export function useVerifyCompanyLegal() {
     mutationFn: ({ id, dto }: { id: string; dto: VerifyCompanyDto }) => 
       companyService.verifyCompanyLegal(id, dto),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-company'] });
+    },
+  });
+}
+
+export function useCompanies(params: { page?: number; pageSize?: number; search?: string; status?: string }) {
+  return useQuery({
+    queryKey: ['companies', params],
+    queryFn: () => companyService.getPagedCompanies(params),
+  });
+}
+
+export function useUpdateCompanyStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: UpdateCompanyStatusDto }) =>
+      companyService.updateCompanyStatus({ id, dto }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
       queryClient.invalidateQueries({ queryKey: ['my-company'] });
     },
   });

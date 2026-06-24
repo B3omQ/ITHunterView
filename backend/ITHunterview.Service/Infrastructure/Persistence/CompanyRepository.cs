@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using ITHunterview.Domain.Entities;
+using ITHunterview.Domain.Enums;
 using ITHunterview.Service.Interface.Persistence;
 
 namespace ITHunterview.Service.Infrastructure.Persistence
@@ -59,6 +62,37 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 _context.RecruiterProfiles.Add(profile);
                 await _context.SaveChangesAsync();
             }
+        }
+
+        public async Task<(List<Companies> items, int total)> GetPagedCompaniesAsync(int page, int pageSize, string? search, CompanyStatus? status)
+        {
+            var query = _context.Companies.AsQueryable();
+
+            // Filter out soft-deleted companies
+            query = query.Where(c => c.DeletedAt == null);
+
+            if (status.HasValue)
+            {
+                query = query.Where(c => c.Status == status.Value);
+            }
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                var lowerSearch = search.ToLower();
+                query = query.Where(c => c.Name.ToLower().Contains(lowerSearch)
+                                      || c.TaxCode.ToLower().Contains(lowerSearch)
+                                      || c.Industry.ToLower().Contains(lowerSearch)
+                                      || c.HeadquartersAddress.ToLower().Contains(lowerSearch));
+            }
+
+            var total = await query.CountAsync();
+            var items = await query
+                .OrderByDescending(c => c.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, total);
         }
     }
 }

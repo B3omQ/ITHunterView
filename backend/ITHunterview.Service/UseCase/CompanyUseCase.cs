@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
+using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Company;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
@@ -12,10 +14,12 @@ namespace ITHunterview.Service.UseCase
     public class CompanyUseCase : ICompanyUseCase
     {
         private readonly ICompanyRepository _companyRepository;
+        private readonly IUserRepository _userRepository;
 
-        public CompanyUseCase(ICompanyRepository companyRepository)
+        public CompanyUseCase(ICompanyRepository companyRepository, IUserRepository userRepository)
         {
             _companyRepository = companyRepository;
+            _userRepository = userRepository;
         }
 
         public async Task<CompanyDto> CreateCompanyAsync(CreateCompanyDto dto, Guid userId)
@@ -72,6 +76,93 @@ namespace ITHunterview.Service.UseCase
             if (company == null) return null;
 
             return MapToDto(company);
+        }
+
+        public async Task<CompanyDto> UpdateCompanyStatusAsync(Guid companyId, UpdateCompanyStatusDto dto, Guid userId)
+        {
+            var company = await _companyRepository.GetByIdAsync(companyId);
+            if (company == null)
+            {
+                throw new KeyNotFoundException("Company not found");
+            }
+
+            company.Status = dto.Status;
+            company.UpdatedBy = userId;
+            company.UpdatedAt = DateTime.UtcNow;
+
+            await _companyRepository.UpdateAsync(company);
+
+            var resDto = MapToDto(company);
+            if (company.CreatedBy.HasValue)
+            {
+                var user = await _userRepository.GetUserWithRoleAsync(company.CreatedBy.Value);
+                if (user != null)
+                {
+                    resDto.CreatedByEmail = user.Email;
+                    
+                    string? candidateName = null;
+                    if (user.CandidateProfile != null)
+                    {
+                        candidateName = $"{user.CandidateProfile.FirstName} {user.CandidateProfile.LastName}".Trim();
+                    }
+
+                    resDto.CreatedByName = !string.IsNullOrEmpty(user.RecruiterProfile?.FullName)
+                        ? user.RecruiterProfile.FullName
+                        : (!string.IsNullOrEmpty(candidateName) ? candidateName : user.Email);
+                }
+            }
+            else
+            {
+                resDto.CreatedByEmail = "system@ithunterview.com";
+                resDto.CreatedByName = "System";
+            }
+            return resDto;
+        }
+
+        public async Task<ResponseBase<PagedResult<CompanyDto>>> GetPagedCompaniesAsync(int page, int pageSize, string? search, CompanyStatus? status)
+        {
+            var (items, total) = await _companyRepository.GetPagedCompaniesAsync(page, pageSize, search, status);
+
+            var companyDtos = new List<CompanyDto>();
+            foreach (var company in items)
+            {
+                var dto = MapToDto(company);
+                if (company.CreatedBy.HasValue)
+                {
+                    var user = await _userRepository.GetUserWithRoleAsync(company.CreatedBy.Value);
+                    if (user != null)
+                    {
+                        dto.CreatedByEmail = user.Email;
+                        
+                        string? candidateName = null;
+                        if (user.CandidateProfile != null)
+                        {
+                            candidateName = $"{user.CandidateProfile.FirstName} {user.CandidateProfile.LastName}".Trim();
+                        }
+
+                        dto.CreatedByName = !string.IsNullOrEmpty(user.RecruiterProfile?.FullName)
+                            ? user.RecruiterProfile.FullName
+                            : (!string.IsNullOrEmpty(candidateName) ? candidateName : user.Email);
+                    }
+                }
+                else
+                {
+                    dto.CreatedByEmail = "system@ithunterview.com";
+                    dto.CreatedByName = "System";
+                }
+                companyDtos.Add(dto);
+            }
+
+            var result = new PagedResult<CompanyDto>
+            {
+                Items = companyDtos,
+                Total = total,
+                TotalItems = total,
+                Page = page,
+                PageSize = pageSize
+            };
+
+            return new ResponseBase<PagedResult<CompanyDto>>(result);
         }
 
         private CompanyDto MapToDto(Companies company)
