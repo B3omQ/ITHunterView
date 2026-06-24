@@ -191,49 +191,75 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 await context.SaveChangesAsync();
             }
 
-            // Seed default company if none exists
-            var company = context.Companies.FirstOrDefault();
-            if (company == null)
+            // Seed companies if none exists
+            var companies = context.Companies.ToList();
+            if (companies.Count < 3)
             {
-                company = new Companies
+                var comp1 = new Companies
                 {
-                    Id = Guid.NewGuid(),
-                    Name = "ITHunterView Corp",
-                    TaxCode = "0102030405",
-                    HeadquartersAddress = "123 Dev Street, Tech City",
-                    Industry = "Information Technology",
-                    CompanySize = "100-500",
-                    Description = "Leading tech recruitment platform",
-                    Website = "https://ithunterview.com",
-                    LogoUrl = "https://logo.clearbit.com/ithunterview.com",
-                    VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION,
-                    VerificationDocumentUrl = "https://document.com/license.pdf",
-                    Status = CompanyStatus.VERIFIED,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    Id = Guid.NewGuid(), Name = "ITHunterView Corp", TaxCode = "0102030405", HeadquartersAddress = "123 Dev Street, Tech City",
+                    Industry = "Information Technology", CompanySize = "100-500", Description = "Leading tech recruitment platform",
+                    Website = "https://ithunterview.com", LogoUrl = "https://logo.clearbit.com/ithunterview.com",
+                    VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license1.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
-                context.Companies.Add(company);
+                var comp2 = new Companies
+                {
+                    Id = Guid.NewGuid(), Name = "FPT Software", TaxCode = "0102030406", HeadquartersAddress = "F-Town, HCMC",
+                    Industry = "Software Outsourcing", CompanySize = "1000+", Description = "Global technology and IT services provider",
+                    Website = "https://fptsoftware.com", LogoUrl = "https://logo.clearbit.com/fptsoftware.com",
+                    VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license2.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+                };
+                var comp3 = new Companies
+                {
+                    Id = Guid.NewGuid(), Name = "VNG Corporation", TaxCode = "0102030407", HeadquartersAddress = "VNG Campus, HCMC",
+                    Industry = "Internet & Technology", CompanySize = "1000+", Description = "Vietnam's leading tech firm",
+                    Website = "https://vng.com.vn", LogoUrl = "https://logo.clearbit.com/vng.com.vn",
+                    VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license3.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+                };
+                
+                context.Companies.AddRange(comp1, comp2, comp3);
                 await context.SaveChangesAsync();
+                companies = new List<Companies> { comp1, comp2, comp3 };
             }
 
             // Seed profiles for recruiter users if missing
             if (recruiterRole != null)
             {
-                var recruiters = context.Users.Where(u => u.RoleId == recruiterRole.Id).ToList();
-                foreach (var r in recruiters)
+                // ONLY map profiles for the default seeded recruiters. Do NOT touch user-registered recruiters!
+                var seededEmails = new List<string> { "recruiter1@ithunterview.com", "recruiter2@ithunterview.com", "recruiter3@ithunterview.com" };
+                var recruiters = context.Users
+                    .Where(u => u.RoleId == recruiterRole.Id && seededEmails.Contains(u.Email))
+                    .OrderBy(u => u.Email)
+                    .ToList();
+
+                for (int i = 0; i < recruiters.Count; i++)
                 {
-                    if (!context.RecruiterProfiles.Any(rp => rp.UserId == r.Id))
+                    var r = recruiters[i];
+                    var existingProfile = context.RecruiterProfiles.FirstOrDefault(rp => rp.UserId == r.Id);
+                    Companies compToAssign;
+                    if (i == 0) compToAssign = companies.FirstOrDefault(c => c.Name.Contains("ITHunterView")) ?? companies.First();
+                    else if (i == 1) compToAssign = companies.FirstOrDefault(c => c.Name.Contains("FPT")) ?? companies.First();
+                    else if (i == 2) compToAssign = companies.FirstOrDefault(c => c.Name.Contains("VNG")) ?? companies.First();
+                    else compToAssign = companies.First();
+
+                    if (existingProfile == null)
                     {
                         context.RecruiterProfiles.Add(new RecruiterProfiles
                         {
                             Id = Guid.NewGuid(),
                             UserId = r.Id,
-                            CompanyId = company.Id,
+                            CompanyId = compToAssign.Id,
                             FullName = $"Recruiter {r.Email.Split('@')[0]}",
                             PositionTitle = "HR Manager",
                             Phone = "0987654321",
-                            AvatarUrl = "https://avatar.iran.liara.run/public/30"
+                            AvatarUrl = $"https://avatar.iran.liara.run/public/{30 + i}"
                         });
+                    }
+                    else
+                    {
+                        // Force update CompanyId for existing profiles to ensure separation
+                        existingProfile.CompanyId = compToAssign.Id;
+                        context.RecruiterProfiles.Update(existingProfile);
                     }
                 }
                 await context.SaveChangesAsync();
@@ -350,7 +376,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 };
                 context.SkillCategories.AddRange(categories);
                 await context.SaveChangesAsync();
+            }
                 
+            if (!context.Skills.Any())
+            {
                 var cProg = context.SkillCategories.First(c => c.Name == "Programming Language").Id;
                 var cFram = context.SkillCategories.First(c => c.Name == "Framework & Library").Id;
                 var cDb = context.SkillCategories.First(c => c.Name == "Database").Id;
@@ -413,6 +442,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     new Skills { CategoryId = cTool, Name = "Git", Status = SkillStatus.ACTIVE }
                 };
 
+                foreach (var skill in skills)
+                {
+                    skill.NormalizedName = StringNormalizationHelper.NormalizeITTerm(skill.Name);
+                }
+
                 context.Skills.AddRange(skills);
                 await context.SaveChangesAsync();
             }
@@ -433,6 +467,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     new Majors { Name = "Computer Networks and Data Communication", Code = "NET" },
                     new Majors { Name = "Artificial Intelligence", Code = "AI" }
                 };
+                foreach (var major in majors)
+                {
+                    major.NormalizedName = StringNormalizationHelper.NormalizeITTerm(major.Name);
+                }
                 context.Majors.AddRange(majors);
                 await context.SaveChangesAsync();
             }

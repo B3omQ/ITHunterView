@@ -97,15 +97,66 @@ export default function JobApplicantsPage() {
     }
   }
 
+  const isFinalStatus = (status: ApplicationStatus) => {
+    return ["HIRED", "REJECTED", "WITHDRAWN"].includes(status as string);
+  }
+
+  const formatStatusText = (status: string) => {
+    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+  }
+
+  const handleDownloadCv = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename || 'candidate_cv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Failed to download directly, falling back to new tab", err);
+      window.open(url, '_blank');
+    }
+  }
+
+  const getStatusColorClasses = (status: ApplicationStatus) => {
+    switch (status) {
+      case ApplicationStatus.APPLIED:
+        return "bg-blue-50 text-blue-700 border-blue-200 focus:ring-blue-500 focus:border-blue-500"
+      case ApplicationStatus.VIEWED:
+        return "bg-indigo-50 text-indigo-700 border-indigo-200 focus:ring-indigo-500 focus:border-indigo-500"
+      case ApplicationStatus.SHORTLISTED:
+        return "bg-amber-50 text-amber-700 border-amber-200 focus:ring-amber-500 focus:border-amber-500"
+      case ApplicationStatus.INTERVIEWING:
+        return "bg-purple-50 text-purple-700 border-purple-200 focus:ring-purple-500 focus:border-purple-500"
+      case ApplicationStatus.OFFERED:
+        return "bg-emerald-50 text-emerald-700 border-emerald-200 focus:ring-emerald-500 focus:border-emerald-500"
+      case ApplicationStatus.HIRED:
+        return "bg-green-50 text-green-700 border-green-200 cursor-not-allowed"
+      case ApplicationStatus.REJECTED:
+        return "bg-rose-50 text-rose-700 border-rose-200 cursor-not-allowed"
+      case ApplicationStatus.WITHDRAWN:
+        return "bg-zinc-100 text-zinc-600 border-zinc-200 cursor-not-allowed"
+      default:
+        return "bg-zinc-50 text-zinc-700 border-zinc-200 focus:ring-zinc-500 focus:border-zinc-500"
+    }
+  }
+
   const renderStatusSelect = (applicant: ApplicantDto) => {
+    const disabled = isFinalStatus(applicant.status);
     return (
       <select 
         value={applicant.status}
+        disabled={disabled}
         onChange={(e) => handleStatusChange(applicant.id, e.target.value as ApplicationStatus)}
-        className="text-xs font-semibold bg-zinc-50 border border-zinc-200 text-zinc-700 rounded-md py-1.5 px-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+        className={`text-xs font-semibold border rounded-md py-1.5 px-2 outline-none transition-colors ${getStatusColorClasses(applicant.status)} ${!disabled && 'cursor-pointer shadow-sm hover:brightness-95'}`}
       >
         {Object.values(ApplicationStatus).map(status => (
-          <option key={status} value={status}>{status}</option>
+          <option key={status} value={status} className="bg-white text-zinc-900">{formatStatusText(status)}</option>
         ))}
       </select>
     )
@@ -306,7 +357,7 @@ export default function JobApplicantsPage() {
                             <p className="text-xs text-zinc-500">View or download attached document</p>
                           </div>
                         </div>
-                        <Button variant="outline" size="sm" className="bg-white" onClick={() => window.open(selectedDetail.cvUrl, '_blank')}>
+                        <Button variant="outline" size="sm" className="bg-white" onClick={() => handleDownloadCv(selectedDetail.cvUrl!, selectedDetail.cvFileName!)}>
                           <Download className="h-4 w-4 mr-2" /> Download
                         </Button>
                       </div>

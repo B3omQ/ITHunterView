@@ -13,7 +13,8 @@ namespace ITHunterview.Service.Interface.UseCase
             string? search, 
             JobStatus? status, 
             int page, 
-            int pageSize);
+            int pageSize,
+            Guid? recruiterId = null);
         Task<ResponseBase<JobPostingDetailDto>> GetJobByIdAsync(Guid id);
         Task<ResponseBase<JobPostingDetailDto>> CreateJobAsync(CreateJobPostingDto dto, Guid recruiterId);
         Task<ResponseBase<JobPostingDetailDto>> UpdateJobAsync(Guid id, UpdateJobPostingDto dto);

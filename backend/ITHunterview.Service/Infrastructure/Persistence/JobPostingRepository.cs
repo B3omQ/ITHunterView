@@ -28,9 +28,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             string? search, 
             JobStatus? status, 
             int page, 
-            int pageSize)
+            int pageSize,
+            Guid? recruiterId = null)
         {
             var query = _context.JobPostings.Where(j => j.DeletedAt == null);
+
+            if (recruiterId.HasValue)
+            {
+                query = query.Where(j => j.RecruiterId == recruiterId.Value);
+            }
 
             if (!string.IsNullOrWhiteSpace(search))
             {

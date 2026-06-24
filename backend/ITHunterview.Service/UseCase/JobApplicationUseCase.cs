@@ -80,6 +80,13 @@ namespace ITHunterview.Service.UseCase
                 throw new KeyNotFoundException("Job application not found.");
             }
 
+            // Prevent updating if the current status is already final
+            var finalStatuses = new[] { ApplicationStatus.HIRED, ApplicationStatus.REJECTED, ApplicationStatus.WITHDRAWN };
+            if (finalStatuses.Contains(application.Status))
+            {
+                throw new InvalidOperationException($"Cannot update application status because it is already finalized as {application.Status}.");
+            }
+
             application.Status = status;
             application.UpdatedAt = DateTime.UtcNow;
             await _jobApplicationRepository.UpdateAsync(application);

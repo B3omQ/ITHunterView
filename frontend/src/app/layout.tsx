@@ -16,6 +16,8 @@ export const metadata: Metadata = {
   keywords: "IT recruitment, tech jobs, AI interview, software developer jobs",
 }
 
+import { Toaster } from "sonner"
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -23,6 +25,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} h-full`}>
       <body className="min-h-full flex flex-col antialiased">
         <ReactQueryProvider>{children}</ReactQueryProvider>
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   )

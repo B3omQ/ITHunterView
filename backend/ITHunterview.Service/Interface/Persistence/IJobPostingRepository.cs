@@ -14,7 +14,8 @@ namespace ITHunterview.Service.Interface.Persistence
             string? search, 
             JobStatus? status, 
             int page, 
-            int pageSize);
+            int pageSize,
+            Guid? recruiterId = null);
         Task AddAsync(JobPostings job);
         Task UpdateAsync(JobPostings job);
         Task<Guid?> GetRecruiterCompanyIdAsync(Guid recruiterId);

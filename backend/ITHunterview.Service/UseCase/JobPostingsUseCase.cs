@@ -24,12 +24,13 @@ namespace ITHunterview.Service.UseCase
             string? search, 
             JobStatus? status, 
             int page, 
-            int pageSize)
+            int pageSize,
+            Guid? recruiterId = null)
         {
             if (page <= 0) page = 1;
             if (pageSize <= 0) pageSize = 7; // Matching the mock UI showing 7 rows by default
 
-            var (items, totalCount) = await _jobPostingRepository.GetPagedAsync(search, status, page, pageSize);
+            var (items, totalCount) = await _jobPostingRepository.GetPagedAsync(search, status, page, pageSize, recruiterId);
 
             var summaryList = items.Select(j => new JobPostingSummaryDto
             {
