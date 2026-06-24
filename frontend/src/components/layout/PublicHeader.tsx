@@ -44,7 +44,9 @@ export function PublicHeader() {
                 <span>Dashboard</span>
               </Link>
               <button
-                onClick={logout}
+                onClick={async () => {
+                  await logout()
+                }}
                 className="h-10 w-10 flex items-center justify-center rounded-xl border border-border hover:bg-red-500/10 hover:text-red-500 transition-all cursor-pointer"
                 title="Logout"
               >
@@ -60,7 +62,7 @@ export function PublicHeader() {
                 Sign In
               </Link>
               <Link
-                href="/auth/register"
+                href="/register"
                 className="h-10 px-4 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground text-sm font-medium flex items-center justify-center shadow-sm transition-all"
               >
                 Get Started

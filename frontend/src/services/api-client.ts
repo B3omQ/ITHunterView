@@ -39,7 +39,7 @@ api.interceptors.response.use(
       // For all other endpoints, just clear auth state and let the caller handle it.
       const isAuthEndpoint = url.includes('/api/auth/');
       if (isAuthEndpoint) {
-        authStore.getState().logout();
+        void authStore.getState().logout();
         if (typeof window !== 'undefined') {
           const currentPath = window.location.pathname + window.location.search;
           window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
@@ -47,7 +47,7 @@ api.interceptors.response.use(
       } else {
         // Non-auth endpoint 401: clear stale auth state but don't redirect
         // Let the component handle the UX (show a toast, inline error, etc.)
-        authStore.getState().logout();
+        void authStore.getState().logout();
       }
     }
     return Promise.reject(error);
