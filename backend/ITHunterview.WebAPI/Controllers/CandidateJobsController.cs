@@ -11,7 +11,7 @@ namespace ITHunterview.WebAPI.Controllers
 {
     [ApiController]
     [Authorize]
-    [Route("candidate")]
+    [Route("api/candidate")]
     public class CandidateJobsController : ControllerBase
     {
         private readonly ICandidateJobUseCase _candidateJobUseCase;

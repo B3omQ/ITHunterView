@@ -56,6 +56,7 @@ const RECRUITER_NAV: NavItem[] = [
 
 const STAFF_NAV: NavItem[] = [
   { label: "Dashboard", href: APP_ROUTES.STAFF.DASHBOARD, icon: "LayoutDashboard" },
+  { label: "Companies", href: APP_ROUTES.STAFF.COMPANIES, icon: "Building2" },
   { label: "AI Config", href: APP_ROUTES.STAFF.AI_CONFIG, icon: "BrainCircuit" },
   { label: "Prompts", href: APP_ROUTES.STAFF.PROMPTS, icon: "MessageSquare" },
   { label: "Question Bank", href: APP_ROUTES.STAFF.QUESTION_BANK, icon: "FileText" },
@@ -93,7 +94,7 @@ export function Sidebar() {
   const navItems = getNavItems(user?.role?.name ?? "candidate")
 
   const handleLogout = async () => {
-    logout()
+    await logout()
     router.push("/login")
   }
 

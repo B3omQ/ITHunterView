@@ -30,6 +30,7 @@ export const APP_ROUTES = {
   },
   STAFF: {
     DASHBOARD: '/staff/dashboard',
+    COMPANIES: '/staff/companies',
     AI_CONFIG: '/staff/ai-config',
     PROMPTS: '/staff/prompts',
     QUESTION_BANK: '/staff/question-bank',
@@ -87,6 +88,7 @@ export const ROLE_MENUS: Record<string, Array<{ label: string; href: string; ico
   ],
   staff: [
     { label: 'Dashboard', href: APP_ROUTES.STAFF.DASHBOARD, icon: 'LayoutDashboard' },
+    { label: 'Companies', href: APP_ROUTES.STAFF.COMPANIES, icon: 'Building2' },
     { label: 'AI Config', href: APP_ROUTES.STAFF.AI_CONFIG, icon: 'BrainCircuit' },
     { label: 'Prompts', href: APP_ROUTES.STAFF.PROMPTS, icon: 'MessageSquare' },
     { label: 'Question Bank', href: APP_ROUTES.STAFF.QUESTION_BANK, icon: 'FileText' },

@@ -23,12 +23,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             var jobsQuery = _context.JobPostings
                 .Where(j => j.Status == JobStatus.PUBLISHED);
 
-            if (!string.IsNullOrEmpty(query.Keyword))
-            {
-                var lowerKeyword = query.Keyword.ToLower();
-                jobsQuery = jobsQuery.Where(j => j.Title.ToLower().Contains(lowerKeyword));
-            }
-
             if (!string.IsNullOrEmpty(query.Location))
             {
                 var lowerLocation = query.Location.ToLower();
@@ -49,6 +43,14 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                             join company in _context.Companies on job.CompanyId equals company.Id
                             select new { job, company };
 
+            if (!string.IsNullOrEmpty(query.Keyword))
+            {
+                var lowerKeyword = query.Keyword.ToLower();
+                queryable = queryable.Where(x => 
+                    (x.job.Title != null && x.job.Title.ToLower().Contains(lowerKeyword)) || 
+                    (x.company.Name != null && x.company.Name.ToLower().Contains(lowerKeyword)));
+            }
+
             var totalItems = await queryable.CountAsync();
 
             var pagedResults = await queryable
@@ -56,6 +58,17 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 .Skip((query.Page - 1) * query.PageSize)
                 .Take(query.PageSize)
                 .ToListAsync();
+
+            var pagedJobIds = pagedResults.Select(x => x.job.Id).ToList();
+
+            var jobSkills = await (from jsr in _context.JobSkillRequirements
+                                   join s in _context.Skills on jsr.SkillId equals s.Id
+                                   where pagedJobIds.Contains(jsr.JobId)
+                                   select new { jsr.JobId, s.Name })
+                                  .ToListAsync();
+            
+            var skillLookup = jobSkills.GroupBy(x => x.JobId)
+                                       .ToDictionary(g => g.Key, g => g.Select(x => x.Name).ToList());
 
             var jobCards = pagedResults.Select(x => new JobCardDto
             {
@@ -69,14 +82,14 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 Location = x.job.Location,
                 JobType = x.job.JobType.ToString().ToLower(), // as requested like full_time
                 PublishedAt = x.job.PublishedAt,
-                IsSaved = false 
+                IsSaved = false,
+                Skills = skillLookup.ContainsKey(x.job.Id) ? skillLookup[x.job.Id] : new List<string>()
             }).ToList();
 
-            if (userId.HasValue && jobCards.Any())
+            if (userId.HasValue && pagedJobIds.Any())
             {
-                var jobIds = jobCards.Select(j => j.Id).ToList();
                 var savedJobIds = await _context.UserSavedJobs
-                    .Where(usj => usj.UserId == userId.Value && jobIds.Contains(usj.JobId))
+                    .Where(usj => usj.UserId == userId.Value && pagedJobIds.Contains(usj.JobId))
                     .Select(usj => usj.JobId)
                     .ToListAsync();
 

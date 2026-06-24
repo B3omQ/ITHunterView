@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace ITHunterview.Service.DTOs.JobSearch
 {
@@ -15,5 +16,6 @@ namespace ITHunterview.Service.DTOs.JobSearch
         public string JobType { get; set; }
         public DateTime? PublishedAt { get; set; }
         public bool? IsSaved { get; set; }
+        public List<string> Skills { get; set; } = new();
     }
 }
