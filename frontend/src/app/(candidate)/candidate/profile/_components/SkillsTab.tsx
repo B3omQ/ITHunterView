@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   useCandidateSkills,
-  useSkillSuggestions,
   useAddSkill,
   useRemoveSkill,
 } from '@/hooks/useCandidateProfile';
@@ -16,11 +15,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
-import { Award, Plus, Search, Loader2, Sparkles } from 'lucide-react';
+import { Award, Plus, Search, Loader2 } from 'lucide-react';
 
 export function SkillsTab() {
   const { data: skills, isLoading: isLoadingSkills, isError: isErrorSkills } = useCandidateSkills();
-  const { data: suggestions, isLoading: isLoadingSuggestions } = useSkillSuggestions();
   const { mutate: addSkill, isPending: isAddingSkill } = useAddSkill();
   const { mutate: removeSkill, isPending: isRemovingSkill } = useRemoveSkill();
 
@@ -191,44 +189,6 @@ export function SkillsTab() {
               </div>
             )}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Suggestions Section */}
-      <Card className="border border-border/40 bg-card/60 backdrop-blur-md rounded-xl shadow-md overflow-hidden">
-        <CardHeader className="border-b border-border/10 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <CardTitle className="text-lg font-bold">Suggested for You</CardTitle>
-              <CardDescription className="text-xs">Based on current market trends and jobs</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-6">
-          {isLoadingSuggestions ? (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            </div>
-          ) : !suggestions || suggestions.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic">No recommendations available at this time.</p>
-          ) : (
-            <div className="flex flex-wrap gap-2.5">
-              {suggestions.map((s) => (
-                <Badge
-                  key={s.skillId}
-                  variant="outline"
-                  className="pl-3 pr-2 py-1.5 rounded-full border-border/60 bg-background/30 text-muted-foreground flex items-center gap-1.5 text-xs font-semibold cursor-pointer hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all duration-200"
-                  onClick={() => handleAddSkillId(s.skillId)}
-                >
-                  <span>{s.name}</span>
-                  <Plus className="w-3 h-3 text-muted-foreground group-hover:text-primary" />
-                </Badge>
-              ))}
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

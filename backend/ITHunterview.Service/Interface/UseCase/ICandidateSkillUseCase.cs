@@ -10,9 +10,6 @@ namespace ITHunterview.Service.Interface.UseCase
         /// <summary>Tìm kiếm master skills (autocomplete), loại trừ skills user đã có nếu cần.</summary>
         Task<List<SkillSearchResponseDto>> SearchSkillsAsync(string keyword, bool excludeOwned, Guid userId);
 
-        /// <summary>Gợi ý skills theo trending.</summary>
-        Task<List<SkillResponseDto>> GetSuggestionsAsync(Guid userId);
-
         /// <summary>Thêm skill vào profile.</summary>
         Task<SkillResponseDto> AddSkillAsync(Guid userId, SkillAddRequestDto request);
 

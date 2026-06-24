@@ -11,10 +11,9 @@ import { Progress } from '@/components/ui/progress';
 
 interface ProfileHeaderProps {
   summary: ProfileSummary;
-  currentTab: string;
 }
 
-export function ProfileHeader({ summary, currentTab }: ProfileHeaderProps) {
+export function ProfileHeader({ summary }: ProfileHeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { mutate: updateVisibility, isPending: isUpdatingVisibility } = useUpdateVisibility();
   const { mutate: uploadAvatar, isPending: isUploadingAvatar } = useUploadAvatar();
@@ -34,21 +33,7 @@ export function ProfileHeader({ summary, currentTab }: ProfileHeaderProps) {
     updateVisibility({ isVisibleToRecruiters: checked });
   };
 
-  // Định dạng thời gian lưu gần nhất
-  const formatLastSaved = (dateStr: string | null) => {
-    if (!dateStr) return 'Not saved yet';
-    try {
-      const date = new Date(dateStr);
-      return `Last saved: ${date.toLocaleDateString()} ${date.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      })}`;
-    } catch {
-      return 'Last saved recently';
-    }
-  };
 
-  const showProgress = currentTab !== 'personal-info';
 
   return (
     <Card className="relative overflow-hidden border border-border/40 bg-card/60 backdrop-blur-md p-6 md:p-8 rounded-2xl shadow-xl flex flex-col md:flex-row gap-6 md:gap-8 items-start md:items-center justify-between transition-all duration-300 hover:shadow-2xl">
@@ -100,9 +85,7 @@ export function ProfileHeader({ summary, currentTab }: ProfileHeaderProps) {
               {summary.fullName}
             </h1>
           </div>
-          <p className="text-base font-semibold text-muted-foreground">
-            {summary.currentTitle || 'No current title'}
-          </p>
+
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs sm:text-sm text-muted-foreground/80">
             {summary.location && (
               <span className="flex items-center gap-1">
@@ -110,10 +93,6 @@ export function ProfileHeader({ summary, currentTab }: ProfileHeaderProps) {
                 {summary.location}
               </span>
             )}
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
-            <span className="font-mono text-muted-foreground/75">
-              {formatLastSaved(summary.lastSavedAt)}
-            </span>
           </div>
         </div>
       </div>
@@ -138,23 +117,6 @@ export function ProfileHeader({ summary, currentTab }: ProfileHeaderProps) {
           </div>
         </div>
 
-        {/* Profile Completion Progress */}
-        {showProgress && (
-          <div className="space-y-2 w-full sm:flex-1 md:flex-initial">
-            <div className="flex items-center justify-between text-xs sm:text-sm font-semibold">
-              <span className="text-muted-foreground">Profile Completion</span>
-              <span className="text-primary font-mono font-bold">
-                {summary.profileCompletionPercentage}%
-              </span>
-            </div>
-            <Progress value={summary.profileCompletionPercentage} className="h-2 bg-muted shadow-inner" />
-            {summary.completionHint && (
-              <p className="text-[11px] sm:text-xs text-muted-foreground italic text-right">
-                {summary.completionHint}
-              </p>
-            )}
-          </div>
-        )}
       </div>
     </Card>
   );

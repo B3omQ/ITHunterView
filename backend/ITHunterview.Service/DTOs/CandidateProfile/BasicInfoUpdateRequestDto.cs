@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ITHunterview.Service.DTOs.CandidateProfile
 {
-    public class PersonalInfoUpdateRequestDto
+    public class BasicInfoUpdateRequestDto
     {
         [MaxLength(100)]
         public string? FirstName { get; set; }
@@ -15,17 +15,5 @@ namespace ITHunterview.Service.DTOs.CandidateProfile
 
         [MaxLength(255)]
         public string? Location { get; set; }
-
-        [MaxLength(500)]
-        public string? AboutMe { get; set; }
-
-        [MaxLength(500)]
-        public string? PortfolioUrl { get; set; }
-
-        [MaxLength(500)]
-        public string? LinkedInUrl { get; set; }
-
-        [MaxLength(500)]
-        public string? GithubUrl { get; set; }
     }
 }
