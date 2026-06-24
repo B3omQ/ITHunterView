@@ -87,6 +87,30 @@ export function PersonalInfoTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [info]);
 
+  const isDirty =
+    firstName !== (info?.firstName || '') ||
+    lastName !== (info?.lastName || '') ||
+    phone !== (info?.phone || '') ||
+    location !== (info?.location || '') ||
+    aboutMe !== (info?.aboutMe || '') ||
+    portfolioUrl !== (info?.portfolioUrl || '') ||
+    linkedInUrl !== (info?.linkedInUrl || '') ||
+    githubUrl !== (info?.githubUrl || '');
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isDirty]);
+
   if (isLoading) {
     return <PageLoader message="Loading personal info..." />;
   }
@@ -98,16 +122,6 @@ export function PersonalInfoTab() {
       </div>
     );
   }
-
-  const isDirty =
-    firstName !== (info?.firstName || '') ||
-    lastName !== (info?.lastName || '') ||
-    phone !== (info?.phone || '') ||
-    location !== (info?.location || '') ||
-    aboutMe !== (info?.aboutMe || '') ||
-    portfolioUrl !== (info?.portfolioUrl || '') ||
-    linkedInUrl !== (info?.linkedInUrl || '') ||
-    githubUrl !== (info?.githubUrl || '');
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
