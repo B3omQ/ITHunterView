@@ -36,23 +36,48 @@ namespace ITHunterview.Service.UseCase
             return MapToPersonalInfoDto(profile);
         }
 
-        public async Task<PersonalInfoResponseDto> UpdatePersonalInfoAsync(Guid userId, PersonalInfoUpdateRequestDto request)
+        public async Task<PersonalInfoResponseDto> UpdateBasicInfoAsync(Guid userId, BasicInfoUpdateRequestDto request)
         {
-            if (request.AboutMe != null && request.AboutMe.Length > 500)
-                throw new ArgumentException("AboutMe không được vượt quá 500 ký tự.");
-
             var profile = await GetOrCreateProfileAsync(userId);
 
             profile.FirstName = request.FirstName;
             profile.LastName = request.LastName;
             profile.Phone = request.Phone;
             profile.Location = request.Location;
+
+            if (profile.User != null)
+                profile.User.UpdatedAt = DateTime.UtcNow;
+
+            await _profileRepo.SaveChangesAsync();
+
+            return MapToPersonalInfoDto(profile);
+        }
+
+        public async Task<PersonalInfoResponseDto> UpdateAboutMeAsync(Guid userId, AboutMeUpdateRequestDto request)
+        {
+            if (request.AboutMe != null && request.AboutMe.Length > 500)
+                throw new ArgumentException("AboutMe không được vượt quá 500 ký tự.");
+
+            var profile = await GetOrCreateProfileAsync(userId);
+
             profile.AboutMe = request.AboutMe;
+
+            if (profile.User != null)
+                profile.User.UpdatedAt = DateTime.UtcNow;
+
+            await _profileRepo.SaveChangesAsync();
+
+            return MapToPersonalInfoDto(profile);
+        }
+
+        public async Task<PersonalInfoResponseDto> UpdateSocialLinksAsync(Guid userId, SocialLinksUpdateRequestDto request)
+        {
+            var profile = await GetOrCreateProfileAsync(userId);
+
             profile.PortfolioUrl = request.PortfolioUrl;
             profile.LinkedinUrl = request.LinkedInUrl;
             profile.GithubUrl = request.GithubUrl;
 
-            // Track updated_at on the user record
             if (profile.User != null)
                 profile.User.UpdatedAt = DateTime.UtcNow;
 
