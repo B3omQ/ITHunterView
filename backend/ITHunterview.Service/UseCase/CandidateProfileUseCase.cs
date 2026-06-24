@@ -105,40 +105,8 @@ namespace ITHunterview.Service.UseCase
         {
             var profile = await GetOrCreateProfileAsync(userId);
 
-            // Suy luận currentTitle từ experience is_current = true
             var experiences = await _expRepo.GetByUserIdAsync(userId);
-            var currentExp = experiences.FirstOrDefault(e => e.IsCurrent)
-                          ?? experiences.OrderByDescending(e => e.StartDate).FirstOrDefault();
-            var currentTitle = currentExp?.Title;
-
-            // Tính % completion (6 sections × ~16.67% mỗi section, làm tròn xuống bội 5)
-            var skills = await _skillRepo.GetByUserIdAsync(userId);
             var educations = await _eduRepo.GetByUserIdAsync(userId);
-            var certs = await _certRepo.GetByUserIdAsync(userId);
-
-            var completedSections = 0;
-            if (!string.IsNullOrWhiteSpace(profile.FirstName) || !string.IsNullOrWhiteSpace(profile.LastName))
-                completedSections++;
-            if (!string.IsNullOrWhiteSpace(profile.AboutMe))
-                completedSections++;
-            if (skills.Any())
-                completedSections++;
-            if (experiences.Any())
-                completedSections++;
-            if (educations.Any())
-                completedSections++;
-            if (certs.Any())
-                completedSections++;
-
-            const int totalSections = 6;
-            var percentage = (int)Math.Round((double)completedSections / totalSections * 100);
-            // Làm tròn xuống bội 5 gần nhất
-            percentage = (percentage / 5) * 5;
-
-            var remaining = totalSections - completedSections;
-            var hint = remaining == 0
-                ? "Your profile is complete!"
-                : $"Add {remaining} more section{(remaining > 1 ? "s" : "")} to reach {Math.Min(percentage + 20, 100)}%";
 
             // lastSavedAt = max updated_at từ tất cả related records
             var timestamps = new List<DateTime?>();
@@ -153,11 +121,8 @@ namespace ITHunterview.Service.UseCase
                 FullName = string.Join(" ", new[] { profile.FirstName, profile.LastName }
                     .Where(s => !string.IsNullOrWhiteSpace(s))),
                 AvatarUrl = profile.AvatarUrl,
-                CurrentTitle = currentTitle,
                 Location = profile.Location,
                 IsVisibleToRecruiters = profile.IsVisibleToRecruiters,
-                ProfileCompletionPercentage = percentage,
-                CompletionHint = hint,
                 LastSavedAt = lastSavedAt
             };
         }

@@ -2,7 +2,6 @@ export interface ProfileSummary {
   id: string;
   fullName: string;
   avatarUrl: string | null;
-  currentTitle: string | null;
   location: string | null;
   isVisibleToRecruiters: boolean;
   lastSavedAt: string | null;

@@ -97,9 +97,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
               {summary.fullName}
             </h1>
           </div>
-          <p className="text-base font-semibold text-muted-foreground">
-            {summary.currentTitle || 'No current title'}
-          </p>
+
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs sm:text-sm text-muted-foreground/80">
             {summary.location && (
               <span className="flex items-center gap-1">
