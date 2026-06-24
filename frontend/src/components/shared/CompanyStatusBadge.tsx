@@ -7,14 +7,19 @@ interface CompanyStatusBadgeProps {
   status: CompanyStatus;
   className?: string;
   rejectReason?: string;
+  hasPendingChange?: boolean;
 }
 
-export const CompanyStatusBadge: React.FC<CompanyStatusBadgeProps> = ({ status, className, rejectReason }) => {
+export const CompanyStatusBadge: React.FC<CompanyStatusBadgeProps> = ({ status, className, rejectReason, hasPendingChange }) => {
   let label = '';
   let colorClass = '';
 
-  switch (status) {
-    case 'DRAFT':
+  if (hasPendingChange) {
+    label = 'Pending Update';
+    colorClass = 'bg-orange-500 text-white';
+  } else {
+    switch (status) {
+      case 'DRAFT':
       label = 'Draft Profile';
       colorClass = 'bg-gray-500 text-white';
       break;
@@ -33,6 +38,7 @@ export const CompanyStatusBadge: React.FC<CompanyStatusBadgeProps> = ({ status, 
     default:
       label = 'Unknown';
       colorClass = 'bg-gray-500 text-white';
+  }
   }
 
   // We are creating a simple custom badge if shadcn badge isn't available

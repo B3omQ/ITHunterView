@@ -449,6 +449,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
+                    b.Property<bool>("HasPendingChange")
+                        .HasColumnType("boolean")
+                        .HasColumnName("has_pending_change");
+
                     b.Property<string>("HeadquartersAddress")
                         .IsRequired()
                         .HasColumnType("text")
@@ -468,6 +472,30 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("name");
+
+                    b.Property<string>("PendingHeadquartersAddress")
+                        .HasColumnType("text")
+                        .HasColumnName("pending_headquarters_address");
+
+                    b.Property<string>("PendingName")
+                        .HasColumnType("text")
+                        .HasColumnName("pending_name");
+
+                    b.Property<string>("PendingTaxCode")
+                        .HasColumnType("text")
+                        .HasColumnName("pending_tax_code");
+
+                    b.Property<string>("PendingVerificationDocumentUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("pending_verification_document_url");
+
+                    b.Property<int?>("PendingVerificationMethod")
+                        .HasColumnType("integer")
+                        .HasColumnName("pending_verification_method");
+
+                    b.Property<string>("RejectReason")
+                        .HasColumnType("text")
+                        .HasColumnName("reject_reason");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")

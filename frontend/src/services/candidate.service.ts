@@ -5,7 +5,6 @@ import type {
   UpdateVisibilityRequest,
   AvatarUploadResponse,
   PersonalInfo,
-  PersonalInfoUpdateRequest,
   CandidateSkill,
   SkillAddRequest,
   SkillSearchResponse,
@@ -16,6 +15,9 @@ import type {
   EducationUpsertRequest,
   CandidateCertification,
   CertificationUpsertRequest,
+  BasicInfoUpdateRequest,
+  AboutMeUpdateRequest,
+  SocialLinksUpdateRequest,
 } from '@/types/candidate.types';
 
 export const candidateService = {
@@ -46,9 +48,19 @@ export const candidateService = {
       .get<ApiResponse<PersonalInfo>>('/api/v1/candidate/profile/personal-info')
       .then((r) => r.data),
 
-  updatePersonalInfo: (payload: PersonalInfoUpdateRequest) =>
+  updateBasicInfo: (payload: BasicInfoUpdateRequest) =>
     api
-      .put<ApiResponse<PersonalInfo>>('/api/v1/candidate/profile/personal-info', payload)
+      .put<ApiResponse<PersonalInfo>>('/api/v1/candidate/profile/basic-info', payload)
+      .then((r) => r.data),
+
+  updateAboutMe: (payload: AboutMeUpdateRequest) =>
+    api
+      .put<ApiResponse<PersonalInfo>>('/api/v1/candidate/profile/about-me', payload)
+      .then((r) => r.data),
+
+  updateSocialLinks: (payload: SocialLinksUpdateRequest) =>
+    api
+      .put<ApiResponse<PersonalInfo>>('/api/v1/candidate/profile/social-links', payload)
       .then((r) => r.data),
 
   getSkills: () =>
@@ -61,11 +73,6 @@ export const candidateService = {
       .get<ApiResponse<SkillSearchResponse[]>>('/api/v1/skills/search', {
         params: { keyword, excludeOwned },
       })
-      .then((r) => r.data),
-
-  getSkillSuggestions: () =>
-    api
-      .get<ApiResponse<CandidateSkill[]>>('/api/v1/candidate/profile/skills/suggestions')
       .then((r) => r.data),
 
   addSkill: (payload: SkillAddRequest) =>

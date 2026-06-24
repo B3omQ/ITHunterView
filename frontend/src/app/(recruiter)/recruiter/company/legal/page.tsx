@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
-import { useGetMyCompany, useVerifyCompanyLegal } from '@/hooks/useCompany';
+import { useGetMyCompany, useVerifyCompanyLegal, useSubmitCompanyUpdateRequest } from '@/hooks/useCompany';
 import { uploadService } from '@/services/upload.service';
 
 const legalSchema = z.object({
@@ -38,8 +38,10 @@ export default function LegalVerificationPage() {
   const router = useRouter();
   const { data: company, isLoading: isFetchingCompany } = useGetMyCompany();
   const { mutateAsync: verifyLegal, isPending: isSubmitting } = useVerifyCompanyLegal();
+  const { mutateAsync: submitUpdateRequest, isPending: isUpdatingRequest } = useSubmitCompanyUpdateRequest();
   
   const [isUploading, setIsUploading] = useState(false);
+  const [isEditingVerified, setIsEditingVerified] = useState(false);
 
   const form = useForm<LegalFormValues>({
     resolver: zodResolver(legalSchema),
@@ -58,16 +60,19 @@ export default function LegalVerificationPage() {
       router.push('/recruiter/company/profile');
     } else if (company) {
       form.reset({
-        taxCode: company.taxCode || '',
-        companyName: company.name || '',
-        headquartersAddress: company.headquartersAddress || '',
-        verificationMethod: company.verificationMethod || 'BUSINESS_REGISTRATION',
-        verificationDocumentUrl: company.verificationDocumentUrl || '',
+        taxCode: company.hasPendingChange ? (company.pendingTaxCode || '') : (company.taxCode || ''),
+        companyName: company.hasPendingChange ? (company.pendingName || '') : (company.name || ''),
+        headquartersAddress: company.hasPendingChange ? (company.pendingHeadquartersAddress || '') : (company.headquartersAddress || ''),
+        verificationMethod: company.hasPendingChange ? (company.pendingVerificationMethod || 'BUSINESS_REGISTRATION') : (company.verificationMethod || 'BUSINESS_REGISTRATION'),
+        verificationDocumentUrl: company.hasPendingChange ? (company.pendingVerificationDocumentUrl || '') : (company.verificationDocumentUrl || ''),
       });
     }
   }, [company, isFetchingCompany, form, router]);
 
-  const isReadOnly = company?.status === 'PENDING' || company?.status === 'VERIFIED';
+  const isReadOnly = 
+    company?.status === 'PENDING' || 
+    company?.hasPendingChange || 
+    (company?.status === 'VERIFIED' && !isEditingVerified);
 
   const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -99,17 +104,32 @@ export default function LegalVerificationPage() {
   const onSubmit = async (values: LegalFormValues) => {
     if (!company) return;
     try {
-      await verifyLegal({
-        id: company.id,
-        dto: {
-          verificationMethod: values.verificationMethod,
-          verificationDocumentUrl: values.verificationDocumentUrl,
-          taxCode: values.taxCode,
-          companyName: values.companyName,
-          headquartersAddress: values.headquartersAddress,
-        }
-      });
-      toast.success('Legal verification submitted successfully!');
+      if (company.status === 'VERIFIED') {
+        await submitUpdateRequest({
+          id: company.id,
+          dto: {
+            verificationMethod: values.verificationMethod,
+            verificationDocumentUrl: values.verificationDocumentUrl,
+            taxCode: values.taxCode,
+            companyName: values.companyName,
+            headquartersAddress: values.headquartersAddress,
+          }
+        });
+        toast.success('Legal verification update request submitted successfully!');
+        setIsEditingVerified(false);
+      } else {
+        await verifyLegal({
+          id: company.id,
+          dto: {
+            verificationMethod: values.verificationMethod,
+            verificationDocumentUrl: values.verificationDocumentUrl,
+            taxCode: values.taxCode,
+            companyName: values.companyName,
+            headquartersAddress: values.headquartersAddress,
+          }
+        });
+        toast.success('Legal verification submitted successfully!');
+      }
     } catch (error) {
       toast.error('Failed to submit legal verification');
     }
@@ -129,6 +149,51 @@ export default function LegalVerificationPage() {
         <h2 className="text-xl font-bold">Legal Verification</h2>
         <p className="text-muted-foreground">Please complete your company details and upload matching corporate documents for verification.</p>
       </div>
+
+      {company.hasPendingChange && (
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800 flex flex-col gap-1">
+          <p className="font-semibold flex items-center gap-1.5">ℹ Verification Update Request Pending</p>
+          <p className="text-blue-700/80 text-xs">
+            Your request to update company details is pending review by our staff.
+          </p>
+        </div>
+      )}
+
+      {company.status === 'PENDING' && !company.hasPendingChange && (
+        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800 flex flex-col gap-1">
+          <p className="font-semibold flex items-center gap-1.5">⏳ Verification Pending</p>
+          <p className="text-yellow-700/80 text-xs">
+            Your company verification is pending review by our staff.
+          </p>
+        </div>
+      )}
+
+      {company.status === 'VERIFIED' && !company.hasPendingChange && (
+        <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800 flex flex-col gap-1">
+          <p className="font-semibold flex items-center gap-1.5">✅ Verified</p>
+          <p className="text-green-700/80 text-xs">
+            Your company has been verified. To update details, click the "Request Update" button below.
+          </p>
+        </div>
+      )}
+
+      {company.status === 'REJECTED' && (
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-800 flex flex-col gap-1">
+          <p className="font-semibold flex items-center gap-1.5">❌ Verification Rejected</p>
+          <p className="text-red-700/80 text-xs">
+            Your verification request was rejected. Reason: <strong>{company.rejectReason || 'No reason specified'}</strong>. Please update your details and resubmit.
+          </p>
+        </div>
+      )}
+
+      {company.status === 'VERIFIED' && !company.hasPendingChange && company.rejectReason && (
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-800 flex flex-col gap-1">
+          <p className="font-semibold flex items-center gap-1.5">❌ Update Request Rejected</p>
+          <p className="text-red-700/80 text-xs">
+            Your previous request to update company details was rejected. Reason: <strong>{company.rejectReason}</strong>. You can request changes again below.
+          </p>
+        </div>
+      )}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid md:grid-cols-2 gap-8">
@@ -157,11 +222,12 @@ export default function LegalVerificationPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Company Name *</FormLabel>
-                  {/* UX Note: Displaying company name from profile, keeping it readonly unless allowed to edit */}
                   <FormControl>
-                    <Input placeholder="e.g. Acme Technologies Joint Stock Company" {...field} disabled={true} />
+                    <Input placeholder="e.g. Acme Technologies Joint Stock Company" {...field} disabled={isReadOnly} />
                   </FormControl>
-                  <p className="text-xs text-muted-foreground">Synced from Company Profile</p>
+                  <p className="text-xs text-muted-foreground">
+                    {company.status === 'VERIFIED' ? 'Modify to request name update' : 'Synced from Company Profile'}
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}
@@ -270,10 +336,58 @@ export default function LegalVerificationPage() {
           </div>
 
           <div className="md:col-span-2 flex items-center justify-end pt-6 border-t gap-3 mt-4">
-            <Button type="button" variant="outline">Cancel</Button>
-            <Button type="submit" disabled={isSubmitting || isUploading || isReadOnly}>
-              {isSubmitting ? 'Saving...' : 'Save Legal Profile'}
-            </Button>
+            {company.status === 'VERIFIED' && !company.hasPendingChange ? (
+              !isEditingVerified ? (
+                <Button 
+                  type="button" 
+                  onClick={() => setIsEditingVerified(true)}
+                  className="bg-primary text-primary-foreground hover:bg-primary/95 cursor-pointer"
+                >
+                  Request Update
+                </Button>
+              ) : (
+                <>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => {
+                      setIsEditingVerified(false);
+                      form.reset();
+                    }}
+                    disabled={isSubmitting || isUpdatingRequest || isUploading}
+                    className="cursor-pointer"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={isSubmitting || isUpdatingRequest || isUploading}
+                    className="cursor-pointer"
+                  >
+                    {isUpdatingRequest ? 'Submitting...' : 'Submit Update Request'}
+                  </Button>
+                </>
+              )
+            ) : (
+              <>
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={() => form.reset()}
+                  disabled={isReadOnly}
+                  className="cursor-pointer"
+                >
+                  Reset
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting || isUploading || isReadOnly}
+                  className="cursor-pointer"
+                >
+                  {isSubmitting ? 'Saving...' : 'Save Legal Profile'}
+                </Button>
+              </>
+            )}
           </div>
         </form>
       </Form>

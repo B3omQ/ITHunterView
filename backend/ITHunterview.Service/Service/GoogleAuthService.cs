@@ -12,12 +12,15 @@ namespace ITHunterview.Service.Service
 
         public GoogleAuthService(IConfiguration configuration)
         {
-            _clientId = configuration["GoogleAuth:ClientId"]
-                ?? throw new InvalidOperationException("GoogleAuth:ClientId is not configured.");
+            _clientId = configuration["GoogleAuth:ClientId"] ?? string.Empty;
         }
 
         public async Task<GoogleUserInfo?> VerifyGoogleTokenAsync(string idToken)
         {
+            if (string.IsNullOrEmpty(_clientId))
+            {
+                throw new InvalidOperationException("GoogleAuth:ClientId is not configured.");
+            }
             try
             {
                 var settings = new GoogleJsonWebSignature.ValidationSettings

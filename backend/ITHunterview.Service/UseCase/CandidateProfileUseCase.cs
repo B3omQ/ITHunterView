@@ -36,23 +36,48 @@ namespace ITHunterview.Service.UseCase
             return MapToPersonalInfoDto(profile);
         }
 
-        public async Task<PersonalInfoResponseDto> UpdatePersonalInfoAsync(Guid userId, PersonalInfoUpdateRequestDto request)
+        public async Task<PersonalInfoResponseDto> UpdateBasicInfoAsync(Guid userId, BasicInfoUpdateRequestDto request)
         {
-            if (request.AboutMe != null && request.AboutMe.Length > 500)
-                throw new ArgumentException("AboutMe không được vượt quá 500 ký tự.");
-
             var profile = await GetOrCreateProfileAsync(userId);
 
             profile.FirstName = request.FirstName;
             profile.LastName = request.LastName;
             profile.Phone = request.Phone;
             profile.Location = request.Location;
+
+            if (profile.User != null)
+                profile.User.UpdatedAt = DateTime.UtcNow;
+
+            await _profileRepo.SaveChangesAsync();
+
+            return MapToPersonalInfoDto(profile);
+        }
+
+        public async Task<PersonalInfoResponseDto> UpdateAboutMeAsync(Guid userId, AboutMeUpdateRequestDto request)
+        {
+            if (request.AboutMe != null && request.AboutMe.Length > 500)
+                throw new ArgumentException("AboutMe không được vượt quá 500 ký tự.");
+
+            var profile = await GetOrCreateProfileAsync(userId);
+
             profile.AboutMe = request.AboutMe;
+
+            if (profile.User != null)
+                profile.User.UpdatedAt = DateTime.UtcNow;
+
+            await _profileRepo.SaveChangesAsync();
+
+            return MapToPersonalInfoDto(profile);
+        }
+
+        public async Task<PersonalInfoResponseDto> UpdateSocialLinksAsync(Guid userId, SocialLinksUpdateRequestDto request)
+        {
+            var profile = await GetOrCreateProfileAsync(userId);
+
             profile.PortfolioUrl = request.PortfolioUrl;
             profile.LinkedinUrl = request.LinkedInUrl;
             profile.GithubUrl = request.GithubUrl;
 
-            // Track updated_at on the user record
             if (profile.User != null)
                 profile.User.UpdatedAt = DateTime.UtcNow;
 
@@ -105,60 +130,14 @@ namespace ITHunterview.Service.UseCase
         {
             var profile = await GetOrCreateProfileAsync(userId);
 
-            // Suy luận currentTitle từ experience is_current = true
-            var experiences = await _expRepo.GetByUserIdAsync(userId);
-            var currentExp = experiences.FirstOrDefault(e => e.IsCurrent)
-                          ?? experiences.OrderByDescending(e => e.StartDate).FirstOrDefault();
-            var currentTitle = currentExp?.Title;
-
-            // Tính % completion (6 sections × ~16.67% mỗi section, làm tròn xuống bội 5)
-            var skills = await _skillRepo.GetByUserIdAsync(userId);
-            var educations = await _eduRepo.GetByUserIdAsync(userId);
-            var certs = await _certRepo.GetByUserIdAsync(userId);
-
-            var completedSections = 0;
-            if (!string.IsNullOrWhiteSpace(profile.FirstName) || !string.IsNullOrWhiteSpace(profile.LastName))
-                completedSections++;
-            if (!string.IsNullOrWhiteSpace(profile.AboutMe))
-                completedSections++;
-            if (skills.Any())
-                completedSections++;
-            if (experiences.Any())
-                completedSections++;
-            if (educations.Any())
-                completedSections++;
-            if (certs.Any())
-                completedSections++;
-
-            const int totalSections = 6;
-            var percentage = (int)Math.Round((double)completedSections / totalSections * 100);
-            // Làm tròn xuống bội 5 gần nhất
-            percentage = (percentage / 5) * 5;
-
-            var remaining = totalSections - completedSections;
-            var hint = remaining == 0
-                ? "Your profile is complete!"
-                : $"Add {remaining} more section{(remaining > 1 ? "s" : "")} to reach {Math.Min(percentage + 20, 100)}%";
-
-            // lastSavedAt = max updated_at từ tất cả related records
-            var timestamps = new List<DateTime?>();
-            timestamps.Add(profile.User?.UpdatedAt);
-            timestamps.AddRange(experiences.Select(e => (DateTime?)e.UpdatedAt));
-            timestamps.AddRange(educations.Select(e => (DateTime?)e.UpdatedAt));
-            var lastSavedAt = timestamps.Where(t => t.HasValue).Max(t => t);
-
             return new ProfileSummaryResponseDto
             {
                 Id = profile.Id,
                 FullName = string.Join(" ", new[] { profile.FirstName, profile.LastName }
                     .Where(s => !string.IsNullOrWhiteSpace(s))),
                 AvatarUrl = profile.AvatarUrl,
-                CurrentTitle = currentTitle,
                 Location = profile.Location,
-                IsVisibleToRecruiters = profile.IsVisibleToRecruiters,
-                ProfileCompletionPercentage = percentage,
-                CompletionHint = hint,
-                LastSavedAt = lastSavedAt
+                IsVisibleToRecruiters = profile.IsVisibleToRecruiters
             };
         }
 

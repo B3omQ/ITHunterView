@@ -1,4 +1,4 @@
 import { redirect } from 'next/navigation';
 export default function SettingsIndexPage() {
-  redirect('/recruiter/settings/profile');
+  redirect('/recruiter/settings/security');
 }

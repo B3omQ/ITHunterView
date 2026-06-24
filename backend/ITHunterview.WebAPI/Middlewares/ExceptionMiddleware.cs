@@ -57,6 +57,10 @@ namespace ITHunterview.WebAPI.Middlewares
                     statusCode = HttpStatusCode.Unauthorized;
                     message = exception.Message;
                     break;
+                case InvalidOperationException:
+                    statusCode = HttpStatusCode.Conflict; // 409 — business rule violation
+                    message = exception.Message;
+                    break;
                 default:
                     // Trong môi trường phát triển (Development), trả về chi tiết Exception để dễ debug
                     if (_env.IsDevelopment())

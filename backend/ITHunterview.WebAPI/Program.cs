@@ -1,9 +1,11 @@
 using System.Text;
+using ITHunterview.Domain.Enums;
 using ITHunterview.Service.Config;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,13 +22,39 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITHunterview.Service.Interface.Infrastructure.IActorProvider, ITHunterview.Service.Infrastructure.Infrastructure.ActorProvider>();
 builder.Services.AddSingleton<ITHunterview.Service.Interface.Infrastructure.IAuditLogQueue, ITHunterview.Service.Infrastructure.Infrastructure.AuditLogQueue>();
 builder.Services.AddScoped<AuditLogInterceptor>();
+
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(
+    builder.Configuration.GetConnectionString("DefaultConnection"));
+dataSourceBuilder.MapEnum<UserStatus>("user_status");
+dataSourceBuilder.MapEnum<CompanyVerificationMethod>("company_verification_method");
+dataSourceBuilder.MapEnum<CompanyStatus>("company_status");
+dataSourceBuilder.MapEnum<ReviewStatus>("review_status");
+dataSourceBuilder.MapEnum<SkillStatus>("skill_status");
+dataSourceBuilder.MapEnum<JobType>("job_type");
+dataSourceBuilder.MapEnum<JobStatus>("job_status");
+dataSourceBuilder.MapEnum<ApplicationStatus>("application_status");
+dataSourceBuilder.MapEnum<PromotionStatus>("promotion_status");
+dataSourceBuilder.MapEnum<DifficultyLevel>("difficulty_level");
+dataSourceBuilder.MapEnum<InterviewSessionStatus>("interview_session_status");
+dataSourceBuilder.MapEnum<SubscriptionStatus>("subscription_status");
+dataSourceBuilder.MapEnum<UserSubscriptionStatus>("user_subscription_status");
+dataSourceBuilder.MapEnum<PaymentGateway>("payment_gateway");
+dataSourceBuilder.MapEnum<PaymentTargetType>("payment_target_type");
+dataSourceBuilder.MapEnum<PaymentStatus>("payment_status");
+dataSourceBuilder.MapEnum<CreditTransactionType>("credit_transaction_type");
+dataSourceBuilder.MapEnum<EmploymentType>("employment_type");
+dataSourceBuilder.MapEnum<NotificationType>("notification_type");
+dataSourceBuilder.MapEnum<EmailLogStatus>("email_log_status");
+dataSourceBuilder.MapEnum<ActivityLogCategory>("activity_log_category");
+dataSourceBuilder.MapEnum<ActivityLogStatus>("activity_log_status");
+var dataSource = dataSourceBuilder.Build();
+
 builder.Services.AddDbContext<ITHunterviewContext>((sp, options) =>
 {
-    options.UseNpgsql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        b => b.MigrationsAssembly("ITHunterview.Service")
-    )
-    .AddInterceptors(sp.GetRequiredService<AuditLogInterceptor>());
+    options.UseNpgsql(dataSource)
+           .AddInterceptors(sp.GetRequiredService<AuditLogInterceptor>())
+           .ConfigureWarnings(w => w.Ignore(
+               Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
 });
 
 // ─── Application Services ─────────────────────────────────────────────────────
@@ -85,19 +113,22 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // ─── DB Migration & Seeding ───────────────────────────────────────────────────
-using (var scope = app.Services.CreateScope())
+if (!app.Environment.IsEnvironment("Testing"))
 {
-    var services = scope.ServiceProvider;
-    try
+    using (var scope = app.Services.CreateScope())
     {
-        var context = services.GetRequiredService<ITHunterviewContext>();
-        await context.Database.MigrateAsync();
-        await DataSeeder.SeedAsync(context);
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred seeding the DB.");
+        var services = scope.ServiceProvider;
+        try
+        {
+            var context = services.GetRequiredService<ITHunterviewContext>();
+            await context.Database.MigrateAsync();
+            await DataSeeder.SeedAsync(context);
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "An error occurred seeding the DB.");
+        }
     }
 }
 
@@ -110,7 +141,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseAuthentication();
 app.UseMiddleware<ITHunterview.WebAPI.Middlewares.UserStatusCheckMiddleware>();
 app.UseAuthorization();

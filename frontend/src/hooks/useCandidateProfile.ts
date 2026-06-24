@@ -2,18 +2,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { candidateService } from '@/services/candidate.service';
 import type {
   UpdateVisibilityRequest,
-  PersonalInfoUpdateRequest,
   SkillAddRequest,
   ExperienceUpsertRequest,
   EducationUpsertRequest,
   CertificationUpsertRequest,
+  BasicInfoUpdateRequest,
+  AboutMeUpdateRequest,
+  SocialLinksUpdateRequest,
 } from '@/types/candidate.types';
 
 export const CANDIDATE_PROFILE_KEYS = {
   summary: ['candidate-profile-summary'] as const,
   personalInfo: ['candidate-personal-info'] as const,
   skills: ['candidate-skills'] as const,
-  suggestions: ['candidate-skill-suggestions'] as const,
   experiences: ['candidate-experiences'] as const,
   majors: ['candidate-majors'] as const,
   educations: ['candidate-educations'] as const,
@@ -56,11 +57,35 @@ export function usePersonalInfo() {
   });
 }
 
-export function useUpdatePersonalInfo() {
+export function useUpdateBasicInfo() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: PersonalInfoUpdateRequest) => candidateService.updatePersonalInfo(payload),
+    mutationFn: (payload: BasicInfoUpdateRequest) => candidateService.updateBasicInfo(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.personalInfo });
+      queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.summary });
+    },
+  });
+}
+
+export function useUpdateAboutMe() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: AboutMeUpdateRequest) => candidateService.updateAboutMe(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.personalInfo });
+      queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.summary });
+    },
+  });
+}
+
+export function useUpdateSocialLinks() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: SocialLinksUpdateRequest) => candidateService.updateSocialLinks(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.personalInfo });
       queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.summary });
@@ -75,13 +100,6 @@ export function useCandidateSkills() {
   });
 }
 
-export function useSkillSuggestions() {
-  return useQuery({
-    queryKey: CANDIDATE_PROFILE_KEYS.suggestions,
-    queryFn: () => candidateService.getSkillSuggestions().then((res) => res.data),
-  });
-}
-
 export function useAddSkill() {
   const queryClient = useQueryClient();
 
@@ -89,7 +107,6 @@ export function useAddSkill() {
     mutationFn: (payload: SkillAddRequest) => candidateService.addSkill(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.skills });
-      queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.suggestions });
       queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.summary });
     },
   });
@@ -102,7 +119,6 @@ export function useRemoveSkill() {
     mutationFn: (skillId: number) => candidateService.removeSkill(skillId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.skills });
-      queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.suggestions });
       queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.summary });
     },
   });

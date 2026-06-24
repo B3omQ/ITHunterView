@@ -7,6 +7,7 @@ namespace ITHunterview.Service.Interface.Persistence
 {
     public interface ISkillRepository
     {
+        Task<List<(Skills Skill, string CategoryName)>> GetActiveSkillsWithCategoryAsync();
         Task<Skills?> GetByIdAsync(int id);
         Task<(List<Skills> Items, int Total)> GetPagedSkillsAsync(int page, int pageSize, string? search, int? categoryId, SkillStatus? status);
         Task AddAsync(Skills skill);

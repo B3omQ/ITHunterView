@@ -12,7 +12,6 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const base = `/${role}/settings`
 
   const tabs = [
-    { label: "Profile", href: `${base}/profile`, icon: <User size={18} /> },
     { label: "Password & Security", href: `${base}/security`, icon: <Lock size={18} /> },
   ]
 

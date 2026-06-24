@@ -38,7 +38,7 @@ export default function ProfilePage() {
   return (
     <div className="container max-w-5xl mx-auto py-8 px-4 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Profile Header */}
-      <ProfileHeader summary={summary} currentTab={activeTab} />
+      <ProfileHeader summary={summary} />
 
       {/* Profile Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

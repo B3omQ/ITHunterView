@@ -43,15 +43,6 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(new ResponseBase<List<SkillSearchResponseDto>>(result));
         }
 
-        /// <summary>GET /api/v1/candidate/profile/skills/suggestions — Trending suggestions</summary>
-        [HttpGet("api/v1/candidate/profile/skills/suggestions")]
-        public async Task<ActionResult<ResponseBase<List<SkillResponseDto>>>> GetSuggestions()
-        {
-            var userId = GetUserId();
-            var result = await _skillUseCase.GetSuggestionsAsync(userId);
-            return Ok(new ResponseBase<List<SkillResponseDto>>(result));
-        }
-
         /// <summary>POST /api/v1/candidate/profile/skills — Add a skill</summary>
         [HttpPost("api/v1/candidate/profile/skills")]
         public async Task<ActionResult<ResponseBase<SkillResponseDto>>> AddSkill([FromBody] SkillAddRequestDto request)

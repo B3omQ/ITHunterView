@@ -21,8 +21,5 @@ namespace ITHunterview.Service.Interface.Persistence
 
         /// <summary>Kiểm tra skill tồn tại trong master data.</summary>
         Task<Skills?> GetMasterSkillByIdAsync(int skillId);
-
-        /// <summary>Gợi ý skill theo trending (phổ biến nhất, loại trừ skills user đã có).</summary>
-        Task<List<Skills>> GetSuggestedSkillsAsync(Guid userId, int limit = 10);
     }
 }
