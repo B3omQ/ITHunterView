@@ -63,11 +63,6 @@ export const candidateService = {
       })
       .then((r) => r.data),
 
-  getSkillSuggestions: () =>
-    api
-      .get<ApiResponse<CandidateSkill[]>>('/api/v1/candidate/profile/skills/suggestions')
-      .then((r) => r.data),
-
   addSkill: (payload: SkillAddRequest) =>
     api
       .post<ApiResponse<CandidateSkill>>('/api/v1/candidate/profile/skills', payload)

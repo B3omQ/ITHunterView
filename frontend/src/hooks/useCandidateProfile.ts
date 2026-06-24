@@ -13,7 +13,6 @@ export const CANDIDATE_PROFILE_KEYS = {
   summary: ['candidate-profile-summary'] as const,
   personalInfo: ['candidate-personal-info'] as const,
   skills: ['candidate-skills'] as const,
-  suggestions: ['candidate-skill-suggestions'] as const,
   experiences: ['candidate-experiences'] as const,
   majors: ['candidate-majors'] as const,
   educations: ['candidate-educations'] as const,
@@ -75,13 +74,6 @@ export function useCandidateSkills() {
   });
 }
 
-export function useSkillSuggestions() {
-  return useQuery({
-    queryKey: CANDIDATE_PROFILE_KEYS.suggestions,
-    queryFn: () => candidateService.getSkillSuggestions().then((res) => res.data),
-  });
-}
-
 export function useAddSkill() {
   const queryClient = useQueryClient();
 
@@ -89,7 +81,6 @@ export function useAddSkill() {
     mutationFn: (payload: SkillAddRequest) => candidateService.addSkill(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.skills });
-      queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.suggestions });
       queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.summary });
     },
   });
@@ -102,7 +93,6 @@ export function useRemoveSkill() {
     mutationFn: (skillId: number) => candidateService.removeSkill(skillId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.skills });
-      queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.suggestions });
       queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.summary });
     },
   });
