@@ -17,6 +17,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             await SeedSkillsAsync(context);
             await SeedMajorsAsync(context);
             await SeedSubscriptionsAsync(context);
+            await SeedCoinConfigAsync(context);
             await SeedJobPostingsAsync(context);
         }
 
@@ -485,30 +486,90 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 {
                     new Subscriptions 
                     { 
-                        Name = "Free", 
+                        Name = "Candidate Free", 
                         Price = 0, 
                         DurationDays = 36500, 
-                        FeaturesConfig = "{\"max_active_jobs\": 1, \"ai_interview_credits\": 2, \"cv_match_per_month\": 5}",
+                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":2,\"mockInterviewLimit\":0,\"cvOptimizeLimit\":0}",
                         Status = SubscriptionStatus.ACTIVE
                     },
                     new Subscriptions 
                     { 
-                        Name = "Premium", 
-                        Price = 299000, 
+                        Name = "Candidate Premium", 
+                        Price = 99000, 
                         DurationDays = 30, 
-                        FeaturesConfig = "{\"max_active_jobs\": 10, \"ai_interview_credits\": 20, \"cv_match_per_month\": 50}",
+                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":30,\"mockInterviewLimit\":10,\"cvOptimizeLimit\":10}",
                         Status = SubscriptionStatus.ACTIVE
                     },
                     new Subscriptions 
                     { 
-                        Name = "Enterprise", 
-                        Price = 1499000, 
+                        Name = "Recruiter Free", 
+                        Price = 0, 
+                        DurationDays = 36500, 
+                        FeaturesConfig = "{\"role\":\"RECRUITER\",\"activeJobPostings\":1,\"activeSourcingLimit\":5,\"highlightedJobs\":0,\"analytics\":false}",
+                        Status = SubscriptionStatus.ACTIVE
+                    },
+                    new Subscriptions 
+                    { 
+                        Name = "Recruiter Premium", 
+                        Price = 499000, 
                         DurationDays = 30, 
-                        FeaturesConfig = "{\"max_active_jobs\": -1, \"ai_interview_credits\": -1, \"cv_match_per_month\": -1}",
+                        FeaturesConfig = "{\"role\":\"RECRUITER\",\"activeJobPostings\":10,\"activeSourcingLimit\":50,\"highlightedJobs\":3,\"analytics\":true}",
+                        Status = SubscriptionStatus.ACTIVE
+                    },
+                    new Subscriptions 
+                    { 
+                        Name = "Recruiter Enterprise", 
+                        Price = 1999000, 
+                        DurationDays = 30, 
+                        FeaturesConfig = "{\"role\":\"RECRUITER\",\"activeJobPostings\":-1,\"activeSourcingLimit\":-1,\"highlightedJobs\":-1,\"analytics\":true}",
                         Status = SubscriptionStatus.ACTIVE
                     }
                 };
                 context.Subscriptions.AddRange(subs);
+                await context.SaveChangesAsync();
+            }
+        }
+
+        private static async Task SeedCoinConfigAsync(ITHunterviewContext context)
+        {
+            // Seed CoinFeatures
+            if (!context.CoinFeatures.Any())
+            {
+                var features = new List<CoinFeatures>
+                {
+                    new CoinFeatures { FeatureKey = "CvJdMatching", CoinCost = 2, Description = "So khớp CV-JD AI" },
+                    new CoinFeatures
+                    {
+                        FeatureKey = "MockInterview", CoinCost = 10, Description = "Phỏng vấn thử AI Mock Interview"
+                    },
+                    new CoinFeatures { FeatureKey = "CvOptimize", CoinCost = 3, Description = "Tối ưu hóa CV AI" }
+                };
+                context.CoinFeatures.AddRange(features);
+                await context.SaveChangesAsync();
+            }
+
+            // Seed CoinPackages
+            if (!context.CoinPackages.Any())
+            {
+                var packages = new List<CoinPackages>
+                {
+                    new CoinPackages
+                    {
+                        Id = Guid.Parse("00000000-0000-0000-0000-000000000020"), Name = "Gói nạp 20 Coin", Coins = 20,
+                        Price = 39000, IsActive = true
+                    },
+                    new CoinPackages
+                    {
+                        Id = Guid.Parse("00000000-0000-0000-0000-000000000050"), Name = "Gói nạp 50 Coin", Coins = 50,
+                        Price = 89000, IsActive = true
+                    },
+                    new CoinPackages
+                    {
+                        Id = Guid.Parse("00000000-0000-0000-0000-000000000120"), Name = "Gói nạp 120 Coin", Coins = 120,
+                        Price = 199000, IsActive = true
+                    }
+                };
+                context.CoinPackages.AddRange(packages);
                 await context.SaveChangesAsync();
             }
         }

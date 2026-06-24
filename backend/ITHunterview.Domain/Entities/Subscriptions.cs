@@ -1,7 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ITHunterview.Domain.Enums;
 
 namespace ITHunterview.Domain.Entities
 {
@@ -13,7 +13,9 @@ namespace ITHunterview.Domain.Entities
         public int Id { get; set; }
 
         [Column("name")]
-        public string Name { get; set; }
+        [Required]
+        [MaxLength(100)]
+        public string Name { get; set; } = string.Empty;
 
         [Column("price")]
         public decimal Price { get; set; }
@@ -21,11 +23,11 @@ namespace ITHunterview.Domain.Entities
         [Column("duration_days")]
         public int DurationDays { get; set; }
 
-        [Column("features_config")]
-        public string FeaturesConfig { get; set; }
+        [Column("features_config", TypeName = "jsonb")]
+        public string FeaturesConfig { get; set; } = "{}";
 
         [Column("status")]
-        public SubscriptionStatus Status { get; set; }
+        public SubscriptionStatus Status { get; set; } = SubscriptionStatus.ACTIVE;
 
         [Column("created_by")]
         public Guid? CreatedBy { get; set; }
@@ -33,5 +35,10 @@ namespace ITHunterview.Domain.Entities
         [Column("updated_by")]
         public Guid? UpdatedBy { get; set; }
 
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [Column("updated_at")]
+        public DateTime? UpdatedAt { get; set; }
     }
 }
