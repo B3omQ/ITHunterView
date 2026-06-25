@@ -114,7 +114,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 var lowerKeyword = query.Keyword.ToLower();
                 queryable = queryable.Where(x => 
                     (x.job.Title != null && x.job.Title.ToLower().Contains(lowerKeyword)) || 
-                    (x.company.Name != null && x.company.Name.ToLower().Contains(lowerKeyword)));
+                    (x.company.Name != null && x.company.Name.ToLower().Contains(lowerKeyword)) ||
+                    _context.JobSkillRequirements.Any(jsr => jsr.JobId == x.job.Id && 
+                        _context.Skills.Any(s => s.Id == jsr.SkillId && s.Name.ToLower().Contains(lowerKeyword)))
+                );
             }
 
             var totalItems = await queryable.CountAsync();
