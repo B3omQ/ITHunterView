@@ -579,44 +579,83 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             if (!context.JobPostings.Any())
             {
                 var recruiterRole = context.Roles.FirstOrDefault(r => r.Name == "recruiter");
-                var recruiter = context.Users.FirstOrDefault(u => u.RoleId == recruiterRole.Id);
-                var company = context.Companies.FirstOrDefault();
-                var category = context.JobCategories.FirstOrDefault(c => c.ParentId != null);
+                var recruiters = context.Users.Where(u => u.RoleId == recruiterRole.Id).ToList();
+                var companies = context.Companies.ToList();
+                var categories = context.JobCategories.Where(c => c.ParentId != null).ToList();
+                var skills = context.Skills.ToList();
 
-                if (recruiter != null && company != null && category != null)
+                if (recruiters.Any() && companies.Any() && categories.Any() && skills.Any())
                 {
                     var jobs = new List<JobPostings>();
+                    var jobSkills = new List<JobSkillRequirements>();
                     var random = new System.Random();
 
-                    for (int i = 1; i <= 10; i++)
+                    string[] locations = { "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Remote" };
+                    JobType[] jobTypes = { JobType.FULL_TIME, JobType.PART_TIME, JobType.CONTRACT, JobType.FREELANCE, JobType.INTERNSHIP };
+                    JobStatus[] statuses = { JobStatus.PUBLISHED, JobStatus.PUBLISHED, JobStatus.PUBLISHED, JobStatus.DRAFT, JobStatus.CLOSED };
+
+                    string[] jobTitlesPrefixes = { "Senior", "Junior", "Middle", "Lead", "Principal" };
+                    
+                    for (int i = 1; i <= 60; i++)
                     {
+                        var company = companies[random.Next(companies.Count)];
+                        var recruiter = recruiters[random.Next(recruiters.Count)];
+                        var category = categories[random.Next(categories.Count)];
+                        
+                        string prefix = jobTitlesPrefixes[random.Next(jobTitlesPrefixes.Length)];
+                        string location = locations[random.Next(locations.Length)];
+                        JobType jobType = jobTypes[random.Next(jobTypes.Length)];
+                        JobStatus status = statuses[random.Next(statuses.Length)];
+                        
+                        bool isVnd = random.Next(100) > 70; // 30% jobs in VND, 70% in USD
+                        decimal minSalary = isVnd ? random.Next(10, 30) * 1000000 : random.Next(5, 20) * 100;
+                        decimal maxSalary = minSalary + (isVnd ? random.Next(10, 20) * 1000000 : random.Next(5, 15) * 100);
+
+                        var jobId = System.Guid.NewGuid();
+                        var publishedAt = System.DateTime.UtcNow.AddDays(-random.Next(1, 60));
+
                         jobs.Add(new JobPostings
                         {
-                            Id = System.Guid.NewGuid(),
-                            JobCode = $"JB-{random.Next(1000, 9999)}",
+                            Id = jobId,
+                            JobCode = $"JB-{random.Next(10000, 99999)}",
                             RecruiterId = recruiter.Id,
                             CompanyId = company.Id,
                             CategoryId = category.Id,
-                            Title = $"Software Engineer {i}",
-                            Description = "We are looking for a talented Software Engineer to join our team...",
-                            Responsibilities = "- Develop high-quality software design and architecture\n- Identify, prioritize and execute tasks in the software development life cycle",
-                            Requirements = "- Proven experience as a Software Engineer or Software Developer\n- Experience with software design and development in a test-driven environment",
-                            Benefits = "- Competitive salary\n- Health insurance\n- Paid time off",
-                            MinSalary = 1000 + (i * 100),
-                            MaxSalary = 2000 + (i * 100),
-                            Currency = "USD",
-                            Location = "Ho Chi Minh City",
-                            JobType = JobType.FULL_TIME,
-                            Status = JobStatus.PUBLISHED,
-                            ApplicationCount = random.Next(0, 50),
-                            ViewCount = random.Next(100, 1000),
-                            PublishedAt = System.DateTime.UtcNow.AddDays(-i),
-                            CreatedAt = System.DateTime.UtcNow.AddDays(-i),
-                            UpdatedAt = System.DateTime.UtcNow.AddDays(-i)
+                            Title = $"{prefix} {category.Name}",
+                            Description = $"We are looking for a talented {prefix} {category.Name} to join our dynamic team at {company.Name}. You will be responsible for developing high-quality solutions and working in an agile environment.",
+                            Responsibilities = "- Develop high-quality software design and architecture\n- Identify, prioritize and execute tasks in the software development life cycle\n- Review, test and debug code",
+                            Requirements = $"- Proven experience as a {category.Name}\n- Experience with software design and development\n- Excellent communication skills",
+                            Benefits = "- Competitive salary\n- Health insurance\n- Paid time off\n- Flexible working hours",
+                            MinSalary = minSalary,
+                            MaxSalary = maxSalary,
+                            Currency = isVnd ? "VND" : "USD",
+                            Location = location,
+                            JobType = jobType,
+                            Status = status,
+                            ApplicationCount = random.Next(0, 100),
+                            ViewCount = random.Next(100, 5000),
+                            PublishedAt = status == JobStatus.PUBLISHED ? publishedAt : null,
+                            CreatedAt = publishedAt.AddDays(-random.Next(1, 5)),
+                            UpdatedAt = publishedAt
                         });
+
+                        // Seed 3-5 random skills for this job
+                        int skillCount = random.Next(3, 6);
+                        var shuffledSkills = skills.OrderBy(x => random.Next()).Take(skillCount).ToList();
+                        
+                        foreach(var skill in shuffledSkills)
+                        {
+                            jobSkills.Add(new JobSkillRequirements
+                            {
+                                JobId = jobId,
+                                SkillId = skill.Id,
+                                IsMandatory = random.Next(100) > 30 // 70% chance to be mandatory
+                            });
+                        }
                     }
 
                     context.JobPostings.AddRange(jobs);
+                    context.JobSkillRequirements.AddRange(jobSkills);
                     await context.SaveChangesAsync();
                 }
             }
