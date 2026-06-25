@@ -51,7 +51,16 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
         return;
       }
 
-      uploadAvatar(file);
+      uploadAvatar(file, {
+        onSuccess: () => {
+          toast.success('Avatar uploaded successfully');
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        },
+        onError: () => {
+          toast.error('Failed to upload avatar, please try again');
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+      });
     }
   };
 
