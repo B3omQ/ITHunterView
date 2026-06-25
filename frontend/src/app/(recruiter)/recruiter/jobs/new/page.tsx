@@ -24,7 +24,6 @@ export default function CreateJobPage() {
     status: "DRAFT",
     minSalary: "",
     maxSalary: "",
-    currency: "USD",
     description: "",
     responsibilities: "",
     requirements: "",
@@ -40,6 +39,9 @@ export default function CreateJobPage() {
   
   const [selectedSkills, setSelectedSkills] = useState<Array<{ skillId: number; name: string; isMandatory: boolean }>>([])
   const [searchSkill, setSearchSkill] = useState("")
+  
+  const [locationType, setLocationType] = useState("Hồ Chí Minh")
+  const [searchDomain, setSearchDomain] = useState("")
 
   const loading = metadataLoading || saving || companyLoading
   const error = metadataError || saveError
@@ -83,6 +85,7 @@ export default function CreateJobPage() {
 
       minSalary: formData.minSalary ? Number(formData.minSalary) : null,
       maxSalary: formData.maxSalary ? Number(formData.maxSalary) : null,
+      currency: "USD",
       skills: selectedSkills.map(s => ({ skillId: s.skillId, isMandatory: s.isMandatory }))
     }
 
@@ -101,6 +104,8 @@ export default function CreateJobPage() {
 
   const mustHaveSkills = selectedSkills.filter(s => s.isMandatory)
   const niceToHaveSkills = selectedSkills.filter(s => !s.isMandatory)
+  
+  const filteredDomains = JOB_DOMAINS.filter(domain => domain.toLowerCase().includes(searchDomain.toLowerCase()))
 
   if (companyLoading) {
     return (
@@ -181,31 +186,45 @@ export default function CreateJobPage() {
                   className="focus-visible:ring-blue-500"
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="jobCode" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Code *</Label>
-                <Input
-                  id="jobCode"
-                  name="jobCode"
-                  placeholder="e.g. FE-3005 (Leave blank for auto-generation)"
-                  value={formData.jobCode}
-                  onChange={handleChange}
-                  className="focus-visible:ring-blue-500"
-                />
+              <div className="space-y-2 col-span-1 md:col-span-2">
+                <Label htmlFor="locationType" className="font-semibold text-zinc-700 dark:text-zinc-300">Location *</Label>
+                <div className="flex gap-2">
+                  <select
+                    id="locationType"
+                    className="w-1/3 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
+                    value={locationType}
+                    onChange={(e) => {
+                      setLocationType(e.target.value)
+                      if (e.target.value !== "Other" && e.target.value !== "International") {
+                        setFormData(prev => ({ ...prev, location: e.target.value }))
+                      } else {
+                        setFormData(prev => ({ ...prev, location: "" }))
+                      }
+                    }}
+                  >
+                    <option value="Hồ Chí Minh">Hồ Chí Minh</option>
+                    <option value="Hà Nội">Hà Nội</option>
+                    <option value="Đà Nẵng">Đà Nẵng</option>
+                    <option value="Remote">Remote</option>
+                    <option value="Other">Other (Domestic)</option>
+                    <option value="International">International</option>
+                  </select>
+                  
+                  {(locationType === "Other" || locationType === "International") && (
+                    <Input
+                      id="location"
+                      name="location"
+                      placeholder={locationType === "International" ? "e.g. Singapore, Tokyo" : "e.g. Can Tho, Binh Duong"}
+                      required
+                      value={formData.location}
+                      onChange={handleChange}
+                      className="flex-1 focus-visible:ring-blue-500"
+                    />
+                  )}
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="location" className="font-semibold text-zinc-700 dark:text-zinc-300">Location *</Label>
-                <Input
-                  id="location"
-                  name="location"
-                  placeholder="e.g. Remote, Hanoi, Hybrid"
-                  required
-                  value={formData.location}
-                  onChange={handleChange}
-                  className="focus-visible:ring-blue-500"
-                />
-              </div>
-            </div>            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="level" className="font-semibold text-zinc-700 dark:text-zinc-300">Level</Label>
                 <select
@@ -256,9 +275,17 @@ export default function CreateJobPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Job Domains</Label>
+              <div className="flex justify-between items-center">
+                <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Job Domains</Label>
+                <Input 
+                  placeholder="Search domains..." 
+                  className="w-48 h-8 text-xs" 
+                  value={searchDomain}
+                  onChange={(e) => setSearchDomain(e.target.value)}
+                />
+              </div>
               <div className="flex flex-wrap gap-2 p-3 border rounded-md border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 max-h-48 overflow-y-auto">
-                {JOB_DOMAINS.map(domain => (
+                {filteredDomains.map(domain => (
                   <label key={domain} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 p-1.5 rounded pr-3 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 transition-colors">
                     <input 
                       type="checkbox" 
@@ -269,6 +296,9 @@ export default function CreateJobPage() {
                     <span className="text-zinc-700 dark:text-zinc-300">{domain}</span>
                   </label>
                 ))}
+                {filteredDomains.length === 0 && (
+                  <div className="text-sm text-zinc-500 italic p-2">No domains found</div>
+                )}
               </div>
             </div>
 
@@ -299,17 +329,6 @@ export default function CreateJobPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="currency" className="font-semibold text-zinc-700 dark:text-zinc-300">Currency</Label>
-                <Input
-                  id="currency"
-                  name="currency"
-                  placeholder="USD"
-                  value={formData.currency}
-                  onChange={handleChange}
-                  className="focus-visible:ring-blue-500"
-                />
-              </div>
             </div>
 
             <hr className="border-zinc-200/60 dark:border-zinc-800/60" />
