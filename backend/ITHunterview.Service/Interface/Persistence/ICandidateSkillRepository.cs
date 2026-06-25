@@ -21,5 +21,8 @@ namespace ITHunterview.Service.Interface.Persistence
 
         /// <summary>Kiểm tra skill tồn tại trong master data.</summary>
         Task<Skills?> GetMasterSkillByIdAsync(int skillId);
+
+        /// <summary>Lấy toàn bộ active skills cho client cache.</summary>
+        Task<List<Skills>> GetAllActiveMasterSkillsAsync();
     }
 }

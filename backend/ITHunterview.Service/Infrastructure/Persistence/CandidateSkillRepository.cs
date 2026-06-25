@@ -63,5 +63,13 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         {
             return _context.Skills.FirstOrDefaultAsync(s => s.Id == skillId);
         }
+
+        public Task<List<Skills>> GetAllActiveMasterSkillsAsync()
+        {
+            return _context.Skills
+                .Where(s => s.Status == SkillStatus.ACTIVE)
+                .OrderBy(s => s.Name)
+                .ToListAsync();
+        }
     }
 }
