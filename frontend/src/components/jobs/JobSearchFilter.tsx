@@ -22,7 +22,20 @@ const LOCATIONS = [
 ];
 const LEVELS = ["Internship", "Fresher", "Junior", "Senior", "Manager"];
 const WORKING_MODELS = ["At office", "Remote", "Hybrid"];
-const JOB_DOMAINS = ["Backend", "Frontend", "Fullstack", "Mobile", "DevOps", "AI/ML", "Data", "QA/Testing", "System Admin", "Security"];
+const JOB_DOMAINS = [
+  "Blockchain & Web3 Services", "Food and Beverage", "Tourism and Hospitality Services", 
+  "Insurance", "Consumer Goods", "E-commerce", "Education and Training", "Banking", 
+  "Game", "Government", "IT Hardware and Computing", "Non-Profit and Social Services", 
+  "Manufacturing and Engineering", "Media, Advertising and Entertainment", "Environment", 
+  "Pharmaceuticals", "Real Estate, Property and Construction", "Retail and Wholesale", 
+  "IT Services and IT Consulting", "Telecommunication", "Transportation, Logistics and Warehouse", 
+  "Cyber Security", "Trading and Commercial", "Network and Infrastructure", 
+  "Software Development Outsourcing", "Software Products and Web Services", "Agriculture", 
+  "Sports and Fitness", "Apparel and Fashion", "Creative and Design", "Staffing and Recruiting", 
+  "Publishing and Printing", "Facility Management", "Research Services", "Healthcare", 
+  "Materials and Mining", "Utilities", "Professional Services", "Securities & Investment", 
+  "Financial Services", "Emerging Tech R&D", "AI Software & Services"
+];
 const COMPANY_INDUSTRIES = ["Information Technology", "Software Outsourcing", "Internet & Technology", "E-commerce", "Fintech", "Edtech", "Healthtech", "Logistics", "Gaming"];
 const COMPANY_TYPES = ["IT Outsourcing", "IT Product", "Headhunt", "IT Service and IT Consulting", "Non-IT"];
 
@@ -188,6 +201,15 @@ export function JobSearchFilter() {
     setPendingSalary([0, 10000]);
   };
 
+  const hasActiveFilters = 
+    pendingLevels.length > 0 || 
+    pendingWorkingModels.length > 0 || 
+    pendingJobDomains.length > 0 || 
+    pendingCompanyIndustries.length > 0 || 
+    pendingCompanyTypes.length > 0 || 
+    pendingSalary[0] > 0 || 
+    pendingSalary[1] < 10000;
+
   // Quick Filter Action
   const applyQuickFilter = (key: string, val: any) => {
     if (key === 'levels') setPendingLevels(val);
@@ -334,13 +356,33 @@ export function JobSearchFilter() {
         </div>
 
         {/* Filter Button (Opens Modal) */}
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" className="h-10 ml-auto flex items-center gap-2 text-slate-700 bg-white">
-              <Filter className="h-4 w-4" />
-              All Filters
+        <div className="ml-auto flex items-center gap-2">
+          {hasActiveFilters && (
+            <Button 
+              variant="ghost" 
+              onClick={() => {
+                resetFilters();
+                applyFilters({
+                  levels: [],
+                  workingModels: [],
+                  jobDomains: [],
+                  companyIndustries: [],
+                  companyTypes: [],
+                  salary: [0, 10000]
+                });
+              }}
+              className="h-10 text-slate-500 hover:text-slate-900 px-3"
+            >
+              Clear Filters
             </Button>
-          </DialogTrigger>
+          )}
+          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="h-10 flex items-center gap-2 text-slate-700 bg-white">
+                <Filter className="h-4 w-4" />
+                All Filters
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
             <DialogHeader className="p-6 pb-4 border-b">
               <DialogTitle className="text-xl">Advanced Filters</DialogTitle>
@@ -478,6 +520,7 @@ export function JobSearchFilter() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
     </div>
