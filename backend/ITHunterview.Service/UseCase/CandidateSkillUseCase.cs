@@ -50,6 +50,17 @@ namespace ITHunterview.Service.UseCase
             }).ToList();
         }
 
+        public async Task<List<SkillSearchResponseDto>> GetAllActiveMasterSkillsAsync()
+        {
+            var skills = await _skillRepo.GetAllActiveMasterSkillsAsync();
+            return skills.Select(s => new SkillSearchResponseDto
+            {
+                Id = s.Id,
+                Name = s.Name,
+                CategoryId = s.CategoryId
+            }).ToList();
+        }
+
         public async Task<SkillResponseDto> AddSkillAsync(Guid userId, SkillAddRequestDto request)
         {
             // Validate skill tồn tại trong master data

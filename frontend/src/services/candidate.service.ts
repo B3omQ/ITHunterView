@@ -68,6 +68,11 @@ export const candidateService = {
       .get<ApiResponse<CandidateSkill[]>>('/api/v1/candidate/profile/skills')
       .then((r) => r.data),
 
+  getAllMasterSkills: () =>
+    api
+      .get<ApiResponse<SkillSearchResponse[]>>('/api/v1/skills/all-active')
+      .then((r) => r.data),
+
   searchSkills: (keyword: string, excludeOwned = false) =>
     api
       .get<ApiResponse<SkillSearchResponse[]>>('/api/v1/skills/search', {

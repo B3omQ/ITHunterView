@@ -100,6 +100,15 @@ export function useCandidateSkills() {
   });
 }
 
+export function useAllMasterSkills() {
+  return useQuery({
+    queryKey: ['master-skills', 'all-active'],
+    queryFn: () => candidateService.getAllMasterSkills().then((res) => res.data),
+    staleTime: Infinity,
+    gcTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
+}
+
 export function useAddSkill() {
   const queryClient = useQueryClient();
 

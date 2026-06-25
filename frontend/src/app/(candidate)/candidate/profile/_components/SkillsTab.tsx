@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   useCandidateSkills,
+  useAllMasterSkills,
   useAddSkill,
   useRemoveSkill,
 } from '@/hooks/useCandidateProfile';
@@ -19,43 +20,32 @@ import { Award, Plus, Search, Loader2 } from 'lucide-react';
 
 export function SkillsTab() {
   const { data: skills, isLoading: isLoadingSkills, isError: isErrorSkills } = useCandidateSkills();
+  const { data: allMasterSkills, isLoading: isLoadingMasterSkills } = useAllMasterSkills();
   const { mutate: addSkill, isPending: isAddingSkill } = useAddSkill();
   const { mutate: removeSkill, isPending: isRemovingSkill } = useRemoveSkill();
 
   // Search autocomplete states
   const [keyword, setKeyword] = useState('');
   const [searchResults, setSearchResults] = useState<SkillSearchResponse[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Debounce search effect
+  // Local search effect (zero-latency)
   useEffect(() => {
-    if (!keyword.trim()) {
+    if (!keyword.trim() || !allMasterSkills) {
       setSearchResults([]);
-      setIsSearching(false);
       return;
     }
 
-    setIsSearching(true);
-    const timer = setTimeout(() => {
-      candidateService
-        .searchSkills(keyword, true)
-        .then((res) => {
-          if (res.success && res.data) {
-            setSearchResults(res.data);
-          }
-        })
-        .catch((err) => {
-          console.error(err);
-        })
-        .finally(() => {
-          setIsSearching(false);
-        });
-    }, 300);
+    const lowerKeyword = keyword.toLowerCase();
+    const filtered = allMasterSkills
+      .filter((s) => s.name.toLowerCase().includes(lowerKeyword))
+      // Exclude skills the user already has
+      .filter((s) => !skills?.some((owned) => owned.skillId === s.id))
+      .slice(0, 20); // Top 20 results
 
-    return () => clearTimeout(timer);
-  }, [keyword]);
+    setSearchResults(filtered);
+  }, [keyword, allMasterSkills, skills]);
 
   // Click outside listener for dropdown
   useEffect(() => {
@@ -68,7 +58,7 @@ export function SkillsTab() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  if (isLoadingSkills) {
+  if (isLoadingSkills || isLoadingMasterSkills) {
     return <PageLoader message="Loading skills..." />;
   }
 
@@ -126,22 +116,13 @@ export function SkillsTab() {
                 onFocus={() => setShowDropdown(true)}
                 className="pl-9 bg-background/50 border-border/60 focus-visible:ring-primary/30"
               />
-              {isSearching && (
-                <div className="absolute right-3 top-3">
-                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                </div>
-              )}
             </div>
 
             {/* Dropdown Menu */}
             {showDropdown && (keyword.trim() !== '' || searchResults.length > 0) && (
               <Card className="absolute left-0 right-0 mt-1.5 z-20 border border-border/40 bg-popover/95 backdrop-blur-md shadow-lg max-h-60 overflow-y-auto rounded-xl">
                 <CardContent className="p-2">
-                  {isSearching ? (
-                    <div className="py-3 px-4 text-xs text-muted-foreground flex items-center gap-2">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Searching...
-                    </div>
-                  ) : searchResults.length === 0 ? (
+                  {searchResults.length === 0 ? (
                     <div className="py-3 px-4 text-xs text-muted-foreground">
                       No matching skills found
                     </div>

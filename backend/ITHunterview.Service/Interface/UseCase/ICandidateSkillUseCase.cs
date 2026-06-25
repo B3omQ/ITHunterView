@@ -15,5 +15,8 @@ namespace ITHunterview.Service.Interface.UseCase
 
         /// <summary>Xóa skill khỏi profile.</summary>
         Task<bool> RemoveSkillAsync(Guid userId, int skillId);
+
+        /// <summary>Lấy toàn bộ active skills cho client cache.</summary>
+        Task<List<SkillSearchResponseDto>> GetAllActiveMasterSkillsAsync();
     }
 }
