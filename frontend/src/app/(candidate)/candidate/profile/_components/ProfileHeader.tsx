@@ -88,16 +88,12 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
 
 
   return (
-    <Card className="relative overflow-hidden border border-border/40 bg-card/60 backdrop-blur-md p-6 md:p-8 rounded-2xl shadow-xl flex flex-col md:flex-row gap-6 md:gap-8 items-start md:items-center justify-between transition-all duration-300 hover:shadow-2xl">
-      {/* Background Glow */}
-      <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl -z-10 pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-60 h-60 bg-blue-500/5 rounded-full blur-3xl -z-10 pointer-events-none" />
-
+    <Card className="p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 items-start md:items-center justify-between">
       {/* Info Left */}
       <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start md:items-center w-full md:w-auto">
         {/* Avatar Area */}
         <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
-          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-background shadow-lg ring-2 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40 relative">
+          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border border-border relative">
             {summary.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -106,7 +102,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-primary/10 to-primary/20 flex items-center justify-center text-primary text-3xl font-bold uppercase">
+              <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-3xl font-bold uppercase">
                 {(summary?.fullName || 'NA').slice(0, 2).toUpperCase()}
               </div>
             )}
@@ -155,21 +151,25 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
 
       {/* Stats Right */}
       <div className="flex flex-col sm:flex-row md:flex-col gap-6 items-stretch sm:items-center md:items-end justify-between w-full md:w-72 border-t md:border-t-0 pt-6 md:pt-0 border-border/20">
-        {/* Visibility Toggle */}
-        <div className="flex items-center justify-between sm:justify-start md:justify-end gap-3 w-full sm:w-auto md:w-full bg-muted/40 p-3 rounded-xl border border-border/10 backdrop-blur-sm">
+        <div className="flex items-center justify-between sm:justify-start md:justify-end gap-3 w-full sm:w-auto md:w-full">
           <div className="space-y-0.5">
             <Label className="text-xs sm:text-sm font-bold block">Visible to Recruiters</Label>
             <span className="text-[10px] sm:text-xs text-muted-foreground">
               Allow search by recruiters
             </span>
           </div>
-          <div className="flex items-center">
-            {isUpdatingVisibility && <Loader2 className="w-4 h-4 mr-2 animate-spin text-muted-foreground" />}
-            <Switch
-              checked={summary.isVisibleToRecruiters}
-              onCheckedChange={handleVisibilityChange}
-              disabled={isUpdatingVisibility}
-            />
+          <div className="flex items-center justify-end min-w-[72px] h-6">
+            {isUpdatingVisibility ? (
+              <div className="flex items-center">
+                <Loader2 className="w-4 h-4 mr-2 animate-spin text-muted-foreground" />
+                <div className="w-11 h-6 bg-primary/20 rounded-full animate-pulse" />
+              </div>
+            ) : (
+              <Switch
+                checked={summary.isVisibleToRecruiters}
+                onCheckedChange={handleVisibilityChange}
+              />
+            )}
           </div>
         </div>
 
