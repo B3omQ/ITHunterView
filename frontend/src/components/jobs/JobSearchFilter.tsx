@@ -36,7 +36,20 @@ const JOB_DOMAINS = [
   "Materials and Mining", "Utilities", "Professional Services", "Securities & Investment", 
   "Financial Services", "Emerging Tech R&D", "AI Software & Services"
 ];
-const COMPANY_INDUSTRIES = ["Information Technology", "Software Outsourcing", "Internet & Technology", "E-commerce", "Fintech", "Edtech", "Healthtech", "Logistics", "Gaming"];
+const COMPANY_INDUSTRIES = [
+  "Blockchain & Web3 Services", "Food and Beverage", "Tourism and Hospitality Services", 
+  "Insurance", "Consumer Goods", "E-commerce", "Education and Training", "Banking", 
+  "Game", "Government", "IT Hardware and Computing", "Non-Profit and Social Services", 
+  "Manufacturing and Engineering", "Media, Advertising and Entertainment", "Environment", 
+  "Pharmaceuticals", "Real Estate, Property and Construction", "Retail and Wholesale", 
+  "IT Services and IT Consulting", "Telecommunication", "Transportation, Logistics and Warehouse", 
+  "Cyber Security", "Trading and Commercial", "Network and Infrastructure", 
+  "Software Development Outsourcing", "Software Products and Web Services", "Agriculture", 
+  "Sports and Fitness", "Apparel and Fashion", "Creative and Design", "Staffing and Recruiting", 
+  "Publishing and Printing", "Facility Management", "Research Services", "Healthcare", 
+  "Materials and Mining", "Utilities", "Professional Services", "Securities & Investment", 
+  "Financial Services", "Emerging Tech R&D", "AI Software & Services"
+];
 const COMPANY_TYPES = ["IT Outsourcing", "IT Product", "Headhunt", "IT Service and IT Consulting", "Non-IT"];
 
 // Helper to parse array params safely
@@ -219,7 +232,7 @@ export function JobSearchFilter() {
   };
 
   return (
-    <div className="flex flex-col gap-4 bg-slate-50 p-4 rounded-xl shadow-sm mb-6 border border-slate-200">
+    <div className="flex flex-col gap-4 bg-slate-50 p-4 rounded-xl mb-6 border border-slate-200">
 
       {/* PART 1: Main Search Bar */}
       <form onSubmit={handleMainSearch} className="flex flex-col md:flex-row gap-3">
@@ -228,7 +241,7 @@ export function JobSearchFilter() {
           <Search className="absolute left-4 h-5 w-5 text-slate-400" />
           <Input
             placeholder="Enter keyword skills, job title, company..."
-            className="pl-12 pr-10 h-12 text-base border-slate-300 focus-visible:ring-primary shadow-sm"
+            className="pl-12 pr-10 h-12 text-base border-slate-300 focus-visible:ring-primary"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
           />
@@ -250,7 +263,7 @@ export function JobSearchFilter() {
         <div className="flex-1 min-w-[200px]">
           <Popover open={locationOpen} onOpenChange={setLocationOpen}>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-between h-12 text-base font-normal border-slate-300 shadow-sm bg-white">
+              <Button variant="outline" className="w-full justify-between h-12 text-base font-normal border-slate-300 bg-white">
                 <div className="flex items-center gap-2 truncate text-slate-600">
                   <MapPin className="h-5 w-5 text-slate-400" />
                   {location || "All Cities"}
@@ -290,7 +303,7 @@ export function JobSearchFilter() {
         </div>
 
         {/* Search Button */}
-        <Button type="submit" className="md:w-32 h-12 text-base font-semibold shadow-sm">
+        <Button type="submit" className="md:w-32 h-12 text-base font-semibold">
           Search
         </Button>
       </form>
@@ -395,18 +408,22 @@ export function JobSearchFilter() {
                 {/* Row 1: Level */}
                 <div className="space-y-3">
                   <h4 className="font-medium text-sm text-slate-700">Level</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    {LEVELS.map(lvl => (
-                      <label key={lvl} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-slate-50 rounded-md border border-transparent hover:border-slate-200 transition-colors">
-                        <Checkbox
-                          checked={pendingLevels.includes(lvl)}
-                          onCheckedChange={(c) => {
-                            setPendingLevels(prev => c ? [...prev, lvl] : prev.filter(x => x !== lvl));
-                          }}
-                        />
-                        <span className="text-sm">{lvl}</span>
-                      </label>
-                    ))}
+                  <div className="flex flex-wrap gap-2">
+                    {LEVELS.map(lvl => {
+                      const isSelected = pendingLevels.includes(lvl);
+                      return (
+                        <Badge
+                          key={lvl}
+                          variant={isSelected ? "default" : "outline"}
+                          className={cn("cursor-pointer px-3 py-1.5 text-sm font-normal rounded-full", 
+                            !isSelected && "bg-white text-slate-600 hover:bg-slate-100 border-slate-200"
+                          )}
+                          onClick={() => setPendingLevels(prev => isSelected ? prev.filter(x => x !== lvl) : [...prev, lvl])}
+                        >
+                          {lvl}
+                        </Badge>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -414,17 +431,21 @@ export function JobSearchFilter() {
                 <div className="space-y-3">
                   <h4 className="font-medium text-sm text-slate-700">Working Model</h4>
                   <div className="flex flex-wrap gap-2">
-                    {WORKING_MODELS.map(wm => (
-                      <label key={wm} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-slate-50 rounded-md border border-transparent hover:border-slate-200 transition-colors w-[150px]">
-                        <Checkbox
-                          checked={pendingWorkingModels.includes(wm)}
-                          onCheckedChange={(c) => {
-                            setPendingWorkingModels(prev => c ? [...prev, wm] : prev.filter(x => x !== wm));
-                          }}
-                        />
-                        <span className="text-sm">{wm}</span>
-                      </label>
-                    ))}
+                    {WORKING_MODELS.map(wm => {
+                      const isSelected = pendingWorkingModels.includes(wm);
+                      return (
+                        <Badge
+                          key={wm}
+                          variant={isSelected ? "default" : "outline"}
+                          className={cn("cursor-pointer px-3 py-1.5 text-sm font-normal rounded-full", 
+                            !isSelected && "bg-white text-slate-600 hover:bg-slate-100 border-slate-200"
+                          )}
+                          onClick={() => setPendingWorkingModels(prev => isSelected ? prev.filter(x => x !== wm) : [...prev, wm])}
+                        >
+                          {wm}
+                        </Badge>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -455,54 +476,80 @@ export function JobSearchFilter() {
                 {/* Row 4: Job Domain */}
                 <div className="space-y-3">
                   <h4 className="font-medium text-sm text-slate-700">Job Domain</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    {JOB_DOMAINS.map(jd => (
-                      <label key={jd} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-slate-50 rounded-md border border-transparent hover:border-slate-200 transition-colors">
-                        <Checkbox
-                          checked={pendingJobDomains.includes(jd)}
-                          onCheckedChange={(c) => {
-                            setPendingJobDomains(prev => c ? [...prev, jd] : prev.filter(x => x !== jd));
-                          }}
-                        />
-                        <span className="text-sm truncate">{jd}</span>
-                      </label>
-                    ))}
+                  <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
+                    <Command filter={customFilter}>
+                      <CommandInput placeholder="Search domain..." className="border-none h-10" />
+                      <CommandList>
+                        <CommandEmpty>No domain found.</CommandEmpty>
+                        <CommandGroup>
+                          <ScrollArea className="h-[200px]">
+                            {JOB_DOMAINS.map(jd => (
+                              <CommandItem
+                                key={jd}
+                                onSelect={() => {
+                                  setPendingJobDomains(prev => prev.includes(jd) ? prev.filter(x => x !== jd) : [...prev, jd]);
+                                }}
+                                className="flex items-center gap-2 cursor-pointer px-3 py-2"
+                              >
+                                <Checkbox checked={pendingJobDomains.includes(jd)} className="pointer-events-none" />
+                                <span className="truncate">{jd}</span>
+                              </CommandItem>
+                            ))}
+                          </ScrollArea>
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
                   </div>
                 </div>
 
                 {/* Row 5: Company Industry */}
                 <div className="space-y-3">
                   <h4 className="font-medium text-sm text-slate-700">Company Industry</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    {COMPANY_INDUSTRIES.map(ci => (
-                      <label key={ci} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-slate-50 rounded-md border border-transparent hover:border-slate-200 transition-colors">
-                        <Checkbox
-                          checked={pendingCompanyIndustries.includes(ci)}
-                          onCheckedChange={(c) => {
-                            setPendingCompanyIndustries(prev => c ? [...prev, ci] : prev.filter(x => x !== ci));
-                          }}
-                        />
-                        <span className="text-sm truncate" title={ci}>{ci}</span>
-                      </label>
-                    ))}
+                  <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
+                    <Command filter={customFilter}>
+                      <CommandInput placeholder="Search industry..." className="border-none h-10" />
+                      <CommandList>
+                        <CommandEmpty>No industry found.</CommandEmpty>
+                        <CommandGroup>
+                          <ScrollArea className="h-[200px]">
+                            {COMPANY_INDUSTRIES.map(ci => (
+                              <CommandItem
+                                key={ci}
+                                onSelect={() => {
+                                  setPendingCompanyIndustries(prev => prev.includes(ci) ? prev.filter(x => x !== ci) : [...prev, ci]);
+                                }}
+                                className="flex items-center gap-2 cursor-pointer px-3 py-2"
+                              >
+                                <Checkbox checked={pendingCompanyIndustries.includes(ci)} className="pointer-events-none" />
+                                <span className="truncate" title={ci}>{ci}</span>
+                              </CommandItem>
+                            ))}
+                          </ScrollArea>
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
                   </div>
                 </div>
 
                 {/* Row 6: Company Type */}
                 <div className="space-y-3 pb-6">
                   <h4 className="font-medium text-sm text-slate-700">Company Type</h4>
-                  <div className="flex flex-col gap-2">
-                    {COMPANY_TYPES.map(ct => (
-                      <label key={ct} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-slate-50 rounded-md border border-transparent hover:border-slate-200 transition-colors">
-                        <Checkbox
-                          checked={pendingCompanyTypes.includes(ct)}
-                          onCheckedChange={(c) => {
-                            setPendingCompanyTypes(prev => c ? [...prev, ct] : prev.filter(x => x !== ct));
-                          }}
-                        />
-                        <span className="text-sm">{ct}</span>
-                      </label>
-                    ))}
+                  <div className="flex flex-wrap gap-2">
+                    {COMPANY_TYPES.map(ct => {
+                      const isSelected = pendingCompanyTypes.includes(ct);
+                      return (
+                        <Badge
+                          key={ct}
+                          variant={isSelected ? "default" : "outline"}
+                          className={cn("cursor-pointer px-3 py-1.5 text-sm font-normal rounded-full", 
+                            !isSelected && "bg-white text-slate-600 hover:bg-slate-100 border-slate-200"
+                          )}
+                          onClick={() => setPendingCompanyTypes(prev => isSelected ? prev.filter(x => x !== ct) : [...prev, ct])}
+                        >
+                          {ct}
+                        </Badge>
+                      );
+                    })}
                   </div>
                 </div>
 
