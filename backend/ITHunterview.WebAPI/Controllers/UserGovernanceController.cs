@@ -83,8 +83,6 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(result);
         }
 
-
-
         /// <summary>
         /// Tạo tài khoản Staff mới (Chỉ Admin)
         /// </summary>
@@ -118,36 +116,6 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Tạo tài khoản Staff mới (Chỉ Admin)
-        /// </summary>
-        [HttpPost("staff")]
-        public async Task<IActionResult> CreateStaff([FromBody] CreateStaffDto dto)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ResponseBase.Fail("Dữ liệu đầu vào không hợp lệ."));
-
-            var actorIdClaim = User.FindFirstValue("userId");
-            if (string.IsNullOrEmpty(actorIdClaim) || !Guid.TryParse(actorIdClaim, out var actorId))
-                return Unauthorized();
-
-            var actorEmail = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email") ?? "unknown";
-            var actorRole = User.FindFirstValue(ClaimTypes.Role) ?? User.FindFirstValue("role") ?? "unknown";
-            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var userAgent = Request.Headers["User-Agent"].ToString() ?? "unknown";
-
-            var result = await _userUseCase.CreateStaffAccountAsync(
-                dto, 
-                actorId, 
-                actorEmail, 
-                actorRole, 
-                ipAddress, 
-                userAgent);
-
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
-        }
+        
     }
 }
