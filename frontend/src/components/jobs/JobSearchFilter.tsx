@@ -54,16 +54,33 @@ const FilterCombobox = ({
   onChange: (val: string[]) => void,
   searchPlaceholder?: string
 }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [localSelected, setLocalSelected] = useState<string[]>(selected);
+
+  // Sync local selected with props when opened
+  useEffect(() => {
+    if (isOpen) {
+      setLocalSelected(selected);
+    }
+  }, [isOpen, selected]);
+
+  const handleApply = () => {
+    onChange(localSelected);
+    setIsOpen(false);
+  };
+
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger
-        render={<Button variant="outline" className={cn("justify-between font-normal h-10 w-full bg-white", selected.length > 0 && "border-primary text-primary")} />}
-      >
-        <span className="truncate mr-2">
-          {selected.length === 0 ? title : `${title} (${selected.length})`}
-        </span>
-        <ChevronDown className="h-4 w-4 opacity-50" />
-      </PopoverTrigger>
+        render={
+          <Button variant="outline" className={cn("justify-between font-normal h-10 w-full bg-white", selected.length > 0 && "border-primary text-primary")}>
+            <span className="truncate mr-2">
+              {selected.length === 0 ? title : `${title} (${selected.length})`}
+            </span>
+            <ChevronDown className="h-4 w-4 opacity-50" />
+          </Button>
+        }
+      />
       <PopoverContent className="w-[280px] p-0" align="start">
         <Command filter={customFilter}>
           <CommandInput placeholder={searchPlaceholder} />
@@ -78,9 +95,9 @@ const FilterCombobox = ({
                       key={opt}
                       onSelect={() => {
                         const newSelected = isSelected
-                          ? selected.filter((s) => s !== opt)
-                          : [...selected, opt];
-                        onChange(newSelected);
+                          ? localSelected.filter((s) => s !== opt)
+                          : [...localSelected, opt];
+                        setLocalSelected(newSelected);
                       }}
                       className="flex items-center gap-2 cursor-pointer"
                     >
@@ -92,6 +109,11 @@ const FilterCombobox = ({
               </ScrollArea>
             </CommandGroup>
           </CommandList>
+          <div className="p-2 border-t border-slate-100 dark:border-slate-800">
+            <Button className="w-full" size="sm" onClick={handleApply}>
+              Apply Filter
+            </Button>
+          </div>
         </Command>
       </PopoverContent>
     </Popover>
@@ -239,14 +261,16 @@ export function JobSearchFilter() {
         <div className="flex-1 min-w-[200px]">
           <Popover open={locationOpen} onOpenChange={setLocationOpen}>
             <PopoverTrigger
-              render={<Button variant="outline" className="w-full justify-between h-12 text-base font-normal border-slate-300 bg-white" />}
-            >
-              <div className="flex items-center gap-2 truncate text-slate-600">
-                <MapPin className="h-5 w-5 text-slate-400" />
-                {location || "All Cities"}
-              </div>
-              <ChevronDown className="h-4 w-4 opacity-50" />
-            </PopoverTrigger>
+              render={
+                <Button variant="outline" className="w-full justify-between h-12 text-base font-normal border-slate-300 bg-white">
+                  <div className="flex items-center gap-2 truncate text-slate-600">
+                    <MapPin className="h-5 w-5 text-slate-400" />
+                    {location || "All Cities"}
+                  </div>
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                </Button>
+              }
+            />
             <PopoverContent className="w-[300px] p-0" align="start">
               <Command filter={customFilter}>
                 <CommandInput placeholder="Search location..." />
@@ -307,13 +331,15 @@ export function JobSearchFilter() {
         <div className="w-[180px]">
           <Popover>
             <PopoverTrigger
-              render={<Button variant="outline" className={cn("justify-between font-normal h-10 w-full bg-white", (pendingSalary[0] > 0 || pendingSalary[1] < 10000) && "border-primary text-primary")} />}
-            >
-              <span className="truncate mr-2">
-                {(pendingSalary[0] > 0 || pendingSalary[1] < 10000) ? `$${pendingSalary[0]} - $${pendingSalary[1]}` : 'Salary (USD)'}
-              </span>
-              <ChevronDown className="h-4 w-4 opacity-50" />
-            </PopoverTrigger>
+              render={
+                <Button variant="outline" className={cn("justify-between font-normal h-10 w-full bg-white", (pendingSalary[0] > 0 || pendingSalary[1] < 10000) && "border-primary text-primary")}>
+                  <span className="truncate mr-2">
+                    {(pendingSalary[0] > 0 || pendingSalary[1] < 10000) ? `$${pendingSalary[0]} - $${pendingSalary[1]}` : 'Salary (USD)'}
+                  </span>
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                </Button>
+              }
+            />
             <PopoverContent className="w-80 p-6" align="start">
               <div className="flex flex-col gap-6">
                 <div className="flex justify-between items-center">
@@ -367,11 +393,13 @@ export function JobSearchFilter() {
           )}
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogTrigger
-              render={<Button variant="outline" className="h-10 flex items-center gap-2 text-slate-700 bg-white" />}
-            >
-              <Filter className="h-4 w-4" />
-              All Filters
-            </DialogTrigger>
+              render={
+                <Button variant="outline" className="h-10 flex items-center gap-2 text-slate-700 bg-white">
+                  <Filter className="h-4 w-4" />
+                  All Filters
+                </Button>
+              }
+            />
             <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
               <DialogHeader className="p-6 pb-4 border-b">
                 <DialogTitle className="text-xl">Advanced Filters</DialogTitle>

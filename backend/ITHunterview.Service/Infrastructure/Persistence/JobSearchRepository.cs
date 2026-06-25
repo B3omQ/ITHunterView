@@ -61,17 +61,17 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             if (query.Levels != null && query.Levels.Any())
             {
-                jobsQuery = jobsQuery.Where(j => query.Levels.Contains(j.Level));
+                jobsQuery = jobsQuery.Where(j => j.Level != null && query.Levels.Contains(j.Level));
             }
 
             if (query.WorkingModels != null && query.WorkingModels.Any())
             {
-                jobsQuery = jobsQuery.Where(j => query.WorkingModels.Contains(j.WorkingModel));
+                jobsQuery = jobsQuery.Where(j => j.WorkingModel != null && query.WorkingModels.Contains(j.WorkingModel));
             }
 
             if (query.JobDomains != null && query.JobDomains.Any())
             {
-                jobsQuery = jobsQuery.Where(j => query.JobDomains.Contains(j.JobDomain));
+                jobsQuery = jobsQuery.Where(j => j.JobDomain != null && j.JobDomain.Any(d => query.JobDomains.Contains(d)));
             }
 
             if (query.CategoryId.HasValue)
@@ -91,12 +91,12 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             if (query.CompanyIndustries != null && query.CompanyIndustries.Any())
             {
-                queryable = queryable.Where(x => query.CompanyIndustries.Contains(x.company.Industry));
+                queryable = queryable.Where(x => x.company.Industry != null && query.CompanyIndustries.Contains(x.company.Industry));
             }
 
             if (query.CompanyTypes != null && query.CompanyTypes.Any())
             {
-                queryable = queryable.Where(x => query.CompanyTypes.Contains(x.company.CompanyType));
+                queryable = queryable.Where(x => x.company.CompanyType != null && query.CompanyTypes.Contains(x.company.CompanyType));
             }
 
             if (!string.IsNullOrEmpty(query.Skill))

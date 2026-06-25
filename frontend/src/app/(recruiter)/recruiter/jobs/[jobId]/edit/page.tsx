@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ArrowLeft, Plus, X, Sparkles, AlertCircle, Loader2 } from "lucide-react"
-import { LEVELS, WORKING_MODELS, JOB_DOMAINS } from "@/lib/job-constants"
+import { LEVELS, WORKING_MODELS, JOB_DOMAINS, JOB_EXPERTISES } from "@/lib/job-constants"
 
 export default function EditJobPage() {
   const router = useRouter()
@@ -31,7 +31,8 @@ export default function EditJobPage() {
     benefits: "",
     level: "",
     workingModel: "",
-    jobDomain: "",
+    jobExpertise: "",
+    jobDomain: [] as string[],
   })
 
   const { categories, availableSkills, loading: metadataLoading, error: metadataError } = useJobMetadata()
@@ -62,7 +63,8 @@ export default function EditJobPage() {
         benefits: job.benefits || "",
         level: job.level || "",
         workingModel: job.workingModel || "",
-        jobDomain: job.jobDomain || "",
+        jobExpertise: job.jobExpertise || "",
+        jobDomain: job.jobDomain || [],
       })
       
       if (job.skills) {
@@ -80,6 +82,15 @@ export default function EditJobPage() {
   ) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleDomainChange = (domain: string) => {
+    setFormData(prev => ({
+      ...prev,
+      jobDomain: prev.jobDomain.includes(domain)
+        ? prev.jobDomain.filter(d => d !== domain)
+        : [...prev.jobDomain, domain]
+    }))
   }
 
   // Skill Selection Handlers
@@ -279,19 +290,36 @@ export default function EditJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="jobDomain" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Domain</Label>
+                <Label htmlFor="jobExpertise" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Expertise</Label>
                 <select
-                  id="jobDomain"
-                  name="jobDomain"
+                  id="jobExpertise"
+                  name="jobExpertise"
                   className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
-                  value={formData.jobDomain}
+                  value={formData.jobExpertise}
                   onChange={handleChange}
                 >
-                  <option value="">Select Job Domain</option>
-                  {JOB_DOMAINS.map((jd) => (
-                    <option key={jd} value={jd}>{jd}</option>
+                  <option value="">Select Expertise</option>
+                  {JOB_EXPERTISES.map((exp) => (
+                    <option key={exp} value={exp}>{exp}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Job Domains</Label>
+              <div className="flex flex-wrap gap-2 p-3 border rounded-md border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 max-h-48 overflow-y-auto">
+                {JOB_DOMAINS.map(domain => (
+                  <label key={domain} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 p-1.5 rounded pr-3 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 transition-colors">
+                    <input 
+                      type="checkbox" 
+                      checked={formData.jobDomain.includes(domain)} 
+                      onChange={() => handleDomainChange(domain)}
+                      className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500 bg-white dark:bg-zinc-900"
+                    />
+                    <span className="text-zinc-700 dark:text-zinc-300">{domain}</span>
+                  </label>
+                ))}
               </div>
             </div>
 

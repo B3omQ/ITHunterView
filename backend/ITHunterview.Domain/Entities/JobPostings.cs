@@ -63,8 +63,11 @@ namespace ITHunterview.Domain.Entities
         [Column("working_model")]
         public string? WorkingModel { get; set; }
 
-        [Column("job_domain")]
-        public string? JobDomain { get; set; }
+        [Column("job_expertise")]
+        public string? JobExpertise { get; set; }
+
+        [Column("job_domain", TypeName = "text[]")]
+        public List<string>? JobDomain { get; set; }
 
         [Column("application_count")]
         public int ApplicationCount { get; set; }

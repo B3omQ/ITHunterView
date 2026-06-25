@@ -18,7 +18,8 @@ import {
   Users,
   Award,
   Monitor,
-  Layers
+  Layers,
+  Target
 } from "lucide-react"
 
 export default function JobDetailPage() {
@@ -190,12 +191,28 @@ export default function JobDetailPage() {
                 </div>
               )}
 
-              {job.jobDomain && (
+              {job.jobExpertise && (
+                <div className="flex items-start gap-2.5">
+                  <Target className="h-5 w-5 text-rose-500 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Expertise</span>
+                    <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{job.jobExpertise}</span>
+                  </div>
+                </div>
+              )}
+
+              {job.jobDomain && job.jobDomain.length > 0 && (
                 <div className="flex items-start gap-2.5">
                   <Layers className="h-5 w-5 text-fuchsia-500 mt-0.5 shrink-0" />
                   <div>
                     <span className="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Domain</span>
-                    <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{job.jobDomain}</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {job.jobDomain.map((domain, index) => (
+                        <span key={index} className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                          {domain}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}

@@ -24,11 +24,30 @@ export interface JobPosting {
   benefits?: string;
   level?: string;
   workingModel?: string;
-  jobDomain?: string;
+  jobExpertise?: string;
+  jobDomain?: string[];
   skills?: JobSkill[];
   createdAt: string;
   publishedAt?: string;
   applicationCount?: number;
+}
+
+export interface JobPostingSummary {
+  id: string;
+  jobCode: string;
+  title: string;
+  location: string;
+  jobType: string;
+  status: string;
+  applicationCount: number;
+  viewCount: number;
+  publishedAt?: string;
+  createdAt: string;
+  level?: string;
+  workingModel?: string;
+  jobExpertise?: string;
+  jobDomain?: string[];
+  skills: string[];
 }
 
 export interface JobCategory {
@@ -60,7 +79,8 @@ export interface CreateJobPostingDto {
   benefits?: string;
   level?: string;
   workingModel?: string;
-  jobDomain?: string;
+  jobExpertise?: string;
+  jobDomain?: string[];
   skills: { skillId: number; isMandatory: boolean }[];
 }
 
@@ -84,7 +104,7 @@ export const recruiterService = {
     try {
       const statusParam = status && status !== 'ALL' ? `&status=${status}` : '';
       const searchParam = search ? `&search=${encodeURIComponent(search)}` : '';
-      const response = await api.get<ApiResponse<PaginatedResult<JobPosting>>>(
+      const response = await api.get<ApiResponse<PaginatedResult<JobPostingSummary>>>(
         `/api/jobpostings?page=${page}&pageSize=${pageSize}${statusParam}${searchParam}`
       );
       return { success: true, data: response.data };

@@ -198,7 +198,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
                 <div className="w-1/2">
                   <Select
                     value={parseDateString(issueDate).month}
-                    onValueChange={(val) => setIssueDate(buildDateString(parseDateString(issueDate).year, val))}
+                    onValueChange={(val) => setIssueDate(buildDateString(parseDateString(issueDate).year || '', val || ''))}
                   >
                     <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
                       <SelectValue placeholder="Month" />
@@ -211,7 +211,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
                 <div className="w-1/2">
                   <Select
                     value={parseDateString(issueDate).year}
-                    onValueChange={(val) => setIssueDate(buildDateString(val, parseDateString(issueDate).month))}
+                    onValueChange={(val) => setIssueDate(buildDateString(val || '', parseDateString(issueDate).month || ''))}
                   >
                     <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
                       <SelectValue placeholder="Year" />
@@ -230,7 +230,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
                 <div className="w-1/2">
                   <Select
                     value={parseDateString(expirationDate).month}
-                    onValueChange={(val) => setExpirationDate(buildDateString(parseDateString(expirationDate).year, val))}
+                    onValueChange={(val) => setExpirationDate(buildDateString(parseDateString(expirationDate).year || '', val || ''))}
                   >
                     <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
                       <SelectValue placeholder="Month" />
@@ -243,7 +243,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
                 <div className="w-1/2">
                   <Select
                     value={parseDateString(expirationDate).year}
-                    onValueChange={(val) => setExpirationDate(buildDateString(val, parseDateString(expirationDate).month))}
+                    onValueChange={(val) => setExpirationDate(buildDateString(val || '', parseDateString(expirationDate).month || ''))}
                   >
                     <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
                       <SelectValue placeholder="Year" />

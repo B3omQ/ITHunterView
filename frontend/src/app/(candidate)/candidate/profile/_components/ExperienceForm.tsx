@@ -211,7 +211,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
 
             <div className="space-y-1.5">
               <Label htmlFor="employmentType" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Employment Type</Label>
-              <Select value={employmentType} onValueChange={setEmploymentType}>
+              <Select value={employmentType} onValueChange={(val) => setEmploymentType(val || '')}>
                 <SelectTrigger id="employmentType" className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
@@ -243,7 +243,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                   <Select
                     value={parseDateString(startDate).month}
                     onValueChange={(val) => {
-                      setStartDate(buildDateString(parseDateString(startDate).year, val));
+                      setStartDate(buildDateString(parseDateString(startDate).year || '', val || ''));
                       if (errors.startDate) setErrors((prev) => ({ ...prev, startDate: undefined }));
                     }}
                   >
@@ -259,7 +259,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                   <Select
                     value={parseDateString(startDate).year}
                     onValueChange={(val) => {
-                      setStartDate(buildDateString(val, parseDateString(startDate).month));
+                      setStartDate(buildDateString(val || '', parseDateString(startDate).month || ''));
                       if (errors.startDate) setErrors((prev) => ({ ...prev, startDate: undefined }));
                     }}
                   >
@@ -286,7 +286,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                   <div className="w-1/2">
                     <Select
                       value={parseDateString(endDate).month}
-                      onValueChange={(val) => setEndDate(buildDateString(parseDateString(endDate).year, val))}
+                      onValueChange={(val) => setEndDate(buildDateString(parseDateString(endDate).year || '', val || ''))}
                     >
                       <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
                         <SelectValue placeholder="Month" />
@@ -299,7 +299,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                   <div className="w-1/2">
                     <Select
                       value={parseDateString(endDate).year}
-                      onValueChange={(val) => setEndDate(buildDateString(val, parseDateString(endDate).month))}
+                      onValueChange={(val) => setEndDate(buildDateString(val || '', parseDateString(endDate).month || ''))}
                     >
                       <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
                         <SelectValue placeholder="Year" />

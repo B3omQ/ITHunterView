@@ -1,6 +1,14 @@
 export const LEVELS = ["Internship", "Fresher", "Junior", "Senior", "Manager"];
 export const WORKING_MODELS = ["At office", "Remote", "Hybrid"];
 
+export const JOB_EXPERTISES = [
+  "Software Engineer", "Frontend Engineer", "Backend Engineer", "Fullstack Engineer", 
+  "Mobile Engineer", "DevOps Engineer", "Data Engineer", "Data Scientist", 
+  "AI / Machine Learning Engineer", "UI/UX Designer", "Product Manager", 
+  "Project Manager", "Business Analyst", "QA/Tester", "System Administrator", 
+  "Database Administrator", "Security Engineer", "Cloud Engineer"
+];
+
 export const JOB_DOMAINS = [
   "Blockchain & Web3 Services", "Food and Beverage", "Tourism and Hospitality Services",
   "Insurance", "Consumer Goods", "E-commerce", "Education and Training", "Banking",

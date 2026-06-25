@@ -32,6 +32,9 @@ namespace ITHunterview.Service.UseCase
 
             var (items, totalCount) = await _jobPostingRepository.GetPagedAsync(search, status, page, pageSize, recruiterId);
 
+            var jobIds = items.Select(j => j.Id).ToList();
+            var jobSkills = await _jobPostingRepository.GetSkillsForJobsAsync(jobIds);
+
             var summaryList = items.Select(j => new JobPostingSummaryDto
             {
                 Id = j.Id,
@@ -43,7 +46,12 @@ namespace ITHunterview.Service.UseCase
                 ApplicationCount = j.ApplicationCount,
                 ViewCount = j.ViewCount,
                 PublishedAt = j.PublishedAt,
-                CreatedAt = j.CreatedAt
+                CreatedAt = j.CreatedAt,
+                Level = j.Level,
+                WorkingModel = j.WorkingModel,
+                JobExpertise = j.JobExpertise,
+                JobDomain = j.JobDomain,
+                Skills = jobSkills.TryGetValue(j.Id, out var skills) ? skills : new List<string>()
             }).ToList();
 
             var pagedResult = new PagedResult<JobPostingSummaryDto>
@@ -98,6 +106,7 @@ namespace ITHunterview.Service.UseCase
                 Status = dto.Status,
                 Level = dto.Level,
                 WorkingModel = dto.WorkingModel,
+                JobExpertise = dto.JobExpertise,
                 JobDomain = dto.JobDomain,
                 ApplicationCount = 0,
                 ViewCount = 0,
@@ -140,6 +149,7 @@ namespace ITHunterview.Service.UseCase
             job.JobType = dto.JobType;
             job.Level = dto.Level;
             job.WorkingModel = dto.WorkingModel;
+            job.JobExpertise = dto.JobExpertise;
             job.JobDomain = dto.JobDomain;
             job.UpdatedAt = DateTime.UtcNow;
 
@@ -202,6 +212,7 @@ namespace ITHunterview.Service.UseCase
                 Status = j.Status,
                 Level = j.Level,
                 WorkingModel = j.WorkingModel,
+                JobExpertise = j.JobExpertise,
                 JobDomain = j.JobDomain,
                 ApplicationCount = j.ApplicationCount,
                 ViewCount = j.ViewCount,
