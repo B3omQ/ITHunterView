@@ -269,36 +269,40 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
 
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">End Date</Label>
-              <div className="flex gap-2">
-                <div className="w-1/2">
-                  <Select
-                    value={parseDateString(endDate).month}
-                    onValueChange={(val) => setEndDate(buildDateString(parseDateString(endDate).year, val))}
-                    disabled={isCurrent}
-                  >
-                    <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
-                      <SelectValue placeholder="Month" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MONTHS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+              {isCurrent ? (
+                <div className="w-full h-10 bg-muted/40 border border-border/40 rounded-md flex items-center px-3 text-sm font-semibold text-muted-foreground/70 cursor-not-allowed select-none">
+                  Present
                 </div>
-                <div className="w-1/2">
-                  <Select
-                    value={parseDateString(endDate).year}
-                    onValueChange={(val) => setEndDate(buildDateString(val, parseDateString(endDate).month))}
-                    disabled={isCurrent}
-                  >
-                    <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
-                      <SelectValue placeholder="Year" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+              ) : (
+                <div className="flex gap-2">
+                  <div className="w-1/2">
+                    <Select
+                      value={parseDateString(endDate).month}
+                      onValueChange={(val) => setEndDate(buildDateString(parseDateString(endDate).year, val))}
+                    >
+                      <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
+                        <SelectValue placeholder="Month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MONTHS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-1/2">
+                    <Select
+                      value={parseDateString(endDate).year}
+                      onValueChange={(val) => setEndDate(buildDateString(val, parseDateString(endDate).month))}
+                    >
+                      <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
+                        <SelectValue placeholder="Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2.5 pt-2 sm:col-span-2">
@@ -331,6 +335,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
               type="button"
               variant="ghost"
               onClick={handleCancelClick}
+              disabled={isCreating || isUpdating}
               className="text-muted-foreground hover:text-foreground hover:bg-muted font-semibold rounded-lg"
             >
               Cancel

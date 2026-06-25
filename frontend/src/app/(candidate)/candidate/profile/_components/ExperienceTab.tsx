@@ -126,7 +126,9 @@ export function ExperienceTab() {
       </Card>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+      <Dialog open={!!deleteId} onOpenChange={(open) => {
+        if (!open && !isDeleting) setDeleteId(null);
+      }}>
         <DialogContent className="max-w-md rounded-2xl border-border/40 backdrop-blur-lg z-[60]">
           <DialogHeader>
             <div className="w-12 h-12 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center mb-4">
@@ -141,6 +143,7 @@ export function ExperienceTab() {
             <Button
               variant="outline"
               onClick={() => setDeleteId(null)}
+              disabled={isDeleting}
               className="border-border/60 hover:bg-muted/40 transition-all font-semibold rounded-lg"
             >
               Cancel
