@@ -31,12 +31,12 @@ namespace ITHunterview.Service.UseCase
                 Title = request.Title,
                 CompanyName = request.CompanyName,
                 CompanyId = request.CompanyId,
-                Location = request.Location,
+                Location = request.Location ?? string.Empty,
                 EmploymentType = request.EmploymentType ?? Domain.Enums.EmploymentType.FULL_TIME,
                 StartDate = request.StartDate.HasValue ? DateTime.SpecifyKind(request.StartDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null,
                 EndDate = request.EndDate.HasValue ? DateTime.SpecifyKind(request.EndDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null,
                 IsCurrent = request.IsCurrent,
-                Description = request.Description,
+                Description = request.Description ?? string.Empty,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -55,12 +55,12 @@ namespace ITHunterview.Service.UseCase
             entity.Title = request.Title;
             entity.CompanyName = request.CompanyName;
             entity.CompanyId = request.CompanyId;
-            entity.Location = request.Location;
+            entity.Location = request.Location ?? string.Empty;
             entity.EmploymentType = request.EmploymentType ?? entity.EmploymentType;
             entity.StartDate = request.StartDate.HasValue ? DateTime.SpecifyKind(request.StartDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null;
             entity.EndDate = request.EndDate.HasValue ? DateTime.SpecifyKind(request.EndDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null;
             entity.IsCurrent = request.IsCurrent;
-            entity.Description = request.Description;
+            entity.Description = request.Description ?? string.Empty;
             entity.UpdatedAt = DateTime.UtcNow;
 
             await _expRepo.SaveChangesAsync();
@@ -80,7 +80,13 @@ namespace ITHunterview.Service.UseCase
         private async Task ValidateRequestAsync(ExperienceUpsertRequestDto request)
         {
             if (string.IsNullOrWhiteSpace(request.Title))
-                throw new ArgumentException("Tiêu đề vị trí không được để trống.");
+                throw new ArgumentException("Job Title is required.");
+
+            if (string.IsNullOrWhiteSpace(request.CompanyName))
+                throw new ArgumentException("Company Name is required.");
+
+            if (!request.StartDate.HasValue)
+                throw new ArgumentException("Start Date is required.");
 
             if (request.IsCurrent && request.EndDate.HasValue)
                 throw new ArgumentException("Công việc hiện tại không được có ngày kết thúc.");

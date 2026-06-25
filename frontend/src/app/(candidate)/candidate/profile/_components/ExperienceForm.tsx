@@ -80,7 +80,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
   const [description, setDescription] = useState(initialData?.description || '');
 
   // Validation errors
-  const [errors, setErrors] = useState<{ title?: string; companyName?: string }>({});
+  const [errors, setErrors] = useState<{ title?: string; companyName?: string; startDate?: string }>({});
 
   // Unsaved changes tracking
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
@@ -121,9 +121,10 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const newErrors: { title?: string; companyName?: string } = {};
+    const newErrors: { title?: string; companyName?: string; startDate?: string } = {};
     if (!title.trim()) newErrors.title = 'Job Title is required';
     if (!companyName.trim()) newErrors.companyName = 'Company Name is required';
+    if (!startDate) newErrors.startDate = 'Start Date is required';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -236,14 +237,17 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Start Date</Label>
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Start Date *</Label>
               <div className="flex gap-2">
                 <div className="w-1/2">
                   <Select
                     value={parseDateString(startDate).month}
-                    onValueChange={(val) => setStartDate(buildDateString(parseDateString(startDate).year, val))}
+                    onValueChange={(val) => {
+                      setStartDate(buildDateString(parseDateString(startDate).year, val));
+                      if (errors.startDate) setErrors((prev) => ({ ...prev, startDate: undefined }));
+                    }}
                   >
-                    <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
+                    <SelectTrigger className={`w-full bg-background/80 focus:ring-primary/30 ${errors.startDate ? 'border-destructive focus:ring-destructive' : 'border-border/60'}`}>
                       <SelectValue placeholder="Month" />
                     </SelectTrigger>
                     <SelectContent>
@@ -254,9 +258,12 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                 <div className="w-1/2">
                   <Select
                     value={parseDateString(startDate).year}
-                    onValueChange={(val) => setStartDate(buildDateString(val, parseDateString(startDate).month))}
+                    onValueChange={(val) => {
+                      setStartDate(buildDateString(val, parseDateString(startDate).month));
+                      if (errors.startDate) setErrors((prev) => ({ ...prev, startDate: undefined }));
+                    }}
                   >
-                    <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
+                    <SelectTrigger className={`w-full bg-background/80 focus:ring-primary/30 ${errors.startDate ? 'border-destructive focus:ring-destructive' : 'border-border/60'}`}>
                       <SelectValue placeholder="Year" />
                     </SelectTrigger>
                     <SelectContent>
@@ -265,6 +272,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                   </Select>
                 </div>
               </div>
+              {errors.startDate && <p className="text-xs text-destructive mt-1 font-medium">{errors.startDate}</p>}
             </div>
 
             <div className="space-y-1.5">
