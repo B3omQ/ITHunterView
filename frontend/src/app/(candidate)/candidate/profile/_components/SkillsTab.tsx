@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import {
   useCandidateSkills,
@@ -27,28 +27,28 @@ export function SkillsTab() {
 
   // Search autocomplete states
   const [keyword, setKeyword] = useState('');
-  const [searchResults, setSearchResults] = useState<SkillSearchResponse[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Local search effect (zero-latency)
-  useEffect(() => {
+  // Derive search results using useMemo (zero-latency, no extra re-renders)
+  const searchResults = useMemo(() => {
     if (!keyword.trim() || !allMasterSkills) {
-      setSearchResults([]);
-      return;
+      return [];
     }
 
     const lowerKeyword = keyword.toLowerCase();
-    const filtered = allMasterSkills
+    return allMasterSkills
       .filter((s) => s.name.toLowerCase().includes(lowerKeyword))
       // Exclude skills the user already has
       .filter((s) => !skills?.some((owned) => owned.skillId === s.id))
       .slice(0, 20); // Top 20 results
-
-    setSearchResults(filtered);
-    setFocusedIndex(-1); // Reset focus when search changes
   }, [keyword, allMasterSkills, skills]);
+
+  // Reset focus when search changes
+  useEffect(() => {
+    setFocusedIndex(-1);
+  }, [keyword]);
 
   // Click outside listener for dropdown
   useEffect(() => {
