@@ -28,7 +28,7 @@ export function LogDetailsModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-2.5">
             <FileText className="h-5 w-5 text-muted-foreground" />
-            <h3 className="text-sm font-bold text-foreground">Chi tiết bản ghi nhật ký kiểm toán</h3>
+            <h3 className="text-sm font-bold text-foreground">Audit Log Record Details</h3>
           </div>
           <Button
             variant="ghost"
@@ -47,7 +47,7 @@ export function LogDetailsModal({
             {/* Col 1 */}
             <div className="bg-muted/30 p-4 rounded-lg border border-border/60 space-y-2">
               <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                Tác nhân (Actor)
+                Actor
               </div>
               <div>
                 <div className="text-xs font-semibold text-foreground">{log.actorEmail}</div>
@@ -60,7 +60,7 @@ export function LogDetailsModal({
             {/* Col 2 */}
             <div className="bg-muted/30 p-4 rounded-lg border border-border/60 space-y-2">
               <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                Môi trường mạng
+                Network Environment
               </div>
               <div className="text-xs space-y-1">
                 <div>
@@ -79,7 +79,7 @@ export function LogDetailsModal({
             {/* Col 3 */}
             <div className="bg-muted/30 p-4 rounded-lg border border-border/60 space-y-2">
               <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                Thời gian ghi nhận
+                Recorded Time
               </div>
               <div className="text-xs text-foreground">
                 <div>{new Date(log.createdAt).toLocaleString()}</div>
@@ -93,7 +93,7 @@ export function LogDetailsModal({
           {/* Action Description */}
           <div className="bg-muted/30 p-4 rounded-lg border border-border/60 space-y-2">
             <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-              Hành vi (Action)
+              Action
             </div>
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -108,7 +108,7 @@ export function LogDetailsModal({
                   </span>
                   {log.tableName && (
                     <span className="font-mono text-[10px] bg-muted border border-border px-2 py-0.5 rounded text-muted-foreground">
-                      Bảng: {log.tableName}
+                      Table: {log.tableName}
                     </span>
                   )}
                 </div>
@@ -129,7 +129,7 @@ export function LogDetailsModal({
           <div className="space-y-2">
             <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
               <Database className="h-3.5 w-3.5 text-muted-foreground" />
-              Ảnh chụp dữ liệu thay đổi (Payload Diff)
+              Payload Diff
             </div>
             <SnapshotDiff diffStr={log.snapshotDiff} operation={log.operationType} />
           </div>
@@ -138,7 +138,7 @@ export function LogDetailsModal({
         {/* Modal Footer */}
         <div className="flex items-center justify-end px-6 py-4 border-t border-border bg-muted/10">
           <Button variant="outline" size="default" onClick={onClose} className="cursor-pointer">
-            Đóng
+            Close
           </Button>
         </div>
       </div>

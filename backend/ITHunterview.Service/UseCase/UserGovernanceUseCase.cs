@@ -9,6 +9,7 @@ using ITHunterview.Service.DTOs.UserGovernance;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.Extensions.Caching.Memory;
+using ITHunterview.Service.Utils;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -71,7 +72,7 @@ namespace ITHunterview.Service.UseCase
             var user = await _userRepository.GetUserDetailWithCompanyAsync(userId);
             if (user == null)
             {
-                return new ResponseBase<UserDetailDto>("Người dùng không tồn tại.");
+                return new ResponseBase<UserDetailDto>("User does not exist.");
             }
 
             var dto = new UserDetailDto
@@ -140,7 +141,29 @@ namespace ITHunterview.Service.UseCase
             string ipAddress, 
             string userAgent)
         {
-            // 1. Prevent admin self lockout
+            // 1. Fetch target user
+            var targetUser = await _userRepository.GetUserByIdAsync(targetUserId);
+            if (targetUser == null)
+            {
+                return new ResponseBase<bool>("User does not exist.");
+            }
+
+            // 2. Prevent status changes on Admin accounts
+            if (targetUser.RoleId == (int)SystemRole.Admin)
+            {
+                await LogActivityAsync(
+                    targetUserId, 
+                    actorRole, 
+                    ActivityLogCategory.SECURITY, 
+                    actorEmail, 
+                    $"Failed: Attempt to modify active status of Administrator (Admin) account {targetUser.Email}.", 
+                    ActivityLogStatus.FAIL, 
+                    ipAddress, 
+                    userAgent);
+                return new ResponseBase<bool>("Administrator (Admin) accounts cannot have their active status modified.");
+            }
+
+            // 3. Prevent self lockout
             if (targetUserId == actorUserId)
             {
                 await LogActivityAsync(
@@ -148,25 +171,18 @@ namespace ITHunterview.Service.UseCase
                     actorRole, 
                     ActivityLogCategory.SECURITY, 
                     actorEmail, 
-                    "Thất bại: Quản trị viên tự thay đổi trạng thái hoạt động của chính mình.", 
+                    "Failed: User attempted to modify their own active status.", 
                     ActivityLogStatus.FAIL, 
                     ipAddress, 
                     userAgent);
-                return new ResponseBase<bool>("Bạn không thể tự cập nhật trạng thái hoạt động của chính mình.");
-            }
-
-            // 2. Fetch target user
-            var targetUser = await _userRepository.GetUserByIdAsync(targetUserId);
-            if (targetUser == null)
-            {
-                return new ResponseBase<bool>("Người dùng không tồn tại.");
+                return new ResponseBase<bool>("You cannot update your own active status.");
             }
 
             var oldStatus = targetUser.Status;
             
             try
             {
-                // 3. Update status
+                // 4. Update status
                 targetUser.Status = dto.Status;
                 if (dto.Status == UserStatus.INACTIVE || dto.Status == UserStatus.BANNED)
                 {
@@ -188,7 +204,7 @@ namespace ITHunterview.Service.UseCase
                 }
 
                 // 5. Log success
-                string logAction = $"Cập nhật trạng thái người dùng {targetUser.Email} từ {oldStatus} thành {dto.Status}. Lý do: {dto.Reason}";
+                string logAction = $"Updated user status for {targetUser.Email} from {oldStatus} to {dto.Status}. Reason: {dto.Reason}";
                 await LogActivityAsync(
                     targetUserId, 
                     actorRole, 
@@ -199,11 +215,11 @@ namespace ITHunterview.Service.UseCase
                     ipAddress, 
                     userAgent);
 
-                return new ResponseBase<bool>(true, $"Cập nhật trạng thái hoạt động thành {dto.Status} thành công.");
+                return new ResponseBase<bool>(true, $"Updated active status to {dto.Status} successfully.");
             }
             catch (Exception ex)
             {
-                string logAction = $"Lỗi cập nhật trạng thái người dùng {targetUser.Email} từ {oldStatus} sang {dto.Status}: {ex.Message}";
+                string logAction = $"Error updating user status for {targetUser.Email} from {oldStatus} to {dto.Status}: {ex.Message}";
                 await LogActivityAsync(
                     targetUserId, 
                     actorRole, 
@@ -214,7 +230,7 @@ namespace ITHunterview.Service.UseCase
                     ipAddress, 
                     userAgent);
 
-                return new ResponseBase<bool>($"Lỗi hệ thống khi cập nhật trạng thái: {ex.Message}");
+                return new ResponseBase<bool>($"System error updating status: {ex.Message}");
             }
         }
 
@@ -227,106 +243,85 @@ namespace ITHunterview.Service.UseCase
             string ipAddress, 
             string userAgent)
         {
-            // 1. Staff is not allowed to change roles (only admin can change role)
-            if (actorRole.ToLower() != "admin")
-            {
-                await LogActivityAsync(
-                    targetUserId, 
-                    actorRole, 
-                    ActivityLogCategory.SECURITY, 
-                    actorEmail, 
-                    "Thất bại: Nhân viên (Staff) cố gắng thay đổi vai trò người dùng.", 
-                    ActivityLogStatus.FAIL, 
-                    ipAddress, 
-                    userAgent);
-                return new ResponseBase<bool>("Chỉ quản trị viên cấp cao (Admin) mới có quyền thay đổi vai trò người dùng.");
-            }
-
-            // 2. Prevent admin self role mutation
-            if (targetUserId == actorUserId)
-            {
-                await LogActivityAsync(
-                    targetUserId, 
-                    actorRole, 
-                    ActivityLogCategory.SECURITY, 
-                    actorEmail, 
-                    "Thất bại: Quản trị viên tự thay đổi vai trò của chính mình.", 
-                    ActivityLogStatus.FAIL, 
-                    ipAddress, 
-                    userAgent);
-                return new ResponseBase<bool>("Bạn không thể tự cập nhật vai trò của chính mình.");
-            }
-
-            // 3. Fetch target user
-            var targetUser = await _userRepository.GetUserWithRoleAsync(targetUserId);
-            if (targetUser == null)
-            {
-                return new ResponseBase<bool>("Người dùng không tồn tại.");
-            }
-
-            // 4. Validate new role existence
-            var roleExists = await _userRepository.RoleExistsAsync(dto.RoleId);
-            if (!roleExists)
-            {
-                return new ResponseBase<bool>("Vai trò được chọn không tồn tại trên hệ thống.");
-            }
-
-            var oldRoleName = targetUser.RoleId == (int)SystemRole.Admin ? "admin" :
-                              targetUser.RoleId == (int)SystemRole.Staff ? "staff" :
-                              targetUser.RoleId == (int)SystemRole.Recruiter ? "recruiter" :
-                              targetUser.RoleId == (int)SystemRole.Candidate ? "candidate" : "Không xác định";
-            var newRoleName = dto.RoleId == (int)SystemRole.Admin ? "admin" :
-                              dto.RoleId == (int)SystemRole.Staff ? "staff" :
-                              dto.RoleId == (int)SystemRole.Recruiter ? "recruiter" :
-                              dto.RoleId == (int)SystemRole.Candidate ? "candidate" : "Không xác định";
-
-            try
-            {
-                // 5. Update role
-                targetUser.RoleId = dto.RoleId;
-                targetUser.UpdatedAt = DateTime.UtcNow;
-
-                await _userRepository.UpdateUserAsync(targetUser);
-                _cache.Remove($"user-status-{targetUserId}");
-
-                // 6. Revoke sessions to apply new role claim immediately on next login
-                await _tokenRepository.RevokeAllUserRefreshTokensAsync(targetUserId);
-
-                // 7. Log success
-                string logAction = $"Cập nhật vai trò người dùng {targetUser.Email} từ '{oldRoleName}' thành '{newRoleName}'.";
-                await LogActivityAsync(
-                    targetUserId, 
-                    actorRole, 
-                    ActivityLogCategory.SECURITY, 
-                    actorEmail, 
-                    logAction, 
-                    ActivityLogStatus.SUCCESS, 
-                    ipAddress, 
-                    userAgent);
-
-                return new ResponseBase<bool>(true, $"Cập nhật vai trò thành công sang '{newRoleName}'.");
-            }
-            catch (Exception ex)
-            {
-                string logAction = $"Lỗi cập nhật vai trò người dùng {targetUser.Email} sang RoleId {dto.RoleId}: {ex.Message}";
-                await LogActivityAsync(
-                    targetUserId, 
-                    actorRole, 
-                    ActivityLogCategory.SYSTEM, 
-                    actorEmail, 
-                    logAction, 
-                    ActivityLogStatus.FAIL, 
-                    ipAddress, 
-                    userAgent);
-
-                return new ResponseBase<bool>($"Lỗi hệ thống khi cập nhật vai trò: {ex.Message}");
-            }
+            return new ResponseBase<bool>("Role modification (authorization changes) has been disabled in the system.");
         }
 
         public async Task<UserStatus?> GetUserStatusAsync(Guid userId)
         {
             var user = await _userRepository.GetUserByIdAsync(userId);
             return user?.Status;
+        }
+
+        public async Task<ResponseBase<Guid>> CreateStaffAccountAsync(
+            CreateStaffDto dto, 
+            Guid actorUserId, 
+            string actorEmail, 
+            string actorRole, 
+            string ipAddress, 
+            string userAgent)
+        {
+            if (dto == null)
+            {
+                return new ResponseBase<Guid>("Invalid data.");
+            }
+
+            var existingUser = await _userRepository.GetUserByEmailAsync(dto.Email.Trim().ToLower());
+            if (existingUser != null)
+            {
+                await LogActivityAsync(
+                    null, 
+                    actorRole, 
+                    ActivityLogCategory.SECURITY, 
+                    actorEmail, 
+                    $"Failed: Attempt to create Staff account with existing email: {dto.Email}.", 
+                    ActivityLogStatus.FAIL, 
+                    ipAddress, 
+                    userAgent);
+                return new ResponseBase<Guid>("Email already exists in the system.");
+            }
+
+            try
+            {
+                string passwordHash = PasswordHasher.HashPassword(dto.Password);
+
+                var newStaff = new User
+                {
+                    Id = Guid.NewGuid(),
+                    Email = dto.Email.Trim().ToLower(),
+                    PasswordHash = passwordHash,
+                    RoleId = (int)SystemRole.Staff,
+                    Status = UserStatus.ACTIVE,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                await _userRepository.AddUserAsync(newStaff);
+
+                await LogActivityAsync(
+                    newStaff.Id, 
+                    actorRole, 
+                    ActivityLogCategory.DATA_MUTATION, 
+                    actorEmail, 
+                    $"Created Staff account successfully: {newStaff.Email}.", 
+                    ActivityLogStatus.SUCCESS, 
+                    ipAddress, 
+                    userAgent);
+
+                return new ResponseBase<Guid>(newStaff.Id);
+            }
+            catch (Exception ex)
+            {
+                await LogActivityAsync(
+                    null, 
+                    actorRole, 
+                    ActivityLogCategory.SYSTEM, 
+                    actorEmail, 
+                    $"System error creating Staff account {dto.Email}: {ex.Message}", 
+                    ActivityLogStatus.FAIL, 
+                    ipAddress, 
+                    userAgent);
+                return new ResponseBase<Guid>($"System error creating Staff account: {ex.Message}");
+            }
         }
 
         private async Task LogActivityAsync(

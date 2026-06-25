@@ -72,3 +72,8 @@ export interface UpdateUserStatusDto {
 export interface UpdateUserRoleDto {
   roleId: number;
 }
+
+export interface CreateStaffDto {
+  email: string;
+  password: string;
+}
