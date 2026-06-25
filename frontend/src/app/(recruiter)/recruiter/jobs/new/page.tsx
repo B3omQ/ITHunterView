@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ArrowLeft, Plus, X, Sparkles, AlertCircle } from "lucide-react"
+import { LEVELS, WORKING_MODELS, JOB_DOMAINS } from "@/lib/job-constants"
 
 export default function CreateJobPage() {
   const router = useRouter()
@@ -28,6 +29,9 @@ export default function CreateJobPage() {
     responsibilities: "",
     requirements: "",
     benefits: "",
+    level: "",
+    workingModel: "",
+    jobDomain: "",
   })
 
   const { categories, availableSkills, loading: metadataLoading, error: metadataError } = useJobMetadata()
@@ -234,6 +238,56 @@ export default function CreateJobPage() {
                   onChange={handleChange}
                   className="focus-visible:ring-blue-500"
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="level" className="font-semibold text-zinc-700 dark:text-zinc-300">Level</Label>
+                <select
+                  id="level"
+                  name="level"
+                  className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
+                  value={formData.level}
+                  onChange={handleChange}
+                >
+                  <option value="">Select Level</option>
+                  {LEVELS.map((lvl) => (
+                    <option key={lvl} value={lvl}>{lvl}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="workingModel" className="font-semibold text-zinc-700 dark:text-zinc-300">Working Model</Label>
+                <select
+                  id="workingModel"
+                  name="workingModel"
+                  className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
+                  value={formData.workingModel}
+                  onChange={handleChange}
+                >
+                  <option value="">Select Working Model</option>
+                  {WORKING_MODELS.map((wm) => (
+                    <option key={wm} value={wm}>{wm}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="jobDomain" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Domain</Label>
+                <select
+                  id="jobDomain"
+                  name="jobDomain"
+                  className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
+                  value={formData.jobDomain}
+                  onChange={handleChange}
+                >
+                  <option value="">Select Job Domain</option>
+                  {JOB_DOMAINS.map((jd) => (
+                    <option key={jd} value={jd}>{jd}</option>
+                  ))}
+                </select>
               </div>
             </div>
 

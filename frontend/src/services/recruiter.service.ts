@@ -22,6 +22,9 @@ export interface JobPosting {
   responsibilities?: string;
   requirements?: string;
   benefits?: string;
+  level?: string;
+  workingModel?: string;
+  jobDomain?: string;
   skills?: JobSkill[];
   createdAt: string;
   publishedAt?: string;
@@ -55,6 +58,9 @@ export interface CreateJobPostingDto {
   responsibilities?: string;
   requirements?: string;
   benefits?: string;
+  level?: string;
+  workingModel?: string;
+  jobDomain?: string;
   skills: { skillId: number; isMandatory: boolean }[];
 }
 

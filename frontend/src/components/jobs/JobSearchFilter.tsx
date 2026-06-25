@@ -13,6 +13,13 @@ import { Search, MapPin, ChevronDown, Filter, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import {
+  LEVELS,
+  WORKING_MODELS,
+  JOB_DOMAINS,
+  COMPANY_INDUSTRIES,
+  COMPANY_TYPES
+} from '@/lib/job-constants';
 
 // Constants
 const LOCATIONS = [
@@ -20,37 +27,6 @@ const LOCATIONS = [
   "An Giang", "Bà Rịa - Vũng Tàu", "Bắc Giang", "Bắc Kạn", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cao Bằng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Tĩnh", "Hải Dương", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái",
   "International", "Others"
 ];
-const LEVELS = ["Internship", "Fresher", "Junior", "Senior", "Manager"];
-const WORKING_MODELS = ["At office", "Remote", "Hybrid"];
-const JOB_DOMAINS = [
-  "Blockchain & Web3 Services", "Food and Beverage", "Tourism and Hospitality Services",
-  "Insurance", "Consumer Goods", "E-commerce", "Education and Training", "Banking",
-  "Game", "Government", "IT Hardware and Computing", "Non-Profit and Social Services",
-  "Manufacturing and Engineering", "Media, Advertising and Entertainment", "Environment",
-  "Pharmaceuticals", "Real Estate, Property and Construction", "Retail and Wholesale",
-  "IT Services and IT Consulting", "Telecommunication", "Transportation, Logistics and Warehouse",
-  "Cyber Security", "Trading and Commercial", "Network and Infrastructure",
-  "Software Development Outsourcing", "Software Products and Web Services", "Agriculture",
-  "Sports and Fitness", "Apparel and Fashion", "Creative and Design", "Staffing and Recruiting",
-  "Publishing and Printing", "Facility Management", "Research Services", "Healthcare",
-  "Materials and Mining", "Utilities", "Professional Services", "Securities & Investment",
-  "Financial Services", "Emerging Tech R&D", "AI Software & Services"
-];
-const COMPANY_INDUSTRIES = [
-  "Blockchain & Web3 Services", "Food and Beverage", "Tourism and Hospitality Services",
-  "Insurance", "Consumer Goods", "E-commerce", "Education and Training", "Banking",
-  "Game", "Government", "IT Hardware and Computing", "Non-Profit and Social Services",
-  "Manufacturing and Engineering", "Media, Advertising and Entertainment", "Environment",
-  "Pharmaceuticals", "Real Estate, Property and Construction", "Retail and Wholesale",
-  "IT Services and IT Consulting", "Telecommunication", "Transportation, Logistics and Warehouse",
-  "Cyber Security", "Trading and Commercial", "Network and Infrastructure",
-  "Software Development Outsourcing", "Software Products and Web Services", "Agriculture",
-  "Sports and Fitness", "Apparel and Fashion", "Creative and Design", "Staffing and Recruiting",
-  "Publishing and Printing", "Facility Management", "Research Services", "Healthcare",
-  "Materials and Mining", "Utilities", "Professional Services", "Securities & Investment",
-  "Financial Services", "Emerging Tech R&D", "AI Software & Services"
-];
-const COMPANY_TYPES = ["IT Outsourcing", "IT Product", "Headhunt", "IT Service and IT Consulting", "Non-IT"];
 
 // Helper to parse array params safely
 const parseArrayParam = (param: string | null) => param ? param.split(',').filter(Boolean) : [];
@@ -350,7 +326,7 @@ export function JobSearchFilter() {
                   min={0}
                   max={10000}
                   step={100}
-                  onValueChange={setPendingSalary}
+                  onValueChange={(val) => setPendingSalary(val as number[])}
                 />
                 <Button className="w-full mt-2" size="sm" onClick={() => applyQuickFilter('salary', pendingSalary)}>Apply</Button>
               </div>
@@ -463,7 +439,7 @@ export function JobSearchFilter() {
                         min={0}
                         max={10000}
                         step={100}
-                        onValueChange={setPendingSalary}
+                        onValueChange={(val) => setPendingSalary(val as number[])}
                         className="mt-6 mb-2"
                       />
                     </div>

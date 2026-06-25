@@ -15,7 +15,10 @@ import {
   Pencil,
   Loader2,
   ListTodo,
-  Users
+  Users,
+  Award,
+  Monitor,
+  Layers
 } from "lucide-react"
 
 export default function JobDetailPage() {
@@ -166,6 +169,36 @@ export default function JobDetailPage() {
                   <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{formatDate(job.publishedAt || job.createdAt)}</span>
                 </div>
               </div>
+
+              {job.level && (
+                <div className="flex items-start gap-2.5">
+                  <Award className="h-5 w-5 text-indigo-500 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Level</span>
+                    <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{job.level}</span>
+                  </div>
+                </div>
+              )}
+
+              {job.workingModel && (
+                <div className="flex items-start gap-2.5">
+                  <Monitor className="h-5 w-5 text-cyan-500 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Working Model</span>
+                    <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{job.workingModel}</span>
+                  </div>
+                </div>
+              )}
+
+              {job.jobDomain && (
+                <div className="flex items-start gap-2.5">
+                  <Layers className="h-5 w-5 text-fuchsia-500 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Domain</span>
+                    <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{job.jobDomain}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Standardized Skill Requirements */}

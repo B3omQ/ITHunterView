@@ -96,6 +96,9 @@ namespace ITHunterview.Service.UseCase
                 Location = dto.Location,
                 JobType = dto.JobType,
                 Status = dto.Status,
+                Level = dto.Level,
+                WorkingModel = dto.WorkingModel,
+                JobDomain = dto.JobDomain,
                 ApplicationCount = 0,
                 ViewCount = 0,
                 PublishedAt = dto.Status == JobStatus.PUBLISHED ? DateTime.UtcNow : null,
@@ -135,6 +138,9 @@ namespace ITHunterview.Service.UseCase
             job.Currency = dto.Currency;
             job.Location = dto.Location;
             job.JobType = dto.JobType;
+            job.Level = dto.Level;
+            job.WorkingModel = dto.WorkingModel;
+            job.JobDomain = dto.JobDomain;
             job.UpdatedAt = DateTime.UtcNow;
 
             if (job.Status != dto.Status)
@@ -194,6 +200,9 @@ namespace ITHunterview.Service.UseCase
                 Location = j.Location,
                 JobType = j.JobType,
                 Status = j.Status,
+                Level = j.Level,
+                WorkingModel = j.WorkingModel,
+                JobDomain = j.JobDomain,
                 ApplicationCount = j.ApplicationCount,
                 ViewCount = j.ViewCount,
                 PublishedAt = j.PublishedAt,

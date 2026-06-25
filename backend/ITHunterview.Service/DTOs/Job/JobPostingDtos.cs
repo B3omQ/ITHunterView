@@ -39,6 +39,9 @@ namespace ITHunterview.Service.DTOs.Job
         public int ViewCount { get; set; }
         public DateTime? PublishedAt { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string? Level { get; set; }
+        public string? WorkingModel { get; set; }
+        public string? JobDomain { get; set; }
         public System.Collections.Generic.List<JobSkillRequirementDto> Skills { get; set; } = new();
     }
 
@@ -57,6 +60,9 @@ namespace ITHunterview.Service.DTOs.Job
         public string Location { get; set; } = string.Empty;
         public JobType JobType { get; set; }
         public JobStatus Status { get; set; } = JobStatus.DRAFT;
+        public string? Level { get; set; }
+        public string? WorkingModel { get; set; }
+        public string? JobDomain { get; set; }
         public System.Collections.Generic.List<JobSkillRequirementInputDto>? Skills { get; set; }
     }
 
@@ -75,6 +81,9 @@ namespace ITHunterview.Service.DTOs.Job
         public string Location { get; set; } = string.Empty;
         public JobType JobType { get; set; }
         public JobStatus Status { get; set; }
+        public string? Level { get; set; }
+        public string? WorkingModel { get; set; }
+        public string? JobDomain { get; set; }
         public System.Collections.Generic.List<JobSkillRequirementInputDto>? Skills { get; set; }
     }
 
