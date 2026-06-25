@@ -8,8 +8,7 @@ namespace ITHunterview.Service.DTOs.JobSearch
     {
         public string? Keyword { get; set; }
         public string? Location { get; set; }
-        public JobType? JobType { get; set; }
-        public int? CategoryId { get; set; }
+
         public decimal? MinSalary { get; set; }
         public decimal? MaxSalary { get; set; }
         public string? Skill { get; set; }

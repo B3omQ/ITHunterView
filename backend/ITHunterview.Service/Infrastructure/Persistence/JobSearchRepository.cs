@@ -54,30 +54,22 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 jobsQuery = jobsQuery.Where(j => j.Location.ToLower().Contains(lowerLocation));
             }
 
-            if (query.JobType.HasValue)
-            {
-                jobsQuery = jobsQuery.Where(j => j.JobType == query.JobType.Value);
-            }
-
             if (query.Levels != null && query.Levels.Any())
             {
-                jobsQuery = jobsQuery.Where(j => query.Levels.Contains(j.Level));
+                jobsQuery = jobsQuery.Where(j => j.Level != null && query.Levels.Contains(j.Level));
             }
 
             if (query.WorkingModels != null && query.WorkingModels.Any())
             {
-                jobsQuery = jobsQuery.Where(j => query.WorkingModels.Contains(j.WorkingModel));
+                jobsQuery = jobsQuery.Where(j => j.WorkingModel != null && query.WorkingModels.Contains(j.WorkingModel));
             }
 
             if (query.JobDomains != null && query.JobDomains.Any())
             {
-                jobsQuery = jobsQuery.Where(j => query.JobDomains.Contains(j.JobDomain));
+                jobsQuery = jobsQuery.Where(j => j.JobDomain != null && j.JobDomain.Any(d => query.JobDomains.Contains(d)));
             }
 
-            if (query.CategoryId.HasValue)
-            {
-                jobsQuery = jobsQuery.Where(j => j.CategoryId == query.CategoryId.Value);
-            }
+
 
             var queryable = from job in jobsQuery
                             join company in _context.Companies on job.CompanyId equals company.Id
@@ -91,12 +83,12 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             if (query.CompanyIndustries != null && query.CompanyIndustries.Any())
             {
-                queryable = queryable.Where(x => query.CompanyIndustries.Contains(x.company.Industry));
+                queryable = queryable.Where(x => x.company.Industry != null && query.CompanyIndustries.Contains(x.company.Industry));
             }
 
             if (query.CompanyTypes != null && query.CompanyTypes.Any())
             {
-                queryable = queryable.Where(x => query.CompanyTypes.Contains(x.company.CompanyType));
+                queryable = queryable.Where(x => x.company.CompanyType != null && query.CompanyTypes.Contains(x.company.CompanyType));
             }
 
             if (!string.IsNullOrEmpty(query.Skill))
@@ -149,7 +141,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 MaxSalary = x.job.MaxSalary,
                 Currency = x.job.Currency,
                 Location = x.job.Location,
-                JobType = x.job.JobType.ToString().ToLower(), // as requested like full_time
+                Level = x.job.Level,
+                WorkingModel = x.job.WorkingModel,
+                JobExpertise = x.job.JobExpertise,
+                JobDomain = x.job.JobDomain,
                 PublishedAt = x.job.PublishedAt,
                 IsSaved = false,
                 Skills = skillLookup.ContainsKey(x.job.Id) ? skillLookup[x.job.Id] : new List<string>()
@@ -230,7 +225,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 MaxSalary = jobWithCompany.job.MaxSalary,
                 Currency = jobWithCompany.job.Currency,
                 Location = jobWithCompany.job.Location,
-                JobType = jobWithCompany.job.JobType.ToString().ToLower(),
+                Level = jobWithCompany.job.Level,
+                WorkingModel = jobWithCompany.job.WorkingModel,
+                JobExpertise = jobWithCompany.job.JobExpertise,
+                JobDomain = jobWithCompany.job.JobDomain,
                 PublishedAt = jobWithCompany.job.PublishedAt,
                 IsSaved = isSaved,
                 Skills = skills

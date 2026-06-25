@@ -213,7 +213,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
 
             <div className="space-y-1.5">
               <Label htmlFor="majorId" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Field of Study</Label>
-              <Select value={majorId} onValueChange={setMajorId}>
+              <Select value={majorId} onValueChange={(val) => setMajorId(val || '')}>
                 <SelectTrigger id="majorId" className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
                   <SelectValue placeholder="Select a major" />
                 </SelectTrigger>
@@ -234,7 +234,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
                 <div className="w-1/2">
                   <Select
                     value={parseDateString(startDate).month}
-                    onValueChange={(val) => setStartDate(buildDateString(parseDateString(startDate).year, val))}
+                    onValueChange={(val) => setStartDate(buildDateString(parseDateString(startDate).year || '', val || ''))}
                   >
                     <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
                       <SelectValue placeholder="Month" />
@@ -247,7 +247,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
                 <div className="w-1/2">
                   <Select
                     value={parseDateString(startDate).year}
-                    onValueChange={(val) => setStartDate(buildDateString(val, parseDateString(startDate).month))}
+                    onValueChange={(val) => setStartDate(buildDateString(val || '', parseDateString(startDate).month || ''))}
                   >
                     <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
                       <SelectValue placeholder="Year" />
@@ -266,7 +266,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
                 <div className="w-1/2">
                   <Select
                     value={parseDateString(endDate).month}
-                    onValueChange={(val) => setEndDate(buildDateString(parseDateString(endDate).year, val))}
+                    onValueChange={(val) => setEndDate(buildDateString(parseDateString(endDate).year || '', val || ''))}
                   >
                     <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
                       <SelectValue placeholder="Month" />
@@ -279,7 +279,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
                 <div className="w-1/2">
                   <Select
                     value={parseDateString(endDate).year}
-                    onValueChange={(val) => setEndDate(buildDateString(val, parseDateString(endDate).month))}
+                    onValueChange={(val) => setEndDate(buildDateString(val || '', parseDateString(endDate).month || ''))}
                   >
                     <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
                       <SelectValue placeholder="Year" />

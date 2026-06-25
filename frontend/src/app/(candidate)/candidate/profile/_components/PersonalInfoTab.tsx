@@ -22,7 +22,9 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Globe, Mail, Phone, MapPin, AlignLeft, User, AlertTriangle, Edit2, X, Check } from 'lucide-react';
+import { VIETNAM_PROVINCES } from '@/lib/job-constants';
 import { toast } from 'sonner';
+import { LocationCombobox } from '@/components/shared/LocationCombobox';
 
 const LinkedinIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -73,6 +75,7 @@ export function PersonalInfoTab() {
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [location, setLocation] = useState('');
+  const [locationType, setLocationType] = useState('Hồ Chí Minh');
   
   const [aboutMe, setAboutMe] = useState('');
   
@@ -90,6 +93,15 @@ export function PersonalInfoTab() {
       setLastName(info.lastName || '');
       setPhone(info.phone || '');
       setLocation(info.location || '');
+      
+      const standardLocations = ["TP Hồ Chí Minh", "Hà Nội", "Đà Nẵng", ...VIETNAM_PROVINCES]
+      if (info.location) {
+        if (standardLocations.includes(info.location)) {
+          setLocationType(info.location)
+        } else {
+          setLocationType("Other")
+        }
+      }
     }
   };
 
@@ -310,16 +322,33 @@ export function PersonalInfoTab() {
               </div>
 
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="location" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-1.5">
+                <Label htmlFor="locationType" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-muted-foreground" /> Location
                 </Label>
-                <Input
-                  id="location"
-                  placeholder="e.g. San Francisco, CA"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="bg-background/50 border-border/60 focus-visible:ring-primary/30"
-                />
+                <div className="flex gap-2">
+                  <LocationCombobox
+                    value={locationType}
+                    onChange={(val) => {
+                      setLocationType(val)
+                      if (val !== "Other") {
+                        setLocation(val)
+                      } else {
+                        setLocation("")
+                      }
+                    }}
+                    className={locationType === "Other" ? "w-1/3" : "w-full"}
+                  />
+                  
+                  {locationType === "Other" && (
+                    <Input
+                      id="location"
+                      placeholder="e.g. Can Tho, Binh Duong"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      className="bg-background/50 border-border/60 focus-visible:ring-primary/30 flex-1"
+                    />
+                  )}
+                </div>
               </div>
             </CardContent>
             <div className="px-6 pb-6 pt-2 flex justify-end gap-3 bg-muted/20 border-t border-border/10">

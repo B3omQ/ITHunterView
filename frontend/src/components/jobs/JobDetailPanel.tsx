@@ -5,7 +5,7 @@ import { PageLoader } from '@/components/shared/PageLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, DollarSign, Calendar, Briefcase, Bookmark, ExternalLink } from 'lucide-react';
+import { MapPin, DollarSign, Calendar, Briefcase, Bookmark, ExternalLink, Award, Monitor, Target, Layers } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { ApplyJobModal } from '@/components/jobs/ApplyJobModal';
 
@@ -79,23 +79,79 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3 mb-10 text-sm font-medium text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100">
-          <span className="flex items-center gap-1.5 px-2 py-1">
-            <MapPin className="w-4 h-4 text-slate-400" /> {job.location}
-          </span>
-          {(job.minSalary || job.maxSalary) && (
-            <span className="flex items-center gap-1.5 px-2 py-1 text-emerald-600">
-              <DollarSign className="w-4 h-4" />
-              {job.minSalary ? `${job.minSalary}` : 'Up to'} - {job.maxSalary ? `${job.maxSalary}` : 'Negotiable'} {job.currency}
-            </span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 bg-slate-50 p-5 rounded-2xl border border-slate-100 mb-10">
+          <div className="flex items-start gap-2.5">
+            <MapPin className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+            <div>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Location</span>
+              <span className="text-sm font-semibold text-slate-700">{job.location}</span>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2.5">
+            <DollarSign className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
+            <div>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Salary Range</span>
+              <span className="text-sm font-semibold text-slate-700">
+                {job.minSalary || job.maxSalary
+                  ? `${job.minSalary?.toLocaleString() || "0"} - ${job.maxSalary?.toLocaleString() || "∞"} ${job.currency}`
+                  : "Negotiable"}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2.5">
+            <Calendar className="h-5 w-5 text-purple-500 mt-0.5 shrink-0" />
+            <div>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Published Date</span>
+              <span className="text-sm font-semibold text-slate-700">{job.publishedAt ? new Date(job.publishedAt).toLocaleDateString() : 'N/A'}</span>
+            </div>
+          </div>
+
+          {job.level && (
+            <div className="flex items-start gap-2.5">
+              <Award className="h-5 w-5 text-indigo-500 mt-0.5 shrink-0" />
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Level</span>
+                <span className="text-sm font-semibold text-slate-700">{job.level}</span>
+              </div>
+            </div>
           )}
-          <span className="flex items-center gap-1.5 px-2 py-1">
-            <Briefcase className="w-4 h-4 text-slate-400" /> {job.jobType.replace('_', ' ').toUpperCase()}
-          </span>
-          {job.publishedAt && (
-            <span className="flex items-center gap-1.5 px-2 py-1">
-              <Calendar className="w-4 h-4 text-slate-400" /> Posted {new Date(job.publishedAt).toLocaleDateString()}
-            </span>
+
+          {job.workingModel && (
+            <div className="flex items-start gap-2.5">
+              <Monitor className="h-5 w-5 text-cyan-500 mt-0.5 shrink-0" />
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Working Model</span>
+                <span className="text-sm font-semibold text-slate-700">{job.workingModel}</span>
+              </div>
+            </div>
+          )}
+
+          {job.jobExpertise && (
+            <div className="flex items-start gap-2.5">
+              <Target className="h-5 w-5 text-rose-500 mt-0.5 shrink-0" />
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Expertise</span>
+                <span className="text-sm font-semibold text-slate-700">{job.jobExpertise}</span>
+              </div>
+            </div>
+          )}
+
+          {job.jobDomain && job.jobDomain.length > 0 && (
+            <div className="flex items-start gap-2.5 md:col-span-3">
+              <Layers className="h-5 w-5 text-fuchsia-500 mt-0.5 shrink-0" />
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Job Domains</span>
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {job.jobDomain.map((domain: string, idx: number) => (
+                    <Badge key={idx} variant="outline" className="bg-fuchsia-50/50 text-fuchsia-700 border-fuchsia-200/60 font-normal">
+                      {domain}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
         </div>
 

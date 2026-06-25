@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   recruiterService,
   JobPosting,
+  JobPostingSummary,
   JobCategory,
   Skill,
   CreateJobPostingDto,
@@ -10,7 +11,7 @@ import {
 
 // Hook to manage job postings list with filters, searching, and pagination
 export function useJobs(initialPage = 1, initialPageSize = 7, initialStatus = 'ALL') {
-  const [jobs, setJobs] = useState<JobPosting[]>([]);
+  const [jobs, setJobs] = useState<JobPostingSummary[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(initialPage);
   const [search, setSearch] = useState('');

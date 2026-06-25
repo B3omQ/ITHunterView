@@ -20,6 +20,8 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { VIETNAM_PROVINCES } from '@/lib/job-constants';
+import { LocationCombobox } from '@/components/shared/LocationCombobox';
 import {
   Dialog,
   DialogContent,
@@ -73,6 +75,16 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
   const [title, setTitle] = useState(initialData?.title || '');
   const [companyName, setCompanyName] = useState(initialData?.companyName || '');
   const [location, setLocation] = useState(initialData?.location || '');
+  const [locationType, setLocationType] = useState(() => {
+    const standardLocations = [...VIETNAM_PROVINCES];
+    if (initialData?.location) {
+      if (standardLocations.includes(initialData.location)) {
+        return initialData.location;
+      }
+      return "Other";
+    }
+    return "TP Hồ Chí Minh";
+  });
   const [employmentType, setEmploymentType] = useState(initialData?.employmentType || 'FULL_TIME');
   const [startDate, setStartDate] = useState(initialData?.startDate ? initialData.startDate.split('T')[0] : '');
   const [endDate, setEndDate] = useState(initialData?.endDate ? initialData.endDate.split('T')[0] : '');
@@ -211,7 +223,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
 
             <div className="space-y-1.5">
               <Label htmlFor="employmentType" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Employment Type</Label>
-              <Select value={employmentType} onValueChange={setEmploymentType}>
+              <Select value={employmentType} onValueChange={(val) => setEmploymentType(val || '')}>
                 <SelectTrigger id="employmentType" className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
@@ -226,14 +238,31 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
             </div>
 
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="location" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Location</Label>
-              <Input
-                id="location"
-                placeholder="e.g. San Francisco, CA (or Remote)"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="bg-background/80 border-border/60 focus-visible:ring-primary/30"
-              />
+              <Label htmlFor="locationType" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Location</Label>
+              <div className="flex gap-2">
+                <LocationCombobox
+                  value={locationType}
+                  onChange={(val) => {
+                    setLocationType(val)
+                    if (val !== "Other") {
+                      setLocation(val)
+                    } else {
+                      setLocation("")
+                    }
+                  }}
+                  className={locationType === "Other" ? "w-1/3" : "w-full"}
+                />
+                
+                {locationType === "Other" && (
+                  <Input
+                    id="location"
+                    placeholder="e.g. Can Tho, Binh Duong"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="bg-background/80 border-border/60 focus-visible:ring-primary/30 flex-1"
+                  />
+                )}
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -243,7 +272,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                   <Select
                     value={parseDateString(startDate).month}
                     onValueChange={(val) => {
-                      setStartDate(buildDateString(parseDateString(startDate).year, val));
+                      setStartDate(buildDateString(parseDateString(startDate).year || '', val || ''));
                       if (errors.startDate) setErrors((prev) => ({ ...prev, startDate: undefined }));
                     }}
                   >
@@ -259,7 +288,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                   <Select
                     value={parseDateString(startDate).year}
                     onValueChange={(val) => {
-                      setStartDate(buildDateString(val, parseDateString(startDate).month));
+                      setStartDate(buildDateString(val || '', parseDateString(startDate).month || ''));
                       if (errors.startDate) setErrors((prev) => ({ ...prev, startDate: undefined }));
                     }}
                   >
@@ -286,7 +315,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                   <div className="w-1/2">
                     <Select
                       value={parseDateString(endDate).month}
-                      onValueChange={(val) => setEndDate(buildDateString(parseDateString(endDate).year, val))}
+                      onValueChange={(val) => setEndDate(buildDateString(parseDateString(endDate).year || '', val || ''))}
                     >
                       <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
                         <SelectValue placeholder="Month" />
@@ -299,7 +328,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                   <div className="w-1/2">
                     <Select
                       value={parseDateString(endDate).year}
-                      onValueChange={(val) => setEndDate(buildDateString(val, parseDateString(endDate).month))}
+                      onValueChange={(val) => setEndDate(buildDateString(val || '', parseDateString(endDate).month || ''))}
                     >
                       <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
                         <SelectValue placeholder="Year" />

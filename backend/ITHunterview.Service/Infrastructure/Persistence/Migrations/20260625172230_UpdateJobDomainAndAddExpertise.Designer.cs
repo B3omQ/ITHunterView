@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ITHunterviewContext))]
-    partial class ITHunterviewContextModelSnapshot : ModelSnapshot
+    [Migration("20260625172230_UpdateJobDomainAndAddExpertise")]
+    partial class UpdateJobDomainAndAddExpertise
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -991,6 +994,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("benefits");
 
+                    b.Property<int?>("CategoryId")
+                        .HasColumnType("integer")
+                        .HasColumnName("category_id");
+
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid")
                         .HasColumnName("company_id");
@@ -1029,6 +1036,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Property<string>("JobExpertise")
                         .HasColumnType("text")
                         .HasColumnName("job_expertise");
+
+                    b.Property<int>("JobType")
+                        .HasColumnType("integer")
+                        .HasColumnName("job_type");
 
                     b.Property<string>("Level")
                         .HasColumnType("text")
