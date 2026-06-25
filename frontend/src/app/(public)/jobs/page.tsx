@@ -82,17 +82,6 @@ function PublicJobsContent() {
         {/* Left Column: Job List */}
         <div className="w-full lg:w-[45%] xl:w-[40%] flex flex-col bg-slate-50/50 lg:border-r border-slate-200">
           <div className="p-4 lg:p-6 flex-1">
-            <div className="mb-6 flex justify-between items-end">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900">Explore Jobs</h1>
-                {data?.meta && (
-                  <p className="text-sm text-slate-500 mt-1">
-                    Showing {data.data.length} of {data.meta.totalItems} opportunities
-                  </p>
-                )}
-              </div>
-            </div>
-
             {isLoading ? (
               <div className="flex flex-col gap-4">
                 {Array.from({ length: 5 }).map((_, i) => (
