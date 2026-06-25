@@ -152,7 +152,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
   return (
     <Card className="border border-primary/20 bg-primary/5 rounded-xl overflow-hidden shadow-sm animate-in slide-in-from-top-4 duration-300">
       <CardContent className="p-5 sm:p-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div className="mb-4">
             <h3 className="text-lg font-bold text-foreground">
               {initialData ? 'Edit Certification' : 'Add Certification'}
@@ -173,7 +173,6 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
                   if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
                 }}
                 className={`bg-background/80 focus-visible:ring-primary/30 ${errors.name ? 'border-destructive focus-visible:ring-destructive' : 'border-border/60'}`}
-                required
               />
               {errors.name && <p className="text-xs text-destructive mt-1 font-medium">{errors.name}</p>}
             </div>
@@ -189,7 +188,6 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
                   if (errors.issuingOrganization) setErrors((prev) => ({ ...prev, issuingOrganization: undefined }));
                 }}
                 className={`bg-background/80 focus-visible:ring-primary/30 ${errors.issuingOrganization ? 'border-destructive focus-visible:ring-destructive' : 'border-border/60'}`}
-                required
               />
               {errors.issuingOrganization && <p className="text-xs text-destructive mt-1 font-medium">{errors.issuingOrganization}</p>}
             </div>

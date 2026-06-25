@@ -40,14 +40,14 @@ namespace ITHunterview.Service.UseCase
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                Degree = request.Degree,
+                Degree = request.Degree ?? string.Empty,
                 MajorId = request.MajorId,
-                InstitutionName = request.InstitutionName,
+                InstitutionName = request.InstitutionName ?? string.Empty,
                 Gpa = request.Gpa,
                 MaxGpa = request.MaxGpa,
                 StartDate = request.StartDate.HasValue ? DateTime.SpecifyKind(request.StartDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null,
                 EndDate = request.EndDate.HasValue ? DateTime.SpecifyKind(request.EndDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null,
-                Description = request.Description,
+                Description = request.Description ?? string.Empty,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -63,14 +63,14 @@ namespace ITHunterview.Service.UseCase
 
             await ValidateRequestAsync(request);
 
-            entity.Degree = request.Degree;
+            entity.Degree = request.Degree ?? string.Empty;
             entity.MajorId = request.MajorId;
-            entity.InstitutionName = request.InstitutionName;
+            entity.InstitutionName = request.InstitutionName ?? string.Empty;
             entity.Gpa = request.Gpa;
             entity.MaxGpa = request.MaxGpa;
             entity.StartDate = request.StartDate.HasValue ? DateTime.SpecifyKind(request.StartDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null;
             entity.EndDate = request.EndDate.HasValue ? DateTime.SpecifyKind(request.EndDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null;
-            entity.Description = request.Description;
+            entity.Description = request.Description ?? string.Empty;
             entity.UpdatedAt = DateTime.UtcNow;
 
             await _eduRepo.SaveChangesAsync();

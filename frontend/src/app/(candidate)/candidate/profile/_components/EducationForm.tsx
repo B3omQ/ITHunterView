@@ -171,7 +171,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
   return (
     <Card className="border border-primary/20 bg-primary/5 rounded-xl overflow-hidden shadow-sm animate-in slide-in-from-top-4 duration-300">
       <CardContent className="p-5 sm:p-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div className="mb-4">
             <h3 className="text-lg font-bold text-foreground">
               {initialData ? 'Edit Education' : 'Add Education'}
@@ -192,7 +192,6 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
                   if (errors.institutionName) setErrors((prev) => ({ ...prev, institutionName: undefined }));
                 }}
                 className={`bg-background/80 focus-visible:ring-primary/30 ${errors.institutionName ? 'border-destructive focus-visible:ring-destructive' : 'border-border/60'}`}
-                required
               />
               {errors.institutionName && <p className="text-xs text-destructive mt-1 font-medium">{errors.institutionName}</p>}
             </div>
@@ -208,7 +207,6 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
                   if (errors.degree) setErrors((prev) => ({ ...prev, degree: undefined }));
                 }}
                 className={`bg-background/80 focus-visible:ring-primary/30 ${errors.degree ? 'border-destructive focus-visible:ring-destructive' : 'border-border/60'}`}
-                required
               />
               {errors.degree && <p className="text-xs text-destructive mt-1 font-medium">{errors.degree}</p>}
             </div>
