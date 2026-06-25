@@ -45,8 +45,8 @@ namespace ITHunterview.Service.UseCase
                 InstitutionName = request.InstitutionName,
                 Gpa = request.Gpa,
                 MaxGpa = request.MaxGpa,
-                StartDate = request.StartDate.HasValue ? request.StartDate.Value.ToDateTime(TimeOnly.MinValue) : null,
-                EndDate = request.EndDate.HasValue ? request.EndDate.Value.ToDateTime(TimeOnly.MinValue) : null,
+                StartDate = request.StartDate.HasValue ? DateTime.SpecifyKind(request.StartDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null,
+                EndDate = request.EndDate.HasValue ? DateTime.SpecifyKind(request.EndDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null,
                 Description = request.Description,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -68,8 +68,8 @@ namespace ITHunterview.Service.UseCase
             entity.InstitutionName = request.InstitutionName;
             entity.Gpa = request.Gpa;
             entity.MaxGpa = request.MaxGpa;
-            entity.StartDate = request.StartDate.HasValue ? request.StartDate.Value.ToDateTime(TimeOnly.MinValue) : null;
-            entity.EndDate = request.EndDate.HasValue ? request.EndDate.Value.ToDateTime(TimeOnly.MinValue) : null;
+            entity.StartDate = request.StartDate.HasValue ? DateTime.SpecifyKind(request.StartDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null;
+            entity.EndDate = request.EndDate.HasValue ? DateTime.SpecifyKind(request.EndDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null;
             entity.Description = request.Description;
             entity.UpdatedAt = DateTime.UtcNow;
 

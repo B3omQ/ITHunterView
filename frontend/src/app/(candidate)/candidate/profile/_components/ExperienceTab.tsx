@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Briefcase, Plus, AlertTriangle, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function ExperienceTab() {
   const { data: experiences, isLoading, isError } = useCandidateExperiences();
@@ -81,24 +82,36 @@ export function ExperienceTab() {
     const payload: ExperienceUpsertRequest = {
       title,
       companyName,
-      location: location || null,
-      employmentType: employmentType || null,
+      location: location || '',
+      employmentType: employmentType || 'FULL_TIME',
       startDate: startDate || null,
       endDate: isCurrent ? null : endDate || null,
       isCurrent,
-      description: description || null,
+      description: description || '',
     };
 
     if (editingExp) {
       updateExperience(
         { id: editingExp.id, payload },
         {
-          onSuccess: () => setIsOpen(false),
+          onSuccess: () => {
+            toast.success('Work experience updated successfully');
+            setIsOpen(false);
+          },
+          onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error.message || 'Failed to update experience');
+          },
         }
       );
     } else {
       createExperience(payload, {
-        onSuccess: () => setIsOpen(false),
+        onSuccess: () => {
+          toast.success('Work experience added successfully');
+          setIsOpen(false);
+        },
+        onError: (error: any) => {
+          toast.error(error?.response?.data?.message || error.message || 'Failed to add experience');
+        },
       });
     }
   };
@@ -106,7 +119,13 @@ export function ExperienceTab() {
   const handleDelete = () => {
     if (deleteId) {
       deleteExperience(deleteId, {
-        onSuccess: () => setDeleteId(null),
+        onSuccess: () => {
+          toast.success('Work experience deleted successfully');
+          setDeleteId(null);
+        },
+        onError: (error: any) => {
+          toast.error(error?.response?.data?.message || error.message || 'Failed to delete experience');
+        },
       });
     }
   };

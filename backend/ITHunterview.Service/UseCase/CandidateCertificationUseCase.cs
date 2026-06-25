@@ -30,8 +30,8 @@ namespace ITHunterview.Service.UseCase
                 UserId = userId,
                 Name = request.Name,
                 IssuingOrganization = request.IssuingOrganization,
-                IssueDate = request.IssueDate.HasValue ? request.IssueDate.Value.ToDateTime(TimeOnly.MinValue) : null,
-                ExpirationDate = request.ExpirationDate.HasValue ? request.ExpirationDate.Value.ToDateTime(TimeOnly.MinValue) : null,
+                IssueDate = request.IssueDate.HasValue ? DateTime.SpecifyKind(request.IssueDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null,
+                ExpirationDate = request.ExpirationDate.HasValue ? DateTime.SpecifyKind(request.ExpirationDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null,
                 CredentialUrl = request.CredentialUrl,
                 CreatedAt = DateTime.UtcNow
             };
@@ -49,8 +49,8 @@ namespace ITHunterview.Service.UseCase
 
             entity.Name = request.Name;
             entity.IssuingOrganization = request.IssuingOrganization;
-            entity.IssueDate = request.IssueDate.HasValue ? request.IssueDate.Value.ToDateTime(TimeOnly.MinValue) : null;
-            entity.ExpirationDate = request.ExpirationDate.HasValue ? request.ExpirationDate.Value.ToDateTime(TimeOnly.MinValue) : null;
+            entity.IssueDate = request.IssueDate.HasValue ? DateTime.SpecifyKind(request.IssueDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null;
+            entity.ExpirationDate = request.ExpirationDate.HasValue ? DateTime.SpecifyKind(request.ExpirationDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null;
             entity.CredentialUrl = request.CredentialUrl;
 
             await _certRepo.SaveChangesAsync();
