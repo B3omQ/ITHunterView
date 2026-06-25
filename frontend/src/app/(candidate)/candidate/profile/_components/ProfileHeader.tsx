@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import { toast } from 'sonner';
 
 interface ProfileHeaderProps {
   summary: ProfileSummary;
@@ -25,6 +26,21 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Chỉ chấp nhận ảnh định dạng JPG, JPEG, PNG hoặc WebP.');
+        // Reset the input so the user can select the same file again if they want
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+
+      const maxSizeBytes = 3 * 1024 * 1024; // 3MB
+      if (file.size > maxSizeBytes) {
+        toast.error('Ảnh không được vượt quá 3MB.');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+
       uploadAvatar(file);
     }
   };
@@ -72,7 +88,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
             type="file"
             ref={fileInputRef}
             className="hidden"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             onChange={handleFileChange}
             disabled={isUploadingAvatar}
           />

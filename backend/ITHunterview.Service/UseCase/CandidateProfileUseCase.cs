@@ -2,6 +2,7 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Service.DTOs.CandidateProfile;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
+using ITHunterview.Service.Interface.Service;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -12,19 +13,22 @@ namespace ITHunterview.Service.UseCase
         private readonly ICandidateEducationRepository _eduRepo;
         private readonly ICandidateCertificationRepository _certRepo;
         private readonly ICandidateSkillRepository _skillRepo;
+        private readonly IFileUploadService _fileUploadService;
 
         public CandidateProfileUseCase(
             ICandidateProfileRepository profileRepo,
             ICandidateExperienceRepository expRepo,
             ICandidateEducationRepository eduRepo,
             ICandidateCertificationRepository certRepo,
-            ICandidateSkillRepository skillRepo)
+            ICandidateSkillRepository skillRepo,
+            IFileUploadService fileUploadService)
         {
             _profileRepo = profileRepo;
             _expRepo = expRepo;
             _eduRepo = eduRepo;
             _certRepo = certRepo;
             _skillRepo = skillRepo;
+            _fileUploadService = fileUploadService;
         }
 
         // ─── Personal Info ─────────────────────────────────────────────────────
@@ -105,19 +109,35 @@ namespace ITHunterview.Service.UseCase
             if (fileStream == null || fileSize == 0)
                 throw new ArgumentException("File ảnh không hợp lệ.");
 
-            var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp", "image/gif" };
+            var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/webp" };
             if (!allowedTypes.Contains(contentType.ToLower()))
-                throw new ArgumentException("Chỉ chấp nhận ảnh định dạng JPEG, PNG, WebP hoặc GIF.");
+                throw new ArgumentException("Chỉ chấp nhận ảnh định dạng JPG, JPEG, PNG, hoặc WebP.");
 
-            const long maxSizeBytes = 5 * 1024 * 1024; // 5 MB
+            const long maxSizeBytes = 3 * 1024 * 1024; // 3 MB
             if (fileSize > maxSizeBytes)
-                throw new ArgumentException("Ảnh không được vượt quá 5MB.");
-
-            // TODO: Replace with actual file storage service (S3/Azure/GCP)
-            var ext = Path.GetExtension(fileName);
-            var avatarUrl = $"/uploads/avatars/{userId}{ext}";
+                throw new ArgumentException("Ảnh không được vượt quá 3MB.");
 
             var profile = await GetOrCreateProfileAsync(userId);
+
+            // Xóa ảnh cũ trên Cloudinary (nếu có)
+            if (!string.IsNullOrEmpty(profile.AvatarUrl))
+            {
+                var oldPublicId = ExtractPublicIdFromUrl(profile.AvatarUrl);
+                if (!string.IsNullOrEmpty(oldPublicId))
+                {
+                    await _fileUploadService.DeleteFileAsync(oldPublicId);
+                }
+            }
+
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var publicId = $"{userId}_{timestamp}";
+
+            var avatarUrl = await _fileUploadService.UploadAvatarAsync(
+                fileStream, 
+                fileName, 
+                "job_seeking_system/avatars", 
+                publicId);
+
             profile.AvatarUrl = avatarUrl;
             await _profileRepo.SaveChangesAsync();
 
@@ -142,6 +162,27 @@ namespace ITHunterview.Service.UseCase
         }
 
         // ─── Private helpers ───────────────────────────────────────────────────
+
+        private static string? ExtractPublicIdFromUrl(string url)
+        {
+            if (string.IsNullOrEmpty(url) || !url.Contains("cloudinary.com")) return null;
+            
+            var parts = url.Split("upload/");
+            if (parts.Length < 2) return null;
+            
+            var afterUpload = parts[1]; // e.g. v1234567/job_seeking_system/avatars/abc.jpg
+            var versionSlashIndex = afterUpload.IndexOf('/');
+            if (versionSlashIndex == -1) return null;
+            
+            var publicIdWithExt = afterUpload.Substring(versionSlashIndex + 1);
+            var lastDotIndex = publicIdWithExt.LastIndexOf('.');
+            
+            if (lastDotIndex != -1)
+            {
+                return publicIdWithExt.Substring(0, lastDotIndex);
+            }
+            return publicIdWithExt;
+        }
 
         private async Task<CandidateProfiles> GetOrCreateProfileAsync(Guid userId)
         {
