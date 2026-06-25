@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { cn } from '@/lib/utils';
 import {
   useCandidateSkills,
   useAllMasterSkills,
@@ -28,6 +29,7 @@ export function SkillsTab() {
   const [keyword, setKeyword] = useState('');
   const [searchResults, setSearchResults] = useState<SkillSearchResponse[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Local search effect (zero-latency)
@@ -45,6 +47,7 @@ export function SkillsTab() {
       .slice(0, 20); // Top 20 results
 
     setSearchResults(filtered);
+    setFocusedIndex(-1); // Reset focus when search changes
   }, [keyword, allMasterSkills, skills]);
 
   // Click outside listener for dropdown
@@ -71,12 +74,14 @@ export function SkillsTab() {
   }
 
   const handleAddSkillId = (skillId: number) => {
+    if (isAddingSkill) return;
     addSkill(
       { skillId },
       {
         onSuccess: () => {
           setKeyword('');
           setShowDropdown(false);
+          setFocusedIndex(-1);
         },
       }
     );
@@ -114,6 +119,23 @@ export function SkillsTab() {
                   setShowDropdown(true);
                 }}
                 onFocus={() => setShowDropdown(true)}
+                onKeyDown={(e) => {
+                  if (!showDropdown || searchResults.length === 0) return;
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setFocusedIndex((prev) => (prev < searchResults.length - 1 ? prev + 1 : prev));
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setFocusedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (focusedIndex >= 0 && searchResults[focusedIndex]) {
+                      handleAddSkillId(searchResults[focusedIndex].id);
+                    }
+                  } else if (e.key === 'Escape') {
+                    setShowDropdown(false);
+                  }
+                }}
                 className="pl-9 bg-background/50 border-border/60 focus-visible:ring-primary/30"
               />
             </div>
@@ -128,16 +150,19 @@ export function SkillsTab() {
                     </div>
                   ) : (
                     <ul className="space-y-0.5">
-                      {searchResults.map((s) => (
+                      {searchResults.map((s, index) => (
                         <li key={s.id}>
                           <button
                             type="button"
                             onClick={() => handleAddSkillId(s.id)}
                             disabled={isAddingSkill}
-                            className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-accent/80 transition-colors flex items-center justify-between"
+                            className={cn(
+                              "w-full text-left px-3 py-2 text-sm rounded-lg transition-colors flex items-center justify-between",
+                              focusedIndex === index ? "bg-accent/80 text-accent-foreground" : "hover:bg-accent/50"
+                            )}
                           >
-                            <span className="font-medium text-foreground">{s.name}</span>
-                            <Plus className="w-3.5 h-3.5 text-muted-foreground" />
+                            <span className="font-medium">{s.name}</span>
+                            <Plus className={cn("w-3.5 h-3.5", focusedIndex === index ? "text-foreground" : "text-muted-foreground")} />
                           </button>
                         </li>
                       ))}
