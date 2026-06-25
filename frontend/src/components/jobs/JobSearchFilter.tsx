@@ -1,214 +1,449 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, MapPin, Briefcase, Building2, Code2, DollarSign, Calendar } from 'lucide-react';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Slider } from '@/components/ui/slider';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Search, MapPin, ChevronDown, Filter, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+
+// Constants
+const LOCATIONS = ["Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Cần Thơ", "Hải Phòng", "Remote", "Bình Dương", "Đồng Nai"];
+const LEVELS = ["Internship", "Fresher", "Junior", "Middle", "Senior", "Lead", "Manager", "Principal"];
+const WORKING_MODELS = ["At office", "Remote", "Hybrid"];
+const JOB_DOMAINS = ["Backend", "Frontend", "Fullstack", "Mobile", "DevOps", "AI/ML", "Data", "QA/Testing", "System Admin", "Security"];
+const COMPANY_INDUSTRIES = ["Information Technology", "Software Outsourcing", "Internet & Technology", "E-commerce", "Fintech", "Edtech", "Healthtech", "Logistics", "Gaming"];
+const COMPANY_TYPES = ["IT Outsourcing", "IT Product", "Headhunt", "IT Service and IT Consulting", "Non-IT"];
+
+// Helper to parse array params safely
+const parseArrayParam = (param: string | null) => param ? param.split(',').filter(Boolean) : [];
 
 export function JobSearchFilter() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
 
-  const [keyword, setKeyword] = useState(searchParams.get('query') || '');
-  const [skill, setSkill] = useState(searchParams.get('skill') || '');
-  const [companyName, setCompanyName] = useState(searchParams.get('companyName') || '');
-  const [minSalary, setMinSalary] = useState(searchParams.get('minSalary') || '');
-  
-  const location = searchParams.get('location') || 'ALL';
-  const jobType = searchParams.get('jobType') || 'ALL';
-  const currency = searchParams.get('currency') || 'USD';
-  const postedWithinDays = searchParams.get('postedWithinDays') || 'ALL';
+  // URL States
+  const urlQuery = searchParams.get('query') || '';
+  const urlLocation = searchParams.get('location') || '';
+  const urlLevels = parseArrayParam(searchParams.get('levels'));
+  const urlWorkingModels = parseArrayParam(searchParams.get('workingModels'));
+  const urlJobDomains = parseArrayParam(searchParams.get('jobDomains'));
+  const urlCompanyIndustries = parseArrayParam(searchParams.get('companyIndustries'));
+  const urlCompanyTypes = parseArrayParam(searchParams.get('companyTypes'));
+  const urlMinSalary = searchParams.get('minSalary') ? parseInt(searchParams.get('minSalary')!) : 0;
+  const urlMaxSalary = searchParams.get('maxSalary') ? parseInt(searchParams.get('maxSalary')!) : 10000;
 
-  const updateUrl = (
-    newKeyword: string, 
-    newLocation: string, 
-    newJobType: string,
-    newSkill: string,
-    newCompanyName: string,
-    newMinSalary: string,
-    newCurrency: string,
-    newPostedWithinDays: string
-  ) => {
+  // Local States for Inputs/Modals (to avoid premature URL updates)
+  const [keyword, setKeyword] = useState(urlQuery);
+  const [location, setLocation] = useState(urlLocation);
+  
+  // Pending States for Modal
+  const [pendingLevels, setPendingLevels] = useState<string[]>(urlLevels);
+  const [pendingWorkingModels, setPendingWorkingModels] = useState<string[]>(urlWorkingModels);
+  const [pendingJobDomains, setPendingJobDomains] = useState<string[]>(urlJobDomains);
+  const [pendingCompanyIndustries, setPendingCompanyIndustries] = useState<string[]>(urlCompanyIndustries);
+  const [pendingCompanyTypes, setPendingCompanyTypes] = useState<string[]>(urlCompanyTypes);
+  const [pendingSalary, setPendingSalary] = useState<number[]>([urlMinSalary, urlMaxSalary]);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Sync state when URL changes (e.g. from Clear All or browser back button)
+  useEffect(() => {
+    setKeyword(urlQuery);
+    setLocation(urlLocation);
+    setPendingLevels(urlLevels);
+    setPendingWorkingModels(urlWorkingModels);
+    setPendingJobDomains(urlJobDomains);
+    setPendingCompanyIndustries(urlCompanyIndustries);
+    setPendingCompanyTypes(urlCompanyTypes);
+    setPendingSalary([urlMinSalary, urlMaxSalary]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // Apply all filters to URL
+  const applyFilters = (updates: any = {}) => {
     const params = new URLSearchParams(searchParams.toString());
     
-    if (newKeyword) params.set('query', newKeyword);
-    else params.delete('query');
+    const current = {
+      query: keyword,
+      location: location,
+      levels: pendingLevels,
+      workingModels: pendingWorkingModels,
+      jobDomains: pendingJobDomains,
+      companyIndustries: pendingCompanyIndustries,
+      companyTypes: pendingCompanyTypes,
+      salary: pendingSalary,
+      ...updates
+    };
+
+    if (current.query) params.set('query', current.query); else params.delete('query');
+    if (current.location) params.set('location', current.location); else params.delete('location');
     
-    if (newLocation && newLocation !== 'ALL') params.set('location', newLocation);
-    else params.delete('location');
+    if (current.levels.length > 0) params.set('levels', current.levels.join(',')); else params.delete('levels');
+    if (current.workingModels.length > 0) params.set('workingModels', current.workingModels.join(',')); else params.delete('workingModels');
+    if (current.jobDomains.length > 0) params.set('jobDomains', current.jobDomains.join(',')); else params.delete('jobDomains');
+    if (current.companyIndustries.length > 0) params.set('companyIndustries', current.companyIndustries.join(',')); else params.delete('companyIndustries');
+    if (current.companyTypes.length > 0) params.set('companyTypes', current.companyTypes.join(',')); else params.delete('companyTypes');
     
-    if (newJobType && newJobType !== 'ALL') params.set('jobType', newJobType);
-    else params.delete('jobType');
+    // Salary bounds check
+    if (current.salary[0] > 0) params.set('minSalary', current.salary[0].toString()); else params.delete('minSalary');
+    if (current.salary[1] < 10000) params.set('maxSalary', current.salary[1].toString()); else params.delete('maxSalary');
 
-    if (newSkill) params.set('skill', newSkill);
-    else params.delete('skill');
-
-    if (newCompanyName) params.set('companyName', newCompanyName);
-    else params.delete('companyName');
-
-    if (newMinSalary) params.set('minSalary', newMinSalary);
-    else params.delete('minSalary');
-
-    if (newMinSalary && newCurrency) params.set('currency', newCurrency);
-    else params.delete('currency');
-
-    if (newPostedWithinDays && newPostedWithinDays !== 'ALL') params.set('postedWithinDays', newPostedWithinDays);
-    else params.delete('postedWithinDays');
-    
-    // Reset to page 1 on new search
     params.set('page', '1');
-    
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    setIsModalOpen(false);
   };
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleMainSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    updateUrl(keyword, location, jobType, skill, companyName, minSalary, currency, postedWithinDays);
+    applyFilters();
   };
 
-  const handleLocationChange = (val: string) => {
-    updateUrl(keyword, val, jobType, skill, companyName, minSalary, currency, postedWithinDays);
+  const resetFilters = () => {
+    setPendingLevels([]);
+    setPendingWorkingModels([]);
+    setPendingJobDomains([]);
+    setPendingCompanyIndustries([]);
+    setPendingCompanyTypes([]);
+    setPendingSalary([0, 10000]);
   };
 
-  const handleJobTypeChange = (val: string) => {
-    updateUrl(keyword, location, val, skill, companyName, minSalary, currency, postedWithinDays);
+  // Reusable MultiSelect Dropdown Component for Quick Filters & Modal
+  const FilterCombobox = ({ 
+    title, 
+    options, 
+    selected, 
+    onChange, 
+    searchPlaceholder = "Search..." 
+  }: { 
+    title: string, 
+    options: string[], 
+    selected: string[], 
+    onChange: (val: string[]) => void, 
+    searchPlaceholder?: string 
+  }) => {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className={cn("justify-between font-normal h-10 w-full bg-white", selected.length > 0 && "border-primary text-primary")}>
+            <span className="truncate mr-2">
+              {selected.length === 0 ? title : `${title} (${selected.length})`}
+            </span>
+            <ChevronDown className="h-4 w-4 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[280px] p-0" align="start">
+          <Command>
+            <CommandInput placeholder={searchPlaceholder} />
+            <CommandList>
+              <CommandEmpty>No results found.</CommandEmpty>
+              <CommandGroup>
+                <ScrollArea className="h-64">
+                  {options.map((opt) => {
+                    const isSelected = selected.includes(opt);
+                    return (
+                      <CommandItem
+                        key={opt}
+                        onSelect={() => {
+                          const newSelected = isSelected 
+                            ? selected.filter((s) => s !== opt) 
+                            : [...selected, opt];
+                          onChange(newSelected);
+                        }}
+                        className="flex items-center gap-2 cursor-pointer"
+                      >
+                        <Checkbox checked={isSelected} className="pointer-events-none" />
+                        <span>{opt}</span>
+                      </CommandItem>
+                    );
+                  })}
+                </ScrollArea>
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
   };
 
-  const handleCurrencyChange = (val: string) => {
-    updateUrl(keyword, location, jobType, skill, companyName, minSalary, val, postedWithinDays);
-  };
-
-  const handleDatePostedChange = (val: string) => {
-    updateUrl(keyword, location, jobType, skill, companyName, minSalary, currency, val);
+  // Quick Filter Action
+  const applyQuickFilter = (key: string, val: any) => {
+    if (key === 'levels') setPendingLevels(val);
+    if (key === 'workingModels') setPendingWorkingModels(val);
+    if (key === 'jobDomains') setPendingJobDomains(val);
+    applyFilters({ [key]: val });
   };
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-4">
-      <form onSubmit={handleSearch} className="flex flex-col gap-4 w-full">
-        <div className="flex flex-col md:flex-row gap-4 w-full">
-          <div className="flex-[2] relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Job title, keyword..." 
-              className="pl-9" 
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-            />
-          </div>
-          
-          <div className="flex-1 relative">
-            <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
-            <Select value={location} onValueChange={handleLocationChange}>
-              <SelectTrigger className="pl-9">
-                <SelectValue placeholder="All Locations" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Locations</SelectItem>
-                <SelectItem value="Hà Nội">Hà Nội</SelectItem>
-                <SelectItem value="Hồ Chí Minh">Hồ Chí Minh</SelectItem>
-                <SelectItem value="Đà Nẵng">Đà Nẵng</SelectItem>
-                <SelectItem value="Remote">Remote</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex-1 relative">
-            <Briefcase className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
-            <Select value={jobType} onValueChange={handleJobTypeChange}>
-              <SelectTrigger className="pl-9">
-                <SelectValue placeholder="Job Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Types</SelectItem>
-                <SelectItem value="FULL_TIME">Full Time</SelectItem>
-                <SelectItem value="PART_TIME">Part Time</SelectItem>
-                <SelectItem value="CONTRACT">Contract</SelectItem>
-                <SelectItem value="FREELANCE">Freelance</SelectItem>
-                <SelectItem value="INTERNSHIP">Internship</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Button type="submit" className="md:w-32">Search</Button>
+    <div className="flex flex-col gap-4 bg-slate-50 p-4 rounded-xl shadow-sm mb-6 border border-slate-200">
+      
+      {/* PART 1: Main Search Bar */}
+      <form onSubmit={handleMainSearch} className="flex flex-col md:flex-row gap-3">
+        {/* Search Input */}
+        <div className="flex-[2] relative">
+          <Search className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+          <Input 
+            placeholder="Enter keyword skills, job title, company..." 
+            className="pl-12 h-12 text-base border-slate-300 focus-visible:ring-primary shadow-sm" 
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+          />
+        </div>
+        
+        {/* Location Combobox */}
+        <div className="flex-1 min-w-[200px]">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full justify-between h-12 text-base font-normal border-slate-300 shadow-sm bg-white">
+                <div className="flex items-center gap-2 truncate text-slate-600">
+                  <MapPin className="h-5 w-5 text-slate-400" />
+                  {location || "All Locations"}
+                </div>
+                <ChevronDown className="h-4 w-4 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[300px] p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Search location..." />
+                <CommandList>
+                  <CommandEmpty>No location found.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem onSelect={() => { setLocation(""); applyFilters({ location: "" }); }}>
+                      All Locations
+                    </CommandItem>
+                    {LOCATIONS.map((loc) => (
+                      <CommandItem key={loc} onSelect={() => { setLocation(loc); applyFilters({ location: loc }); }}>
+                        {loc}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
 
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="advanced-filters" className="border-b-0">
-            <AccordionTrigger className="text-sm py-2 hover:no-underline text-muted-foreground hover:text-foreground">
-              Advanced Filters
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="flex flex-col md:flex-row gap-4 pt-2">
-                <div className="flex-1 relative">
-                  <Code2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Skill (e.g. React, Node.js)" 
-                    className="pl-9" 
-                    value={skill}
-                    onChange={(e) => setSkill(e.target.value)}
-                  />
+        {/* Search Button */}
+        <Button type="submit" className="md:w-32 h-12 text-base font-semibold shadow-sm">
+          Search
+        </Button>
+      </form>
+
+      {/* PART 2: Quick Filters */}
+      <div className="flex flex-wrap items-center gap-3 w-full">
+        <div className="w-[180px]">
+          <FilterCombobox 
+            title="Level" 
+            options={LEVELS} 
+            selected={pendingLevels} 
+            onChange={(val) => applyQuickFilter('levels', val)} 
+          />
+        </div>
+        <div className="w-[180px]">
+          <FilterCombobox 
+            title="Working Model" 
+            options={WORKING_MODELS} 
+            selected={pendingWorkingModels} 
+            onChange={(val) => applyQuickFilter('workingModels', val)} 
+          />
+        </div>
+        
+        {/* Quick Salary Popover */}
+        <div className="w-[180px]">
+           <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("justify-between font-normal h-10 w-full bg-white", (pendingSalary[0] > 0 || pendingSalary[1] < 10000) && "border-primary text-primary")}>
+                <span className="truncate mr-2">
+                  {(pendingSalary[0] > 0 || pendingSalary[1] < 10000) ? `$${pendingSalary[0]} - $${pendingSalary[1]}` : 'Salary (USD)'}
+                </span>
+                <ChevronDown className="h-4 w-4 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-6" align="start">
+              <div className="flex flex-col gap-6">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-sm">Salary Range</span>
+                  <span className="text-sm font-medium text-primary">${pendingSalary[0]} - ${pendingSalary[1]}</span>
                 </div>
+                <Slider
+                  defaultValue={[0, 10000]}
+                  value={pendingSalary}
+                  min={0}
+                  max={10000}
+                  step={100}
+                  onValueChange={setPendingSalary}
+                />
+                <Button className="w-full mt-2" size="sm" onClick={() => applyQuickFilter('salary', pendingSalary)}>Apply</Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="w-[180px]">
+          <FilterCombobox 
+            title="Job Domain" 
+            options={JOB_DOMAINS} 
+            selected={pendingJobDomains} 
+            onChange={(val) => applyQuickFilter('jobDomains', val)} 
+            searchPlaceholder="Search domain..."
+          />
+        </div>
+
+        {/* Filter Button (Opens Modal) */}
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="h-10 ml-auto flex items-center gap-2 text-slate-700 bg-white">
+              <Filter className="h-4 w-4" />
+              All Filters
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
+            <DialogHeader className="p-6 pb-4 border-b">
+              <DialogTitle className="text-xl">Advanced Filters</DialogTitle>
+            </DialogHeader>
+            
+            {/* PART 3: Advanced Filter Modal Body */}
+            <ScrollArea className="h-[500px] px-6 py-4">
+              <div className="flex flex-col gap-6">
                 
-                <div className="flex-1 relative">
-                  <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Company Name" 
-                    className="pl-9" 
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                  />
+                {/* Row 1: Level */}
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm text-slate-700">Level</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {LEVELS.map(lvl => (
+                      <label key={lvl} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-slate-50 rounded-md border border-transparent hover:border-slate-200 transition-colors">
+                        <Checkbox 
+                          checked={pendingLevels.includes(lvl)}
+                          onCheckedChange={(c) => {
+                            setPendingLevels(prev => c ? [...prev, lvl] : prev.filter(x => x !== lvl));
+                          }}
+                        />
+                        <span className="text-sm">{lvl}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="flex-1 flex gap-2">
-                  <div className="relative flex-[2]">
-                    <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      placeholder="Min Salary" 
-                      type="number"
-                      className="pl-9" 
-                      value={minSalary}
-                      onChange={(e) => setMinSalary(e.target.value)}
+                {/* Row 2: Working Model */}
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm text-slate-700">Working Model</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {WORKING_MODELS.map(wm => (
+                      <label key={wm} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-slate-50 rounded-md border border-transparent hover:border-slate-200 transition-colors w-[150px]">
+                        <Checkbox 
+                          checked={pendingWorkingModels.includes(wm)}
+                          onCheckedChange={(c) => {
+                            setPendingWorkingModels(prev => c ? [...prev, wm] : prev.filter(x => x !== wm));
+                          }}
+                        />
+                        <span className="text-sm">{wm}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Row 3: Salary */}
+                <div className="space-y-4 pt-2">
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-medium text-sm text-slate-700">Monthly Salary (USD)</h4>
+                    <span className="text-sm font-semibold text-primary px-3 py-1 bg-primary/10 rounded-full">
+                      ${pendingSalary[0]} - ${pendingSalary[1]}
+                    </span>
+                  </div>
+                  <div className="px-2">
+                    <Slider
+                      value={pendingSalary}
+                      min={0}
+                      max={10000}
+                      step={100}
+                      onValueChange={setPendingSalary}
+                      className="mt-6 mb-2"
                     />
                   </div>
-                  <Select value={currency} onValueChange={handleCurrencyChange}>
-                    <SelectTrigger className="w-[90px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="VND">VND</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex justify-between text-xs text-muted-foreground px-1">
+                    <span>$0</span>
+                    <span>$10,000+</span>
+                  </div>
                 </div>
 
-                <div className="flex-1 relative">
-                  <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
-                  <Select value={postedWithinDays} onValueChange={handleDatePostedChange}>
-                    <SelectTrigger className="pl-9">
-                      <SelectValue placeholder="Date Posted" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">Any time</SelectItem>
-                      <SelectItem value="1">Past 24 hours</SelectItem>
-                      <SelectItem value="7">Past 7 days</SelectItem>
-                      <SelectItem value="30">Past 30 days</SelectItem>
-                    </SelectContent>
-                  </Select>
+                {/* Row 4: Job Domain */}
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm text-slate-700">Job Domain</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {JOB_DOMAINS.map(jd => (
+                      <label key={jd} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-slate-50 rounded-md border border-transparent hover:border-slate-200 transition-colors">
+                        <Checkbox 
+                          checked={pendingJobDomains.includes(jd)}
+                          onCheckedChange={(c) => {
+                            setPendingJobDomains(prev => c ? [...prev, jd] : prev.filter(x => x !== jd));
+                          }}
+                        />
+                        <span className="text-sm truncate">{jd}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Row 5: Company Industry */}
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm text-slate-700">Company Industry</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {COMPANY_INDUSTRIES.map(ci => (
+                      <label key={ci} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-slate-50 rounded-md border border-transparent hover:border-slate-200 transition-colors">
+                        <Checkbox 
+                          checked={pendingCompanyIndustries.includes(ci)}
+                          onCheckedChange={(c) => {
+                            setPendingCompanyIndustries(prev => c ? [...prev, ci] : prev.filter(x => x !== ci));
+                          }}
+                        />
+                        <span className="text-sm truncate" title={ci}>{ci}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Row 6: Company Type */}
+                <div className="space-y-3 pb-6">
+                  <h4 className="font-medium text-sm text-slate-700">Company Type</h4>
+                  <div className="flex flex-col gap-2">
+                    {COMPANY_TYPES.map(ct => (
+                      <label key={ct} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-slate-50 rounded-md border border-transparent hover:border-slate-200 transition-colors">
+                        <Checkbox 
+                          checked={pendingCompanyTypes.includes(ct)}
+                          onCheckedChange={(c) => {
+                            setPendingCompanyTypes(prev => c ? [...prev, ct] : prev.filter(x => x !== ct));
+                          }}
+                        />
+                        <span className="text-sm">{ct}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
               </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </form>
+            </ScrollArea>
+            
+            {/* Modal Footer */}
+            <DialogFooter className="p-4 border-t flex sm:justify-between items-center bg-slate-50">
+              <Button variant="ghost" onClick={resetFilters} className="text-slate-500 hover:text-slate-900">
+                Reset Filter
+              </Button>
+              <Button onClick={() => applyFilters()} className="w-32">
+                Apply
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
     </div>
   );
 }

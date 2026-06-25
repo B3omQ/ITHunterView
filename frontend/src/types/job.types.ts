@@ -9,6 +9,12 @@ export interface JobSearchQuery {
   companyName?: string;
   postedWithinDays?: number;
   status?: string;
+  levels?: string[];
+  workingModels?: string[];
+  jobDomains?: string[];
+  companyIndustries?: string[];
+  companyTypes?: string[];
+  maxSalary?: number;
   page?: number;
   pageSize?: number;
 }

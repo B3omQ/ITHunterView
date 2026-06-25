@@ -5,6 +5,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useCandidateJobs } from '@/hooks/useCandidateJobs';
 import { useJobActions } from '@/hooks/useJobActions';
 import { JobCard } from '@/components/shared/JobCard';
+import { JobCardSkeleton } from '@/components/jobs/JobCardSkeleton';
 import { JobSearchFilter } from '@/components/jobs/JobSearchFilter';
 import { PageLoader } from '@/components/shared/PageLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -19,6 +20,8 @@ function CandidateJobsContent() {
   const router = useRouter();
   const pathname = usePathname();
   
+  const parseArray = (param: string | null) => param ? param.split(',').filter(Boolean) : undefined;
+
   const query: JobSearchQuery = { 
     page: parseInt(searchParams.get('page') || '1', 10), 
     pageSize: 10,
@@ -28,7 +31,12 @@ function CandidateJobsContent() {
     skill: searchParams.get('skill') || undefined,
     companyName: searchParams.get('companyName') || undefined,
     minSalary: searchParams.get('minSalary') ? parseFloat(searchParams.get('minSalary') as string) : undefined,
-    currency: searchParams.get('currency') || undefined,
+    maxSalary: searchParams.get('maxSalary') ? parseFloat(searchParams.get('maxSalary') as string) : undefined,
+    levels: parseArray(searchParams.get('levels')),
+    workingModels: parseArray(searchParams.get('workingModels')),
+    jobDomains: parseArray(searchParams.get('jobDomains')),
+    companyIndustries: parseArray(searchParams.get('companyIndustries')),
+    companyTypes: parseArray(searchParams.get('companyTypes')),
     postedWithinDays: searchParams.get('postedWithinDays') ? parseInt(searchParams.get('postedWithinDays') as string, 10) : undefined,
   };
 
@@ -95,7 +103,11 @@ function CandidateJobsContent() {
             </div>
 
             {isLoading ? (
-              <div className="py-20"><PageLoader /></div>
+              <div className="flex flex-col gap-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <JobCardSkeleton key={i} />
+                ))}
+              </div>
             ) : isError ? (
               <EmptyState title="Failed to load jobs" description="Please try again later." icon={<SearchX className="w-12 h-12 text-slate-300" />} />
             ) : data?.data?.length ? (

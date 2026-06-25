@@ -57,6 +57,15 @@ namespace ITHunterview.Domain.Entities
         [Column("status")]
         public JobStatus Status { get; set; }
 
+        [Column("level")]
+        public string? Level { get; set; }
+
+        [Column("working_model")]
+        public string? WorkingModel { get; set; }
+
+        [Column("job_domain")]
+        public string? JobDomain { get; set; }
+
         [Column("application_count")]
         public int ApplicationCount { get; set; }
 

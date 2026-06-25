@@ -30,6 +30,9 @@ namespace ITHunterview.Domain.Entities
         [Column("description")]
         public string Description { get; set; }
 
+        [Column("company_type")]
+        public string? CompanyType { get; set; }
+
         [Column("website")]
         public string Website { get; set; }
 

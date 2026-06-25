@@ -201,21 +201,21 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 {
                     Id = Guid.NewGuid(), Name = "ITHunterView Corp", TaxCode = "0102030405", HeadquartersAddress = "123 Dev Street, Tech City",
                     Industry = "Information Technology", CompanySize = "100-500", Description = "Leading tech recruitment platform",
-                    Website = "https://ithunterview.com", LogoUrl = "https://logo.clearbit.com/ithunterview.com",
+                    Website = "https://ithunterview.com", LogoUrl = "https://logo.clearbit.com/ithunterview.com", CompanyType = "IT Product",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license1.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
                 var comp2 = new Companies
                 {
                     Id = Guid.NewGuid(), Name = "FPT Software", TaxCode = "0102030406", HeadquartersAddress = "F-Town, HCMC",
                     Industry = "Software Outsourcing", CompanySize = "1000+", Description = "Global technology and IT services provider",
-                    Website = "https://fptsoftware.com", LogoUrl = "https://logo.clearbit.com/fptsoftware.com",
+                    Website = "https://fptsoftware.com", LogoUrl = "https://logo.clearbit.com/fptsoftware.com", CompanyType = "IT Outsourcing",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license2.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
                 var comp3 = new Companies
                 {
                     Id = Guid.NewGuid(), Name = "VNG Corporation", TaxCode = "0102030407", HeadquartersAddress = "VNG Campus, HCMC",
                     Industry = "Internet & Technology", CompanySize = "1000+", Description = "Vietnam's leading tech firm",
-                    Website = "https://vng.com.vn", LogoUrl = "https://logo.clearbit.com/vng.com.vn",
+                    Website = "https://vng.com.vn", LogoUrl = "https://logo.clearbit.com/vng.com.vn", CompanyType = "IT Product",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license3.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
                 
@@ -594,7 +594,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     JobType[] jobTypes = { JobType.FULL_TIME, JobType.PART_TIME, JobType.CONTRACT, JobType.FREELANCE, JobType.INTERNSHIP };
                     JobStatus[] statuses = { JobStatus.PUBLISHED, JobStatus.PUBLISHED, JobStatus.PUBLISHED, JobStatus.DRAFT, JobStatus.CLOSED };
 
-                    string[] jobTitlesPrefixes = { "Senior", "Junior", "Middle", "Lead", "Principal" };
+                    string[] jobTitlesPrefixes = { "Senior", "Junior", "Middle", "Lead", "Principal", "Fresher", "Internship", "Manager" };
+                    string[] workingModels = { "At office", "Remote", "Hybrid" };
+                    string[] jobDomains = { "Backend", "Frontend", "Fullstack", "Mobile", "DevOps", "AI/ML", "Data" };
                     
                     for (int i = 1; i <= 60; i++)
                     {
@@ -606,10 +608,12 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         string location = locations[random.Next(locations.Length)];
                         JobType jobType = jobTypes[random.Next(jobTypes.Length)];
                         JobStatus status = statuses[random.Next(statuses.Length)];
+                        string level = prefix;
+                        string workingModel = workingModels[random.Next(workingModels.Length)];
+                        string jobDomain = jobDomains[random.Next(jobDomains.Length)];
                         
-                        bool isVnd = random.Next(100) > 70; // 30% jobs in VND, 70% in USD
-                        decimal minSalary = isVnd ? random.Next(10, 30) * 1000000 : random.Next(5, 20) * 100;
-                        decimal maxSalary = minSalary + (isVnd ? random.Next(10, 20) * 1000000 : random.Next(5, 15) * 100);
+                        decimal minSalary = random.Next(5, 20) * 100;
+                        decimal maxSalary = minSalary + random.Next(5, 15) * 100;
 
                         var jobId = System.Guid.NewGuid();
                         var publishedAt = System.DateTime.UtcNow.AddDays(-random.Next(1, 60));
@@ -628,10 +632,13 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                             Benefits = "- Competitive salary\n- Health insurance\n- Paid time off\n- Flexible working hours",
                             MinSalary = minSalary,
                             MaxSalary = maxSalary,
-                            Currency = isVnd ? "VND" : "USD",
+                            Currency = "USD",
                             Location = location,
                             JobType = jobType,
                             Status = status,
+                            Level = level,
+                            WorkingModel = workingModel,
+                            JobDomain = jobDomain,
                             ApplicationCount = random.Next(0, 100),
                             ViewCount = random.Next(100, 5000),
                             PublishedAt = status == JobStatus.PUBLISHED ? publishedAt : null,

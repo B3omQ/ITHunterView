@@ -37,10 +37,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 jobsQuery = jobsQuery.Where(j => j.MinSalary >= query.MinSalary.Value || j.MaxSalary >= query.MinSalary.Value);
             }
 
-            if (!string.IsNullOrEmpty(query.Currency))
+            if (query.MaxSalary.HasValue)
             {
-                var upperCurrency = query.Currency.ToUpper();
-                jobsQuery = jobsQuery.Where(j => j.Currency == upperCurrency);
+                jobsQuery = jobsQuery.Where(j => j.MinSalary <= query.MaxSalary.Value || j.MaxSalary <= query.MaxSalary.Value);
             }
 
             if (query.PostedWithinDays.HasValue)
@@ -60,6 +59,21 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 jobsQuery = jobsQuery.Where(j => j.JobType == query.JobType.Value);
             }
 
+            if (query.Levels != null && query.Levels.Any())
+            {
+                jobsQuery = jobsQuery.Where(j => query.Levels.Contains(j.Level));
+            }
+
+            if (query.WorkingModels != null && query.WorkingModels.Any())
+            {
+                jobsQuery = jobsQuery.Where(j => query.WorkingModels.Contains(j.WorkingModel));
+            }
+
+            if (query.JobDomains != null && query.JobDomains.Any())
+            {
+                jobsQuery = jobsQuery.Where(j => query.JobDomains.Contains(j.JobDomain));
+            }
+
             if (query.CategoryId.HasValue)
             {
                 jobsQuery = jobsQuery.Where(j => j.CategoryId == query.CategoryId.Value);
@@ -73,6 +87,16 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             {
                 var lowerCompany = query.CompanyName.ToLower();
                 queryable = queryable.Where(x => x.company.Name != null && x.company.Name.ToLower().Contains(lowerCompany));
+            }
+
+            if (query.CompanyIndustries != null && query.CompanyIndustries.Any())
+            {
+                queryable = queryable.Where(x => query.CompanyIndustries.Contains(x.company.Industry));
+            }
+
+            if (query.CompanyTypes != null && query.CompanyTypes.Any())
+            {
+                queryable = queryable.Where(x => query.CompanyTypes.Contains(x.company.CompanyType));
             }
 
             if (!string.IsNullOrEmpty(query.Skill))
