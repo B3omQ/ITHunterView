@@ -112,7 +112,11 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
             )}
 
             {/* Hover Mask */}
-            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div
+              className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
+                isUploadingAvatar ? 'opacity-100 bg-black/60' : 'opacity-0 group-hover:opacity-100 bg-black/40'
+              }`}
+            >
               {isUploadingAvatar ? (
                 <Loader2 className="w-6 h-6 text-white animate-spin" />
               ) : (
