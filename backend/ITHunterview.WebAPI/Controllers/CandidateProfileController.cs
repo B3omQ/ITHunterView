@@ -64,15 +64,39 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(new ResponseBase<PersonalInfoResponseDto>(result));
         }
 
-        /// <summary>PUT /api/v1/candidate/profile/personal-info — Save all personal info fields</summary>
-        [HttpPut("personal-info")]
-        public async Task<ActionResult<ResponseBase<PersonalInfoResponseDto>>> UpdatePersonalInfo([FromBody] PersonalInfoUpdateRequestDto request)
+        /// <summary>PUT /api/v1/candidate/profile/basic-info — Save basic info fields</summary>
+        [HttpPut("basic-info")]
+        public async Task<ActionResult<ResponseBase<PersonalInfoResponseDto>>> UpdateBasicInfo([FromBody] BasicInfoUpdateRequestDto request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
             var userId = GetUserId();
-            var result = await _profileUseCase.UpdatePersonalInfoAsync(userId, request);
+            var result = await _profileUseCase.UpdateBasicInfoAsync(userId, request);
+            return Ok(new ResponseBase<PersonalInfoResponseDto>(result));
+        }
+
+        /// <summary>PUT /api/v1/candidate/profile/about-me — Save about me field</summary>
+        [HttpPut("about-me")]
+        public async Task<ActionResult<ResponseBase<PersonalInfoResponseDto>>> UpdateAboutMe([FromBody] AboutMeUpdateRequestDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var userId = GetUserId();
+            var result = await _profileUseCase.UpdateAboutMeAsync(userId, request);
+            return Ok(new ResponseBase<PersonalInfoResponseDto>(result));
+        }
+
+        /// <summary>PUT /api/v1/candidate/profile/social-links — Save social links fields</summary>
+        [HttpPut("social-links")]
+        public async Task<ActionResult<ResponseBase<PersonalInfoResponseDto>>> UpdateSocialLinks([FromBody] SocialLinksUpdateRequestDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var userId = GetUserId();
+            var result = await _profileUseCase.UpdateSocialLinksAsync(userId, request);
             return Ok(new ResponseBase<PersonalInfoResponseDto>(result));
         }
 

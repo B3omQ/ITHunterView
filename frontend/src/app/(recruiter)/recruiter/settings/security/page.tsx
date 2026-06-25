@@ -39,8 +39,8 @@ export default function SecuritySettingsPage() {
         return
       }
       setSuccess("Password updated successfully. You will be logged out shortly to sign in with your new password.")
-      setTimeout(() => {
-        logout()
+      setTimeout(async () => {
+        await logout()
       }, 3000)
     } catch {
       setError("Cannot connect to the server.")

@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 import {
   useCandidateSkills,
-  useSkillSuggestions,
+  useAllMasterSkills,
   useAddSkill,
   useRemoveSkill,
 } from '@/hooks/useCandidateProfile';
@@ -16,47 +17,37 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
-import { Award, Plus, Search, Loader2, Sparkles } from 'lucide-react';
+import { Award, Plus, Search, Loader2 } from 'lucide-react';
 
 export function SkillsTab() {
   const { data: skills, isLoading: isLoadingSkills, isError: isErrorSkills } = useCandidateSkills();
-  const { data: suggestions, isLoading: isLoadingSuggestions } = useSkillSuggestions();
+  const { data: allMasterSkills, isLoading: isLoadingMasterSkills } = useAllMasterSkills();
   const { mutate: addSkill, isPending: isAddingSkill } = useAddSkill();
   const { mutate: removeSkill, isPending: isRemovingSkill } = useRemoveSkill();
 
   // Search autocomplete states
   const [keyword, setKeyword] = useState('');
-  const [searchResults, setSearchResults] = useState<SkillSearchResponse[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Debounce search effect
-  useEffect(() => {
-    if (!keyword.trim()) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
+  // Derive search results using useMemo (zero-latency, no extra re-renders)
+  const searchResults = useMemo(() => {
+    if (!keyword.trim() || !allMasterSkills) {
+      return [];
     }
 
-    setIsSearching(true);
-    const timer = setTimeout(() => {
-      candidateService
-        .searchSkills(keyword, true)
-        .then((res) => {
-          if (res.success && res.data) {
-            setSearchResults(res.data);
-          }
-        })
-        .catch((err) => {
-          console.error(err);
-        })
-        .finally(() => {
-          setIsSearching(false);
-        });
-    }, 300);
+    const lowerKeyword = keyword.toLowerCase();
+    return allMasterSkills
+      .filter((s) => s.name.toLowerCase().includes(lowerKeyword))
+      // Exclude skills the user already has
+      .filter((s) => !skills?.some((owned) => owned.skillId === s.id))
+      .slice(0, 20); // Top 20 results
+  }, [keyword, allMasterSkills, skills]);
 
-    return () => clearTimeout(timer);
+  // Reset focus when search changes
+  useEffect(() => {
+    setFocusedIndex(-1);
   }, [keyword]);
 
   // Click outside listener for dropdown
@@ -70,7 +61,7 @@ export function SkillsTab() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  if (isLoadingSkills) {
+  if (isLoadingSkills || isLoadingMasterSkills) {
     return <PageLoader message="Loading skills..." />;
   }
 
@@ -83,12 +74,14 @@ export function SkillsTab() {
   }
 
   const handleAddSkillId = (skillId: number) => {
+    if (isAddingSkill) return;
     addSkill(
       { skillId },
       {
         onSuccess: () => {
           setKeyword('');
           setShowDropdown(false);
+          setFocusedIndex(-1);
         },
       }
     );
@@ -126,39 +119,50 @@ export function SkillsTab() {
                   setShowDropdown(true);
                 }}
                 onFocus={() => setShowDropdown(true)}
+                onKeyDown={(e) => {
+                  if (!showDropdown || searchResults.length === 0) return;
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setFocusedIndex((prev) => (prev < searchResults.length - 1 ? prev + 1 : prev));
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setFocusedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (focusedIndex >= 0 && searchResults[focusedIndex]) {
+                      handleAddSkillId(searchResults[focusedIndex].id);
+                    }
+                  } else if (e.key === 'Escape') {
+                    setShowDropdown(false);
+                  }
+                }}
                 className="pl-9 bg-background/50 border-border/60 focus-visible:ring-primary/30"
               />
-              {isSearching && (
-                <div className="absolute right-3 top-3">
-                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                </div>
-              )}
             </div>
 
             {/* Dropdown Menu */}
             {showDropdown && (keyword.trim() !== '' || searchResults.length > 0) && (
               <Card className="absolute left-0 right-0 mt-1.5 z-20 border border-border/40 bg-popover/95 backdrop-blur-md shadow-lg max-h-60 overflow-y-auto rounded-xl">
                 <CardContent className="p-2">
-                  {isSearching ? (
-                    <div className="py-3 px-4 text-xs text-muted-foreground flex items-center gap-2">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Searching...
-                    </div>
-                  ) : searchResults.length === 0 ? (
+                  {searchResults.length === 0 ? (
                     <div className="py-3 px-4 text-xs text-muted-foreground">
                       No matching skills found
                     </div>
                   ) : (
                     <ul className="space-y-0.5">
-                      {searchResults.map((s) => (
+                      {searchResults.map((s, index) => (
                         <li key={s.id}>
                           <button
                             type="button"
                             onClick={() => handleAddSkillId(s.id)}
                             disabled={isAddingSkill}
-                            className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-accent/80 transition-colors flex items-center justify-between"
+                            className={cn(
+                              "w-full text-left px-3 py-2 text-sm rounded-lg transition-colors flex items-center justify-between",
+                              focusedIndex === index ? "bg-accent/80 text-accent-foreground" : "hover:bg-accent/50"
+                            )}
                           >
-                            <span className="font-medium text-foreground">{s.name}</span>
-                            <Plus className="w-3.5 h-3.5 text-muted-foreground" />
+                            <span className="font-medium">{s.name}</span>
+                            <Plus className={cn("w-3.5 h-3.5", focusedIndex === index ? "text-foreground" : "text-muted-foreground")} />
                           </button>
                         </li>
                       ))}
@@ -191,44 +195,6 @@ export function SkillsTab() {
               </div>
             )}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Suggestions Section */}
-      <Card className="border border-border/40 bg-card/60 backdrop-blur-md rounded-xl shadow-md overflow-hidden">
-        <CardHeader className="border-b border-border/10 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <CardTitle className="text-lg font-bold">Suggested for You</CardTitle>
-              <CardDescription className="text-xs">Based on current market trends and jobs</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-6">
-          {isLoadingSuggestions ? (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            </div>
-          ) : !suggestions || suggestions.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic">No recommendations available at this time.</p>
-          ) : (
-            <div className="flex flex-wrap gap-2.5">
-              {suggestions.map((s) => (
-                <Badge
-                  key={s.skillId}
-                  variant="outline"
-                  className="pl-3 pr-2 py-1.5 rounded-full border-border/60 bg-background/30 text-muted-foreground flex items-center gap-1.5 text-xs font-semibold cursor-pointer hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all duration-200"
-                  onClick={() => handleAddSkillId(s.skillId)}
-                >
-                  <span>{s.name}</span>
-                  <Plus className="w-3 h-3 text-muted-foreground group-hover:text-primary" />
-                </Badge>
-              ))}
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

@@ -2,12 +2,8 @@ export interface ProfileSummary {
   id: string;
   fullName: string;
   avatarUrl: string | null;
-  currentTitle: string | null;
   location: string | null;
   isVisibleToRecruiters: boolean;
-  profileCompletionPercentage: number;
-  completionHint: string | null;
-  lastSavedAt: string | null;
 }
 
 export interface UpdateVisibilityRequest {
@@ -31,12 +27,18 @@ export interface PersonalInfo {
   updatedAt: string | null;
 }
 
-export interface PersonalInfoUpdateRequest {
+export interface BasicInfoUpdateRequest {
   firstName: string;
   lastName: string;
   phone: string | null;
   location: string | null;
+}
+
+export interface AboutMeUpdateRequest {
   aboutMe: string | null;
+}
+
+export interface SocialLinksUpdateRequest {
   portfolioUrl: string | null;
   linkedInUrl: string | null;
   githubUrl: string | null;

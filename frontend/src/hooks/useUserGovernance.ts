@@ -49,3 +49,16 @@ export function useCreateStaff() {
   });
 }
 
+export function useCreateStaff() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: userGovernanceService.createStaff,
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ['users'] });
+        queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
+      }
+    },
+  });
+}
+

@@ -14,6 +14,16 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
+export interface PaginatedDataResponse<T> {
+  data: T[];
+  meta: {
+    currentPage: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+}
+
 export interface ApiError {
   message: string;
   statusCode?: number;

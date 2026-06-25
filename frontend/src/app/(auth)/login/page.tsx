@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react"
 import { authService } from "@/services/auth.service"
@@ -9,8 +9,10 @@ import { useAuthStore } from "@/store/auth.store"
 import { getDashboardPath } from "@/lib/constants"
 import { Logo } from "@/components/layout/Logo"
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirect')
   const { setAuth } = useAuthStore()
 
   const [email, setEmail] = useState("")
@@ -18,6 +20,49 @@ export default function LoginPage() {
   const [showPwd, setShowPwd] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash) {
+      const hash = window.location.hash.substring(1)
+      const params = new URLSearchParams(hash)
+      const idToken = params.get("id_token")
+      const state = params.get("state") || localStorage.getItem("google_auth_role") || "candidate"
+
+      if (idToken) {
+        setLoading(true)
+        setError("")
+        // Clean up hash in URL
+        window.history.replaceState(null, "", window.location.pathname)
+        localStorage.removeItem("google_auth_role")
+
+        authService
+          .googleAuth(idToken, state)
+          .then((res) => {
+            if (!res.success || !res.data) {
+              setError(res.message ?? "Đăng nhập Google thất bại")
+              return
+            }
+            const payload = res.data
+            const user = {
+              id: payload.userId,
+              email: payload.email,
+              fullName: payload.fullName,
+              role: { name: payload.role },
+              avatarUrl: payload.avatarUrl,
+            }
+            setAuth(payload.accessToken, payload.refreshToken, user)
+            router.push(getDashboardPath(user.role.name))
+          })
+          .catch((err: any) => {
+            console.error("Google auth error:", err)
+            setError(`Lỗi xác thực Google: ${err.message || "Không thể kết nối đến máy chủ."}`)
+          })
+          .finally(() => {
+            setLoading(false)
+          })
+      }
+    }
+  }, [router, setAuth])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,8 +83,8 @@ export default function LoginPage() {
         role: { name: payload.role },
         avatarUrl: payload.avatarUrl
       };
-      setAuth(payload.accessToken, user);
-      router.push(getDashboardPath(user.role.name));
+      setAuth(payload.accessToken, payload.refreshToken, user);
+      router.push(redirectTo || getDashboardPath(user.role.name));
     } catch (err: any) {
       console.error("Login error details:", err)
       setError(err.response?.data?.message || err.response?.data?.Message || `Lỗi kết nối: ${err.message || "Không thể kết nối đến máy chủ."}`)
@@ -49,8 +94,23 @@ export default function LoginPage() {
   }
 
   const handleGoogle = () => {
-    // In production: trigger Google Sign-In, get idToken, then call authApi.googleAuth
-    alert("Google OAuth – cần cấu hình Google Client ID")
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+    if (!clientId) {
+      setError("Chưa cấu hình Google Client ID. Vui lòng kiểm tra file môi trường.")
+      return
+    }
+    setError("")
+    setLoading(true)
+    const redirectUri = window.location.origin + "/login"
+    localStorage.setItem("google_auth_role", "candidate")
+    const nonce = Math.random().toString(36).substring(2)
+    const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+      clientId
+    )}&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}&response_type=id_token&scope=openid%20profile%20email&nonce=${nonce}&state=candidate`
+    
+    window.location.href = oauthUrl
   }
 
   return (
@@ -104,7 +164,7 @@ export default function LoginPage() {
                   Password
                 </label>
                 <Link
-                  href="/auth/forgot-password"
+                  href="/forgot-password"
                   className="text-xs text-primary hover:text-primary/80 transition-colors"
                 >
                   Forgot password?
@@ -138,7 +198,7 @@ export default function LoginPage() {
               id="login-submit"
               type="submit"
               disabled={loading}
-              className="btn-primary-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
+              className="w-full h-11 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none transition-all"
             >
               {loading ? (
                 <><Loader2 size={16} className="animate-spin" /> Signing in…</>
@@ -169,7 +229,7 @@ export default function LoginPage() {
           {/* Footer */}
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
-            <Link href="/auth/register" className="text-primary hover:text-primary/80 font-medium transition-colors">
+            <Link href="/register" className="text-primary hover:text-primary/80 font-medium transition-colors">
               Sign up
             </Link>
           </p>
@@ -179,6 +239,14 @@ export default function LoginPage() {
       
     </div>
   )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center" />}>
+      <LoginForm />
+    </Suspense>
+  );
 }
 
 function GoogleIcon() {

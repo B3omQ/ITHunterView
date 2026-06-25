@@ -50,15 +50,14 @@ namespace ITHunterview.Service.UseCase
             }).ToList();
         }
 
-        public async Task<List<SkillResponseDto>> GetSuggestionsAsync(Guid userId)
+        public async Task<List<SkillSearchResponseDto>> GetAllActiveMasterSkillsAsync()
         {
-            var suggestions = await _skillRepo.GetSuggestedSkillsAsync(userId);
-
-            return suggestions.Select(s => new SkillResponseDto
+            var skills = await _skillRepo.GetAllActiveMasterSkillsAsync();
+            return skills.Select(s => new SkillSearchResponseDto
             {
-                SkillId = s.Id,
+                Id = s.Id,
                 Name = s.Name,
-                ProficiencyLevel = null
+                CategoryId = s.CategoryId
             }).ToList();
         }
 

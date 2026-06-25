@@ -3,7 +3,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
-using ITHunterview.Service.Interface.Persistence;
+using ITHunterview.Service.Interface.Infrastructure;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
@@ -19,7 +19,7 @@ namespace ITHunterview.WebAPI.Middlewares
             _next = next;
         }
 
-        public async Task InvokeAsync(HttpContext context, IMemoryCache cache, IUserGovernanceUseCase userGovernanceUseCase, IAuditLogRepository auditLogRepository)
+        public async Task InvokeAsync(HttpContext context, IMemoryCache cache, IUserGovernanceUseCase userGovernanceUseCase, IAuditLogQueue auditLogQueue)
         {
             if (context.User.Identity?.IsAuthenticated == true)
             {
@@ -57,7 +57,7 @@ namespace ITHunterview.WebAPI.Middlewares
             await _next(context);
         }
 
-        private async Task LogBlockedUserAsync(HttpContext context, Guid userId, string statusType, string actionDescription, IAuditLogRepository auditLogRepository)
+        private Task LogBlockedUserAsync(HttpContext context, Guid userId, string statusType, string actionDescription, IAuditLogQueue auditLogQueue)
         {
             try
             {
@@ -86,12 +86,13 @@ namespace ITHunterview.WebAPI.Middlewares
                     CreatedAt = DateTime.UtcNow
                 };
 
-                await auditLogRepository.AddActivityLogAsync(log);
+                auditLogQueue.QueueBackgroundWorkItem(log);
             }
             catch
             {
                 // Tránh ảnh hưởng đến tiến trình response
             }
+            return Task.CompletedTask;
         }
     }
 }

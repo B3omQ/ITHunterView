@@ -36,4 +36,9 @@ export const userGovernanceService = {
     api
       .post<ApiResponse<string>>('/api/user-governance/staff', dto)
       .then((res) => res.data),
+
+  createStaff: (dto: CreateStaffDto) =>
+    api
+      .post<ApiResponse<string>>('/api/user-governance/staff', dto)
+      .then((res) => res.data),
 };

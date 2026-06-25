@@ -15,6 +15,12 @@ namespace ITHunterview.Service.Service
 
         public CloudinaryService(IOptions<CloudinarySettings> config)
         {
+            if (string.IsNullOrEmpty(config.Value.CloudName) || config.Value.CloudName == "your-cloud-name")
+            {
+                // Bypassed for local testing
+                return;
+            }
+
             var acc = new Account(
                 config.Value.CloudName,
                 config.Value.ApiKey,
@@ -25,6 +31,12 @@ namespace ITHunterview.Service.Service
 
         public async Task<string> UploadFileAsync(Stream fileStream, string fileName, string folderName)
         {
+            // Tạm thời trả về link ảo nếu chưa cài đặt Cloudinary, không ảnh hưởng đến code gốc bên dưới
+            if (_cloudinary == null)
+            {
+                return $"https://dummyimage.com/cv-mock/{folderName}/{fileName}";
+            }
+
             if (fileStream == null || fileStream.Length == 0)
             {
                 throw new ArgumentException("File is empty or null");
@@ -65,6 +77,50 @@ namespace ITHunterview.Service.Service
                 }
                 return uploadResult.SecureUrl.ToString();
             }
+        }
+
+        public async Task<string> UploadAvatarAsync(Stream fileStream, string fileName, string folderName, string publicId)
+        {
+            if (_cloudinary == null)
+            {
+                return $"https://dummyimage.com/cv-mock/{folderName}/{fileName}";
+            }
+
+            if (fileStream == null || fileStream.Length == 0)
+            {
+                throw new ArgumentException("File is empty or null");
+            }
+
+            var uploadParams = new ImageUploadParams
+            {
+                File = new FileDescription(fileName, fileStream),
+                Folder = folderName,
+                PublicId = publicId,
+                Transformation = new Transformation().Width(400).Height(400).Crop("fill").Gravity("face").Quality("auto").FetchFormat("auto")
+            };
+
+            var imgResult = await _cloudinary.UploadAsync(uploadParams);
+            if (imgResult.Error != null)
+            {
+                throw new Exception(imgResult.Error.Message);
+            }
+            return imgResult.SecureUrl.ToString();
+        }
+
+        public async Task<bool> DeleteFileAsync(string publicId)
+        {
+            if (_cloudinary == null)
+            {
+                return true;
+            }
+
+            if (string.IsNullOrEmpty(publicId))
+                return false;
+
+            var deletionParams = new DeletionParams(publicId);
+            var result = await _cloudinary.DestroyAsync(deletionParams);
+
+            return result.Result == "ok";
         }
     }
 }

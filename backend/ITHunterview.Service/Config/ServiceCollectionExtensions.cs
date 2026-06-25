@@ -17,9 +17,13 @@ namespace ITHunterview.Service.Config
             // Repositories — Auth
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<ITokenRepository, TokenRepository>();
+            services.AddScoped<IJobPostingRepository, JobPostingRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IEmailVerificationRepository, EmailVerificationRepository>();
             services.AddScoped<IPasswordResetRepository, PasswordResetRepository>();
+            services.AddScoped<IJobCategoryRepository, JobCategoryRepository>();
+            services.AddScoped<ISkillRepository, SkillRepository>();
+            services.AddScoped<IJobApplicationRepository, JobApplicationRepository>();
 
             services.AddScoped<ICvRepository, CvRepository>();
             services.AddScoped<ICompanyRepository, CompanyRepository>();
@@ -27,6 +31,8 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ISkillCategoryRepository, SkillCategoryRepository>();
             services.AddScoped<IMajorRepository, MajorRepository>();
             services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+            services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+            services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
 
             // Repositories — Candidate Profile
             services.AddScoped<ICandidateProfileRepository, CandidateProfileRepository>();
@@ -43,6 +49,11 @@ namespace ITHunterview.Service.Config
 
             // Use Cases — Auth
             services.AddScoped<IAuthUseCase, AuthUseCase>();
+            services.AddScoped<IJobPostingsUseCase, JobPostingsUseCase>();
+            services.AddScoped<IJobCategoriesUseCase, JobCategoriesUseCase>();
+            services.AddScoped<ISkillsUseCase, SkillsUseCase>();
+            services.AddScoped<IUserUseCase, UserUseCase>();
+            services.AddScoped<IJobApplicationUseCase, JobApplicationUseCase>();
 
             services.AddScoped<ICvUseCase, CvUseCase>();
             services.AddScoped<ICompanyUseCase, CompanyUseCase>();
@@ -50,6 +61,10 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IMajorUseCase, MajorUseCase>();
             services.AddScoped<IUserGovernanceUseCase, UserGovernanceUseCase>();
             services.AddScoped<IAuditLogUseCase, AuditLogUseCase>();
+            services.AddScoped<ISubscriptionAdminUseCase, SubscriptionAdminUseCase>();
+            services.AddScoped<ICoinConfigUseCase, CoinConfigUseCase>();
+            services.AddScoped<ICandidateFeatureUsageUseCase, CandidateFeatureUsageUseCase>();
+            services.AddScoped<IWalletUseCase, WalletUseCase>();
 
 
             // Use Cases — Candidate Profile
@@ -58,6 +73,12 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICandidateExperienceUseCase, CandidateExperienceUseCase>();
             services.AddScoped<ICandidateEducationUseCase, CandidateEducationUseCase>();
             services.AddScoped<ICandidateCertificationUseCase, CandidateCertificationUseCase>();
+
+            // Job Search & Saved Jobs
+            services.AddScoped<IJobSearchRepository, JobSearchRepository>();
+            services.AddScoped<IUserSavedJobRepository, UserSavedJobRepository>();
+            services.AddScoped<IPublicJobUseCase, PublicJobUseCase>();
+            services.AddScoped<ICandidateJobUseCase, CandidateJobUseCase>();
 
 
             return services;

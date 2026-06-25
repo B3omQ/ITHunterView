@@ -2,6 +2,7 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Service.DTOs.CandidateProfile;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
+using ITHunterview.Service.Interface.Service;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -12,19 +13,22 @@ namespace ITHunterview.Service.UseCase
         private readonly ICandidateEducationRepository _eduRepo;
         private readonly ICandidateCertificationRepository _certRepo;
         private readonly ICandidateSkillRepository _skillRepo;
+        private readonly IFileUploadService _fileUploadService;
 
         public CandidateProfileUseCase(
             ICandidateProfileRepository profileRepo,
             ICandidateExperienceRepository expRepo,
             ICandidateEducationRepository eduRepo,
             ICandidateCertificationRepository certRepo,
-            ICandidateSkillRepository skillRepo)
+            ICandidateSkillRepository skillRepo,
+            IFileUploadService fileUploadService)
         {
             _profileRepo = profileRepo;
             _expRepo = expRepo;
             _eduRepo = eduRepo;
             _certRepo = certRepo;
             _skillRepo = skillRepo;
+            _fileUploadService = fileUploadService;
         }
 
         // ─── Personal Info ─────────────────────────────────────────────────────
@@ -36,23 +40,48 @@ namespace ITHunterview.Service.UseCase
             return MapToPersonalInfoDto(profile);
         }
 
-        public async Task<PersonalInfoResponseDto> UpdatePersonalInfoAsync(Guid userId, PersonalInfoUpdateRequestDto request)
+        public async Task<PersonalInfoResponseDto> UpdateBasicInfoAsync(Guid userId, BasicInfoUpdateRequestDto request)
         {
-            if (request.AboutMe != null && request.AboutMe.Length > 500)
-                throw new ArgumentException("AboutMe không được vượt quá 500 ký tự.");
-
             var profile = await GetOrCreateProfileAsync(userId);
 
             profile.FirstName = request.FirstName;
             profile.LastName = request.LastName;
             profile.Phone = request.Phone;
             profile.Location = request.Location;
+
+            if (profile.User != null)
+                profile.User.UpdatedAt = DateTime.UtcNow;
+
+            await _profileRepo.SaveChangesAsync();
+
+            return MapToPersonalInfoDto(profile);
+        }
+
+        public async Task<PersonalInfoResponseDto> UpdateAboutMeAsync(Guid userId, AboutMeUpdateRequestDto request)
+        {
+            if (request.AboutMe != null && request.AboutMe.Length > 500)
+                throw new ArgumentException("AboutMe không được vượt quá 500 ký tự.");
+
+            var profile = await GetOrCreateProfileAsync(userId);
+
             profile.AboutMe = request.AboutMe;
+
+            if (profile.User != null)
+                profile.User.UpdatedAt = DateTime.UtcNow;
+
+            await _profileRepo.SaveChangesAsync();
+
+            return MapToPersonalInfoDto(profile);
+        }
+
+        public async Task<PersonalInfoResponseDto> UpdateSocialLinksAsync(Guid userId, SocialLinksUpdateRequestDto request)
+        {
+            var profile = await GetOrCreateProfileAsync(userId);
+
             profile.PortfolioUrl = request.PortfolioUrl;
             profile.LinkedinUrl = request.LinkedInUrl;
             profile.GithubUrl = request.GithubUrl;
 
-            // Track updated_at on the user record
             if (profile.User != null)
                 profile.User.UpdatedAt = DateTime.UtcNow;
 
@@ -80,19 +109,35 @@ namespace ITHunterview.Service.UseCase
             if (fileStream == null || fileSize == 0)
                 throw new ArgumentException("File ảnh không hợp lệ.");
 
-            var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp", "image/gif" };
+            var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/webp" };
             if (!allowedTypes.Contains(contentType.ToLower()))
-                throw new ArgumentException("Chỉ chấp nhận ảnh định dạng JPEG, PNG, WebP hoặc GIF.");
+                throw new ArgumentException("Chỉ chấp nhận ảnh định dạng JPG, JPEG, PNG, hoặc WebP.");
 
-            const long maxSizeBytes = 5 * 1024 * 1024; // 5 MB
+            const long maxSizeBytes = 3 * 1024 * 1024; // 3 MB
             if (fileSize > maxSizeBytes)
-                throw new ArgumentException("Ảnh không được vượt quá 5MB.");
-
-            // TODO: Replace with actual file storage service (S3/Azure/GCP)
-            var ext = Path.GetExtension(fileName);
-            var avatarUrl = $"/uploads/avatars/{userId}{ext}";
+                throw new ArgumentException("Ảnh không được vượt quá 3MB.");
 
             var profile = await GetOrCreateProfileAsync(userId);
+
+            // Xóa ảnh cũ trên Cloudinary (nếu có)
+            if (!string.IsNullOrEmpty(profile.AvatarUrl))
+            {
+                var oldPublicId = ExtractPublicIdFromUrl(profile.AvatarUrl);
+                if (!string.IsNullOrEmpty(oldPublicId))
+                {
+                    await _fileUploadService.DeleteFileAsync(oldPublicId);
+                }
+            }
+
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var publicId = $"{userId}_{timestamp}";
+
+            var avatarUrl = await _fileUploadService.UploadAvatarAsync(
+                fileStream, 
+                fileName, 
+                "job_seeking_system/avatars", 
+                publicId);
+
             profile.AvatarUrl = avatarUrl;
             await _profileRepo.SaveChangesAsync();
 
@@ -105,64 +150,39 @@ namespace ITHunterview.Service.UseCase
         {
             var profile = await GetOrCreateProfileAsync(userId);
 
-            // Suy luận currentTitle từ experience is_current = true
-            var experiences = await _expRepo.GetByUserIdAsync(userId);
-            var currentExp = experiences.FirstOrDefault(e => e.IsCurrent)
-                          ?? experiences.OrderByDescending(e => e.StartDate).FirstOrDefault();
-            var currentTitle = currentExp?.Title;
-
-            // Tính % completion (6 sections × ~16.67% mỗi section, làm tròn xuống bội 5)
-            var skills = await _skillRepo.GetByUserIdAsync(userId);
-            var educations = await _eduRepo.GetByUserIdAsync(userId);
-            var certs = await _certRepo.GetByUserIdAsync(userId);
-
-            var completedSections = 0;
-            if (!string.IsNullOrWhiteSpace(profile.FirstName) || !string.IsNullOrWhiteSpace(profile.LastName))
-                completedSections++;
-            if (!string.IsNullOrWhiteSpace(profile.AboutMe))
-                completedSections++;
-            if (skills.Any())
-                completedSections++;
-            if (experiences.Any())
-                completedSections++;
-            if (educations.Any())
-                completedSections++;
-            if (certs.Any())
-                completedSections++;
-
-            const int totalSections = 6;
-            var percentage = (int)Math.Round((double)completedSections / totalSections * 100);
-            // Làm tròn xuống bội 5 gần nhất
-            percentage = (percentage / 5) * 5;
-
-            var remaining = totalSections - completedSections;
-            var hint = remaining == 0
-                ? "Your profile is complete!"
-                : $"Add {remaining} more section{(remaining > 1 ? "s" : "")} to reach {Math.Min(percentage + 20, 100)}%";
-
-            // lastSavedAt = max updated_at từ tất cả related records
-            var timestamps = new List<DateTime?>();
-            timestamps.Add(profile.User?.UpdatedAt);
-            timestamps.AddRange(experiences.Select(e => (DateTime?)e.UpdatedAt));
-            timestamps.AddRange(educations.Select(e => (DateTime?)e.UpdatedAt));
-            var lastSavedAt = timestamps.Where(t => t.HasValue).Max(t => t);
-
             return new ProfileSummaryResponseDto
             {
                 Id = profile.Id,
                 FullName = string.Join(" ", new[] { profile.FirstName, profile.LastName }
                     .Where(s => !string.IsNullOrWhiteSpace(s))),
                 AvatarUrl = profile.AvatarUrl,
-                CurrentTitle = currentTitle,
                 Location = profile.Location,
-                IsVisibleToRecruiters = profile.IsVisibleToRecruiters,
-                ProfileCompletionPercentage = percentage,
-                CompletionHint = hint,
-                LastSavedAt = lastSavedAt
+                IsVisibleToRecruiters = profile.IsVisibleToRecruiters
             };
         }
 
         // ─── Private helpers ───────────────────────────────────────────────────
+
+        private static string? ExtractPublicIdFromUrl(string url)
+        {
+            if (string.IsNullOrEmpty(url) || !url.Contains("cloudinary.com")) return null;
+            
+            var parts = url.Split("upload/");
+            if (parts.Length < 2) return null;
+            
+            var afterUpload = parts[1]; // e.g. v1234567/job_seeking_system/avatars/abc.jpg
+            var versionSlashIndex = afterUpload.IndexOf('/');
+            if (versionSlashIndex == -1) return null;
+            
+            var publicIdWithExt = afterUpload.Substring(versionSlashIndex + 1);
+            var lastDotIndex = publicIdWithExt.LastIndexOf('.');
+            
+            if (lastDotIndex != -1)
+            {
+                return publicIdWithExt.Substring(0, lastDotIndex);
+            }
+            return publicIdWithExt;
+        }
 
         private async Task<CandidateProfiles> GetOrCreateProfileAsync(Guid userId)
         {

@@ -45,7 +45,7 @@ namespace ITHunterview.Domain.Entities
         [Column("operation_type")]
         public string? OperationType { get; set; }
 
-        [Column("snapshot_diff")]
+        [Column("snapshot_diff", TypeName = "jsonb")]
         public string? SnapshotDiff { get; set; }
     }
 }
