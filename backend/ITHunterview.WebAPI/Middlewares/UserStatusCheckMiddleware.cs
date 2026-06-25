@@ -33,7 +33,7 @@ namespace ITHunterview.WebAPI.Middlewares
                         var dbStatus = await userGovernanceUseCase.GetUserStatusAsync(userId);
                         if (dbStatus == null)
                         {
-                            await LogBlockedUserAsync(context, userId, "DELETED", "Account does not exist or has been deleted.", auditLogRepository);
+                            await LogBlockedUserAsync(context, userId, "DELETED", "Account does not exist or has been deleted.", auditLogQueue);
                             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                             await context.Response.WriteAsJsonAsync(new { message = "Invalid account or account has been deleted." });
                             return;
@@ -46,7 +46,7 @@ namespace ITHunterview.WebAPI.Middlewares
                     if (status == UserStatus.BANNED || status == UserStatus.INACTIVE)
                     {
                         var reason = status == UserStatus.BANNED ? "BANNED" : "INACTIVE";
-                        await LogBlockedUserAsync(context, userId, reason, $"Account in status {reason} attempted to access.", auditLogRepository);
+                        await LogBlockedUserAsync(context, userId, reason, $"Account in status {reason} attempted to access.", auditLogQueue);
                         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                         await context.Response.WriteAsJsonAsync(new { message = "Your account has been banned or deactivated." });
                         return;
