@@ -100,15 +100,36 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
             )}
             
             {/* Meta tags */}
-            <div className="flex items-center justify-between pt-3 border-t border-slate-100 mt-auto">
-              <Badge variant="outline" className="text-slate-500 bg-white border-slate-200">
-                {job.workingModel || job.jobExpertise || 'Unknown'}
-              </Badge>
+            <div className="flex flex-col gap-2 pt-3 border-t border-slate-100 mt-auto">
+              <div className="flex flex-wrap gap-1.5">
+                {job.level && (
+                  <Badge variant="outline" className="text-indigo-600 bg-indigo-50/50 border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700">
+                    {job.level}
+                  </Badge>
+                )}
+                {job.workingModel && (
+                  <Badge variant="outline" className="text-cyan-600 bg-cyan-50/50 border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700">
+                    {job.workingModel}
+                  </Badge>
+                )}
+                {job.jobExpertise && (
+                  <Badge variant="outline" className="text-rose-600 bg-rose-50/50 border-rose-200 hover:bg-rose-50 hover:text-rose-700">
+                    {job.jobExpertise}
+                  </Badge>
+                )}
+                {!job.level && !job.workingModel && !job.jobExpertise && (
+                  <Badge variant="outline" className="text-slate-500 bg-white border-slate-200">
+                    Unknown
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center justify-end">
               {job.publishedAt && (
                 <span className="text-xs text-slate-400 font-medium">
                   {new Date(job.publishedAt).toLocaleDateString()}
                 </span>
               )}
+              </div>
             </div>
           </div>
         </CardContent>
