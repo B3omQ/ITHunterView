@@ -202,14 +202,26 @@ export function JobSearchFilter() {
       {/* PART 1: Main Search Bar */}
       <form onSubmit={handleMainSearch} className="flex flex-col md:flex-row gap-3">
         {/* Search Input */}
-        <div className="flex-[2] relative">
-          <Search className="absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+        <div className="flex-[2] relative flex items-center">
+          <Search className="absolute left-4 h-5 w-5 text-slate-400" />
           <Input 
             placeholder="Enter keyword skills, job title, company..." 
-            className="pl-12 h-12 text-base border-slate-300 focus-visible:ring-primary shadow-sm" 
+            className="pl-12 pr-10 h-12 text-base border-slate-300 focus-visible:ring-primary shadow-sm" 
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
           />
+          {keyword && (
+            <button
+              type="button"
+              onClick={() => {
+                setKeyword("");
+                applyFilters({ query: "" });
+              }}
+              className="absolute right-3 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
         
         {/* Location Combobox */}
