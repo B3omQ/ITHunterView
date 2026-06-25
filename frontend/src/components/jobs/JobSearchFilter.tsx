@@ -55,19 +55,6 @@ const FilterCombobox = ({
   searchPlaceholder?: string
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [localSelected, setLocalSelected] = useState<string[]>(selected);
-
-  // Sync local selected with props when opened
-  useEffect(() => {
-    if (isOpen) {
-      setLocalSelected(selected);
-    }
-  }, [isOpen, selected]);
-
-  const handleApply = () => {
-    onChange(localSelected);
-    setIsOpen(false);
-  };
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -95,9 +82,9 @@ const FilterCombobox = ({
                       key={opt}
                       onSelect={() => {
                         const newSelected = isSelected
-                          ? localSelected.filter((s) => s !== opt)
-                          : [...localSelected, opt];
-                        setLocalSelected(newSelected);
+                          ? selected.filter((s) => s !== opt)
+                          : [...selected, opt];
+                        onChange(newSelected);
                       }}
                       className="flex items-center gap-2 cursor-pointer"
                     >
@@ -109,11 +96,6 @@ const FilterCombobox = ({
               </ScrollArea>
             </CommandGroup>
           </CommandList>
-          <div className="p-2 border-t border-slate-100 dark:border-slate-800">
-            <Button className="w-full" size="sm" onClick={handleApply}>
-              Apply Filter
-            </Button>
-          </div>
         </Command>
       </PopoverContent>
     </Popover>
