@@ -80,6 +80,7 @@ const FilterCombobox = ({
                   return (
                     <CommandItem
                       key={opt}
+                      value={opt}
                       onSelect={() => {
                         const newSelected = isSelected
                           ? selected.filter((s) => s !== opt)
@@ -472,6 +473,7 @@ export function JobSearchFilter() {
                               {JOB_DOMAINS.map(jd => (
                                 <CommandItem
                                   key={jd}
+                                  value={jd}
                                   onSelect={() => {
                                     setPendingJobDomains(prev => prev.includes(jd) ? prev.filter(x => x !== jd) : [...prev, jd]);
                                   }}
@@ -501,6 +503,7 @@ export function JobSearchFilter() {
                               {COMPANY_INDUSTRIES.map(ci => (
                                 <CommandItem
                                   key={ci}
+                                  value={ci}
                                   onSelect={() => {
                                     setPendingCompanyIndustries(prev => prev.includes(ci) ? prev.filter(x => x !== ci) : [...prev, ci]);
                                   }}

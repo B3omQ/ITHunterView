@@ -4,6 +4,9 @@ import { authStore } from '@/store/auth.store';
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:50504',
   timeout: 15000,
+  paramsSerializer: {
+    indexes: null
+  }
 });
 
 api.interceptors.request.use((config) => {
