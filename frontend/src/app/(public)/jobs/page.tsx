@@ -76,16 +76,16 @@ function PublicJobsContent() {
     <div className="flex flex-col min-h-[calc(100vh-64px)] bg-white">
       {/* Top Filter */}
       <div className="bg-white w-full">
-        <div className="container mx-auto p-4 lg:py-4 lg:px-6">
+        <div className="container mx-auto px-4 pt-4 pb-0 lg:px-6 lg:pt-4 lg:pb-0">
           <JobSearchFilter />
         </div>
       </div>
 
       {/* Main Split Content */}
-      <div className="flex flex-1 container mx-auto lg:px-6 items-start">
+      <div className="flex flex-1 container mx-auto px-4 lg:px-6 items-start gap-4 lg:gap-5">
         {/* Left Column: Job List */}
-        <div className="w-full lg:w-[45%] xl:w-[40%] flex flex-col bg-white">
-          <div className="p-4 lg:p-6 flex-1">
+        <div className="w-full lg:w-[40%] xl:w-[35%] flex flex-col bg-white">
+          <div className="pb-4 pt-2 lg:pb-6 lg:pt-2 flex-1">
             {isLoading ? (
               <div className="flex flex-col gap-4">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -140,7 +140,7 @@ function PublicJobsContent() {
         </div>
 
         {/* Right Column: Job Detail (Desktop Only) */}
-        <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] flex-col p-4 lg:p-6 sticky top-[64px] h-[calc(100vh-64px)] overflow-hidden">
+        <div className="hidden lg:flex lg:w-[60%] xl:w-[65%] flex-col pb-4 pt-2 lg:pb-6 lg:pt-2 sticky top-[64px] h-[calc(100vh-64px)] overflow-hidden">
           <Card className="w-full h-full overflow-hidden flex flex-col shadow-none">
             {selectedJobId ? (
               <div className="h-full overflow-y-auto overscroll-contain">

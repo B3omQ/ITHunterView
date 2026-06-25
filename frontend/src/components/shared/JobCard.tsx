@@ -38,9 +38,9 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
           </>
         )}
         
-        <CardContent className={`p-5 flex-1 flex flex-col relative ${isActive ? 'pl-6' : ''}`}>
+        <CardContent className={`px-4 py-2 flex-1 flex flex-col relative ${isActive ? 'pl-5' : ''}`}>
 
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             {/* Posted time */}
             {job.publishedAt && (
               <span className="text-sm text-slate-400 font-medium">
@@ -54,12 +54,12 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
             </h3>
 
             {/* Company Info */}
-            <div className="flex items-center gap-3 mt-1">
-              <div className="w-10 h-10 rounded overflow-hidden bg-white flex items-center justify-center shrink-0 border border-slate-200 p-1">
+            <div className="flex items-center gap-2 mt-1">
+              <div className="w-8 h-8 rounded overflow-hidden bg-white flex items-center justify-center shrink-0 border border-slate-200 p-1">
                 {job.logoUrl ? (
                   <img src={job.logoUrl} alt={job.companyName} className="object-contain w-full h-full" />
                 ) : (
-                  <Briefcase className="text-slate-400 w-5 h-5" />
+                  <Briefcase className="text-slate-400 w-4 h-4" />
                 )}
               </div>
               <p className="text-slate-600 text-sm font-medium uppercase tracking-wide line-clamp-1">{job.companyName}</p>
@@ -76,9 +76,9 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
             </div>
           </div>
 
-          <div className="border-b border-dashed border-slate-200 my-4"></div>
+          <div className="border-b border-dashed border-slate-200 my-3"></div>
 
-          <div className="flex flex-col gap-2 mb-4">
+          <div className="flex flex-col gap-1.5 mb-3">
             {job.level && (
               <div className="flex items-center gap-2 text-slate-600 text-sm">
                 <CheckSquare className="w-4 h-4 text-slate-400 shrink-0" />
@@ -104,7 +104,7 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
 
           {/* Skills */}
           <div className="mt-auto">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {job.skills && job.skills.length > 0 ? (
                 <>
                   {job.skills.slice(0, 5).map(skill => (

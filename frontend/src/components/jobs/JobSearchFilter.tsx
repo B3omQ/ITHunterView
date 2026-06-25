@@ -60,7 +60,7 @@ const FilterCombobox = ({
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger
         render={
-          <Button variant="outline" className={cn("justify-between font-normal h-10 w-full bg-white", selected.length > 0 && "border-primary text-primary")}>
+          <Button variant="outline" className={cn("justify-between font-normal h-9 w-full bg-white text-sm", selected.length > 0 && "border-primary text-primary")}>
             <span className="truncate mr-2">
               {selected.length === 0 ? title : `${title} (${selected.length})`}
             </span>
@@ -213,16 +213,16 @@ export function JobSearchFilter() {
   };
 
   return (
-    <div className="flex flex-col gap-4 bg-slate-50 p-4 rounded-xl mb-6 border border-slate-200">
+    <div className="flex flex-col gap-3 bg-white mb-2">
 
       {/* PART 1: Main Search Bar */}
       <form onSubmit={handleMainSearch} className="flex flex-col md:flex-row gap-3">
         {/* Search Input */}
         <div className="flex-[2] relative flex items-center">
-          <Search className="absolute left-4 h-5 w-5 text-slate-400" />
+          <Search className="absolute left-3.5 h-4 w-4 text-slate-400" />
           <Input
             placeholder="Enter keyword skills, job title, company..."
-            className="pl-12 pr-10 h-12 text-base border-slate-300 focus-visible:ring-primary"
+            className="pl-10 pr-10 h-9 text-sm border-slate-300 focus-visible:ring-primary"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
           />
@@ -245,9 +245,9 @@ export function JobSearchFilter() {
           <Popover open={locationOpen} onOpenChange={setLocationOpen}>
             <PopoverTrigger
               render={
-                <Button variant="outline" className="w-full justify-between h-12 text-base font-normal border-slate-300 bg-white">
+                <Button variant="outline" className="w-full justify-between h-9 text-sm font-normal border-slate-300 bg-white">
                   <div className="flex items-center gap-2 truncate text-slate-600">
-                    <MapPin className="h-5 w-5 text-slate-400" />
+                    <MapPin className="h-4 w-4 text-slate-400" />
                     {location || "All Cities"}
                   </div>
                   <ChevronDown className="h-4 w-4 opacity-50" />
@@ -286,7 +286,7 @@ export function JobSearchFilter() {
         </div>
 
         {/* Search Button */}
-        <Button type="submit" className="md:w-32 h-12 text-base font-semibold">
+        <Button type="submit" className="md:w-32 h-9 text-sm font-semibold">
           Search
         </Button>
       </form>
@@ -315,7 +315,7 @@ export function JobSearchFilter() {
           <Popover>
             <PopoverTrigger
               render={
-                <Button variant="outline" className={cn("justify-between font-normal h-10 w-full bg-white", (pendingSalary[0] > 0 || pendingSalary[1] < 10000) && "border-primary text-primary")}>
+                <Button variant="outline" className={cn("justify-between font-normal h-9 w-full bg-white text-sm", (pendingSalary[0] > 0 || pendingSalary[1] < 10000) && "border-primary text-primary")}>
                   <span className="truncate mr-2">
                     {(pendingSalary[0] > 0 || pendingSalary[1] < 10000) ? `$${pendingSalary[0]} - $${pendingSalary[1]}` : 'Salary (USD)'}
                   </span>
@@ -369,7 +369,7 @@ export function JobSearchFilter() {
                   salary: [0, 10000]
                 });
               }}
-              className="h-10 text-slate-500 hover:text-slate-900 px-3"
+              className="h-9 text-sm text-slate-500 hover:text-slate-900 px-3"
             >
               Clear Filters
             </Button>
@@ -377,7 +377,7 @@ export function JobSearchFilter() {
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogTrigger
               render={
-                <Button variant="outline" className="h-10 flex items-center gap-2 text-slate-700 bg-white">
+                <Button variant="outline" className="h-9 flex items-center gap-2 text-sm text-slate-700 bg-white">
                   <Filter className="h-4 w-4" />
                   All Filters
                 </Button>
