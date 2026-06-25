@@ -69,18 +69,18 @@ function PublicJobsContent() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-65px)] bg-slate-50/50">
-      {/* Sticky Top Filter */}
-      <div className="sticky top-0 z-20 bg-white border-b border-slate-200 w-full">
+    <div className="flex flex-col min-h-[calc(100vh-64px)] bg-slate-50/50">
+      {/* Top Filter */}
+      <div className="bg-white border-b border-slate-200 w-full">
         <div className="container mx-auto p-4 lg:py-4 lg:px-6">
           <JobSearchFilter />
         </div>
       </div>
 
       {/* Main Split Content */}
-      <div className="flex flex-1 overflow-hidden container mx-auto lg:px-6">
+      <div className="flex flex-1 container mx-auto lg:px-6 items-start">
         {/* Left Column: Job List */}
-        <div className="w-full lg:w-[45%] xl:w-[40%] flex flex-col overflow-y-auto bg-slate-50/50 lg:border-r border-slate-200">
+        <div className="w-full lg:w-[45%] xl:w-[40%] flex flex-col bg-slate-50/50 lg:border-r border-slate-200">
           <div className="p-4 lg:p-6 flex-1">
             <div className="mb-6 flex justify-between items-end">
               <div>
@@ -147,9 +147,9 @@ function PublicJobsContent() {
         </div>
 
         {/* Right Column: Job Detail (Desktop Only) */}
-        <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] flex-col overflow-hidden bg-white">
+        <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] flex-col bg-white sticky top-[64px] h-[calc(100vh-64px)] overflow-hidden">
           {selectedJobId ? (
-            <div className="h-full overflow-y-auto">
+            <div className="h-full overflow-y-auto overscroll-contain">
                <JobDetailPanel jobId={selectedJobId} isCandidateMode={false} />
             </div>
           ) : (
