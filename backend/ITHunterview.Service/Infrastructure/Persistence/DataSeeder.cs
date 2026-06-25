@@ -286,7 +286,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                             FirstName = firstName,
                             LastName = lastName,
                             Phone = $"09{avatarIdx:D8}",
-                            Location = "Ho Chi Minh City",
+                            Location = avatarIdx % 2 == 0 ? "Ho Chi Minh City" : "Hanoi",
                             AboutMe = "Passionate software developer looking for opportunities.",
                             AvatarUrl = $"https://avatar.iran.liara.run/public/{avatarIdx % 50 + 1}",
                             IsVisibleToRecruiters = true
@@ -591,7 +591,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     var random = new System.Random();
 
                     string[] locations = { "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Remote" };
-                    JobType[] jobTypes = { JobType.FULL_TIME, JobType.PART_TIME, JobType.CONTRACT, JobType.FREELANCE, JobType.INTERNSHIP };
                     JobStatus[] statuses = { JobStatus.PUBLISHED, JobStatus.PUBLISHED, JobStatus.PUBLISHED, JobStatus.DRAFT, JobStatus.CLOSED };
 
                     string[] jobTitlesPrefixes = { "Senior", "Junior", "Middle", "Lead", "Principal", "Fresher", "Internship", "Manager" };
@@ -606,7 +605,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         
                         string prefix = jobTitlesPrefixes[random.Next(jobTitlesPrefixes.Length)];
                         string location = locations[random.Next(locations.Length)];
-                        JobType jobType = jobTypes[random.Next(jobTypes.Length)];
                         JobStatus status = statuses[random.Next(statuses.Length)];
                         string level = prefix;
                         string workingModel = workingModels[random.Next(workingModels.Length)];
@@ -624,7 +622,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                             JobCode = $"JB-{random.Next(10000, 99999)}",
                             RecruiterId = recruiter.Id,
                             CompanyId = company.Id,
-                            CategoryId = category.Id,
                             Title = $"{prefix} {category.Name}",
                             Description = $"We are looking for a talented {prefix} {category.Name} to join our dynamic team at {company.Name}. You will be responsible for developing high-quality solutions and working in an agile environment.",
                             Responsibilities = "- Develop high-quality software design and architecture\n- Identify, prioritize and execute tasks in the software development life cycle\n- Review, test and debug code",
@@ -634,7 +631,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                             MaxSalary = maxSalary,
                             Currency = "USD",
                             Location = location,
-                            JobType = jobType,
                             Status = status,
                             Level = level,
                             WorkingModel = workingModel,

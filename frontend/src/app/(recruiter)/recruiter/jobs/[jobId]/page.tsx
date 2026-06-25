@@ -128,20 +128,14 @@ export default function JobDetailPage() {
                 <h2 className="text-2xl font-black text-zinc-900 dark:text-zinc-50 leading-tight">{job.title}</h2>
                 <div className="flex items-center gap-2 mt-2">
                   {getStatusBadge(job.status)}
-                  <span className="text-xs text-zinc-400 font-medium">Category: {job.categoryId || "N/A"}</span>
+
                 </div>
               </div>
             </div>
 
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-zinc-50 dark:bg-zinc-900/30 p-5 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60">
-              <div className="flex items-start gap-2.5">
-                <Briefcase className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Job Type</span>
-                  <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{job.jobType?.replace("_", " ")}</span>
-                </div>
-              </div>
+
 
               <div className="flex items-start gap-2.5">
                 <MapPin className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />

@@ -41,7 +41,7 @@ namespace ITHunterview.Service.UseCase
                 JobCode = j.JobCode,
                 Title = j.Title,
                 Location = j.Location,
-                JobType = j.JobType,
+
                 Status = j.Status,
                 ApplicationCount = j.ApplicationCount,
                 ViewCount = j.ViewCount,
@@ -92,7 +92,7 @@ namespace ITHunterview.Service.UseCase
                 JobCode = string.IsNullOrWhiteSpace(dto.JobCode) ? $"JB-{new Random().Next(1000, 9999)}" : dto.JobCode,
                 RecruiterId = recruiterId,
                 CompanyId = companyId.Value,
-                CategoryId = dto.CategoryId,
+
                 Title = dto.Title,
                 Description = dto.Description,
                 Responsibilities = dto.Responsibilities,
@@ -102,7 +102,7 @@ namespace ITHunterview.Service.UseCase
                 MaxSalary = dto.MaxSalary,
                 Currency = dto.Currency,
                 Location = dto.Location,
-                JobType = dto.JobType,
+
                 Status = dto.Status,
                 Level = dto.Level,
                 WorkingModel = dto.WorkingModel,
@@ -136,7 +136,7 @@ namespace ITHunterview.Service.UseCase
             }
 
             job.JobCode = dto.JobCode;
-            job.CategoryId = dto.CategoryId;
+
             job.Title = dto.Title;
             job.Description = dto.Description;
             job.Responsibilities = dto.Responsibilities;
@@ -146,7 +146,7 @@ namespace ITHunterview.Service.UseCase
             job.MaxSalary = dto.MaxSalary;
             job.Currency = dto.Currency;
             job.Location = dto.Location;
-            job.JobType = dto.JobType;
+
             job.Level = dto.Level;
             job.WorkingModel = dto.WorkingModel;
             job.JobExpertise = dto.JobExpertise;
@@ -198,7 +198,7 @@ namespace ITHunterview.Service.UseCase
                 JobCode = j.JobCode,
                 RecruiterId = j.RecruiterId,
                 CompanyId = j.CompanyId,
-                CategoryId = j.CategoryId,
+
                 Title = j.Title,
                 Description = j.Description,
                 Responsibilities = j.Responsibilities,
@@ -208,7 +208,7 @@ namespace ITHunterview.Service.UseCase
                 MaxSalary = j.MaxSalary,
                 Currency = j.Currency,
                 Location = j.Location,
-                JobType = j.JobType,
+
                 Status = j.Status,
                 Level = j.Level,
                 WorkingModel = j.WorkingModel,

@@ -102,7 +102,7 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
             {/* Meta tags */}
             <div className="flex items-center justify-between pt-3 border-t border-slate-100 mt-auto">
               <Badge variant="outline" className="text-slate-500 bg-white border-slate-200">
-                {job.jobType.replace('_', ' ').toUpperCase()}
+                {job.workingModel || job.jobExpertise || 'Unknown'}
               </Badge>
               {job.publishedAt && (
                 <span className="text-xs text-slate-400 font-medium">

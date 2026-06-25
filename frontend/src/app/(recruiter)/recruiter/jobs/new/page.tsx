@@ -18,9 +18,9 @@ export default function CreateJobPage() {
   const [formData, setFormData] = useState({
     jobCode: "",
     title: "",
-    categoryId: "",
+
     location: "",
-    jobType: "FULL_TIME",
+
     status: "DRAFT",
     minSalary: "",
     maxSalary: "",
@@ -43,13 +43,6 @@ export default function CreateJobPage() {
 
   const loading = metadataLoading || saving || companyLoading
   const error = metadataError || saveError
-
-  // Automatically select the first category once categories are loaded
-  useEffect(() => {
-    if (categories.length > 0 && !formData.categoryId) {
-      setFormData(prev => ({ ...prev, categoryId: categories[0].id.toString() }))
-    }
-  }, [categories, formData.categoryId])
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -87,7 +80,7 @@ export default function CreateJobPage() {
     const payload = {
       ...formData,
       status: statusVal,
-      categoryId: formData.categoryId ? Number(formData.categoryId) : null,
+
       minSalary: formData.minSalary ? Number(formData.minSalary) : null,
       maxSalary: formData.maxSalary ? Number(formData.maxSalary) : null,
       skills: selectedSkills.map(s => ({ skillId: s.skillId, isMandatory: s.isMandatory }))
@@ -175,7 +168,7 @@ export default function CreateJobPage() {
             <CardDescription>Fill in the required information for the job listing.</CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="title" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Title *</Label>
                 <Input
@@ -200,43 +193,6 @@ export default function CreateJobPage() {
                   className="focus-visible:ring-blue-500"
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="categoryId" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Category *</Label>
-                <select
-                  id="categoryId"
-                  name="categoryId"
-                  className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
-                  value={formData.categoryId}
-                  onChange={handleChange}
-                >
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.parentId ? `— ${cat.name}` : cat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="jobType" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Type *</Label>
-                <select
-                  id="jobType"
-                  name="jobType"
-                  className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
-                  value={formData.jobType}
-                  onChange={handleChange}
-                >
-                  <option value="FULL_TIME">Full Time</option>
-                  <option value="PART_TIME">Part Time</option>
-                  <option value="CONTRACT">Contract</option>
-                  <option value="FREELANCE">Freelance</option>
-                  <option value="INTERNSHIP">Internship</option>
-                </select>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="location" className="font-semibold text-zinc-700 dark:text-zinc-300">Location *</Label>
                 <Input
@@ -249,9 +205,7 @@ export default function CreateJobPage() {
                   className="focus-visible:ring-blue-500"
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            </div>            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="level" className="font-semibold text-zinc-700 dark:text-zinc-300">Level</Label>
                 <select

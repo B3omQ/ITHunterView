@@ -21,9 +21,6 @@ namespace ITHunterview.Domain.Entities
         [Column("company_id")]
         public Guid CompanyId { get; set; }
 
-        [Column("category_id")]
-        public int? CategoryId { get; set; }
-
         [Column("title")]
         public string Title { get; set; }
 
@@ -50,9 +47,6 @@ namespace ITHunterview.Domain.Entities
 
         [Column("location")]
         public string Location { get; set; }
-
-        [Column("job_type")]
-        public JobType JobType { get; set; }
 
         [Column("status")]
         public JobStatus Status { get; set; }

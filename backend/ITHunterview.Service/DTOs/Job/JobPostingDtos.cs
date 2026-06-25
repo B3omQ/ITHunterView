@@ -9,7 +9,7 @@ namespace ITHunterview.Service.DTOs.Job
         public string JobCode { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public string Location { get; set; } = string.Empty;
-        public JobType JobType { get; set; }
+
         public JobStatus Status { get; set; }
         public int ApplicationCount { get; set; }
         public int ViewCount { get; set; }
@@ -28,7 +28,7 @@ namespace ITHunterview.Service.DTOs.Job
         public string JobCode { get; set; } = string.Empty;
         public Guid RecruiterId { get; set; }
         public Guid CompanyId { get; set; }
-        public int? CategoryId { get; set; }
+
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string Responsibilities { get; set; } = string.Empty;
@@ -38,7 +38,7 @@ namespace ITHunterview.Service.DTOs.Job
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; } = "USD";
         public string Location { get; set; } = string.Empty;
-        public JobType JobType { get; set; }
+
         public JobStatus Status { get; set; }
         public int ApplicationCount { get; set; }
         public int ViewCount { get; set; }
@@ -54,7 +54,7 @@ namespace ITHunterview.Service.DTOs.Job
     public class CreateJobPostingDto
     {
         public string JobCode { get; set; } = string.Empty;
-        public int? CategoryId { get; set; }
+
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string Responsibilities { get; set; } = string.Empty;
@@ -64,7 +64,7 @@ namespace ITHunterview.Service.DTOs.Job
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; } = "USD";
         public string Location { get; set; } = string.Empty;
-        public JobType JobType { get; set; }
+
         public JobStatus Status { get; set; } = JobStatus.DRAFT;
         public string? Level { get; set; }
         public string? WorkingModel { get; set; }
@@ -76,7 +76,7 @@ namespace ITHunterview.Service.DTOs.Job
     public class UpdateJobPostingDto
     {
         public string JobCode { get; set; } = string.Empty;
-        public int? CategoryId { get; set; }
+
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string Responsibilities { get; set; } = string.Empty;
@@ -86,7 +86,7 @@ namespace ITHunterview.Service.DTOs.Job
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; } = "USD";
         public string Location { get; set; } = string.Empty;
-        public JobType JobType { get; set; }
+
         public JobStatus Status { get; set; }
         public string? Level { get; set; }
         public string? WorkingModel { get; set; }

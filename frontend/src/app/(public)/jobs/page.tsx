@@ -26,7 +26,7 @@ function PublicJobsContent() {
     pageSize: 10,
     keyword: searchParams.get('query') || undefined,
     location: searchParams.get('location') || undefined,
-    jobType: searchParams.get('jobType') || undefined,
+
     skill: searchParams.get('skill') || undefined,
     companyName: searchParams.get('companyName') || undefined,
     minSalary: searchParams.get('minSalary') ? parseFloat(searchParams.get('minSalary') as string) : undefined,

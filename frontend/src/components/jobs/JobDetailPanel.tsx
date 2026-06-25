@@ -90,7 +90,7 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
             </span>
           )}
           <span className="flex items-center gap-1.5 px-2 py-1">
-            <Briefcase className="w-4 h-4 text-slate-400" /> {job.jobType.replace('_', ' ').toUpperCase()}
+            <Briefcase className="w-4 h-4 text-slate-400" /> {job.workingModel || job.jobExpertise || 'Unknown'}
           </span>
           {job.publishedAt && (
             <span className="flex items-center gap-1.5 px-2 py-1">

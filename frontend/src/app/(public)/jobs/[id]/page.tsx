@@ -93,7 +93,7 @@ export default function PublicJobDetailPage() {
               </span>
             )}
             <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 rounded-md">
-              <Briefcase className="w-4 h-4 text-primary" /> {job.jobType.replace('_', ' ').toUpperCase()}
+              <Briefcase className="w-4 h-4 text-primary" /> {job.workingModel || job.jobExpertise || 'Unknown'}
             </span>
             {job.publishedAt && (
               <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 rounded-md">
