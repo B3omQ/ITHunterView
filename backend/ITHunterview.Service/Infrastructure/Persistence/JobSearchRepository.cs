@@ -20,8 +20,34 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
         public async Task<PaginatedDataResponse<JobCardDto>> SearchJobsAsync(JobSearchQueryDto query, Guid? userId = null)
         {
-            var jobsQuery = _context.JobPostings
-                .Where(j => j.Status == JobStatus.PUBLISHED);
+            var jobsQuery = _context.JobPostings.AsQueryable();
+
+            if (query.Status.HasValue)
+            {
+                jobsQuery = jobsQuery.Where(j => j.Status == query.Status.Value);
+            }
+            else
+            {
+                // Default to PUBLISHED for backwards compatibility if not provided
+                jobsQuery = jobsQuery.Where(j => j.Status == JobStatus.PUBLISHED);
+            }
+
+            if (query.MinSalary.HasValue)
+            {
+                jobsQuery = jobsQuery.Where(j => j.MinSalary >= query.MinSalary.Value || j.MaxSalary >= query.MinSalary.Value);
+            }
+
+            if (!string.IsNullOrEmpty(query.Currency))
+            {
+                var upperCurrency = query.Currency.ToUpper();
+                jobsQuery = jobsQuery.Where(j => j.Currency == upperCurrency);
+            }
+
+            if (query.PostedWithinDays.HasValue)
+            {
+                var thresholdDate = DateTime.UtcNow.AddDays(-query.PostedWithinDays.Value);
+                jobsQuery = jobsQuery.Where(j => j.PublishedAt >= thresholdDate);
+            }
 
             if (!string.IsNullOrEmpty(query.Location))
             {
@@ -42,6 +68,22 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             var queryable = from job in jobsQuery
                             join company in _context.Companies on job.CompanyId equals company.Id
                             select new { job, company };
+
+            if (!string.IsNullOrEmpty(query.CompanyName))
+            {
+                var lowerCompany = query.CompanyName.ToLower();
+                queryable = queryable.Where(x => x.company.Name != null && x.company.Name.ToLower().Contains(lowerCompany));
+            }
+
+            if (!string.IsNullOrEmpty(query.Skill))
+            {
+                var lowerSkill = query.Skill.ToLower();
+                queryable = from q in queryable
+                            join jsr in _context.JobSkillRequirements on q.job.Id equals jsr.JobId
+                            join s in _context.Skills on jsr.SkillId equals s.Id
+                            where s.Name.ToLower().Contains(lowerSkill)
+                            select q;
+            }
 
             if (!string.IsNullOrEmpty(query.Keyword))
             {

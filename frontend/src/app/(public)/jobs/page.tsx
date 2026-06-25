@@ -23,7 +23,12 @@ function PublicJobsContent() {
     pageSize: 10,
     keyword: searchParams.get('query') || undefined,
     location: searchParams.get('location') || undefined,
-    jobType: searchParams.get('jobType') || undefined
+    jobType: searchParams.get('jobType') || undefined,
+    skill: searchParams.get('skill') || undefined,
+    companyName: searchParams.get('companyName') || undefined,
+    minSalary: searchParams.get('minSalary') ? parseFloat(searchParams.get('minSalary') as string) : undefined,
+    currency: searchParams.get('currency') || undefined,
+    postedWithinDays: searchParams.get('postedWithinDays') ? parseInt(searchParams.get('postedWithinDays') as string, 10) : undefined,
   };
 
   const { data, isLoading, isError } = usePublicJobs(query);
