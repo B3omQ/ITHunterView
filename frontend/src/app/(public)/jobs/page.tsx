@@ -9,15 +9,19 @@ import { JobSearchFilter } from '@/components/jobs/JobSearchFilter';
 import { PageLoader } from '@/components/shared/PageLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { ChevronLeft, ChevronRight, SearchX, MousePointerClick } from 'lucide-react';
 import type { JobSearchQuery } from '@/types/job.types';
 import { JobDetailPanel } from '@/components/jobs/JobDetailPanel';
 import JobDetailModal from '@/components/jobs/JobDetailModal';
+import { useAuthStore } from '@/store/auth.store';
 
 function PublicJobsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const { user } = useAuthStore();
+  const isCandidateMode = user?.role?.name?.toLowerCase() === 'candidate';
   
   const parseArray = (param: string | null) => param ? param.split(',').filter(Boolean) : undefined;
 
@@ -69,30 +73,19 @@ function PublicJobsContent() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-65px)] bg-slate-50/50">
-      {/* Sticky Top Filter */}
-      <div className="sticky top-0 z-20 bg-white border-b border-slate-200 w-full">
-        <div className="container mx-auto p-4 lg:py-4 lg:px-6">
+    <div className="flex flex-col min-h-[calc(100vh-64px)] bg-white">
+      {/* Top Filter */}
+      <div className="bg-white w-full">
+        <div className="container mx-auto px-4 pt-4 pb-0 lg:px-6 lg:pt-4 lg:pb-0">
           <JobSearchFilter />
         </div>
       </div>
 
       {/* Main Split Content */}
-      <div className="flex flex-1 overflow-hidden container mx-auto lg:px-6">
+      <div className="flex flex-1 container mx-auto px-4 lg:px-6 items-start gap-4 lg:gap-5">
         {/* Left Column: Job List */}
-        <div className="w-full lg:w-[45%] xl:w-[40%] flex flex-col overflow-y-auto bg-slate-50/50 lg:border-r border-slate-200">
-          <div className="p-4 lg:p-6 flex-1">
-            <div className="mb-6 flex justify-between items-end">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900">Explore Jobs</h1>
-                {data?.meta && (
-                  <p className="text-sm text-slate-500 mt-1">
-                    Showing {data.data.length} of {data.meta.totalItems} opportunities
-                  </p>
-                )}
-              </div>
-            </div>
-
+        <div className="w-full lg:w-[40%] xl:w-[35%] flex flex-col bg-white">
+          <div className="pb-4 pt-2 lg:pb-6 lg:pt-2 flex-1">
             {isLoading ? (
               <div className="flex flex-col gap-4">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -147,20 +140,22 @@ function PublicJobsContent() {
         </div>
 
         {/* Right Column: Job Detail (Desktop Only) */}
-        <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] flex-col overflow-hidden bg-white">
-          {selectedJobId ? (
-            <div className="h-full overflow-y-auto">
-               <JobDetailPanel jobId={selectedJobId} isCandidateMode={false} />
-            </div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50">
-               <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6">
-                 <MousePointerClick className="w-10 h-10 text-slate-500" />
-               </div>
-               <h3 className="text-xl font-semibold text-slate-900 mb-2">Select a job to view details</h3>
-               <p className="text-slate-500 max-w-sm">Click on any job card from the list on the left to see the full job description and apply.</p>
-            </div>
-          )}
+        <div className="hidden lg:flex lg:w-[60%] xl:w-[65%] flex-col pb-4 pt-2 lg:pb-6 lg:pt-2 sticky top-[64px] h-[calc(100vh-64px)] overflow-hidden">
+          <Card className="w-full h-full overflow-hidden flex flex-col shadow-none">
+            {selectedJobId ? (
+              <div className="h-full overflow-y-auto overscroll-contain">
+                 <JobDetailPanel jobId={selectedJobId} isCandidateMode={isCandidateMode} />
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white h-full">
+                 <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6">
+                   <MousePointerClick className="w-10 h-10 text-slate-500" />
+                 </div>
+                 <h3 className="text-xl font-semibold text-slate-900 mb-2">Select a job to view details</h3>
+                 <p className="text-slate-500 max-w-sm">Click on any job card from the list on the left to see the full job description and apply.</p>
+              </div>
+            )}
+          </Card>
         </div>
       </div>
 
@@ -169,7 +164,7 @@ function PublicJobsContent() {
         isOpen={isMobileModalOpen} 
         onClose={() => setIsMobileModalOpen(false)} 
         jobId={selectedJobId || undefined} 
-        isCandidateMode={false} 
+        isCandidateMode={isCandidateMode} 
       />
     </div>
   );
