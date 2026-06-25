@@ -1,14 +1,25 @@
 'use client';
 
-import React, { useRef } from 'react';
-import { Camera, MapPin, Loader2 } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Camera, MapPin, Loader2, AlertCircle } from 'lucide-react';
 import { useUpdateVisibility, useUploadAvatar } from '@/hooks/useCandidateProfile';
 import type { ProfileSummary } from '@/types/candidate.types';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const MAX_IMAGE_SIZE_BYTES = 3 * 1024 * 1024; // 3MB
 
 interface ProfileHeaderProps {
   summary: ProfileSummary;
@@ -16,6 +27,7 @@ interface ProfileHeaderProps {
 
 export function ProfileHeader({ summary }: ProfileHeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isTurnOffModalOpen, setIsTurnOffModalOpen] = useState(false);
   const { mutate: updateVisibility, isPending: isUpdatingVisibility } = useUpdateVisibility();
   const { mutate: uploadAvatar, isPending: isUploadingAvatar } = useUploadAvatar();
 
@@ -26,16 +38,14 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-      if (!allowedTypes.includes(file.type)) {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
         toast.error('Chỉ chấp nhận ảnh định dạng JPG, JPEG, PNG hoặc WebP.');
         // Reset the input so the user can select the same file again if they want
         if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
 
-      const maxSizeBytes = 3 * 1024 * 1024; // 3MB
-      if (file.size > maxSizeBytes) {
+      if (file.size > MAX_IMAGE_SIZE_BYTES) {
         toast.error('Ảnh không được vượt quá 3MB.');
         if (fileInputRef.current) fileInputRef.current.value = '';
         return;
@@ -46,7 +56,24 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
   };
 
   const handleVisibilityChange = (checked: boolean) => {
-    updateVisibility({ isVisibleToRecruiters: checked });
+    if (!checked) {
+      setIsTurnOffModalOpen(true);
+    } else {
+      updateVisibility({ isVisibleToRecruiters: true });
+    }
+  };
+
+  const confirmTurnOff = () => {
+    updateVisibility({ isVisibleToRecruiters: false }, {
+      onSuccess: () => {
+        setIsTurnOffModalOpen(false);
+        toast.success('Profile is now hidden from recruiters');
+      },
+      onError: () => {
+        setIsTurnOffModalOpen(false);
+        toast.error('An error occurred, please try again');
+      }
+    });
   };
 
 
@@ -71,7 +98,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
               />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-primary/10 to-primary/20 flex items-center justify-center text-primary text-3xl font-bold uppercase">
-                {summary.fullName.slice(0, 2)}
+                {(summary?.fullName || 'NA').slice(0, 2).toUpperCase()}
               </div>
             )}
 
@@ -134,6 +161,29 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
         </div>
 
       </div>
+
+      <Dialog open={isTurnOffModalOpen} onOpenChange={setIsTurnOffModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="w-5 h-5" />
+              Turn off job seeking status?
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Recruiters will no longer be able to find your profile in the search system if you turn this off. Are you sure you want to hide your profile?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0 mt-4">
+            <Button variant="outline" onClick={() => setIsTurnOffModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmTurnOff} disabled={isUpdatingVisibility}>
+              {isUpdatingVisibility && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
