@@ -29,8 +29,7 @@ namespace ITHunterview.Service.Utils
                 // Role claim for Authorization policies
                 new Claim(ClaimTypes.Role, user.Role?.Name ?? string.Empty),
                 // Custom claim for easy access
-                new Claim("userId", user.Id.ToString()),
-                new Claim("role", user.Role?.Name ?? string.Empty)
+                new Claim("userId", user.Id.ToString())
             };
 
             if (!int.TryParse(jwtSettings["ExpiryMinutes"], out var expiryMinutes))

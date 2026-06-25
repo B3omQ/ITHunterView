@@ -69,9 +69,7 @@ export interface UpdateUserStatusDto {
   reason: string;
 }
 
-export interface UpdateUserRoleDto {
-  roleId: number;
-}
+
 
 export interface CreateStaffDto {
   email: string;

@@ -11,7 +11,7 @@ namespace ITHunterview.Service.Interface.UseCase
         Task<ResponseBase<PagedResult<UserDto>>> GetPagedUsersAsync(int page, int pageSize, string? search, int? roleId, UserStatus? status);
         Task<ResponseBase<UserDetailDto>> GetUserDetailAsync(Guid userId);
         Task<ResponseBase<bool>> UpdateUserStatusAsync(Guid targetUserId, UpdateUserStatusDto dto, Guid actorUserId, string actorEmail, string actorRole, string ipAddress, string userAgent);
-        Task<ResponseBase<bool>> UpdateUserRoleAsync(Guid targetUserId, UpdateUserRoleDto dto, Guid actorUserId, string actorEmail, string actorRole, string ipAddress, string userAgent);
+
         Task<UserStatus?> GetUserStatusAsync(Guid userId);
         Task<ResponseBase<Guid>> CreateStaffAccountAsync(CreateStaffDto dto, Guid actorUserId, string actorEmail, string actorRole, string ipAddress, string userAgent);
     }

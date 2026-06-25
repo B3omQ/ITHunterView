@@ -93,6 +93,7 @@ export function UpdateStatusModal({ open, onOpenChange, targetUser, onSuccess }:
               <option value="ACTIVE">Active (ACTIVE)</option>
               <option value="INACTIVE">Inactive (INACTIVE)</option>
               <option value="BANNED">Banned (BANNED)</option>
+              <option value="PENDING_VERIFICATION">Pending Verification (PENDING_VERIFICATION)</option>
             </select>
           </div>
 

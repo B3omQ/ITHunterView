@@ -33,9 +33,9 @@ namespace ITHunterview.WebAPI.Middlewares
                         var dbStatus = await userGovernanceUseCase.GetUserStatusAsync(userId);
                         if (dbStatus == null)
                         {
-                            await LogBlockedUserAsync(context, userId, "DELETED", "Tài khoản không tồn tại hoặc đã bị xóa.", auditLogRepository);
+                            await LogBlockedUserAsync(context, userId, "DELETED", "Account does not exist or has been deleted.", auditLogRepository);
                             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                            await context.Response.WriteAsJsonAsync(new { message = "Tài khoản không hợp lệ hoặc đã bị xóa." });
+                            await context.Response.WriteAsJsonAsync(new { message = "Invalid account or account has been deleted." });
                             return;
                         }
                         
@@ -46,9 +46,9 @@ namespace ITHunterview.WebAPI.Middlewares
                     if (status == UserStatus.BANNED || status == UserStatus.INACTIVE)
                     {
                         var reason = status == UserStatus.BANNED ? "BANNED" : "INACTIVE";
-                        await LogBlockedUserAsync(context, userId, reason, $"Tài khoản ở trạng thái {reason} cố gắng truy cập.", auditLogRepository);
+                        await LogBlockedUserAsync(context, userId, reason, $"Account in status {reason} attempted to access.", auditLogRepository);
                         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                        await context.Response.WriteAsJsonAsync(new { message = "Tài khoản của bạn đã bị khóa hoặc ngừng hoạt động." });
+                        await context.Response.WriteAsJsonAsync(new { message = "Your account has been banned or deactivated." });
                         return;
                     }
                 }
@@ -79,7 +79,7 @@ namespace ITHunterview.WebAPI.Middlewares
                     ActorRole = roleClaim,
                     ActionCategory = ActivityLogCategory.SECURITY,
                     ActorEmail = emailClaim,
-                    Action = $"[CHẶN TRUY CẬP - {statusType}] {actionDescription}",
+                    Action = $"[ACCESS BLOCKED - {statusType}] {actionDescription}",
                     Status = ActivityLogStatus.FAIL,
                     IpAddress = ipAddress,
                     UserAgent = userAgent,
