@@ -69,7 +69,7 @@ function PublicJobsContent() {
   };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-64px)] bg-slate-50/50">
+    <div className="flex flex-col min-h-[calc(100vh-64px)] bg-white">
       {/* Top Filter */}
       <div className="bg-white border-b border-slate-200 w-full">
         <div className="container mx-auto p-4 lg:py-4 lg:px-6">
@@ -80,7 +80,7 @@ function PublicJobsContent() {
       {/* Main Split Content */}
       <div className="flex flex-1 container mx-auto lg:px-6 items-start">
         {/* Left Column: Job List */}
-        <div className="w-full lg:w-[45%] xl:w-[40%] flex flex-col bg-slate-50/50 lg:border-r border-slate-200">
+        <div className="w-full lg:w-[45%] xl:w-[40%] flex flex-col bg-white lg:border-r border-slate-200">
           <div className="p-4 lg:p-6 flex-1">
             {isLoading ? (
               <div className="flex flex-col gap-4">
@@ -142,7 +142,7 @@ function PublicJobsContent() {
                <JobDetailPanel jobId={selectedJobId} isCandidateMode={false} />
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50">
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white">
                <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6">
                  <MousePointerClick className="w-10 h-10 text-slate-500" />
                </div>
