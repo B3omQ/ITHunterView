@@ -3,6 +3,18 @@ export interface JobSearchQuery {
   location?: string;
   jobType?: string;
   categoryId?: number;
+  minSalary?: number;
+  currency?: string;
+  skill?: string;
+  companyName?: string;
+  postedWithinDays?: number;
+  status?: string;
+  levels?: string[];
+  workingModels?: string[];
+  jobDomains?: string[];
+  companyIndustries?: string[];
+  companyTypes?: string[];
+  maxSalary?: number;
   page?: number;
   pageSize?: number;
 }

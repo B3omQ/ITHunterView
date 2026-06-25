@@ -201,21 +201,21 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 {
                     Id = Guid.NewGuid(), Name = "ITHunterView Corp", TaxCode = "0102030405", HeadquartersAddress = "123 Dev Street, Tech City",
                     Industry = "Information Technology", CompanySize = "100-500", Description = "Leading tech recruitment platform",
-                    Website = "https://ithunterview.com", LogoUrl = "https://logo.clearbit.com/ithunterview.com",
+                    Website = "https://ithunterview.com", LogoUrl = "https://logo.clearbit.com/ithunterview.com", CompanyType = "IT Product",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license1.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
                 var comp2 = new Companies
                 {
                     Id = Guid.NewGuid(), Name = "FPT Software", TaxCode = "0102030406", HeadquartersAddress = "F-Town, HCMC",
                     Industry = "Software Outsourcing", CompanySize = "1000+", Description = "Global technology and IT services provider",
-                    Website = "https://fptsoftware.com", LogoUrl = "https://logo.clearbit.com/fptsoftware.com",
+                    Website = "https://fptsoftware.com", LogoUrl = "https://logo.clearbit.com/fptsoftware.com", CompanyType = "IT Outsourcing",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license2.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
                 var comp3 = new Companies
                 {
                     Id = Guid.NewGuid(), Name = "VNG Corporation", TaxCode = "0102030407", HeadquartersAddress = "VNG Campus, HCMC",
                     Industry = "Internet & Technology", CompanySize = "1000+", Description = "Vietnam's leading tech firm",
-                    Website = "https://vng.com.vn", LogoUrl = "https://logo.clearbit.com/vng.com.vn",
+                    Website = "https://vng.com.vn", LogoUrl = "https://logo.clearbit.com/vng.com.vn", CompanyType = "IT Product",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license3.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
                 
@@ -579,44 +579,90 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             if (!context.JobPostings.Any())
             {
                 var recruiterRole = context.Roles.FirstOrDefault(r => r.Name == "recruiter");
-                var recruiter = context.Users.FirstOrDefault(u => u.RoleId == recruiterRole.Id);
-                var company = context.Companies.FirstOrDefault();
-                var category = context.JobCategories.FirstOrDefault(c => c.ParentId != null);
+                var recruiters = context.Users.Where(u => u.RoleId == recruiterRole.Id).ToList();
+                var companies = context.Companies.ToList();
+                var categories = context.JobCategories.Where(c => c.ParentId != null).ToList();
+                var skills = context.Skills.ToList();
 
-                if (recruiter != null && company != null && category != null)
+                if (recruiters.Any() && companies.Any() && categories.Any() && skills.Any())
                 {
                     var jobs = new List<JobPostings>();
+                    var jobSkills = new List<JobSkillRequirements>();
                     var random = new System.Random();
 
-                    for (int i = 1; i <= 10; i++)
+                    string[] locations = { "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Remote" };
+                    JobType[] jobTypes = { JobType.FULL_TIME, JobType.PART_TIME, JobType.CONTRACT, JobType.FREELANCE, JobType.INTERNSHIP };
+                    JobStatus[] statuses = { JobStatus.PUBLISHED, JobStatus.PUBLISHED, JobStatus.PUBLISHED, JobStatus.DRAFT, JobStatus.CLOSED };
+
+                    string[] jobTitlesPrefixes = { "Senior", "Junior", "Middle", "Lead", "Principal", "Fresher", "Internship", "Manager" };
+                    string[] workingModels = { "At office", "Remote", "Hybrid" };
+                    string[] jobDomains = { "Backend", "Frontend", "Fullstack", "Mobile", "DevOps", "AI/ML", "Data" };
+                    
+                    for (int i = 1; i <= 60; i++)
                     {
+                        var company = companies[random.Next(companies.Count)];
+                        var recruiter = recruiters[random.Next(recruiters.Count)];
+                        var category = categories[random.Next(categories.Count)];
+                        
+                        string prefix = jobTitlesPrefixes[random.Next(jobTitlesPrefixes.Length)];
+                        string location = locations[random.Next(locations.Length)];
+                        JobType jobType = jobTypes[random.Next(jobTypes.Length)];
+                        JobStatus status = statuses[random.Next(statuses.Length)];
+                        string level = prefix;
+                        string workingModel = workingModels[random.Next(workingModels.Length)];
+                        string jobDomain = jobDomains[random.Next(jobDomains.Length)];
+                        
+                        decimal minSalary = random.Next(5, 20) * 100;
+                        decimal maxSalary = minSalary + random.Next(5, 15) * 100;
+
+                        var jobId = System.Guid.NewGuid();
+                        var publishedAt = System.DateTime.UtcNow.AddDays(-random.Next(1, 60));
+
                         jobs.Add(new JobPostings
                         {
-                            Id = System.Guid.NewGuid(),
-                            JobCode = $"JB-{random.Next(1000, 9999)}",
+                            Id = jobId,
+                            JobCode = $"JB-{random.Next(10000, 99999)}",
                             RecruiterId = recruiter.Id,
                             CompanyId = company.Id,
                             CategoryId = category.Id,
-                            Title = $"Software Engineer {i}",
-                            Description = "We are looking for a talented Software Engineer to join our team...",
-                            Responsibilities = "- Develop high-quality software design and architecture\n- Identify, prioritize and execute tasks in the software development life cycle",
-                            Requirements = "- Proven experience as a Software Engineer or Software Developer\n- Experience with software design and development in a test-driven environment",
-                            Benefits = "- Competitive salary\n- Health insurance\n- Paid time off",
-                            MinSalary = 1000 + (i * 100),
-                            MaxSalary = 2000 + (i * 100),
+                            Title = $"{prefix} {category.Name}",
+                            Description = $"We are looking for a talented {prefix} {category.Name} to join our dynamic team at {company.Name}. You will be responsible for developing high-quality solutions and working in an agile environment.",
+                            Responsibilities = "- Develop high-quality software design and architecture\n- Identify, prioritize and execute tasks in the software development life cycle\n- Review, test and debug code",
+                            Requirements = $"- Proven experience as a {category.Name}\n- Experience with software design and development\n- Excellent communication skills",
+                            Benefits = "- Competitive salary\n- Health insurance\n- Paid time off\n- Flexible working hours",
+                            MinSalary = minSalary,
+                            MaxSalary = maxSalary,
                             Currency = "USD",
-                            Location = "Ho Chi Minh City",
-                            JobType = JobType.FULL_TIME,
-                            Status = JobStatus.PUBLISHED,
-                            ApplicationCount = random.Next(0, 50),
-                            ViewCount = random.Next(100, 1000),
-                            PublishedAt = System.DateTime.UtcNow.AddDays(-i),
-                            CreatedAt = System.DateTime.UtcNow.AddDays(-i),
-                            UpdatedAt = System.DateTime.UtcNow.AddDays(-i)
+                            Location = location,
+                            JobType = jobType,
+                            Status = status,
+                            Level = level,
+                            WorkingModel = workingModel,
+                            JobDomain = jobDomain,
+                            ApplicationCount = random.Next(0, 100),
+                            ViewCount = random.Next(100, 5000),
+                            PublishedAt = status == JobStatus.PUBLISHED ? publishedAt : null,
+                            CreatedAt = publishedAt.AddDays(-random.Next(1, 5)),
+                            UpdatedAt = publishedAt
                         });
+
+                        // Seed 3-5 random skills for this job
+                        int skillCount = random.Next(3, 6);
+                        var shuffledSkills = skills.OrderBy(x => random.Next()).Take(skillCount).ToList();
+                        
+                        foreach(var skill in shuffledSkills)
+                        {
+                            jobSkills.Add(new JobSkillRequirements
+                            {
+                                JobId = jobId,
+                                SkillId = skill.Id,
+                                IsMandatory = random.Next(100) > 30 // 70% chance to be mandatory
+                            });
+                        }
                     }
 
                     context.JobPostings.AddRange(jobs);
+                    context.JobSkillRequirements.AddRange(jobSkills);
                     await context.SaveChangesAsync();
                 }
             }

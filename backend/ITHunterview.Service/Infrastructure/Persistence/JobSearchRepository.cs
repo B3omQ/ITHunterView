@@ -20,8 +20,33 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
         public async Task<PaginatedDataResponse<JobCardDto>> SearchJobsAsync(JobSearchQueryDto query, Guid? userId = null)
         {
-            var jobsQuery = _context.JobPostings
-                .Where(j => j.Status == JobStatus.PUBLISHED);
+            var jobsQuery = _context.JobPostings.AsQueryable();
+
+            if (query.Status.HasValue)
+            {
+                jobsQuery = jobsQuery.Where(j => j.Status == query.Status.Value);
+            }
+            else
+            {
+                // Default to PUBLISHED for backwards compatibility if not provided
+                jobsQuery = jobsQuery.Where(j => j.Status == JobStatus.PUBLISHED);
+            }
+
+            if (query.MinSalary.HasValue)
+            {
+                jobsQuery = jobsQuery.Where(j => j.MinSalary >= query.MinSalary.Value || j.MaxSalary >= query.MinSalary.Value);
+            }
+
+            if (query.MaxSalary.HasValue)
+            {
+                jobsQuery = jobsQuery.Where(j => j.MinSalary <= query.MaxSalary.Value || j.MaxSalary <= query.MaxSalary.Value);
+            }
+
+            if (query.PostedWithinDays.HasValue)
+            {
+                var thresholdDate = DateTime.UtcNow.AddDays(-query.PostedWithinDays.Value);
+                jobsQuery = jobsQuery.Where(j => j.PublishedAt >= thresholdDate);
+            }
 
             if (!string.IsNullOrEmpty(query.Location))
             {
@@ -34,6 +59,21 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 jobsQuery = jobsQuery.Where(j => j.JobType == query.JobType.Value);
             }
 
+            if (query.Levels != null && query.Levels.Any())
+            {
+                jobsQuery = jobsQuery.Where(j => query.Levels.Contains(j.Level));
+            }
+
+            if (query.WorkingModels != null && query.WorkingModels.Any())
+            {
+                jobsQuery = jobsQuery.Where(j => query.WorkingModels.Contains(j.WorkingModel));
+            }
+
+            if (query.JobDomains != null && query.JobDomains.Any())
+            {
+                jobsQuery = jobsQuery.Where(j => query.JobDomains.Contains(j.JobDomain));
+            }
+
             if (query.CategoryId.HasValue)
             {
                 jobsQuery = jobsQuery.Where(j => j.CategoryId == query.CategoryId.Value);
@@ -43,12 +83,41 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                             join company in _context.Companies on job.CompanyId equals company.Id
                             select new { job, company };
 
+            if (!string.IsNullOrEmpty(query.CompanyName))
+            {
+                var lowerCompany = query.CompanyName.ToLower();
+                queryable = queryable.Where(x => x.company.Name != null && x.company.Name.ToLower().Contains(lowerCompany));
+            }
+
+            if (query.CompanyIndustries != null && query.CompanyIndustries.Any())
+            {
+                queryable = queryable.Where(x => query.CompanyIndustries.Contains(x.company.Industry));
+            }
+
+            if (query.CompanyTypes != null && query.CompanyTypes.Any())
+            {
+                queryable = queryable.Where(x => query.CompanyTypes.Contains(x.company.CompanyType));
+            }
+
+            if (!string.IsNullOrEmpty(query.Skill))
+            {
+                var lowerSkill = query.Skill.ToLower();
+                queryable = from q in queryable
+                            join jsr in _context.JobSkillRequirements on q.job.Id equals jsr.JobId
+                            join s in _context.Skills on jsr.SkillId equals s.Id
+                            where s.Name.ToLower().Contains(lowerSkill)
+                            select q;
+            }
+
             if (!string.IsNullOrEmpty(query.Keyword))
             {
                 var lowerKeyword = query.Keyword.ToLower();
                 queryable = queryable.Where(x => 
                     (x.job.Title != null && x.job.Title.ToLower().Contains(lowerKeyword)) || 
-                    (x.company.Name != null && x.company.Name.ToLower().Contains(lowerKeyword)));
+                    (x.company.Name != null && x.company.Name.ToLower().Contains(lowerKeyword)) ||
+                    _context.JobSkillRequirements.Any(jsr => jsr.JobId == x.job.Id && 
+                        _context.Skills.Any(s => s.Id == jsr.SkillId && s.Name.ToLower().Contains(lowerKeyword)))
+                );
             }
 
             var totalItems = await queryable.CountAsync();
