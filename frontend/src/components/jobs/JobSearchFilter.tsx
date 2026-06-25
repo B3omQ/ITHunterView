@@ -15,7 +15,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 // Constants
-const LOCATIONS = ["Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Cần Thơ", "Hải Phòng", "Remote", "Bình Dương", "Đồng Nai"];
+const LOCATIONS = [
+  "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Cần Thơ", "Hải Phòng",
+  "An Giang", "Bà Rịa - Vũng Tàu", "Bắc Giang", "Bắc Kạn", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cao Bằng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Tĩnh", "Hải Dương", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái",
+  "International", "Others"
+];
 const LEVELS = ["Internship", "Fresher", "Junior", "Middle", "Senior", "Lead", "Manager", "Principal"];
 const WORKING_MODELS = ["At office", "Remote", "Hybrid"];
 const JOB_DOMAINS = ["Backend", "Frontend", "Fullstack", "Mobile", "DevOps", "AI/ML", "Data", "QA/Testing", "System Admin", "Security"];
@@ -24,6 +28,15 @@ const COMPANY_TYPES = ["IT Outsourcing", "IT Product", "Headhunt", "IT Service a
 
 // Helper to parse array params safely
 const parseArrayParam = (param: string | null) => param ? param.split(',').filter(Boolean) : [];
+
+const removeAccents = (str: string) => {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+};
+
+const customFilter = (value: string, search: string) => {
+  if (removeAccents(value).includes(removeAccents(search))) return 1;
+  return 0;
+};
 
 export function JobSearchFilter() {
   const searchParams = useSearchParams();
@@ -54,6 +67,7 @@ export function JobSearchFilter() {
   const [pendingSalary, setPendingSalary] = useState<number[]>([urlMinSalary, urlMaxSalary]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
 
   // Sync state when URL changes (e.g. from Clear All or browser back button)
   useEffect(() => {
@@ -141,7 +155,7 @@ export function JobSearchFilter() {
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[280px] p-0" align="start">
-          <Command>
+          <Command filter={customFilter}>
             <CommandInput placeholder={searchPlaceholder} />
             <CommandList>
               <CommandEmpty>No results found.</CommandEmpty>
@@ -200,30 +214,40 @@ export function JobSearchFilter() {
         
         {/* Location Combobox */}
         <div className="flex-1 min-w-[200px]">
-          <Popover>
+          <Popover open={locationOpen} onOpenChange={setLocationOpen}>
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-full justify-between h-12 text-base font-normal border-slate-300 shadow-sm bg-white">
                 <div className="flex items-center gap-2 truncate text-slate-600">
                   <MapPin className="h-5 w-5 text-slate-400" />
-                  {location || "All Locations"}
+                  {location || "All Cities"}
                 </div>
                 <ChevronDown className="h-4 w-4 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[300px] p-0" align="start">
-              <Command>
+              <Command filter={customFilter}>
                 <CommandInput placeholder="Search location..." />
                 <CommandList>
                   <CommandEmpty>No location found.</CommandEmpty>
                   <CommandGroup>
-                    <CommandItem onSelect={() => { setLocation(""); applyFilters({ location: "" }); }}>
-                      All Locations
-                    </CommandItem>
-                    {LOCATIONS.map((loc) => (
-                      <CommandItem key={loc} onSelect={() => { setLocation(loc); applyFilters({ location: loc }); }}>
-                        {loc}
+                    <ScrollArea className="h-[300px]">
+                      <CommandItem onSelect={() => { 
+                        setLocation(""); 
+                        applyFilters({ location: "" }); 
+                        setLocationOpen(false); 
+                      }}>
+                        All Cities
                       </CommandItem>
-                    ))}
+                      {LOCATIONS.map((loc) => (
+                        <CommandItem key={loc} onSelect={() => { 
+                          setLocation(loc); 
+                          applyFilters({ location: loc }); 
+                          setLocationOpen(false); 
+                        }}>
+                          {loc}
+                        </CommandItem>
+                      ))}
+                    </ScrollArea>
                   </CommandGroup>
                 </CommandList>
               </Command>
