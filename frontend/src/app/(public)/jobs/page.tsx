@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, Suspense, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { Suspense, useEffect, useState } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { usePublicJobs } from '@/hooks/usePublicJobs';
 import { JobCard } from '@/components/shared/JobCard';
-import { JobSearchFilter } from '@/components/shared/JobSearchFilter';
+import { JobSearchFilter } from '@/components/jobs/JobSearchFilter';
 import { PageLoader } from '@/components/shared/PageLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -15,13 +15,16 @@ import JobDetailModal from '@/components/jobs/JobDetailModal';
 
 function PublicJobsContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   
-  const [query, setQuery] = useState<JobSearchQuery>({ 
-    page: 1, 
+  const query: JobSearchQuery = { 
+    page: parseInt(searchParams.get('page') || '1', 10), 
     pageSize: 10,
     keyword: searchParams.get('query') || undefined,
-    location: searchParams.get('location') || undefined
-  });
+    location: searchParams.get('location') || undefined,
+    jobType: searchParams.get('jobType') || undefined
+  };
 
   const { data, isLoading, isError } = usePublicJobs(query);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -37,13 +40,10 @@ function PublicJobsContent() {
     }
   }, [data, selectedJobId]);
 
-  const handleSearch = (newQuery: JobSearchQuery) => {
-    setQuery({ ...query, ...newQuery });
-    setSelectedJobId(null); // Reset selection on new search
-  };
-
   const handlePageChange = (newPage: number) => {
-    setQuery({ ...query, page: newPage });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', newPage.toString());
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     setSelectedJobId(null);
   };
 
@@ -58,9 +58,9 @@ function PublicJobsContent() {
   return (
     <div className="flex flex-col h-[calc(100vh-65px)] bg-slate-50/50">
       {/* Sticky Top Filter */}
-      <div className="sticky top-0 z-20 bg-white border-b shadow-sm w-full">
+      <div className="sticky top-0 z-20 bg-white border-b border-slate-200 w-full">
         <div className="container mx-auto p-4 lg:py-4 lg:px-6">
-          <JobSearchFilter initialQuery={query} onSearch={handleSearch} />
+          <JobSearchFilter />
         </div>
       </div>
 
@@ -100,7 +100,7 @@ function PublicJobsContent() {
 
                 {/* Pagination */}
                 {data.meta.totalPages > 1 && (
-                  <div className="flex justify-between items-center mt-8 p-4 bg-white rounded-lg border shadow-sm">
+                  <div className="flex justify-between items-center mt-8 p-4 bg-white rounded-lg border border-slate-200">
                     <Button
                       variant="outline"
                       size="sm"
@@ -137,8 +137,8 @@ function PublicJobsContent() {
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50">
-               <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-6">
-                 <MousePointerClick className="w-10 h-10 text-primary" />
+               <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6">
+                 <MousePointerClick className="w-10 h-10 text-slate-500" />
                </div>
                <h3 className="text-xl font-semibold text-slate-900 mb-2">Select a job to view details</h3>
                <p className="text-slate-500 max-w-sm">Click on any job card from the list on the left to see the full job description and apply.</p>
