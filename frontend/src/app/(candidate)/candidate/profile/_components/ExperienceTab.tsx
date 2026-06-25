@@ -31,7 +31,13 @@ export function ExperienceTab() {
   const handleDelete = () => {
     if (deleteId) {
       deleteExperience(deleteId, {
-        onSuccess: () => setDeleteId(null),
+        onSuccess: () => {
+          toast.success('Work experience deleted successfully');
+          setDeleteId(null);
+        },
+        onError: (error: any) => {
+          toast.error(error?.response?.data?.message || error.message || 'Failed to delete experience');
+        },
       });
     }
   };
