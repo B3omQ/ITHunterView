@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ArrowLeft, Plus, X, Sparkles, AlertCircle } from "lucide-react"
-import { LEVELS, WORKING_MODELS, JOB_DOMAINS, JOB_EXPERTISES } from "@/lib/job-constants"
+import { LEVELS, WORKING_MODELS, JOB_DOMAINS, JOB_EXPERTISES, VIETNAM_PROVINCES } from "@/lib/job-constants"
+import { LocationCombobox } from "@/components/shared/LocationCombobox"
 
 export default function CreateJobPage() {
   const router = useRouter()
@@ -40,7 +41,7 @@ export default function CreateJobPage() {
   const [selectedSkills, setSelectedSkills] = useState<Array<{ skillId: number; name: string; isMandatory: boolean }>>([])
   const [searchSkill, setSearchSkill] = useState("")
   
-  const [locationType, setLocationType] = useState("Hồ Chí Minh")
+  const [locationType, setLocationType] = useState("TP Hồ Chí Minh")
   const [searchDomain, setSearchDomain] = useState("")
 
   const loading = metadataLoading || saving || companyLoading
@@ -189,32 +190,24 @@ export default function CreateJobPage() {
               <div className="space-y-2 col-span-1 md:col-span-2">
                 <Label htmlFor="locationType" className="font-semibold text-zinc-700 dark:text-zinc-300">Location *</Label>
                 <div className="flex gap-2">
-                  <select
-                    id="locationType"
-                    className="w-1/3 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
+                  <LocationCombobox
                     value={locationType}
-                    onChange={(e) => {
-                      setLocationType(e.target.value)
-                      if (e.target.value !== "Other" && e.target.value !== "International") {
-                        setFormData(prev => ({ ...prev, location: e.target.value }))
+                    onChange={(val) => {
+                      setLocationType(val)
+                      if (val !== "Other") {
+                        setFormData(prev => ({ ...prev, location: val }))
                       } else {
                         setFormData(prev => ({ ...prev, location: "" }))
                       }
                     }}
-                  >
-                    <option value="Hồ Chí Minh">Hồ Chí Minh</option>
-                    <option value="Hà Nội">Hà Nội</option>
-                    <option value="Đà Nẵng">Đà Nẵng</option>
-                    <option value="Remote">Remote</option>
-                    <option value="Other">Other (Domestic)</option>
-                    <option value="International">International</option>
-                  </select>
+                    className={locationType === "Other" ? "w-1/3" : "w-full"}
+                  />
                   
-                  {(locationType === "Other" || locationType === "International") && (
+                  {locationType === "Other" && (
                     <Input
                       id="location"
                       name="location"
-                      placeholder={locationType === "International" ? "e.g. Singapore, Tokyo" : "e.g. Can Tho, Binh Duong"}
+                      placeholder="e.g. Can Tho, Binh Duong"
                       required
                       value={formData.location}
                       onChange={handleChange}

@@ -1,6 +1,16 @@
 export const LEVELS = ["Internship", "Fresher", "Junior", "Senior", "Manager"];
 export const WORKING_MODELS = ["At office", "Remote", "Hybrid"];
 
+export const VIETNAM_PROVINCES = [
+  "Hà Nội", "TP Hồ Chí Minh", "Đà Nẵng", "Cần Thơ", "Hải Phòng",
+  "An Giang", "Bà Rịa - Vũng Tàu", "Bắc Giang", "Bắc Kạn", "Bạc Liêu",
+  "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước",
+  "Bình Thuận", "Cà Mau", "Cao Bằng", "Đắk Lắk", "Đắk Nông",
+  "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang",
+  "Hà Nam", "Hà Tĩnh", "Hải Dương", "Hậu Giang", "Hòa Bình",
+  "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum"
+];
+
 export const JOB_EXPERTISES = [
   "Software Engineer", "Frontend Engineer", "Backend Engineer", "Fullstack Engineer", 
   "Mobile Engineer", "DevOps Engineer", "Data Engineer", "Data Scientist", 
