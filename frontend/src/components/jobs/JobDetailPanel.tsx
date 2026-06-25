@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { MapPin, DollarSign, Calendar, Briefcase, Bookmark, ExternalLink, Award, Monitor, Target, Layers, Heart, Clock } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { ApplyJobModal } from '@/components/jobs/ApplyJobModal';
+import { useJobActions } from '@/hooks/useJobActions';
 
 interface JobDetailPanelProps {
   jobId: string;
@@ -18,6 +19,7 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
   const router = useRouter();
   const { data, isLoading, isError } = useJobDetail(jobId, isCandidateMode);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const { saveJob, unsaveJob, isSaving, isUnsaving } = useJobActions();
 
   if (isLoading) return <div className="h-full flex items-center justify-center"><PageLoader /></div>;
   if (isError || !data?.data) return <div className="h-full flex items-center justify-center p-8"><EmptyState title="Job not found" description="This job posting may have expired or been removed." /></div>;
@@ -41,13 +43,18 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
     setIsApplyModalOpen(true);
   };
 
-  const handleSaveClick = () => {
+  const handleSaveClick = async () => {
     const { accessToken } = useAuthStore.getState();
     if (!accessToken) {
       router.push(`/login?redirect=/jobs`);
       return;
     }
-    // TODO: Connect to save job mutation
+    
+    if (job.isSaved) {
+      await unsaveJob(job.id);
+    } else {
+      await saveJob(job.id);
+    }
   };
 
   return (
@@ -84,8 +91,12 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
           <Button onClick={handleApplyClick} className="flex-1 text-base font-bold h-12" size="lg">
             Apply now
           </Button>
-          <Button variant="outline" onClick={handleSaveClick} className="w-12 h-12 shrink-0 p-0 border-slate-200" title="Save Job">
-            <Heart className="w-6 h-6 text-slate-400 hover:text-primary transition-colors" />
+          <Button variant="outline" onClick={handleSaveClick} disabled={isSaving || isUnsaving} className="w-12 h-12 shrink-0 p-0 border-slate-200" title={job.isSaved ? "Unsave Job" : "Save Job"}>
+            {job.isSaved ? (
+              <Heart className="w-6 h-6 text-primary fill-primary" />
+            ) : (
+              <Heart className="w-6 h-6 text-slate-400 hover:text-primary transition-colors" />
+            )}
           </Button>
         </div>
 

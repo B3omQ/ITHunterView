@@ -23,21 +23,6 @@ const getDaysAgo = (dateStr?: string) => {
 };
 
 export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoadingAction, isActive, onClick }: JobCardProps) {
-  const handleSaveToggle = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isCandidateMode) {
-      window.location.href = '/login';
-      return;
-    }
-    
-    if (job.isSaved) {
-      onUnsave?.(job.id);
-    } else {
-      onSave?.(job.id);
-    }
-  };
-
   const jobLink = isCandidateMode ? `/candidate/jobs/${job.id}` : `/jobs/${job.id}`;
 
   return (
@@ -54,21 +39,6 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
         )}
         
         <CardContent className={`p-5 flex-1 flex flex-col relative ${isActive ? 'pl-6' : ''}`}>
-          {/* Save Bookmark button at top right */}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="absolute right-3 top-3 h-8 w-8 hover:bg-transparent"
-            onClick={handleSaveToggle}
-            disabled={isLoadingAction}
-            title={job.isSaved ? "Unsave Job" : "Save Job"}
-          >
-            {job.isSaved ? (
-              <Heart className="w-5 h-5 text-primary fill-primary" />
-            ) : (
-              <Heart className="w-5 h-5 text-slate-300 group-hover:text-primary transition-colors" />
-            )}
-          </Button>
 
           <div className="flex flex-col gap-3">
             {/* Posted time */}
