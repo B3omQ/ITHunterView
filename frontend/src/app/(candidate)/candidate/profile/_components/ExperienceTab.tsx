@@ -153,16 +153,16 @@ export function ExperienceTab() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const newErrors: { title?: string; companyName?: string } = {};
     if (!title.trim()) newErrors.title = 'Job Title is required';
     if (!companyName.trim()) newErrors.companyName = 'Company Name is required';
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-    
+
     setErrors({});
 
     const payload: ExperienceUpsertRequest = {
@@ -284,6 +284,7 @@ export function ExperienceTab() {
                   id="title"
                   placeholder="e.g. Senior Frontend Developer"
                   value={title}
+                  autoFocus
                   onChange={(e) => {
                     setTitle(e.target.value);
                     if (errors.title) setErrors((prev) => ({ ...prev, title: undefined }));
