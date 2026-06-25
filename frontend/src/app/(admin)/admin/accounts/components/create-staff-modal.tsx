@@ -65,6 +65,17 @@ export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps)
           }
         },
         onError: (err: any) => {
+          // Handle ASP.NET Core ValidationProblemDetails (400 Bad Request)
+          if (err.response?.data?.errors) {
+            const errorsObj = err.response.data.errors;
+            const firstErrorKey = Object.keys(errorsObj)[0];
+            if (firstErrorKey && errorsObj[firstErrorKey].length > 0) {
+              setError(errorsObj[firstErrorKey][0]);
+              return;
+            }
+          }
+          
+          // Fallback to standard message or default error
           setError(err.response?.data?.message || 'An error occurred while creating staff account.');
         },
       }

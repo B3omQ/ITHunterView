@@ -7,6 +7,7 @@ using ITHunterview.Service.DTOs.UserGovernance;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ITHunterview.WebAPI.Controllers
 {
@@ -56,7 +57,7 @@ namespace ITHunterview.WebAPI.Controllers
         public async Task<IActionResult> UpdateUserStatus(Guid id, [FromBody] UpdateUserStatusDto dto)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ResponseBase.Fail("Dữ liệu đầu vào không hợp lệ."));
+                return BadRequest(ResponseBase.Fail("Invalid input data."));
 
             var actorIdClaim = User.FindFirstValue("userId");
             if (string.IsNullOrEmpty(actorIdClaim) || !Guid.TryParse(actorIdClaim, out var actorId))
@@ -82,15 +83,17 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(result);
         }
 
+
+
         /// <summary>
-        /// Cập nhật vai trò (Role) của người dùng (Chỉ Admin)
+        /// Tạo tài khoản Staff mới (Chỉ Admin)
         /// </summary>
-        [HttpPut("users/{id:guid}/role")]
-        [Authorize(Policy = "AdminOnly")]
-        public async Task<IActionResult> UpdateUserRole(Guid id, [FromBody] UpdateUserRoleDto dto)
+        [HttpPost("staff")]
+        [EnableRateLimiting("StaffCreationPolicy")]
+        public async Task<IActionResult> CreateStaff([FromBody] CreateStaffDto dto)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ResponseBase.Fail("Dữ liệu đầu vào không hợp lệ."));
+                return BadRequest(ResponseBase.Fail("Invalid input data."));
 
             var actorIdClaim = User.FindFirstValue("userId");
             if (string.IsNullOrEmpty(actorIdClaim) || !Guid.TryParse(actorIdClaim, out var actorId))
@@ -101,8 +104,7 @@ namespace ITHunterview.WebAPI.Controllers
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
             var userAgent = Request.Headers["User-Agent"].ToString() ?? "unknown";
 
-            var result = await _userUseCase.UpdateUserRoleAsync(
-                id, 
+            var result = await _userUseCase.CreateStaffAccountAsync(
                 dto, 
                 actorId, 
                 actorEmail, 

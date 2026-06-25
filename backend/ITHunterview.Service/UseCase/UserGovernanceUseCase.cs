@@ -47,7 +47,13 @@ namespace ITHunterview.Service.UseCase
                 Status = u.Status,
                 FullName = u.RoleId == (int)SystemRole.Recruiter 
                     ? (u.RecruiterProfile?.FullName ?? string.Empty) 
-                    : ($"{u.CandidateProfile?.FirstName} {u.CandidateProfile?.LastName}").Trim(),
+                    : u.RoleId == (int)SystemRole.Candidate 
+                        ? ($"{u.CandidateProfile?.FirstName} {u.CandidateProfile?.LastName}").Trim()
+                        : u.RoleId == (int)SystemRole.Staff 
+                            ? "Staff Account"
+                            : u.RoleId == (int)SystemRole.Admin 
+                                ? "Admin Account" 
+                                : string.Empty,
                 Phone = u.RoleId == (int)SystemRole.Recruiter 
                     ? u.RecruiterProfile?.Phone 
                     : u.CandidateProfile?.Phone,
@@ -179,6 +185,10 @@ namespace ITHunterview.Service.UseCase
             }
 
             var oldStatus = targetUser.Status;
+            if (dto.Status == oldStatus)
+            {
+                return new ResponseBase<bool>("User is already in this status.");
+            }
             
             try
             {
@@ -188,7 +198,7 @@ namespace ITHunterview.Service.UseCase
                 {
                     targetUser.DeactiveAt = DateTime.UtcNow;
                 }
-                else
+                else if (dto.Status == UserStatus.ACTIVE || dto.Status == UserStatus.PENDING_VERIFICATION)
                 {
                     targetUser.DeactiveAt = null;
                 }
@@ -197,8 +207,8 @@ namespace ITHunterview.Service.UseCase
                 await _userRepository.UpdateUserAsync(targetUser);
                 _cache.Remove($"user-status-{targetUserId}");
 
-                // 4. Revoke active sessions if BANNED or INACTIVE
-                if (dto.Status == UserStatus.INACTIVE || dto.Status == UserStatus.BANNED)
+                // 4. Revoke active sessions if BANNED or INACTIVE or PENDING_VERIFICATION
+                if (dto.Status == UserStatus.INACTIVE || dto.Status == UserStatus.BANNED || dto.Status == UserStatus.PENDING_VERIFICATION)
                 {
                     await _tokenRepository.RevokeAllUserRefreshTokensAsync(targetUserId);
                 }
@@ -234,17 +244,7 @@ namespace ITHunterview.Service.UseCase
             }
         }
 
-        public async Task<ResponseBase<bool>> UpdateUserRoleAsync(
-            Guid targetUserId, 
-            UpdateUserRoleDto dto, 
-            Guid actorUserId, 
-            string actorEmail, 
-            string actorRole, 
-            string ipAddress, 
-            string userAgent)
-        {
-            return new ResponseBase<bool>("Role modification (authorization changes) has been disabled in the system.");
-        }
+
 
         public async Task<UserStatus?> GetUserStatusAsync(Guid userId)
         {
@@ -260,6 +260,11 @@ namespace ITHunterview.Service.UseCase
             string ipAddress, 
             string userAgent)
         {
+            if (actorRole != "admin")
+            {
+                return new ResponseBase<Guid>("Only Administrator (Admin) can create staff accounts.");
+            }
+
             if (dto == null)
             {
                 return new ResponseBase<Guid>("Invalid data.");
