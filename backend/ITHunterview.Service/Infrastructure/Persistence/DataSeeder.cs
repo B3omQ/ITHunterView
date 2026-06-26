@@ -659,7 +659,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
                     string[] jobTitlesPrefixes = { "Senior", "Junior", "Middle", "Lead", "Principal", "Fresher", "Internship", "Manager" };
                     string[] workingModels = { "At office", "Remote", "Hybrid" };
-                    string[] jobDomains = { "Backend", "Frontend", "Fullstack", "Mobile", "DevOps", "AI/ML", "Data" };
+                    string[] jobDomains = { 
+                        "Blockchain & Web3 Services", "E-commerce", "Education and Training", "Banking",
+                        "Game", "IT Services and IT Consulting", "Cyber Security", "Healthcare",
+                        "Financial Services", "AI Software & Services", "Software Products and Web Services"
+                    };
                     
                     for (int i = 1; i <= 60; i++)
                     {
