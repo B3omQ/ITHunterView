@@ -110,7 +110,7 @@ export default function CreateJobPage() {
 
   if (companyLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center text-muted-foreground">Checking company status...</div>
       </div>
     )
@@ -142,7 +142,7 @@ export default function CreateJobPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 py-10 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
+    <div className="min-h-screen bg-background py-10 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
       <div className="max-w-4xl mx-auto space-y-6">
 
         {/* Back Button & Header */}

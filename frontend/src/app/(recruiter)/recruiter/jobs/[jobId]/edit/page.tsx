@@ -153,7 +153,7 @@ export default function EditJobPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-2">
           <Loader2 className="h-8 w-8 text-blue-500 animate-spin mx-auto" />
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading Job Details...</p>
@@ -163,7 +163,7 @@ export default function EditJobPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 py-10 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
+    <div className="min-h-screen bg-background py-10 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
       <div className="max-w-4xl mx-auto space-y-6">
         
         {/* Back Button & Header */}

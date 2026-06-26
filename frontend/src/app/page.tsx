@@ -7,108 +7,35 @@ import { Logo } from "@/components/layout/Logo"
 import { useAuthStore } from "@/store/auth.store"
 import { getDashboardPath } from "@/lib/constants"
 import { PublicHeader } from "@/components/layout/PublicHeader"
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import {
+  Search as SearchIcon,
+  MapPin as MapPinIcon,
+  ArrowRight as ArrowRightIcon,
+  Upload as UploadIcon,
+  Zap as ZapIcon,
+  Target as TargetIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  ChevronDown as ChevronDownIcon,
+  Check as CheckIcon,
+  LogOut as LogOutIcon,
+  LayoutDashboard as LayoutDashboardIcon
+} from "lucide-react"
 
+const LOCATIONS = [
+  "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Cần Thơ", "Hải Phòng",
+  "An Giang", "Bà Rịa - Vũng Tàu", "Bắc Giang", "Bắc Kạn", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cao Bằng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Tĩnh", "Hải Dương", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái",
+  "International", "Others"
+];
 
-// Inline SVG Icon components to prevent Next.js + Turbopack compilation hang
-function SearchIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <circle cx="11" cy="11" r="8"></circle>
-      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-    </svg>
-  )
-}
+const removeAccents = (str: string) => {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+};
 
-function MapPinIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-      <circle cx="12" cy="10" r="3"></circle>
-    </svg>
-  )
-}
-
-function ArrowRightIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <line x1="5" y1="12" x2="19" y2="12"></line>
-      <polyline points="12 5 19 12 12 19"></polyline>
-    </svg>
-  )
-}
-
-function UploadIcon({ size = 22, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-      <polyline points="17 8 12 3 7 8"></polyline>
-      <line x1="12" y1="3" x2="12" y2="15"></line>
-    </svg>
-  )
-}
-
-function ZapIcon({ size = 22, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-    </svg>
-  )
-}
-
-function TargetIcon({ size = 22, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <circle cx="12" cy="12" r="10"></circle>
-      <circle cx="12" cy="12" r="6"></circle>
-      <circle cx="12" cy="12" r="2"></circle>
-    </svg>
-  )
-}
-
-function ChevronLeftIcon({ size = 18, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polyline points="15 18 9 12 15 6"></polyline>
-    </svg>
-  )
-}
-
-function ChevronRightIcon({ size = 18, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polyline points="9 18 15 12 9 6"></polyline>
-    </svg>
-  )
-}
-
-function CheckIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polyline points="20 6 9 17 4 12"></polyline>
-    </svg>
-  )
-}
-
-function LogOutIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-      <polyline points="16 17 21 12 16 7"></polyline>
-      <line x1="21" y1="12" x2="9" y2="12"></line>
-    </svg>
-  )
-}
-
-function LayoutDashboardIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <rect x="3" y="3" width="7" height="9"></rect>
-      <rect x="14" y="3" width="7" height="5"></rect>
-      <rect x="14" y="12" width="7" height="9"></rect>
-      <rect x="3" y="16" width="7" height="5"></rect>
-    </svg>
-  )
-}
+// Icons are imported from lucide-react
 
 export default function Home() {
   const router = useRouter()
@@ -116,6 +43,12 @@ export default function Home() {
   const [searchTitle, setSearchTitle] = useState("")
   const [searchLoc, setSearchLoc] = useState("")
   const [mounted, setMounted] = useState(false)
+  const [locationOpen, setLocationOpen] = useState(false)
+
+  const filteredLocations = LOCATIONS.filter(loc => {
+    if (!searchLoc) return true;
+    return removeAccents(loc).includes(removeAccents(searchLoc));
+  });
 
   useEffect(() => {
     setMounted(true)
@@ -125,87 +58,39 @@ export default function Home() {
     const params = new URLSearchParams()
     if (searchTitle.trim()) params.append("query", searchTitle.trim())
     if (searchLoc.trim()) params.append("location", searchLoc.trim())
-    
+
     const queryString = params.toString()
     router.push(queryString ? `/jobs?${queryString}` : '/jobs')
   }
 
-  const featuredJobs = [
-    {
-      id: 1,
-      title: "Frontend Developer",
-      company: "VNG Corporation",
-      logoColor: "bg-orange-500",
-      logoText: "V",
-      salary: "$800 – $1,400/mo",
-      location: "Ho Chi Minh City",
-      tags: ["React", "TypeScript"],
-      badge: { text: "Hot", color: "bg-red-500/10 text-red-500 border border-red-500/20" },
-    },
-    {
-      id: 2,
-      title: "Backend Engineer (Java)",
-      company: "FPT Software",
-      logoColor: "bg-blue-600",
-      logoText: "F",
-      salary: "$700 – $1,200/mo",
-      location: "Hanoi",
-      tags: ["Java", "Spring Boot"],
-      badge: { text: "New", color: "bg-green-500/10 text-green-500 border border-green-500/20" },
-    },
-    {
-      id: 3,
-      title: "Data Analyst",
-      company: "Grab Vietnam",
-      logoColor: "bg-emerald-600",
-      logoText: "G",
-      salary: "$900 – $1,600/mo",
-      location: "Ho Chi Minh City",
-      tags: ["SQL", "Python"],
-      badge: null,
-    },
-    {
-      id: 4,
-      title: "Mobile Developer (iOS)",
-      company: "MoMo",
-      logoColor: "bg-pink-600",
-      logoText: "M",
-      salary: "$1,000 – $1,800/mo",
-      location: "Ho Chi Minh City",
-      tags: ["Swift", "SwiftUI"],
-      badge: { text: "Urgent", color: "bg-amber-500/10 text-amber-500 border border-amber-500/20" },
-    },
-    {
-      id: 5,
-      title: "DevOps Engineer",
-      company: "Tiki",
-      logoColor: "bg-sky-500",
-      logoText: "T",
-      salary: "$1,100 – $2,000/mo",
-      location: "Hanoi",
-      tags: ["Docker", "Kubernetes"],
-      badge: null,
-    },
-  ]
 
-  const popularSearches = ["Frontend Developer", "Data Analyst", "Mobile Dev", "DevOps"]
+
+
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="min-h-screen flex flex-col bg-background bg-generative-grid text-foreground relative">
       {/* Header */}
       <PublicHeader />
 
       {/* Hero Section */}
       <section className="relative pt-20 pb-16 md:pt-28 md:pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full text-center">
+        {/* Decorative background blobs */}
+        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob hidden md:block"></div>
+        <div className="absolute top-20 right-10 w-72 h-72 bg-cyan-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000 hidden md:block"></div>
+        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-72 h-72 bg-indigo-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000 hidden md:block"></div>
+
         {/* Badge */}
-        <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-semibold px-4 py-1.5 rounded-full mb-6">
+        <div className="inline-flex items-center gap-2 glass-panel text-foreground text-xs font-semibold px-4 py-2 rounded-full mb-8 shadow-sm hover:scale-105 transition-transform cursor-default relative z-10">
+          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
           <span>#1 IT Job Platform for Fresh IT Graduates in Vietnam</span>
           <span>🇻🇳</span>
         </div>
 
         {/* Headline */}
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-foreground tracking-tight max-w-4xl mx-auto leading-tight">
-          Land your first IT job — <span className="text-primary">faster.</span>
+        <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold text-foreground tracking-tight max-w-4xl mx-auto leading-tight relative z-10">
+          Land your first IT job <br className="hidden sm:block" />
+          <span className="text-muted-foreground font-light">—</span>{" "}
+          <span className="bg-gradient-to-r from-blue-600 to-cyan-400 bg-clip-text text-transparent animate-typing">faster.</span>
         </h1>
 
         <p className="mt-5 text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
@@ -213,150 +98,116 @@ export default function Home() {
         </p>
 
         {/* Search Bar */}
-        <div className="mt-10 max-w-3xl mx-auto bg-card border border-border rounded-2xl p-2.5 shadow-md flex flex-col md:flex-row gap-2.5 items-stretch md:items-center">
-          <div className="flex-1 flex items-center gap-2.5 px-3 min-w-0 border-b md:border-b-0 md:border-r border-border pb-2.5 md:pb-0">
-            <SearchIcon className="text-muted-foreground flex-shrink-0" size={18} />
-            <input
+        <div className="mt-12 max-w-4xl mx-auto glass-panel rounded-2xl p-2.5 flex flex-col md:flex-row gap-2.5 items-stretch md:items-center relative z-20 hover:border-primary/40 transition-colors duration-300">
+          <div className="flex-1 flex items-center gap-2.5 px-3 min-w-0 border-b md:border-b-0 md:border-r border-border/50 pb-2.5 md:pb-0 group">
+            <SearchIcon className="text-muted-foreground flex-shrink-0 group-focus-within:text-primary transition-colors" size={18} />
+            <Input
               type="text"
               placeholder="Job title, keywords, company..."
               value={searchTitle}
               onChange={(e) => setSearchTitle(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="w-full bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground py-1 text-foreground"
+              className="w-full border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 h-auto md:text-sm placeholder:text-muted-foreground"
             />
           </div>
 
-          <div className="flex-1 flex items-center gap-2.5 px-3 min-w-0 pb-2.5 md:pb-0">
+          <div className="flex-1 flex items-center gap-2.5 px-3 min-w-0 pb-2.5 md:pb-0 relative">
             <MapPinIcon className="text-muted-foreground flex-shrink-0" size={18} />
-            <input
+            <Input
               type="text"
               placeholder="Location (Hanoi, Ho Chi Minh...)"
               value={searchLoc}
-              onChange={(e) => setSearchLoc(e.target.value)}
+              onChange={(e) => {
+                setSearchLoc(e.target.value);
+                setLocationOpen(true);
+              }}
+              onFocus={() => setLocationOpen(true)}
+              onBlur={() => setLocationOpen(false)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="w-full bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground py-1 text-foreground"
+              className="w-full border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 h-auto md:text-sm placeholder:text-muted-foreground"
             />
+            {locationOpen && (
+              <div className="absolute top-full left-0 right-0 mt-4 z-50">
+                <Command className="border border-border shadow-lg" shouldFilter={false}>
+                  <CommandList>
+                    <CommandEmpty>No location found.</CommandEmpty>
+                    <CommandGroup>
+                      {filteredLocations.map((loc) => (
+                        <CommandItem
+                          key={loc}
+                          value={loc}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setSearchLoc(loc);
+                            setLocationOpen(false);
+                          }}
+                        >
+                          {loc}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </div>
+            )}
           </div>
 
-          <button 
+          <Button
             onClick={handleSearch}
-            className="h-11 px-6 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+            className="h-11 px-6 rounded-xl font-semibold flex items-center justify-center gap-2"
           >
             <SearchIcon size={16} />
             <span>Search Jobs</span>
-          </button>
+          </Button>
         </div>
 
-        {/* Popular Tags */}
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5 text-xs">
-          <span className="text-muted-foreground font-medium">Popular:</span>
-          {popularSearches.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => {
-                setSearchTitle(tag)
-                router.push(`/jobs?query=${encodeURIComponent(tag)}`)
-              }}
-              className="px-3 py-1 rounded-lg border border-border bg-card hover:border-primary/50 text-muted-foreground hover:text-primary transition-all cursor-pointer"
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
 
-        {/* Statistics highlights */}
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-4 text-xs font-semibold">
-          <span className="bg-primary/5 text-primary border border-primary/10 px-4 py-2 rounded-xl">10,000+ Jobs</span>
-          <span className="bg-primary/5 text-primary border border-primary/10 px-4 py-2 rounded-xl">500+ Companies</span>
-          <span className="bg-primary/5 text-primary border border-primary/10 px-4 py-2 rounded-xl">AI-Powered Matching</span>
-        </div>
-      </section>
 
-      {/* Featured Jobs Section */}
-      <section id="jobs" className="py-20 bg-muted/30 border-y border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-end justify-between mb-10">
+        {/* Bento Grid Highlights */}
+        <div className="mt-16 max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-5 relative z-10 text-left">
+          {/* Card 1 */}
+          <div className="glass-panel p-5 rounded-2xl flex flex-col gap-3 hover:-translate-y-1 transition-transform duration-300 group cursor-default">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <ZapIcon size={20} />
+            </div>
             <div>
-              <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Featured Jobs</h2>
-              <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-                Hand-picked opportunities for fresh IT graduates
+              <p className="text-2xl font-bold text-foreground">AI Match</p>
+              <p className="text-sm text-muted-foreground mt-1">Smart ranking & fit scoring for every job</p>
+            </div>
+          </div>
+          
+          {/* Card 2 */}
+          <div className="glass-panel p-5 rounded-2xl flex flex-col gap-3 hover:-translate-y-1 transition-transform duration-300 group cursor-default">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <TargetIcon size={20} />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">100+ Mocks</p>
+              <p className="text-sm text-muted-foreground mt-1">Real-world technical interview prep</p>
+            </div>
+          </div>
+          
+          {/* Card 3 */}
+          <div className="glass-panel p-5 rounded-2xl flex flex-col gap-3 hover:-translate-y-1 transition-transform duration-300 group cursor-default">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <CheckIcon size={20} />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground flex items-center gap-2">
+                10k+ Jobs
+                <span className="flex h-2.5 w-2.5 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500"></span>
+                </span>
               </p>
+              <p className="text-sm text-muted-foreground mt-1">From 500+ top tech companies</p>
             </div>
-            {/* Navigation Arrows */}
-            <div className="flex items-center gap-2">
-              <button className="w-10 h-10 rounded-full border border-border bg-white flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary transition-all cursor-pointer">
-                <ChevronLeftIcon size={18} />
-              </button>
-              <button className="w-10 h-10 rounded-full border border-border bg-white flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary transition-all cursor-pointer">
-                <ChevronRightIcon size={18} />
-              </button>
-            </div>
-          </div>
-
-          {/* Jobs Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredJobs.map((job) => (
-              <div
-                key={job.id}
-                className="bg-card border border-border hover:border-primary/30 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    {/* Company Logo representation */}
-                    <div className={`w-12 h-12 rounded-xl ${job.logoColor} text-white font-extrabold flex items-center justify-center shadow-sm`}>
-                      {job.logoText}
-                    </div>
-
-                    {/* Badge */}
-                    {job.badge && (
-                      <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${job.badge.color}`}>
-                        {job.badge.text}
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="text-xs text-muted-foreground font-medium mb-1">{job.company}</p>
-                  <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                    {job.title}
-                  </h3>
-
-                  {/* Tech stack */}
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    {job.tags.map((tag) => (
-                      <span key={tag} className="text-xs px-2.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border/50">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-border/50 flex items-center justify-between text-xs">
-                  <div className="space-y-1">
-                    <p className="font-bold text-foreground">{job.salary}</p>
-                    <p className="text-muted-foreground flex items-center gap-1">
-                      <MapPinIcon size={12} /> {job.location}
-                    </p>
-                  </div>
-                  <Link href={`/jobs/${job.id}`} className="text-primary font-semibold flex items-center gap-1 hover:gap-1.5 transition-all">
-                    <span>View Job</span>
-                    <ArrowRightIcon size={14} />
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-12 text-center">
-            <Link
-              href="/jobs"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
-            >
-              <span>Browse all 10,000+ jobs</span>
-              <ArrowRightIcon size={14} />
-            </Link>
           </div>
         </div>
       </section>
+
+
+      <hr className="border-border w-full" />
 
       {/* How It Works Section */}
       <section id="mock-interview" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
@@ -555,12 +406,6 @@ export default function Home() {
               <p className="text-xs text-muted-foreground max-w-sm leading-relaxed">
                 Vietnam&apos;s smartest platform to help fresh IT graduates land their dream first job — faster, with AI-powered matching and mock interviews.
               </p>
-              {/* Social Icons Placeholder */}
-              <div className="flex items-center gap-3 pt-2">
-                <span className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-xs font-bold hover:text-primary transition-colors cursor-pointer">fb</span>
-                <span className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-xs font-bold hover:text-primary transition-colors cursor-pointer">git</span>
-                <span className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-xs font-bold hover:text-primary transition-colors cursor-pointer">ln</span>
-              </div>
             </div>
 
             {/* Links Columns */}
@@ -602,6 +447,20 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Floating AI Copilot */}
+      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
+        <div className="glass-panel hidden sm:flex items-center px-4 py-2 rounded-full text-xs font-semibold text-foreground shadow-lg cursor-pointer hover:bg-white/80 transition-colors">
+          Need help? Ask our AI
+        </div>
+        <button className="w-14 h-14 bg-foreground text-background rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform hover:shadow-primary/20 relative group">
+          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary border-2 border-background"></span>
+          </span>
+          <ZapIcon size={24} className="group-hover:animate-bounce" />
+        </button>
+      </div>
     </div>
   )
 }
