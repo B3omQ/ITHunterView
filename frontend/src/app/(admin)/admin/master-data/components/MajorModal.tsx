@@ -27,13 +27,30 @@ interface DropdownMajorOption {
 }
 
 const validateMajorForm = (code: string, name: string): string | null => {
-  if (!code.trim()) return 'Major code cannot be empty.';
-  if (!/^[A-Za-z0-9\-]+$/.test(code.trim())) {
-    return 'Major code can only contain letters, numbers, and hyphens.';
+  const trimmedCode = code.trim();
+  const trimmedName = name.trim();
+
+  if (!trimmedCode) return 'Major code cannot be empty.';
+  if (trimmedCode.length < 2) return 'Major code must be at least 2 characters.';
+  if (trimmedCode.length > 50) return 'Major code cannot exceed 50 characters.';
+  if (!/^[A-Za-z0-9\-_]+$/.test(trimmedCode)) {
+    return 'Major code can only contain letters, numbers, hyphens, and underscores.';
   }
-  if (!name.trim()) return 'Major name cannot be empty.';
-  if (name.trim().length < 3) return 'Major name must be at least 3 characters.';
+
+  if (!trimmedName) return 'Major name cannot be empty.';
+  if (trimmedName.length < 3) return 'Major name must be at least 3 characters.';
+  if (trimmedName.length > 255) return 'Major name cannot exceed 255 characters.';
   return null;
+};
+
+const generateSuggestedCode = (name: string): string => {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map(word => word[0])
+    .join('')
+    .replace(/[^A-Za-z0-9]/g, '')
+    .toUpperCase();
 };
 
 const getDropdownOptions = (
@@ -74,7 +91,7 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
   const updateMajorMutation = useUpdateMajor();
 
   // Fetch danh sách cây phục vụ dropdown chọn cha
-  const { data: treeResponse } = useMajorTree({ page: 1, pageSize: 9999 });
+  const { data: treeResponse, isLoading: isTreeLoading } = useMajorTree({ page: 1, pageSize: 9999 });
   const rootMajors = treeResponse?.data?.items || [];
 
   const dropdownOptions = useMemo(() => {
@@ -152,6 +169,19 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
     }
   };
 
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setMajorForm(prev => {
+      const oldSuggestedCode = generateSuggestedCode(prev.name);
+      const shouldSuggest = mode === 'create' && (!prev.code || prev.code === oldSuggestedCode);
+      const nextCode = shouldSuggest ? generateSuggestedCode(newName) : prev.code;
+      return {
+        name: newName,
+        code: nextCode
+      };
+    });
+  };
+
   const isPending = createMajorMutation.isPending || updateMajorMutation.isPending;
 
   return (
@@ -180,10 +210,10 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
             <label className="text-xs font-bold text-foreground">Major Code</label>
             <input
               type="text"
-              placeholder="Enter major code (e.g. CNTT, MKT...)"
+              placeholder="Enter major code (e.g. DEV, BA...)"
               value={majorForm.code}
-              onChange={(e) => setMajorForm({ ...majorForm, code: e.target.value })}
-              className="w-full px-3.5 py-2 rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/60 uppercase"
+              onChange={(e) => setMajorForm({ ...majorForm, code: e.target.value.toUpperCase() })}
+              className="w-full px-3.5 py-2 rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/60"
               required
               disabled={mode === 'edit'}
             />
@@ -195,7 +225,7 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
               type="text"
               placeholder="Enter full major name..."
               value={majorForm.name}
-              onChange={(e) => setMajorForm({ ...majorForm, name: e.target.value })}
+              onChange={handleNameChange}
               className="w-full px-3.5 py-2 rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/60"
               required
             />
@@ -209,19 +239,28 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
                 const val = e.target.value;
                 setParentId(val ? Number(val) : null);
               }}
-              className="w-full px-3.5 py-2 rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-foreground"
+              disabled={mode === 'edit' || isTreeLoading}
+              className="w-full px-3.5 py-2 rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-foreground disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <option value="" className="text-muted-foreground">-- None (Root Level 1) --</option>
-              {dropdownOptions.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {'\u00A0'.repeat((opt.level - 1) * 4)}
-                  {opt.level === 2 ? '└─ ' : ''}
-                  {opt.name} ({opt.code})
-                </option>
-              ))}
+              {isTreeLoading ? (
+                <option disabled>Loading parents...</option>
+              ) : (
+                <>
+                  <option value="" className="text-muted-foreground">-- None (Root Level 1) --</option>
+                  {dropdownOptions.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {'\u00A0'.repeat((opt.level - 1) * 4)}
+                      {opt.level === 2 ? '└─ ' : ''}
+                      {opt.name} ({opt.code})
+                    </option>
+                  ))}
+                </>
+              )}
             </select>
             <p className="text-[10px] text-muted-foreground leading-relaxed mt-1">
-              * Only level 1 or level 2 majors can be selected as parents to ensure the hierarchy depth does not exceed 3 levels.
+              {mode === 'edit'
+                ? '* Parent major cannot be changed after creation.'
+                : '* Only level 1 or level 2 majors can be selected as parents to ensure the hierarchy depth does not exceed 3 levels.'}
             </p>
           </div>
 
@@ -235,10 +274,10 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
             </button>
             <button
               type="submit"
-              disabled={isPending}
+              disabled={isPending || isTreeLoading}
               className="px-4 py-2 bg-primary hover:bg-primary/95 text-primary-foreground font-medium text-sm rounded-xl shadow-xs transition-colors flex items-center gap-1.5 disabled:opacity-50"
             >
-              {isPending && <Loader2 size={14} className="animate-spin" />}
+              {(isPending || isTreeLoading) && <Loader2 size={14} className="animate-spin" />}
               <span>Save Changes</span>
             </button>
           </div>
