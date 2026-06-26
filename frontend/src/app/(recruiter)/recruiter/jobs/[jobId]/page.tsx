@@ -53,7 +53,7 @@ export default function JobDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-2">
           <Loader2 className="h-8 w-8 text-blue-500 animate-spin mx-auto" />
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading Job Details...</p>
@@ -64,7 +64,7 @@ export default function JobDetailPage() {
 
   if (error || !job) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 py-10 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-background py-10 px-4">
         <div className="text-center max-w-md bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
           <p className="text-red-500 font-semibold mb-4">{error || "Job Posting not found."}</p>
           <Button onClick={() => router.push("/recruiter/jobs")} className="bg-blue-600 hover:bg-blue-700 text-white">
@@ -79,7 +79,7 @@ export default function JobDetailPage() {
   const niceToHaveSkills = job.skills?.filter((s: any) => !s.isMandatory) || []
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 py-10 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
+    <div className="min-h-screen bg-background py-10 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
       <div className="max-w-4xl mx-auto space-y-6">
         
         {/* Back Button & Action Toolbar */}
