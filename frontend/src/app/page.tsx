@@ -8,6 +8,15 @@ import { useAuthStore } from "@/store/auth.store"
 import { getDashboardPath } from "@/lib/constants"
 import { PublicHeader } from "@/components/layout/PublicHeader"
 
+const LOCATIONS = [
+  "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Cần Thơ", "Hải Phòng",
+  "An Giang", "Bà Rịa - Vũng Tàu", "Bắc Giang", "Bắc Kạn", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cao Bằng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Tĩnh", "Hải Dương", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái",
+  "International", "Others"
+];
+
+const removeAccents = (str: string) => {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+};
 
 // Inline SVG Icon components to prevent Next.js + Turbopack compilation hang
 function SearchIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
@@ -81,6 +90,14 @@ function ChevronRightIcon({ size = 18, className = "" }: { size?: number; classN
   )
 }
 
+function ChevronDownIcon({ size = 18, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <polyline points="6 9 12 15 18 9"></polyline>
+    </svg>
+  )
+}
+
 function CheckIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -116,6 +133,12 @@ export default function Home() {
   const [searchTitle, setSearchTitle] = useState("")
   const [searchLoc, setSearchLoc] = useState("")
   const [mounted, setMounted] = useState(false)
+  const [locationOpen, setLocationOpen] = useState(false)
+
+  const filteredLocations = LOCATIONS.filter(loc => {
+    if (!searchLoc) return true;
+    return removeAccents(loc).includes(removeAccents(searchLoc));
+  });
 
   useEffect(() => {
     setMounted(true)
@@ -226,16 +249,48 @@ export default function Home() {
             />
           </div>
 
-          <div className="flex-1 flex items-center gap-2.5 px-3 min-w-0 pb-2.5 md:pb-0">
+          <div className="flex-1 flex items-center gap-2.5 px-3 min-w-0 pb-2.5 md:pb-0 relative">
             <MapPinIcon className="text-muted-foreground flex-shrink-0" size={18} />
             <input
               type="text"
               placeholder="Location (Hanoi, Ho Chi Minh...)"
               value={searchLoc}
-              onChange={(e) => setSearchLoc(e.target.value)}
+              onChange={(e) => {
+                setSearchLoc(e.target.value);
+                setLocationOpen(true);
+              }}
+              onFocus={() => setLocationOpen(true)}
+              onBlur={() => {
+                setLocationOpen(false);
+              }}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="w-full bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground py-1 text-foreground"
             />
+            {locationOpen && (
+              <div className="absolute top-full left-0 right-0 mt-4 bg-popover border border-border rounded-lg shadow-lg z-50 overflow-hidden">
+                <div className="max-h-[300px] overflow-y-auto p-1.5 flex flex-col gap-0.5">
+                  {filteredLocations.length > 0 ? (
+                    filteredLocations.map((loc) => (
+                      <div
+                        key={loc}
+                        className="cursor-pointer select-none rounded-md px-3 py-2 text-sm hover:bg-muted text-popover-foreground transition-colors"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setSearchLoc(loc);
+                          setLocationOpen(false);
+                        }}
+                      >
+                        {loc}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="py-6 text-center text-sm text-muted-foreground">
+                      No location found.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <button 
