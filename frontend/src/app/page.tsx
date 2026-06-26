@@ -68,21 +68,29 @@ export default function Home() {
 
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="min-h-screen flex flex-col bg-background bg-generative-grid text-foreground relative">
       {/* Header */}
       <PublicHeader />
 
       {/* Hero Section */}
       <section className="relative pt-20 pb-16 md:pt-28 md:pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full text-center">
+        {/* Decorative background blobs */}
+        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob hidden md:block"></div>
+        <div className="absolute top-20 right-10 w-72 h-72 bg-cyan-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000 hidden md:block"></div>
+        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-72 h-72 bg-indigo-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000 hidden md:block"></div>
+
         {/* Badge */}
-        <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-semibold px-4 py-1.5 rounded-full mb-6">
+        <div className="inline-flex items-center gap-2 glass-panel text-foreground text-xs font-semibold px-4 py-2 rounded-full mb-8 shadow-sm hover:scale-105 transition-transform cursor-default relative z-10">
+          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
           <span>#1 IT Job Platform for Fresh IT Graduates in Vietnam</span>
           <span>🇻🇳</span>
         </div>
 
         {/* Headline */}
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-foreground tracking-tight max-w-4xl mx-auto leading-tight">
-          Land your first IT job — <span className="text-primary">faster.</span>
+        <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold text-foreground tracking-tight max-w-4xl mx-auto leading-tight relative z-10">
+          Land your first IT job <br className="hidden sm:block" />
+          <span className="text-muted-foreground font-light">—</span>{" "}
+          <span className="bg-gradient-to-r from-blue-600 to-cyan-400 bg-clip-text text-transparent animate-typing">faster.</span>
         </h1>
 
         <p className="mt-5 text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
@@ -90,9 +98,9 @@ export default function Home() {
         </p>
 
         {/* Search Bar */}
-        <div className="mt-10 max-w-3xl mx-auto bg-card border border-border rounded-2xl p-2.5 shadow-md flex flex-col md:flex-row gap-2.5 items-stretch md:items-center relative z-10">
-          <div className="flex-1 flex items-center gap-2.5 px-3 min-w-0 border-b md:border-b-0 md:border-r border-border pb-2.5 md:pb-0">
-            <SearchIcon className="text-muted-foreground flex-shrink-0" size={18} />
+        <div className="mt-12 max-w-4xl mx-auto glass-panel rounded-2xl p-2.5 flex flex-col md:flex-row gap-2.5 items-stretch md:items-center relative z-20 hover:border-primary/40 transition-colors duration-300">
+          <div className="flex-1 flex items-center gap-2.5 px-3 min-w-0 border-b md:border-b-0 md:border-r border-border/50 pb-2.5 md:pb-0 group">
+            <SearchIcon className="text-muted-foreground flex-shrink-0 group-focus-within:text-primary transition-colors" size={18} />
             <Input
               type="text"
               placeholder="Job title, keywords, company..."
@@ -155,11 +163,46 @@ export default function Home() {
 
 
 
-        {/* Statistics highlights */}
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-4 text-xs font-semibold">
-          <span className="bg-primary/5 text-primary border border-primary/10 px-4 py-2 rounded-xl">10,000+ Jobs</span>
-          <span className="bg-primary/5 text-primary border border-primary/10 px-4 py-2 rounded-xl">500+ Companies</span>
-          <span className="bg-primary/5 text-primary border border-primary/10 px-4 py-2 rounded-xl">AI-Powered Matching</span>
+        {/* Bento Grid Highlights */}
+        <div className="mt-16 max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-5 relative z-10 text-left">
+          {/* Card 1 */}
+          <div className="glass-panel p-5 rounded-2xl flex flex-col gap-3 hover:-translate-y-1 transition-transform duration-300 group cursor-default">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <ZapIcon size={20} />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">AI Match</p>
+              <p className="text-sm text-muted-foreground mt-1">Smart ranking & fit scoring for every job</p>
+            </div>
+          </div>
+          
+          {/* Card 2 */}
+          <div className="glass-panel p-5 rounded-2xl flex flex-col gap-3 hover:-translate-y-1 transition-transform duration-300 group cursor-default">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <TargetIcon size={20} />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">100+ Mocks</p>
+              <p className="text-sm text-muted-foreground mt-1">Real-world technical interview prep</p>
+            </div>
+          </div>
+          
+          {/* Card 3 */}
+          <div className="glass-panel p-5 rounded-2xl flex flex-col gap-3 hover:-translate-y-1 transition-transform duration-300 group cursor-default">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <CheckIcon size={20} />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground flex items-center gap-2">
+                10k+ Jobs
+                <span className="flex h-2.5 w-2.5 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500"></span>
+                </span>
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">From 500+ top tech companies</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -404,6 +447,20 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Floating AI Copilot */}
+      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
+        <div className="glass-panel hidden sm:flex items-center px-4 py-2 rounded-full text-xs font-semibold text-foreground shadow-lg cursor-pointer hover:bg-white/80 transition-colors">
+          Need help? Ask our AI
+        </div>
+        <button className="w-14 h-14 bg-foreground text-background rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform hover:shadow-primary/20 relative group">
+          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary border-2 border-background"></span>
+          </span>
+          <ZapIcon size={24} className="group-hover:animate-bounce" />
+        </button>
+      </div>
     </div>
   )
 }
