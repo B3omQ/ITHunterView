@@ -15,25 +15,30 @@ namespace ITHunterview.Service.Infrastructure.Infrastructure
         {
             _queue = Channel.CreateBounded<UserActivityLogs>(new BoundedChannelOptions(10000)
             {
-                FullMode = BoundedChannelFullMode.Wait,
+                FullMode = BoundedChannelFullMode.DropOldest,
                 SingleReader = true,
                 SingleWriter = false
             });
         }
 
-        public void QueueBackgroundWorkItem(UserActivityLogs logItem)
+        public async ValueTask QueueBackgroundWorkItemAsync(UserActivityLogs logItem, CancellationToken cancellationToken = default)
         {
             if (logItem == null)
             {
                 throw new ArgumentNullException(nameof(logItem));
             }
 
-            _queue.Writer.TryWrite(logItem);
+            await _queue.Writer.WriteAsync(logItem, cancellationToken);
         }
 
-        public ValueTask<UserActivityLogs> DequeueAsync(CancellationToken cancellationToken)
+        public bool TryEnqueue(UserActivityLogs logItem)
         {
-            return _queue.Reader.ReadAsync(cancellationToken);
+            if (logItem == null)
+            {
+                return false;
+            }
+
+            return _queue.Writer.TryWrite(logItem);
         }
 
         public ValueTask<bool> WaitToReadAsync(CancellationToken cancellationToken)
