@@ -52,13 +52,16 @@ namespace ITHunterview.Service.UseCase
 
         public async Task<ResponseBase<MajorDto>> CreateMajorAsync(CreateMajorDto dto, Guid userId)
         {
-            var isNameDuplicate = await _majorRepository.ExistsByNameAsync(dto.Name);
+            var trimmedName = dto.Name.Trim();
+            var trimmedCode = dto.Code.Trim();
+
+            var isNameDuplicate = await _majorRepository.ExistsByNameAsync(trimmedName);
             if (isNameDuplicate)
             {
                 return new ResponseBase<MajorDto>("Major name already exists.");
             }
 
-            var isCodeDuplicate = await _majorRepository.ExistsByCodeAsync(dto.Code);
+            var isCodeDuplicate = await _majorRepository.ExistsByCodeAsync(trimmedCode);
             if (isCodeDuplicate)
             {
                 return new ResponseBase<MajorDto>("Major code already exists.");
@@ -121,13 +124,21 @@ namespace ITHunterview.Service.UseCase
                 return new ResponseBase<MajorDto>("Major does not exist.");
             }
 
-            var isNameDuplicate = await _majorRepository.ExistsByNameAsync(dto.Name, id);
+            if (dto.ParentId != major.ParentId)
+            {
+                return new ResponseBase<MajorDto>("Changing parent major after creation is not allowed.");
+            }
+
+            var trimmedName = dto.Name.Trim();
+            var trimmedCode = dto.Code.Trim();
+
+            var isNameDuplicate = await _majorRepository.ExistsByNameAsync(trimmedName, id);
             if (isNameDuplicate)
             {
                 return new ResponseBase<MajorDto>("Major name already exists.");
             }
 
-            var isCodeDuplicate = await _majorRepository.ExistsByCodeAsync(dto.Code, id);
+            var isCodeDuplicate = await _majorRepository.ExistsByCodeAsync(trimmedCode, id);
             if (isCodeDuplicate)
             {
                 return new ResponseBase<MajorDto>("Major code already exists.");
@@ -351,20 +362,40 @@ namespace ITHunterview.Service.UseCase
         #region Helper Methods
         private int CalculateDepth(int? parentId, List<Majors> allActiveMajors)
         {
+            return CalculateDepthWithVisited(parentId, allActiveMajors, new HashSet<int>());
+        }
+
+        private int CalculateDepthWithVisited(int? parentId, List<Majors> allActiveMajors, HashSet<int> visited)
+        {
             if (parentId == null) return 0;
+            if (visited.Contains(parentId.Value))
+            {
+                return MaxDepth + 1; // Return value exceeding MaxDepth to fail validation safely instead of throwing StackOverflowException
+            }
+            visited.Add(parentId.Value);
             var parent = allActiveMajors.FirstOrDefault(m => m.Id == parentId);
             if (parent == null) return 0;
-            return CalculateDepth(parent.ParentId, allActiveMajors) + 1;
+            return CalculateDepthWithVisited(parent.ParentId, allActiveMajors, visited) + 1;
         }
 
         private int CalculateSubtreeHeight(int nodeId, List<Majors> allActiveMajors)
         {
+            return CalculateSubtreeHeightWithVisited(nodeId, allActiveMajors, new HashSet<int>());
+        }
+
+        private int CalculateSubtreeHeightWithVisited(int nodeId, List<Majors> allActiveMajors, HashSet<int> visited)
+        {
+            if (visited.Contains(nodeId))
+            {
+                return 0; // Prevent cycle
+            }
+            visited.Add(nodeId);
             var children = allActiveMajors.Where(m => m.ParentId == nodeId).ToList();
             if (!children.Any()) return 0;
             int maxHeight = 0;
             foreach (var child in children)
             {
-                var height = CalculateSubtreeHeight(child.Id, allActiveMajors) + 1;
+                var height = CalculateSubtreeHeightWithVisited(child.Id, allActiveMajors, new HashSet<int>(visited)) + 1;
                 if (height > maxHeight)
                 {
                     maxHeight = height;
@@ -375,10 +406,17 @@ namespace ITHunterview.Service.UseCase
 
         private bool IsDescendant(int parentId, int childId, List<Majors> allActiveMajors)
         {
+            return IsDescendantWithVisited(parentId, childId, allActiveMajors, new HashSet<int>());
+        }
+
+        private bool IsDescendantWithVisited(int parentId, int childId, List<Majors> allActiveMajors, HashSet<int> visited)
+        {
             if (parentId == childId) return true;
+            if (visited.Contains(childId)) return false; // Prevent cycle
+            visited.Add(childId);
             var child = allActiveMajors.FirstOrDefault(m => m.Id == childId);
             if (child == null || child.ParentId == null) return false;
-            return IsDescendant(parentId, child.ParentId.Value, allActiveMajors);
+            return IsDescendantWithVisited(parentId, child.ParentId.Value, allActiveMajors, visited);
         }
         #endregion
     }
