@@ -10,19 +10,19 @@ import { PublicHeader } from "@/components/layout/PublicHeader"
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { 
-  Search as SearchIcon, 
-  MapPin as MapPinIcon, 
-  ArrowRight as ArrowRightIcon, 
-  Upload as UploadIcon, 
-  Zap as ZapIcon, 
-  Target as TargetIcon, 
-  ChevronLeft as ChevronLeftIcon, 
-  ChevronRight as ChevronRightIcon, 
-  ChevronDown as ChevronDownIcon, 
-  Check as CheckIcon, 
-  LogOut as LogOutIcon, 
-  LayoutDashboard as LayoutDashboardIcon 
+import {
+  Search as SearchIcon,
+  MapPin as MapPinIcon,
+  ArrowRight as ArrowRightIcon,
+  Upload as UploadIcon,
+  Zap as ZapIcon,
+  Target as TargetIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  ChevronDown as ChevronDownIcon,
+  Check as CheckIcon,
+  LogOut as LogOutIcon,
+  LayoutDashboard as LayoutDashboardIcon
 } from "lucide-react"
 
 const LOCATIONS = [
@@ -58,70 +58,14 @@ export default function Home() {
     const params = new URLSearchParams()
     if (searchTitle.trim()) params.append("query", searchTitle.trim())
     if (searchLoc.trim()) params.append("location", searchLoc.trim())
-    
+
     const queryString = params.toString()
     router.push(queryString ? `/jobs?${queryString}` : '/jobs')
   }
 
-  const featuredJobs = [
-    {
-      id: 1,
-      title: "Frontend Developer",
-      company: "VNG Corporation",
-      logoColor: "bg-orange-500",
-      logoText: "V",
-      salary: "$800 – $1,400/mo",
-      location: "Ho Chi Minh City",
-      tags: ["React", "TypeScript"],
-      badge: { text: "Hot", color: "bg-red-500/10 text-red-500 border border-red-500/20" },
-    },
-    {
-      id: 2,
-      title: "Backend Engineer (Java)",
-      company: "FPT Software",
-      logoColor: "bg-blue-600",
-      logoText: "F",
-      salary: "$700 – $1,200/mo",
-      location: "Hanoi",
-      tags: ["Java", "Spring Boot"],
-      badge: { text: "New", color: "bg-green-500/10 text-green-500 border border-green-500/20" },
-    },
-    {
-      id: 3,
-      title: "Data Analyst",
-      company: "Grab Vietnam",
-      logoColor: "bg-emerald-600",
-      logoText: "G",
-      salary: "$900 – $1,600/mo",
-      location: "Ho Chi Minh City",
-      tags: ["SQL", "Python"],
-      badge: null,
-    },
-    {
-      id: 4,
-      title: "Mobile Developer (iOS)",
-      company: "MoMo",
-      logoColor: "bg-pink-600",
-      logoText: "M",
-      salary: "$1,000 – $1,800/mo",
-      location: "Ho Chi Minh City",
-      tags: ["Swift", "SwiftUI"],
-      badge: { text: "Urgent", color: "bg-amber-500/10 text-amber-500 border border-amber-500/20" },
-    },
-    {
-      id: 5,
-      title: "DevOps Engineer",
-      company: "Tiki",
-      logoColor: "bg-sky-500",
-      logoText: "T",
-      salary: "$1,100 – $2,000/mo",
-      location: "Hanoi",
-      tags: ["Docker", "Kubernetes"],
-      badge: null,
-    },
-  ]
 
-  const popularSearches = ["Frontend Developer", "Data Analyst", "Mobile Dev", "DevOps"]
+
+
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -181,7 +125,7 @@ export default function Home() {
                     <CommandEmpty>No location found.</CommandEmpty>
                     <CommandGroup>
                       {filteredLocations.map((loc) => (
-                        <CommandItem 
+                        <CommandItem
                           key={loc}
                           value={loc}
                           onMouseDown={(e) => {
@@ -200,7 +144,7 @@ export default function Home() {
             )}
           </div>
 
-          <Button 
+          <Button
             onClick={handleSearch}
             className="h-11 px-6 rounded-xl font-semibold flex items-center justify-center gap-2"
           >
@@ -209,22 +153,7 @@ export default function Home() {
           </Button>
         </div>
 
-        {/* Popular Tags */}
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5 text-xs">
-          <span className="text-muted-foreground font-medium">Popular:</span>
-          {popularSearches.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => {
-                setSearchTitle(tag)
-                router.push(`/jobs?query=${encodeURIComponent(tag)}`)
-              }}
-              className="px-3 py-1 rounded-lg border border-border bg-card hover:border-primary/50 text-muted-foreground hover:text-primary transition-all cursor-pointer"
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
+
 
         {/* Statistics highlights */}
         <div className="mt-12 flex flex-wrap items-center justify-center gap-4 text-xs font-semibold">
@@ -234,91 +163,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Jobs Section */}
-      <section id="jobs" className="py-20 bg-muted/30 border-y border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-end justify-between mb-10">
-            <div>
-              <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Featured Jobs</h2>
-              <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-                Hand-picked opportunities for fresh IT graduates
-              </p>
-            </div>
-            {/* Navigation Arrows */}
-            <div className="flex items-center gap-2">
-              <button className="w-10 h-10 rounded-full border border-border bg-white flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary transition-all cursor-pointer">
-                <ChevronLeftIcon size={18} />
-              </button>
-              <button className="w-10 h-10 rounded-full border border-border bg-white flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary transition-all cursor-pointer">
-                <ChevronRightIcon size={18} />
-              </button>
-            </div>
-          </div>
 
-          {/* Jobs Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredJobs.map((job) => (
-              <div
-                key={job.id}
-                className="bg-card border border-border hover:border-primary/30 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    {/* Company Logo representation */}
-                    <div className={`w-12 h-12 rounded-xl ${job.logoColor} text-white font-extrabold flex items-center justify-center shadow-sm`}>
-                      {job.logoText}
-                    </div>
-
-                    {/* Badge */}
-                    {job.badge && (
-                      <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${job.badge.color}`}>
-                        {job.badge.text}
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="text-xs text-muted-foreground font-medium mb-1">{job.company}</p>
-                  <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                    {job.title}
-                  </h3>
-
-                  {/* Tech stack */}
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    {job.tags.map((tag) => (
-                      <span key={tag} className="text-xs px-2.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border/50">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-border/50 flex items-center justify-between text-xs">
-                  <div className="space-y-1">
-                    <p className="font-bold text-foreground">{job.salary}</p>
-                    <p className="text-muted-foreground flex items-center gap-1">
-                      <MapPinIcon size={12} /> {job.location}
-                    </p>
-                  </div>
-                  <Link href={`/jobs/${job.id}`} className="text-primary font-semibold flex items-center gap-1 hover:gap-1.5 transition-all">
-                    <span>View Job</span>
-                    <ArrowRightIcon size={14} />
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-12 text-center">
-            <Link
-              href="/jobs"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
-            >
-              <span>Browse all 10,000+ jobs</span>
-              <ArrowRightIcon size={14} />
-            </Link>
-          </div>
-        </div>
-      </section>
+      <hr className="border-border w-full" />
 
       {/* How It Works Section */}
       <section id="mock-interview" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
@@ -517,12 +363,6 @@ export default function Home() {
               <p className="text-xs text-muted-foreground max-w-sm leading-relaxed">
                 Vietnam&apos;s smartest platform to help fresh IT graduates land their dream first job — faster, with AI-powered matching and mock interviews.
               </p>
-              {/* Social Icons Placeholder */}
-              <div className="flex items-center gap-3 pt-2">
-                <span className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-xs font-bold hover:text-primary transition-colors cursor-pointer">fb</span>
-                <span className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-xs font-bold hover:text-primary transition-colors cursor-pointer">git</span>
-                <span className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-xs font-bold hover:text-primary transition-colors cursor-pointer">ln</span>
-              </div>
             </div>
 
             {/* Links Columns */}
