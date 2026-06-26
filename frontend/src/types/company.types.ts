@@ -9,6 +9,7 @@ export interface Company {
   industry: string;
   companySize: string;
   description: string;
+  companyType?: string;
   website: string;
   logoUrl: string;
   verificationMethod: CompanyVerificationMethod;
@@ -32,6 +33,7 @@ export interface CreateCompanyDto {
   industry: string;
   companySize: string;
   description: string;
+  companyType?: string;
   website?: string;
   logoUrl?: string;
   taxCode?: string; // Optional during profile creation, required in legal
