@@ -261,8 +261,11 @@ namespace ITHunterview.Service.UseCase
             return new ResponseBase<MajorDto>(resultDto, "Major restored successfully.");
         }
 
-        public async Task<ResponseBase<List<MajorDto>>> GetMajorTreeAsync()
+        public async Task<ResponseBase<PagedResult<MajorDto>>> GetMajorTreeAsync(int page, int pageSize, string? search)
         {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+
             var allMajors = await _majorRepository.GetAllActiveMajorsAsync();
 
             var dtoMap = allMajors.Select(m => new MajorDto
@@ -273,17 +276,18 @@ namespace ITHunterview.Service.UseCase
                 ParentId = m.ParentId,
                 ParentName = m.Parent?.Name,
                 CreatedBy = m.CreatedBy,
-                UpdatedBy = m.UpdatedBy
+                UpdatedBy = m.UpdatedBy,
+                Children = new List<MajorDto>()
             }).ToDictionary(d => d.Id);
 
-            var roots = new List<MajorDto>();
+            var allRoots = new List<MajorDto>();
 
             foreach (var major in allMajors)
             {
                 var dto = dtoMap[major.Id];
                 if (major.ParentId == null)
                 {
-                    roots.Add(dto);
+                    allRoots.Add(dto);
                 }
                 else if (dtoMap.TryGetValue(major.ParentId.Value, out var parentDto))
                 {
@@ -291,14 +295,57 @@ namespace ITHunterview.Service.UseCase
                 }
             }
 
-            // Sort roots and children by name alphabetically
-            roots = roots.OrderBy(r => r.Name).ToList();
+            // Sort children by name alphabetically
             foreach (var dto in dtoMap.Values)
             {
                 dto.Children = dto.Children.OrderBy(c => c.Name).ToList();
             }
 
-            return new ResponseBase<List<MajorDto>>(roots);
+            List<MajorDto> filteredRoots;
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var searchLower = search.Trim().ToLower();
+                var matchedMajorIds = allMajors
+                    .Where(m => m.Name.ToLower().Contains(searchLower) || m.Code.ToLower().Contains(searchLower))
+                    .Select(m => m.Id)
+                    .ToHashSet();
+
+                var rootIds = new HashSet<int>();
+                foreach (var major in allMajors)
+                {
+                    if (matchedMajorIds.Contains(major.Id))
+                    {
+                        var current = major;
+                        while (current.ParentId != null)
+                        {
+                            var parent = allMajors.FirstOrDefault(m => m.Id == current.ParentId.Value);
+                            if (parent == null) break;
+                            current = parent;
+                        }
+                        rootIds.Add(current.Id);
+                    }
+                }
+
+                filteredRoots = allRoots.Where(r => rootIds.Contains(r.Id)).OrderBy(r => r.Name).ToList();
+            }
+            else
+            {
+                filteredRoots = allRoots.OrderBy(r => r.Name).ToList();
+            }
+
+            var total = filteredRoots.Count;
+            var pagedRoots = filteredRoots.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            var result = new PagedResult<MajorDto>
+            {
+                Items = pagedRoots,
+                Total = total,
+                TotalItems = total,
+                Page = page,
+                PageSize = pageSize
+            };
+
+            return new ResponseBase<PagedResult<MajorDto>>(result);
         }
 
         #region Helper Methods

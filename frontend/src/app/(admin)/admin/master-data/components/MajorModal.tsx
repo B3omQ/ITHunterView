@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, XCircle } from 'lucide-react';
 import {
   Dialog,
@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useCreateMajor, useUpdateMajor } from '@/hooks/useMajor';
+import { useCreateMajor, useUpdateMajor, useMajorTree } from '@/hooks/useMajor';
 import type { MajorDto } from '@/types/master-data.types';
 
 interface MajorModalProps {
@@ -17,6 +17,13 @@ interface MajorModalProps {
   mode: 'create' | 'edit';
   initialData: MajorDto | null;
   onSuccess: (message: string) => void;
+}
+
+interface DropdownMajorOption {
+  id: number;
+  name: string;
+  code: string;
+  level: number;
 }
 
 const validateMajorForm = (code: string, name: string): string | null => {
@@ -29,19 +36,59 @@ const validateMajorForm = (code: string, name: string): string | null => {
   return null;
 };
 
+const getDropdownOptions = (
+  items: MajorDto[],
+  currentId?: number,
+  level: number = 1
+): DropdownMajorOption[] => {
+  if (level >= 3) return []; // Chỉ cho phép Level 1 và 2 làm cha
+
+  const options: DropdownMajorOption[] = [];
+
+  for (const item of items) {
+    if (currentId && item.id === currentId) {
+      continue; // Chặn circular reference
+    }
+
+    options.push({
+      id: item.id,
+      name: item.name,
+      code: item.code,
+      level,
+    });
+
+    if (item.children && item.children.length > 0) {
+      options.push(...getDropdownOptions(item.children, currentId, level + 1));
+    }
+  }
+
+  return options;
+};
+
 export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: MajorModalProps) {
   const [majorForm, setMajorForm] = useState({ name: '', code: '' });
+  const [parentId, setParentId] = useState<number | null>(null);
   const [majorFormError, setMajorFormError] = useState('');
 
   const createMajorMutation = useCreateMajor();
   const updateMajorMutation = useUpdateMajor();
 
+  // Fetch danh sách cây phục vụ dropdown chọn cha
+  const { data: treeResponse } = useMajorTree({ page: 1, pageSize: 9999 });
+  const rootMajors = treeResponse?.data?.items || [];
+
+  const dropdownOptions = useMemo(() => {
+    return getDropdownOptions(rootMajors, initialData?.id);
+  }, [rootMajors, initialData]);
+
   useEffect(() => {
     if (isOpen) {
       if (mode === 'edit' && initialData) {
         setMajorForm({ name: initialData.name, code: initialData.code });
+        setParentId(initialData.parentId ?? null);
       } else {
         setMajorForm({ name: '', code: '' });
+        setParentId(null);
       }
       setMajorFormError('');
     }
@@ -62,6 +109,7 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
         {
           code: majorForm.code.trim().toUpperCase(),
           name: majorForm.name.trim(),
+          parentId: parentId,
         },
         {
           onSuccess: (res) => {
@@ -84,6 +132,7 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
           dto: {
             code: majorForm.code.trim().toUpperCase(),
             name: majorForm.name.trim(),
+            parentId: parentId,
           },
         },
         {
@@ -119,8 +168,7 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
                 <XCircle size={16} className="shrink-0" />
                 <span>{majorFormError}</span>
               </div>
-              {(majorFormError.includes('đã tồn tại') || majorFormError.includes('trùng') || 
-                majorFormError.toLowerCase().includes('exists') || majorFormError.toLowerCase().includes('duplicate')) && (
+              {(majorFormError.toLowerCase().includes('exists') || majorFormError.toLowerCase().includes('duplicate')) && (
                 <p className="text-xs text-muted-foreground leading-relaxed mt-1">
                   Tip: Check if this major code or name was soft-deleted before. You can restore it via the Undo action if needed.
                 </p>
@@ -151,6 +199,30 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
               className="w-full px-3.5 py-2 rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/60"
               required
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-foreground">Parent Major</label>
+            <select
+              value={parentId ?? ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                setParentId(val ? Number(val) : null);
+              }}
+              className="w-full px-3.5 py-2 rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-foreground"
+            >
+              <option value="" className="text-muted-foreground">-- None (Root Level 1) --</option>
+              {dropdownOptions.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {'\u00A0'.repeat((opt.level - 1) * 4)}
+                  {opt.level === 2 ? '└─ ' : ''}
+                  {opt.name} ({opt.code})
+                </option>
+              ))}
+            </select>
+            <p className="text-[10px] text-muted-foreground leading-relaxed mt-1">
+              * Only level 1 or level 2 majors can be selected as parents to ensure the hierarchy depth does not exceed 3 levels.
+            </p>
           </div>
 
           <div className="flex justify-end gap-3 pt-3 border-t border-border/80">

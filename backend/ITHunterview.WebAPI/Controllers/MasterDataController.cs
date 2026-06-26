@@ -110,9 +110,12 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpGet("majors/tree")]
-        public async Task<IActionResult> GetMajorTree()
+        public async Task<IActionResult> GetMajorTree(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? search = null)
         {
-            var response = await _majorUseCase.GetMajorTreeAsync();
+            var response = await _majorUseCase.GetMajorTreeAsync(page, pageSize, search);
             return Ok(response);
         }
 
