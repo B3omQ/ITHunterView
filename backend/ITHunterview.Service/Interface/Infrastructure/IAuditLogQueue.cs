@@ -6,8 +6,8 @@ namespace ITHunterview.Service.Interface.Infrastructure
 {
     public interface IAuditLogQueue
     {
-        void QueueBackgroundWorkItem(UserActivityLogs logItem);
-        ValueTask<UserActivityLogs> DequeueAsync(CancellationToken cancellationToken);
+        ValueTask QueueBackgroundWorkItemAsync(UserActivityLogs logItem, CancellationToken cancellationToken = default);
+        bool TryEnqueue(UserActivityLogs logItem);
         ValueTask<bool> WaitToReadAsync(CancellationToken cancellationToken);
         bool TryDequeue(out UserActivityLogs? logItem);
     }
