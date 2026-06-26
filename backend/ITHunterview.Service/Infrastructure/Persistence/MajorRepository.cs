@@ -32,6 +32,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             var total = await query.CountAsync();
             var items = await query
+                .Include(m => m.Parent)
                 .OrderBy(m => m.Name)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -91,5 +92,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
         public Task<bool> IsMajorInUseAsync(int id)
             => _context.CandidateEducations.AnyAsync(e => e.MajorId == id);
+
+        public Task<List<Majors>> GetAllActiveMajorsAsync()
+            => _context.Majors.Include(m => m.Parent).ToListAsync();
+
+        public Task<bool> HasChildrenAsync(int id)
+            => _context.Majors.AnyAsync(m => m.ParentId == id);
     }
 }

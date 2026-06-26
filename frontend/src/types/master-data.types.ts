@@ -36,6 +36,9 @@ export interface MajorDto {
   id: number;
   name: string;
   code: string;
+  parentId?: number;
+  parentName?: string;
+  children?: MajorDto[];
   createdBy?: string;
   updatedBy?: string;
 }
@@ -43,9 +46,11 @@ export interface MajorDto {
 export interface CreateMajorDto {
   name: string;
   code: string;
+  parentId?: number | null;
 }
 
 export interface UpdateMajorDto {
   name: string;
   code: string;
+  parentId?: number | null;
 }

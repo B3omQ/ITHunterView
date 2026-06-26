@@ -15,7 +15,7 @@ import {
   useSkillCategories,
   useUpdateSkillStatus,
 } from "@/hooks/useSkill";
-import { useMajors, useRestoreMajor } from "@/hooks/useMajor";
+import { useMajorTree, useRestoreMajor } from "@/hooks/useMajor";
 import type {
   SkillDto,
   MajorDto,
@@ -107,7 +107,7 @@ export default function MasterDataPage() {
     isLoading: isMajorsLoading,
     isError: isMajorsError,
     refetch: refetchMajors,
-  } = useMajors({
+  } = useMajorTree({
     page: majorPage,
     pageSize: majorPageSize,
     search: debouncedMajorSearch,
@@ -196,8 +196,8 @@ export default function MasterDataPage() {
           const apiMessage = err.response?.data?.message;
           if (
             apiMessage &&
-            (apiMessage.includes("đang được sử dụng") ||
-              apiMessage.includes("vô hiệu hóa"))
+            (apiMessage.toLowerCase().includes("used") ||
+              apiMessage.toLowerCase().includes("deactivate"))
           ) {
             // Mở Dialog ép buộc đổi trạng thái
             setForceStatusData({

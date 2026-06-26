@@ -109,6 +109,16 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(response);
         }
 
+        [HttpGet("majors/tree")]
+        public async Task<IActionResult> GetMajorTree(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? search = null)
+        {
+            var response = await _majorUseCase.GetMajorTreeAsync(page, pageSize, search);
+            return Ok(response);
+        }
+
         [HttpPost("majors")]
         public async Task<IActionResult> CreateMajor([FromBody] CreateMajorDto dto)
         {

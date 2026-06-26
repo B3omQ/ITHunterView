@@ -254,6 +254,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                       .HasFilter("deleted_at IS NULL");
 
                 entity.HasIndex(e => e.NormalizedName);
+
+                entity.HasOne(m => m.Parent)
+                      .WithMany(m => m.Children)
+                      .HasForeignKey(m => m.ParentId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Skills

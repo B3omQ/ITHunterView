@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.Utils;
+using Microsoft.EntityFrameworkCore;
 
 namespace ITHunterview.Service.Infrastructure.Persistence
 {
@@ -456,24 +457,86 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
         private static async Task SeedMajorsAsync(ITHunterviewContext context)
         {
-            if (!context.Majors.Any())
+            // Chỉ truncate và re-seed nếu phát hiện dữ liệu cũ hoặc bảng trống
+            bool needsReset = !context.Majors.Any() || context.Majors.Any(m => m.Code == "CS");
+            if (needsReset)
             {
-                var majors = new List<Majors>
+                await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE majors RESTART IDENTITY CASCADE;");
+
+                // Cấp 1 (Root Nodes)
+                var dev = new Majors { Name = "Software Development", Code = "DEV" };
+                var ba = new Majors { Name = "Business Analysis & Product", Code = "BA_PM" };
+                var test = new Majors { Name = "Software Testing & QA", Code = "TEST" };
+
+                var lvl1 = new List<Majors> { dev, ba, test };
+                foreach (var m in lvl1)
                 {
-                    new Majors { Name = "Computer Science", Code = "CS" },
-                    new Majors { Name = "Software Engineering", Code = "SE" },
-                    new Majors { Name = "Information Systems", Code = "IS" },
-                    new Majors { Name = "Business Administration", Code = "BA" },
-                    new Majors { Name = "Information Security / Cyber Security", Code = "SEC" },
-                    new Majors { Name = "Finance & Banking", Code = "FIN" },
-                    new Majors { Name = "Computer Networks and Data Communication", Code = "NET" },
-                    new Majors { Name = "Artificial Intelligence", Code = "AI" }
-                };
-                foreach (var major in majors)
-                {
-                    major.NormalizedName = StringNormalizationHelper.NormalizeITTerm(major.Name);
+                    m.NormalizedName = StringNormalizationHelper.NormalizeITTerm(m.Name);
                 }
-                context.Majors.AddRange(majors);
+                context.Majors.AddRange(lvl1);
+                await context.SaveChangesAsync();
+
+                // Cấp 2
+                var devWeb = new Majors { Name = "Web Development", Code = "DEV_WEB", ParentId = dev.Id };
+                var devMob = new Majors { Name = "Mobile Development", Code = "DEV_MOB", ParentId = dev.Id };
+                var devSys = new Majors { Name = "Systems & Embedded Software", Code = "DEV_SYS", ParentId = dev.Id };
+
+                var baAnly = new Majors { Name = "Business Analysis", Code = "BA_ANLY", ParentId = ba.Id };
+                var baMgmt = new Majors { Name = "Product & Project Management", Code = "BA_MGMT", ParentId = ba.Id };
+
+                var tstTest = new Majors { Name = "Software Testing", Code = "TST_TEST", ParentId = test.Id };
+                var tstQa = new Majors { Name = "Quality Assurance & Process", Code = "TST_QA", ParentId = test.Id };
+
+                var lvl2 = new List<Majors> { devWeb, devMob, devSys, baAnly, baMgmt, tstTest, tstQa };
+                foreach (var m in lvl2)
+                {
+                    m.NormalizedName = StringNormalizationHelper.NormalizeITTerm(m.Name);
+                }
+                context.Majors.AddRange(lvl2);
+                await context.SaveChangesAsync();
+
+                // Cấp 3
+                var lvl3 = new List<Majors>
+                {
+                    // DEV - Web Development
+                    new Majors { Name = "Front-end Development", Code = "DEV_WEB_FE", ParentId = devWeb.Id },
+                    new Majors { Name = "Back-end Development", Code = "DEV_WEB_BE", ParentId = devWeb.Id },
+                    new Majors { Name = "Full-stack Development", Code = "DEV_WEB_FS", ParentId = devWeb.Id },
+
+                    // DEV - Mobile Development
+                    new Majors { Name = "iOS Development", Code = "DEV_MOB_IOS", ParentId = devMob.Id },
+                    new Majors { Name = "Android Development", Code = "DEV_MOB_AND", ParentId = devMob.Id },
+                    new Majors { Name = "Cross-Platform Mobile Development", Code = "DEV_MOB_CP", ParentId = devMob.Id },
+
+                    // DEV - Systems & Embedded Software
+                    new Majors { Name = "Embedded Systems & IoT", Code = "DEV_SYS_EMB", ParentId = devSys.Id },
+                    new Majors { Name = "Desktop Application Development", Code = "DEV_SYS_DSK", ParentId = devSys.Id },
+                    new Majors { Name = "Game Development", Code = "DEV_SYS_GAM", ParentId = devSys.Id },
+
+                    // BA - Business Analysis
+                    new Majors { Name = "IT Business Analysis", Code = "BA_ANLY_IT", ParentId = baAnly.Id },
+                    new Majors { Name = "Agile/Scrum Business Analysis", Code = "BA_ANLY_AG", ParentId = baAnly.Id },
+                    new Majors { Name = "System Analysis", Code = "BA_ANLY_SYS", ParentId = baAnly.Id },
+
+                    // BA - Product & Project Management
+                    new Majors { Name = "Product Management", Code = "BA_MGMT_PROD", ParentId = baMgmt.Id },
+                    new Majors { Name = "Project Management", Code = "BA_MGMT_PROJ", ParentId = baMgmt.Id },
+
+                    // TEST - Software Testing
+                    new Majors { Name = "Manual Testing", Code = "TST_TEST_MAN", ParentId = tstTest.Id },
+                    new Majors { Name = "Automation Testing", Code = "TST_TEST_AUT", ParentId = tstTest.Id },
+                    new Majors { Name = "Performance & Security Testing", Code = "TST_TEST_PFS", ParentId = tstTest.Id },
+
+                    // TEST - Quality Assurance & Process
+                    new Majors { Name = "QA/QC Lead & Management", Code = "TST_QA_LEAD", ParentId = tstQa.Id },
+                    new Majors { Name = "Software Quality Assurance", Code = "TST_QA_SQA", ParentId = tstQa.Id }
+                };
+
+                foreach (var m in lvl3)
+                {
+                    m.NormalizedName = StringNormalizationHelper.NormalizeITTerm(m.Name);
+                }
+                context.Majors.AddRange(lvl3);
                 await context.SaveChangesAsync();
             }
         }

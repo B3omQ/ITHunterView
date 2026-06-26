@@ -39,6 +39,7 @@ namespace ITHunterview.WebAPI.Middlewares
                             return;
                         }
                         
+                        
                         status = dbStatus.Value;
                         cache.Set(cacheKey, status, TimeSpan.FromSeconds(30));
                     }
