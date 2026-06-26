@@ -196,8 +196,8 @@ export default function CompanyProfilePage() {
                   <FormItem className="flex flex-col">
                     <FormLabel>Industry *</FormLabel>
                     <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
+                      <FormControl>
+                        <PopoverTrigger render={
                           <Button
                             variant="outline"
                             role="combobox"
@@ -213,8 +213,8 @@ export default function CompanyProfilePage() {
                             </span>
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
-                        </FormControl>
-                      </PopoverTrigger>
+                        } />
+                      </FormControl>
                       <PopoverContent className="w-[300px] p-0" align="start">
                         <Command>
                           <CommandInput placeholder="Search industry..." />
