@@ -38,6 +38,7 @@ const CANDIDATE_NAV: NavItem[] = [
   { label: "Dashboard", href: APP_ROUTES.CANDIDATE.DASHBOARD, icon: "LayoutDashboard" },
   { label: "My Profile", href: APP_ROUTES.CANDIDATE.PROFILE, icon: "User" },
   { label: "Job Listings", href: APP_ROUTES.CANDIDATE.JOBS, icon: "Briefcase" },
+  { label: "Saved Jobs", href: APP_ROUTES.CANDIDATE.SAVED_JOBS, icon: "Bookmark" },
   { label: "My Resume", href: APP_ROUTES.CANDIDATE.RESUME, icon: "FileText" },
   { label: "CV Optimizer", href: APP_ROUTES.CANDIDATE.CV_OPTIMIZER, icon: "BrainCircuit" },
   { label: "Applications", href: APP_ROUTES.CANDIDATE.APPLICATIONS, icon: "ClipboardList" },
