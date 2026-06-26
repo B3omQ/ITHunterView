@@ -201,21 +201,21 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 var comp1 = new Companies
                 {
                     Id = Guid.NewGuid(), Name = "ITHunterView Corp", TaxCode = "0102030405", HeadquartersAddress = "123 Dev Street, Tech City",
-                    Industry = "Information Technology", CompanySize = "100-500", Description = "Leading tech recruitment platform",
+                    Industry = "Software Products and Web Services", CompanySize = "100-500", Description = "Leading tech recruitment platform",
                     Website = "https://ithunterview.com", LogoUrl = "https://logo.clearbit.com/ithunterview.com", CompanyType = "IT Product",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license1.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
                 var comp2 = new Companies
                 {
                     Id = Guid.NewGuid(), Name = "FPT Software", TaxCode = "0102030406", HeadquartersAddress = "F-Town, HCMC",
-                    Industry = "Software Outsourcing", CompanySize = "1000+", Description = "Global technology and IT services provider",
+                    Industry = "Software Development Outsourcing", CompanySize = "1000+", Description = "Global technology and IT services provider",
                     Website = "https://fptsoftware.com", LogoUrl = "https://logo.clearbit.com/fptsoftware.com", CompanyType = "IT Outsourcing",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license2.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
                 var comp3 = new Companies
                 {
                     Id = Guid.NewGuid(), Name = "VNG Corporation", TaxCode = "0102030407", HeadquartersAddress = "VNG Campus, HCMC",
-                    Industry = "Internet & Technology", CompanySize = "1000+", Description = "Vietnam's leading tech firm",
+                    Industry = "Game", CompanySize = "1000+", Description = "Vietnam's leading tech firm",
                     Website = "https://vng.com.vn", LogoUrl = "https://logo.clearbit.com/vng.com.vn", CompanyType = "IT Product",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license3.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };

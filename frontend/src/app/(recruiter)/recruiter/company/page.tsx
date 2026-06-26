@@ -46,7 +46,7 @@ export default function CompanyOverviewPage() {
               <div>
                 <CardTitle className="text-2xl">{company.name}</CardTitle>
                 <CardDescription className="text-base mt-1 flex items-center gap-2">
-                  {company.industry} • {company.companySize} employees
+                  {company.industry} • {company.companyType && `${company.companyType} • `}{company.companySize} employees
                 </CardDescription>
               </div>
             </div>

@@ -10,6 +10,7 @@ namespace ITHunterview.Service.DTOs.Company
         public string Industry { get; set; } = string.Empty;
         public string CompanySize { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        public string CompanyType { get; set; } = string.Empty;
         public string Website { get; set; } = string.Empty;
         public string LogoUrl { get; set; } = string.Empty;
     }
