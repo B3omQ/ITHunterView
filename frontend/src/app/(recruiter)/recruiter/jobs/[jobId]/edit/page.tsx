@@ -275,12 +275,13 @@ export default function EditJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="jobExpertise" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Expertise</Label>
+                <Label htmlFor="jobExpertise" className="font-semibold text-zinc-700 dark:text-zinc-300">Specialization (Expertise)</Label>
                 <MajorCombobox
                   majors={majors}
                   value={formData.jobExpertise}
                   onChange={(val) => setFormData(prev => ({ ...prev, jobExpertise: val }))}
                   className="w-full h-10 mt-1"
+                  placeholder="Select specialization..."
                 />
               </div>
             </div>

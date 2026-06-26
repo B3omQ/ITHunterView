@@ -32,18 +32,18 @@ export function MajorDeleteDialog({ isOpen, onClose, majorToDelete, onSuccess, o
       onSuccess: (res) => {
         if (res.success) {
           onSuccess(
-            `Soft deleted major "${majorToDelete.name}".`,
+            `Soft deleted specialization "${majorToDelete.name}".`,
             majorToDelete.id,
             majorToDelete.name
           );
           onClose();
         } else {
-          onError(res.message || 'Error deleting major.');
+          onError(res.message || 'Error deleting specialization.');
         }
       },
       onError: (err: any) => {
         onError(
-          err.response?.data?.message || 'Cannot delete this major due to active references or candidate enrollments.'
+          err.response?.data?.message || 'Cannot delete this specialization due to active references or candidate enrollments.'
         );
         onClose();
       },
@@ -54,7 +54,7 @@ export function MajorDeleteDialog({ isOpen, onClose, majorToDelete, onSuccess, o
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="hidden">
-          <DialogTitle>Delete Major</DialogTitle>
+          <DialogTitle>Delete Specialization</DialogTitle>
         </DialogHeader>
 
         {hasActiveChildren ? (
@@ -67,14 +67,14 @@ export function MajorDeleteDialog({ isOpen, onClose, majorToDelete, onSuccess, o
               <div className="space-y-1.5">
                 <h3 className="text-base font-bold text-foreground">Deletion Blocked</h3>
                 <p className="text-sm text-muted-foreground">
-                  You cannot delete major <strong className="text-foreground">"{majorToDelete?.name}"</strong> because it contains active sub-majors (children). The database enforces restrict deletion to keep parent-child structure valid.
+                  You cannot delete specialization <strong className="text-foreground">"{majorToDelete?.name}"</strong> because it contains active sub-specializations (children). The database enforces restrict deletion to keep parent-child structure valid.
                 </p>
               </div>
             </div>
 
             <div className="p-3 bg-muted/40 rounded-xl border border-border/80 max-h-40 overflow-y-auto space-y-2">
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                Active Sub-Majors ({activeChildren.length})
+                Active Sub-Specializations ({activeChildren.length})
               </p>
               <ul className="space-y-1.5">
                 {activeChildren.map((child) => (
@@ -114,10 +114,10 @@ export function MajorDeleteDialog({ isOpen, onClose, majorToDelete, onSuccess, o
                 <AlertTriangle size={24} />
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-base font-bold text-foreground">Delete Major?</h3>
+                <h3 className="text-base font-bold text-foreground">Delete Specialization?</h3>
                 <p className="text-sm text-muted-foreground">
-                  This action will <strong className="text-foreground">soft-delete</strong> the major <strong className="text-foreground">"{majorToDelete?.name}"</strong>.
-                  The system will keep the record to maintain data integrity for candidates registered in this major. You can restore it later.
+                  This action will <strong className="text-foreground">soft-delete</strong> the specialization <strong className="text-foreground">"{majorToDelete?.name}"</strong>.
+                  The system will keep the record to maintain data integrity for candidates registered in this specialization. You can restore it later.
                 </p>
               </div>
             </div>
