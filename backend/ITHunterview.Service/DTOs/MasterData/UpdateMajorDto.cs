@@ -11,5 +11,7 @@ namespace ITHunterview.Service.DTOs.MasterData
         [Required(ErrorMessage = "Mã chuyên ngành không được để trống.")]
         [MaxLength(50, ErrorMessage = "Mã chuyên ngành không được vượt quá 50 ký tự.")]
         public string Code { get; set; } = string.Empty;
+
+        public int? ParentId { get; set; }
     }
 }

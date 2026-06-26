@@ -196,12 +196,10 @@ CREATE TABLE job_categories (
 
 CREATE TABLE majors (
   id              SERIAL PRIMARY KEY,
-  parent_id       INT REFERENCES majors(id) ON DELETE SET NULL,
   name            VARCHAR(255) NOT NULL,
   code            VARCHAR(50) UNIQUE,
   created_by      UUID REFERENCES users(id) ON DELETE SET NULL,
-  updated_by      UUID REFERENCES users(id) ON DELETE SET NULL,
-  deleted_at      TIMESTAMP
+  updated_by      UUID REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE skill_categories (

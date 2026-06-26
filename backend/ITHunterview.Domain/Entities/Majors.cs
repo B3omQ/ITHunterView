@@ -18,6 +18,13 @@ namespace ITHunterview.Domain.Entities
         [Column("code")]
         public string Code { get; set; }
 
+        [Column("parent_id")]
+        public int? ParentId { get; set; }
+
+        public Majors? Parent { get; set; }
+
+        public ICollection<Majors> Children { get; set; } = new List<Majors>();
+
         [Column("created_by")]
         public Guid? CreatedBy { get; set; }
 

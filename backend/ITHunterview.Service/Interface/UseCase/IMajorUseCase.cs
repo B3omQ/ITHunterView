@@ -12,5 +12,6 @@ namespace ITHunterview.Service.Interface.UseCase
         Task<ResponseBase<MajorDto>> UpdateMajorAsync(int id, UpdateMajorDto dto, Guid userId);
         Task<ResponseBase> DeleteMajorAsync(int id, Guid userId);
         Task<ResponseBase<MajorDto>> RestoreMajorAsync(int id, Guid userId);
+        Task<ResponseBase<System.Collections.Generic.List<MajorDto>>> GetMajorTreeAsync();
     }
 }

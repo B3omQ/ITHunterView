@@ -1,0 +1,285 @@
+{
+  "project": "ITHunterview",
+  "description": "Lịch sử thay đổi — tách ra từ system_registry.json để giảm size. Chỉ APPEND, không sửa entry cũ.",
+  "note": "Khi cần thêm entry mới: append vào mảng actions. Format timestamp: ISO 8601 UTC.",
+  "actions": [
+    {
+      "timestamp": "2026-06-19T16:52:00Z",
+      "action": "Khởi tạo hệ thống lưu trữ đồng bộ (system_registry.json) và thực hiện phân tích toàn bộ cấu trúc dự án.",
+      "affected_files": ["system_registry.json"]
+    },
+    {
+      "timestamp": "2026-06-20T10:59:15Z",
+      "action": "Đọc tài liệu kiến trúc, quy tắc coding backend (.agents/Backend/*) và phân tích sâu các thực thể domain, schema DB.",
+      "affected_files": ["system_registry.json"]
+    },
+    {
+      "timestamp": "2026-06-20T11:37:00Z",
+      "action": "Lập kế hoạch triển khai API quản lý Master Data (Skills & Majors) ở Backend cho Admin, phân tích rủi ro và các khuyết điểm.",
+      "affected_files": ["system_registry.json", "implementation_plan.md"]
+    },
+    {
+      "timestamp": "2026-06-20T12:00:00Z",
+      "action": "Hoàn thành và kiểm thử toàn bộ API Backend Master Data (Soft delete Major, Smart normalization trùng lặp, Cascade warning status). Phát hiện thêm 5 khuyết điểm quan trọng.",
+      "affected_files": [
+        "system_registry.json",
+        "backend/ITHunterview.Domain/Entities/Majors.cs",
+        "backend/ITHunterview.Service/Infrastructure/Persistence/ITHunterviewContext.cs",
+        "backend/ITHunterview.Service/Infrastructure/Persistence/MajorRepository.cs",
+        "backend/ITHunterview.Service/Infrastructure/Persistence/SkillRepository.cs",
+        "backend/ITHunterview.Service/UseCase/MajorUseCase.cs",
+        "backend/ITHunterview.Service/UseCase/SkillUseCase.cs",
+        "backend/ITHunterview.WebAPI/Controllers/MasterDataController.cs"
+      ]
+    },
+    {
+      "timestamp": "2026-06-20T12:16:00Z",
+      "action": "Hoàn thiện API khôi phục Major (RestoreMajorAsync), thắt chặt Cascade Status Skill bằng Force parameter, sửa đổi UserId Audit log.",
+      "affected_files": [
+        "system_registry.json",
+        "backend/ITHunterview.Service/Interface/UseCase/IMajorUseCase.cs",
+        "backend/ITHunterview.Service/UseCase/MajorUseCase.cs",
+        "backend/ITHunterview.Service/DTOs/MasterData/UpdateSkillStatusDto.cs",
+        "backend/ITHunterview.Service/Interface/UseCase/ISkillUseCase.cs",
+        "backend/ITHunterview.Service/UseCase/SkillUseCase.cs",
+        "backend/ITHunterview.WebAPI/Controllers/MasterDataController.cs"
+      ]
+    },
+    {
+      "timestamp": "2026-06-20T12:20:00Z",
+      "action": "Sửa lỗi không lưu Profile khi Register và Google Auth, sửa CORS từ wildcard thành restrict bằng FrontendUrl, sửa JWT ExpiryMinutes sang int.TryParse.",
+      "affected_files": [
+        "system_registry.json",
+        "backend/ITHunterview.Service/UseCase/AuthUseCase.cs",
+        "backend/ITHunterview.Service/Utils/JwtTokenGenerator.cs",
+        "backend/ITHunterview.WebAPI/Program.cs"
+      ]
+    },
+    {
+      "timestamp": "2026-06-20T13:00:00Z",
+      "action": "Thiết lập Types, Axios Services, TanStack Query Hooks, và UI page cho Admin Master Data quản lý Chuyên ngành và Kỹ năng.",
+      "affected_files": [
+        "system_registry.json",
+        "frontend/src/types/master-data.types.ts",
+        "frontend/src/services/skill.service.ts",
+        "frontend/src/services/major.service.ts",
+        "frontend/src/hooks/useSkill.ts",
+        "frontend/src/hooks/useMajor.ts",
+        "frontend/src/app/(admin)/admin/master-data/page.tsx"
+      ]
+    },
+    {
+      "timestamp": "2026-06-20T14:15:00Z",
+      "action": "Nâng cấp hiệu năng Frontend Master Data: AbortSignal, Optimistic Updates, TableSkeleton, tách hàm validateForm.",
+      "affected_files": [
+        "system_registry.json",
+        "frontend/src/services/skill.service.ts",
+        "frontend/src/services/major.service.ts",
+        "frontend/src/hooks/useSkill.ts",
+        "frontend/src/hooks/useMajor.ts",
+        "frontend/src/app/(admin)/admin/master-data/page.tsx"
+      ]
+    },
+    {
+      "timestamp": "2026-06-20T17:35:00Z",
+      "action": "Tối ưu hóa Admin User Governance: enum SystemRole/RoleId, ILIKE + pg_trgm GIN Indexes, IMemoryCache status check, log cleanup background service.",
+      "affected_files": [
+        "system_registry.json",
+        "backend/ITHunterview.Domain/Enums/SystemRole.cs",
+        "backend/ITHunterview.Service/UseCase/UserGovernanceUseCase.cs",
+        "backend/ITHunterview.WebAPI/Middlewares/UserStatusCheckMiddleware.cs",
+        "backend/ITHunterview.WebAPI/BackgroundServices/LogCleanupBackgroundService.cs",
+        "backend/ITHunterview.WebAPI/Program.cs"
+      ]
+    },
+    {
+      "timestamp": "2026-06-20T18:00:00Z",
+      "action": "Khắc phục lỗi build Frontend: inline custom SVG cho Github/Linkedin icons, sửa TypeScript type checking accountsData/auditData.",
+      "affected_files": [
+        "system_registry.json",
+        "frontend/src/app/(admin)/admin/accounts/[userId]/page.tsx",
+        "frontend/src/app/(admin)/admin/accounts/page.tsx",
+        "frontend/src/app/(staff)/staff/audit-logs/page.tsx"
+      ]
+    },
+    {
+      "timestamp": "2026-06-20T18:10:00Z",
+      "action": "Khắc phục lỗi pagination: cập nhật PagedResult<T> Backend (đổi TotalItems → Total, thêm TotalPages), cập nhật 4 UseCases.",
+      "affected_files": [
+        "system_registry.json",
+        "backend/ITHunterview.Service/DTOs/Common/PagedResult.cs",
+        "backend/ITHunterview.Service/UseCase/UserGovernanceUseCase.cs",
+        "flaws.md"
+      ]
+    },
+    {
+      "timestamp": "2026-06-20T19:00:00Z",
+      "action": "Triển khai Platform Safety & Audit Logs: AuditLogInterceptor CUD tự động, PostgreSQL triggers immutability. Frontend Audit Logs UI với diff viewer.",
+      "affected_files": [
+        "system_registry.json",
+        "backend/ITHunterview.Service/Infrastructure/Persistence/AuditLogInterceptor.cs",
+        "frontend/src/app/(admin)/admin/audit-logs/page.tsx"
+      ]
+    },
+    {
+      "timestamp": "2026-06-20T21:15:00Z",
+      "action": "Tái cấu trúc Audit Logs Frontend theo DESIGN.md: neutral/zinc, shadcn only, tách SnapshotDiff/LogDetailsModal/PurgeModal ra components riêng.",
+      "affected_files": [
+        "system_registry.json",
+        "frontend/src/app/(admin)/admin/audit-logs/page.tsx",
+        "frontend/src/app/(admin)/admin/audit-logs/components/snapshot-diff.tsx",
+        "frontend/src/app/(admin)/admin/audit-logs/components/log-details-modal.tsx",
+        "frontend/src/app/(admin)/admin/audit-logs/components/purge-modal.tsx"
+      ]
+    },
+    {
+      "timestamp": "2026-06-23T12:45:00Z",
+      "action": "Triển khai Subscription Admin: DTOs, SubscriptionRepository, SubscriptionAdminUseCase (chặn sửa gói đã bán, audit log tự động), SubscriptionAdminController.",
+      "affected_files": [
+        "system_registry.json",
+        "backend/ITHunterview.Service/UseCase/SubscriptionAdminUseCase.cs",
+        "backend/ITHunterview.WebAPI/Controllers/SubscriptionAdminController.cs"
+      ]
+    },
+    {
+      "timestamp": "2026-06-23T13:20:00Z",
+      "action": "Frontend Subscription Admin: types, service, TanStack Query hooks, SubscriptionForm, page.tsx với filter và pagination.",
+      "affected_files": [
+        "system_registry.json",
+        "frontend/src/types/subscription.types.ts",
+        "frontend/src/services/subscription.service.ts",
+        "frontend/src/hooks/useSubscription.ts",
+        "frontend/src/app/(admin)/admin/subscriptions/page.tsx"
+      ]
+    },
+    {
+      "timestamp": "2026-06-23T14:10:00Z",
+      "action": "Coin Pay-as-you-go: CoinConfigUseCase, CandidateFeatureUsageUseCase với Row-level Lock FOR UPDATE. Frontend CoinConfigTab Uncontrolled Inputs.",
+      "affected_files": [
+        "system_registry.json",
+        "backend/ITHunterview.Service/UseCase/CoinConfigUseCase.cs",
+        "backend/ITHunterview.Service/UseCase/CandidateFeatureUsageUseCase.cs",
+        "frontend/src/app/(admin)/admin/subscriptions/components/CoinConfigTab.tsx"
+      ]
+    },
+    {
+      "timestamp": "2026-06-24T07:45:00Z",
+      "action": "Tách Master Data thành SkillsTable + MajorsTable components độc lập để hạn chế re-render toàn trang.",
+      "affected_files": [
+        "system_registry.json",
+        "frontend/src/app/(admin)/admin/master-data/components/SkillsTable.tsx",
+        "frontend/src/app/(admin)/admin/master-data/components/MajorsTable.tsx",
+        "frontend/src/app/(admin)/admin/master-data/page.tsx"
+      ]
+    },
+    {
+      "timestamp": "2026-06-25T16:20:00Z",
+      "action": "Sửa lỗi User Governance: duplicate ClaimTypes.Role trong JwtTokenGenerator, tạo frontend/.env.local, cập nhật api-client.ts port 51148, AppShell.tsx allowedRoles + Access Denied, 4 layout.tsx route groups.",
+      "affected_files": [
+        "system_registry.json",
+        "backend/ITHunterview.Service/Utils/JwtTokenGenerator.cs",
+        "frontend/.env.local",
+        "frontend/src/services/api-client.ts",
+        "frontend/src/components/layout/AppShell.tsx",
+        "frontend/src/app/(admin)/layout.tsx",
+        "frontend/src/app/(staff)/layout.tsx",
+        "frontend/src/app/(candidate)/layout.tsx",
+        "frontend/src/app/(recruiter)/layout.tsx"
+      ]
+    },
+    {
+      "timestamp": "2026-06-26T00:10:00Z",
+      "action": "Setup Harness Engineering hoàn chỉnh: tạo AGENTS.md (root), feature_list.json (24 features), claude-progress.md, init.ps1, action_history.json. Cập nhật frontend/AGENTS.md và system_registry.json. Tách action_history ra file riêng.",
+      "affected_files": [
+        "AGENTS.md",
+        "feature_list.json",
+        "claude-progress.md",
+        "init.ps1",
+        "action_history.json",
+        "frontend/AGENTS.md",
+        "system_registry.json"
+      ]
+    },
+    {
+      "timestamp": "2026-06-26T00:30:00Z",
+      "action": "Khắc phục lỗi logic nghiệp vụ thừa API UpdateUserRole trong User Governance: Loại bỏ hoàn toàn API UpdateUserRole và DTO liên quan ở Backend, loại bỏ updateUserRole hook/service/dto ở Frontend, đồng thời bổ sung trạng thái PENDING_VERIFICATION vào menu UpdateUserStatus để đồng bộ quy trình phê duyệt.",
+      "affected_files": [
+        "backend/ITHunterview.Service/Interface/UseCase/IUserGovernanceUseCase.cs",
+        "backend/ITHunterview.Service/UseCase/UserGovernanceUseCase.cs",
+        "backend/ITHunterview.WebAPI/Controllers/UserGovernanceController.cs",
+        "frontend/src/types/user-governance.types.ts",
+        "frontend/src/services/user-governance.service.ts",
+        "frontend/src/hooks/useUserGovernance.ts",
+        "frontend/src/app/(admin)/admin/accounts/components/update-status-modal.tsx",
+        "system_registry.json",
+        "action_history.json"
+      ]
+    },
+    {
+      "timestamp": "2026-06-26T01:00:00Z",
+      "action": "Vá các lỗ hổng bảo mật module User Governance: Fix JWT duplicate claim Role, cập nhật regex Email/Password, thêm Rate Limiting (5 req/min) cho CreateStaff, kiểm tra Defense-in-depth UseCase, và redirect AppShell lập tức nếu không có quyền.",
+      "affected_files": [
+        "backend/ITHunterview.Service/Utils/JwtTokenGenerator.cs",
+        "backend/ITHunterview.Service/Infrastructure/Infrastructure/ActorProvider.cs",
+        "backend/ITHunterview.WebAPI/Controllers/JobPostingsController.cs",
+        "backend/ITHunterview.WebAPI/Middlewares/UserStatusCheckMiddleware.cs",
+        "backend/ITHunterview.Service/DTOs/UserGovernance/CreateStaffDto.cs",
+        "backend/ITHunterview.WebAPI/Program.cs",
+        "backend/ITHunterview.WebAPI/Controllers/UserGovernanceController.cs",
+        "backend/ITHunterview.Service/UseCase/UserGovernanceUseCase.cs",
+        "frontend/src/components/layout/AppShell.tsx",
+        "claude-progress.md",
+        "feature_list.json"
+      ]
+    },
+    {
+      "timestamp": "2026-06-26T01:30:00Z",
+      "action": "Hoàn thành Phase 5 (Frontend UI/UX Issues) cho User Governance: Refactor UpdateStatusModal, thêm Smart Pagination Truncation cho tài khoản, sửa logic render Toast Icon, sửa lỗi cú pháp DialogTrigger với base-ui.",
+      "affected_files": [
+        "frontend/src/app/(admin)/admin/accounts/components/create-staff-modal.tsx",
+        "frontend/src/app/(admin)/admin/accounts/[userId]/page.tsx",
+        "frontend/src/app/(admin)/admin/accounts/page.tsx",
+        "claude-progress.md",
+        "walkthrough.md"
+      ]
+    },
+    {
+      "timestamp": "2026-06-26T01:50:00Z",
+      "action": "Khôi phục lại các luồng User Governance do lỗi thao tác của người dùng: Xóa API UpdateUserRole, thêm RateLimiting cho CreateStaff, cập nhật Regex Password, xóa duplicate Role claim, thêm logic Route Guard vào AppShell.",
+      "affected_files": [
+        "backend/ITHunterview.Service/Utils/JwtTokenGenerator.cs",
+        "backend/ITHunterview.Service/DTOs/UserGovernance/CreateStaffDto.cs",
+        "backend/ITHunterview.WebAPI/Program.cs",
+        "backend/ITHunterview.WebAPI/Controllers/UserGovernanceController.cs",
+        "frontend/src/components/layout/AppShell.tsx",
+        "claude-progress.md"
+      ]
+    },
+    {
+      "timestamp": "2026-06-26T04:03:00Z",
+      "action": "Rà soát toàn diện phân hệ Master Data và ghi nhận các lỗi/khuyết điểm vào file master_data_flaws.md cùng system_registry.json theo yêu cầu của người dùng.",
+      "affected_files": [
+        "master_data_flaws.md",
+        "system_registry.json",
+        "action_history.json"
+      ]
+    },
+    {
+      "timestamp": "2026-06-26T04:22:00Z",
+      "action": "Nâng cấp cấu trúc Majors từ dạng phẳng sang phân cấp cây (Majors Hierarchy) ở Backend và Schema DB: Thêm ParentId tự tham chiếu, giới hạn độ sâu (Max Depth = 3), cơ chế xóa ràng buộc Restrict Delete, cập nhật Repository, UseCase, Controller và schema.sql.",
+      "affected_files": [
+        "backend/ITHunterview.Domain/Entities/Majors.cs",
+        "backend/ITHunterview.Service/Infrastructure/Persistence/ITHunterviewContext.cs",
+        "backend/ITHunterview.Service/Infrastructure/Persistence/MajorRepository.cs",
+        "backend/ITHunterview.Service/Interface/Persistence/IMajorRepository.cs",
+        "backend/ITHunterview.Service/Interface/UseCase/IMajorUseCase.cs",
+        "backend/ITHunterview.Service/UseCase/MajorUseCase.cs",
+        "backend/ITHunterview.WebAPI/Controllers/MasterDataController.cs",
+        "schema.sql",
+        "system_registry.json",
+        "action_history.json",
+        "claude-progress.md"
+      ]
+    }
+  ]
+}
