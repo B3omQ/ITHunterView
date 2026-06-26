@@ -44,6 +44,7 @@ export default function Home() {
   const [searchLoc, setSearchLoc] = useState("")
   const [mounted, setMounted] = useState(false)
   const [locationOpen, setLocationOpen] = useState(false)
+  const [selectedIndex, setSelectedIndex] = useState(0)
 
   const filteredLocations = LOCATIONS.filter(loc => {
     if (!searchLoc) return true;
@@ -98,8 +99,8 @@ export default function Home() {
         </p>
 
         {/* Search Bar */}
-        <div className="mt-12 max-w-4xl mx-auto glass-panel rounded-2xl p-2.5 flex flex-col md:flex-row gap-2.5 items-stretch md:items-center relative z-20 hover:border-primary/40 transition-colors duration-300">
-          <div className="flex-1 flex items-center gap-2.5 px-3 min-w-0 border-b md:border-b-0 md:border-r border-border/50 pb-2.5 md:pb-0 group">
+        <div className="mt-12 max-w-4xl mx-auto bg-white/90 backdrop-blur-md border border-border/80 shadow-lg shadow-black/5 rounded-2xl md:rounded-full p-2 flex flex-col md:flex-row gap-2 items-stretch md:items-center relative z-20 transition-all hover:shadow-xl hover:border-primary/40">
+          <div className="flex-1 flex items-center gap-2.5 px-4 min-w-0 border-b md:border-b-0 md:border-r border-border/60 pb-2.5 md:pb-0 group">
             <SearchIcon className="text-muted-foreground flex-shrink-0 group-focus-within:text-primary transition-colors" size={18} />
             <Input
               type="text"
@@ -107,11 +108,11 @@ export default function Home() {
               value={searchTitle}
               onChange={(e) => setSearchTitle(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="w-full border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 h-auto md:text-sm placeholder:text-muted-foreground"
+              className="w-full border-0 bg-transparent shadow-none focus-visible:ring-0 p-1 md:text-sm placeholder:text-muted-foreground"
             />
           </div>
 
-          <div className="flex-1 flex items-center gap-2.5 px-3 min-w-0 pb-2.5 md:pb-0 relative">
+          <div className="flex-1 flex items-center gap-2.5 px-4 min-w-0 pb-2.5 md:pb-0 relative">
             <MapPinIcon className="text-muted-foreground flex-shrink-0" size={18} />
             <Input
               type="text"
@@ -120,44 +121,70 @@ export default function Home() {
               onChange={(e) => {
                 setSearchLoc(e.target.value);
                 setLocationOpen(true);
+                setSelectedIndex(0);
               }}
               onFocus={() => setLocationOpen(true)}
-              onBlur={() => setLocationOpen(false)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="w-full border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 h-auto md:text-sm placeholder:text-muted-foreground"
+              onBlur={() => {
+                setTimeout(() => setLocationOpen(false), 200);
+              }}
+              onKeyDown={(e) => {
+                if (locationOpen) {
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setSelectedIndex((prev) => Math.min(prev + 1, filteredLocations.length - 1));
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setSelectedIndex((prev) => Math.max(prev - 1, 0));
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (filteredLocations[selectedIndex]) {
+                      setSearchLoc(filteredLocations[selectedIndex]);
+                      setLocationOpen(false);
+                    } else {
+                      handleSearch();
+                    }
+                  } else if (e.key === 'Escape') {
+                    setLocationOpen(false);
+                  }
+                } else if (e.key === 'Enter') {
+                  handleSearch();
+                }
+              }}
+              className="w-full border-0 bg-transparent shadow-none focus-visible:ring-0 p-1 md:text-sm placeholder:text-muted-foreground"
             />
             {locationOpen && (
               <div className="absolute top-full left-0 right-0 mt-4 z-50">
-                <Command className="border border-border shadow-lg" shouldFilter={false}>
-                  <CommandList>
-                    <CommandEmpty>No location found.</CommandEmpty>
-                    <CommandGroup>
-                      {filteredLocations.map((loc) => (
-                        <CommandItem
+                <div className="border border-border shadow-lg rounded-xl overflow-hidden bg-popover text-popover-foreground flex flex-col max-h-[300px]">
+                  {filteredLocations.length === 0 ? (
+                    <div className="py-6 text-center text-sm text-muted-foreground">No location found.</div>
+                  ) : (
+                    <div className="p-1.5 overflow-y-auto">
+                      {filteredLocations.map((loc, idx) => (
+                        <div
                           key={loc}
-                          value={loc}
                           onMouseDown={(e) => {
                             e.preventDefault();
                             setSearchLoc(loc);
                             setLocationOpen(false);
                           }}
+                          className={`rounded-md cursor-pointer px-3 py-2 text-sm flex items-center ${selectedIndex === idx ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'}`}
                         >
                           {loc}
-                        </CommandItem>
+                        </div>
                       ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
 
           <Button
             onClick={handleSearch}
-            className="h-11 px-6 rounded-xl font-semibold flex items-center justify-center gap-2"
+            className="h-10 px-8 rounded-xl md:rounded-full font-semibold flex items-center justify-center gap-2 shrink-0 shadow-md hover:shadow-lg transition-all"
           >
             <SearchIcon size={16} />
-            <span>Search Jobs</span>
+            <span>Search</span>
           </Button>
         </div>
 
