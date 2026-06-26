@@ -29,6 +29,7 @@ import {
 
 import { useGetMyCompany, useCreateOrUpdateProfile } from '@/hooks/useCompany';
 import { uploadService } from '@/services/upload.service';
+import { CompanyLogo } from '@/components/shared/CompanyLogo';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Company name must be at least 2 characters'),
@@ -138,11 +139,7 @@ export default function CompanyProfilePage() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="flex items-center gap-6">
               <div className="relative w-24 h-24 border rounded-lg overflow-hidden bg-muted flex items-center justify-center shrink-0">
-                {currentLogo ? (
-                  <img src={currentLogo} alt="Company Logo" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-muted-foreground text-xs">No Logo</span>
-                )}
+                <CompanyLogo src={currentLogo} alt="Company Logo" fallbackType="building" fallbackIconClassName="w-10 h-10 text-muted-foreground" imageClassName="w-full h-full object-cover" />
                 {isUploading && (
                   <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
                     <span className="text-xs">Uploading...</span>

@@ -24,6 +24,7 @@ import {
 import { useUserDetail, useUpdateUserStatus } from '@/hooks/useUserGovernance';
 import { UserStatus, SystemRole } from '@/types/user-governance.types';
 import { UpdateStatusModal } from '../components/update-status-modal';
+import { CompanyLogo } from '@/components/shared/CompanyLogo';
 
 // Custom inline SVG icons for social links since they are not exported by this version of lucide-react
 const Github = ({ size = 24, className, ...props }: React.SVGProps<SVGSVGElement> & { size?: number }) => (
@@ -433,15 +434,13 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
                   </h4>
                   <div className="flex items-start gap-3 bg-muted/20 border border-border/60 p-4 rounded-xl">
                     <div className="w-12 h-12 bg-card border border-border rounded-xl flex items-center justify-center overflow-hidden shrink-0">
-                      {user.recruiterProfile.company.logoUrl ? (
-                        <img
-                          src={user.recruiterProfile.company.logoUrl}
-                          alt={user.recruiterProfile.company.name}
-                          className="w-full h-full object-contain p-1"
-                        />
-                      ) : (
-                        <Building size={20} className="text-muted-foreground" />
-                      )}
+                      <CompanyLogo
+                        src={user.recruiterProfile.company.logoUrl}
+                        alt={user.recruiterProfile.company.name}
+                        fallbackType="building"
+                        fallbackIconClassName="text-muted-foreground w-5 h-5"
+                        imageClassName="w-full h-full object-contain p-1"
+                      />
                     </div>
                     <div className="space-y-1">
                       <h5 className="text-sm font-bold text-foreground">{user.recruiterProfile.company.name}</h5>
