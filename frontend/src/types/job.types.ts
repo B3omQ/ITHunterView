@@ -13,6 +13,7 @@ export interface JobSearchQuery {
   jobDomains?: string[];
   companyIndustries?: string[];
   companyTypes?: string[];
+  jobExpertises?: string[];
   maxSalary?: number;
   page?: number;
   pageSize?: number;

@@ -183,4 +183,16 @@ export const recruiterService = {
       };
     }
   },
+
+  getMajors: async () => {
+    try {
+      const response = await api.get<ApiResponse<PaginatedResult<{ id: number; name: string }>>>('/api/majors?pageSize=1000');
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Failed to fetch majors',
+      };
+    }
+  },
 };

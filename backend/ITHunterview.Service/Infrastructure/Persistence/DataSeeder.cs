@@ -642,12 +642,13 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             if (!context.JobPostings.Any())
             {
                 var recruiterRole = context.Roles.FirstOrDefault(r => r.Name == "recruiter");
-                var recruiters = context.Users.Where(u => u.RoleId == recruiterRole.Id).ToList();
+                var recruiters = recruiterRole != null ? context.Users.Where(u => u.RoleId == recruiterRole.Id).ToList() : new List<User>();
                 var companies = context.Companies.ToList();
                 var categories = context.JobCategories.Where(c => c.ParentId != null).ToList();
                 var skills = context.Skills.ToList();
+                var majors = context.Majors.Where(m => m.ParentId != null).ToList();
 
-                if (recruiters.Any() && companies.Any() && categories.Any() && skills.Any())
+                if (recruiters.Any() && companies.Any() && categories.Any() && skills.Any() && majors.Any())
                 {
                     var jobs = new List<JobPostings>();
                     var jobSkills = new List<JobSkillRequirements>();
@@ -672,6 +673,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         string level = prefix;
                         string workingModel = workingModels[random.Next(workingModels.Length)];
                         string jobDomain = jobDomains[random.Next(jobDomains.Length)];
+                        string jobExpertise = majors[random.Next(majors.Count)].Name;
                         
                         decimal minSalary = random.Next(5, 20) * 100;
                         decimal maxSalary = minSalary + random.Next(5, 15) * 100;
@@ -697,7 +699,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                             Status = status,
                             Level = level,
                             WorkingModel = workingModel,
-                            JobExpertise = "Software Engineer",
+                            JobExpertise = jobExpertise,
                             JobDomain = new List<string> { jobDomain },
                             ApplicationCount = random.Next(0, 100),
                             ViewCount = random.Next(100, 5000),

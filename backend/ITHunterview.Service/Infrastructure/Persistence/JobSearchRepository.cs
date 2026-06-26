@@ -59,6 +59,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 jobsQuery = jobsQuery.Where(j => j.Level != null && query.Levels.Contains(j.Level));
             }
 
+            if (query.JobExpertises != null && query.JobExpertises.Any())
+            {
+                jobsQuery = jobsQuery.Where(j => j.JobExpertise != null && query.JobExpertises.Contains(j.JobExpertise));
+            }
+
             if (query.WorkingModels != null && query.WorkingModels.Any())
             {
                 jobsQuery = jobsQuery.Where(j => j.WorkingModel != null && query.WorkingModels.Contains(j.WorkingModel));
