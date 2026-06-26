@@ -111,5 +111,37 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             return dto;
         }
+
+        public async Task<PagedResult<CandidateAppliedJobDto>> GetCandidateAppliedJobsAsync(Guid candidateId, int page, int pageSize)
+        {
+            var query = from application in _context.JobApplications
+                        join job in _context.JobPostings on application.JobId equals job.Id
+                        join company in _context.Companies on job.CompanyId equals company.Id
+                        where application.CandidateId == candidateId
+                        orderby application.CreatedAt descending
+                        select new CandidateAppliedJobDto
+                        {
+                            Id = application.Id,
+                            JobId = job.Id,
+                            JobTitle = job.Title,
+                            CompanyName = company.Name,
+                            CompanyLogoUrl = company.LogoUrl,
+                            Status = application.Status,
+                            ApplyDate = application.CreatedAt
+                        };
+
+            var totalCount = await query.CountAsync();
+            var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            return new PagedResult<CandidateAppliedJobDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Total = totalCount,
+                TotalItems = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
     }
 }

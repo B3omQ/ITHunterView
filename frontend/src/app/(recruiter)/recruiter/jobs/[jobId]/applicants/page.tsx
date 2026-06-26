@@ -155,8 +155,8 @@ export default function JobApplicantsPage() {
         onChange={(e) => handleStatusChange(applicant.id, e.target.value as ApplicationStatus)}
         className={`text-xs font-semibold border rounded-md py-1.5 px-2 outline-none transition-colors ${getStatusColorClasses(applicant.status)} ${!disabled && 'cursor-pointer shadow-sm hover:brightness-95'}`}
       >
-        {Object.values(ApplicationStatus).map(status => (
-          <option key={status} value={status} className="bg-white text-zinc-900">{formatStatusText(status)}</option>
+        {Array.from(new Set([applicant.status, ApplicationStatus.APPLIED, ApplicationStatus.VIEWED])).map(status => (
+          <option key={status} value={status} className="bg-white text-zinc-900">{formatStatusText(status as string)}</option>
         ))}
       </select>
     )

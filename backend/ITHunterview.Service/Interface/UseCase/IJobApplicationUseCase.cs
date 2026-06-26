@@ -11,5 +11,6 @@ namespace ITHunterview.Service.Interface.UseCase
         Task<bool> ApplyForJobAsync(Guid userId, CreateJobApplicationRequestDto request);
         Task<bool> UpdateStatusAsync(Guid applicationId, ITHunterview.Domain.Enums.ApplicationStatus status);
         Task<JobApplicationDetailDto?> GetApplicationDetailAsync(Guid applicationId);
+        Task<PagedResult<CandidateAppliedJobDto>> GetCandidateAppliedJobsAsync(Guid userId, int page, int pageSize);
     }
 }

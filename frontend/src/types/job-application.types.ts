@@ -33,3 +33,13 @@ export interface JobApplicationDetailDto {
   cvUrl?: string;
   cvFileName?: string;
 }
+
+export interface CandidateAppliedJobDto {
+  id: string;
+  jobId: string;
+  jobTitle: string;
+  companyName: string;
+  companyLogoUrl?: string;
+  status: ApplicationStatus;
+  applyDate: string;
+}

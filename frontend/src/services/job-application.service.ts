@@ -1,6 +1,6 @@
 import api from './api-client';
 import { ApiResponse, PaginatedResponse } from '@/types/api.types';
-import { ApplicantDto, ApplicationStatus, JobApplicationDetailDto } from '@/types/job-application.types';
+import { ApplicantDto, ApplicationStatus, JobApplicationDetailDto, CandidateAppliedJobDto } from '@/types/job-application.types';
 
 export const JobApplicationService = {
   getApplicantsByJobId: async (
@@ -28,5 +28,16 @@ export const JobApplicationService = {
   getApplicationDetail: async (applicationId: string): Promise<JobApplicationDetailDto | null> => {
     const response = await api.get<ApiResponse<JobApplicationDetailDto>>(`/api/JobApplications/${applicationId}`);
     return response.data.data || null;
+  },
+
+  getCandidateAppliedJobs: async (
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<PaginatedResponse<CandidateAppliedJobDto>> => {
+    const response = await api.get<ApiResponse<PaginatedResponse<CandidateAppliedJobDto>>>(
+      `/api/JobApplications/candidate/applied-jobs`,
+      { params: { page, pageSize } }
+    );
+    return response.data.data as PaginatedResponse<CandidateAppliedJobDto>;
   },
 };

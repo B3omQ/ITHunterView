@@ -87,6 +87,12 @@ namespace ITHunterview.Service.UseCase
                 throw new InvalidOperationException($"Cannot update application status because it is already finalized as {application.Status}.");
             }
 
+            var allowedStatuses = new[] { ApplicationStatus.APPLIED, ApplicationStatus.VIEWED };
+            if (!allowedStatuses.Contains(status))
+            {
+                throw new ArgumentException("Status can only be updated to APPLIED or VIEWED.");
+            }
+
             application.Status = status;
             application.UpdatedAt = DateTime.UtcNow;
             await _jobApplicationRepository.UpdateAsync(application);
@@ -102,6 +108,19 @@ namespace ITHunterview.Service.UseCase
                 throw new KeyNotFoundException("Job application not found.");
             }
             return detail;
+        }
+
+        public async Task<PagedResult<CandidateAppliedJobDto>> GetCandidateAppliedJobsAsync(Guid userId, int page, int pageSize)
+        {
+            var profile = await _candidateProfileRepository.GetByUserIdAsync(userId);
+            if (profile == null)
+            {
+                throw new UnauthorizedAccessException("Only candidates can view applied jobs.");
+            }
+
+            if (page <= 0) page = 1;
+            if (pageSize <= 0) pageSize = 10;
+            return await _jobApplicationRepository.GetCandidateAppliedJobsAsync(profile.Id, page, pageSize);
         }
     }
 }

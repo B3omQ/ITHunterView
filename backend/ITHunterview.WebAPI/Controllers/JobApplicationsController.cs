@@ -56,5 +56,19 @@ namespace ITHunterview.WebAPI.Controllers
             var result = await _jobApplicationUseCase.GetApplicationDetailAsync(id);
             return Ok(new ResponseBase<JobApplicationDetailDto>(result));
         }
+
+        [HttpGet("candidate/applied-jobs")]
+        [Authorize]
+        public async Task<ActionResult<ResponseBase<PagedResult<CandidateAppliedJobDto>>>> GetCandidateAppliedJobs([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            var userIdStr = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized(new ResponseBase<PagedResult<CandidateAppliedJobDto>>(new PagedResult<CandidateAppliedJobDto>(), "Unauthorized."));
+            }
+
+            var result = await _jobApplicationUseCase.GetCandidateAppliedJobsAsync(userId, page, pageSize);
+            return Ok(new ResponseBase<PagedResult<CandidateAppliedJobDto>>(result));
+        }
     }
 }
