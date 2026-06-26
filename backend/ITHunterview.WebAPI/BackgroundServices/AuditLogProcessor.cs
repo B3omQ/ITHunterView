@@ -41,7 +41,38 @@ namespace ITHunterview.WebAPI.BackgroundServices
             {
                 try
                 {
-                    if (await _auditLogQueue.WaitToReadAsync(stoppingToken))
+                    bool hasItems = false;
+                    if (batch.Any())
+                    {
+                        var timeSinceLastFlush = DateTime.UtcNow - lastFlushTime;
+                        var timeLeft = flushInterval - timeSinceLastFlush;
+                        if (timeLeft <= TimeSpan.Zero)
+                        {
+                            await FlushBatchAsync(batch, stoppingToken);
+                            lastFlushTime = DateTime.UtcNow;
+                            timeLeft = flushInterval;
+                        }
+
+                        using (var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken))
+                        {
+                            timeoutCts.CancelAfter(timeLeft);
+                            try
+                            {
+                                hasItems = await _auditLogQueue.WaitToReadAsync(timeoutCts.Token);
+                            }
+                            catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested)
+                            {
+                                await FlushBatchAsync(batch, stoppingToken);
+                                lastFlushTime = DateTime.UtcNow;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        hasItems = await _auditLogQueue.WaitToReadAsync(stoppingToken);
+                    }
+
+                    if (hasItems)
                     {
                         while (_auditLogQueue.TryDequeue(out var logItem))
                         {
@@ -94,23 +125,166 @@ namespace ITHunterview.WebAPI.BackgroundServices
 
         private async Task FlushBatchAsync(List<UserActivityLogs> batch, CancellationToken cancellationToken)
         {
-            try
+            if (batch == null || !batch.Any()) return;
+
+            foreach (var log in batch)
             {
-                using (var scope = _serviceProvider.CreateScope())
+                log.Sanitize();
+            }
+
+            const int maxRetryAttempts = 3;
+            int attempt = 0;
+            bool success = false;
+
+            while (attempt < maxRetryAttempts && !success)
+            {
+                attempt++;
+                try
                 {
-                    var context = scope.ServiceProvider.GetRequiredService<ITHunterviewContext>();
-                    context.UserActivityLogs.AddRange(batch);
-                    await context.SaveChangesAsync(cancellationToken);
+                    using (var scope = _serviceProvider.CreateScope())
+                    {
+                        var context = scope.ServiceProvider.GetRequiredService<ITHunterviewContext>();
+                        context.UserActivityLogs.AddRange(batch);
+                        await context.SaveChangesAsync(cancellationToken);
+                        success = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (IsTransientException(ex) && attempt < maxRetryAttempts)
+                    {
+                        var delayMs = (int)Math.Pow(2, attempt) * 100; // Exponential Backoff: 200ms, 400ms, 800ms
+                        _logger.LogWarning(ex, "Transient database error on batch flush attempt {Attempt}. Retrying in {Delay}ms...", attempt, delayMs);
+                        try
+                        {
+                            await Task.Delay(delayMs, cancellationToken);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        // Hard exception or max attempts reached, drop out of batch retry loop and process individually
+                        break;
+                    }
                 }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to flush a batch of {Count} audit logs to database.", batch.Count);
-            }
-            finally
+
+            if (success)
             {
                 batch.Clear();
+                return;
             }
+
+            _logger.LogWarning("Batch flush failed. Processing {Count} audit logs individually to isolate failures.", batch.Count);
+            var transientFailures = new List<UserActivityLogs>();
+
+            foreach (var log in batch)
+            {
+                bool logSuccess = false;
+                attempt = 0;
+
+                while (attempt < maxRetryAttempts && !logSuccess)
+                {
+                    attempt++;
+                    try
+                    {
+                        using (var scope = _serviceProvider.CreateScope())
+                        {
+                            var context = scope.ServiceProvider.GetRequiredService<ITHunterviewContext>();
+                            context.UserActivityLogs.Add(log);
+                            await context.SaveChangesAsync(cancellationToken);
+                            logSuccess = true;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        if (IsTransientException(ex))
+                        {
+                            if (attempt < maxRetryAttempts)
+                            {
+                                var delayMs = (int)Math.Pow(2, attempt) * 50; // Smaller backoff for individual retry
+                                _logger.LogWarning(ex, "Transient database error on individual entry attempt {Attempt}. Retrying in {Delay}ms...", attempt, delayMs);
+                                try
+                                {
+                                    await Task.Delay(delayMs, cancellationToken);
+                                }
+                                catch (OperationCanceledException)
+                                {
+                                    transientFailures.Add(log);
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogError(ex, "Transient database error persisted after {Attempts} retries for individual entry. Re-queueing...", maxRetryAttempts);
+                                transientFailures.Add(log);
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogError(ex, "Hard database constraint or formatting error for individual audit entry. Dropping item. Actor: {ActorEmail}, Action: {Action}", log.ActorEmail, log.Action);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (transientFailures.Any())
+            {
+                _logger.LogWarning("Re-queuing {Count} transient-failure audit logs back to queue.", transientFailures.Count);
+                foreach (var failedLog in transientFailures)
+                {
+                    _auditLogQueue.TryEnqueue(failedLog);
+                }
+            }
+
+            batch.Clear();
+        }
+
+        private bool IsTransientException(Exception? ex)
+        {
+            if (ex == null) return false;
+
+            if (ex is TimeoutException || 
+                ex is System.Net.Sockets.SocketException || 
+                ex is System.IO.IOException)
+            {
+                return true;
+            }
+
+            var type = ex.GetType();
+            var typeName = type.FullName ?? "";
+
+            if (typeName.Contains("NpgsqlException") || typeName.Contains("PostgresException"))
+            {
+                var isTransientProp = type.GetProperty("IsTransient");
+                if (isTransientProp != null && isTransientProp.PropertyType == typeof(bool))
+                {
+                    var isTransient = (bool?)isTransientProp.GetValue(ex);
+                    if (isTransient == true) return true;
+                }
+
+                var sqlStateProp = type.GetProperty("SqlState");
+                if (sqlStateProp != null && sqlStateProp.PropertyType == typeof(string))
+                {
+                    var sqlState = (string?)sqlStateProp.GetValue(ex);
+                    if (sqlState != null)
+                    {
+                        if (sqlState.StartsWith("08") || 
+                            sqlState.StartsWith("57P") || 
+                            sqlState.StartsWith("58"))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return IsTransientException(ex.InnerException);
         }
     }
 }
