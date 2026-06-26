@@ -7,6 +7,23 @@ import { Logo } from "@/components/layout/Logo"
 import { useAuthStore } from "@/store/auth.store"
 import { getDashboardPath } from "@/lib/constants"
 import { PublicHeader } from "@/components/layout/PublicHeader"
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { 
+  Search as SearchIcon, 
+  MapPin as MapPinIcon, 
+  ArrowRight as ArrowRightIcon, 
+  Upload as UploadIcon, 
+  Zap as ZapIcon, 
+  Target as TargetIcon, 
+  ChevronLeft as ChevronLeftIcon, 
+  ChevronRight as ChevronRightIcon, 
+  ChevronDown as ChevronDownIcon, 
+  Check as CheckIcon, 
+  LogOut as LogOutIcon, 
+  LayoutDashboard as LayoutDashboardIcon 
+} from "lucide-react"
 
 const LOCATIONS = [
   "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Cần Thơ", "Hải Phòng",
@@ -18,114 +35,7 @@ const removeAccents = (str: string) => {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 };
 
-// Inline SVG Icon components to prevent Next.js + Turbopack compilation hang
-function SearchIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <circle cx="11" cy="11" r="8"></circle>
-      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-    </svg>
-  )
-}
-
-function MapPinIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-      <circle cx="12" cy="10" r="3"></circle>
-    </svg>
-  )
-}
-
-function ArrowRightIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <line x1="5" y1="12" x2="19" y2="12"></line>
-      <polyline points="12 5 19 12 12 19"></polyline>
-    </svg>
-  )
-}
-
-function UploadIcon({ size = 22, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-      <polyline points="17 8 12 3 7 8"></polyline>
-      <line x1="12" y1="3" x2="12" y2="15"></line>
-    </svg>
-  )
-}
-
-function ZapIcon({ size = 22, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-    </svg>
-  )
-}
-
-function TargetIcon({ size = 22, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <circle cx="12" cy="12" r="10"></circle>
-      <circle cx="12" cy="12" r="6"></circle>
-      <circle cx="12" cy="12" r="2"></circle>
-    </svg>
-  )
-}
-
-function ChevronLeftIcon({ size = 18, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polyline points="15 18 9 12 15 6"></polyline>
-    </svg>
-  )
-}
-
-function ChevronRightIcon({ size = 18, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polyline points="9 18 15 12 9 6"></polyline>
-    </svg>
-  )
-}
-
-function ChevronDownIcon({ size = 18, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polyline points="6 9 12 15 18 9"></polyline>
-    </svg>
-  )
-}
-
-function CheckIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polyline points="20 6 9 17 4 12"></polyline>
-    </svg>
-  )
-}
-
-function LogOutIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-      <polyline points="16 17 21 12 16 7"></polyline>
-      <line x1="21" y1="12" x2="9" y2="12"></line>
-    </svg>
-  )
-}
-
-function LayoutDashboardIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <rect x="3" y="3" width="7" height="9"></rect>
-      <rect x="14" y="3" width="7" height="5"></rect>
-      <rect x="14" y="12" width="7" height="9"></rect>
-      <rect x="3" y="16" width="7" height="5"></rect>
-    </svg>
-  )
-}
+// Icons are imported from lucide-react
 
 export default function Home() {
   const router = useRouter()
@@ -236,22 +146,22 @@ export default function Home() {
         </p>
 
         {/* Search Bar */}
-        <div className="mt-10 max-w-3xl mx-auto bg-card border border-border rounded-2xl p-2.5 shadow-md flex flex-col md:flex-row gap-2.5 items-stretch md:items-center">
+        <div className="mt-10 max-w-3xl mx-auto bg-card border border-border rounded-2xl p-2.5 shadow-md flex flex-col md:flex-row gap-2.5 items-stretch md:items-center relative z-10">
           <div className="flex-1 flex items-center gap-2.5 px-3 min-w-0 border-b md:border-b-0 md:border-r border-border pb-2.5 md:pb-0">
             <SearchIcon className="text-muted-foreground flex-shrink-0" size={18} />
-            <input
+            <Input
               type="text"
               placeholder="Job title, keywords, company..."
               value={searchTitle}
               onChange={(e) => setSearchTitle(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="w-full bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground py-1 text-foreground"
+              className="w-full border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 h-auto md:text-sm placeholder:text-muted-foreground"
             />
           </div>
 
           <div className="flex-1 flex items-center gap-2.5 px-3 min-w-0 pb-2.5 md:pb-0 relative">
             <MapPinIcon className="text-muted-foreground flex-shrink-0" size={18} />
-            <input
+            <Input
               type="text"
               placeholder="Location (Hanoi, Ho Chi Minh...)"
               value={searchLoc}
@@ -260,46 +170,43 @@ export default function Home() {
                 setLocationOpen(true);
               }}
               onFocus={() => setLocationOpen(true)}
-              onBlur={() => {
-                setLocationOpen(false);
-              }}
+              onBlur={() => setLocationOpen(false)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="w-full bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground py-1 text-foreground"
+              className="w-full border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 h-auto md:text-sm placeholder:text-muted-foreground"
             />
             {locationOpen && (
-              <div className="absolute top-full left-0 right-0 mt-4 bg-popover border border-border rounded-lg shadow-lg z-50 overflow-hidden">
-                <div className="max-h-[300px] overflow-y-auto p-1.5 flex flex-col gap-0.5">
-                  {filteredLocations.length > 0 ? (
-                    filteredLocations.map((loc) => (
-                      <div
-                        key={loc}
-                        className="cursor-pointer select-none rounded-md px-3 py-2 text-sm hover:bg-muted text-popover-foreground transition-colors"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          setSearchLoc(loc);
-                          setLocationOpen(false);
-                        }}
-                      >
-                        {loc}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="py-6 text-center text-sm text-muted-foreground">
-                      No location found.
-                    </div>
-                  )}
-                </div>
+              <div className="absolute top-full left-0 right-0 mt-4 z-50">
+                <Command className="border border-border shadow-lg" shouldFilter={false}>
+                  <CommandList>
+                    <CommandEmpty>No location found.</CommandEmpty>
+                    <CommandGroup>
+                      {filteredLocations.map((loc) => (
+                        <CommandItem 
+                          key={loc}
+                          value={loc}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setSearchLoc(loc);
+                            setLocationOpen(false);
+                          }}
+                        >
+                          {loc}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
               </div>
             )}
           </div>
 
-          <button 
+          <Button 
             onClick={handleSearch}
-            className="h-11 px-6 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+            className="h-11 px-6 rounded-xl font-semibold flex items-center justify-center gap-2"
           >
             <SearchIcon size={16} />
             <span>Search Jobs</span>
-          </button>
+          </Button>
         </div>
 
         {/* Popular Tags */}
