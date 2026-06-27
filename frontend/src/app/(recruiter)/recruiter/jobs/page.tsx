@@ -14,7 +14,13 @@ import {
   XCircle, 
   ChevronLeft, 
   ChevronRight,
-  Loader2
+  Loader2,
+  Briefcase,
+  MapPin,
+  Calendar,
+  Layers,
+  Target,
+  Monitor
 } from "lucide-react"
 
 export default function JobPostingsPage() {
@@ -104,7 +110,7 @@ export default function JobPostingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 py-10 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
+    <div className="min-h-screen bg-background py-10 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Top Header Card */}
@@ -154,101 +160,137 @@ export default function JobPostingsPage() {
           </CardContent>
         </Card>
 
-        {/* Job Table View */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xs border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden relative min-h-[400px]">
+        {/* Job Card Grid View */}
+        <div className="relative min-h-[400px]">
           {loading && (
-            <div className="absolute inset-0 bg-white/70 dark:bg-zinc-900/70 z-10 flex items-center justify-center backdrop-blur-xs">
+            <div className="absolute inset-0 bg-white/70 dark:bg-zinc-950/70 z-10 flex items-center justify-center backdrop-blur-xs rounded-2xl">
               <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
             </div>
           )}
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/30">
-                  <th className="px-6 py-4.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Job Title</th>
-                  <th className="px-6 py-4.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Posted Date</th>
-                  <th className="px-6 py-4.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Applications</th>
-                  <th className="px-6 py-4.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
-                {jobs.length > 0 ? (
-                  jobs.map((job) => (
-                    <tr 
-                      key={job.id} 
-                      className="group hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 transition-colors"
-                    >
-                      <td className="px-6 py-4.5">
-                        <div className="flex items-center gap-2.5">
-                          <span className="font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                            {job.title}
-                          </span>
-                          <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200/50 dark:border-zinc-700/50">
-                            {job.jobCode}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4.5 text-sm text-zinc-500 dark:text-zinc-400">
-                        {formatDate(job.publishedAt || job.createdAt)}
-                      </td>
-                      <td className="px-6 py-4.5">
+          {jobs.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4">
+              {jobs.map((job) => (
+                <div 
+                  key={job.id} 
+                  className="group bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-xl p-5 hover:shadow-md transition-all flex flex-col md:flex-row md:items-start justify-between gap-6 relative overflow-hidden"
+                >
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-zinc-200 dark:bg-zinc-800 group-hover:bg-blue-500 transition-colors"></div>
+                  
+                  <div className="flex-1 space-y-4">
+                    {/* Header: Title and Badges */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-lg text-zinc-900 dark:text-zinc-50 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                          {job.title}
+                        </h3>
+                        <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200/50 dark:border-zinc-700/50">
+                          {job.jobCode}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
                         {renderStatusBadge(job.status)}
-                      </td>
-                      <td className="px-6 py-4.5 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                        <div className="flex items-center gap-1.5">
-                          <Users className="h-4 w-4 text-zinc-400 shrink-0" />
-                          <span>{job.applicationCount}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4.5">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => openEditModal(job.id)}
-                            className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950/30 gap-1"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                            Edit
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => openViewModal(job.id)}
-                            className="h-8 text-zinc-600 hover:text-zinc-700 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-300 dark:hover:bg-zinc-800/50 gap-1"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                            View
-                          </Button>
-                          {job.status !== "CLOSED" && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => handleCloseJob(job.id)}
-                              className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/30 gap-1"
-                            >
-                              <XCircle className="h-3.5 w-3.5" />
-                              Close
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="text-center py-16 text-zinc-400 dark:text-zinc-500">
-                      No job postings found matching the filters.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    </div>
 
-          {/* Table Footer / Pagination */}
+                    {/* Metadata line */}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-zinc-500 dark:text-zinc-400">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-4 w-4 shrink-0" />
+                        <span>{job.location}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4 shrink-0" />
+                        <span>Posted {formatDate(job.publishedAt || job.createdAt)}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Users className="h-4 w-4 shrink-0" />
+                        <span>{job.applicationCount} Applications</span>
+                      </div>
+                    </div>
+
+                    {/* Secondary Attributes (Level, Working Model, Domain, Expertise) */}
+                    <div className="flex flex-wrap gap-3">
+                      {job.level && (
+                        <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-300">
+                          <Briefcase className="h-3.5 w-3.5 text-indigo-500" />
+                          {job.level}
+                        </div>
+                      )}
+                      {job.workingModel && (
+                        <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-300">
+                          <Monitor className="h-3.5 w-3.5 text-cyan-500" />
+                          {job.workingModel}
+                        </div>
+                      )}
+                      {job.jobExpertise && (
+                        <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-300">
+                          <Target className="h-3.5 w-3.5 text-rose-500" />
+                          {job.jobExpertise}
+                        </div>
+                      )}
+                      {job.jobDomain && job.jobDomain.length > 0 && (
+                        <div className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-300">
+                          <Layers className="h-3.5 w-3.5 text-fuchsia-500" />
+                          <span className="truncate max-w-[200px]">{job.jobDomain.join(", ")}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Skills Badges */}
+                    {job.skills && job.skills.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {job.skills.map((skill, index) => (
+                          <span key={index} className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/50">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions Column */}
+                  <div className="flex md:flex-col items-center justify-end md:justify-center gap-2 pt-4 md:pt-0 mt-4 md:mt-0 border-t md:border-t-0 md:border-l border-zinc-100 dark:border-zinc-800/80 md:pl-6">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => openEditModal(job.id)}
+                      className="w-full justify-start text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950/30 gap-2"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      Edit Job
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => openViewModal(job.id)}
+                      className="w-full justify-start text-zinc-600 hover:text-zinc-700 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-300 dark:hover:bg-zinc-800/50 gap-2"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View Details
+                    </Button>
+                    {job.status !== "CLOSED" && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleCloseJob(job.id)}
+                        className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/30 gap-2"
+                      >
+                        <XCircle className="h-4 w-4" />
+                        Close Job
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-xs border border-zinc-200/80 dark:border-zinc-800/80 p-16 text-center text-zinc-500 dark:text-zinc-400">
+              No job postings found matching the filters.
+            </div>
+          )}
+
+          {/* Pagination */}
           {totalCount > 0 && (
             <div className="px-6 py-4 flex flex-col sm:flex-row items-center justify-between border-t border-zinc-200 dark:border-zinc-800 gap-4 bg-zinc-50/20 dark:bg-zinc-950/10">
               <span className="text-sm text-zinc-500 dark:text-zinc-400">

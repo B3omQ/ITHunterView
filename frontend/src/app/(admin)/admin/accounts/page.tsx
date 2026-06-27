@@ -18,7 +18,8 @@ import {
   AlertTriangle,
   X,
   Building,
-  UserPlus
+  UserPlus,
+  XCircle
 } from 'lucide-react';
 import { useUsers } from '@/hooks/useUserGovernance';
 import { UserStatus, SystemRole } from '@/types/user-governance.types';
@@ -319,22 +320,44 @@ export default function AdminAccountsPage() {
               >
                 <ChevronLeft size={16} />
               </button>
-              {Array.from({ length: accountsTotalPages }).map((_, i) => {
-                const pg = i + 1;
-                return (
-                  <button
-                    key={pg}
-                    onClick={() => setAccountsPage(pg)}
-                    className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${
-                      accountsPage === pg
-                        ? 'bg-primary text-primary-foreground'
-                        : 'border border-border hover:bg-muted text-foreground'
-                    }`}
-                  >
-                    {pg}
-                  </button>
-                );
-              })}
+              {(() => {
+                const pages = [];
+                const maxPagesToShow = 5;
+                if (accountsTotalPages <= maxPagesToShow) {
+                  for (let i = 1; i <= accountsTotalPages; i++) pages.push(i);
+                } else {
+                  if (accountsPage <= 3) {
+                    pages.push(1, 2, 3, 4, '...', accountsTotalPages);
+                  } else if (accountsPage >= accountsTotalPages - 2) {
+                    pages.push(1, '...', accountsTotalPages - 3, accountsTotalPages - 2, accountsTotalPages - 1, accountsTotalPages);
+                  } else {
+                    pages.push(1, '...', accountsPage - 1, accountsPage, accountsPage + 1, '...', accountsTotalPages);
+                  }
+                }
+
+                return pages.map((pg, idx) => {
+                  if (pg === '...') {
+                    return (
+                      <span key={`dots-${idx}`} className="px-2 text-muted-foreground font-semibold">
+                        ...
+                      </span>
+                    );
+                  }
+                  return (
+                    <button
+                      key={pg}
+                      onClick={() => setAccountsPage(pg as number)}
+                      className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${
+                        accountsPage === pg
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'border border-border hover:bg-muted text-foreground'
+                      }`}
+                    >
+                      {pg}
+                    </button>
+                  );
+                });
+              })()}
               <button
                 onClick={() => setAccountsPage((p) => Math.min(p + 1, accountsTotalPages))}
                 disabled={accountsPage === accountsTotalPages}
@@ -363,7 +386,9 @@ export default function AdminAccountsPage() {
             toast.type === 'warning' ? 'bg-amber-500/10 text-amber-500 border-amber-500/25' :
             'bg-destructive/10 text-destructive border-destructive/25'
           }`}>
-            <CheckCircle size={18} className="shrink-0" />
+            {toast.type === 'success' && <CheckCircle size={18} className="shrink-0" />}
+            {toast.type === 'warning' && <AlertTriangle size={18} className="shrink-0" />}
+            {toast.type === 'error' && <XCircle size={18} className="shrink-0" />}
             <span>{toast.message}</span>
             <button
               onClick={() => setToast(null)}

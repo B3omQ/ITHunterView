@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, User, Briefcase, Bookmark, Bell, Settings, HelpCircle, LogOut,
   ChevronRight, Users, FileText, Building2, Shield, BarChart3, BrainCircuit,
-  ClipboardList, Database, CreditCard, MessageSquare,
+  ClipboardList, Database, CreditCard, MessageSquare, KeyRound
 } from "lucide-react"
 import { useAuthStore } from "@/store/auth.store"
 import { Logo } from "@/components/layout/Logo"
@@ -29,6 +29,7 @@ const ICONS: Record<string, React.ReactNode> = {
   Database: <Database size={18} />,
   CreditCard: <CreditCard size={18} />,
   MessageSquare: <MessageSquare size={18} />,
+  KeyRound: <KeyRound size={18} />,
 }
 
 // ---- Nav definitions per role ----
@@ -38,11 +39,12 @@ const CANDIDATE_NAV: NavItem[] = [
   { label: "Dashboard", href: APP_ROUTES.CANDIDATE.DASHBOARD, icon: "LayoutDashboard" },
   { label: "My Profile", href: APP_ROUTES.CANDIDATE.PROFILE, icon: "User" },
   { label: "Job Listings", href: APP_ROUTES.CANDIDATE.JOBS, icon: "Briefcase" },
+  { label: "Saved Jobs", href: APP_ROUTES.CANDIDATE.SAVED_JOBS, icon: "Bookmark" },
   { label: "My Resume", href: APP_ROUTES.CANDIDATE.RESUME, icon: "FileText" },
   { label: "CV Optimizer", href: APP_ROUTES.CANDIDATE.CV_OPTIMIZER, icon: "BrainCircuit" },
   { label: "Applications", href: APP_ROUTES.CANDIDATE.APPLICATIONS, icon: "ClipboardList" },
   { label: "Notifications", href: APP_ROUTES.CANDIDATE.NOTIFICATIONS, icon: "Bell", badge: 3 },
-  { label: "Settings", href: APP_ROUTES.CANDIDATE.SETTINGS, icon: "Settings" },
+  { label: "Change Password", href: APP_ROUTES.CANDIDATE.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
 const RECRUITER_NAV: NavItem[] = [
@@ -51,7 +53,7 @@ const RECRUITER_NAV: NavItem[] = [
   { label: "Job Postings", href: APP_ROUTES.RECRUITER.JOBS, icon: "Briefcase" },
   { label: "Analytics", href: APP_ROUTES.RECRUITER.ANALYTICS, icon: "BarChart3" },
   { label: "Notifications", href: APP_ROUTES.RECRUITER.NOTIFICATIONS, icon: "Bell", badge: 2 },
-  { label: "Settings", href: APP_ROUTES.RECRUITER.SETTINGS, icon: "Settings" },
+  { label: "Change Password", href: APP_ROUTES.RECRUITER.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
 const STAFF_NAV: NavItem[] = [
@@ -62,7 +64,7 @@ const STAFF_NAV: NavItem[] = [
   { label: "Question Bank", href: APP_ROUTES.STAFF.QUESTION_BANK, icon: "FileText" },
   { label: "Audit Logs", href: APP_ROUTES.STAFF.AUDIT_LOGS, icon: "ClipboardList" },
   { label: "Notifications", href: APP_ROUTES.STAFF.NOTIFICATIONS, icon: "Bell" },
-  { label: "Settings", href: APP_ROUTES.STAFF.SETTINGS, icon: "Settings" },
+  { label: "Change Password", href: APP_ROUTES.STAFF.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
 const ADMIN_NAV: NavItem[] = [
@@ -74,15 +76,15 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Finance", href: APP_ROUTES.ADMIN.FINANCE, icon: "BarChart3" },
   { label: "Platform Safety", href: APP_ROUTES.ADMIN.AUDIT_LOGS, icon: "Shield" },
   { label: "Notifications", href: APP_ROUTES.ADMIN.NOTIFICATIONS, icon: "Bell" },
-  { label: "Settings", href: APP_ROUTES.ADMIN.SETTINGS, icon: "Settings" },
+  { label: "Change Password", href: APP_ROUTES.ADMIN.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
 function getNavItems(role: string): NavItem[] {
   switch (role.toLowerCase()) {
-    case "admin":     return ADMIN_NAV
-    case "staff":     return STAFF_NAV
+    case "admin": return ADMIN_NAV
+    case "staff": return STAFF_NAV
     case "recruiter": return RECRUITER_NAV
-    default:          return CANDIDATE_NAV
+    default: return CANDIDATE_NAV
   }
 }
 
@@ -106,29 +108,12 @@ export function Sidebar() {
 
   return (
     <aside className="flex flex-col w-[240px] min-h-screen bg-sidebar border-r border-sidebar-border flex-shrink-0">
-      {/* Logo */}
-      <div className="px-5 py-5 border-b border-sidebar-border">
+      {/* 1. Logo (Kept clean at the top) */}
+      <div className="px-5 h-[68px] flex items-center border-b border-sidebar-border">
         <Logo size="sm" href="/" />
       </div>
 
-      {/* User info */}
-      {user && (
-        <div className="px-4 py-4 border-b border-sidebar-border">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full font-semibold text-sm flex-shrink-0 flex items-center justify-center bg-primary/10 text-primary">
-              {user.fullName?.charAt(0)?.toUpperCase() || user.email.charAt(0).toUpperCase()}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-sidebar-foreground truncate">
-                {user.fullName || user.email}
-              </p>
-              <p className="text-xs text-muted-foreground capitalize">{user.role?.name || "Candidate"}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Navigation */}
+      {/* 2. Navigation (Moved up, immediately visible) */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {navItems.map((item) => {
           const active = isActive(item.href)
@@ -136,18 +121,17 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`sidebar-item flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium transition-all group ${
-                active
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-              }`}
+              className={`sidebar-item flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium transition-all group ${active
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                }`}
             >
               <span className={active ? "text-primary" : "text-muted-foreground group-hover:text-sidebar-foreground transition-colors"}>
                 {ICONS[item.icon]}
               </span>
               <span className="flex-1 truncate">{item.label}</span>
               {item.badge !== undefined && (
-                <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-[11px] font-semibold text-foreground">
+                <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-[11px] font-semibold text-white">
                   {item.badge}
                 </span>
               )}
@@ -159,23 +143,42 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Bottom actions */}
-      <div className="px-3 py-4 border-t border-sidebar-border space-y-0.5">
-        <Link
-          href="/help"
-          className="flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-all"
-        >
-          <HelpCircle size={18} />
-          Help &amp; Support
-        </Link>
-        <button
-          id="sidebar-logout"
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all"
-        >
-          <LogOut size={18} />
-          Log Out
-        </button>
+      {/* 3. Bottom Actions & User Profile Footer */}
+      <div className="p-3 border-t border-sidebar-border flex flex-col gap-2">
+        {/* Secondary Links */}
+
+
+        {/* User Card (Replaces top block & standalone logout) */}
+        {user && (
+          <div className="mt-1">
+            <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-sidebar-accent/50 transition-all group">
+              {/* Avatar */}
+              <div className="w-9 h-9 rounded-full font-semibold text-sm flex-shrink-0 flex items-center justify-center bg-primary/10 text-primary">
+                {user.fullName?.charAt(0)?.toUpperCase() || user.email.charAt(0).toUpperCase()}
+              </div>
+
+              {/* Name & Role */}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-sidebar-foreground truncate">
+                  {user.fullName || user.email}
+                </p>
+                <p className="text-xs text-muted-foreground capitalize truncate">
+                  {user.role?.name || "Candidate"}
+                </p>
+              </div>
+
+              {/* Contextual Logout Action */}
+              <button
+                onClick={handleLogout}
+                className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all md:opacity-0 group-hover:opacity-100"
+                title="Log Out"
+                aria-label="Log Out"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   )

@@ -28,11 +28,11 @@ namespace ITHunterview.Service.UseCase
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                Name = request.Name,
-                IssuingOrganization = request.IssuingOrganization,
-                IssueDate = request.IssueDate.HasValue ? request.IssueDate.Value.ToDateTime(TimeOnly.MinValue) : null,
-                ExpirationDate = request.ExpirationDate.HasValue ? request.ExpirationDate.Value.ToDateTime(TimeOnly.MinValue) : null,
-                CredentialUrl = request.CredentialUrl,
+                Name = request.Name ?? string.Empty,
+                IssuingOrganization = request.IssuingOrganization ?? string.Empty,
+                IssueDate = request.IssueDate.HasValue ? DateTime.SpecifyKind(request.IssueDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null,
+                ExpirationDate = request.ExpirationDate.HasValue ? DateTime.SpecifyKind(request.ExpirationDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null,
+                CredentialUrl = request.CredentialUrl ?? string.Empty,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -47,11 +47,11 @@ namespace ITHunterview.Service.UseCase
 
             ValidateRequest(request);
 
-            entity.Name = request.Name;
-            entity.IssuingOrganization = request.IssuingOrganization;
-            entity.IssueDate = request.IssueDate.HasValue ? request.IssueDate.Value.ToDateTime(TimeOnly.MinValue) : null;
-            entity.ExpirationDate = request.ExpirationDate.HasValue ? request.ExpirationDate.Value.ToDateTime(TimeOnly.MinValue) : null;
-            entity.CredentialUrl = request.CredentialUrl;
+            entity.Name = request.Name ?? string.Empty;
+            entity.IssuingOrganization = request.IssuingOrganization ?? string.Empty;
+            entity.IssueDate = request.IssueDate.HasValue ? DateTime.SpecifyKind(request.IssueDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null;
+            entity.ExpirationDate = request.ExpirationDate.HasValue ? DateTime.SpecifyKind(request.ExpirationDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc) : null;
+            entity.CredentialUrl = request.CredentialUrl ?? string.Empty;
 
             await _certRepo.SaveChangesAsync();
             return MapToDto(entity);

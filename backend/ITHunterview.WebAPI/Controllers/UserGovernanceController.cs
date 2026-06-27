@@ -7,6 +7,7 @@ using ITHunterview.Service.DTOs.UserGovernance;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ITHunterview.WebAPI.Controllers
 {
@@ -23,7 +24,7 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Lấy danh sách người dùng phân trang kèm bộ lọc tìm kiếm nâng cao
+        /// Get paged list of users with advanced search filters
         /// </summary>
         [HttpGet("users")]
         public async Task<IActionResult> GetPagedUsers(
@@ -38,7 +39,7 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Lấy chi tiết thông tin và hồ sơ (candidate/recruiter/company) của một người dùng
+        /// Get detailed information and profile (candidate/recruiter/company) of a user
         /// </summary>
         [HttpGet("users/{id:guid}")]
         public async Task<IActionResult> GetUserDetail(Guid id)
@@ -49,32 +50,13 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Cập nhật trạng thái hoạt động (Active/Inactive/Banned) của người dùng
-        /// </summary>
         [HttpPut("users/{id:guid}/status")]
         public async Task<IActionResult> UpdateUserStatus(Guid id, [FromBody] UpdateUserStatusDto dto)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ResponseBase.Fail("Dữ liệu đầu vào không hợp lệ."));
+                return BadRequest(ResponseBase.Fail("Invalid input data."));
 
-            var actorIdClaim = User.FindFirstValue("userId");
-            if (string.IsNullOrEmpty(actorIdClaim) || !Guid.TryParse(actorIdClaim, out var actorId))
-                return Unauthorized();
-
-            var actorEmail = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email") ?? "unknown";
-            var actorRole = User.FindFirstValue(ClaimTypes.Role) ?? User.FindFirstValue("role") ?? "unknown";
-            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var userAgent = Request.Headers["User-Agent"].ToString() ?? "unknown";
-
-            var result = await _userUseCase.UpdateUserStatusAsync(
-                id, 
-                dto, 
-                actorId, 
-                actorEmail, 
-                actorRole, 
-                ipAddress, 
-                userAgent);
+            var result = await _userUseCase.UpdateUserStatusAsync(id, dto);
 
             if (!result.Success)
                 return BadRequest(result);
@@ -83,69 +65,23 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Cập nhật vai trò (Role) của người dùng (Chỉ Admin)
-        /// </summary>
-        [HttpPut("users/{id:guid}/role")]
-        [Authorize(Policy = "AdminOnly")]
-        public async Task<IActionResult> UpdateUserRole(Guid id, [FromBody] UpdateUserRoleDto dto)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ResponseBase.Fail("Dữ liệu đầu vào không hợp lệ."));
-
-            var actorIdClaim = User.FindFirstValue("userId");
-            if (string.IsNullOrEmpty(actorIdClaim) || !Guid.TryParse(actorIdClaim, out var actorId))
-                return Unauthorized();
-
-            var actorEmail = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email") ?? "unknown";
-            var actorRole = User.FindFirstValue(ClaimTypes.Role) ?? User.FindFirstValue("role") ?? "unknown";
-            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var userAgent = Request.Headers["User-Agent"].ToString() ?? "unknown";
-
-            var result = await _userUseCase.UpdateUserRoleAsync(
-                id, 
-                dto, 
-                actorId, 
-                actorEmail, 
-                actorRole, 
-                ipAddress, 
-                userAgent);
-
-            if (!result.Success)
-                return BadRequest(result);
-
-            return Ok(result);
-        }
-
-        /// <summary>
-        /// Tạo tài khoản Staff mới (Chỉ Admin)
+        /// Create a new Staff account (Admin Only)
         /// </summary>
         [HttpPost("staff")]
+        [EnableRateLimiting("StaffCreationPolicy")]
         public async Task<IActionResult> CreateStaff([FromBody] CreateStaffDto dto)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ResponseBase.Fail("Dữ liệu đầu vào không hợp lệ."));
+                return BadRequest(ResponseBase.Fail("Invalid input data."));
 
-            var actorIdClaim = User.FindFirstValue("userId");
-            if (string.IsNullOrEmpty(actorIdClaim) || !Guid.TryParse(actorIdClaim, out var actorId))
-                return Unauthorized();
-
-            var actorEmail = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email") ?? "unknown";
-            var actorRole = User.FindFirstValue(ClaimTypes.Role) ?? User.FindFirstValue("role") ?? "unknown";
-            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var userAgent = Request.Headers["User-Agent"].ToString() ?? "unknown";
-
-            var result = await _userUseCase.CreateStaffAccountAsync(
-                dto, 
-                actorId, 
-                actorEmail, 
-                actorRole, 
-                ipAddress, 
-                userAgent);
+            var result = await _userUseCase.CreateStaffAccountAsync(dto);
 
             if (!result.Success)
                 return BadRequest(result);
 
             return Ok(result);
         }
+
+        
     }
 }

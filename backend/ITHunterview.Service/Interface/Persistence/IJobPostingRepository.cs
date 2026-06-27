@@ -20,6 +20,7 @@ namespace ITHunterview.Service.Interface.Persistence
         Task UpdateAsync(JobPostings job);
         Task<Guid?> GetRecruiterCompanyIdAsync(Guid recruiterId);
         Task<List<JobSkillRequirementDto>> GetSkillsByJobIdAsync(Guid jobId);
+        Task<Dictionary<Guid, List<string>>> GetSkillsForJobsAsync(List<Guid> jobIds);
         Task UpdateJobSkillsAsync(Guid jobId, List<JobSkillRequirementInputDto> skills);
     }
 }

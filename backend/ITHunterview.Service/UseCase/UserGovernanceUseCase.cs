@@ -8,6 +8,7 @@ using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.UserGovernance;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
+using ITHunterview.Service.Interface.Infrastructure;
 using Microsoft.Extensions.Caching.Memory;
 using ITHunterview.Service.Utils;
 
@@ -18,14 +19,21 @@ namespace ITHunterview.Service.UseCase
         private readonly IUserRepository _userRepository;
         private readonly ITokenRepository _tokenRepository;
         private readonly IMemoryCache _cache;
-        private readonly IAuditLogRepository _auditLogRepository;
+        private readonly IAuditLogQueue _auditLogQueue;
+        private readonly IActorProvider _actorProvider;
  
-        public UserGovernanceUseCase(IAuditLogRepository auditLogRepository,IUserRepository userRepository, ITokenRepository tokenRepository, IMemoryCache cache)
+        public UserGovernanceUseCase(
+            IUserRepository userRepository, 
+            ITokenRepository tokenRepository, 
+            IMemoryCache cache,
+            IAuditLogQueue auditLogQueue,
+            IActorProvider actorProvider)
         {
             _userRepository = userRepository;
             _tokenRepository = tokenRepository;
             _cache = cache;
-            _auditLogRepository = auditLogRepository;
+            _auditLogQueue = auditLogQueue;
+            _actorProvider = actorProvider;
         }
 
         public async Task<ResponseBase<PagedResult<UserDto>>> GetPagedUsersAsync(int page, int pageSize, string? search, int? roleId, UserStatus? status)
@@ -47,7 +55,13 @@ namespace ITHunterview.Service.UseCase
                 Status = u.Status,
                 FullName = u.RoleId == (int)SystemRole.Recruiter 
                     ? (u.RecruiterProfile?.FullName ?? string.Empty) 
-                    : ($"{u.CandidateProfile?.FirstName} {u.CandidateProfile?.LastName}").Trim(),
+                    : u.RoleId == (int)SystemRole.Candidate 
+                        ? ($"{u.CandidateProfile?.FirstName} {u.CandidateProfile?.LastName}").Trim()
+                        : u.RoleId == (int)SystemRole.Staff 
+                            ? "Staff Account"
+                            : u.RoleId == (int)SystemRole.Admin 
+                                ? "Admin Account" 
+                                : string.Empty,
                 Phone = u.RoleId == (int)SystemRole.Recruiter 
                     ? u.RecruiterProfile?.Phone 
                     : u.CandidateProfile?.Phone,
@@ -134,12 +148,7 @@ namespace ITHunterview.Service.UseCase
 
         public async Task<ResponseBase<bool>> UpdateUserStatusAsync(
             Guid targetUserId, 
-            UpdateUserStatusDto dto, 
-            Guid actorUserId, 
-            string actorEmail, 
-            string actorRole, 
-            string ipAddress, 
-            string userAgent)
+            UpdateUserStatusDto dto)
         {
             // 1. Fetch target user
             var targetUser = await _userRepository.GetUserByIdAsync(targetUserId);
@@ -151,34 +160,31 @@ namespace ITHunterview.Service.UseCase
             // 2. Prevent status changes on Admin accounts
             if (targetUser.RoleId == (int)SystemRole.Admin)
             {
-                await LogActivityAsync(
+                EnqueueLog(
                     targetUserId, 
-                    actorRole, 
                     ActivityLogCategory.SECURITY, 
-                    actorEmail, 
                     $"Failed: Attempt to modify active status of Administrator (Admin) account {targetUser.Email}.", 
-                    ActivityLogStatus.FAIL, 
-                    ipAddress, 
-                    userAgent);
+                    ActivityLogStatus.FAIL);
                 return new ResponseBase<bool>("Administrator (Admin) accounts cannot have their active status modified.");
             }
 
             // 3. Prevent self lockout
+            var actorUserId = _actorProvider.ActorUserId;
             if (targetUserId == actorUserId)
             {
-                await LogActivityAsync(
+                EnqueueLog(
                     targetUserId, 
-                    actorRole, 
                     ActivityLogCategory.SECURITY, 
-                    actorEmail, 
                     "Failed: User attempted to modify their own active status.", 
-                    ActivityLogStatus.FAIL, 
-                    ipAddress, 
-                    userAgent);
+                    ActivityLogStatus.FAIL);
                 return new ResponseBase<bool>("You cannot update your own active status.");
             }
 
             var oldStatus = targetUser.Status;
+            if (dto.Status == oldStatus)
+            {
+                return new ResponseBase<bool>("User is already in this status.");
+            }
             
             try
             {
@@ -188,7 +194,7 @@ namespace ITHunterview.Service.UseCase
                 {
                     targetUser.DeactiveAt = DateTime.UtcNow;
                 }
-                else
+                else if (dto.Status == UserStatus.ACTIVE || dto.Status == UserStatus.PENDING_VERIFICATION)
                 {
                     targetUser.DeactiveAt = null;
                 }
@@ -197,53 +203,33 @@ namespace ITHunterview.Service.UseCase
                 await _userRepository.UpdateUserAsync(targetUser);
                 _cache.Remove($"user-status-{targetUserId}");
 
-                // 4. Revoke active sessions if BANNED or INACTIVE
-                if (dto.Status == UserStatus.INACTIVE || dto.Status == UserStatus.BANNED)
+                // 4. Revoke active sessions if BANNED or INACTIVE or PENDING_VERIFICATION
+                if (dto.Status == UserStatus.INACTIVE || dto.Status == UserStatus.BANNED || dto.Status == UserStatus.PENDING_VERIFICATION)
                 {
                     await _tokenRepository.RevokeAllUserRefreshTokensAsync(targetUserId);
                 }
 
                 // 5. Log success
                 string logAction = $"Updated user status for {targetUser.Email} from {oldStatus} to {dto.Status}. Reason: {dto.Reason}";
-                await LogActivityAsync(
+                EnqueueLog(
                     targetUserId, 
-                    actorRole, 
                     dto.Status == UserStatus.BANNED ? ActivityLogCategory.SECURITY : ActivityLogCategory.DATA_MUTATION, 
-                    actorEmail, 
                     logAction, 
-                    ActivityLogStatus.SUCCESS, 
-                    ipAddress, 
-                    userAgent);
+                    ActivityLogStatus.SUCCESS);
 
                 return new ResponseBase<bool>(true, $"Updated active status to {dto.Status} successfully.");
             }
             catch (Exception ex)
             {
                 string logAction = $"Error updating user status for {targetUser.Email} from {oldStatus} to {dto.Status}: {ex.Message}";
-                await LogActivityAsync(
+                EnqueueLog(
                     targetUserId, 
-                    actorRole, 
                     ActivityLogCategory.SYSTEM, 
-                    actorEmail, 
                     logAction, 
-                    ActivityLogStatus.FAIL, 
-                    ipAddress, 
-                    userAgent);
+                    ActivityLogStatus.FAIL);
 
                 return new ResponseBase<bool>($"System error updating status: {ex.Message}");
             }
-        }
-
-        public async Task<ResponseBase<bool>> UpdateUserRoleAsync(
-            Guid targetUserId, 
-            UpdateUserRoleDto dto, 
-            Guid actorUserId, 
-            string actorEmail, 
-            string actorRole, 
-            string ipAddress, 
-            string userAgent)
-        {
-            return new ResponseBase<bool>("Role modification (authorization changes) has been disabled in the system.");
         }
 
         public async Task<UserStatus?> GetUserStatusAsync(Guid userId)
@@ -253,13 +239,13 @@ namespace ITHunterview.Service.UseCase
         }
 
         public async Task<ResponseBase<Guid>> CreateStaffAccountAsync(
-            CreateStaffDto dto, 
-            Guid actorUserId, 
-            string actorEmail, 
-            string actorRole, 
-            string ipAddress, 
-            string userAgent)
+            CreateStaffDto dto)
         {
+            if (_actorProvider.ActorRole != "admin")
+            {
+                return new ResponseBase<Guid>("Only Administrator (Admin) can create staff accounts.");
+            }
+
             if (dto == null)
             {
                 return new ResponseBase<Guid>("Invalid data.");
@@ -268,15 +254,11 @@ namespace ITHunterview.Service.UseCase
             var existingUser = await _userRepository.GetUserByEmailAsync(dto.Email.Trim().ToLower());
             if (existingUser != null)
             {
-                await LogActivityAsync(
+                EnqueueLog(
                     null, 
-                    actorRole, 
                     ActivityLogCategory.SECURITY, 
-                    actorEmail, 
                     $"Failed: Attempt to create Staff account with existing email: {dto.Email}.", 
-                    ActivityLogStatus.FAIL, 
-                    ipAddress, 
-                    userAgent);
+                    ActivityLogStatus.FAIL);
                 return new ResponseBase<Guid>("Email already exists in the system.");
             }
 
@@ -297,58 +279,42 @@ namespace ITHunterview.Service.UseCase
 
                 await _userRepository.AddUserAsync(newStaff);
 
-                await LogActivityAsync(
+                EnqueueLog(
                     newStaff.Id, 
-                    actorRole, 
                     ActivityLogCategory.DATA_MUTATION, 
-                    actorEmail, 
                     $"Created Staff account successfully: {newStaff.Email}.", 
-                    ActivityLogStatus.SUCCESS, 
-                    ipAddress, 
-                    userAgent);
+                    ActivityLogStatus.SUCCESS);
 
                 return new ResponseBase<Guid>(newStaff.Id);
             }
             catch (Exception ex)
             {
-                await LogActivityAsync(
+                EnqueueLog(
                     null, 
-                    actorRole, 
                     ActivityLogCategory.SYSTEM, 
-                    actorEmail, 
                     $"System error creating Staff account {dto.Email}: {ex.Message}", 
-                    ActivityLogStatus.FAIL, 
-                    ipAddress, 
-                    userAgent);
+                    ActivityLogStatus.FAIL);
                 return new ResponseBase<Guid>($"System error creating Staff account: {ex.Message}");
             }
         }
 
-        private async Task LogActivityAsync(
+        private void EnqueueLog(
             Guid? userId, 
-            string actorRole, 
             ActivityLogCategory category, 
-            string actorEmail, 
             string action, 
-            ActivityLogStatus status, 
-            string ipAddress, 
-            string userAgent)
+            ActivityLogStatus status)
         {
-            var log = new UserActivityLogs
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                ActorRole = actorRole,
-                ActionCategory = category,
-                ActorEmail = actorEmail,
-                Action = action,
-                Status = status,
-                IpAddress = string.IsNullOrWhiteSpace(ipAddress) ? "unknown" : ipAddress,
-                UserAgent = string.IsNullOrWhiteSpace(userAgent) ? "unknown" : userAgent,
-                CreatedAt = DateTime.UtcNow
-            };
+            var log = UserActivityLogs.Create(
+                userId: userId,
+                actorRole: _actorProvider.ActorRole,
+                category: category,
+                actorEmail: _actorProvider.ActorEmail,
+                action: action,
+                status: status,
+                ipAddress: _actorProvider.IpAddress,
+                userAgent: _actorProvider.UserAgent);
 
-            await _auditLogRepository.AddActivityLogAsync(log);
+            _auditLogQueue.TryEnqueue(log);
         }
     }
 }

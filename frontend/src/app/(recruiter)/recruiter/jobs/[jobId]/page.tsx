@@ -15,7 +15,11 @@ import {
   Pencil,
   Loader2,
   ListTodo,
-  Users
+  Users,
+  Award,
+  Monitor,
+  Layers,
+  Target
 } from "lucide-react"
 
 export default function JobDetailPage() {
@@ -49,7 +53,7 @@ export default function JobDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-2">
           <Loader2 className="h-8 w-8 text-blue-500 animate-spin mx-auto" />
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading Job Details...</p>
@@ -60,7 +64,7 @@ export default function JobDetailPage() {
 
   if (error || !job) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 py-10 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-background py-10 px-4">
         <div className="text-center max-w-md bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
           <p className="text-red-500 font-semibold mb-4">{error || "Job Posting not found."}</p>
           <Button onClick={() => router.push("/recruiter/jobs")} className="bg-blue-600 hover:bg-blue-700 text-white">
@@ -75,7 +79,7 @@ export default function JobDetailPage() {
   const niceToHaveSkills = job.skills?.filter((s: any) => !s.isMandatory) || []
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 py-10 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
+    <div className="min-h-screen bg-background py-10 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
       <div className="max-w-4xl mx-auto space-y-6">
         
         {/* Back Button & Action Toolbar */}
@@ -124,20 +128,14 @@ export default function JobDetailPage() {
                 <h2 className="text-2xl font-black text-zinc-900 dark:text-zinc-50 leading-tight">{job.title}</h2>
                 <div className="flex items-center gap-2 mt-2">
                   {getStatusBadge(job.status)}
-                  <span className="text-xs text-zinc-400 font-medium">Category: {job.categoryId || "N/A"}</span>
+
                 </div>
               </div>
             </div>
 
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-zinc-50 dark:bg-zinc-900/30 p-5 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60">
-              <div className="flex items-start gap-2.5">
-                <Briefcase className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Job Type</span>
-                  <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{job.jobType?.replace("_", " ")}</span>
-                </div>
-              </div>
+
 
               <div className="flex items-start gap-2.5">
                 <MapPin className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
@@ -166,6 +164,52 @@ export default function JobDetailPage() {
                   <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{formatDate(job.publishedAt || job.createdAt)}</span>
                 </div>
               </div>
+
+              {job.level && (
+                <div className="flex items-start gap-2.5">
+                  <Award className="h-5 w-5 text-indigo-500 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Level</span>
+                    <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{job.level}</span>
+                  </div>
+                </div>
+              )}
+
+              {job.workingModel && (
+                <div className="flex items-start gap-2.5">
+                  <Monitor className="h-5 w-5 text-cyan-500 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Working Model</span>
+                    <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{job.workingModel}</span>
+                  </div>
+                </div>
+              )}
+
+              {job.jobExpertise && (
+                <div className="flex items-start gap-2.5">
+                  <Target className="h-5 w-5 text-rose-500 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Expertise</span>
+                    <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{job.jobExpertise}</span>
+                  </div>
+                </div>
+              )}
+
+              {job.jobDomain && job.jobDomain.length > 0 && (
+                <div className="flex items-start gap-2.5">
+                  <Layers className="h-5 w-5 text-fuchsia-500 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Domain</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {job.jobDomain.map((domain, index) => (
+                        <span key={index} className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                          {domain}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Standardized Skill Requirements */}

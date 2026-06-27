@@ -12,6 +12,17 @@ export function useMajors(params: {
   });
 }
 
+export function useMajorTree(params: {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+}) {
+  return useQuery({
+    queryKey: ['majors-tree', params],
+    queryFn: ({ signal }) => majorService.getMajorTree(params, signal),
+  });
+}
+
 export function useCreateMajor() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -19,6 +30,7 @@ export function useCreateMajor() {
     onSuccess: (res) => {
       if (res.success) {
         queryClient.invalidateQueries({ queryKey: ['majors'] });
+        queryClient.invalidateQueries({ queryKey: ['majors-tree'] });
       }
     },
   });
@@ -31,6 +43,7 @@ export function useUpdateMajor() {
     onSuccess: (res) => {
       if (res.success) {
         queryClient.invalidateQueries({ queryKey: ['majors'] });
+        queryClient.invalidateQueries({ queryKey: ['majors-tree'] });
       }
     },
   });
@@ -43,6 +56,7 @@ export function useDeleteMajor() {
     onSuccess: (res) => {
       if (res.success) {
         queryClient.invalidateQueries({ queryKey: ['majors'] });
+        queryClient.invalidateQueries({ queryKey: ['majors-tree'] });
       }
     },
   });
@@ -55,6 +69,7 @@ export function useRestoreMajor() {
     onSuccess: (res) => {
       if (res.success) {
         queryClient.invalidateQueries({ queryKey: ['majors'] });
+        queryClient.invalidateQueries({ queryKey: ['majors-tree'] });
       }
     },
   });

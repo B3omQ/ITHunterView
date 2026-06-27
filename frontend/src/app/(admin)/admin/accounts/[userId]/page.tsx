@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { useUserDetail, useUpdateUserStatus } from '@/hooks/useUserGovernance';
 import { UserStatus, SystemRole } from '@/types/user-governance.types';
+import { UpdateStatusModal } from '../components/update-status-modal';
+import { CompanyLogo } from '@/components/shared/CompanyLogo';
 
 // Custom inline SVG icons for social links since they are not exported by this version of lucide-react
 const Github = ({ size = 24, className, ...props }: React.SVGProps<SVGSVGElement> & { size?: number }) => (
@@ -75,14 +77,11 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
 
   // Modals / Status Action State
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
-  const [newStatus, setNewStatus] = useState<UserStatus>('ACTIVE');
-  const [statusReason, setStatusReason] = useState('');
-  const [statusError, setStatusError] = useState('');
 
   // Toast notifications state
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
 
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
     setToast({ message, type });
   };
 
@@ -94,51 +93,31 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
   }, [toast]);
 
   useEffect(() => {
-    if (detailData?.data) {
-      setNewStatus(detailData.data.status);
+    if (isError) {
+      showToast('Account does not exist or an error occurred (404).', 'error');
     }
-  }, [detailData]);
+  }, [isError]);
 
-  // Mutations
-  const updateStatusMutation = useUpdateUserStatus();
-
-  // Status Change Submit
-  const handleStatusSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!statusReason.trim()) {
-      setStatusError('Please enter the reason for updating the status.');
-      return;
-    }
-    if (statusReason.trim().length < 5) {
-      setStatusError('Reason must be at least 5 characters.');
-      return;
-    }
-
-    setStatusError('');
-    updateStatusMutation.mutate(
-      {
-        id: userId,
-        dto: {
-          status: newStatus,
-          reason: statusReason.trim(),
-        },
-      },
-      {
-        onSuccess: (res) => {
-          if (res.success) {
-            showToast('Status updated successfully!', 'success');
-            setIsStatusModalOpen(false);
-            setStatusReason('');
-          } else {
-            setStatusError(res.message || 'Failed to update status.');
-          }
-        },
-        onError: (err: any) => {
-          setStatusError(err.response?.data?.message || 'An error occurred while updating.');
-        },
-      }
-    );
-  };
+  const toastMarkup = toast && (
+    <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
+      <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg border text-sm font-semibold ${
+        toast.type === 'success' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25' :
+        toast.type === 'warning' ? 'bg-amber-500/10 text-amber-500 border-amber-500/25' :
+        'bg-destructive/10 text-destructive border-destructive/25'
+      }`}>
+        {toast.type === 'success' && <CheckCircle size={18} className="shrink-0" />}
+        {toast.type === 'warning' && <AlertTriangle size={18} className="shrink-0" />}
+        {toast.type === 'error' && <XCircle size={18} className="shrink-0" />}
+        <span>{toast.message}</span>
+        <button
+          onClick={() => setToast(null)}
+          className="text-muted-foreground hover:text-foreground shrink-0 p-0.5 rounded-lg hover:bg-black/5"
+        >
+          <X size={14} />
+        </button>
+      </div>
+    </div>
+  );
 
   const getStatusBadge = (status: UserStatus) => {
     switch (status) {
@@ -234,6 +213,7 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
         <div className="bg-rose-500/10 border border-rose-500/25 p-6 rounded-2xl text-rose-500 text-center font-bold">
           Detailed profile info for this user account could not be found.
         </div>
+        {toastMarkup}
       </div>
     );
   }
@@ -300,12 +280,7 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
             {!(user.roleName?.toLowerCase().includes('admin') || user.roleId === SystemRole.Admin) && (
               <div className="pt-4 border-t border-border space-y-2">
                 <button
-                  onClick={() => {
-                    setNewStatus(user.status);
-                    setStatusReason('');
-                    setStatusError('');
-                    setIsStatusModalOpen(true);
-                  }}
+                  onClick={() => setIsStatusModalOpen(true)}
                   className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-border hover:bg-muted text-foreground font-semibold text-sm rounded-xl transition-colors"
                 >
                   <Edit2 size={16} />
@@ -459,15 +434,13 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
                   </h4>
                   <div className="flex items-start gap-3 bg-muted/20 border border-border/60 p-4 rounded-xl">
                     <div className="w-12 h-12 bg-card border border-border rounded-xl flex items-center justify-center overflow-hidden shrink-0">
-                      {user.recruiterProfile.company.logoUrl ? (
-                        <img
-                          src={user.recruiterProfile.company.logoUrl}
-                          alt={user.recruiterProfile.company.name}
-                          className="w-full h-full object-contain p-1"
-                        />
-                      ) : (
-                        <Building size={20} className="text-muted-foreground" />
-                      )}
+                      <CompanyLogo
+                        src={user.recruiterProfile.company.logoUrl}
+                        alt={user.recruiterProfile.company.name}
+                        fallbackType="building"
+                        fallbackIconClassName="text-muted-foreground w-5 h-5"
+                        imageClassName="w-full h-full object-contain p-1"
+                      />
                     </div>
                     <div className="space-y-1">
                       <h5 className="text-sm font-bold text-foreground">{user.recruiterProfile.company.name}</h5>
@@ -546,93 +519,15 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
       </div>
 
       {/* UPDATE STATUS DIALOG */}
-      {isStatusModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-card border border-border w-full max-w-md rounded-2xl p-6 shadow-xl space-y-4 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-base font-bold text-foreground">Update Account Status</h3>
-              <button
-                onClick={() => setIsStatusModalOpen(false)}
-                className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <form onSubmit={handleStatusSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">New Status</label>
-                <select
-                  value={newStatus}
-                  onChange={(e) => setNewStatus(e.target.value as UserStatus)}
-                  className="w-full py-2 px-3 border border-border rounded-xl bg-background text-sm text-foreground outline-none focus:border-primary transition-all"
-                >
-                  <option value="ACTIVE">Active (ACTIVE)</option>
-                  <option value="INACTIVE">Inactive (INACTIVE)</option>
-                  <option value="BANNED">Banned (BANNED)</option>
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  Reason for Change <span className="text-rose-500">*</span>
-                </label>
-                <textarea
-                  placeholder="Enter detailed reason for the audit log (minimum 5 characters)..."
-                  value={statusReason}
-                  onChange={(e) => setStatusReason(e.target.value)}
-                  rows={3}
-                  className="w-full p-3 border border-border rounded-xl bg-background text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground resize-none"
-                />
-              </div>
-
-              {statusError && (
-                <div className="p-3 bg-rose-500/10 border border-rose-500/25 rounded-xl text-rose-500 text-xs font-semibold flex items-center gap-1.5">
-                  <XCircle size={14} className="shrink-0" />
-                  <span>{statusError}</span>
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsStatusModalOpen(false)}
-                  className="px-4 py-2 border border-border hover:bg-muted text-foreground font-semibold text-sm rounded-xl transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={updateStatusMutation.isPending}
-                  className="px-4 py-2 bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm rounded-xl shadow-xs transition-colors flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  {updateStatusMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-                  <span>Confirm</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <UpdateStatusModal 
+        open={isStatusModalOpen} 
+        onOpenChange={setIsStatusModalOpen} 
+        targetUser={user ? { id: user.id, email: user.email, currentStatus: user.status } : null} 
+        onSuccess={(msg) => showToast(msg, 'success')} 
+      />
 
       {/* TOAST SYSTEM */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg border text-sm font-semibold ${
-            toast.type === 'success' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25' :
-            'bg-destructive/10 text-destructive border-destructive/25'
-          }`}>
-            <CheckCircle size={18} className="shrink-0" />
-            <span>{toast.message}</span>
-            <button
-              onClick={() => setToast(null)}
-              className="text-muted-foreground hover:text-foreground shrink-0 p-0.5 rounded-lg hover:bg-black/5"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        </div>
-      )}
+      {toastMarkup}
     </div>
   );
 }

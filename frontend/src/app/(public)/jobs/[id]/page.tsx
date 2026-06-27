@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { MapPin, DollarSign, Calendar, Briefcase, ChevronLeft, Bookmark } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { ApplyJobModal } from '@/components/jobs/ApplyJobModal';
+import { CompanyLogo } from '@/components/shared/CompanyLogo';
 
 export default function PublicJobDetailPage() {
   const params = useParams();
@@ -62,11 +63,7 @@ export default function PublicJobDetailPage() {
           <div className="flex flex-col md:flex-row justify-between items-start gap-6">
             <div className="flex gap-6 items-center">
               <div className="w-24 h-24 rounded-lg overflow-hidden bg-slate-50 border p-2 flex items-center justify-center shrink-0">
-                {job.logoUrl ? (
-                  <img src={job.logoUrl} alt={job.companyName} className="object-contain w-full h-full" />
-                ) : (
-                  <Briefcase className="w-10 h-10 text-slate-300" />
-                )}
+                <CompanyLogo src={job.logoUrl} alt={job.companyName} fallbackType="briefcase" fallbackIconClassName="w-10 h-10 text-slate-300" />
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-slate-900 mb-2">{job.title}</h1>
@@ -93,7 +90,7 @@ export default function PublicJobDetailPage() {
               </span>
             )}
             <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 rounded-md">
-              <Briefcase className="w-4 h-4 text-primary" /> {job.jobType.replace('_', ' ').toUpperCase()}
+              <Briefcase className="w-4 h-4 text-primary" /> {job.workingModel || job.jobExpertise || 'Unknown'}
             </span>
             {job.publishedAt && (
               <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 rounded-md">

@@ -6,6 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 import {
   Form,
@@ -26,13 +28,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
+import { COMPANY_INDUSTRIES, COMPANY_TYPES } from '@/lib/job-constants';
 import { useGetMyCompany, useCreateOrUpdateProfile } from '@/hooks/useCompany';
 import { uploadService } from '@/services/upload.service';
+import { CompanyLogo } from '@/components/shared/CompanyLogo';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Company name must be at least 2 characters'),
   industry: z.string().min(1, 'Please select an industry'),
+  companyType: z.string().optional(),
   companySize: z.string().min(1, 'Please select company size'),
   website: z.string().url('Please enter a valid URL').or(z.literal('')),
   description: z.string().min(100, 'Minimum 100 characters recommended'),
@@ -40,17 +59,6 @@ const profileSchema = z.object({
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
-
-const INDUSTRIES = [
-  'Information Technology',
-  'Software Development',
-  'Fintech',
-  'E-commerce',
-  'Artificial Intelligence',
-  'Cybersecurity',
-  'Telecommunications',
-  'Other',
-];
 
 const COMPANY_SIZES = ['1-10', '11-50', '51-200', '201-500', '500+'];
 
@@ -66,6 +74,7 @@ export default function CompanyProfilePage() {
     defaultValues: {
       name: '',
       industry: '',
+      companyType: '',
       companySize: '',
       website: '',
       description: '',
@@ -78,6 +87,7 @@ export default function CompanyProfilePage() {
       form.reset({
         name: company.name || '',
         industry: company.industry || '',
+        companyType: company.companyType || '',
         companySize: company.companySize || '',
         website: company.website || '',
         description: company.description || '',
@@ -138,11 +148,7 @@ export default function CompanyProfilePage() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="flex items-center gap-6">
               <div className="relative w-24 h-24 border rounded-lg overflow-hidden bg-muted flex items-center justify-center shrink-0">
-                {currentLogo ? (
-                  <img src={currentLogo} alt="Company Logo" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-muted-foreground text-xs">No Logo</span>
-                )}
+                <CompanyLogo src={currentLogo} alt="Company Logo" fallbackType="building" fallbackIconClassName="w-10 h-10 text-muted-foreground" imageClassName="w-full h-full object-cover" />
                 {isUploading && (
                   <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
                     <span className="text-xs">Uploading...</span>
@@ -182,28 +188,93 @@ export default function CompanyProfilePage() {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="industry"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Industry *</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select industry..." />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {INDUSTRIES.map(ind => (
-                        <SelectItem key={ind} value={ind}>{ind}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="industry"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Industry *</FormLabel>
+                    <Popover>
+                      <FormControl>
+                        <PopoverTrigger render={
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "justify-between w-full font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            <span className="truncate">
+                              {field.value
+                                ? COMPANY_INDUSTRIES.find((industry) => industry === field.value)
+                                : "Select industry..."}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        } />
+                      </FormControl>
+                      <PopoverContent className="w-[300px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search industry..." />
+                          <CommandList>
+                            <CommandEmpty>No industry found.</CommandEmpty>
+                            <CommandGroup>
+                              <ScrollArea className="h-64">
+                                {COMPANY_INDUSTRIES.map((industry) => (
+                                  <CommandItem
+                                    value={industry}
+                                    key={industry}
+                                    onSelect={() => {
+                                      form.setValue("industry", industry, { shouldValidate: true })
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        industry === field.value
+                                          ? "opacity-100"
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                    {industry}
+                                  </CommandItem>
+                                ))}
+                              </ScrollArea>
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="companyType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Company Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {COMPANY_TYPES.map(type => (
+                          <SelectItem key={type} value={type}>{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
