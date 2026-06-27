@@ -17,7 +17,7 @@ export default function CompanyLayout({ children }: { children: React.ReactNode 
   ];
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="max-w-7xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Company Profile Management</h1>
         {!isLoading && company && (
