@@ -14,5 +14,6 @@ namespace ITHunterview.Service.Interface.UseCase
         Task<CompanyDto> UpdateCompanyStatusAsync(Guid companyId, UpdateCompanyStatusDto dto, Guid userId);
         Task<ResponseBase<PagedResult<CompanyDto>>> GetPagedCompaniesAsync(int page, int pageSize, string? search, string? status);
         Task<CompanyDto> SubmitUpdateRequestAsync(Guid companyId, VerifyCompanyDto dto, Guid userId);
+        Task<CompanyDto> UpdateCompanyAsync(Guid companyId, UpdateCompanyDto dto, Guid userId);
     }
 }
