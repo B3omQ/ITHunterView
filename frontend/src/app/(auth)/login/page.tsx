@@ -241,9 +241,47 @@ function LoginForm() {
   )
 }
 
+function LoginSkeleton() {
+  return (
+    <div className="auth-bg min-h-screen flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-[400px]">
+        {/* Logo placeholder */}
+        <div className="flex justify-center mb-8">
+          <div className="h-9 w-44 rounded-lg bg-muted animate-pulse" />
+        </div>
+        <div className="bg-card border border-border rounded-2xl p-8 shadow-sm space-y-5">
+          {/* Header */}
+          <div className="space-y-2 mb-7">
+            <div className="h-7 w-40 rounded-md bg-muted animate-pulse" />
+            <div className="h-4 w-56 rounded-md bg-muted animate-pulse" />
+          </div>
+          {/* Email field */}
+          <div className="space-y-1.5">
+            <div className="h-4 w-24 rounded bg-muted animate-pulse" />
+            <div className="h-11 rounded-xl bg-muted animate-pulse" />
+          </div>
+          {/* Password field */}
+          <div className="space-y-1.5">
+            <div className="h-4 w-20 rounded bg-muted animate-pulse" />
+            <div className="h-11 rounded-xl bg-muted animate-pulse" />
+          </div>
+          {/* Button */}
+          <div className="h-11 rounded-xl bg-muted animate-pulse" />
+          {/* Divider */}
+          <div className="h-px bg-border" />
+          {/* Google button */}
+          <div className="h-11 rounded-xl bg-muted animate-pulse" />
+          {/* Footer */}
+          <div className="h-4 w-48 rounded bg-muted animate-pulse mx-auto" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center" />}>
+    <Suspense fallback={<LoginSkeleton />}>
       <LoginForm />
     </Suspense>
   );

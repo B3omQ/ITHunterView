@@ -20,7 +20,7 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Xem lịch sử thao tác của các quản trị viên/hệ thống (Audit Trail)
+        /// Retrieve the activity logs of administrators/system (Audit Trail)
         /// </summary>
         [HttpGet]
         public async Task<IActionResult> GetPagedAuditLogs(
@@ -54,7 +54,7 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Dọn dẹp các bản ghi nhật ký kiểm toán cũ hơn số ngày lưu trữ chỉ định (Chỉ Admin)
+        /// Purge audit log records older than the specified retention days (Admin Only)
         /// </summary>
         [HttpDelete("purge")]
         [Authorize(Policy = "AdminOnly")]

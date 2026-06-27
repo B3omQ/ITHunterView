@@ -33,11 +33,12 @@ namespace ITHunterview.WebAPI.Middlewares
                         var dbStatus = await userGovernanceUseCase.GetUserStatusAsync(userId);
                         if (dbStatus == null)
                         {
-                            await LogBlockedUserAsync(context, userId, "DELETED", "Account does not exist or has been deleted.", auditLogQueue);
+                            LogBlockedUser(context, userId, "DELETED", "Account does not exist or has been deleted.", auditLogQueue);
                             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                             await context.Response.WriteAsJsonAsync(new { message = "Invalid account or account has been deleted." });
                             return;
                         }
+                        
                         
                         status = dbStatus.Value;
                         cache.Set(cacheKey, status, TimeSpan.FromSeconds(30));
@@ -46,7 +47,7 @@ namespace ITHunterview.WebAPI.Middlewares
                     if (status == UserStatus.BANNED || status == UserStatus.INACTIVE)
                     {
                         var reason = status == UserStatus.BANNED ? "BANNED" : "INACTIVE";
-                        await LogBlockedUserAsync(context, userId, reason, $"Account in status {reason} attempted to access.", auditLogQueue);
+                        LogBlockedUser(context, userId, reason, $"Account in status {reason} attempted to access.", auditLogQueue);
                         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                         await context.Response.WriteAsJsonAsync(new { message = "Your account has been banned or deactivated." });
                         return;
@@ -57,7 +58,7 @@ namespace ITHunterview.WebAPI.Middlewares
             await _next(context);
         }
 
-        private Task LogBlockedUserAsync(HttpContext context, Guid userId, string statusType, string actionDescription, IAuditLogQueue auditLogQueue)
+        private void LogBlockedUser(HttpContext context, Guid userId, string statusType, string actionDescription, IAuditLogQueue auditLogQueue)
         {
             try
             {
@@ -72,27 +73,23 @@ namespace ITHunterview.WebAPI.Middlewares
                     userAgent = $"{userAgent} [Fingerprint: {fingerprint}]";
                 }
 
-                var log = new UserActivityLogs
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = userId,
-                    ActorRole = roleClaim,
-                    ActionCategory = ActivityLogCategory.SECURITY,
-                    ActorEmail = emailClaim,
-                    Action = $"[ACCESS BLOCKED - {statusType}] {actionDescription}",
-                    Status = ActivityLogStatus.FAIL,
-                    IpAddress = ipAddress,
-                    UserAgent = userAgent,
-                    CreatedAt = DateTime.UtcNow
-                };
+                var log = UserActivityLogs.Create(
+                    userId: userId,
+                    actorRole: roleClaim,
+                    category: ActivityLogCategory.SECURITY,
+                    actorEmail: emailClaim,
+                    action: $"[ACCESS BLOCKED - {statusType}] {actionDescription}",
+                    status: ActivityLogStatus.FAIL,
+                    ipAddress: ipAddress,
+                    userAgent: userAgent
+                );
 
-                auditLogQueue.QueueBackgroundWorkItem(log);
+                auditLogQueue.TryEnqueue(log);
             }
             catch
             {
-                // Tránh ảnh hưởng đến tiến trình response
+                // Avoid affecting the response process
             }
-            return Task.CompletedTask;
         }
     }
 }

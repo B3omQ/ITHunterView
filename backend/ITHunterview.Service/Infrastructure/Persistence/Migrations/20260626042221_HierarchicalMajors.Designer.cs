@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ITHunterviewContext))]
-    partial class ITHunterviewContextModelSnapshot : ModelSnapshot
+    [Migration("20260626042221_HierarchicalMajors")]
+    partial class HierarchicalMajors
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1782,8 +1785,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Action")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
+                        .HasColumnType("text")
                         .HasColumnName("action");
 
                     b.Property<int>("ActionCategory")
@@ -1792,14 +1794,12 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("ActorEmail")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasColumnType("text")
                         .HasColumnName("actor_email");
 
                     b.Property<string>("ActorRole")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasColumnType("text")
                         .HasColumnName("actor_role");
 
                     b.Property<DateTime>("CreatedAt")
@@ -1808,13 +1808,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("IpAddress")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasColumnType("text")
                         .HasColumnName("ip_address");
 
                     b.Property<string>("OperationType")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasColumnType("text")
                         .HasColumnName("operation_type");
 
                     b.Property<string>("SnapshotDiff")
@@ -1826,14 +1824,12 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("status");
 
                     b.Property<string>("TableName")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasColumnType("text")
                         .HasColumnName("table_name");
 
                     b.Property<string>("UserAgent")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasColumnType("text")
                         .HasColumnName("user_agent");
 
                     b.Property<Guid?>("UserId")
@@ -1844,17 +1840,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CreatedAt");
 
-                    b.HasIndex("IpAddress");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("IpAddress"), "gin");
-                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("IpAddress"), new[] { "gin_trgm_ops" });
-
                     b.HasIndex("OperationType");
 
                     b.HasIndex("TableName");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("TableName"), "gin");
-                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("TableName"), new[] { "gin_trgm_ops" });
 
                     b.HasIndex("UserId");
 

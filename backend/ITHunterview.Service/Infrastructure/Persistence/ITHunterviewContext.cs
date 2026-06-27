@@ -254,6 +254,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                       .HasFilter("deleted_at IS NULL");
 
                 entity.HasIndex(e => e.NormalizedName);
+
+                entity.HasOne(m => m.Parent)
+                      .WithMany(m => m.Children)
+                      .HasForeignKey(m => m.ParentId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Skills
@@ -272,6 +277,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 entity.HasIndex(e => e.TableName);
                 entity.HasIndex(e => e.OperationType);
                 entity.HasIndex(e => e.CreatedAt);
+
+                // GIN Trigram indexes for high-performance ILike queries
+                entity.HasIndex(e => e.IpAddress)
+                      .HasMethod("gin")
+                      .HasOperators("gin_trgm_ops");
+
+                entity.HasIndex(e => e.TableName)
+                      .HasMethod("gin")
+                      .HasOperators("gin_trgm_ops");
             });
         }
     }

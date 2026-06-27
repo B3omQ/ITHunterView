@@ -20,6 +20,7 @@ namespace ITHunterview.Service.DTOs.JobSearch
         public List<string>? JobDomains { get; set; }
         public List<string>? CompanyIndustries { get; set; }
         public List<string>? CompanyTypes { get; set; }
+        public List<string>? JobExpertises { get; set; }
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 10;
     }

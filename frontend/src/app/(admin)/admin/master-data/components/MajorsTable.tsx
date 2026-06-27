@@ -1,7 +1,7 @@
 "use client";
 
-import React, { memo } from "react";
-import { Edit2, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import React, { memo, useState, useMemo } from "react";
+import { Edit2, Trash2, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import type { MajorDto } from "@/types/master-data.types";
 
 interface MajorsTableProps {
@@ -16,6 +16,12 @@ interface MajorsTableProps {
   onEdit: (major: MajorDto) => void;
   onDelete: (major: MajorDto) => void;
   onRetry: () => void;
+}
+
+interface FlattenedMajor {
+  item: MajorDto;
+  level: number;
+  hasChildren: boolean;
 }
 
 function TableSkeleton({ columns }: { columns: number }) {
@@ -66,6 +72,65 @@ export const MajorsTable = memo(function MajorsTable({
   onDelete,
   onRetry,
 }: MajorsTableProps) {
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+
+  const toggleExpand = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // Hàm đệ quy làm phẳng cây
+  const flattenedMajors = useMemo(() => {
+    const flatten = (
+      items: MajorDto[],
+      level: number = 1
+    ): FlattenedMajor[] => {
+      const result: FlattenedMajor[] = [];
+      for (const item of items) {
+        const hasChildren = !!(item.children && item.children.length > 0);
+        result.push({ item, level, hasChildren });
+        if (hasChildren && expandedIds.has(item.id)) {
+          result.push(...flatten(item.children || [], level + 1));
+        }
+      }
+      return result;
+    };
+    return flatten(majors);
+  }, [majors, expandedIds]);
+
+  const getLevelBadge = (level: number) => {
+    switch (level) {
+      case 1:
+        return (
+          <span className="text-[10px] font-semibold bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded">
+            Level 1 (Root)
+          </span>
+        );
+      case 2:
+        return (
+          <span className="text-[10px] font-semibold bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 px-1.5 py-0.5 rounded">
+            Level 2 (Category)
+          </span>
+        );
+      case 3:
+        return (
+          <span className="text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded">
+            Level 3 (Specialization)
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
   if (isLoading) {
     return <TableSkeleton columns={3} />;
   }
@@ -89,7 +154,7 @@ export const MajorsTable = memo(function MajorsTable({
   if (majors.length === 0) {
     return (
       <div className="text-center py-20 text-muted-foreground">
-        <p className="text-sm">No majors found.</p>
+        <p className="text-sm">No specializations found.</p>
       </div>
     );
   }
@@ -101,10 +166,10 @@ export const MajorsTable = memo(function MajorsTable({
           <thead>
             <tr className="border-b border-border bg-muted/30">
               <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-1/4">
-                Major Code
+                Specialization Code
               </th>
               <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Major Name
+                Specialization Name
               </th>
               <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">
                 Actions
@@ -112,32 +177,52 @@ export const MajorsTable = memo(function MajorsTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
-            {majors.map((major) => (
+            {flattenedMajors.map(({ item, level, hasChildren }) => (
               <tr
-                key={major.id}
+                key={item.id}
                 className="hover:bg-muted/20 transition-colors"
               >
                 <td className="px-6 py-4">
                   <span className="text-sm font-mono font-semibold bg-neutral-200/60 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 px-2 py-1 rounded-md">
-                    {major.code}
+                    {item.code}
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  <span className="text-sm font-medium text-foreground">
-                    {major.name}
-                  </span>
+                  <div
+                    className="flex items-center gap-1.5"
+                    style={{ paddingLeft: `${(level - 1) * 24}px` }}
+                  >
+                    {hasChildren ? (
+                      <button
+                        onClick={(e) => toggleExpand(item.id, e)}
+                        className="p-1 rounded hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {expandedIds.has(item.id) ? (
+                          <ChevronDown size={14} />
+                        ) : (
+                          <ChevronRight size={14} />
+                        )}
+                      </button>
+                    ) : (
+                      <div className="w-7" />
+                    )}
+                    <span className="text-sm font-medium text-foreground mr-2">
+                      {item.name}
+                    </span>
+                    {getLevelBadge(level)}
+                  </div>
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-2">
                     <button
-                      onClick={() => onEdit(major)}
+                      onClick={() => onEdit(item)}
                       className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors"
                       title="Edit"
                     >
                       <Edit2 size={15} />
                     </button>
                     <button
-                      onClick={() => onDelete(major)}
+                      onClick={() => onDelete(item)}
                       className="p-1.5 text-muted-foreground hover:text-destructive rounded-lg hover:bg-destructive/10 transition-colors"
                       title="Delete"
                     >
@@ -155,7 +240,7 @@ export const MajorsTable = memo(function MajorsTable({
       <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-border gap-4 bg-muted/10">
         <span className="text-xs text-muted-foreground">
           Showing {Math.min((currentPage - 1) * pageSize + 1, totalItems)} -{" "}
-          {Math.min(currentPage * pageSize, totalItems)} of {totalItems} majors
+          {Math.min(currentPage * pageSize, totalItems)} of {totalItems} root specializations
         </span>
         <div className="flex items-center gap-1.5">
           <button
@@ -189,4 +274,4 @@ export const MajorsTable = memo(function MajorsTable({
       </div>
     </>
   );
-});
+})

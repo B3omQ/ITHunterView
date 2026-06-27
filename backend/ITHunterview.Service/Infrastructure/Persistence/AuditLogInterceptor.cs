@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -38,7 +39,14 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             typeof(CreditTransactions)
         };
 
-        private readonly AsyncLocal<List<UserActivityLogs>> _pendingLogs = new();
+        private static readonly ConditionalWeakTable<DbContext, List<AuditEntry>> PendingLogsTable = new();
+
+        private class AuditEntry
+        {
+            public EntityEntry Entry { get; set; } = null!;
+            public UserActivityLogs Log { get; set; } = null!;
+            public EntityState OriginalState { get; set; }
+        }
 
         public AuditLogInterceptor(IActorProvider actorProvider, IAuditLogQueue auditLogQueue)
         {
@@ -46,16 +54,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             _auditLogQueue = auditLogQueue;
         }
 
-        public override InterceptionResult<int> SavingChanges(
-            DbContextEventData eventData,
-            InterceptionResult<int> result)
+        private List<AuditEntry> PrepareAuditLogs(DbContext context, DateTime utcNow)
         {
-            if (eventData.Context == null)
-            {
-                return base.SavingChanges(eventData, result);
-            }
-
-            var context = eventData.Context;
             var entries = context.ChangeTracker.Entries()
                 .Where(e => !ExcludedTypes.Contains(e.Entity.GetType()) &&
                             (e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted))
@@ -63,7 +63,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             if (!entries.Any())
             {
-                return base.SavingChanges(eventData, result);
+                return new List<AuditEntry>();
             }
 
             var actorUserId = _actorProvider.ActorUserId;
@@ -72,8 +72,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             var ipAddress = _actorProvider.IpAddress;
             var userAgent = _actorProvider.UserAgent;
 
-            var logs = new List<UserActivityLogs>();
-            var utcNow = DateTime.UtcNow;
+            var auditEntries = new List<AuditEntry>();
 
             foreach (var entry in entries)
             {
@@ -104,31 +103,112 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 if (operationType == "MODIFIED") operationType = "UPDATE";
                 if (operationType == "DELETED") operationType = "DELETE";
 
-                var snapshotDiff = GetSnapshotDiff(entry);
-
-                var log = new UserActivityLogs
+                // Only generate snapshot diff immediately for Modified and Deleted.
+                // For Added, we defer generation to get the database-generated primary key.
+                string? snapshotDiff = null;
+                string actionMsg;
+                if (entry.State != EntityState.Added)
                 {
-                    Id = Guid.NewGuid(),
-                    UserId = actorUserId,
-                    ActorRole = actorRole,
-                    ActionCategory = ActivityLogCategory.DATA_MUTATION,
-                    ActorEmail = actorEmail,
-                    Action = $"Thực hiện {operationType} trên bảng {tableName}",
-                    Status = ActivityLogStatus.SUCCESS,
-                    IpAddress = ipAddress,
-                    UserAgent = userAgent,
-                    CreatedAt = DateTime.UtcNow,
-                    TableName = tableName,
-                    OperationType = operationType,
-                    SnapshotDiff = snapshotDiff
-                };
+                    snapshotDiff = GetSnapshotDiff(entry);
+                    var pkValues = entry.Properties
+                        .Where(p => p.Metadata.IsPrimaryKey())
+                        .Select(p => p.CurrentValue?.ToString() ?? p.OriginalValue?.ToString())
+                        .ToList();
+                    var pkStr = pkValues.Any() ? string.Join(", ", pkValues) : "unknown";
+                    actionMsg = $"Executed {operationType} operation on table {tableName} (PK: {pkStr})";
+                }
+                else
+                {
+                    actionMsg = $"Executed {operationType} operation on table {tableName}";
+                }
 
-                logs.Add(log);
+                var log = UserActivityLogs.Create(
+                    userId: actorUserId,
+                    actorRole: actorRole,
+                    category: ActivityLogCategory.DATA_MUTATION,
+                    actorEmail: actorEmail,
+                    action: actionMsg,
+                    status: ActivityLogStatus.SUCCESS,
+                    ipAddress: ipAddress,
+                    userAgent: userAgent,
+                    tableName: tableName,
+                    operationType: operationType,
+                    snapshotDiff: snapshotDiff);
+
+                auditEntries.Add(new AuditEntry
+                {
+                    Entry = entry,
+                    Log = log,
+                    OriginalState = entry.State
+                });
             }
 
-            if (logs.Any())
+            return auditEntries;
+        }
+
+        private void TrackPendingLogs(DbContext context)
+        {
+            var auditEntries = PrepareAuditLogs(context, DateTime.UtcNow);
+            if (auditEntries.Any())
             {
-                _pendingLogs.Value = logs;
+                PendingLogsTable.AddOrUpdate(context, auditEntries);
+            }
+        }
+
+        private void CompleteAndEnqueueLogs(DbContext context, ActivityLogStatus status, string? errorMessage = null)
+        {
+            try
+            {
+                if (PendingLogsTable.TryGetValue(context, out var auditEntries))
+                {
+                    foreach (var audit in auditEntries)
+                    {
+                        var log = audit.Log;
+                        log.Status = status;
+
+                        if (status == ActivityLogStatus.SUCCESS)
+                        {
+                            if (audit.OriginalState == EntityState.Added)
+                            {
+                                // Generate snapshot diff now that database has generated the ID
+                                log.SnapshotDiff = GetSnapshotDiff(audit.Entry, audit.OriginalState);
+
+                                // Append real primary key values to log Action
+                                var pkValues = audit.Entry.Properties
+                                    .Where(p => p.Metadata.IsPrimaryKey())
+                                    .Select(p => p.CurrentValue?.ToString())
+                                    .ToList();
+                                var pkStr = pkValues.Any() ? string.Join(", ", pkValues) : "unknown";
+                                log.Action = $"Executed CREATE operation on table {log.TableName} (PK: {pkStr})";
+                            }
+                        }
+                        else
+                        {
+                            log.Action = $"{log.Action} [Error: {errorMessage}]";
+                        }
+
+                        // Ensure fields are sanitized after modification to avoid database string truncation error
+                        log.Sanitize();
+
+                        _auditLogQueue.TryEnqueue(log);
+                    }
+                    PendingLogsTable.Remove(context);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Safety net to prevent auditing failures from crashing the main business flow
+                Console.WriteLine($"[AUDIT ERROR] Failed to complete and enqueue audit logs: {ex}");
+            }
+        }
+
+        public override InterceptionResult<int> SavingChanges(
+            DbContextEventData eventData,
+            InterceptionResult<int> result)
+        {
+            if (eventData.Context != null)
+            {
+                TrackPendingLogs(eventData.Context);
             }
 
             return base.SavingChanges(eventData, result);
@@ -138,15 +218,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             SaveChangesCompletedEventData eventData,
             int result)
         {
-            var logs = _pendingLogs.Value;
-            if (logs != null)
+            if (eventData.Context != null)
             {
-                foreach (var log in logs)
-                {
-                    log.Status = ActivityLogStatus.SUCCESS;
-                    _auditLogQueue.QueueBackgroundWorkItem(log);
-                }
-                _pendingLogs.Value = null;
+                CompleteAndEnqueueLogs(eventData.Context, ActivityLogStatus.SUCCESS);
             }
             return base.SavedChanges(eventData, result);
         }
@@ -154,16 +228,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         public override void SaveChangesFailed(
             DbContextErrorEventData eventData)
         {
-            var logs = _pendingLogs.Value;
-            if (logs != null)
+            if (eventData.Context != null)
             {
-                foreach (var log in logs)
-                {
-                    log.Status = ActivityLogStatus.FAIL;
-                    log.Action = $"{log.Action} [Lỗi: {eventData.Exception.Message}]";
-                    _auditLogQueue.QueueBackgroundWorkItem(log);
-                }
-                _pendingLogs.Value = null;
+                CompleteAndEnqueueLogs(eventData.Context, ActivityLogStatus.FAIL, eventData.Exception.Message);
             }
             base.SaveChangesFailed(eventData);
         }
@@ -173,134 +240,45 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             InterceptionResult<int> result,
             CancellationToken cancellationToken = default)
         {
-            if (eventData.Context == null)
+            if (eventData.Context != null)
             {
-                return base.SavingChangesAsync(eventData, result, cancellationToken);
-            }
-
-            var context = eventData.Context;
-            var entries = context.ChangeTracker.Entries()
-                .Where(e => !ExcludedTypes.Contains(e.Entity.GetType()) &&
-                            (e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted))
-                .ToList();
-
-            if (!entries.Any())
-            {
-                return base.SavingChangesAsync(eventData, result, cancellationToken);
-            }
-
-            var actorUserId = _actorProvider.ActorUserId;
-            var actorEmail = _actorProvider.ActorEmail;
-            var actorRole = _actorProvider.ActorRole;
-            var ipAddress = _actorProvider.IpAddress;
-            var userAgent = _actorProvider.UserAgent;
-
-            var logs = new List<UserActivityLogs>();
-            var utcNow = DateTime.UtcNow;
-
-            foreach (var entry in entries)
-            {
-                // Tự động gán các trường Audit (CreatedAt, UpdatedAt, CreatedBy, UpdatedBy)
-                if (entry.State == EntityState.Added)
-                {
-                    var createdAtProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "CreatedAt");
-                    if (createdAtProp != null && (createdAtProp.CurrentValue == null || (DateTime)createdAtProp.CurrentValue == default))
-                        createdAtProp.CurrentValue = utcNow;
-
-                    var createdByProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "CreatedBy");
-                    if (createdByProp != null && createdByProp.CurrentValue == null && actorUserId.HasValue)
-                        createdByProp.CurrentValue = actorUserId.Value;
-                }
-                else if (entry.State == EntityState.Modified)
-                {
-                    var updatedAtProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "UpdatedAt");
-                    if (updatedAtProp != null)
-                        updatedAtProp.CurrentValue = utcNow;
-
-                    var updatedByProp = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "UpdatedBy");
-                    if (updatedByProp != null && actorUserId.HasValue)
-                        updatedByProp.CurrentValue = actorUserId.Value;
-                }
-
-                var tableName = entry.Metadata.GetTableName() ?? entry.Entity.GetType().Name;
-                var operationType = entry.State.ToString().ToUpper();
-                if (operationType == "ADDED") operationType = "CREATE";
-                if (operationType == "MODIFIED") operationType = "UPDATE";
-                if (operationType == "DELETED") operationType = "DELETE";
-
-                var snapshotDiff = GetSnapshotDiff(entry);
-
-                var log = new UserActivityLogs
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = actorUserId,
-                    ActorRole = actorRole,
-                    ActionCategory = ActivityLogCategory.DATA_MUTATION,
-                    ActorEmail = actorEmail,
-                    Action = $"Thực hiện {operationType} trên bảng {tableName}",
-                    Status = ActivityLogStatus.SUCCESS,
-                    IpAddress = ipAddress,
-                    UserAgent = userAgent,
-                    CreatedAt = DateTime.UtcNow,
-                    TableName = tableName,
-                    OperationType = operationType,
-                    SnapshotDiff = snapshotDiff
-                };
-
-                logs.Add(log);
-            }
-
-            if (logs.Any())
-            {
-                _pendingLogs.Value = logs;
+                TrackPendingLogs(eventData.Context);
             }
 
             return base.SavingChangesAsync(eventData, result, cancellationToken);
         }
 
-        public override ValueTask<int> SavedChangesAsync(
+        public override async ValueTask<int> SavedChangesAsync(
             SaveChangesCompletedEventData eventData,
             int result,
             CancellationToken cancellationToken = default)
         {
-            var logs = _pendingLogs.Value;
-            if (logs != null)
+            if (eventData.Context != null)
             {
-                foreach (var log in logs)
-                {
-                    log.Status = ActivityLogStatus.SUCCESS;
-                    _auditLogQueue.QueueBackgroundWorkItem(log);
-                }
-                _pendingLogs.Value = null;
+                CompleteAndEnqueueLogs(eventData.Context, ActivityLogStatus.SUCCESS);
             }
-            return base.SavedChangesAsync(eventData, result, cancellationToken);
+            return await base.SavedChangesAsync(eventData, result, cancellationToken);
         }
 
-        public override Task SaveChangesFailedAsync(
+        public override async Task SaveChangesFailedAsync(
             DbContextErrorEventData eventData,
             CancellationToken cancellationToken = default)
         {
-            var logs = _pendingLogs.Value;
-            if (logs != null)
+            if (eventData.Context != null)
             {
-                foreach (var log in logs)
-                {
-                    log.Status = ActivityLogStatus.FAIL;
-                    log.Action = $"{log.Action} [Lỗi: {eventData.Exception.Message}]";
-                    _auditLogQueue.QueueBackgroundWorkItem(log);
-                }
-                _pendingLogs.Value = null;
+                CompleteAndEnqueueLogs(eventData.Context, ActivityLogStatus.FAIL, eventData.Exception.Message);
             }
-            return base.SaveChangesFailedAsync(eventData, cancellationToken);
+            await base.SaveChangesFailedAsync(eventData, cancellationToken);
         }
 
-        private string GetSnapshotDiff(EntityEntry entry)
+        private string GetSnapshotDiff(EntityEntry entry, EntityState? stateOverride = null)
         {
             try
             {
                 var options = new JsonSerializerOptions { WriteIndented = false };
+                var state = stateOverride ?? entry.State;
 
-                if (entry.State == EntityState.Added)
+                if (state == EntityState.Added)
                 {
                     var values = entry.Properties.ToDictionary(
                         p => p.Metadata.Name,
@@ -308,7 +286,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     );
                     return JsonSerializer.Serialize(new { values }, options);
                 }
-                else if (entry.State == EntityState.Deleted)
+                else if (state == EntityState.Deleted)
                 {
                     var values = entry.Properties.ToDictionary(
                         p => p.Metadata.Name,
@@ -316,7 +294,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     );
                     return JsonSerializer.Serialize(new { values }, options);
                 }
-                else if (entry.State == EntityState.Modified)
+                else if (state == EntityState.Modified)
                 {
                     var keyValues = entry.Properties
                         .Where(p => p.Metadata.IsPrimaryKey())
@@ -340,7 +318,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             }
             catch (Exception ex)
             {
-                return JsonSerializer.Serialize(new { error = "Không thể sinh snapshot diff: " + ex.Message });
+                return JsonSerializer.Serialize(new { error = "Failed to generate snapshot diff: " + ex.Message });
             }
             return "{}";
         }
@@ -373,37 +351,45 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             return value;
         }
 
-        private void MaskJsonNode(JsonNode node)
+        private void MaskJsonNode(JsonNode rootNode)
         {
-            if (node is JsonObject obj)
-            {
-                var propertiesToUpdate = new List<(string Key, JsonNode? Node)>();
-                foreach (var kvp in obj)
-                {
-                    if (kvp.Value == null) continue;
+            var stack = new Stack<JsonNode>();
+            stack.Push(rootNode);
 
-                    if (SensitiveFields.Contains(kvp.Key))
+            while (stack.Count > 0)
+            {
+                var node = stack.Pop();
+
+                if (node is JsonObject obj)
+                {
+                    var propertiesToUpdate = new List<(string Key, JsonNode? Node)>();
+                    foreach (var kvp in obj)
                     {
-                        propertiesToUpdate.Add((kvp.Key, JsonValue.Create("[PROTECTED]")));
+                        if (kvp.Value == null) continue;
+
+                        if (SensitiveFields.Contains(kvp.Key))
+                        {
+                            propertiesToUpdate.Add((kvp.Key, JsonValue.Create("[PROTECTED]")));
+                        }
+                        else
+                        {
+                            stack.Push(kvp.Value);
+                        }
                     }
-                    else
+
+                    foreach (var prop in propertiesToUpdate)
                     {
-                        MaskJsonNode(kvp.Value);
+                        obj[prop.Key] = prop.Node;
                     }
                 }
-
-                foreach (var prop in propertiesToUpdate)
+                else if (node is JsonArray array)
                 {
-                    obj[prop.Key] = prop.Node;
-                }
-            }
-            else if (node is JsonArray array)
-            {
-                foreach (var item in array)
-                {
-                    if (item != null)
+                    foreach (var item in array)
                     {
-                        MaskJsonNode(item);
+                        if (item != null)
+                        {
+                            stack.Push(item);
+                        }
                     }
                 }
             }

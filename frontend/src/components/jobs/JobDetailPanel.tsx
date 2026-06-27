@@ -9,6 +9,7 @@ import { MapPin, DollarSign, Calendar, Briefcase, Bookmark, ExternalLink, Award,
 import { useAuthStore } from '@/store/auth.store';
 import { ApplyJobModal } from '@/components/jobs/ApplyJobModal';
 import { useJobActions } from '@/hooks/useJobActions';
+import { CompanyLogo } from '@/components/shared/CompanyLogo';
 
 interface JobDetailPanelProps {
   jobId: string;
@@ -63,11 +64,7 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
         {/* Header Section (Logo + Title + Salary) */}
         <div className="flex gap-4 md:gap-6 mb-6">
           <div className="w-20 h-20 md:w-24 md:h-24 rounded-lg overflow-hidden bg-white border border-slate-200 p-2 flex items-center justify-center shrink-0">
-            {job.logoUrl ? (
-              <img src={job.logoUrl} alt={job.companyName} className="object-contain w-full h-full" />
-            ) : (
-              <Briefcase className="w-10 h-10 text-slate-300" />
-            )}
+            <CompanyLogo src={job.logoUrl} alt={job.companyName} fallbackType="briefcase" fallbackIconClassName="w-10 h-10 text-slate-300" />
           </div>
           <div className="flex flex-col justify-center">
             <h1 className="text-xl md:text-2xl font-bold text-slate-900 flex items-center gap-2">

@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.Utils;
+using Microsoft.EntityFrameworkCore;
 
 namespace ITHunterview.Service.Infrastructure.Persistence
 {
@@ -200,21 +201,21 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 var comp1 = new Companies
                 {
                     Id = Guid.NewGuid(), Name = "ITHunterView Corp", TaxCode = "0102030405", HeadquartersAddress = "123 Dev Street, Tech City",
-                    Industry = "Information Technology", CompanySize = "100-500", Description = "Leading tech recruitment platform",
+                    Industry = "Software Products and Web Services", CompanySize = "100-500", Description = "Leading tech recruitment platform",
                     Website = "https://ithunterview.com", LogoUrl = "https://logo.clearbit.com/ithunterview.com", CompanyType = "IT Product",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license1.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
                 var comp2 = new Companies
                 {
                     Id = Guid.NewGuid(), Name = "FPT Software", TaxCode = "0102030406", HeadquartersAddress = "F-Town, HCMC",
-                    Industry = "Software Outsourcing", CompanySize = "1000+", Description = "Global technology and IT services provider",
+                    Industry = "Software Development Outsourcing", CompanySize = "1000+", Description = "Global technology and IT services provider",
                     Website = "https://fptsoftware.com", LogoUrl = "https://logo.clearbit.com/fptsoftware.com", CompanyType = "IT Outsourcing",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license2.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
                 var comp3 = new Companies
                 {
                     Id = Guid.NewGuid(), Name = "VNG Corporation", TaxCode = "0102030407", HeadquartersAddress = "VNG Campus, HCMC",
-                    Industry = "Internet & Technology", CompanySize = "1000+", Description = "Vietnam's leading tech firm",
+                    Industry = "Game", CompanySize = "1000+", Description = "Vietnam's leading tech firm",
                     Website = "https://vng.com.vn", LogoUrl = "https://logo.clearbit.com/vng.com.vn", CompanyType = "IT Product",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license3.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
@@ -456,24 +457,86 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
         private static async Task SeedMajorsAsync(ITHunterviewContext context)
         {
-            if (!context.Majors.Any())
+            // Chỉ truncate và re-seed nếu phát hiện dữ liệu cũ hoặc bảng trống
+            bool needsReset = !context.Majors.Any() || context.Majors.Any(m => m.Code == "CS");
+            if (needsReset)
             {
-                var majors = new List<Majors>
+                await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE majors RESTART IDENTITY CASCADE;");
+
+                // Cấp 1 (Root Nodes)
+                var dev = new Majors { Name = "Software Development", Code = "DEV" };
+                var ba = new Majors { Name = "Business Analysis & Product", Code = "BA_PM" };
+                var test = new Majors { Name = "Software Testing & QA", Code = "TEST" };
+
+                var lvl1 = new List<Majors> { dev, ba, test };
+                foreach (var m in lvl1)
                 {
-                    new Majors { Name = "Computer Science", Code = "CS" },
-                    new Majors { Name = "Software Engineering", Code = "SE" },
-                    new Majors { Name = "Information Systems", Code = "IS" },
-                    new Majors { Name = "Business Administration", Code = "BA" },
-                    new Majors { Name = "Information Security / Cyber Security", Code = "SEC" },
-                    new Majors { Name = "Finance & Banking", Code = "FIN" },
-                    new Majors { Name = "Computer Networks and Data Communication", Code = "NET" },
-                    new Majors { Name = "Artificial Intelligence", Code = "AI" }
-                };
-                foreach (var major in majors)
-                {
-                    major.NormalizedName = StringNormalizationHelper.NormalizeITTerm(major.Name);
+                    m.NormalizedName = StringNormalizationHelper.NormalizeITTerm(m.Name);
                 }
-                context.Majors.AddRange(majors);
+                context.Majors.AddRange(lvl1);
+                await context.SaveChangesAsync();
+
+                // Cấp 2
+                var devWeb = new Majors { Name = "Web Development", Code = "DEV_WEB", ParentId = dev.Id };
+                var devMob = new Majors { Name = "Mobile Development", Code = "DEV_MOB", ParentId = dev.Id };
+                var devSys = new Majors { Name = "Systems & Embedded Software", Code = "DEV_SYS", ParentId = dev.Id };
+
+                var baAnly = new Majors { Name = "Business Analysis", Code = "BA_ANLY", ParentId = ba.Id };
+                var baMgmt = new Majors { Name = "Product & Project Management", Code = "BA_MGMT", ParentId = ba.Id };
+
+                var tstTest = new Majors { Name = "Software Testing", Code = "TST_TEST", ParentId = test.Id };
+                var tstQa = new Majors { Name = "Quality Assurance & Process", Code = "TST_QA", ParentId = test.Id };
+
+                var lvl2 = new List<Majors> { devWeb, devMob, devSys, baAnly, baMgmt, tstTest, tstQa };
+                foreach (var m in lvl2)
+                {
+                    m.NormalizedName = StringNormalizationHelper.NormalizeITTerm(m.Name);
+                }
+                context.Majors.AddRange(lvl2);
+                await context.SaveChangesAsync();
+
+                // Cấp 3
+                var lvl3 = new List<Majors>
+                {
+                    // DEV - Web Development
+                    new Majors { Name = "Front-end Development", Code = "DEV_WEB_FE", ParentId = devWeb.Id },
+                    new Majors { Name = "Back-end Development", Code = "DEV_WEB_BE", ParentId = devWeb.Id },
+                    new Majors { Name = "Full-stack Development", Code = "DEV_WEB_FS", ParentId = devWeb.Id },
+
+                    // DEV - Mobile Development
+                    new Majors { Name = "iOS Development", Code = "DEV_MOB_IOS", ParentId = devMob.Id },
+                    new Majors { Name = "Android Development", Code = "DEV_MOB_AND", ParentId = devMob.Id },
+                    new Majors { Name = "Cross-Platform Mobile Development", Code = "DEV_MOB_CP", ParentId = devMob.Id },
+
+                    // DEV - Systems & Embedded Software
+                    new Majors { Name = "Embedded Systems & IoT", Code = "DEV_SYS_EMB", ParentId = devSys.Id },
+                    new Majors { Name = "Desktop Application Development", Code = "DEV_SYS_DSK", ParentId = devSys.Id },
+                    new Majors { Name = "Game Development", Code = "DEV_SYS_GAM", ParentId = devSys.Id },
+
+                    // BA - Business Analysis
+                    new Majors { Name = "IT Business Analysis", Code = "BA_ANLY_IT", ParentId = baAnly.Id },
+                    new Majors { Name = "Agile/Scrum Business Analysis", Code = "BA_ANLY_AG", ParentId = baAnly.Id },
+                    new Majors { Name = "System Analysis", Code = "BA_ANLY_SYS", ParentId = baAnly.Id },
+
+                    // BA - Product & Project Management
+                    new Majors { Name = "Product Management", Code = "BA_MGMT_PROD", ParentId = baMgmt.Id },
+                    new Majors { Name = "Project Management", Code = "BA_MGMT_PROJ", ParentId = baMgmt.Id },
+
+                    // TEST - Software Testing
+                    new Majors { Name = "Manual Testing", Code = "TST_TEST_MAN", ParentId = tstTest.Id },
+                    new Majors { Name = "Automation Testing", Code = "TST_TEST_AUT", ParentId = tstTest.Id },
+                    new Majors { Name = "Performance & Security Testing", Code = "TST_TEST_PFS", ParentId = tstTest.Id },
+
+                    // TEST - Quality Assurance & Process
+                    new Majors { Name = "QA/QC Lead & Management", Code = "TST_QA_LEAD", ParentId = tstQa.Id },
+                    new Majors { Name = "Software Quality Assurance", Code = "TST_QA_SQA", ParentId = tstQa.Id }
+                };
+
+                foreach (var m in lvl3)
+                {
+                    m.NormalizedName = StringNormalizationHelper.NormalizeITTerm(m.Name);
+                }
+                context.Majors.AddRange(lvl3);
                 await context.SaveChangesAsync();
             }
         }
@@ -579,12 +642,13 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             if (!context.JobPostings.Any())
             {
                 var recruiterRole = context.Roles.FirstOrDefault(r => r.Name == "recruiter");
-                var recruiters = context.Users.Where(u => u.RoleId == recruiterRole.Id).ToList();
+                var recruiters = recruiterRole != null ? context.Users.Where(u => u.RoleId == recruiterRole.Id).ToList() : new List<User>();
                 var companies = context.Companies.ToList();
                 var categories = context.JobCategories.Where(c => c.ParentId != null).ToList();
                 var skills = context.Skills.ToList();
+                var majors = context.Majors.Where(m => m.ParentId != null).ToList();
 
-                if (recruiters.Any() && companies.Any() && categories.Any() && skills.Any())
+                if (recruiters.Any() && companies.Any() && categories.Any() && skills.Any() && majors.Any())
                 {
                     var jobs = new List<JobPostings>();
                     var jobSkills = new List<JobSkillRequirements>();
@@ -595,7 +659,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
                     string[] jobTitlesPrefixes = { "Senior", "Junior", "Middle", "Lead", "Principal", "Fresher", "Internship", "Manager" };
                     string[] workingModels = { "At office", "Remote", "Hybrid" };
-                    string[] jobDomains = { "Backend", "Frontend", "Fullstack", "Mobile", "DevOps", "AI/ML", "Data" };
+                    string[] jobDomains = { 
+                        "Blockchain & Web3 Services", "E-commerce", "Education and Training", "Banking",
+                        "Game", "IT Services and IT Consulting", "Cyber Security", "Healthcare",
+                        "Financial Services", "AI Software & Services", "Software Products and Web Services"
+                    };
                     
                     for (int i = 1; i <= 60; i++)
                     {
@@ -609,6 +677,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         string level = prefix;
                         string workingModel = workingModels[random.Next(workingModels.Length)];
                         string jobDomain = jobDomains[random.Next(jobDomains.Length)];
+                        string jobExpertise = majors[random.Next(majors.Count)].Name;
                         
                         decimal minSalary = random.Next(5, 20) * 100;
                         decimal maxSalary = minSalary + random.Next(5, 15) * 100;
@@ -634,7 +703,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                             Status = status,
                             Level = level,
                             WorkingModel = workingModel,
-                            JobExpertise = "Software Engineer",
+                            JobExpertise = jobExpertise,
                             JobDomain = new List<string> { jobDomain },
                             ApplicationCount = random.Next(0, 100),
                             ViewCount = random.Next(100, 5000),

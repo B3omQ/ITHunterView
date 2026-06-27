@@ -15,5 +15,7 @@ namespace ITHunterview.Service.Interface.Persistence
         Task<bool> ExistsByNameAsync(string name, int? excludeId = null);
         Task<bool> ExistsByCodeAsync(string code, int? excludeId = null);
         Task<bool> IsMajorInUseAsync(int id);
+        Task<List<Majors>> GetAllActiveMajorsAsync();
+        Task<bool> HasChildrenAsync(int id);
     }
 }
