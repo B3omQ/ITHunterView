@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, User, Briefcase, Bookmark, Bell, Settings, HelpCircle, LogOut,
   ChevronRight, Users, FileText, Building2, Shield, BarChart3, BrainCircuit,
-  ClipboardList, Database, CreditCard, MessageSquare,
+  ClipboardList, Database, CreditCard, MessageSquare, KeyRound
 } from "lucide-react"
 import { useAuthStore } from "@/store/auth.store"
 import { Logo } from "@/components/layout/Logo"
@@ -29,6 +29,7 @@ const ICONS: Record<string, React.ReactNode> = {
   Database: <Database size={18} />,
   CreditCard: <CreditCard size={18} />,
   MessageSquare: <MessageSquare size={18} />,
+  KeyRound: <KeyRound size={18} />,
 }
 
 // ---- Nav definitions per role ----
@@ -43,7 +44,7 @@ const CANDIDATE_NAV: NavItem[] = [
   { label: "CV Optimizer", href: APP_ROUTES.CANDIDATE.CV_OPTIMIZER, icon: "BrainCircuit" },
   { label: "Applications", href: APP_ROUTES.CANDIDATE.APPLICATIONS, icon: "ClipboardList" },
   { label: "Notifications", href: APP_ROUTES.CANDIDATE.NOTIFICATIONS, icon: "Bell", badge: 3 },
-  { label: "Settings", href: APP_ROUTES.CANDIDATE.SETTINGS, icon: "Settings" },
+  { label: "Change Password", href: APP_ROUTES.CANDIDATE.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
 const RECRUITER_NAV: NavItem[] = [
@@ -52,7 +53,7 @@ const RECRUITER_NAV: NavItem[] = [
   { label: "Job Postings", href: APP_ROUTES.RECRUITER.JOBS, icon: "Briefcase" },
   { label: "Analytics", href: APP_ROUTES.RECRUITER.ANALYTICS, icon: "BarChart3" },
   { label: "Notifications", href: APP_ROUTES.RECRUITER.NOTIFICATIONS, icon: "Bell", badge: 2 },
-  { label: "Settings", href: APP_ROUTES.RECRUITER.SETTINGS, icon: "Settings" },
+  { label: "Change Password", href: APP_ROUTES.RECRUITER.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
 const STAFF_NAV: NavItem[] = [
@@ -63,7 +64,7 @@ const STAFF_NAV: NavItem[] = [
   { label: "Question Bank", href: APP_ROUTES.STAFF.QUESTION_BANK, icon: "FileText" },
   { label: "Audit Logs", href: APP_ROUTES.STAFF.AUDIT_LOGS, icon: "ClipboardList" },
   { label: "Notifications", href: APP_ROUTES.STAFF.NOTIFICATIONS, icon: "Bell" },
-  { label: "Settings", href: APP_ROUTES.STAFF.SETTINGS, icon: "Settings" },
+  { label: "Change Password", href: APP_ROUTES.STAFF.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
 const ADMIN_NAV: NavItem[] = [
@@ -75,7 +76,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Finance", href: APP_ROUTES.ADMIN.FINANCE, icon: "BarChart3" },
   { label: "Platform Safety", href: APP_ROUTES.ADMIN.AUDIT_LOGS, icon: "Shield" },
   { label: "Notifications", href: APP_ROUTES.ADMIN.NOTIFICATIONS, icon: "Bell" },
-  { label: "Settings", href: APP_ROUTES.ADMIN.SETTINGS, icon: "Settings" },
+  { label: "Change Password", href: APP_ROUTES.ADMIN.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
 function getNavItems(role: string): NavItem[] {
