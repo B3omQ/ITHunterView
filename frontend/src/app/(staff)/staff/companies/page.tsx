@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { useCompanies, useUpdateCompanyStatus } from '@/hooks/useCompany';
 import { Company, CompanyStatus } from '@/types/company.types';
 import { CompanyStatusBadge } from '@/components/shared/CompanyStatusBadge';
+import { CompanyLogo } from '@/components/shared/CompanyLogo';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -272,20 +273,15 @@ export default function StaffCompaniesPage() {
                   <tr key={company.id} className="hover:bg-muted/10 transition-colors">
                     <td className="px-4 py-4 text-center">
                       <div className="flex items-center justify-center">
-                        {company.logoUrl ? (
-                          <img
+                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center border border-border overflow-hidden">
+                          <CompanyLogo
                             src={company.logoUrl}
                             alt={company.name}
-                            className="w-10 h-10 rounded-lg object-cover border border-border bg-background"
-                            onError={(e) => {
-                              (e.target as HTMLElement).style.display = 'none';
-                            }}
+                            fallbackType="building"
+                            fallbackIconClassName="text-muted-foreground w-5 h-5"
+                            imageClassName="w-full h-full object-cover bg-background"
                           />
-                        ) : (
-                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center border border-border">
-                            <Building className="text-muted-foreground" size={20} />
-                          </div>
-                        )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-4">
@@ -430,17 +426,15 @@ export default function StaffCompaniesPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4">
               {/* Left Column: Logo & status */}
               <div className="flex flex-col items-center justify-start text-center border-b md:border-b-0 md:border-r border-border pb-6 md:pb-0 md:pr-6 gap-4">
-                {selectedCompany.logoUrl ? (
-                  <img
+                <div className="w-24 h-24 rounded-2xl bg-muted flex items-center justify-center border border-border shadow-sm overflow-hidden">
+                  <CompanyLogo
                     src={selectedCompany.logoUrl}
                     alt={selectedCompany.name}
-                    className="w-24 h-24 rounded-2xl object-cover border border-border bg-background shadow-sm"
+                    fallbackType="building"
+                    fallbackIconClassName="text-muted-foreground w-12 h-12"
+                    imageClassName="w-full h-full object-cover bg-background"
                   />
-                ) : (
-                  <div className="w-24 h-24 rounded-2xl bg-muted flex items-center justify-center border border-border shadow-sm">
-                    <Building className="text-muted-foreground" size={48} />
-                  </div>
-                )}
+                </div>
                 <div>
                   <h3 className="font-bold text-lg text-foreground line-clamp-2">{selectedCompany.name}</h3>
                   <p className="text-xs text-muted-foreground mt-1">{selectedCompany.industry}</p>

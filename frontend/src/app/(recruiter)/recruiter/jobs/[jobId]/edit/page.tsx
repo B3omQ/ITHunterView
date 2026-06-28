@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ArrowLeft, Plus, X, Sparkles, AlertCircle, Loader2 } from "lucide-react"
 import { LEVELS, WORKING_MODELS, JOB_DOMAINS, JOB_EXPERTISES, VIETNAM_PROVINCES } from "@/lib/job-constants"
 import { LocationCombobox } from "@/components/shared/LocationCombobox"
+import { MajorCombobox } from "@/components/shared/MajorCombobox"
 
 export default function EditJobPage() {
   const router = useRouter()
@@ -35,7 +36,7 @@ export default function EditJobPage() {
     jobDomain: [] as string[],
   })
 
-  const { categories, availableSkills, loading: metadataLoading, error: metadataError } = useJobMetadata()
+  const { categories, availableSkills, majors, loading: metadataLoading, error: metadataError } = useJobMetadata()
   const { job, loading: detailLoading, saving, error: detailError, setError, updateJob } = useJobDetails(id)
   
   const [selectedSkills, setSelectedSkills] = useState<Array<{ skillId: number; name: string; isMandatory: boolean }>>([])
@@ -153,7 +154,7 @@ export default function EditJobPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-2">
           <Loader2 className="h-8 w-8 text-blue-500 animate-spin mx-auto" />
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading Job Details...</p>
@@ -163,7 +164,7 @@ export default function EditJobPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 py-10 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
+    <div className="min-h-screen bg-background py-10 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
       <div className="max-w-4xl mx-auto space-y-6">
         
         {/* Back Button & Header */}
@@ -274,19 +275,14 @@ export default function EditJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="jobExpertise" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Expertise</Label>
-                <select
-                  id="jobExpertise"
-                  name="jobExpertise"
-                  className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
+                <Label htmlFor="jobExpertise" className="font-semibold text-zinc-700 dark:text-zinc-300">Specialization (Expertise)</Label>
+                <MajorCombobox
+                  majors={majors}
                   value={formData.jobExpertise}
-                  onChange={handleChange}
-                >
-                  <option value="">Select Expertise</option>
-                  {JOB_EXPERTISES.map((exp) => (
-                    <option key={exp} value={exp}>{exp}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setFormData(prev => ({ ...prev, jobExpertise: val }))}
+                  className="w-full h-10 mt-1"
+                  placeholder="Select specialization..."
+                />
               </div>
             </div>
 

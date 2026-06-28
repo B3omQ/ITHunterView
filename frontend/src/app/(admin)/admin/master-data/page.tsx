@@ -256,7 +256,7 @@ function MasterDataContent() {
             Master Data Management
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage the Skills Library and Major List in the system.
+            Manage the Skills Library and Specializations in the system.
           </p>
         </div>
         <button
@@ -268,7 +268,7 @@ function MasterDataContent() {
           className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/95 text-primary-foreground font-medium text-sm rounded-xl shadow-xs transition-colors"
         >
           <Plus size={16} />
-          <span>Add new {activeTab === "skills" ? "skill" : "major"}</span>
+          <span>Add new {activeTab === "skills" ? "skill" : "specialization"}</span>
         </button>
       </div>
 
@@ -294,7 +294,7 @@ function MasterDataContent() {
           }`}
         >
           <Database size={16} />
-          <span>Major List</span>
+          <span>Specializations (Majors)</span>
         </button>
       </div>
 
@@ -402,7 +402,7 @@ function MasterDataContent() {
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search majors by name or code..."
+                placeholder="Search specializations by name or code..."
                 value={majorSearch}
                 onChange={(e) => setMajorSearch(e.target.value)}
                 className="pl-9 pr-4 py-2 w-full rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground"

@@ -201,21 +201,21 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 var comp1 = new Companies
                 {
                     Id = Guid.NewGuid(), Name = "ITHunterView Corp", TaxCode = "0102030405", HeadquartersAddress = "123 Dev Street, Tech City",
-                    Industry = "Information Technology", CompanySize = "100-500", Description = "Leading tech recruitment platform",
+                    Industry = "Software Products and Web Services", CompanySize = "100-500", Description = "Leading tech recruitment platform",
                     Website = "https://ithunterview.com", LogoUrl = "https://logo.clearbit.com/ithunterview.com", CompanyType = "IT Product",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license1.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
                 var comp2 = new Companies
                 {
                     Id = Guid.NewGuid(), Name = "FPT Software", TaxCode = "0102030406", HeadquartersAddress = "F-Town, HCMC",
-                    Industry = "Software Outsourcing", CompanySize = "1000+", Description = "Global technology and IT services provider",
+                    Industry = "Software Development Outsourcing", CompanySize = "1000+", Description = "Global technology and IT services provider",
                     Website = "https://fptsoftware.com", LogoUrl = "https://logo.clearbit.com/fptsoftware.com", CompanyType = "IT Outsourcing",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license2.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
                 var comp3 = new Companies
                 {
                     Id = Guid.NewGuid(), Name = "VNG Corporation", TaxCode = "0102030407", HeadquartersAddress = "VNG Campus, HCMC",
-                    Industry = "Internet & Technology", CompanySize = "1000+", Description = "Vietnam's leading tech firm",
+                    Industry = "Game", CompanySize = "1000+", Description = "Vietnam's leading tech firm",
                     Website = "https://vng.com.vn", LogoUrl = "https://logo.clearbit.com/vng.com.vn", CompanyType = "IT Product",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license3.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
@@ -642,12 +642,13 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             if (!context.JobPostings.Any())
             {
                 var recruiterRole = context.Roles.FirstOrDefault(r => r.Name == "recruiter");
-                var recruiters = context.Users.Where(u => u.RoleId == recruiterRole.Id).ToList();
+                var recruiters = recruiterRole != null ? context.Users.Where(u => u.RoleId == recruiterRole.Id).ToList() : new List<User>();
                 var companies = context.Companies.ToList();
                 var categories = context.JobCategories.Where(c => c.ParentId != null).ToList();
                 var skills = context.Skills.ToList();
+                var majors = context.Majors.Where(m => m.ParentId != null).ToList();
 
-                if (recruiters.Any() && companies.Any() && categories.Any() && skills.Any())
+                if (recruiters.Any() && companies.Any() && categories.Any() && skills.Any() && majors.Any())
                 {
                     var jobs = new List<JobPostings>();
                     var jobSkills = new List<JobSkillRequirements>();
@@ -658,7 +659,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
                     string[] jobTitlesPrefixes = { "Senior", "Junior", "Middle", "Lead", "Principal", "Fresher", "Internship", "Manager" };
                     string[] workingModels = { "At office", "Remote", "Hybrid" };
-                    string[] jobDomains = { "Backend", "Frontend", "Fullstack", "Mobile", "DevOps", "AI/ML", "Data" };
+                    string[] jobDomains = { 
+                        "Blockchain & Web3 Services", "E-commerce", "Education and Training", "Banking",
+                        "Game", "IT Services and IT Consulting", "Cyber Security", "Healthcare",
+                        "Financial Services", "AI Software & Services", "Software Products and Web Services"
+                    };
                     
                     for (int i = 1; i <= 60; i++)
                     {
@@ -672,6 +677,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         string level = prefix;
                         string workingModel = workingModels[random.Next(workingModels.Length)];
                         string jobDomain = jobDomains[random.Next(jobDomains.Length)];
+                        string jobExpertise = majors[random.Next(majors.Count)].Name;
                         
                         decimal minSalary = random.Next(5, 20) * 100;
                         decimal maxSalary = minSalary + random.Next(5, 15) * 100;
@@ -697,7 +703,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                             Status = status,
                             Level = level,
                             WorkingModel = workingModel,
-                            JobExpertise = "Software Engineer",
+                            JobExpertise = jobExpertise,
                             JobDomain = new List<string> { jobDomain },
                             ApplicationCount = random.Next(0, 100),
                             ViewCount = random.Next(100, 5000),

@@ -20,6 +20,7 @@ import {
   COMPANY_INDUSTRIES,
   COMPANY_TYPES
 } from '@/lib/job-constants';
+import { useJobMetadata } from '@/hooks/useJobs';
 
 // Constants
 const LOCATIONS = [
@@ -107,6 +108,9 @@ export function JobSearchFilter() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  
+  const { majors } = useJobMetadata();
+  const specializationOptions = React.useMemo(() => majors.map(m => m.name), [majors]);
 
   // URL States
   const urlQuery = searchParams.get('query') || '';
@@ -114,6 +118,7 @@ export function JobSearchFilter() {
   const urlLevels = parseArrayParam(searchParams.get('levels'));
   const urlWorkingModels = parseArrayParam(searchParams.get('workingModels'));
   const urlJobDomains = parseArrayParam(searchParams.get('jobDomains'));
+  const urlJobExpertises = parseArrayParam(searchParams.get('jobExpertises'));
   const urlCompanyIndustries = parseArrayParam(searchParams.get('companyIndustries'));
   const urlCompanyTypes = parseArrayParam(searchParams.get('companyTypes'));
   const urlMinSalary = searchParams.get('minSalary') ? parseInt(searchParams.get('minSalary')!) : 0;
@@ -127,6 +132,7 @@ export function JobSearchFilter() {
   const [pendingLevels, setPendingLevels] = useState<string[]>(urlLevels);
   const [pendingWorkingModels, setPendingWorkingModels] = useState<string[]>(urlWorkingModels);
   const [pendingJobDomains, setPendingJobDomains] = useState<string[]>(urlJobDomains);
+  const [pendingJobExpertises, setPendingJobExpertises] = useState<string[]>(urlJobExpertises);
   const [pendingCompanyIndustries, setPendingCompanyIndustries] = useState<string[]>(urlCompanyIndustries);
   const [pendingCompanyTypes, setPendingCompanyTypes] = useState<string[]>(urlCompanyTypes);
   const [pendingSalary, setPendingSalary] = useState<number[]>([urlMinSalary, urlMaxSalary]);
@@ -141,6 +147,7 @@ export function JobSearchFilter() {
     setPendingLevels(urlLevels);
     setPendingWorkingModels(urlWorkingModels);
     setPendingJobDomains(urlJobDomains);
+    setPendingJobExpertises(urlJobExpertises);
     setPendingCompanyIndustries(urlCompanyIndustries);
     setPendingCompanyTypes(urlCompanyTypes);
     setPendingSalary([urlMinSalary, urlMaxSalary]);
@@ -157,6 +164,7 @@ export function JobSearchFilter() {
       levels: pendingLevels,
       workingModels: pendingWorkingModels,
       jobDomains: pendingJobDomains,
+      jobExpertises: pendingJobExpertises,
       companyIndustries: pendingCompanyIndustries,
       companyTypes: pendingCompanyTypes,
       salary: pendingSalary,
@@ -169,6 +177,7 @@ export function JobSearchFilter() {
     if (current.levels.length > 0) params.set('levels', current.levels.join(',')); else params.delete('levels');
     if (current.workingModels.length > 0) params.set('workingModels', current.workingModels.join(',')); else params.delete('workingModels');
     if (current.jobDomains.length > 0) params.set('jobDomains', current.jobDomains.join(',')); else params.delete('jobDomains');
+    if (current.jobExpertises.length > 0) params.set('jobExpertises', current.jobExpertises.join(',')); else params.delete('jobExpertises');
     if (current.companyIndustries.length > 0) params.set('companyIndustries', current.companyIndustries.join(',')); else params.delete('companyIndustries');
     if (current.companyTypes.length > 0) params.set('companyTypes', current.companyTypes.join(',')); else params.delete('companyTypes');
 
@@ -190,6 +199,7 @@ export function JobSearchFilter() {
     setPendingLevels([]);
     setPendingWorkingModels([]);
     setPendingJobDomains([]);
+    setPendingJobExpertises([]);
     setPendingCompanyIndustries([]);
     setPendingCompanyTypes([]);
     setPendingSalary([0, 10000]);
@@ -199,6 +209,7 @@ export function JobSearchFilter() {
     pendingLevels.length > 0 ||
     pendingWorkingModels.length > 0 ||
     pendingJobDomains.length > 0 ||
+    pendingJobExpertises.length > 0 ||
     pendingCompanyIndustries.length > 0 ||
     pendingCompanyTypes.length > 0 ||
     pendingSalary[0] > 0 ||
@@ -209,6 +220,7 @@ export function JobSearchFilter() {
     if (key === 'levels') setPendingLevels(val);
     if (key === 'workingModels') setPendingWorkingModels(val);
     if (key === 'jobDomains') setPendingJobDomains(val);
+    if (key === 'jobExpertises') setPendingJobExpertises(val);
     applyFilters({ [key]: val });
   };
 
@@ -352,6 +364,15 @@ export function JobSearchFilter() {
             searchPlaceholder="Search domain..."
           />
         </div>
+        <div className="w-[180px]">
+          <FilterCombobox
+            title="Specialization"
+            options={specializationOptions}
+            selected={pendingJobExpertises}
+            onChange={(val) => applyQuickFilter('jobExpertises', val)}
+            searchPlaceholder="Search specialization..."
+          />
+        </div>
 
         {/* Filter Button (Opens Modal) */}
         <div className="ml-auto flex items-center gap-2">
@@ -364,6 +385,7 @@ export function JobSearchFilter() {
                   levels: [],
                   workingModels: [],
                   jobDomains: [],
+                  jobExpertises: [],
                   companyIndustries: [],
                   companyTypes: [],
                   salary: [0, 10000]
@@ -481,6 +503,36 @@ export function JobSearchFilter() {
                                 >
                                   <Checkbox checked={pendingJobDomains.includes(jd)} className="pointer-events-none" />
                                   <span className="truncate">{jd}</span>
+                                </CommandItem>
+                              ))}
+                            </ScrollArea>
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </div>
+                  </div>
+
+                  {/* Row 4.5: Specialization */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-sm text-slate-700">Specialization</h4>
+                    <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
+                      <Command filter={customFilter}>
+                        <CommandInput placeholder="Search specialization..." className="border-none h-10" />
+                        <CommandList>
+                          <CommandEmpty>No specialization found.</CommandEmpty>
+                          <CommandGroup>
+                            <ScrollArea className="h-[200px]">
+                              {specializationOptions.map(spec => (
+                                <CommandItem
+                                  key={spec}
+                                  value={spec}
+                                  onSelect={() => {
+                                    setPendingJobExpertises(prev => prev.includes(spec) ? prev.filter(x => x !== spec) : [...prev, spec]);
+                                  }}
+                                  className="flex items-center gap-2 cursor-pointer px-3 py-2"
+                                >
+                                  <Checkbox checked={pendingJobExpertises.includes(spec)} className="pointer-events-none" />
+                                  <span className="truncate">{spec}</span>
                                 </CommandItem>
                               ))}
                             </ScrollArea>

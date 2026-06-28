@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DollarSign, Briefcase, Heart, Monitor, CheckSquare, MapPin } from 'lucide-react';
 import type { JobCardDto } from '@/types/job.types';
+import { CompanyLogo } from '@/components/shared/CompanyLogo';
 
 interface JobCardProps {
   job: JobCardDto;
@@ -56,11 +57,7 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
             {/* Company Info */}
             <div className="flex items-center gap-2 mt-1">
               <div className="w-8 h-8 rounded overflow-hidden bg-white flex items-center justify-center shrink-0 border border-slate-200 p-1">
-                {job.logoUrl ? (
-                  <img src={job.logoUrl} alt={job.companyName} className="object-contain w-full h-full" />
-                ) : (
-                  <Briefcase className="text-slate-400 w-4 h-4" />
-                )}
+                <CompanyLogo src={job.logoUrl} alt={job.companyName} fallbackType="briefcase" fallbackIconClassName="text-slate-400 w-4 h-4" />
               </div>
               <p className="text-slate-600 text-sm font-medium uppercase tracking-wide line-clamp-1">{job.companyName}</p>
             </div>

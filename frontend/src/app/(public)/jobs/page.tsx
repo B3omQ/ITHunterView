@@ -38,6 +38,7 @@ function PublicJobsContent() {
     levels: parseArray(searchParams.get('levels')),
     workingModels: parseArray(searchParams.get('workingModels')),
     jobDomains: parseArray(searchParams.get('jobDomains')),
+    jobExpertises: parseArray(searchParams.get('jobExpertises')),
     companyIndustries: parseArray(searchParams.get('companyIndustries')),
     companyTypes: parseArray(searchParams.get('companyTypes')),
     postedWithinDays: searchParams.get('postedWithinDays') ? parseInt(searchParams.get('postedWithinDays') as string, 10) : undefined,

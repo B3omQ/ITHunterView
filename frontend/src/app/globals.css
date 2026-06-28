@@ -48,7 +48,7 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 
   /* Brand colors matching request */
-  --color-brand-50:  #E7F3FF;
+  --color-brand-50: #E7F3FF;
   --color-brand-100: #D1E4FF;
   --color-brand-500: #1877F2;
   --color-brand-600: #166FE5;
@@ -57,7 +57,7 @@
 
 /* Light mode - Custom Scheme */
 :root {
-  --background: #F0F2F5;
+  --background: #FFFFFF;
   --foreground: #050505;
   --card: #FFFFFF;
   --card-foreground: #050505;
@@ -67,7 +67,7 @@
   --primary-foreground: #FFFFFF;
   --secondary: #E7F3FF;
   --secondary-foreground: #1877F2;
-  --muted: #F0F2F5;
+  --muted: #FFFFFF;
   --muted-foreground: #65676B;
   --accent: #E7F3FF;
   --accent-foreground: #1877F2;
@@ -75,9 +75,9 @@
   --border: #CED0D4;
   --input: #CED0D4;
   --ring: #1877F2;
-  
+
   --radius: 0.625rem;
-  
+
   --sidebar: #FFFFFF;
   --sidebar-foreground: #050505;
   --sidebar-primary: #1877F2;
@@ -86,7 +86,7 @@
   --sidebar-accent-foreground: #1877F2;
   --sidebar-border: #CED0D4;
   --sidebar-ring: #1877F2;
-  
+
   --chart-1: #1877F2;
   --chart-2: #28A745;
   --chart-3: #FFC107;
@@ -99,12 +99,14 @@
     @apply border-border outline-ring/50;
     box-sizing: border-box;
   }
+
   body {
     @apply bg-background text-foreground;
     font-family: "Inter", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
   html {
     @apply h-full;
   }
@@ -128,20 +130,39 @@
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.auth-input::placeholder { color: #65676B; }
+
+.auth-input::placeholder {
+  color: #65676B;
+}
+
 .auth-input:focus {
   border-color: #1877F2;
   box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.2);
 }
 
 /* Smooth scrollbar */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #CED0D4; border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: #65676B; }
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CED0D4;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #65676B;
+}
 
 /* Focus ring consistent */
-input:focus-visible, button:focus-visible, a:focus-visible {
+input:focus-visible,
+button:focus-visible,
+a:focus-visible {
   outline: 2px solid #1877F2;
   outline-offset: 2px;
 }
@@ -152,9 +173,11 @@ input:focus-visible, button:focus-visible, a:focus-visible {
   color: #FFFFFF;
   transition: background-color 0.15s ease;
 }
+
 .btn-primary:hover {
   background-color: #166FE5;
 }
+
 .btn-primary:active {
   background-color: #145DBF;
 }
@@ -162,4 +185,68 @@ input:focus-visible, button:focus-visible, a:focus-visible {
 /* Sidebar transition */
 .sidebar-item {
   transition: background 0.15s ease, color 0.15s ease;
+}
+
+/* Generative Grid Background */
+.bg-generative-grid {
+  background-image: radial-gradient(rgba(0, 0, 0, 0.07) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -12px -12px;
+}
+
+.dark .bg-generative-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+}
+
+/* Kinetic Typing Animation */
+@keyframes type {
+  from { max-width: 0; }
+  to { max-width: 100%; }
+}
+
+@keyframes blink {
+  50% { border-color: transparent; }
+}
+
+.animate-typing {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 3px solid #1877F2;
+  animation: type 2s steps(40, end), blink 0.75s step-end infinite;
+  padding-right: 2px;
+}
+
+/* Glassmorphism Panel */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+}
+
+.dark .glass-panel {
+  background: rgba(24, 24, 27, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Blob Animation */
+@keyframes blob {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
 }

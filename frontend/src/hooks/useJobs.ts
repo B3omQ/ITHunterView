@@ -151,6 +151,7 @@ export function useJobDetails(jobId?: string) {
 export function useJobMetadata() {
   const [categories, setCategories] = useState<JobCategory[]>([]);
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
+  const [majors, setMajors] = useState<{ id: number; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -159,9 +160,10 @@ export function useJobMetadata() {
       setLoading(true);
       setError('');
       try {
-        const [catRes, skillRes] = await Promise.all([
+        const [catRes, skillRes, majorRes] = await Promise.all([
           recruiterService.getCategories(),
           recruiterService.getSkills(),
+          recruiterService.getMajors(),
         ]);
 
         if (catRes.success && catRes.data?.success) {
@@ -174,6 +176,12 @@ export function useJobMetadata() {
           setAvailableSkills(skillRes.data.data || []);
         } else {
           setError(prev => prev || skillRes.message || 'Failed to load skills');
+        }
+
+        if (majorRes.success && majorRes.data?.success) {
+          setMajors(majorRes.data.data.items || []);
+        } else {
+          setError(prev => prev || majorRes.message || 'Failed to load majors');
         }
       } catch (err: any) {
         setError(err.message || 'Error occurred while loading metadata');
@@ -188,6 +196,7 @@ export function useJobMetadata() {
   return {
     categories,
     availableSkills,
+    majors,
     loading,
     error,
   };

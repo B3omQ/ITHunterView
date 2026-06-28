@@ -123,7 +123,7 @@ export const MajorsTable = memo(function MajorsTable({
       case 3:
         return (
           <span className="text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded">
-            Level 3 (Major)
+            Level 3 (Specialization)
           </span>
         );
       default:
@@ -154,7 +154,7 @@ export const MajorsTable = memo(function MajorsTable({
   if (majors.length === 0) {
     return (
       <div className="text-center py-20 text-muted-foreground">
-        <p className="text-sm">No majors found.</p>
+        <p className="text-sm">No specializations found.</p>
       </div>
     );
   }
@@ -166,10 +166,10 @@ export const MajorsTable = memo(function MajorsTable({
           <thead>
             <tr className="border-b border-border bg-muted/30">
               <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-1/4">
-                Major Code
+                Specialization Code
               </th>
               <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Major Name
+                Specialization Name
               </th>
               <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">
                 Actions
@@ -240,7 +240,7 @@ export const MajorsTable = memo(function MajorsTable({
       <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-border gap-4 bg-muted/10">
         <span className="text-xs text-muted-foreground">
           Showing {Math.min((currentPage - 1) * pageSize + 1, totalItems)} -{" "}
-          {Math.min(currentPage * pageSize, totalItems)} of {totalItems} root majors
+          {Math.min(currentPage * pageSize, totalItems)} of {totalItems} root specializations
         </span>
         <div className="flex items-center gap-1.5">
           <button

@@ -63,11 +63,38 @@ namespace ITHunterview.Domain.Entities
         [Column("pending_verification_document_url")]
         public string? PendingVerificationDocumentUrl { get; set; }
 
+        [Column("pending_company_type")]
+        public string? PendingCompanyType { get; set; }
+
         [Column("reject_reason")]
         public string? RejectReason { get; set; }
 
         [Column("has_pending_change")]
         public bool HasPendingChange { get; set; } = false;
+
+        [Column("trade_name")]
+        public string? TradeName { get; set; }
+
+        [Column("target_customers", TypeName = "text[]")]
+        public List<string>? TargetCustomers { get; set; }
+
+        [Column("company_email")]
+        public string? CompanyEmail { get; set; }
+
+        [Column("contact_phone")]
+        public string? ContactPhone { get; set; }
+
+        [Column("company_images", TypeName = "text[]")]
+        public List<string>? CompanyImages { get; set; }
+
+        [Column("main_field")]
+        public string? MainField { get; set; }
+
+        [Column("operating_markets", TypeName = "text[]")]
+        public List<string>? OperatingMarkets { get; set; }
+
+        [Column("employee_benefits")]
+        public string? EmployeeBenefits { get; set; }
 
         [Column("created_by")]
         public Guid? CreatedBy { get; set; }

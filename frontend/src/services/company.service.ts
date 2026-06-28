@@ -1,5 +1,5 @@
 import api from './api-client';
-import { Company, CreateCompanyDto, VerifyCompanyDto, UpdateCompanyStatusDto } from '@/types/company.types';
+import { Company, CreateCompanyDto, UpdateCompanyDto, VerifyCompanyDto, UpdateCompanyStatusDto } from '@/types/company.types';
 import { ApiResponse, PaginatedResponse } from '@/types/api.types';
 
 export const companyService = {
@@ -8,6 +8,9 @@ export const companyService = {
     
   createOrUpdateProfile: (dto: CreateCompanyDto) => 
     api.post<ApiResponse<Company>>('/api/companies', dto).then(res => res.data.data),
+
+  updateProfile: (id: string, dto: UpdateCompanyDto) =>
+    api.put<ApiResponse<Company>>(`/api/companies/${id}`, dto).then(res => res.data.data),
     
   verifyCompanyLegal: (id: string, dto: VerifyCompanyDto) => 
     api.post<ApiResponse<Company>>(`/api/companies/${id}/verify`, dto).then(res => res.data.data),

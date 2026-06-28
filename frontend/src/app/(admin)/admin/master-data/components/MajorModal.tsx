@@ -188,7 +188,7 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{mode === 'create' ? 'Add New Major' : 'Edit Major'}</DialogTitle>
+          <DialogTitle>{mode === 'create' ? 'Add New Specialization' : 'Edit Specialization'}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
@@ -232,7 +232,7 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-foreground">Parent Major</label>
+            <label className="text-xs font-bold text-foreground">Parent Specialization</label>
             <select
               value={parentId ?? ''}
               onChange={(e) => {
@@ -259,8 +259,8 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
             </select>
             <p className="text-[10px] text-muted-foreground leading-relaxed mt-1">
               {mode === 'edit'
-                ? '* Parent major cannot be changed after creation.'
-                : '* Only level 1 or level 2 majors can be selected as parents to ensure the hierarchy depth does not exceed 3 levels.'}
+                ? '* Parent specialization cannot be changed after creation.'
+                : '* Only level 1 or level 2 specializations can be selected as parents to ensure the hierarchy depth does not exceed 3 levels.'}
             </p>
           </div>
 
