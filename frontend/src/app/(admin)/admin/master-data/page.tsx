@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Search,
   Plus,
@@ -29,9 +30,24 @@ import { SkillForceStatusDialog } from "./components/SkillForceStatusDialog";
 import { SkillsTable } from "./components/SkillsTable";
 import { MajorsTable } from "./components/MajorsTable";
 
-export default function MasterDataPage() {
-  const [activeTab, setActiveTab] = useState<"skills" | "majors">("skills");
+function MasterDataContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
 
+  const [activeTab, setActiveTab] = useState<"skills" | "majors">(
+    tabParam === "majors" ? "majors" : "skills"
+  );
+
+  useEffect(() => {
+    if (tabParam === "majors") setActiveTab("majors");
+    else if (tabParam === "skills") setActiveTab("skills");
+  }, [tabParam]);
+
+  const handleTabChange = (tab: "skills" | "majors") => {
+    setActiveTab(tab);
+    router.push(`?tab=${tab}`, { scroll: false });
+  };
   // Search State with local Debounce
   const [skillSearch, setSkillSearch] = useState("");
   const [debouncedSkillSearch, setDebouncedSkillSearch] = useState("");
@@ -259,7 +275,7 @@ export default function MasterDataPage() {
       {/* Tabs Menu */}
       <div className="flex border-b border-border">
         <button
-          onClick={() => setActiveTab("skills")}
+          onClick={() => handleTabChange("skills")}
           className={`flex items-center gap-2 px-6 py-3 border-b-2 text-sm font-medium transition-all ${
             activeTab === "skills"
               ? "border-primary text-primary bg-primary/5 rounded-t-lg"
@@ -270,7 +286,7 @@ export default function MasterDataPage() {
           <span>Skills Library</span>
         </button>
         <button
-          onClick={() => setActiveTab("majors")}
+          onClick={() => handleTabChange("majors")}
           className={`flex items-center gap-2 px-6 py-3 border-b-2 text-sm font-medium transition-all ${
             activeTab === "majors"
               ? "border-primary text-primary bg-primary/5 rounded-t-lg"
@@ -539,5 +555,13 @@ export default function MasterDataPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function MasterDataPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading Master Data...</div>}>
+      <MasterDataContent />
+    </Suspense>
   );
 }
