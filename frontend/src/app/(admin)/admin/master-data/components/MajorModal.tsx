@@ -207,6 +207,18 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
           )}
 
           <div className="space-y-1.5">
+            <label className="text-xs font-bold text-foreground">Major Name</label>
+            <input
+              type="text"
+              placeholder="Enter full major name..."
+              value={majorForm.name}
+              onChange={handleNameChange}
+              className="w-full px-3.5 py-2 rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/60"
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
             <label className="text-xs font-bold text-foreground">Major Code</label>
             <input
               type="text"
@@ -216,18 +228,6 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
               className="w-full px-3.5 py-2 rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/60"
               required
               disabled={mode === 'edit'}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-foreground">Major Name</label>
-            <input
-              type="text"
-              placeholder="Enter full major name..."
-              value={majorForm.name}
-              onChange={handleNameChange}
-              className="w-full px-3.5 py-2 rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/60"
-              required
             />
           </div>
 
