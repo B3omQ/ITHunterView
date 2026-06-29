@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { Input } from "@/components/ui/input"
 import { MapPin, Search, Loader2 } from "lucide-react"
-import { VIETNAM_PROVINCES } from "@/lib/job-constants"
+import { PROVINCE_OPTIONS } from "@/lib/job-constants"
 
 // Dynamically import MapChild with ssr disabled to fix Leaflet window is not defined error
 const MapChild = dynamic(() => import('./MapChild'), {
@@ -90,16 +90,20 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
   };
 
   const extractProvinceCode = (address: any) => {
-    if (!address) return "Other";
+    if (!address) return "OTHER";
     
     // Nominatim returns state or city
     const provinceName = address.state || address.city || address.province || "";
-    if (!provinceName) return "Other";
+    if (!provinceName) return "OTHER";
 
     const normalized = provinceName.toLowerCase().replace("tỉnh ", "").replace("thành phố ", "");
-    const match = VIETNAM_PROVINCES.find(p => p.toLowerCase().includes(normalized) || normalized.includes(p.toLowerCase()));
     
-    return match || "Other";
+    const match = PROVINCE_OPTIONS.find(p => 
+      p.label.toLowerCase().includes(normalized) || 
+      normalized.includes(p.label.toLowerCase())
+    );
+    
+    return match ? match.value : "OTHER";
   };
 
   const handleSelectSuggestion = (suggestion: any) => {

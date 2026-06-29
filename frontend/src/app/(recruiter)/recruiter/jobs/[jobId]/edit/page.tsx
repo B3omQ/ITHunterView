@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ArrowLeft, Plus, X, Sparkles, AlertCircle, Loader2 } from "lucide-react"
 import { LEVELS, WORKING_MODELS, JOB_DOMAINS, JOB_EXPERTISES, VIETNAM_PROVINCES } from "@/lib/job-constants"
 import { LocationPicker, LocationData } from "@/components/shared/LocationPicker"
-import { ProvinceSelect } from "@/components/shared/ProvinceSelect"
 import { MajorCombobox } from "@/components/shared/MajorCombobox"
 
 export default function EditJobPage() {
@@ -194,7 +193,7 @@ export default function EditJobPage() {
           </CardHeader>
           <CardContent className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2 md:col-span-2">
+              <div className="space-y-2 md:col-span-3">
                 <Label htmlFor="title" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Title *</Label>
                 <Input
                   id="title"
@@ -204,14 +203,6 @@ export default function EditJobPage() {
                   value={formData.title}
                   onChange={handleChange}
                   className="focus-visible:ring-blue-500"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Province/City *</Label>
-                <ProvinceSelect 
-                  value={formData.provinceCode}
-                  onChange={(val) => setFormData(prev => ({ ...prev, provinceCode: val }))}
                 />
               </div>
 
@@ -226,10 +217,11 @@ export default function EditJobPage() {
                   }}
                   onChange={(val: LocationData) => setFormData(prev => ({
                     ...prev,
-                    // Ignore LocationPicker's provinceCode to avoid overriding ProvinceSelect
                     detailedLocation: val.detailedLocation,
                     latitude: val.latitude,
-                    longitude: val.longitude
+                    longitude: val.longitude,
+                    // Sync ProvinceSelect automatically if Nominatim finds a matching province
+                    provinceCode: val.provinceCode !== "OTHER" ? val.provinceCode : prev.provinceCode
                   }))}
                 />
               </div>
