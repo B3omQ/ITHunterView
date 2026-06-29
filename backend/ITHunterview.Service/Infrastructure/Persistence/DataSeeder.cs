@@ -654,7 +654,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     var jobSkills = new List<JobSkillRequirements>();
                     var random = new System.Random();
 
-                    string[] locations = { "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Remote" };
+                    string[] locations = { "Hồ Chí Minh, Việt Nam", "Hà Nội, Việt Nam", "Đà Nẵng, Việt Nam", "Remote" };
+                    string[] provinceCodes = { "HCM", "HN", "DN", "OTHER" };
                     JobStatus[] statuses = { JobStatus.PUBLISHED, JobStatus.PUBLISHED, JobStatus.PUBLISHED, JobStatus.DRAFT, JobStatus.CLOSED };
 
                     string[] jobTitlesPrefixes = { "Senior", "Junior", "Middle", "Lead", "Principal", "Fresher", "Internship", "Manager" };
@@ -672,7 +673,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         var category = categories[random.Next(categories.Count)];
                         
                         string prefix = jobTitlesPrefixes[random.Next(jobTitlesPrefixes.Length)];
-                        string location = locations[random.Next(locations.Length)];
+                        int locIndex = random.Next(locations.Length);
+                        string location = locations[locIndex];
+                        string provinceCode = provinceCodes[locIndex];
                         JobStatus status = statuses[random.Next(statuses.Length)];
                         string level = prefix;
                         string workingModel = workingModels[random.Next(workingModels.Length)];
@@ -699,7 +702,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                             MinSalary = minSalary,
                             MaxSalary = maxSalary,
                             Currency = "USD",
-                            ProvinceCode = location,
+                            ProvinceCode = provinceCode,
                             DetailedLocation = location,
                             Status = status,
                             Level = level,
