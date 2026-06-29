@@ -207,27 +207,27 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
           )}
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-foreground">Specialization Code</label>
+            <label className="text-xs font-bold text-foreground">Major Name</label>
             <input
               type="text"
-              placeholder="Enter specialization code (e.g. DEV, BA...)"
+              placeholder="Enter full major name..."
+              value={majorForm.name}
+              onChange={handleNameChange}
+              className="w-full px-3.5 py-2 rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/60"
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-foreground">Major Code</label>
+            <input
+              type="text"
+              placeholder="Enter major code (e.g. DEV, BA...)"
               value={majorForm.code}
               onChange={(e) => setMajorForm({ ...majorForm, code: e.target.value.toUpperCase() })}
               className="w-full px-3.5 py-2 rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/60"
               required
               disabled={mode === 'edit'}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-foreground">Specialization Name</label>
-            <input
-              type="text"
-              placeholder="Enter full specialization name..."
-              value={majorForm.name}
-              onChange={handleNameChange}
-              className="w-full px-3.5 py-2 rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/60"
-              required
             />
           </div>
 

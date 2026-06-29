@@ -24,8 +24,19 @@ export interface Company {
   pendingHeadquartersAddress?: string;
   pendingVerificationMethod?: CompanyVerificationMethod;
   pendingVerificationDocumentUrl?: string;
+  pendingCompanyType?: string;
   rejectReason?: string;
   hasPendingChange?: boolean;
+
+  // New fields
+  tradeName?: string;
+  targetCustomers?: string[];
+  companyEmail?: string;
+  contactPhone?: string;
+  companyImages?: string[];
+  mainField?: string;
+  operatingMarkets?: string[];
+  employeeBenefits?: string;
 }
 
 export interface CreateCompanyDto {
@@ -38,6 +49,35 @@ export interface CreateCompanyDto {
   logoUrl?: string;
   taxCode?: string; // Optional during profile creation, required in legal
   headquartersAddress?: string; // Optional during profile creation
+
+  // New fields
+  tradeName?: string;
+  targetCustomers?: string[];
+  companyEmail?: string;
+  contactPhone?: string;
+  companyImages?: string[];
+  mainField?: string;
+  operatingMarkets?: string[];
+  employeeBenefits?: string;
+}
+
+export interface UpdateCompanyDto {
+  website?: string;
+  logoUrl?: string;
+  companySize?: string;
+  description?: string;
+  companyType?: string;
+  industry?: string;
+
+  // New fields
+  tradeName?: string;
+  targetCustomers?: string[];
+  companyEmail?: string;
+  contactPhone?: string;
+  companyImages?: string[];
+  mainField?: string;
+  operatingMarkets?: string[];
+  employeeBenefits?: string;
 }
 
 export interface VerifyCompanyDto {
@@ -46,6 +86,7 @@ export interface VerifyCompanyDto {
   taxCode: string;
   companyName: string;
   headquartersAddress: string;
+  companyType?: string;
 }
 
 export interface UpdateCompanyStatusDto {

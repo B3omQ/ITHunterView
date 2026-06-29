@@ -18,7 +18,7 @@ export const APP_ROUTES = {
     INTERVIEW: '/candidate/interview',
     APPLICATIONS: '/candidate/applications',
     PRICING: '/candidate/pricing',
-    SETTINGS: '/candidate/settings',
+    CHANGE_PASSWORD: '/candidate/change-password',
     NOTIFICATIONS: '/candidate/notifications',
   },
   RECRUITER: {
@@ -26,7 +26,7 @@ export const APP_ROUTES = {
     COMPANY: '/recruiter/company',
     JOBS: '/recruiter/jobs',
     ANALYTICS: '/recruiter/analytics',
-    SETTINGS: '/recruiter/settings',
+    CHANGE_PASSWORD: '/recruiter/change-password',
     NOTIFICATIONS: '/recruiter/notifications',
   },
   STAFF: {
@@ -36,7 +36,7 @@ export const APP_ROUTES = {
     PROMPTS: '/staff/prompts',
     QUESTION_BANK: '/staff/question-bank',
     AUDIT_LOGS: '/staff/audit-logs',
-    SETTINGS: '/staff/settings',
+    CHANGE_PASSWORD: '/staff/change-password',
     NOTIFICATIONS: '/staff/notifications',
   },
   ADMIN: {
@@ -47,7 +47,7 @@ export const APP_ROUTES = {
     SUBSCRIPTIONS: '/admin/subscriptions',
     FINANCE: '/admin/finance',
     AUDIT_LOGS: '/admin/audit-logs',
-    SETTINGS: '/admin/settings',
+    CHANGE_PASSWORD: '/admin/change-password',
     NOTIFICATIONS: '/admin/notifications',
   },
 } as const;
@@ -78,7 +78,7 @@ export const ROLE_MENUS: Record<string, Array<{ label: string; href: string; ico
     { label: 'CV Optimizer', href: APP_ROUTES.CANDIDATE.CV_OPTIMIZER, icon: 'BrainCircuit' },
     { label: 'Applications', href: APP_ROUTES.CANDIDATE.APPLICATIONS, icon: 'ClipboardList' },
     { label: 'Notifications', href: APP_ROUTES.CANDIDATE.NOTIFICATIONS, icon: 'Bell' },
-    { label: 'Settings', href: APP_ROUTES.CANDIDATE.SETTINGS, icon: 'Settings' },
+    { label: 'Change Password', href: APP_ROUTES.CANDIDATE.CHANGE_PASSWORD, icon: 'KeyRound' },
   ],
   recruiter: [
     { label: 'Dashboard', href: APP_ROUTES.RECRUITER.DASHBOARD, icon: 'LayoutDashboard' },
@@ -86,7 +86,7 @@ export const ROLE_MENUS: Record<string, Array<{ label: string; href: string; ico
     { label: 'Job Postings', href: APP_ROUTES.RECRUITER.JOBS, icon: 'Briefcase' },
     { label: 'Analytics', href: APP_ROUTES.RECRUITER.ANALYTICS, icon: 'BarChart3' },
     { label: 'Notifications', href: APP_ROUTES.RECRUITER.NOTIFICATIONS, icon: 'Bell' },
-    { label: 'Settings', href: APP_ROUTES.RECRUITER.SETTINGS, icon: 'Settings' },
+    { label: 'Change Password', href: APP_ROUTES.RECRUITER.CHANGE_PASSWORD, icon: 'KeyRound' },
   ],
   staff: [
     { label: 'Dashboard', href: APP_ROUTES.STAFF.DASHBOARD, icon: 'LayoutDashboard' },
@@ -96,7 +96,7 @@ export const ROLE_MENUS: Record<string, Array<{ label: string; href: string; ico
     { label: 'Question Bank', href: APP_ROUTES.STAFF.QUESTION_BANK, icon: 'FileText' },
     { label: 'Audit Logs', href: APP_ROUTES.STAFF.AUDIT_LOGS, icon: 'ClipboardList' },
     { label: 'Notifications', href: APP_ROUTES.STAFF.NOTIFICATIONS, icon: 'Bell' },
-    { label: 'Settings', href: APP_ROUTES.STAFF.SETTINGS, icon: 'Settings' },
+    { label: 'Change Password', href: APP_ROUTES.STAFF.CHANGE_PASSWORD, icon: 'KeyRound' },
   ],
   admin: [
     { label: 'Dashboard', href: APP_ROUTES.ADMIN.DASHBOARD, icon: 'LayoutDashboard' },
@@ -107,6 +107,6 @@ export const ROLE_MENUS: Record<string, Array<{ label: string; href: string; ico
     { label: 'Finance', href: APP_ROUTES.ADMIN.FINANCE, icon: 'BarChart3' },
     { label: 'Platform Safety', href: APP_ROUTES.ADMIN.AUDIT_LOGS, icon: 'Shield' },
     { label: 'Notifications', href: APP_ROUTES.ADMIN.NOTIFICATIONS, icon: 'Bell' },
-    { label: 'Settings', href: APP_ROUTES.ADMIN.SETTINGS, icon: 'Settings' },
+    { label: 'Change Password', href: APP_ROUTES.ADMIN.CHANGE_PASSWORD, icon: 'KeyRound' },
   ],
 };
