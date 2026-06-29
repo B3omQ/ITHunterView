@@ -40,7 +40,10 @@ namespace ITHunterview.Service.UseCase
                 Id = j.Id,
                 JobCode = j.JobCode,
                 Title = j.Title,
-                Location = j.Location,
+                ProvinceCode = j.ProvinceCode,
+                DetailedLocation = j.DetailedLocation,
+                Latitude = j.Latitude,
+                Longitude = j.Longitude,
 
                 Status = j.Status,
                 ApplicationCount = j.ApplicationCount,
@@ -101,7 +104,10 @@ namespace ITHunterview.Service.UseCase
                 MinSalary = dto.MinSalary,
                 MaxSalary = dto.MaxSalary,
                 Currency = dto.Currency,
-                Location = dto.Location,
+                ProvinceCode = dto.ProvinceCode,
+                DetailedLocation = dto.DetailedLocation,
+                Latitude = dto.Latitude,
+                Longitude = dto.Longitude,
 
                 Status = dto.Status,
                 Level = dto.Level,
@@ -145,7 +151,10 @@ namespace ITHunterview.Service.UseCase
             job.MinSalary = dto.MinSalary;
             job.MaxSalary = dto.MaxSalary;
             job.Currency = dto.Currency;
-            job.Location = dto.Location;
+            job.ProvinceCode = dto.ProvinceCode;
+            job.DetailedLocation = dto.DetailedLocation;
+            job.Latitude = dto.Latitude;
+            job.Longitude = dto.Longitude;
 
             job.Level = dto.Level;
             job.WorkingModel = dto.WorkingModel;
@@ -207,7 +216,10 @@ namespace ITHunterview.Service.UseCase
                 MinSalary = j.MinSalary,
                 MaxSalary = j.MaxSalary,
                 Currency = j.Currency,
-                Location = j.Location,
+                ProvinceCode = j.ProvinceCode,
+                DetailedLocation = j.DetailedLocation,
+                Latitude = j.Latitude,
+                Longitude = j.Longitude,
 
                 Status = j.Status,
                 Level = j.Level,

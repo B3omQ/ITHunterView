@@ -141,7 +141,7 @@ export default function JobDetailPage() {
                 <MapPin className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
                 <div>
                   <span className="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Location</span>
-                  <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{job.location}</span>
+                  <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{job.detailedLocation || job.provinceCode}</span>
                 </div>
               </div>
 

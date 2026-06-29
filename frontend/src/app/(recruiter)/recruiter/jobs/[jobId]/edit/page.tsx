@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ArrowLeft, Plus, X, Sparkles, AlertCircle, Loader2 } from "lucide-react"
 import { LEVELS, WORKING_MODELS, JOB_DOMAINS, JOB_EXPERTISES, VIETNAM_PROVINCES } from "@/lib/job-constants"
-import { LocationCombobox } from "@/components/shared/LocationCombobox"
+import { LocationPicker, LocationData } from "@/components/shared/LocationPicker"
 import { MajorCombobox } from "@/components/shared/MajorCombobox"
 
 export default function EditJobPage() {
@@ -21,7 +21,10 @@ export default function EditJobPage() {
     jobCode: "",
     title: "",
 
-    location: "",
+    provinceCode: "",
+    detailedLocation: "",
+    latitude: null as number | null,
+    longitude: null as number | null,
 
     status: "DRAFT",
     minSalary: "",
@@ -42,7 +45,7 @@ export default function EditJobPage() {
   const [selectedSkills, setSelectedSkills] = useState<Array<{ skillId: number; name: string; isMandatory: boolean }>>([])
   const [searchSkill, setSearchSkill] = useState("")
 
-  const [locationType, setLocationType] = useState("TP Hồ Chí Minh")
+
   const [searchDomain, setSearchDomain] = useState("")
 
   const loading = metadataLoading || detailLoading
@@ -55,7 +58,10 @@ export default function EditJobPage() {
         jobCode: job.jobCode || "",
         title: job.title || "",
 
-        location: job.location || "",
+        provinceCode: job.provinceCode || "",
+        detailedLocation: job.detailedLocation || "",
+        latitude: job.latitude || null,
+        longitude: job.longitude || null,
 
         status: job.status || "DRAFT",
         minSalary: job.minSalary ? job.minSalary.toString() : "",
@@ -78,16 +84,6 @@ export default function EditJobPage() {
         })))
       }
       
-      // Determine initial locationType based on job.location
-      const standardLocations = ["Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Remote"]
-      if (job.location) {
-        if (standardLocations.includes(job.location)) {
-          setLocationType(job.location)
-        } else {
-          // Default to Other if it's not empty and not in the standard list
-          setLocationType("Other")
-        }
-      }
     }
   }, [job])
 
@@ -211,33 +207,22 @@ export default function EditJobPage() {
               </div>
 
               <div className="space-y-2 col-span-1 md:col-span-2">
-                <Label htmlFor="locationType" className="font-semibold text-zinc-700 dark:text-zinc-300">Location *</Label>
-                <div className="flex gap-2">
-                  <LocationCombobox
-                    value={locationType}
-                    onChange={(val) => {
-                      setLocationType(val)
-                      if (val !== "Other") {
-                        setFormData(prev => ({ ...prev, location: val }))
-                      } else {
-                        setFormData(prev => ({ ...prev, location: "" }))
-                      }
-                    }}
-                    className={locationType === "Other" ? "w-1/3" : "w-full"}
-                  />
-                  
-                  {locationType === "Other" && (
-                    <Input
-                      id="location"
-                      name="location"
-                      placeholder="e.g. Can Tho, Binh Duong"
-                      required
-                      value={formData.location}
-                      onChange={handleChange}
-                      className="flex-1 focus-visible:ring-blue-500"
-                    />
-                  )}
-                </div>
+                <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Location *</Label>
+                <LocationPicker 
+                  value={{
+                    provinceCode: formData.provinceCode,
+                    detailedLocation: formData.detailedLocation,
+                    latitude: formData.latitude,
+                    longitude: formData.longitude
+                  }}
+                  onChange={(val: LocationData) => setFormData(prev => ({
+                    ...prev,
+                    provinceCode: val.provinceCode,
+                    detailedLocation: val.detailedLocation,
+                    latitude: val.latitude,
+                    longitude: val.longitude
+                  }))}
+                />
               </div>
             </div>
 

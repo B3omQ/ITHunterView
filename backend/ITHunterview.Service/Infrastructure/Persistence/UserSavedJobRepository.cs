@@ -40,7 +40,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 Title = x.job.Title,
                 CompanyName = x.company.Name,
                 LogoUrl = x.company.LogoUrl,
-                Location = x.job.Location,
+                ProvinceCode = x.job.ProvinceCode,
+                DetailedLocation = x.job.DetailedLocation,
                 SalaryText = $"{x.job.MinSalary} - {x.job.MaxSalary} {x.job.Currency}",
                 SavedAt = x.usj.CreatedAt
             }).ToList();

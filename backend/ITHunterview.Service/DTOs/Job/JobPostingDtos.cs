@@ -8,7 +8,10 @@ namespace ITHunterview.Service.DTOs.Job
         public Guid Id { get; set; }
         public string JobCode { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
-        public string Location { get; set; } = string.Empty;
+        public string ProvinceCode { get; set; } = string.Empty;
+        public string DetailedLocation { get; set; } = string.Empty;
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
 
         public JobStatus Status { get; set; }
         public int ApplicationCount { get; set; }
@@ -37,7 +40,10 @@ namespace ITHunterview.Service.DTOs.Job
         public decimal? MinSalary { get; set; }
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; } = "USD";
-        public string Location { get; set; } = string.Empty;
+        public string ProvinceCode { get; set; } = string.Empty;
+        public string DetailedLocation { get; set; } = string.Empty;
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
 
         public JobStatus Status { get; set; }
         public int ApplicationCount { get; set; }
@@ -63,7 +69,10 @@ namespace ITHunterview.Service.DTOs.Job
         public decimal? MinSalary { get; set; }
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; } = "USD";
-        public string Location { get; set; } = string.Empty;
+        public string ProvinceCode { get; set; } = string.Empty;
+        public string DetailedLocation { get; set; } = string.Empty;
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
 
         public JobStatus Status { get; set; } = JobStatus.DRAFT;
         public string? Level { get; set; }
@@ -85,7 +94,10 @@ namespace ITHunterview.Service.DTOs.Job
         public decimal? MinSalary { get; set; }
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; } = "USD";
-        public string Location { get; set; } = string.Empty;
+        public string ProvinceCode { get; set; } = string.Empty;
+        public string DetailedLocation { get; set; } = string.Empty;
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
 
         public JobStatus Status { get; set; }
         public string? Level { get; set; }

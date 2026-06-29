@@ -45,8 +45,18 @@ namespace ITHunterview.Domain.Entities
         [Column("currency")]
         public string Currency { get; set; }
 
-        [Column("location")]
-        public string Location { get; set; }
+        [Column("province_code")]
+        [MaxLength(50)]
+        public string ProvinceCode { get; set; }
+
+        [Column("detailed_location")]
+        public string DetailedLocation { get; set; }
+
+        [Column("latitude")]
+        public decimal? Latitude { get; set; }
+
+        [Column("longitude")]
+        public decimal? Longitude { get; set; }
 
         [Column("status")]
         public JobStatus Status { get; set; }

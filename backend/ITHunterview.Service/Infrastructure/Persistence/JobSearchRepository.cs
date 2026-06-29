@@ -48,10 +48,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 jobsQuery = jobsQuery.Where(j => j.PublishedAt >= thresholdDate);
             }
 
-            if (!string.IsNullOrEmpty(query.Location))
+            if (!string.IsNullOrEmpty(query.ProvinceCode))
             {
-                var lowerLocation = query.Location.ToLower();
-                jobsQuery = jobsQuery.Where(j => j.Location.ToLower().Contains(lowerLocation));
+                var lowerProvinceCode = query.ProvinceCode.ToLower();
+                jobsQuery = jobsQuery.Where(j => j.ProvinceCode.ToLower().Contains(lowerProvinceCode));
             }
 
             if (query.Levels != null && query.Levels.Any())
@@ -145,7 +145,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 MinSalary = x.job.MinSalary,
                 MaxSalary = x.job.MaxSalary,
                 Currency = x.job.Currency,
-                Location = x.job.Location,
+                ProvinceCode = x.job.ProvinceCode,
+                DetailedLocation = x.job.DetailedLocation,
                 Level = x.job.Level,
                 WorkingModel = x.job.WorkingModel,
                 JobExpertise = x.job.JobExpertise,
@@ -229,7 +230,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 MinSalary = jobWithCompany.job.MinSalary,
                 MaxSalary = jobWithCompany.job.MaxSalary,
                 Currency = jobWithCompany.job.Currency,
-                Location = jobWithCompany.job.Location,
+                ProvinceCode = jobWithCompany.job.ProvinceCode,
+                DetailedLocation = jobWithCompany.job.DetailedLocation,
                 Level = jobWithCompany.job.Level,
                 WorkingModel = jobWithCompany.job.WorkingModel,
                 JobExpertise = jobWithCompany.job.JobExpertise,

@@ -11,7 +11,10 @@ export interface JobPosting {
   id: string;
   jobCode: string;
   title: string;
-  location: string;
+  provinceCode: string;
+  detailedLocation: string;
+  latitude: number | null;
+  longitude: number | null;
   status: string;
   minSalary: number | null;
   maxSalary: number | null;
@@ -34,7 +37,10 @@ export interface JobPostingSummary {
   id: string;
   jobCode: string;
   title: string;
-  location: string;
+  provinceCode: string;
+  detailedLocation: string;
+  latitude: number | null;
+  longitude: number | null;
 
   status: string;
   applicationCount: number;
@@ -64,7 +70,10 @@ export interface Skill {
 export interface CreateJobPostingDto {
   jobCode: string;
   title: string;
-  location: string;
+  provinceCode: string;
+  detailedLocation: string;
+  latitude: number | null;
+  longitude: number | null;
   status: string;
   minSalary: number | null;
   maxSalary: number | null;

@@ -8,7 +8,8 @@ namespace ITHunterview.Service.DTOs.JobSearch
         public string Title { get; set; }
         public string CompanyName { get; set; }
         public string LogoUrl { get; set; }
-        public string Location { get; set; }
+        public string ProvinceCode { get; set; }
+        public string DetailedLocation { get; set; }
         public string SalaryText { get; set; }
         public DateTime SavedAt { get; set; }
     }

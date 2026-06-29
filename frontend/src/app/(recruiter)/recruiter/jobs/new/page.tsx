@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ArrowLeft, Plus, X, Sparkles, AlertCircle } from "lucide-react"
 import { LEVELS, WORKING_MODELS, JOB_DOMAINS, JOB_EXPERTISES, VIETNAM_PROVINCES } from "@/lib/job-constants"
-import { LocationCombobox } from "@/components/shared/LocationCombobox"
+import { LocationPicker, LocationData } from "@/components/shared/LocationPicker"
 import { MajorCombobox } from "@/components/shared/MajorCombobox"
 
 export default function CreateJobPage() {
@@ -21,7 +21,10 @@ export default function CreateJobPage() {
     jobCode: "",
     title: "",
 
-    location: "",
+    provinceCode: "",
+    detailedLocation: "",
+    latitude: null as number | null,
+    longitude: null as number | null,
 
     status: "DRAFT",
     minSalary: "",
@@ -42,7 +45,7 @@ export default function CreateJobPage() {
   const [selectedSkills, setSelectedSkills] = useState<Array<{ skillId: number; name: string; isMandatory: boolean }>>([])
   const [searchSkill, setSearchSkill] = useState("")
   
-  const [locationType, setLocationType] = useState("TP Hồ Chí Minh")
+
   const [searchDomain, setSearchDomain] = useState("")
 
   const loading = metadataLoading || saving || companyLoading
@@ -189,33 +192,22 @@ export default function CreateJobPage() {
                 />
               </div>
               <div className="space-y-2 col-span-1 md:col-span-2">
-                <Label htmlFor="locationType" className="font-semibold text-zinc-700 dark:text-zinc-300">Location *</Label>
-                <div className="flex gap-2">
-                  <LocationCombobox
-                    value={locationType}
-                    onChange={(val) => {
-                      setLocationType(val)
-                      if (val !== "Other") {
-                        setFormData(prev => ({ ...prev, location: val }))
-                      } else {
-                        setFormData(prev => ({ ...prev, location: "" }))
-                      }
-                    }}
-                    className={locationType === "Other" ? "w-1/3" : "w-full"}
-                  />
-                  
-                  {locationType === "Other" && (
-                    <Input
-                      id="location"
-                      name="location"
-                      placeholder="e.g. Can Tho, Binh Duong"
-                      required
-                      value={formData.location}
-                      onChange={handleChange}
-                      className="flex-1 focus-visible:ring-blue-500"
-                    />
-                  )}
-                </div>
+                <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Location *</Label>
+                <LocationPicker 
+                  value={{
+                    provinceCode: formData.provinceCode,
+                    detailedLocation: formData.detailedLocation,
+                    latitude: formData.latitude,
+                    longitude: formData.longitude
+                  }}
+                  onChange={(val: LocationData) => setFormData(prev => ({
+                    ...prev,
+                    provinceCode: val.provinceCode,
+                    detailedLocation: val.detailedLocation,
+                    latitude: val.latitude,
+                    longitude: val.longitude
+                  }))}
+                />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

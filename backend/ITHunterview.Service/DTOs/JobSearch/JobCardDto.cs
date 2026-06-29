@@ -12,7 +12,8 @@ namespace ITHunterview.Service.DTOs.JobSearch
         public decimal? MinSalary { get; set; }
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; }
-        public string Location { get; set; }
+        public string ProvinceCode { get; set; }
+        public string DetailedLocation { get; set; }
         public string? Level { get; set; }
         public string? WorkingModel { get; set; }
         public string? JobExpertise { get; set; }
