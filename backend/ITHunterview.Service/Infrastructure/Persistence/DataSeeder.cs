@@ -654,7 +654,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     var jobSkills = new List<JobSkillRequirements>();
                     var random = new System.Random();
 
-                    string[] locations = { "Hồ Chí Minh, Việt Nam", "Hà Nội, Việt Nam", "Đà Nẵng, Việt Nam", "Remote" };
+                    string[] locations = { "Hồ Chí Minh, Việt Nam", "Hà Nội, Việt Nam", "Đà Nẵng, Việt Nam" };
                     string[] provinceCodes = { "HCM", "HN", "DN", "OTHER" };
                     JobStatus[] statuses = { JobStatus.PUBLISHED, JobStatus.PUBLISHED, JobStatus.PUBLISHED, JobStatus.DRAFT, JobStatus.CLOSED };
 

@@ -92,18 +92,23 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
   const extractProvinceCode = (address: any) => {
     if (!address) return "OTHER";
     
-    // Nominatim returns state or city
-    const provinceName = address.state || address.city || address.province || "";
-    if (!provinceName) return "OTHER";
-
-    const normalized = provinceName.toLowerCase().replace("tỉnh ", "").replace("thành phố ", "");
-    
-    const match = PROVINCE_OPTIONS.find(p => 
-      p.label.toLowerCase().includes(normalized) || 
-      normalized.includes(p.label.toLowerCase())
+    // Nominatim returns province under inconsistent keys (state, city, province, or even 'yes')
+    // Check all values in the address object
+    const values = Object.values(address).map(v => 
+      String(v).toLowerCase().replace(/tỉnh /g, "").replace(/thành phố /g, "").trim()
     );
+
+    for (const val of values) {
+      const match = PROVINCE_OPTIONS.find(p => {
+        if (p.value === "OTHER") return false;
+        const normalizedLabel = p.label.toLowerCase().replace("tp. ", "").trim();
+        // Exact match or includes (safe enough for most provinces)
+        return val === normalizedLabel || val.includes(normalizedLabel);
+      });
+      if (match) return match.value;
+    }
     
-    return match ? match.value : "OTHER";
+    return "OTHER";
   };
 
   const handleSelectSuggestion = (suggestion: any) => {
