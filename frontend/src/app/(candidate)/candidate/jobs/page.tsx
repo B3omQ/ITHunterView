@@ -26,7 +26,7 @@ function CandidateJobsContent() {
     page: parseInt(searchParams.get('page') || '1', 10), 
     pageSize: 10,
     keyword: searchParams.get('query') || undefined,
-    location: searchParams.get('location') || undefined,
+    provinceCode: searchParams.get('location') || undefined,
 
     skill: searchParams.get('skill') || undefined,
     companyName: searchParams.get('companyName') || undefined,

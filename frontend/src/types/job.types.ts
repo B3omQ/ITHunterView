@@ -1,6 +1,6 @@
 export interface JobSearchQuery {
   keyword?: string;
-  location?: string;
+  provinceCode?: string;
 
   minSalary?: number;
   currency?: string;
@@ -27,7 +27,8 @@ export interface JobCardDto {
   minSalary?: number;
   maxSalary?: number;
   currency: string;
-  location: string;
+  provinceCode: string;
+  detailedLocation: string;
   level?: string;
   workingModel?: string;
   jobExpertise?: string;
@@ -42,7 +43,8 @@ export interface SavedJobDto {
   title: string;
   companyName: string;
   logoUrl: string;
-  location: string;
+  provinceCode: string;
+  detailedLocation: string;
   salaryText: string;
   savedAt: string;
 }
@@ -60,7 +62,10 @@ export interface JobDetailViewDto {
   minSalary?: number;
   maxSalary?: number;
   currency: string;
-  location: string;
+  provinceCode: string;
+  detailedLocation: string;
+  latitude: number | null;
+  longitude: number | null;
   level?: string;
   workingModel?: string;
   jobExpertise?: string;

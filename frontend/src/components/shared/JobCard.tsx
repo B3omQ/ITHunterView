@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DollarSign, Briefcase, Heart, Monitor, CheckSquare, MapPin } from 'lucide-react';
 import type { JobCardDto } from '@/types/job.types';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
+import { getProvinceLabel } from '@/lib/job-constants';
 
 interface JobCardProps {
   job: JobCardDto;
@@ -94,7 +95,7 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
                 <span>{job.workingModel || 'At office'}</span>
                 <span className="text-slate-300">•</span>
                 <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                <span>{job.location}</span>
+                <span>{getProvinceLabel(job.provinceCode)}</span>
               </div>
             </div>
           </div>

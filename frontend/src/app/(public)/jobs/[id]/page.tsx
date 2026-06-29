@@ -7,6 +7,7 @@ import { PageLoader } from '@/components/shared/PageLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { getProvinceLabel } from '@/lib/job-constants';
 import { MapPin, DollarSign, Calendar, Briefcase, ChevronLeft, Bookmark } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { ApplyJobModal } from '@/components/jobs/ApplyJobModal';
@@ -81,7 +82,7 @@ export default function PublicJobDetailPage() {
 
           <div className="flex flex-wrap gap-4 mt-8 text-sm font-medium text-slate-600">
             <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 rounded-md">
-              <MapPin className="w-4 h-4 text-primary" /> {job.location}
+              <MapPin className="w-4 h-4 text-primary" /> {job.detailedLocation || getProvinceLabel(job.provinceCode)}
             </span>
             {(job.minSalary || job.maxSalary) && (
               <span className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 rounded-md">

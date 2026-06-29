@@ -22,6 +22,7 @@ import {
   Target,
   Monitor
 } from "lucide-react"
+import { getProvinceLabel } from '@/lib/job-constants'
 
 export default function JobPostingsPage() {
   const router = useRouter()
@@ -197,7 +198,7 @@ export default function JobPostingsPage() {
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-zinc-500 dark:text-zinc-400">
                       <div className="flex items-center gap-1">
                         <MapPin className="h-4 w-4 shrink-0" />
-                        <span>{job.provinceCode}</span>
+                        <span>{getProvinceLabel(job.provinceCode)}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4 shrink-0" />

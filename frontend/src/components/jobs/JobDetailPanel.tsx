@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { ApplyJobModal } from '@/components/jobs/ApplyJobModal';
 import { useJobActions } from '@/hooks/useJobActions';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
+import { getProvinceLabel } from '@/lib/job-constants';
 
 interface JobDetailPanelProps {
   jobId: string;
@@ -104,7 +105,7 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
           <div className="flex items-start gap-2">
             <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
             <span className="flex-1 leading-snug">
-              {job.location} <ExternalLink className="inline-block w-3.5 h-3.5 ml-1 text-primary" />
+              {job.detailedLocation || getProvinceLabel(job.provinceCode)} <ExternalLink className="inline-block w-3.5 h-3.5 ml-1 text-primary" />
             </span>
           </div>
           {job.workingModel && (

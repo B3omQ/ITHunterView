@@ -11,6 +11,37 @@ export const VIETNAM_PROVINCES = [
   "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum"
 ];
 
+export const PROVINCE_OPTIONS = [
+  { label: "Hà Nội", value: "HN" },
+  { label: "TP. Hồ Chí Minh", value: "HCM" },
+  { label: "Đà Nẵng", value: "DN" },
+  { label: "Cần Thơ", value: "CT" },
+  { label: "Hải Phòng", value: "HP" },
+  { label: "Bình Dương", value: "BD" },
+  { label: "Đồng Nai", value: "DNA" },
+  { label: "Bắc Ninh", value: "BN" },
+  { label: "Quảng Ninh", value: "QN" },
+  { label: "Khánh Hòa", value: "KH" },
+  { label: "Thừa Thiên Huế", value: "TTH" },
+  { label: "Bà Rịa - Vũng Tàu", value: "VT" },
+  { label: "Quảng Nam", value: "QNA" },
+  { label: "Hải Dương", value: "HD" },
+  { label: "Thanh Hóa", value: "TH" },
+  { label: "Nghệ An", value: "NA" },
+  { label: "Lâm Đồng", value: "LD" },
+  { label: "Hưng Yên", value: "HY" },
+  { label: "Vĩnh Phúc", value: "VP" },
+  { label: "Thái Nguyên", value: "TN" },
+  { label: "Long An", value: "LA" },
+  { label: "International / Khác", value: "OTHER" }
+];
+
+export const getProvinceLabel = (value: string | undefined | null) => {
+  if (!value) return "Unknown";
+  const found = PROVINCE_OPTIONS.find(p => p.value === value);
+  return found ? found.label : value;
+};
+
 export const JOB_EXPERTISES = [
   "Software Engineer", "Frontend Engineer", "Backend Engineer", "Fullstack Engineer", 
   "Mobile Engineer", "DevOps Engineer", "Data Engineer", "Data Scientist", 

@@ -22,12 +22,7 @@ import {
 } from '@/lib/job-constants';
 import { useJobMetadata } from '@/hooks/useJobs';
 
-// Constants
-const LOCATIONS = [
-  "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Cần Thơ", "Hải Phòng",
-  "An Giang", "Bà Rịa - Vũng Tàu", "Bắc Giang", "Bắc Kạn", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cao Bằng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Tĩnh", "Hải Dương", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái",
-  "International", "Others"
-];
+import { getProvinceLabel, PROVINCE_OPTIONS } from '@/lib/job-constants';
 
 // Helper to parse array params safely
 const parseArrayParam = (param: string | null) => param ? param.split(',').filter(Boolean) : [];
@@ -260,7 +255,7 @@ export function JobSearchFilter() {
                 <Button variant="outline" className="w-full justify-between h-9 text-sm font-normal border-slate-300 bg-white">
                   <div className="flex items-center gap-2 truncate text-slate-600">
                     <MapPin className="h-4 w-4 text-slate-400" />
-                    {location || "All Cities"}
+                    {location ? getProvinceLabel(location) : "All Cities"}
                   </div>
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
@@ -273,20 +268,20 @@ export function JobSearchFilter() {
                   <CommandEmpty>No location found.</CommandEmpty>
                   <CommandGroup>
                     <ScrollArea className="h-[300px]">
-                      <CommandItem onSelect={() => {
+                      <CommandItem value="" onSelect={() => {
                         setLocation("");
                         applyFilters({ location: "" });
                         setLocationOpen(false);
                       }}>
                         All Cities
                       </CommandItem>
-                      {LOCATIONS.map((loc) => (
-                        <CommandItem key={loc} onSelect={() => {
-                          setLocation(loc);
-                          applyFilters({ location: loc });
+                      {PROVINCE_OPTIONS.map((loc) => (
+                        <CommandItem key={loc.value} value={loc.value} onSelect={() => {
+                          setLocation(loc.value);
+                          applyFilters({ location: loc.value });
                           setLocationOpen(false);
                         }}>
-                          {loc}
+                          {loc.label}
                         </CommandItem>
                       ))}
                     </ScrollArea>

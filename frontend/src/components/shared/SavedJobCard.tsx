@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { MapPin, DollarSign, Trash2 } from 'lucide-react';
 import type { SavedJobDto } from '@/types/job.types';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
+import { getProvinceLabel } from '@/lib/job-constants';
 
 interface SavedJobCardProps {
   job: SavedJobDto;
@@ -33,7 +34,7 @@ export function SavedJobCard({ job, onUnsave, isUnsaving }: SavedJobCardProps) {
                 <p className="text-muted-foreground text-sm">{job.companyName}</p>
                 <div className="flex items-center gap-4 mt-1 text-xs text-slate-500">
                   <span className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3" /> {job.location}
+                    <MapPin className="w-3 h-3" /> {getProvinceLabel(job.provinceCode)}
                   </span>
                   <span className="flex items-center gap-1">
                     <DollarSign className="w-3 h-3" /> {job.salaryText}
