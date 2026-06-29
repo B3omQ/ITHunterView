@@ -46,6 +46,7 @@ namespace ITHunterview.Service.UseCase
                 ApplicationCount = j.ApplicationCount,
                 ViewCount = j.ViewCount,
                 PublishedAt = j.PublishedAt,
+                ExpiresAt = j.ExpiresAt,
                 CreatedAt = j.CreatedAt,
                 Level = j.Level,
                 WorkingModel = j.WorkingModel,
@@ -111,6 +112,7 @@ namespace ITHunterview.Service.UseCase
                 ApplicationCount = 0,
                 ViewCount = 0,
                 PublishedAt = dto.Status == JobStatus.PUBLISHED ? DateTime.UtcNow : null,
+                ExpiresAt = dto.ExpiresAt,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -146,6 +148,7 @@ namespace ITHunterview.Service.UseCase
             job.MaxSalary = dto.MaxSalary;
             job.Currency = dto.Currency;
             job.Location = dto.Location;
+            job.ExpiresAt = dto.ExpiresAt;
 
             job.Level = dto.Level;
             job.WorkingModel = dto.WorkingModel;
@@ -217,6 +220,7 @@ namespace ITHunterview.Service.UseCase
                 ApplicationCount = j.ApplicationCount,
                 ViewCount = j.ViewCount,
                 PublishedAt = j.PublishedAt,
+                ExpiresAt = j.ExpiresAt,
                 CreatedAt = j.CreatedAt
             };
         }

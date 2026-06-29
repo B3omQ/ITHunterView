@@ -27,6 +27,7 @@ export interface JobPosting {
   skills?: JobSkill[];
   createdAt: string;
   publishedAt?: string;
+  expiresAt?: string;
   applicationCount?: number;
 }
 
@@ -40,6 +41,7 @@ export interface JobPostingSummary {
   applicationCount: number;
   viewCount: number;
   publishedAt?: string;
+  expiresAt?: string;
   createdAt: string;
   level?: string;
   workingModel?: string;
@@ -180,6 +182,18 @@ export const recruiterService = {
       return {
         success: false,
         message: error.response?.data?.message || error.message || 'Failed to fetch skills',
+      };
+    }
+  },
+
+  createSkill: async (name: string, categoryId: number = 1) => {
+    try {
+      const response = await api.post<ApiResponse<Skill>>('/api/skills', { name, categoryId });
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Failed to create skill',
       };
     }
   },

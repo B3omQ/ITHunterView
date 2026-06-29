@@ -66,9 +66,14 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
             <div className="flex items-center gap-2 mt-1">
               <DollarSign className="w-4 h-4 text-slate-700" />
               <span className="font-semibold text-sm underline cursor-pointer decoration-slate-400 underline-offset-2 text-slate-700">
-                {job.minSalary || job.maxSalary
-                  ? `${job.minSalary?.toLocaleString() || "0"} - ${job.maxSalary?.toLocaleString() || "∞"} ${job.currency}`
-                  : "Sign in to view salary"}
+                {!job.minSalary && !job.maxSalary 
+                  ? "Negotiable" 
+                  : (job.minSalary && !job.maxSalary)
+                    ? `From ${job.minSalary.toLocaleString()} ${job.currency}`
+                    : (!job.minSalary && job.maxSalary)
+                      ? `Up to ${job.maxSalary.toLocaleString()} ${job.currency}`
+                      : `${job.minSalary?.toLocaleString()} - ${job.maxSalary?.toLocaleString()} ${job.currency}`
+                }
               </span>
             </div>
           </div>

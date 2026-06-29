@@ -75,9 +75,14 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
             <div className="flex items-center gap-2 mt-2 text-slate-700">
               <DollarSign className="w-5 h-5 text-slate-700" />
               <span className="font-semibold text-sm underline cursor-pointer decoration-slate-400 underline-offset-2">
-                {job.minSalary || job.maxSalary
-                  ? `${job.minSalary?.toLocaleString() || "0"} - ${job.maxSalary?.toLocaleString() || "∞"} ${job.currency}`
-                  : "Sign in to view salary"}
+                {!job.minSalary && !job.maxSalary 
+                  ? "Negotiable" 
+                  : (job.minSalary && !job.maxSalary)
+                    ? `From ${job.minSalary.toLocaleString()} ${job.currency}`
+                    : (!job.minSalary && job.maxSalary)
+                      ? `Up to ${job.maxSalary.toLocaleString()} ${job.currency}`
+                      : `${job.minSalary?.toLocaleString()} - ${job.maxSalary?.toLocaleString()} ${job.currency}`
+                }
               </span>
             </div>
           </div>

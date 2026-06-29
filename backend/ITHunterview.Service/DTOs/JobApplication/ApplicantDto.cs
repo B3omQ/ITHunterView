@@ -9,9 +9,12 @@ namespace ITHunterview.Service.DTOs.JobApplication
         public Guid CandidateId { get; set; }
         public string? CandidateName { get; set; }
         public string? Email { get; set; }
+        public string? Phone { get; set; }
         public ApplicationStatus Status { get; set; }
         public DateTime ApplyDate { get; set; }
         public string? AvatarUrl { get; set; }
         public Guid? CvId { get; set; }
+        public string? CvUrl { get; set; }
+        public string? CvFileName { get; set; }
     }
 }

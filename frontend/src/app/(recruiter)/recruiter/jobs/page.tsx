@@ -1,10 +1,10 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { useJobs } from "@/hooks/useJobs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
 import { 
   Search, 
   Plus, 
@@ -114,7 +114,7 @@ export default function JobPostingsPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Top Header Card */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-xs border border-zinc-200/80 dark:border-zinc-800/80">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-2">
           <div>
             <h1 className="text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight">Job Postings</h1>
             <p className="text-zinc-500 dark:text-zinc-400 mt-1.5 text-sm">Manage and track your open positions</p>
@@ -129,8 +129,7 @@ export default function JobPostingsPage() {
         </div>
 
         {/* Filter Card */}
-        <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
-          <CardContent className="p-4 flex flex-col sm:flex-row items-center gap-4 justify-between">
+        <div className="flex flex-col sm:flex-row items-center gap-4 justify-between py-2 border-b border-zinc-200 dark:border-zinc-800 mb-4">
             <div className="relative w-full sm:max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
               <Input
@@ -157,8 +156,7 @@ export default function JobPostingsPage() {
                 <option value="CLOSED">Closed</option>
               </select>
             </div>
-          </CardContent>
-        </Card>
+        </div>
 
         {/* Job Card Grid View */}
         <div className="relative min-h-[400px]">
@@ -173,7 +171,7 @@ export default function JobPostingsPage() {
               {jobs.map((job) => (
                 <div 
                   key={job.id} 
-                  className="group bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-xl p-5 hover:shadow-md transition-all flex flex-col md:flex-row md:items-start justify-between gap-6 relative overflow-hidden"
+                  className="group bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-xl p-3 hover:shadow-md transition-all flex flex-col md:flex-row md:items-start justify-between gap-4 relative overflow-hidden"
                 >
                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-zinc-200 dark:bg-zinc-800 group-hover:bg-blue-500 transition-colors"></div>
                   
@@ -181,9 +179,9 @@ export default function JobPostingsPage() {
                     {/* Header: Title and Badges */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-lg text-zinc-900 dark:text-zinc-50 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        <Link href={`/recruiter/jobs/${job.id}`} className="font-bold text-base text-zinc-900 dark:text-zinc-50 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                           {job.title}
-                        </h3>
+                        </Link>
                         <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200/50 dark:border-zinc-700/50">
                           {job.jobCode}
                         </span>
@@ -202,11 +200,17 @@ export default function JobPostingsPage() {
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4 shrink-0" />
                         <span>Posted {formatDate(job.publishedAt || job.createdAt)}</span>
+                        {job.expiresAt && (
+                          <span className="text-xs ml-1 border-l pl-2 border-zinc-300 dark:border-zinc-700">Expires: {formatDate(job.expiresAt)}</span>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1">
+                      <Link 
+                        href={`/recruiter/jobs/${job.id}/applicants`} 
+                        className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
+                      >
                         <Users className="h-4 w-4 shrink-0" />
                         <span>{job.applicationCount} Applications</span>
-                      </div>
+                      </Link>
                     </div>
 
                     {/* Secondary Attributes (Level, Working Model, Domain, Expertise) */}
@@ -250,7 +254,7 @@ export default function JobPostingsPage() {
                   </div>
 
                   {/* Actions Column */}
-                  <div className="flex md:flex-col items-center justify-end md:justify-center gap-2 pt-4 md:pt-0 mt-4 md:mt-0 border-t md:border-t-0 md:border-l border-zinc-100 dark:border-zinc-800/80 md:pl-6">
+                  <div className="flex md:flex-col items-center justify-end md:justify-center gap-1 pt-2 md:pt-0 mt-2 md:mt-0 md:pl-4">
                     <Button 
                       variant="ghost" 
                       size="sm" 

@@ -12,6 +12,7 @@ import { ArrowLeft, Plus, X, Sparkles, AlertCircle } from "lucide-react"
 import { LEVELS, WORKING_MODELS, JOB_DOMAINS, JOB_EXPERTISES, VIETNAM_PROVINCES } from "@/lib/job-constants"
 import { LocationCombobox } from "@/components/shared/LocationCombobox"
 import { MajorCombobox } from "@/components/shared/MajorCombobox"
+import { recruiterService } from "@/services/recruiter.service"
 
 export default function CreateJobPage() {
   const router = useRouter()
@@ -26,6 +27,8 @@ export default function CreateJobPage() {
     status: "DRAFT",
     minSalary: "",
     maxSalary: "",
+    currency: "USD",
+    expiresAt: "",
     description: "",
     responsibilities: "",
     requirements: "",
@@ -41,6 +44,7 @@ export default function CreateJobPage() {
   
   const [selectedSkills, setSelectedSkills] = useState<Array<{ skillId: number; name: string; isMandatory: boolean }>>([])
   const [searchSkill, setSearchSkill] = useState("")
+  const [creatingSkill, setCreatingSkill] = useState(false)
   
   const [locationType, setLocationType] = useState("TP Hồ Chí Minh")
   const [searchDomain, setSearchDomain] = useState("")
@@ -80,6 +84,24 @@ export default function CreateJobPage() {
     setSelectedSkills(prev => prev.filter(s => s.skillId !== skillId))
   }
 
+  const handleCreateCustomSkill = async (isMandatory: boolean) => {
+    if (!searchSkill.trim()) return
+    setCreatingSkill(true)
+    try {
+      // Find categoryId = 1 or any default. If backend auto-assigns, just pass name
+      const res = await recruiterService.createSkill(searchSkill.trim(), 1)
+      if (res.success && res.data?.success && res.data.data) {
+        addSkill(res.data.data, isMandatory)
+      } else {
+        alert("Failed to create skill. " + (res.message || ""))
+      }
+    } catch (e: any) {
+      alert("Error creating skill.")
+    } finally {
+      setCreatingSkill(false)
+    }
+  }
+
   const handleSubmit = async (statusVal: "DRAFT" | "PUBLISHED") => {
     const payload = {
       ...formData,
@@ -87,7 +109,8 @@ export default function CreateJobPage() {
 
       minSalary: formData.minSalary ? Number(formData.minSalary) : null,
       maxSalary: formData.maxSalary ? Number(formData.maxSalary) : null,
-      currency: "USD",
+      currency: formData.currency,
+      expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null,
       skills: selectedSkills.map(s => ({ skillId: s.skillId, isMandatory: s.isMandatory }))
     }
 
@@ -291,7 +314,7 @@ export default function CreateJobPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="minSalary" className="font-semibold text-zinc-700 dark:text-zinc-300">Min Salary</Label>
                 <Input
@@ -318,6 +341,31 @@ export default function CreateJobPage() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="currency" className="font-semibold text-zinc-700 dark:text-zinc-300">Currency</Label>
+                <select
+                  id="currency"
+                  name="currency"
+                  className="w-full h-9 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-1 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  value={formData.currency}
+                  onChange={handleChange}
+                >
+                  <option value="USD">USD</option>
+                  <option value="VND">VND</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="expiresAt" className="font-semibold text-zinc-700 dark:text-zinc-300">Expiration Date</Label>
+                <Input
+                  id="expiresAt"
+                  name="expiresAt"
+                  type="date"
+                  value={formData.expiresAt}
+                  onChange={handleChange}
+                  className="focus-visible:ring-blue-500"
+                />
+              </div>
             </div>
 
             <hr className="border-zinc-200/60 dark:border-zinc-800/60" />
@@ -330,6 +378,74 @@ export default function CreateJobPage() {
                   Standardized Skill Dictionary
                 </h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Specify Must-have and Nice-to-have technical skills from standard list.</p>
+              </div>
+
+              {/* Skill Selector Input & Dropdown */}
+              <div className="space-y-2">
+                <Label htmlFor="searchSkill" className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Add Skills from dictionary</Label>
+                <Input
+                  id="searchSkill"
+                  placeholder="Type to search e.g. React, Docker, Python..."
+                  value={searchSkill}
+                  onChange={(e) => setSearchSkill(e.target.value)}
+                  className="focus-visible:ring-blue-500"
+                />
+
+                <div className="w-full max-h-48 overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-2 space-y-1">
+                  {filteredAvailableSkills.length > 0 ? (
+                    filteredAvailableSkills.map((skill) => (
+                      <div key={skill.id} className="flex items-center justify-between p-2 hover:bg-zinc-50 dark:hover:bg-zinc-900 rounded-md transition-all">
+                        <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{skill.name} <span className="text-xs text-zinc-400">({skill.categoryName || "Other"})</span></span>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => addSkill(skill, true)}
+                            className="h-7 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400"
+                          >
+                            + Must-have
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => addSkill(skill, false)}
+                            className="h-7 text-xs bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400"
+                          >
+                            + Nice-to-have
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-4 space-y-3">
+                      <span className="text-sm text-zinc-500">"{searchSkill}" is not in the dictionary.</span>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="default"
+                          disabled={creatingSkill}
+                          onClick={() => handleCreateCustomSkill(true)}
+                          className="text-xs bg-blue-600 hover:bg-blue-700"
+                        >
+                          Create as Must-have
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="default"
+                          disabled={creatingSkill}
+                          onClick={() => handleCreateCustomSkill(false)}
+                          className="text-xs bg-emerald-600 hover:bg-emerald-700"
+                        >
+                          Create as Nice-to-have
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-zinc-50/50 dark:bg-zinc-900/30 p-4 rounded-xl border border-zinc-200/60 dark:border-zinc-800/60">
@@ -347,7 +463,7 @@ export default function CreateJobPage() {
                         </span>
                       ))
                     ) : (
-                      <span className="text-xs text-zinc-400 p-2">Drag or select skills as Must-have</span>
+                      <span className="text-xs text-zinc-400 p-2">Select skills as Must-have from above</span>
                     )}
                   </div>
                 </div>
@@ -366,56 +482,10 @@ export default function CreateJobPage() {
                         </span>
                       ))
                     ) : (
-                      <span className="text-xs text-zinc-400 p-2">Drag or select skills as Nice-to-have</span>
+                      <span className="text-xs text-zinc-400 p-2">Select skills as Nice-to-have from above</span>
                     )}
                   </div>
                 </div>
-              </div>
-
-              {/* Skill Selector Input & Dropdown */}
-              <div className="relative">
-                <Label htmlFor="searchSkill" className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Add Skills from dictionary</Label>
-                <Input
-                  id="searchSkill"
-                  placeholder="Type to search e.g. React, Docker, Python..."
-                  value={searchSkill}
-                  onChange={(e) => setSearchSkill(e.target.value)}
-                  className="mt-1 focus-visible:ring-blue-500"
-                />
-
-                {searchSkill.trim() && (
-                  <div className="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-lg p-2 space-y-1">
-                    {filteredAvailableSkills.length > 0 ? (
-                      filteredAvailableSkills.map((skill) => (
-                        <div key={skill.id} className="flex items-center justify-between p-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md transition-all">
-                          <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{skill.name} <span className="text-xs text-zinc-400">({skill.categoryName || "Other"})</span></span>
-                          <div className="flex gap-2">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => addSkill(skill, true)}
-                              className="h-7 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400"
-                            >
-                              + Must-have
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => addSkill(skill, false)}
-                              className="h-7 text-xs bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400"
-                            >
-                              + Nice-to-have
-                            </Button>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center text-xs text-zinc-400 py-3">No matching skills found in dictionary.</div>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
 

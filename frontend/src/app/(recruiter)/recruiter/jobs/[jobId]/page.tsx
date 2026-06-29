@@ -100,14 +100,7 @@ export default function JobDetailPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              onClick={() => router.push(`/recruiter/jobs/${job.id}/applicants`)}
-              variant="outline"
-              className="bg-white hover:bg-zinc-100 text-zinc-700 font-medium shadow-sm border-zinc-200 gap-1.5"
-            >
-              <Users className="h-4 w-4" />
-              View Applicants
-            </Button>
+
             <Button
               onClick={() => router.push(`/recruiter/jobs/${job.id}/edit`)}
               className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md shadow-blue-500/10 gap-1.5"
