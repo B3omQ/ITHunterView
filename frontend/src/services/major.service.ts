@@ -19,6 +19,18 @@ export const majorService = {
       .get<ApiResponse<PaginatedResponse<MajorDto>>>('/api/master-data/majors', { params, signal })
       .then((res) => res.data),
 
+  getMajorTree: (
+    params: {
+      page?: number;
+      pageSize?: number;
+      search?: string;
+    },
+    signal?: AbortSignal
+  ) =>
+    api
+      .get<ApiResponse<PaginatedResponse<MajorDto>>>('/api/master-data/majors/tree', { params, signal })
+      .then((res) => res.data),
+
   createMajor: (dto: CreateMajorDto) =>
     api
       .post<ApiResponse<MajorDto>>('/api/master-data/majors', dto)

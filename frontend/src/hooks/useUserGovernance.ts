@@ -36,14 +36,13 @@ export function useUpdateUserStatus() {
   });
 }
 
-export function useUpdateUserRole() {
+export function useCreateStaff() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: userGovernanceService.updateUserRole,
-    onSuccess: (res, variables) => {
+    mutationFn: userGovernanceService.createStaff,
+    onSuccess: (res) => {
       if (res.success) {
         queryClient.invalidateQueries({ queryKey: ['users'] });
-        queryClient.invalidateQueries({ queryKey: ['user-detail', variables.id] });
         queryClient.invalidateQueries({ queryKey: ['activity-logs'] });
       }
     },

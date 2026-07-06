@@ -82,8 +82,10 @@ export default function StaffAuditLogsPage() {
         return 'bg-amber-500/5 text-amber-700 dark:text-amber-400 border border-amber-500/20';
       case 'SECURITY':
         return 'bg-violet-500/5 text-violet-700 dark:text-violet-400 border border-violet-500/20';
-      case 'ACCESS':
-        return 'bg-cyan-500/5 text-cyan-700 dark:text-cyan-400 border border-cyan-500/20';
+      case 'AUTH':
+        return 'bg-blue-500/5 text-blue-700 dark:text-blue-400 border border-blue-500/20';
+      case 'SYSTEM':
+        return 'bg-zinc-500/5 text-zinc-700 dark:text-zinc-400 border border-zinc-500/20';
       default:
         return 'bg-muted text-muted-foreground border border-border';
     }

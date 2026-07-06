@@ -11,9 +11,7 @@ export interface JobPosting {
   id: string;
   jobCode: string;
   title: string;
-  categoryId: number | null;
   location: string;
-  jobType: string;
   status: string;
   minSalary: number | null;
   maxSalary: number | null;
@@ -22,10 +20,34 @@ export interface JobPosting {
   responsibilities?: string;
   requirements?: string;
   benefits?: string;
+  level?: string;
+  workingModel?: string;
+  jobExpertise?: string;
+  jobDomain?: string[];
   skills?: JobSkill[];
   createdAt: string;
   publishedAt?: string;
+  expiresAt?: string;
   applicationCount?: number;
+}
+
+export interface JobPostingSummary {
+  id: string;
+  jobCode: string;
+  title: string;
+  location: string;
+
+  status: string;
+  applicationCount: number;
+  viewCount: number;
+  publishedAt?: string;
+  expiresAt?: string;
+  createdAt: string;
+  level?: string;
+  workingModel?: string;
+  jobExpertise?: string;
+  jobDomain?: string[];
+  skills: string[];
 }
 
 export interface JobCategory {
@@ -44,9 +66,7 @@ export interface Skill {
 export interface CreateJobPostingDto {
   jobCode: string;
   title: string;
-  categoryId: number | null;
   location: string;
-  jobType: string;
   status: string;
   minSalary: number | null;
   maxSalary: number | null;
@@ -55,6 +75,10 @@ export interface CreateJobPostingDto {
   responsibilities?: string;
   requirements?: string;
   benefits?: string;
+  level?: string;
+  workingModel?: string;
+  jobExpertise?: string;
+  jobDomain?: string[];
   skills: { skillId: number; isMandatory: boolean }[];
 }
 
@@ -78,7 +102,7 @@ export const recruiterService = {
     try {
       const statusParam = status && status !== 'ALL' ? `&status=${status}` : '';
       const searchParam = search ? `&search=${encodeURIComponent(search)}` : '';
-      const response = await api.get<ApiResponse<PaginatedResult<JobPosting>>>(
+      const response = await api.get<ApiResponse<PaginatedResult<JobPostingSummary>>>(
         `/api/jobpostings?page=${page}&pageSize=${pageSize}${statusParam}${searchParam}`
       );
       return { success: true, data: response.data };
@@ -158,6 +182,30 @@ export const recruiterService = {
       return {
         success: false,
         message: error.response?.data?.message || error.message || 'Failed to fetch skills',
+      };
+    }
+  },
+
+  createSkill: async (name: string, categoryId: number = 1) => {
+    try {
+      const response = await api.post<ApiResponse<Skill>>('/api/skills', { name, categoryId });
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Failed to create skill',
+      };
+    }
+  },
+
+  getMajors: async () => {
+    try {
+      const response = await api.get<ApiResponse<PaginatedResult<{ id: number; name: string }>>>('/api/majors?pageSize=1000');
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Failed to fetch majors',
       };
     }
   },

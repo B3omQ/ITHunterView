@@ -97,15 +97,78 @@ export default function JobApplicantsPage() {
     }
   }
 
+  const isFinalStatus = (status: ApplicationStatus) => {
+    return ["HIRED", "REJECTED", "WITHDRAWN"].includes(status as string);
+  }
+
+  const formatStatusText = (status: string) => {
+    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+  }
+
+  const handleDownloadCv = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename || 'candidate_cv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Failed to download directly, falling back to new tab", err);
+      window.open(url, '_blank');
+    }
+  }
+
+  const getEmbedUrl = (url: string) => {
+    if (!url) return '';
+    const cleanUrl = url.split('?')[0].toLowerCase();
+    const isDoc = cleanUrl.endsWith('.doc') || cleanUrl.endsWith('.docx');
+    
+    if (isDoc) {
+      return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+    }
+    
+    return url;
+  };
+
+  const getStatusColorClasses = (status: ApplicationStatus) => {
+    switch (status) {
+      case ApplicationStatus.APPLIED:
+        return "bg-blue-50 text-blue-700 border-blue-200 focus:ring-blue-500 focus:border-blue-500"
+      case ApplicationStatus.VIEWED:
+        return "bg-indigo-50 text-indigo-700 border-indigo-200 focus:ring-indigo-500 focus:border-indigo-500"
+      case ApplicationStatus.SHORTLISTED:
+        return "bg-amber-50 text-amber-700 border-amber-200 focus:ring-amber-500 focus:border-amber-500"
+      case ApplicationStatus.INTERVIEWING:
+        return "bg-purple-50 text-purple-700 border-purple-200 focus:ring-purple-500 focus:border-purple-500"
+      case ApplicationStatus.OFFERED:
+        return "bg-emerald-50 text-emerald-700 border-emerald-200 focus:ring-emerald-500 focus:border-emerald-500"
+      case ApplicationStatus.HIRED:
+        return "bg-green-50 text-green-700 border-green-200 cursor-not-allowed"
+      case ApplicationStatus.REJECTED:
+        return "bg-rose-50 text-rose-700 border-rose-200 cursor-not-allowed"
+      case ApplicationStatus.WITHDRAWN:
+        return "bg-zinc-100 text-zinc-600 border-zinc-200 cursor-not-allowed"
+      default:
+        return "bg-zinc-50 text-zinc-700 border-zinc-200 focus:ring-zinc-500 focus:border-zinc-500"
+    }
+  }
+
   const renderStatusSelect = (applicant: ApplicantDto) => {
+    const disabled = isFinalStatus(applicant.status);
     return (
       <select 
         value={applicant.status}
+        disabled={disabled}
         onChange={(e) => handleStatusChange(applicant.id, e.target.value as ApplicationStatus)}
-        className="text-xs font-semibold bg-zinc-50 border border-zinc-200 text-zinc-700 rounded-md py-1.5 px-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+        className={`text-xs font-semibold border rounded-md py-1.5 px-2 outline-none transition-colors ${getStatusColorClasses(applicant.status)} ${!disabled && 'cursor-pointer shadow-sm hover:brightness-95'}`}
       >
-        {Object.values(ApplicationStatus).map(status => (
-          <option key={status} value={status}>{status}</option>
+        {Array.from(new Set([applicant.status, ApplicationStatus.APPLIED, ApplicationStatus.VIEWED])).map(status => (
+          <option key={status} value={status} className="bg-white text-zinc-900">{formatStatusText(status as string)}</option>
         ))}
       </select>
     )
@@ -114,7 +177,7 @@ export default function JobApplicantsPage() {
   const totalPages = Math.ceil(totalCount / pageSize)
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 py-10 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-background py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Header Breadcrumb & Actions */}
@@ -152,7 +215,7 @@ export default function JobApplicantsPage() {
               <thead className="bg-zinc-50/80 border-b border-zinc-200/80 text-zinc-500 font-semibold text-xs uppercase tracking-wider">
                 <tr>
                   <th className="px-6 py-4">Candidate Name</th>
-                  <th className="px-6 py-4">Email</th>
+                  <th className="px-6 py-4">Contact Details</th>
                   <th className="px-6 py-4">Apply Date</th>
                   <th className="px-6 py-4">Current Stage</th>
                   <th className="px-6 py-4 text-right">Action</th>
@@ -202,9 +265,17 @@ export default function JobApplicantsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-zinc-500">
-                          <Mail className="h-3.5 w-3.5" />
-                          <span>{applicant.email}</span>
+                        <div className="flex flex-col gap-1.5 text-zinc-500">
+                          <div className="flex items-center gap-1.5">
+                            <Mail className="h-3.5 w-3.5" />
+                            <span>{applicant.email}</span>
+                          </div>
+                          {applicant.phone && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="h-3.5 w-3.5 flex items-center justify-center font-bold">📞</span>
+                              <span>{applicant.phone}</span>
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -217,13 +288,25 @@ export default function JobApplicantsPage() {
                         {renderStatusSelect(applicant)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <Button 
-                          onClick={() => handleViewProfile(applicant.id)}
-                          className="bg-slate-900 hover:bg-slate-800 text-white h-8 text-xs px-3 font-semibold shadow-sm"
-                        >
-                          <Eye className="h-3.5 w-3.5 mr-1.5" />
-                          View Profile
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          {applicant.cvUrl && (
+                            <Button 
+                              variant="outline"
+                              onClick={() => handleDownloadCv(applicant.cvUrl!, applicant.cvFileName || "candidate_cv.pdf")}
+                              className="bg-white border-zinc-200 text-zinc-700 h-8 text-xs px-3 font-semibold shadow-sm hover:bg-zinc-50"
+                              title="Download CV"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          <Button 
+                            onClick={() => handleViewProfile(applicant.id)}
+                            className="bg-slate-900 hover:bg-slate-800 text-white h-8 text-xs px-3 font-semibold shadow-sm"
+                          >
+                            <Eye className="h-3.5 w-3.5 mr-1.5" />
+                            View Profile
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -259,7 +342,7 @@ export default function JobApplicantsPage() {
 
         {/* Application Details Modal */}
         <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
-          <DialogContent className="sm:max-w-[600px] bg-white">
+          <DialogContent className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto bg-white">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-zinc-900">Application Details</DialogTitle>
             </DialogHeader>
@@ -285,37 +368,51 @@ export default function JobApplicantsPage() {
                       <p className="text-sm text-zinc-500 flex items-center gap-1.5 mt-1">
                         <Mail className="h-4 w-4" /> {selectedDetail.email}
                       </p>
+                      {selectedDetail.phone && (
+                        <p className="text-sm text-zinc-500 flex items-center gap-1.5 mt-0.5">
+                          <span className="h-4 w-4 flex items-center justify-center font-bold">📞</span> {selectedDetail.phone}
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-semibold text-zinc-900">Cover Letter</h4>
-                    <div className="bg-zinc-50 p-4 rounded-lg border border-zinc-200/60 text-sm text-zinc-700 whitespace-pre-wrap min-h-[100px]">
-                      {selectedDetail.coverLetter || <span className="text-zinc-400 italic">No cover letter provided.</span>}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold text-zinc-900">Cover Letter</h4>
+                      <div className="bg-zinc-50 p-4 rounded-lg border border-zinc-200/60 text-sm text-zinc-700 whitespace-pre-wrap min-h-[500px] max-h-[500px] overflow-y-auto">
+                        {selectedDetail.coverLetter || <span className="text-zinc-400 italic">No cover letter provided.</span>}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-semibold text-zinc-900">Resume / CV</h4>
-                    {selectedDetail.cvUrl ? (
-                      <div className="flex items-center justify-between bg-blue-50/50 border border-blue-100 p-4 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-8 w-8 text-blue-600" />
-                          <div>
-                            <p className="text-sm font-medium text-zinc-900">{selectedDetail.cvFileName || "candidate_cv.pdf"}</p>
-                            <p className="text-xs text-zinc-500">View or download attached document</p>
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold text-zinc-900">Resume / CV</h4>
+                      {selectedDetail.cvUrl ? (
+                        <div className="flex flex-col h-[500px] border border-slate-200 rounded-xl bg-slate-50 overflow-hidden shadow-xs">
+                          <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-sm font-semibold text-slate-900 truncate" title={selectedDetail.cvFileName || "candidate_cv.pdf"}>
+                                {selectedDetail.cvFileName || "candidate_cv.pdf"}
+                              </span>
+                              <span className="text-xs text-slate-500">
+                                Live Preview
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex-1 w-full h-full min-h-0 bg-slate-100">
+                            <iframe
+                              src={getEmbedUrl(selectedDetail.cvUrl)}
+                              className="w-full h-full border-0"
+                              title={selectedDetail.cvFileName || "candidate_cv.pdf"}
+                            />
                           </div>
                         </div>
-                        <Button variant="outline" size="sm" className="bg-white" onClick={() => window.open(selectedDetail.cvUrl, '_blank')}>
-                          <Download className="h-4 w-4 mr-2" /> Download
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="bg-zinc-50 p-4 rounded-lg border border-zinc-200/60 flex items-center gap-3">
-                        <FileText className="h-5 w-5 text-zinc-400" />
-                        <span className="text-sm text-zinc-500 italic">No CV attached.</span>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="bg-zinc-50 p-4 rounded-lg border border-zinc-200/60 flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-zinc-400" />
+                          <span className="text-sm text-zinc-500 italic">No CV attached.</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </>
               ) : (

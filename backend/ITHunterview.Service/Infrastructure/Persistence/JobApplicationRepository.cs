@@ -23,6 +23,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             var query = from application in _context.JobApplications
                         join profile in _context.CandidateProfiles on application.CandidateId equals profile.Id
                         join user in _context.Users on profile.UserId equals user.Id
+                        join cv in _context.Cvs on application.CvId equals cv.Id into cvs
+                        from c in cvs.DefaultIfEmpty()
                         where application.JobId == jobId
                         orderby application.CreatedAt descending
                         select new ApplicantDto
@@ -31,10 +33,13 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                             CandidateId = profile.Id,
                             CandidateName = profile.FirstName + " " + profile.LastName,
                             Email = user.Email,
+                            Phone = profile.Phone,
                             Status = application.Status,
                             ApplyDate = application.CreatedAt,
                             AvatarUrl = profile.AvatarUrl,
-                            CvId = application.CvId
+                            CvId = application.CvId,
+                            CvUrl = c != null ? c.FileUrl : null,
+                            CvFileName = c != null ? c.FileName : null
                         };
 
             var totalCount = await query.CountAsync();
@@ -92,10 +97,13 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 CandidateId = result.profile.Id,
                 CandidateName = result.profile.FirstName + " " + result.profile.LastName,
                 Email = result.user.Email,
+                Phone = result.profile.Phone,
                 Status = result.application.Status,
                 ApplyDate = result.application.CreatedAt,
                 AvatarUrl = result.profile.AvatarUrl,
-                CoverLetter = result.application.CoverLetter,
+                CoverLetter = string.IsNullOrWhiteSpace(result.application.CoverLetter) 
+                    ? GenerateCoverLetterTemplate(result.profile, result.user) 
+                    : result.application.CoverLetter,
                 CvId = result.application.CvId
             };
 
@@ -110,6 +118,65 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             }
 
             return dto;
+        }
+
+        public async Task<PagedResult<CandidateAppliedJobDto>> GetCandidateAppliedJobsAsync(Guid candidateId, int page, int pageSize)
+        {
+            var query = from application in _context.JobApplications
+                        join job in _context.JobPostings on application.JobId equals job.Id
+                        join company in _context.Companies on job.CompanyId equals company.Id
+                        where application.CandidateId == candidateId
+                        orderby application.CreatedAt descending
+                        select new CandidateAppliedJobDto
+                        {
+                            Id = application.Id,
+                            JobId = job.Id,
+                            JobTitle = job.Title,
+                            CompanyName = company.Name,
+                            CompanyLogoUrl = company.LogoUrl,
+                            Status = application.Status,
+                            ApplyDate = application.CreatedAt
+                        };
+
+            var totalCount = await query.CountAsync();
+            var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            return new PagedResult<CandidateAppliedJobDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Total = totalCount,
+                TotalItems = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
+        private string GenerateCoverLetterTemplate(CandidateProfiles profile, User user)
+        {
+            var name = string.IsNullOrWhiteSpace(profile.FirstName) && string.IsNullOrWhiteSpace(profile.LastName) 
+                ? "Candidate" 
+                : $"{profile.FirstName} {profile.LastName}".Trim();
+            
+            var location = string.IsNullOrWhiteSpace(profile.Location) ? "Not specified" : profile.Location;
+            var phone = string.IsNullOrWhiteSpace(profile.Phone) ? "Not provided" : profile.Phone;
+
+            return $@"Dear Hiring Manager,
+
+I am writing to express my interest in this position. Below is a brief summary of my profile:
+
+- Name: {name}
+- Email: {user.Email}
+- Phone: {phone}
+- Location: {location}
+
+About Me:
+{(string.IsNullOrWhiteSpace(profile.AboutMe) ? "I am an enthusiastic candidate looking for new opportunities to grow and contribute to your team." : profile.AboutMe)}
+
+Please find my CV attached for more details regarding my skills and experiences. I look forward to the opportunity to discuss my application with you.
+
+Sincerely,
+{name}";
         }
     }
 }

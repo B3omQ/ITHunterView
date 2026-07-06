@@ -1,8 +1,20 @@
 export interface JobSearchQuery {
   keyword?: string;
   location?: string;
-  jobType?: string;
-  categoryId?: number;
+
+  minSalary?: number;
+  currency?: string;
+  skill?: string;
+  companyName?: string;
+  postedWithinDays?: number;
+  status?: string;
+  levels?: string[];
+  workingModels?: string[];
+  jobDomains?: string[];
+  companyIndustries?: string[];
+  companyTypes?: string[];
+  jobExpertises?: string[];
+  maxSalary?: number;
   page?: number;
   pageSize?: number;
 }
@@ -16,7 +28,10 @@ export interface JobCardDto {
   maxSalary?: number;
   currency: string;
   location: string;
-  jobType: string;
+  level?: string;
+  workingModel?: string;
+  jobExpertise?: string;
+  jobDomain?: string[];
   publishedAt?: string;
   isSaved?: boolean;
   skills?: string[];
@@ -46,7 +61,10 @@ export interface JobDetailViewDto {
   maxSalary?: number;
   currency: string;
   location: string;
-  jobType: string;
+  level?: string;
+  workingModel?: string;
+  jobExpertise?: string;
+  jobDomain?: string[];
   status: string;
   publishedAt?: string;
   isSaved?: boolean;

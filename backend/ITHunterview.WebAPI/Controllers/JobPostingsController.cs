@@ -29,7 +29,22 @@ namespace ITHunterview.WebAPI.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 7)
         {
-            var result = await _jobPostingsUseCase.GetJobsAsync(search, status, page, pageSize);
+            Guid? recruiterId = null;
+
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                var role = User.FindFirst(ClaimTypes.Role)?.Value ?? User.FindFirst("role")?.Value;
+                if (role == "recruiter")
+                {
+                    var resolvedId = await ResolveRecruiterIdAsync();
+                    if (resolvedId != Guid.Empty)
+                    {
+                        recruiterId = resolvedId;
+                    }
+                }
+            }
+
+            var result = await _jobPostingsUseCase.GetJobsAsync(search, status, page, pageSize, recruiterId);
             return Ok(result);
         }
 

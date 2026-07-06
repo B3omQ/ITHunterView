@@ -75,13 +75,13 @@ namespace ITHunterview.Service.UseCase
             var isCategoryValid = await _skillCategoryRepository.CategoryExistsAsync(dto.CategoryId);
             if (!isCategoryValid)
             {
-                return new ResponseBase<SkillDto>("Danh mục kỹ năng không tồn tại.");
+                return new ResponseBase<SkillDto>("Skill category does not exist.");
             }
 
             var isDuplicate = await _skillRepository.ExistsByNameAsync(dto.Name);
             if (isDuplicate)
             {
-                return new ResponseBase<SkillDto>("Tên kỹ năng đã tồn tại trong hệ thống.");
+                return new ResponseBase<SkillDto>("Skill name already exists in the system.");
             }
 
             var skill = new Skills
@@ -108,7 +108,7 @@ namespace ITHunterview.Service.UseCase
                 CreatedBy = skill.CreatedBy
             };
 
-            return new ResponseBase<SkillDto>(resultDto, "Thêm kỹ năng mới thành công.");
+            return new ResponseBase<SkillDto>(resultDto, "Skill created successfully.");
         }
 
         public async Task<ResponseBase<SkillDto>> UpdateSkillAsync(int id, UpdateSkillDto dto, Guid userId)
@@ -116,19 +116,19 @@ namespace ITHunterview.Service.UseCase
             var skill = await _skillRepository.GetByIdAsync(id);
             if (skill == null)
             {
-                return new ResponseBase<SkillDto>("Kỹ năng không tồn tại.");
+                return new ResponseBase<SkillDto>("Skill does not exist.");
             }
 
             var isCategoryValid = await _skillCategoryRepository.CategoryExistsAsync(dto.CategoryId);
             if (!isCategoryValid)
             {
-                return new ResponseBase<SkillDto>("Danh mục kỹ năng không tồn tại.");
+                return new ResponseBase<SkillDto>("Skill category does not exist.");
             }
 
             var isDuplicate = await _skillRepository.ExistsByNameAsync(dto.Name, id);
             if (isDuplicate)
             {
-                return new ResponseBase<SkillDto>("Tên kỹ năng đã tồn tại trong hệ thống.");
+                return new ResponseBase<SkillDto>("Skill name already exists in the system.");
             }
 
             skill.Name = dto.Name.Trim();
@@ -153,7 +153,7 @@ namespace ITHunterview.Service.UseCase
                 UpdatedBy = skill.UpdatedBy
             };
 
-            return new ResponseBase<SkillDto>(resultDto, "Cập nhật kỹ năng thành công.");
+            return new ResponseBase<SkillDto>(resultDto, "Skill updated successfully.");
         }
 
         public async Task<ResponseBase<SkillDto>> UpdateSkillStatusAsync(int id, UpdateSkillStatusDto dto, Guid userId)
@@ -161,7 +161,7 @@ namespace ITHunterview.Service.UseCase
             var skill = await _skillRepository.GetByIdAsync(id);
             if (skill == null)
             {
-                return new ResponseBase<SkillDto>("Kỹ năng không tồn tại.");
+                return new ResponseBase<SkillDto>("Skill does not exist.");
             }
 
             if (dto.Status == SkillStatus.DEACTIVE && !dto.Force)
@@ -170,7 +170,7 @@ namespace ITHunterview.Service.UseCase
                 var jobCount = await _skillRepository.CountJobRequirementsAsync(id);
                 if (userCount > 0 || jobCount > 0)
                 {
-                    return new ResponseBase<SkillDto>($"Kỹ năng đang được sử dụng bởi {userCount} ứng viên và {jobCount} tin tuyển dụng. Bạn có chắc chắn muốn vô hiệu hóa không?");
+                    return new ResponseBase<SkillDto>($"Skill is currently used by {userCount} candidates and {jobCount} jobs. Are you sure you want to deactivate it?");
                 }
             }
 
@@ -193,7 +193,7 @@ namespace ITHunterview.Service.UseCase
                 UpdatedBy = skill.UpdatedBy
             };
 
-            string message = "Cập nhật trạng thái kỹ năng thành công.";
+            string message = "Skill status updated successfully.";
             return new ResponseBase<SkillDto>(resultDto, message);
         }
 
@@ -202,17 +202,17 @@ namespace ITHunterview.Service.UseCase
             var skill = await _skillRepository.GetByIdAsync(id);
             if (skill == null)
             {
-                return ResponseBase.Fail("Kỹ năng không tồn tại.");
+                return ResponseBase.Fail("Skill does not exist.");
             }
 
             var isInUse = await _skillRepository.IsSkillInUseAsync(id);
             if (isInUse)
             {
-                return ResponseBase.Fail("Không thể xóa kỹ năng này vì đang có ứng viên hoặc tin tuyển dụng sử dụng. Vui lòng chuyển trạng thái sang DEACTIVE thay thế.");
+                return ResponseBase.Fail("Cannot delete this skill because there are candidates or jobs using it. Please change its status to DEACTIVE instead.");
             }
 
             await _skillRepository.DeleteAsync(skill);
-            return ResponseBase.Ok("Xóa kỹ năng thành công.");
+            return ResponseBase.Ok("Skill deleted successfully.");
         }
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Service.Interface.Persistence;
+using ITHunterview.Service.Interface.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -56,6 +57,9 @@ namespace ITHunterview.WebAPI.BackgroundServices
 
             using (var scope = _serviceProvider.CreateScope())
             {
+                var actorProvider = scope.ServiceProvider.GetService<IActorProvider>();
+                actorProvider?.SetActor(Guid.Empty, "system_background_service@ithunterview.com", "system", "localhost", "LogCleanupBackgroundService");
+
                 var auditLogRepository = scope.ServiceProvider.GetRequiredService<IAuditLogRepository>();
                 var deletedCount = await auditLogRepository.PurgeActivityLogsAsync(cutoffDate);
                 _logger.LogInformation("Successfully purged {Count} logs older than {CutoffDate}.", deletedCount, cutoffDate);

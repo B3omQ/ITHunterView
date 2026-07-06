@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MapPin, DollarSign, Trash2 } from 'lucide-react';
 import type { SavedJobDto } from '@/types/job.types';
+import { CompanyLogo } from '@/components/shared/CompanyLogo';
 
 interface SavedJobCardProps {
   job: SavedJobDto;
@@ -22,12 +23,8 @@ export function SavedJobCard({ job, onUnsave, isUnsaving }: SavedJobCardProps) {
       <Card className="hover:border-primary/50 transition-colors group">
         <CardContent className="p-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 flex-1">
-             <div className="w-12 h-12 rounded overflow-hidden bg-slate-100 flex items-center justify-center shrink-0 border">
-                {job.logoUrl ? (
-                  <img src={job.logoUrl} alt={job.companyName} className="object-contain w-full h-full" />
-                ) : (
-                  <span className="text-muted-foreground text-xs text-center">{job.companyName[0]}</span>
-                )}
+              <div className="w-12 h-12 rounded overflow-hidden bg-slate-100 flex items-center justify-center shrink-0 border">
+                <CompanyLogo src={job.logoUrl} alt={job.companyName} fallbackType="briefcase" fallbackIconClassName="text-slate-400 w-5 h-5" />
               </div>
               <div>
                 <h3 className="font-semibold text-primary group-hover:underline line-clamp-1">

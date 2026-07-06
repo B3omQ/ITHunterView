@@ -14,5 +14,6 @@ namespace ITHunterview.Service.Interface.Persistence
         Task<JobApplications?> GetByIdAsync(Guid id);
         Task UpdateAsync(JobApplications entity);
         Task<JobApplicationDetailDto?> GetApplicationDetailAsync(Guid id);
+        Task<PagedResult<CandidateAppliedJobDto>> GetCandidateAppliedJobsAsync(Guid candidateId, int page, int pageSize);
     }
 }

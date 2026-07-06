@@ -7,11 +7,6 @@ import { Loader2, CheckCircle2, XCircle, Mail, Send } from "lucide-react"
 import { authService } from "@/services/auth.service"
 import { Logo } from "@/components/layout/Logo"
 
-// loading  → đang gọi API xác thực token
-// pending  → vừa đăng ký xong, chờ user click link trong email
-// success  → xác thực thành công
-// error    → token sai / hết hạn
-// missing  → vào trang trực tiếp không có token lẫn email
 type Status = "loading" | "pending" | "success" | "error" | "missing"
 
 function VerifyEmailContent() {
@@ -28,7 +23,6 @@ function VerifyEmailContent() {
   })
   const [message, setMessage] = useState("")
 
-  // Resend form state
   const [resendEmail, setResendEmail] = useState(emailParam)
   const [resendLoading, setResendLoading] = useState(false)
   const [resendSent, setResendSent] = useState(false)
@@ -42,17 +36,17 @@ function VerifyEmailContent() {
       .then((res) => {
         if (res.success) {
           setStatus("success")
-          setMessage(res.message ?? "Email của bạn đã được xác thực thành công.")
+          setMessage(res.message ?? "Your email has been verified successfully.")
         } else {
           setStatus("error")
-          setMessage(res.message ?? "Xác thực email thất bại.")
+          setMessage(res.message ?? "Email verification failed.")
         }
       })
       .catch((err: any) => {
         const msg =
           err.response?.data?.message ||
           err.message ||
-          "Không thể kết nối đến máy chủ."
+          "Cannot connect to the server."
         setStatus("error")
         setMessage(msg)
       })
@@ -66,7 +60,7 @@ function VerifyEmailContent() {
       await authService.resendVerification(resendEmail)
       setResendSent(true)
     } catch (err: any) {
-      setResendError(err.response?.data?.message || err.message || "Gửi lại thất bại.")
+      setResendError(err.response?.data?.message || err.message || "Resend failed.")
     } finally {
       setResendLoading(false)
     }
@@ -77,7 +71,7 @@ function VerifyEmailContent() {
       {!resendSent ? (
         <>
           <p className="text-sm text-muted-foreground mb-3 text-center">
-            Không nhận được email? Gửi lại link xác thực:
+            Didn't receive the email? Resend verification link:
           </p>
           {resendError && (
             <p className="text-xs text-red-400 text-center mb-3">{resendError}</p>
@@ -99,14 +93,14 @@ function VerifyEmailContent() {
               {resendLoading
                 ? <Loader2 size={14} className="animate-spin" />
                 : <Send size={14} />}
-              Gửi lại
+              Resend
             </button>
           </form>
         </>
       ) : (
         <div className="flex items-start gap-2.5 rounded-lg bg-green-500/10 border border-green-500/20 px-3.5 py-3 text-sm text-green-400">
           <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0" />
-          Đã gửi! Kiểm tra hộp thư (kể cả spam) và nhấn link mới.
+          Sent! Check your inbox (including spam) and click the new link.
         </div>
       )}
     </div>
@@ -127,8 +121,8 @@ function VerifyEmailContent() {
               <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5">
                 <Loader2 size={28} className="text-primary animate-spin" />
               </div>
-              <h1 className="text-xl font-bold text-foreground mb-2">Đang xác thực email…</h1>
-              <p className="text-sm text-muted-foreground">Vui lòng chờ trong giây lát.</p>
+              <h1 className="text-xl font-bold text-foreground mb-2">Verifying email...</h1>
+              <p className="text-sm text-muted-foreground">Please wait a moment.</p>
             </div>
           )}
 
@@ -141,29 +135,29 @@ function VerifyEmailContent() {
                 </div>
                 <h1 className="text-xl font-bold text-foreground mb-2">
                   {isResent
-                    ? "Đã gửi lại email xác thực 📩"
+                    ? "Verification email resent 📩"
                     : isRegistered
-                    ? "Đăng ký thành công! 🎉"
-                    : "Xác thực email của bạn"}
+                    ? "Registration successful! 🎉"
+                    : "Verify your email"}
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  Chúng tôi đã gửi một link xác thực đến
+                  We have sent a verification link to
                 </p>
                 <p className="text-sm font-semibold text-foreground mt-1 mb-4">
                   {emailParam}
                 </p>
                 <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-sm text-left space-y-1.5">
-                  <p className="text-foreground font-medium">Hướng dẫn:</p>
-                  <p className="text-muted-foreground">1. Mở hộp thư của bạn</p>
-                  <p className="text-muted-foreground">2. Tìm email từ <span className="text-foreground">ITHunterView</span></p>
-                  <p className="text-muted-foreground">3. Nhấn <span className="text-primary font-medium">"Xác thực Email"</span></p>
-                  <p className="text-muted-foreground text-xs mt-1">⏱ Link có hiệu lực trong 24 giờ</p>
+                  <p className="text-foreground font-medium">Instructions:</p>
+                  <p className="text-muted-foreground">1. Open your inbox</p>
+                  <p className="text-muted-foreground">2. Find the email from <span className="text-foreground">ITHunterView</span></p>
+                  <p className="text-muted-foreground">3. Click <span className="text-primary font-medium">"Verify Email"</span></p>
+                  <p className="text-muted-foreground text-xs mt-1">⏱ Link is valid for 24 hours</p>
                 </div>
               </div>
               <ResendForm />
               <div className="mt-4 text-center">
                 <Link href="/login" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Quay lại đăng nhập
+                  Back to login
                 </Link>
               </div>
             </>
@@ -175,13 +169,13 @@ function VerifyEmailContent() {
               <div className="w-14 h-14 rounded-2xl bg-green-500/15 flex items-center justify-center mx-auto mb-5">
                 <CheckCircle2 size={28} className="text-green-400" />
               </div>
-              <h1 className="text-xl font-bold text-foreground mb-2">Xác thực thành công!</h1>
+              <h1 className="text-xl font-bold text-foreground mb-2">Verification successful!</h1>
               <p className="text-sm text-muted-foreground mb-6">{message}</p>
               <Link
                 href="/login"
                 className="w-full h-11 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm flex items-center justify-center transition-all"
               >
-                Đăng nhập ngay
+                Login now
               </Link>
             </div>
           )}
@@ -193,13 +187,13 @@ function VerifyEmailContent() {
                 <div className="w-14 h-14 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto mb-5">
                   <XCircle size={28} className="text-red-400" />
                 </div>
-                <h1 className="text-xl font-bold text-foreground mb-2">Link hết hạn</h1>
+                <h1 className="text-xl font-bold text-foreground mb-2">Link expired</h1>
                 <p className="text-sm text-muted-foreground">{message}</p>
               </div>
               <ResendForm />
               <div className="mt-4 text-center">
                 <Link href="/login" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Quay lại đăng nhập
+                  Back to login
                 </Link>
               </div>
             </>
@@ -212,15 +206,15 @@ function VerifyEmailContent() {
                 <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-5">
                   <Mail size={28} className="text-amber-400" />
                 </div>
-                <h1 className="text-xl font-bold text-foreground mb-2">Chưa xác thực email?</h1>
+                <h1 className="text-xl font-bold text-foreground mb-2">Haven't verified your email?</h1>
                 <p className="text-sm text-muted-foreground">
-                  Nhập email đã đăng ký để nhận lại link xác thực.
+                  Enter your registered email to resend the verification link.
                 </p>
               </div>
               <ResendForm />
               <div className="mt-4 text-center">
                 <Link href="/login" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Quay lại đăng nhập
+                  Back to login
                 </Link>
               </div>
             </>

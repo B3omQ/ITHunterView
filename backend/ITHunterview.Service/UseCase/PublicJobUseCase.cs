@@ -17,6 +17,7 @@ namespace ITHunterview.Service.UseCase
 
         public async Task<PaginatedDataResponse<JobCardDto>> SearchJobsAsync(JobSearchQueryDto query)
         {
+            query.Status = Domain.Enums.JobStatus.PUBLISHED; // Force published status for public searches
             return await _jobSearchRepository.SearchJobsAsync(query);
         }
 

@@ -6,7 +6,7 @@ import { useGetMyCompany } from '@/hooks/useCompany';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Building2, PlusCircle, CheckCircle2, Clock, XCircle, ExternalLink } from 'lucide-react';
-
+import { CompanyLogo } from '@/components/shared/CompanyLogo';
 export default function CompanyOverviewPage() {
   const { data: company, isLoading } = useGetMyCompany();
 
@@ -41,16 +41,12 @@ export default function CompanyOverviewPage() {
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-lg bg-muted border overflow-hidden flex items-center justify-center shrink-0">
-                {company.logoUrl ? (
-                  <img src={company.logoUrl} alt={company.name} className="w-full h-full object-cover" />
-                ) : (
-                  <Building2 className="w-8 h-8 text-muted-foreground" />
-                )}
+                <CompanyLogo src={company.logoUrl} alt={company.name} fallbackType="building" fallbackIconClassName="w-8 h-8 text-muted-foreground" imageClassName="w-full h-full object-cover" />
               </div>
               <div>
                 <CardTitle className="text-2xl">{company.name}</CardTitle>
                 <CardDescription className="text-base mt-1 flex items-center gap-2">
-                  {company.industry} • {company.companySize} employees
+                  {company.industry} • {company.companyType && `${company.companyType} • `}{company.companySize} employees
                 </CardDescription>
               </div>
             </div>

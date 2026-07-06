@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { User } from '@/types/auth.types';
 import { authService } from '@/services/auth.service';
+import { getQueryClient } from '@/lib/ReactQueryProvider';
 
 interface AuthState {
   accessToken: string | null;
@@ -54,6 +55,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       localStorage.removeItem('user');
       localStorage.removeItem('google_auth_role');
       // Giữ X-Device-Fingerprint để tracking thiết bị liên tục
+      
+      // Xóa toàn bộ cache của React Query để tránh hiển thị data của user cũ
+      getQueryClient().clear();
     }
 
     set({ accessToken: null, refreshToken: null, user: null });

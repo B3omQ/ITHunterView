@@ -28,9 +28,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             string? search, 
             JobStatus? status, 
             int page, 
-            int pageSize)
+            int pageSize,
+            Guid? recruiterId = null)
         {
             var query = _context.JobPostings.Where(j => j.DeletedAt == null);
+
+            if (recruiterId.HasValue)
+            {
+                query = query.Where(j => j.RecruiterId == recruiterId.Value);
+            }
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -81,6 +87,21 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                               SkillName = s.Name,
                               IsMandatory = jsr.IsMandatory
                           }).ToListAsync();
+        }
+
+        public async Task<Dictionary<Guid, List<string>>> GetSkillsForJobsAsync(List<Guid> jobIds)
+        {
+            if (jobIds == null || !jobIds.Any()) return new Dictionary<Guid, List<string>>();
+
+            var skillsData = await (from jsr in _context.JobSkillRequirements
+                                    join s in _context.Skills on jsr.SkillId equals s.Id
+                                    where jobIds.Contains(jsr.JobId)
+                                    select new { jsr.JobId, s.Name })
+                                    .ToListAsync();
+
+            return skillsData
+                .GroupBy(x => x.JobId)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.Name).ToList());
         }
 
         public async Task UpdateJobSkillsAsync(Guid jobId, List<JobSkillRequirementInputDto> skills)

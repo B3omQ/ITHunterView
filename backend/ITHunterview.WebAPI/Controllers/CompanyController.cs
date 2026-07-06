@@ -108,5 +108,30 @@ namespace ITHunterview.WebAPI.Controllers
             var company = await _companyUseCase.SubmitUpdateRequestAsync(id, dto, userId);
             return Ok(new ResponseBase<CompanyDto>(company, "Company update request submitted successfully"));
         }
+
+        [HttpPut("{id:guid}")]
+        [Authorize(Roles = "recruiter")]
+        public async Task<ActionResult<ResponseBase<CompanyDto>>> Update(Guid id, [FromBody] UpdateCompanyDto dto)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized(new ResponseBase<CompanyDto>("Unauthorized"));
+            }
+
+            try
+            {
+                var company = await _companyUseCase.UpdateCompanyAsync(id, dto, userId);
+                return Ok(new ResponseBase<CompanyDto>(company, "Company updated successfully"));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new ResponseBase<CompanyDto>(ex.Message));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new ResponseBase<CompanyDto>(ex.Message));
+            }
+        }
     }
 }

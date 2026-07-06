@@ -24,12 +24,16 @@ namespace ITHunterview.Service.UseCase
             string? search, 
             JobStatus? status, 
             int page, 
-            int pageSize)
+            int pageSize,
+            Guid? recruiterId = null)
         {
             if (page <= 0) page = 1;
             if (pageSize <= 0) pageSize = 7; // Matching the mock UI showing 7 rows by default
 
-            var (items, totalCount) = await _jobPostingRepository.GetPagedAsync(search, status, page, pageSize);
+            var (items, totalCount) = await _jobPostingRepository.GetPagedAsync(search, status, page, pageSize, recruiterId);
+
+            var jobIds = items.Select(j => j.Id).ToList();
+            var jobSkills = await _jobPostingRepository.GetSkillsForJobsAsync(jobIds);
 
             var summaryList = items.Select(j => new JobPostingSummaryDto
             {
@@ -37,12 +41,18 @@ namespace ITHunterview.Service.UseCase
                 JobCode = j.JobCode,
                 Title = j.Title,
                 Location = j.Location,
-                JobType = j.JobType,
+
                 Status = j.Status,
                 ApplicationCount = j.ApplicationCount,
                 ViewCount = j.ViewCount,
                 PublishedAt = j.PublishedAt,
-                CreatedAt = j.CreatedAt
+                ExpiresAt = j.ExpiresAt,
+                CreatedAt = j.CreatedAt,
+                Level = j.Level,
+                WorkingModel = j.WorkingModel,
+                JobExpertise = j.JobExpertise,
+                JobDomain = j.JobDomain,
+                Skills = jobSkills.TryGetValue(j.Id, out var skills) ? skills : new List<string>()
             }).ToList();
 
             var pagedResult = new PagedResult<JobPostingSummaryDto>
@@ -83,7 +93,7 @@ namespace ITHunterview.Service.UseCase
                 JobCode = string.IsNullOrWhiteSpace(dto.JobCode) ? $"JB-{new Random().Next(1000, 9999)}" : dto.JobCode,
                 RecruiterId = recruiterId,
                 CompanyId = companyId.Value,
-                CategoryId = dto.CategoryId,
+
                 Title = dto.Title,
                 Description = dto.Description,
                 Responsibilities = dto.Responsibilities,
@@ -93,11 +103,16 @@ namespace ITHunterview.Service.UseCase
                 MaxSalary = dto.MaxSalary,
                 Currency = dto.Currency,
                 Location = dto.Location,
-                JobType = dto.JobType,
+
                 Status = dto.Status,
+                Level = dto.Level,
+                WorkingModel = dto.WorkingModel,
+                JobExpertise = dto.JobExpertise,
+                JobDomain = dto.JobDomain,
                 ApplicationCount = 0,
                 ViewCount = 0,
                 PublishedAt = dto.Status == JobStatus.PUBLISHED ? DateTime.UtcNow : null,
+                ExpiresAt = dto.ExpiresAt,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -123,7 +138,7 @@ namespace ITHunterview.Service.UseCase
             }
 
             job.JobCode = dto.JobCode;
-            job.CategoryId = dto.CategoryId;
+
             job.Title = dto.Title;
             job.Description = dto.Description;
             job.Responsibilities = dto.Responsibilities;
@@ -133,7 +148,12 @@ namespace ITHunterview.Service.UseCase
             job.MaxSalary = dto.MaxSalary;
             job.Currency = dto.Currency;
             job.Location = dto.Location;
-            job.JobType = dto.JobType;
+            job.ExpiresAt = dto.ExpiresAt;
+
+            job.Level = dto.Level;
+            job.WorkingModel = dto.WorkingModel;
+            job.JobExpertise = dto.JobExpertise;
+            job.JobDomain = dto.JobDomain;
             job.UpdatedAt = DateTime.UtcNow;
 
             if (job.Status != dto.Status)
@@ -181,7 +201,7 @@ namespace ITHunterview.Service.UseCase
                 JobCode = j.JobCode,
                 RecruiterId = j.RecruiterId,
                 CompanyId = j.CompanyId,
-                CategoryId = j.CategoryId,
+
                 Title = j.Title,
                 Description = j.Description,
                 Responsibilities = j.Responsibilities,
@@ -191,11 +211,16 @@ namespace ITHunterview.Service.UseCase
                 MaxSalary = j.MaxSalary,
                 Currency = j.Currency,
                 Location = j.Location,
-                JobType = j.JobType,
+
                 Status = j.Status,
+                Level = j.Level,
+                WorkingModel = j.WorkingModel,
+                JobExpertise = j.JobExpertise,
+                JobDomain = j.JobDomain,
                 ApplicationCount = j.ApplicationCount,
                 ViewCount = j.ViewCount,
                 PublishedAt = j.PublishedAt,
+                ExpiresAt = j.ExpiresAt,
                 CreatedAt = j.CreatedAt
             };
         }

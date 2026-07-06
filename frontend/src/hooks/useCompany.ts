@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { companyService } from '@/services/company.service';
-import { CreateCompanyDto, VerifyCompanyDto, UpdateCompanyStatusDto } from '@/types/company.types';
+import { CreateCompanyDto, UpdateCompanyDto, VerifyCompanyDto, UpdateCompanyStatusDto } from '@/types/company.types';
 
 export function useGetMyCompany() {
   return useQuery({
@@ -14,6 +14,17 @@ export function useCreateOrUpdateProfile() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (dto: CreateCompanyDto) => companyService.createOrUpdateProfile(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-company'] });
+    },
+  });
+}
+
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: UpdateCompanyDto }) => 
+      companyService.updateProfile(id, dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-company'] });
     },

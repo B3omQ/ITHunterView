@@ -18,12 +18,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             _context = context;
         }
 
-        public async Task AddActivityLogAsync(UserActivityLogs log)
-        {
-            _context.UserActivityLogs.Add(log);
-            await _context.SaveChangesAsync();
-        }
-
         public async Task<(List<UserActivityLogs> Items, int Total)> GetPagedActivityLogsAsync(
             int page,
             int pageSize,
@@ -64,17 +58,16 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             if (!string.IsNullOrWhiteSpace(operationType))
             {
-                query = query.Where(l => EF.Functions.ILike(l.OperationType, operationType));
+                query = query.Where(l => EF.Functions.ILike(l.OperationType ?? "", operationType));
             }
 
             if (!string.IsNullOrWhiteSpace(search))
             {
                 query = query.Where(l =>
-                    EF.Functions.ILike(l.ActorEmail, $"%{search}%") ||
-                    EF.Functions.ILike(l.Action, $"%{search}%") ||
-                    EF.Functions.ILike(l.IpAddress, $"%{search}%") ||
-                    EF.Functions.ILike(l.UserAgent, $"%{search}%") ||
-                    EF.Functions.ILike(l.TableName, $"%{search}%")
+                    EF.Functions.ILike(l.ActorEmail ?? "", $"%{search}%") ||
+                    EF.Functions.ILike(l.Action ?? "", $"%{search}%") ||
+                    EF.Functions.ILike(l.IpAddress ?? "", $"%{search}%") ||
+                    EF.Functions.ILike(l.TableName ?? "", $"%{search}%")
                 );
             }
 
@@ -90,24 +83,44 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
         public async Task<int> PurgeActivityLogsAsync(DateTime cutoffDate)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            int totalDeleted = 0;
+            bool hasMore = true;
+
+            while (hasMore)
             {
-                // Thiết lập biến session cho PostgreSQL bypass trigger trong transaction này
-                await _context.Database.ExecuteSqlRawAsync("SET LOCAL app.allow_audit_log_delete = 'true';");
-                
-                var deletedCount = await _context.UserActivityLogs
-                    .Where(log => log.CreatedAt < cutoffDate)
-                    .ExecuteDeleteAsync();
-                
-                await transaction.CommitAsync();
-                return deletedCount;
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    // Set session variable for PostgreSQL to bypass trigger in this transaction
+                    await _context.Database.ExecuteSqlRawAsync("SET LOCAL app.allow_audit_log_delete = 'true';");
+                    
+                    // Delete in small batches of 5000 to prevent table locking
+                    var deletedCount = await _context.Database.ExecuteSqlRawAsync(
+                        "DELETE FROM user_activity_logs WHERE id IN (SELECT id FROM user_activity_logs WHERE created_at < {0} LIMIT 5000)", 
+                        cutoffDate);
+
+                    await transaction.CommitAsync();
+
+                    totalDeleted += deletedCount;
+
+                    if (deletedCount < 5000)
+                    {
+                        hasMore = false;
+                    }
+                    else
+                    {
+                        // Brief pause to allow concurrent database operations to execute
+                        await Task.Delay(50);
+                    }
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+
+            return totalDeleted;
         }
     }
 }

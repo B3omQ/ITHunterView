@@ -1,5 +1,7 @@
 <Solution>
   <Project Path="ITHunterview.Domain/ITHunterview.Domain.csproj" />
+  <Project Path="ITHunterview.Service.Tests/ITHunterview.Service.Tests.csproj" />
   <Project Path="ITHunterview.Service/ITHunterview.Service.csproj" />
+  <Project Path="ITHunterview.WebAPI.Tests/ITHunterview.WebAPI.Tests.csproj" />
   <Project Path="ITHunterview.WebAPI/ITHunterview.WebAPI.csproj" />
 </Solution>

@@ -8,7 +8,7 @@ using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Utils;
-using Microsoft.AspNetCore.Http;
+using ITHunterview.Service.Interface.Infrastructure;
 using Microsoft.Extensions.Configuration;
 
 namespace ITHunterview.Service.UseCase
@@ -23,8 +23,8 @@ namespace ITHunterview.Service.UseCase
         private readonly IEmailService _emailService;
         private readonly IGoogleAuthService _googleAuthService;
         private readonly IConfiguration _configuration;
-        private readonly IAuditLogRepository _auditLogRepository;
-        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IAuditLogQueue _auditLogQueue;
+        private readonly IActorProvider _actorProvider;
 
         public AuthUseCase(
             IUserRepository userRepository,
@@ -35,8 +35,8 @@ namespace ITHunterview.Service.UseCase
             IEmailService emailService,
             IGoogleAuthService googleAuthService,
             IConfiguration configuration,
-            IAuditLogRepository auditLogRepository,
-            IHttpContextAccessor httpContextAccessor)
+            IAuditLogQueue auditLogQueue,
+            IActorProvider actorProvider)
         {
             _userRepository = userRepository;
             _tokenRepository = tokenRepository;
@@ -46,8 +46,8 @@ namespace ITHunterview.Service.UseCase
             _emailService = emailService;
             _googleAuthService = googleAuthService;
             _configuration = configuration;
-            _auditLogRepository = auditLogRepository;
-            _httpContextAccessor = httpContextAccessor;
+            _auditLogQueue = auditLogQueue;
+            _actorProvider = actorProvider;
         }
 
         // ─── LOGIN ──────────────────────────────────────────────────────────────
@@ -57,26 +57,26 @@ namespace ITHunterview.Service.UseCase
 
             if (user == null || !PasswordHasher.VerifyPassword(request.Password, user.PasswordHash))
             {
-                await LogFailedLoginAsync(request.Email, "Email hoặc mật khẩu không đúng.");
-                return new ResponseBase<LoginResponseDto>("Email hoặc mật khẩu không đúng.");
+                LogFailedLogin(request.Email, "Invalid email or password.");
+                return new ResponseBase<LoginResponseDto>("Invalid email or password.");
             }
 
             if (user.Status == UserStatus.BANNED)
             {
-                await LogFailedLoginAsync(request.Email, "Tài khoản của bạn đã bị khóa.");
-                return new ResponseBase<LoginResponseDto>("Tài khoản của bạn đã bị khóa.");
+                LogFailedLogin(request.Email, "Your account has been banned.");
+                return new ResponseBase<LoginResponseDto>("Your account has been banned.");
             }
 
             if (user.Status == UserStatus.PENDING_VERIFICATION)
             {
-                await LogFailedLoginAsync(request.Email, "Vui lòng xác thực email trước khi đăng nhập.");
-                return new ResponseBase<LoginResponseDto>("Vui lòng xác thực email trước khi đăng nhập.");
+                LogFailedLogin(request.Email, "Please verify your email before logging in.");
+                return new ResponseBase<LoginResponseDto>("Please verify your email before logging in.");
             }
 
             if (user.Status == UserStatus.INACTIVE)
             {
-                await LogFailedLoginAsync(request.Email, "Tài khoản không còn hoạt động.");
-                return new ResponseBase<LoginResponseDto>("Tài khoản không còn hoạt động.");
+                LogFailedLogin(request.Email, "Account is inactive.");
+                return new ResponseBase<LoginResponseDto>("Account is inactive.");
             }
 
             return await GenerateTokensAndRespond(user);
@@ -89,7 +89,7 @@ namespace ITHunterview.Service.UseCase
             var allowedRoles = new[] { "candidate", "recruiter" };
             var roleType = request.RoleType.ToLower();
             if (!Array.Exists(allowedRoles, r => r == roleType))
-                return new ResponseBase<LoginResponseDto>("Role không hợp lệ. Chỉ chấp nhận 'candidate' hoặc 'recruiter'.");
+                return new ResponseBase<LoginResponseDto>("Invalid role. Only 'candidate' or 'recruiter' is accepted.");
 
             // Check duplicate email
             var existing = await _userRepository.GetUserByEmailAsync(request.Email);
@@ -112,18 +112,18 @@ namespace ITHunterview.Service.UseCase
                     return new ResponseBase<LoginResponseDto>
                     {
                         Success = true,
-                        Message = "PENDING_VERIFICATION|Tài khoản chưa được xác thực. Chúng tôi đã gửi lại email xác thực."
+                        Message = "PENDING_VERIFICATION|Account is not verified. We have resent the verification email."
                     };
                 }
 
                 // Active or banned account
-                return new ResponseBase<LoginResponseDto>("Email này đã được sử dụng.");
+                return new ResponseBase<LoginResponseDto>("Email is already in use.");
             }
 
             // Get role
             var role = await _roleRepository.GetByNameAsync(roleType);
             if (role == null)
-                return new ResponseBase<LoginResponseDto>("Hệ thống chưa cấu hình role. Vui lòng liên hệ quản trị viên.");
+                return new ResponseBase<LoginResponseDto>("The system has not configured this role. Please contact the administrator.");
 
             // Create user
             var user = new User
@@ -170,7 +170,7 @@ namespace ITHunterview.Service.UseCase
 
             return new ResponseBase<LoginResponseDto>(
                 null!,
-                "Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.");
+                "Registration successful! Please check your email to verify your account.");
         }
 
         // ─── GOOGLE AUTH ─────────────────────────────────────────────────────────
@@ -180,8 +180,8 @@ namespace ITHunterview.Service.UseCase
             var googleUser = await _googleAuthService.VerifyGoogleTokenAsync(request.IdToken);
             if (googleUser == null)
             {
-                await LogFailedLoginAsync("unknown_google_auth", "Google token không hợp lệ.");
-                return new ResponseBase<LoginResponseDto>("Google token không hợp lệ.");
+                LogFailedLogin("unknown_google_auth", "Invalid Google token.");
+                return new ResponseBase<LoginResponseDto>("Invalid Google token.");
             }
 
             // Try to find existing user
@@ -197,8 +197,8 @@ namespace ITHunterview.Service.UseCase
                 var role = await _roleRepository.GetByNameAsync(roleType);
                 if (role == null)
                 {
-                    await LogFailedLoginAsync(googleUser.Email, "Đăng nhập Google thất bại do hệ thống chưa cấu hình role.");
-                    return new ResponseBase<LoginResponseDto>("Hệ thống chưa cấu hình role.");
+                    LogFailedLogin(googleUser.Email, "Google login failed: Role is not configured in the system.");
+                    return new ResponseBase<LoginResponseDto>("The system has not configured this role.");
                 }
 
                 user = new User
@@ -230,8 +230,8 @@ namespace ITHunterview.Service.UseCase
 
             if (user!.Status == UserStatus.BANNED)
             {
-                await LogFailedLoginAsync(googleUser.Email, "Tài khoản của bạn đã bị khóa.");
-                return new ResponseBase<LoginResponseDto>("Tài khoản của bạn đã bị khóa.");
+                LogFailedLogin(googleUser.Email, "Your account has been banned.");
+                return new ResponseBase<LoginResponseDto>("Your account has been banned.");
             }
 
             return await GenerateTokensAndRespond(user, googleUser.Picture);
@@ -243,15 +243,15 @@ namespace ITHunterview.Service.UseCase
             var storedToken = await _tokenRepository.GetRefreshTokenAsync(request.RefreshToken);
 
             if (storedToken == null)
-                return new ResponseBase<LoginResponseDto>("Refresh token không hợp lệ.");
+                return new ResponseBase<LoginResponseDto>("Invalid refresh token.");
 
             if (storedToken.ExpiresAt < DateTime.UtcNow)
-                return new ResponseBase<LoginResponseDto>("Refresh token đã hết hạn. Vui lòng đăng nhập lại.");
+                return new ResponseBase<LoginResponseDto>("Refresh token has expired. Please login again.");
 
             var user = storedToken.User;
 
             if (user.Status == UserStatus.BANNED)
-                return new ResponseBase<LoginResponseDto>("Tài khoản của bạn đã bị khóa.");
+                return new ResponseBase<LoginResponseDto>("Your account has been banned.");
 
             // Revoke old token (rotation)
             await _tokenRepository.RevokeRefreshTokenAsync(request.RefreshToken);
@@ -263,7 +263,7 @@ namespace ITHunterview.Service.UseCase
         public async Task<ResponseBase> LogoutAsync(LogoutRequestDto request)
         {
             await _tokenRepository.RevokeRefreshTokenAsync(request.RefreshToken);
-            return ResponseBase.Ok("Đăng xuất thành công.");
+            return ResponseBase.Ok("Logged out successfully.");
         }
 
         // ─── CHANGE PASSWORD ─────────────────────────────────────────────────────
@@ -271,10 +271,10 @@ namespace ITHunterview.Service.UseCase
         {
             var user = await _userRepository.GetUserByIdAsync(userId);
             if (user == null)
-                return ResponseBase.Fail("Người dùng không tồn tại.");
+                return ResponseBase.Fail("User does not exist.");
 
             if (!PasswordHasher.VerifyPassword(request.CurrentPassword, user.PasswordHash))
-                return ResponseBase.Fail("Mật khẩu hiện tại không đúng.");
+                return ResponseBase.Fail("Current password is incorrect.");
 
             user.PasswordHash = PasswordHasher.HashPassword(request.NewPassword);
             user.UpdatedAt = DateTime.UtcNow;
@@ -283,7 +283,7 @@ namespace ITHunterview.Service.UseCase
             // Revoke all refresh tokens for security
             await _tokenRepository.RevokeAllUserRefreshTokensAsync(userId);
 
-            return ResponseBase.Ok("Đổi mật khẩu thành công. Vui lòng đăng nhập lại.");
+            return ResponseBase.Ok("Changed password successfully. Please login again.");
         }
 
         // ─── FORGOT PASSWORD ─────────────────────────────────────────────────────
@@ -293,7 +293,7 @@ namespace ITHunterview.Service.UseCase
 
             // Always return success to prevent email enumeration
             if (user == null)
-                return ResponseBase.Ok("Nếu email tồn tại, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu.");
+                return ResponseBase.Ok("If the email exists, we have sent instructions to reset your password.");
 
             var resetToken = JwtTokenGenerator.GenerateSecureToken();
             await _passwordResetRepository.AddTokenAsync(new PasswordResets
@@ -312,7 +312,7 @@ namespace ITHunterview.Service.UseCase
                 // Log in production
             }
 
-            return ResponseBase.Ok("Nếu email tồn tại, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu.");
+            return ResponseBase.Ok("If the email exists, we have sent instructions to reset your password.");
         }
 
         // ─── RESET PASSWORD ──────────────────────────────────────────────────────
@@ -321,10 +321,10 @@ namespace ITHunterview.Service.UseCase
             var resetRecord = await _passwordResetRepository.GetByTokenAndEmailAsync(request.Token, request.Email);
 
             if (resetRecord == null)
-                return ResponseBase.Fail("Token không hợp lệ hoặc đã được sử dụng.");
+                return ResponseBase.Fail("Invalid or used token.");
 
             if (resetRecord.ExpiresAt < DateTime.UtcNow)
-                return ResponseBase.Fail("Token đã hết hạn. Vui lòng yêu cầu đặt lại mật khẩu mới.");
+                return ResponseBase.Fail("Token has expired. Please request a new password reset.");
 
             var user = resetRecord.User;
             user.PasswordHash = PasswordHasher.HashPassword(request.NewPassword);
@@ -334,7 +334,7 @@ namespace ITHunterview.Service.UseCase
             await _passwordResetRepository.MarkUsedAsync(resetRecord.Id);
             await _tokenRepository.RevokeAllUserRefreshTokensAsync(user.Id);
 
-            return ResponseBase.Ok("Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.");
+            return ResponseBase.Ok("Reset password successfully. Please login again.");
         }
 
         // ─── VERIFY EMAIL ────────────────────────────────────────────────────────
@@ -343,10 +343,10 @@ namespace ITHunterview.Service.UseCase
             var verifyRecord = await _emailVerificationRepository.GetByTokenAsync(token);
 
             if (verifyRecord == null)
-                return ResponseBase.Fail("Token xác thực không hợp lệ hoặc đã được sử dụng.");
+                return ResponseBase.Fail("Invalid or used verification token.");
 
             if (verifyRecord.ExpiresAt < DateTime.UtcNow)
-                return ResponseBase.Fail("Token xác thực đã hết hạn. Vui lòng đăng ký lại.");
+                return ResponseBase.Fail("Verification token has expired. Please register again.");
 
             var user = verifyRecord.User;
             user.Status = UserStatus.ACTIVE;
@@ -355,7 +355,7 @@ namespace ITHunterview.Service.UseCase
 
             await _emailVerificationRepository.MarkUsedAsync(verifyRecord.Id);
 
-            return ResponseBase.Ok("Xác thực email thành công! Bạn có thể đăng nhập ngay bây giờ.");
+            return ResponseBase.Ok("Email verified successfully! You can login now.");
         }
 
         // ─── RESEND VERIFICATION EMAIL ───────────────────────────────────────────
@@ -365,7 +365,7 @@ namespace ITHunterview.Service.UseCase
 
             // Always return OK to prevent email enumeration
             if (user == null || user.Status == UserStatus.ACTIVE)
-                return ResponseBase.Ok("Nếu email tồn tại và chưa xác thực, chúng tôi đã gửi lại link xác thực.");
+                return ResponseBase.Ok("If the email exists and is not verified, we have resent the verification link.");
 
             // Invalidate old tokens by creating a new one (old ones will expire naturally)
             var verifyToken = JwtTokenGenerator.GenerateSecureToken();
@@ -385,7 +385,7 @@ namespace ITHunterview.Service.UseCase
                 // Don't fail if email sending fails; log in production
             }
 
-            return ResponseBase.Ok("Nếu email tồn tại và chưa xác thực, chúng tôi đã gửi lại link xác thực.");
+            return ResponseBase.Ok("If the email exists and is not verified, we have resent the verification link.");
         }
 
         // ─── PRIVATE HELPER ──────────────────────────────────────────────────────
@@ -430,88 +430,50 @@ namespace ITHunterview.Service.UseCase
                 AvatarUrl = avatarUrl
             };
 
-            // Ghi nhận log đăng nhập thành công
+            // Record successful login activity
             try
             {
-                var httpContext = _httpContextAccessor.HttpContext;
-                string ipAddress = "unknown";
-                string userAgent = "unknown";
+                var log = UserActivityLogs.Create(
+                    userId: user.Id,
+                    actorRole: user.Role?.Name ?? "anonymous",
+                    category: ActivityLogCategory.AUTH,
+                    actorEmail: user.Email,
+                    action: "Login successfully.",
+                    status: ActivityLogStatus.SUCCESS,
+                    ipAddress: _actorProvider.IpAddress,
+                    userAgent: _actorProvider.UserAgent
+                );
 
-                if (httpContext != null)
-                {
-                    ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-                    var rawUserAgent = httpContext.Request.Headers["User-Agent"].ToString();
-                    userAgent = string.IsNullOrEmpty(rawUserAgent) ? "unknown" : rawUserAgent;
-                    var fingerprint = httpContext.Request.Headers["X-Device-Fingerprint"].ToString();
-                    if (!string.IsNullOrEmpty(fingerprint))
-                    {
-                        userAgent = $"{userAgent} [Fingerprint: {fingerprint}]";
-                    }
-                }
-
-                var log = new UserActivityLogs
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = user.Id,
-                    ActorRole = user.Role?.Name ?? "anonymous",
-                    ActionCategory = ActivityLogCategory.AUTH,
-                    ActorEmail = user.Email,
-                    Action = "Đăng nhập thành công vào hệ thống.",
-                    Status = ActivityLogStatus.SUCCESS,
-                    IpAddress = ipAddress,
-                    UserAgent = userAgent,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                await _auditLogRepository.AddActivityLogAsync(log);
+                _auditLogQueue.TryEnqueue(log);
             }
             catch
             {
-                // Tránh làm gián đoạn luồng trả về token nếu ghi log thất bại
+                // Avoid interrupting the token response flow if logging fails
             }
 
-            return new ResponseBase<LoginResponseDto>(response, "Đăng nhập thành công.");
+            return new ResponseBase<LoginResponseDto>(response, "Logged in successfully.");
         }
 
-        private async Task LogFailedLoginAsync(string email, string justification)
+        private void LogFailedLogin(string email, string justification)
         {
             try
             {
-                var httpContext = _httpContextAccessor.HttpContext;
-                string ipAddress = "unknown";
-                string userAgent = "unknown";
+                var log = UserActivityLogs.Create(
+                    userId: null,
+                    actorRole: "anonymous",
+                    category: ActivityLogCategory.SECURITY,
+                    actorEmail: email,
+                    action: $"Login failed: {justification}",
+                    status: ActivityLogStatus.FAIL,
+                    ipAddress: _actorProvider.IpAddress,
+                    userAgent: _actorProvider.UserAgent
+                );
 
-                if (httpContext != null)
-                {
-                    ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-                    var rawUserAgent = httpContext.Request.Headers["User-Agent"].ToString();
-                    userAgent = string.IsNullOrEmpty(rawUserAgent) ? "unknown" : rawUserAgent;
-                    var fingerprint = httpContext.Request.Headers["X-Device-Fingerprint"].ToString();
-                    if (!string.IsNullOrEmpty(fingerprint))
-                    {
-                        userAgent = $"{userAgent} [Fingerprint: {fingerprint}]";
-                    }
-                }
-
-                var log = new UserActivityLogs
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = null,
-                    ActorRole = "anonymous",
-                    ActionCategory = ActivityLogCategory.SECURITY,
-                    ActorEmail = email,
-                    Action = $"Đăng nhập thất bại: {justification}",
-                    Status = ActivityLogStatus.FAIL,
-                    IpAddress = ipAddress,
-                    UserAgent = userAgent,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                await _auditLogRepository.AddActivityLogAsync(log);
+                _auditLogQueue.TryEnqueue(log);
             }
             catch
             {
-                // Tránh lỗi ảnh hưởng luồng nghiệp vụ chính
+                // Avoid failures affecting the main business flow
             }
         }
     }

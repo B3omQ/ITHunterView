@@ -14,10 +14,13 @@ export interface ApplicantDto {
   candidateId: string;
   candidateName: string;
   email: string;
+  phone?: string;
   status: ApplicationStatus;
   applyDate: string;
   avatarUrl?: string;
   cvId?: string;
+  cvUrl?: string;
+  cvFileName?: string;
 }
 
 export interface JobApplicationDetailDto {
@@ -25,6 +28,7 @@ export interface JobApplicationDetailDto {
   candidateId: string;
   candidateName: string;
   email: string;
+  phone?: string;
   status: ApplicationStatus;
   applyDate: string;
   avatarUrl?: string;
@@ -32,4 +36,14 @@ export interface JobApplicationDetailDto {
   cvId?: string;
   cvUrl?: string;
   cvFileName?: string;
+}
+
+export interface CandidateAppliedJobDto {
+  id: string;
+  jobId: string;
+  jobTitle: string;
+  companyName: string;
+  companyLogoUrl?: string;
+  status: ApplicationStatus;
+  applyDate: string;
 }

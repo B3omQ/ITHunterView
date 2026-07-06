@@ -64,23 +64,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             return _context.Skills.FirstOrDefaultAsync(s => s.Id == skillId);
         }
 
-        public Task<List<Skills>> GetSuggestedSkillsAsync(Guid userId, int limit = 10)
+        public Task<List<Skills>> GetAllActiveMasterSkillsAsync()
         {
-            // Trending = skills được dùng nhiều nhất trong user_skills, loại trừ skills user đã có
-            var ownedSkillIds = _context.UserSkills
-                .Where(us => us.UserId == userId)
-                .Select(us => us.SkillId);
-
-            return _context.UserSkills
-                .Where(us => !ownedSkillIds.Contains(us.SkillId))
-                .GroupBy(us => us.SkillId)
-                .OrderByDescending(g => g.Count())
-                .Take(limit)
-                .Join(_context.Skills,
-                      g => g.Key,
-                      s => s.Id,
-                      (g, s) => s)
+            return _context.Skills
                 .Where(s => s.Status == SkillStatus.ACTIVE)
+                .OrderBy(s => s.Name)
                 .ToListAsync();
         }
     }

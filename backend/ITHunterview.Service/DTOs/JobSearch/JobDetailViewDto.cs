@@ -18,7 +18,10 @@ namespace ITHunterview.Service.DTOs.JobSearch
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; }
         public string Location { get; set; }
-        public string JobType { get; set; }
+        public string? Level { get; set; }
+        public string? WorkingModel { get; set; }
+        public string? JobExpertise { get; set; }
+        public List<string>? JobDomain { get; set; }
         public DateTime? PublishedAt { get; set; }
         public bool? IsSaved { get; set; }
         public List<string> Skills { get; set; } = new List<string>();

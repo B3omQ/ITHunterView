@@ -1,8 +1,10 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.Config;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
@@ -17,8 +19,19 @@ builder.Services.AddControllers()
     });
 builder.Services.AddOpenApi();
 
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("StaffCreationPolicy", opt =>
+    {
+        opt.PermitLimit = 5;
+        opt.Window = TimeSpan.FromMinutes(1);
+    });
+});
+
 // ─── Database ─────────────────────────────────────────────────────────────────
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ITHunterview.Service.Interface.Infrastructure.IActorProvider, ITHunterview.Service.Infrastructure.Infrastructure.ActorProvider>();
+builder.Services.AddSingleton<ITHunterview.Service.Interface.Infrastructure.IAuditLogQueue, ITHunterview.Service.Infrastructure.Infrastructure.AuditLogQueue>();
 builder.Services.AddScoped<AuditLogInterceptor>();
 
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(
@@ -60,6 +73,7 @@ builder.Services.Configure<ITHunterview.Service.Config.CloudinarySettings>(build
 builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddMemoryCache();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.LogCleanupBackgroundService>();
+builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.AuditLogProcessor>();
 
 // ─── JWT Authentication ───────────────────────────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -138,6 +152,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+// app.UseHttpsRedirection();
+app.UseRateLimiter();
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
@@ -148,3 +164,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program { }

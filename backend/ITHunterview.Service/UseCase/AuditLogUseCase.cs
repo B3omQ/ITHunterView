@@ -34,7 +34,7 @@ namespace ITHunterview.Service.UseCase
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
 
-            // Xử lý logic khoảng thời gian mặc định và xác thực
+            // Handle default time range logic and validation
             if (!startDate.HasValue && !endDate.HasValue)
             {
                 endDate = DateTime.UtcNow;
@@ -42,14 +42,14 @@ namespace ITHunterview.Service.UseCase
             }
             else
             {
-                // Nếu chỉ truyền một trong hai
+                // If only one of them is provided
                 endDate ??= DateTime.UtcNow;
                 startDate ??= endDate.Value.AddDays(-7);
 
                 var duration = endDate.Value - startDate.Value;
                 if (duration.TotalDays <= 0 || duration.TotalDays > 30.0)
                 {
-                    return new ResponseBase<PagedResult<AuditLogDto>>("Khoảng thời gian truy xuất quá lớn. Vui lòng giới hạn phạm vi tìm kiếm trong vòng 30 ngày để đảm bảo hiệu năng");
+                    return new ResponseBase<PagedResult<AuditLogDto>>("The retrieval time range is too large. Please limit the search scope to 30 days to ensure performance.");
                 }
             }
 
@@ -96,13 +96,13 @@ namespace ITHunterview.Service.UseCase
         {
             if (daysRetention < 1)
             {
-                return new ResponseBase<int>("Số ngày lưu giữ tối thiểu phải là 1 ngày.");
+                return new ResponseBase<int>("The minimum retention days must be 1 day.");
             }
 
             var cutoffDate = DateTime.UtcNow.AddDays(-daysRetention);
             int deletedCount = await _auditLogRepository.PurgeActivityLogsAsync(cutoffDate);
 
-            return new ResponseBase<int>(deletedCount, $"Đã dọn dẹp {deletedCount} bản ghi nhật ký kiểm toán cũ hơn {daysRetention} ngày.");
+            return new ResponseBase<int>(deletedCount, $"Successfully purged {deletedCount} audit log records older than {daysRetention} days.");
         }
     }
 }
