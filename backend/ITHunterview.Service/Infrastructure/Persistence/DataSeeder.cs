@@ -196,27 +196,43 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             // Seed companies if none exists
             var companies = context.Companies.ToList();
+
+            // Update old clearbit logo URLs if they exist in database
+            var clearbitCompanies = context.Companies.Where(c => c.LogoUrl.Contains("logo.clearbit.com")).ToList();
+            if (clearbitCompanies.Any())
+            {
+                foreach (var c in clearbitCompanies)
+                {
+                    if (c.Name.Contains("ITHunterView")) c.LogoUrl = "https://picsum.photos/id/1060/200";
+                    else if (c.Name.Contains("FPT")) c.LogoUrl = "https://picsum.photos/id/1061/200";
+                    else if (c.Name.Contains("VNG")) c.LogoUrl = "https://picsum.photos/id/1062/200";
+                    else c.LogoUrl = "https://picsum.photos/id/1060/200";
+                }
+                context.SaveChanges();
+                companies = context.Companies.ToList(); // Refresh the local company list
+            }
+
             if (companies.Count < 3)
             {
                 var comp1 = new Companies
                 {
                     Id = Guid.NewGuid(), Name = "ITHunterView Corp", TaxCode = "0102030405", HeadquartersAddress = "123 Dev Street, Tech City",
                     Industry = "Software Products and Web Services", CompanySize = "100-500", Description = "Leading tech recruitment platform",
-                    Website = "https://ithunterview.com", LogoUrl = "https://logo.clearbit.com/ithunterview.com", CompanyType = "IT Product",
+                    Website = "https://ithunterview.com", LogoUrl = "https://picsum.photos/id/1060/200", CompanyType = "IT Product",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license1.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
                 var comp2 = new Companies
                 {
                     Id = Guid.NewGuid(), Name = "FPT Software", TaxCode = "0102030406", HeadquartersAddress = "F-Town, HCMC",
                     Industry = "Software Development Outsourcing", CompanySize = "1000+", Description = "Global technology and IT services provider",
-                    Website = "https://fptsoftware.com", LogoUrl = "https://logo.clearbit.com/fptsoftware.com", CompanyType = "IT Outsourcing",
+                    Website = "https://fptsoftware.com", LogoUrl = "https://picsum.photos/id/1061/200", CompanyType = "IT Outsourcing",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license2.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
                 var comp3 = new Companies
                 {
                     Id = Guid.NewGuid(), Name = "VNG Corporation", TaxCode = "0102030407", HeadquartersAddress = "VNG Campus, HCMC",
                     Industry = "Game", CompanySize = "1000+", Description = "Vietnam's leading tech firm",
-                    Website = "https://vng.com.vn", LogoUrl = "https://logo.clearbit.com/vng.com.vn", CompanyType = "IT Product",
+                    Website = "https://vng.com.vn", LogoUrl = "https://picsum.photos/id/1062/200", CompanyType = "IT Product",
                     VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION, VerificationDocumentUrl = "https://document.com/license3.pdf", Status = CompanyStatus.VERIFIED, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
                 
