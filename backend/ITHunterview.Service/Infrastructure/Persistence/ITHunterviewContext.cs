@@ -73,6 +73,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.HasPostgresExtension("vector");
 
             // Postgres Enums
             modelBuilder.HasPostgresEnum<UserStatus>();

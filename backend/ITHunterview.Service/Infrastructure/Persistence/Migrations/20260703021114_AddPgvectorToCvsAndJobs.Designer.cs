@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using Pgvector;
 namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ITHunterviewContext))]
-    partial class ITHunterviewContextModelSnapshot : ModelSnapshot
+    [Migration("20260703021114_AddPgvectorToCvsAndJobs")]
+    partial class AddPgvectorToCvsAndJobs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -699,13 +702,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
-                    b.Property<Vector>("DomainEmbedding")
+                    b.Property<Vector>("Embedding")
+                        .IsRequired()
                         .HasColumnType("vector(768)")
-                        .HasColumnName("domain_embedding");
-
-                    b.Property<Vector>("ExperienceEmbedding")
-                        .HasColumnType("vector(768)")
-                        .HasColumnName("experience_embedding");
+                        .HasColumnName("embedding");
 
                     b.Property<string>("FileName")
                         .IsRequired()
@@ -734,14 +734,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("parsed_data");
-
-                    b.Property<Vector>("SkillsEmbedding")
-                        .HasColumnType("vector(768)")
-                        .HasColumnName("skills_embedding");
-
-                    b.Property<Vector>("TitleEmbedding")
-                        .HasColumnType("vector(768)")
-                        .HasColumnName("title_embedding");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1067,13 +1059,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
-                    b.Property<Vector>("DomainEmbedding")
+                    b.Property<Vector>("Embedding")
+                        .IsRequired()
                         .HasColumnType("vector(768)")
-                        .HasColumnName("domain_embedding");
-
-                    b.Property<Vector>("ExperienceEmbedding")
-                        .HasColumnType("vector(768)")
-                        .HasColumnName("experience_embedding");
+                        .HasColumnName("embedding");
 
                     b.Property<DateTime?>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
@@ -1109,10 +1098,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric")
                         .HasColumnName("min_salary");
 
-                    b.Property<string>("ParsedData")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("parsed_data");
-
                     b.Property<DateTime?>("PublishedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("published_at");
@@ -1131,10 +1116,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("responsibilities");
 
-                    b.Property<Vector>("SkillsEmbedding")
-                        .HasColumnType("vector(768)")
-                        .HasColumnName("skills_embedding");
-
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
@@ -1143,10 +1124,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("title");
-
-                    b.Property<Vector>("TitleEmbedding")
-                        .HasColumnType("vector(768)")
-                        .HasColumnName("title_embedding");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")

@@ -15,11 +15,13 @@ namespace ITHunterview.WebAPI.Controllers
     {
         private readonly IJobPostingsUseCase _jobPostingsUseCase;
         private readonly IUserUseCase _userUseCase;
+        private readonly ICvJobMatchingUseCase _cvJobMatchingUseCase;
 
-        public JobPostingsController(IJobPostingsUseCase jobPostingsUseCase, IUserUseCase userUseCase)
+        public JobPostingsController(IJobPostingsUseCase jobPostingsUseCase, IUserUseCase userUseCase, ICvJobMatchingUseCase cvJobMatchingUseCase)
         {
             _jobPostingsUseCase = jobPostingsUseCase;
             _userUseCase = userUseCase;
+            _cvJobMatchingUseCase = cvJobMatchingUseCase;
         }
 
         [HttpGet]
@@ -96,6 +98,26 @@ namespace ITHunterview.WebAPI.Controllers
                 return BadRequest(result);
             }
             return Ok(result);
+        }
+
+        [HttpPost("{id:guid}/match-cvs")]
+        public async Task<ActionResult<ResponseBase<string>>> MatchCvs(Guid id)
+        {
+            try
+            {
+                var jobResult = await _jobPostingsUseCase.GetJobByIdAsync(id);
+                if (!jobResult.Success)
+                {
+                    return NotFound(new ResponseBase<string>("Job not found"));
+                }
+
+                await _cvJobMatchingUseCase.MatchJobWithAllCvsAsync(id);
+                return Ok(new ResponseBase<string>("Matching completed", "Job matched with CVs successfully"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ResponseBase<string>(null, ex.Message));
+            }
         }
 
         private Task<Guid> ResolveRecruiterIdAsync()
