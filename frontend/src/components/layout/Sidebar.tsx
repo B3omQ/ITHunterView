@@ -6,11 +6,12 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, User, Briefcase, Bookmark, Bell, Settings, HelpCircle, LogOut,
   ChevronRight, Users, FileText, Building2, Shield, BarChart3, BrainCircuit,
-  ClipboardList, Database, CreditCard, MessageSquare, KeyRound
+  ClipboardList, Database, CreditCard, MessageSquare, KeyRound, AlertCircle
 } from "lucide-react"
 import { useAuthStore } from "@/store/auth.store"
 import { Logo } from "@/components/layout/Logo"
 import { APP_ROUTES } from "@/lib/constants"
+import { useGetMyCompany } from "@/hooks/useCompany"
 
 // ---- Lucide icon map ----
 const ICONS: Record<string, React.ReactNode> = {
@@ -103,10 +104,18 @@ export function Sidebar() {
   const { user, logout } = useAuthStore()
   const [expandedGroups, setExpandedGroups] = React.useState<string[]>([])
 
+  const isRecruiter = user?.role?.name?.toLowerCase() === "recruiter"
+  const { data: company, isLoading: companyLoading } = useGetMyCompany({
+    enabled: isRecruiter
+  })
+
   const navItems = getNavItems(user?.role?.name ?? "candidate")
 
   const handleLogout = async () => {
     await logout()
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('dismissedCompanyReminder')
+    }
     router.push("/login")
   }
 
@@ -169,10 +178,15 @@ export function Sidebar() {
                     {item.badge}
                   </span>
                 )}
+                {item.label === "Company" && isRecruiter && !companyLoading && !company && (
+                  <span className="ml-auto text-amber-500 animate-pulse" title="Company registration required">
+                    <AlertCircle size={16} />
+                  </span>
+                )}
                 {item.children && (
                   <ChevronRight size={14} className={`ml-auto transition-transform ${isExpanded ? 'rotate-90 text-primary' : 'opacity-70'}`} />
                 )}
-                {!item.children && active && !item.badge && (
+                {!item.children && active && !item.badge && !(item.label === "Company" && isRecruiter && !company) && (
                   <ChevronRight size={14} className="ml-auto text-primary opacity-70" />
                 )}
               </div>
