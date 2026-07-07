@@ -174,7 +174,7 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
               placeholder="e.g. ReactJS, React.js (Press Enter to add)"
             />
             <p className="text-[10px] text-muted-foreground mt-1">
-              Alternative names used for matching this skill in CVs or Job Posts.
+              Gõ từ khóa đồng nghĩa, gõ sai chính tả của kỹ năng này và nhấn Enter để thêm mới.
             </p>
           </div>
 

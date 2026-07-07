@@ -69,7 +69,7 @@ export const SkillsTable = memo(function SkillsTable({
   onRetry,
 }: SkillsTableProps) {
   if (isLoading) {
-    return <TableSkeleton columns={4} />;
+    return <TableSkeleton columns={3} />;
   }
 
   if (isError) {
@@ -103,10 +103,7 @@ export const SkillsTable = memo(function SkillsTable({
           <thead>
             <tr className="border-b border-border bg-muted/30">
               <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Skill
-              </th>
-              <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Category
+                Skill & Aliases
               </th>
               <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center">
                 Status
@@ -123,33 +120,28 @@ export const SkillsTable = memo(function SkillsTable({
                 className="hover:bg-muted/20 transition-colors"
               >
                 <td className="px-6 py-4">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-medium text-foreground">
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-sm font-semibold text-foreground">
                       {skill.name}
                     </span>
                     {skill.aliases && skill.aliases.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {skill.aliases.slice(0, 3).map((alias, idx) => (
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {skill.aliases.slice(0, 4).map((alias, idx) => (
                           <span
                             key={idx}
-                            className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/50 text-muted-foreground border border-border"
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-muted/50 text-muted-foreground border border-border/50"
                           >
                             {alias}
                           </span>
                         ))}
-                        {skill.aliases.length > 3 && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/50 text-muted-foreground border border-border">
-                            +{skill.aliases.length - 3}
+                        {skill.aliases.length > 4 && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-muted/80 text-foreground border border-border/50 shadow-sm">
+                            +{skill.aliases.length - 4} more
                           </span>
                         )}
                       </div>
                     )}
                   </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground">
-                    {skill.categoryName || "Uncategorized"}
-                  </span>
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center justify-center">

@@ -10,6 +10,8 @@ import {
   Layers,
   CheckCircle,
   RotateCcw,
+  Edit2,
+  Trash2,
 } from "lucide-react";
 import {
   useSkills,
@@ -300,95 +302,127 @@ function MasterDataContent() {
 
       {/* TAB CONTENT: SKILLS */}
       {activeTab === "skills" && (
-        <div className="space-y-4">
-          {/* Filters Bar */}
-          <div className="bg-card border border-border rounded-2xl p-4 space-y-4 shadow-2xs">
-            <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
-              {/* Search */}
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search skills by name..."
-                  value={skillSearch}
-                  onChange={(e) => setSkillSearch(e.target.value)}
-                  className="pl-9 pr-4 py-2 w-full rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground"
-                />
-                {skillSearch && (
-                  <button
-                    onClick={() => setSkillSearch("")}
-                    className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-              </div>
-
-              {/* Status Select */}
-              <div className="w-full md:w-48">
-                <select
-                  value={selectedStatus || ""}
-                  onChange={(e) =>
-                    setSelectedStatus((e.target.value as SkillStatus) || null)
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                >
-                  <option value="">All statuses</option>
-                  <option value="ACTIVE">Active</option>
-                  <option value="DEACTIVE">Disabled</option>
-                </select>
-              </div>
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
+          {/* Left Sidebar (Master) */}
+          <div className="w-full lg:w-[30%] bg-card border border-border rounded-2xl shadow-2xs overflow-hidden flex flex-col h-[700px]">
+            <div className="p-4 border-b border-border flex justify-between items-center bg-muted/10">
+              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Skill Categories</h2>
+              <button 
+                onClick={() => showToast("Add Category feature is coming soon!", "warning")}
+                className="p-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground rounded-lg transition-colors"
+                title="Add Category"
+              >
+                <Plus size={16} />
+              </button>
             </div>
-
-            {/* Category Pills */}
-            <div className="space-y-2">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
-                Categories
-              </span>
-              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto pr-2">
-                <button
-                  onClick={() => setSelectedCategoryId(null)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                    selectedCategoryId === null
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                  }`}
-                >
-                  All
-                </button>
-                {categoriesData?.data?.map((cat) => (
-                  <button
+            
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              <button
+                onClick={() => setSelectedCategoryId(null)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all group ${
+                  selectedCategoryId === null
+                    ? "bg-primary/10 text-primary font-semibold border-l-4 border-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-4 border-transparent"
+                }`}
+              >
+                <span>All Skills</span>
+              </button>
+              
+              {isCategoriesLoading ? (
+                <div className="p-4 text-center text-xs text-muted-foreground animate-pulse">Loading categories...</div>
+              ) : (
+                categoriesData?.data?.map((cat) => (
+                  <div
                     key={cat.id}
-                    onClick={() => setSelectedCategoryId(cat.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                    className={`group w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all cursor-pointer ${
                       selectedCategoryId === cat.id
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                        ? "bg-primary/10 text-primary font-semibold border-l-4 border-primary"
+                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border-l-4 border-transparent"
                     }`}
+                    onClick={() => setSelectedCategoryId(cat.id)}
                   >
-                    {cat.name}
-                  </button>
-                ))}
-              </div>
+                    <span className="truncate pr-2">{cat.name}</span>
+                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-1">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); showToast("Edit Category feature is coming soon!", "warning"); }}
+                        className="p-1 text-muted-foreground hover:text-primary rounded"
+                        title="Edit"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); showToast("Delete Category feature is coming soon!", "warning"); }}
+                        className="p-1 text-muted-foreground hover:text-destructive rounded"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
-          {/* Table Container */}
-          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs">
-            <SkillsTable
-              skills={skillsData?.data?.items || []}
-              isLoading={isSkillsLoading}
-              isError={isSkillsError}
-              totalItems={skillsData?.data?.total || 0}
-              totalPages={skillsData?.data?.totalPages || 0}
-              currentPage={skillPage}
-              pageSize={skillPageSize}
-              onPageChange={setSkillPage}
-              onEdit={handleOpenSkillEdit}
-              onDelete={handleSkillDeleteClick}
-              onStatusToggle={handleSkillStatusToggle}
-              onRetry={refetchSkills}
-            />
+          {/* Main Content (Detail) */}
+          <div className="w-full lg:w-[70%] space-y-4">
+            {/* Header & Filters */}
+            <div className="bg-card border border-border rounded-2xl p-4 shadow-2xs flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">
+                  {selectedCategoryId === null 
+                    ? "All Skills" 
+                    : `Skills in ${categoriesData?.data?.find(c => c.id === selectedCategoryId)?.name || "Category"}`}
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Manage standard skills and aliases.</p>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-3 items-center">
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search skills..."
+                    value={skillSearch}
+                    onChange={(e) => setSkillSearch(e.target.value)}
+                    className="pl-9 pr-4 py-2 w-full rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground"
+                  />
+                  {skillSearch && (
+                    <button
+                      onClick={() => setSkillSearch("")}
+                      className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={handleOpenSkillCreate}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/95 text-primary-foreground font-medium text-sm rounded-xl shadow-xs transition-colors shrink-0"
+                >
+                  <Plus size={16} />
+                  <span>Add Skill</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Table Container */}
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs min-h-[590px]">
+              <SkillsTable
+                skills={skillsData?.data?.items || []}
+                isLoading={isSkillsLoading}
+                isError={isSkillsError}
+                totalItems={skillsData?.data?.total || 0}
+                totalPages={skillsData?.data?.totalPages || 0}
+                currentPage={skillPage}
+                pageSize={skillPageSize}
+                onPageChange={setSkillPage}
+                onEdit={handleOpenSkillEdit}
+                onDelete={handleSkillDeleteClick}
+                onStatusToggle={handleSkillStatusToggle}
+                onRetry={refetchSkills}
+              />
+            </div>
           </div>
         </div>
       )}
