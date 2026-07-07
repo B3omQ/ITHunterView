@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Pgvector.EntityFrameworkCore;
 using Pgvector;
 using System.Collections.Generic;
+using ITHunterview.Service.DTOs.Cv.Matching;
 
 namespace ITHunterview.Service.Implementations.UseCase
 {
@@ -286,6 +287,67 @@ namespace ITHunterview.Service.Implementations.UseCase
             }
 
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<Guid> SubmitMatchingJobAsync(Guid userId, MatchingRequestDto request)
+        {
+            var matchScore = new CvJobMatchScores
+            {
+                Id = Guid.NewGuid(),
+                CvId = request.CvId ?? Guid.Empty,
+                JobId = request.JobId,
+                RawJdText = "", // Bắt buộc hoặc optional
+                MatchScore = 0,
+                Status = "Pending",
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.CvJobMatchScores.Add(matchScore);
+            await _context.SaveChangesAsync();
+            return matchScore.Id;
+        }
+
+        public async Task ProcessMatchingJobAsync(Guid jobId, Guid userId, MatchingRequestDto request)
+        {
+            var matchRecord = await _context.CvJobMatchScores.FindAsync(jobId);
+            if (matchRecord == null) return;
+
+            try
+            {
+                matchRecord.Status = "Processing";
+                matchRecord.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                await Task.Delay(2000); // Skeleton delay
+
+                matchRecord.Status = "Completed";
+                matchRecord.MatchScore = 85.5m;
+                matchRecord.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                matchRecord.Status = "Failed";
+                matchRecord.ErrorMessage = ex.Message;
+                matchRecord.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task<MatchingResultDto?> GetMatchingResultAsync(Guid jobId, Guid userId)
+        {
+            var matchRecord = await _context.CvJobMatchScores.FindAsync(jobId);
+            if (matchRecord == null) return null;
+
+            return new MatchingResultDto
+            {
+                Id = matchRecord.Id,
+                CvId = matchRecord.CvId,
+                JobId = matchRecord.JobId,
+                Status = matchRecord.Status,
+                ErrorMessage = matchRecord.ErrorMessage,
+                JdFit = new JdFitResultDto { Score = matchRecord.MatchScore ?? 0m }
+            };
         }
     }
 }

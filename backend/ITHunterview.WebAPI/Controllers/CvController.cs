@@ -91,7 +91,7 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpPost("match-jd")]
-        public async Task<ActionResult<CvJobMatchScoreResponseDto>> MatchJd([FromBody] MatchJdRequestDto request)
+        public async Task<ActionResult<ResponseBase<Guid>>> MatchJd([FromBody] ITHunterview.Service.DTOs.Cv.Matching.MatchingRequestDto request)
         {
             var userIdStr = User.FindFirstValue("userId");
             if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
@@ -103,7 +103,6 @@ namespace ITHunterview.WebAPI.Controllers
             {
                 Guid finalCvId = request.CvId ?? Guid.Empty;
 
-                // Nếu user không chọn CV có sẵn mà dùng URL (upload) hoặc Text (paste), tự tạo CV mới cho họ
                 if (finalCvId == Guid.Empty && (!string.IsNullOrEmpty(request.CvUrl) || !string.IsNullOrEmpty(request.CvText)))
                 {
                     var createDto = new CreateCvRequestDto
@@ -115,30 +114,38 @@ namespace ITHunterview.WebAPI.Controllers
                     };
                     var createdCv = await _cvUseCase.CreateCvAsync(userId, createDto);
                     finalCvId = createdCv.Id;
+                    request.CvId = finalCvId;
                 }
 
-                // TODO: Gọi service AI parse & tính điểm thật (CvJobMatchingUseCase)
-                await Task.Delay(2000); // Giả lập processing time
+                var jobId = await _cvJobMatchingUseCase.SubmitMatchingJobAsync(userId, request);
 
-                // Trả về mock data cho giai đoạn 1 (Plumbing)
-                var mockResponse = new CvJobMatchScoreResponseDto
-                {
-                    Id = Guid.NewGuid(),
-                    CvId = finalCvId,
-                    JobId = request.JobId,
-                    OverallScore = 85.5m,
-                    SkillMatchScore = 90.0m,
-                    ExperienceMatchScore = 80.0m,
-                    DomainMatchScore = 85.0m,
-                    MatchDetails = "{\"MatchedSkills\": [\"React\", \"TypeScript\"], \"MissingSkills\": [\"Node.js\"]}"
-                };
+                // Chạy ngầm trong background (thực tế nên dùng IHostedService/BackgroundWorker/Hangfire, tạm dùng Task.Run)
+                _ = Task.Run(() => _cvJobMatchingUseCase.ProcessMatchingJobAsync(jobId, userId, request));
 
-                return Ok(mockResponse);
+                return Ok(new ResponseBase<Guid>(jobId, "Matching job submitted"));
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new ResponseBase<Guid>(Guid.Empty, ex.Message));
             }
+        }
+
+        [HttpGet("match-results/{jobId:guid}")]
+        public async Task<ActionResult<ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.MatchingResultDto>>> GetMatchResult(Guid jobId)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var result = await _cvJobMatchingUseCase.GetMatchingResultAsync(jobId, userId);
+            if (result == null)
+            {
+                return NotFound(new ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.MatchingResultDto>("Job not found"));
+            }
+
+            return Ok(new ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.MatchingResultDto>(result, "Result retrieved"));
         }
 
         [HttpPost("{id:guid}/match-jobs")]
