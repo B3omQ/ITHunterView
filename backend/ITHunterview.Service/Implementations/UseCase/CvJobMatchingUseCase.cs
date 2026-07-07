@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Service.Interface.Service;
@@ -407,10 +408,17 @@ namespace ITHunterview.Service.Implementations.UseCase
                         }
                     }
                 }
-                catch (JsonException)
+                catch (JsonException ex)
                 {
-                    // Nếu JSON không hợp lệ, throw lỗi để nhảy vào catch bên dưới, đánh dấu Failed
-                    throw new Exception("LLM returned invalid JSON format. Backend failed to parse.");
+                    _logger.LogError(ex, "JSON Parse Error.");
+                    
+                    // Ghi đè trạng thái Failed nhưng vẫn giữ chuỗi rác trong MatchDetails để debug
+                    matchRecord.Status = "Failed";
+                    matchRecord.ErrorMessage = "LLM returned invalid JSON format. Backend failed to parse.";
+                    matchRecord.MatchDetails = llmResponseText;
+                    matchRecord.UpdatedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync();
+                    return; // Thoát hàm sớm, không gán Completed nữa
                 }
 
                 matchRecord.Status = "Completed";
@@ -450,9 +458,15 @@ namespace ITHunterview.Service.Implementations.UseCase
                     },
                     generationConfig = new 
                     { 
-                        response_mime_type = "application/json",
                         maxOutputTokens = 8192, // Tránh JSON bị cắt cụt giữa chừng
                         temperature = 0.2 // Cần sự chính xác cao
+                    },
+                    safetySettings = new[]
+                    {
+                        new { category = "HARM_CATEGORY_HARASSMENT", threshold = "BLOCK_NONE" },
+                        new { category = "HARM_CATEGORY_HATE_SPEECH", threshold = "BLOCK_NONE" },
+                        new { category = "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold = "BLOCK_NONE" },
+                        new { category = "HARM_CATEGORY_DANGEROUS_CONTENT", threshold = "BLOCK_NONE" }
                     }
                 };
 
@@ -466,8 +480,18 @@ namespace ITHunterview.Service.Implementations.UseCase
                     if (response.IsSuccessStatusCode)
                     {
                         var jsonDoc = JsonDocument.Parse(responseContent);
-                        var text = jsonDoc.RootElement
-                            .GetProperty("candidates")[0]
+                        var candidate = jsonDoc.RootElement.GetProperty("candidates")[0];
+                        
+                        if (candidate.TryGetProperty("finishReason", out var frProp))
+                        {
+                            var finishReason = frProp.GetString();
+                            if (finishReason != "STOP")
+                            {
+                                _logger.LogWarning("Gemini stopped unexpectedly with finishReason: {FinishReason}", finishReason);
+                            }
+                        }
+
+                        var text = candidate
                             .GetProperty("content")
                             .GetProperty("parts")[0]
                             .GetProperty("text")
@@ -476,16 +500,23 @@ namespace ITHunterview.Service.Implementations.UseCase
                         // Log 500 ký tự đầu để debug
                         _logger.LogInformation("Gemini raw text (first 500 chars): {Text}", text.Length > 500 ? text.Substring(0, 500) : text);
 
-                        // Fallback: nếu model vẫn cố wrap trong markdown dù đã bật JSON mode
-                        if (text.TrimStart().StartsWith("```"))
-                        {
-                            var startIdx = text.IndexOf('\n') + 1;
-                            var endIdx = text.LastIndexOf("```");
-                            if (endIdx > startIdx)
-                                text = text.Substring(startIdx, endIdx - startIdx).Trim();
-                        }
+                        // Fallback: Dùng Regex bóc JSON ra khỏi markdown ```json ... ``` hoặc lấy thẳng nếu là JSON thuần
+                        text = ExtractJsonFromText(text);
 
-                        return text;
+                        // THÊM: Validate JSON ngay tại đây, nếu đứt đuôi/hỏng thì ném lỗi để Retry
+                        try 
+                        {
+                            using (var testParse = JsonDocument.Parse(text)) { } // Chỉ để test
+                            return text; // Hợp lệ, trả về
+                        }
+                        catch (JsonException ex)
+                        {
+                            if (attempt == maxRetries)
+                            {
+                                throw new Exception($"Gemini trả về JSON lỗi sau {maxRetries} lần thử. Lỗi: {ex.Message}");
+                            }
+                            _logger.LogWarning("Gemini sinh JSON lỗi ở lần thử {Attempt}. Sẽ retry. Text 500 chars: {Text}", attempt, text.Length > 500 ? text.Substring(0, 500) : text);
+                        }
                     }
 
                     // Nếu lỗi 503 hoặc các lỗi API khác, thử lại
@@ -546,6 +577,27 @@ namespace ITHunterview.Service.Implementations.UseCase
                 MatchDetails = matchRecord.MatchDetails,
                 JdFit = new JdFitResultDto { Score = matchRecord.MatchScore ?? 0m }
             };
+        }
+
+        private string ExtractJsonFromText(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+
+            var match = Regex.Match(text, @"```(?:json)?\s*([\s\S]*?)```");
+            if (match.Success)
+            {
+                return match.Groups[1].Value.Trim();
+            }
+
+            // Phòng trường hợp nó trả về {...} không có markdown nhưng thừa chữ
+            var startIndex = text.IndexOf('{');
+            var endIndex = text.LastIndexOf('}');
+            if (startIndex >= 0 && endIndex >= startIndex)
+            {
+                return text.Substring(startIndex, endIndex - startIndex + 1).Trim();
+            }
+
+            return text.Trim();
         }
     }
 }
