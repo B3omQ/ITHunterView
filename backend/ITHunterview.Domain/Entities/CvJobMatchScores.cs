@@ -16,7 +16,7 @@ namespace ITHunterview.Domain.Entities
         public Guid CvId { get; set; }
 
         [Column("job_id")]
-        public Guid JobId { get; set; }
+        public Guid? JobId { get; set; }
 
         [Column("raw_jd_text")]
         public string RawJdText { get; set; }

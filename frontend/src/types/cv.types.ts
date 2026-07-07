@@ -19,3 +19,22 @@ export interface CreateCvRequest {
   isPrimary: boolean;
   parsedData: string;
 }
+
+export interface MatchJdRequest {
+  cvId?: string;
+  cvUrl?: string;
+  cvText?: string;
+  jobId?: string;
+  rawJdText?: string;
+}
+
+export interface CvJobMatchScoreResponse {
+  id: string;
+  cvId: string;
+  jobId?: string;
+  overallScore: number;
+  skillMatchScore: number;
+  experienceMatchScore: number;
+  domainMatchScore: number;
+  matchDetails: string;
+}

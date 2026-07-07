@@ -90,6 +90,57 @@ namespace ITHunterview.WebAPI.Controllers
             }
         }
 
+        [HttpPost("match-jd")]
+        public async Task<ActionResult<CvJobMatchScoreResponseDto>> MatchJd([FromBody] MatchJdRequestDto request)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+                Guid finalCvId = request.CvId ?? Guid.Empty;
+
+                // Nếu user không chọn CV có sẵn mà dùng URL (upload) hoặc Text (paste), tự tạo CV mới cho họ
+                if (finalCvId == Guid.Empty && (!string.IsNullOrEmpty(request.CvUrl) || !string.IsNullOrEmpty(request.CvText)))
+                {
+                    var createDto = new CreateCvRequestDto
+                    {
+                        FileUrl = request.CvUrl ?? string.Empty,
+                        ParsedData = request.CvText ?? string.Empty,
+                        FileName = !string.IsNullOrEmpty(request.CvUrl) ? "Uploaded CV" : "Pasted CV",
+                        FileType = "application/pdf"
+                    };
+                    var createdCv = await _cvUseCase.CreateCvAsync(userId, createDto);
+                    finalCvId = createdCv.Id;
+                }
+
+                // TODO: Gọi service AI parse & tính điểm thật (CvJobMatchingUseCase)
+                await Task.Delay(2000); // Giả lập processing time
+
+                // Trả về mock data cho giai đoạn 1 (Plumbing)
+                var mockResponse = new CvJobMatchScoreResponseDto
+                {
+                    Id = Guid.NewGuid(),
+                    CvId = finalCvId,
+                    JobId = request.JobId,
+                    OverallScore = 85.5m,
+                    SkillMatchScore = 90.0m,
+                    ExperienceMatchScore = 80.0m,
+                    DomainMatchScore = 85.0m,
+                    MatchDetails = "{\"MatchedSkills\": [\"React\", \"TypeScript\"], \"MissingSkills\": [\"Node.js\"]}"
+                };
+
+                return Ok(mockResponse);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         [HttpPost("{id:guid}/match-jobs")]
         public async Task<ActionResult<ResponseBase<string>>> MatchJobs(Guid id)
         {
