@@ -13,18 +13,21 @@ export interface SkillDto {
   status: SkillStatus;
   createdBy?: string;
   updatedBy?: string;
+  aliases: string[];
 }
 
 export interface CreateSkillDto {
   name: string;
   categoryId: number;
   status?: SkillStatus;
+  aliases?: string[];
 }
 
 export interface UpdateSkillDto {
   name: string;
   categoryId: number;
   status: SkillStatus;
+  aliases?: string[];
 }
 
 export interface UpdateSkillStatusDto {

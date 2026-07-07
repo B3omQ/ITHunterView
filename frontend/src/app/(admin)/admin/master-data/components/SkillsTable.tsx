@@ -123,9 +123,28 @@ export const SkillsTable = memo(function SkillsTable({
                 className="hover:bg-muted/20 transition-colors"
               >
                 <td className="px-6 py-4">
-                  <span className="text-sm font-medium text-foreground">
-                    {skill.name}
-                  </span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-medium text-foreground">
+                      {skill.name}
+                    </span>
+                    {skill.aliases && skill.aliases.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {skill.aliases.slice(0, 3).map((alias, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/50 text-muted-foreground border border-border"
+                          >
+                            {alias}
+                          </span>
+                        ))}
+                        {skill.aliases.length > 3 && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/50 text-muted-foreground border border-border">
+                            +{skill.aliases.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground">
