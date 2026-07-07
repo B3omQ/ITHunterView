@@ -83,6 +83,8 @@ export default function CvMatchingPage() {
           setLoadingStep(6);
           setTimeout(() => setStep('result'), 600);
         } catch (err) {
+          console.error("Parse error details:", err);
+          console.error("Raw matchDetails string:", matchDetails);
           toast.error("Failed to parse matching result.");
           setStep('select');
         }
