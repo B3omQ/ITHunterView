@@ -4,6 +4,7 @@ using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Service;
+using ITHunterview.Service.Service.AiProviders;
 using ITHunterview.Service.UseCase;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,6 +44,14 @@ namespace ITHunterview.Service.Config
 
 
             // Application Services
+            services.AddHttpClient();
+            services.Configure<AiSettings>(configuration.GetSection("AiSettings"));
+            services.AddScoped<IAiProvider, OpenAiProvider>();
+            services.AddScoped<IAiProvider, GeminiProvider>();
+            services.AddScoped<IAiProvider, ClaudeProvider>();
+            services.AddScoped<IAiProviderFactory, AiProviderFactory>();
+            services.AddScoped<IAiService, AiService>();
+
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IGoogleAuthService, GoogleAuthService>();
             services.AddScoped<IFileUploadService, CloudinaryService>();
@@ -55,6 +64,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IUserUseCase, UserUseCase>();
             services.AddScoped<IJobApplicationUseCase, JobApplicationUseCase>();
 
+            services.AddScoped<IAiConfigUseCase, AiConfigUseCase>();
             services.AddScoped<ICvUseCase, CvUseCase>();
             services.AddScoped<ICompanyUseCase, CompanyUseCase>();
             services.AddScoped<ISkillUseCase, SkillUseCase>();
