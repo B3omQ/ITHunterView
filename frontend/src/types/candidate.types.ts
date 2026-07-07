@@ -10,6 +10,19 @@ export interface UpdateVisibilityRequest {
   isVisibleToRecruiters: boolean;
 }
 
+export interface ProfileCompletionStatus {
+  isComplete: boolean;
+  missingFields: string[];
+  completionPercentage: number;
+}
+
+export interface OnboardingProfilePayload {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  location: string;
+}
+
 export interface AvatarUploadResponse {
   avatarUrl: string;
 }

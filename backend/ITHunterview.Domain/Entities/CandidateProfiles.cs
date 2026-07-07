@@ -44,6 +44,12 @@ namespace ITHunterview.Domain.Entities
         [Column("is_visible_to_recruiters")]
         public bool IsVisibleToRecruiters { get; set; } = true;
 
+        [Column("is_profile_complete")]
+        public bool IsProfileComplete { get; set; }
+
+        [Column("profile_completed_at")]
+        public DateTime? ProfileCompletedAt { get; set; }
+
         // Navigation
         public User User { get; set; } = null!;
     }

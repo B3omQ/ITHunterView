@@ -9,9 +9,11 @@ import type {
   BasicInfoUpdateRequest,
   AboutMeUpdateRequest,
   SocialLinksUpdateRequest,
+  OnboardingProfilePayload,
 } from '@/types/candidate.types';
 
 export const CANDIDATE_PROFILE_KEYS = {
+  completionStatus: ['candidate-completion-status'] as const,
   summary: ['candidate-profile-summary'] as const,
   personalInfo: ['candidate-personal-info'] as const,
   skills: ['candidate-skills'] as const,
@@ -25,6 +27,27 @@ export function useProfileSummary() {
   return useQuery({
     queryKey: CANDIDATE_PROFILE_KEYS.summary,
     queryFn: () => candidateService.getProfileSummary().then((res) => res.data),
+  });
+}
+
+export function useProfileCompletionStatus() {
+  return useQuery({
+    queryKey: CANDIDATE_PROFILE_KEYS.completionStatus,
+    queryFn: () => candidateService.getCompletionStatus().then((res) => res.data),
+    staleTime: Infinity, // The gating logic will handle refetch invalidation
+  });
+}
+
+export function useUpdateOnboardingProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: OnboardingProfilePayload) => candidateService.updateOnboardingProfile(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.completionStatus });
+      queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.personalInfo });
+      queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.summary });
+    },
   });
 }
 
