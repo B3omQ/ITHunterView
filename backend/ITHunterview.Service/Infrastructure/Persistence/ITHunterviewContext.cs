@@ -29,6 +29,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         public DbSet<Majors> Majors { get; set; } = null!;
         public DbSet<SkillCategories> SkillCategories { get; set; } = null!;
         public DbSet<Skills> Skills { get; set; } = null!;
+        public DbSet<SkillAliases> SkillAliases { get; set; } = null!;
 
         // Candidate Portfolio
         public DbSet<Cvs> Cvs { get; set; } = null!;
@@ -266,6 +267,22 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             modelBuilder.Entity<Skills>(entity =>
             {
                 entity.HasIndex(e => e.NormalizedName);
+
+                entity.HasOne(s => s.Category)
+                      .WithMany(c => c.Skills)
+                      .HasForeignKey(s => s.CategoryId)
+                      .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // SkillAliases
+            modelBuilder.Entity<SkillAliases>(entity =>
+            {
+                entity.HasIndex(e => e.NormalizedAliasName);
+
+                entity.HasOne(sa => sa.Skill)
+                      .WithMany(s => s.Aliases)
+                      .HasForeignKey(sa => sa.SkillId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Global Query Filters for Soft Delete

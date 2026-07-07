@@ -12,5 +12,6 @@ namespace ITHunterview.Service.DTOs.MasterData
         public SkillStatus Status { get; set; }
         public Guid? CreatedBy { get; set; }
         public Guid? UpdatedBy { get; set; }
+        public List<string> Aliases { get; set; } = new List<string>();
     }
 }

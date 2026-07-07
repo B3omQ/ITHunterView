@@ -11,6 +11,9 @@ namespace ITHunterview.Service.Interface.UseCase
     {
         Task<ResponseBase<PagedResult<SkillDto>>> GetPagedSkillsAsync(int page, int pageSize, string? search, int? categoryId, SkillStatus? status);
         Task<ResponseBase<List<SkillCategoryDto>>> GetAllCategoriesAsync();
+        Task<ResponseBase<SkillCategoryDto>> CreateCategoryAsync(CreateSkillCategoryDto dto);
+        Task<ResponseBase<SkillCategoryDto>> UpdateCategoryAsync(int id, UpdateSkillCategoryDto dto);
+        Task<ResponseBase> DeleteCategoryAsync(int id);
         Task<ResponseBase<SkillDto>> CreateSkillAsync(CreateSkillDto dto, Guid userId);
         Task<ResponseBase<SkillDto>> UpdateSkillAsync(int id, UpdateSkillDto dto, Guid userId);
         Task<ResponseBase<SkillDto>> UpdateSkillStatusAsync(int id, UpdateSkillStatusDto dto, Guid userId);

@@ -20,5 +20,27 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
         public Task<bool> CategoryExistsAsync(int id)
             => _context.SkillCategories.AnyAsync(c => c.Id == id);
+
+        public Task<SkillCategories?> GetByIdAsync(int id)
+            => _context.SkillCategories.FirstOrDefaultAsync(c => c.Id == id);
+
+        public async Task<SkillCategories> AddAsync(SkillCategories category)
+        {
+            _context.SkillCategories.Add(category);
+            await _context.SaveChangesAsync();
+            return category;
+        }
+
+        public async Task UpdateAsync(SkillCategories category)
+        {
+            _context.SkillCategories.Update(category);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteAsync(SkillCategories category)
+        {
+            _context.SkillCategories.Remove(category);
+            await _context.SaveChangesAsync();
+        }
     }
 }

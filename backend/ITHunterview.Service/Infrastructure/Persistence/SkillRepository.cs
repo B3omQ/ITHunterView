@@ -20,7 +20,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
         public async Task<List<(Skills Skill, string CategoryName)>> GetActiveSkillsWithCategoryAsync()
         {
-            var query = from s in _context.Skills
+            var query = from s in _context.Skills.Include(s => s.Aliases)
                         join c in _context.SkillCategories on s.CategoryId equals c.Id into sc
                         from category in sc.DefaultIfEmpty()
                         where s.Status == SkillStatus.ACTIVE
@@ -31,12 +31,12 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         }
 
         public Task<Skills?> GetByIdAsync(int id)
-            => _context.Skills.FirstOrDefaultAsync(s => s.Id == id);
+            => _context.Skills.Include(s => s.Aliases).FirstOrDefaultAsync(s => s.Id == id);
 
         public async Task<(List<Skills> Items, int Total)> GetPagedSkillsAsync(
             int page, int pageSize, string? search, int? categoryId, SkillStatus? status)
         {
-            var query = _context.Skills.AsQueryable();
+            var query = _context.Skills.Include(s => s.Aliases).AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -112,6 +112,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         public Task<int> CountJobRequirementsAsync(int skillId)
         {
             return _context.JobSkillRequirements.CountAsync(jsr => jsr.SkillId == skillId);
+        }
+
+        public Task<bool> HasSkillsInCategoryAsync(int categoryId)
+        {
+            return _context.Skills.AnyAsync(s => s.CategoryId == categoryId);
         }
     }
 }
