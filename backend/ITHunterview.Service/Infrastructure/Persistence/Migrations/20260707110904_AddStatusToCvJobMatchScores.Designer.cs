@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using Pgvector;
 namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ITHunterviewContext))]
-    partial class ITHunterviewContextModelSnapshot : ModelSnapshot
+    [Migration("20260707110904_AddStatusToCvJobMatchScores")]
+    partial class AddStatusToCvJobMatchScores
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -319,10 +322,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("github_url");
 
-                    b.Property<bool>("IsProfileComplete")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_profile_complete");
-
                     b.Property<bool>("IsVisibleToRecruiters")
                         .HasColumnType("boolean")
                         .HasColumnName("is_visible_to_recruiters");
@@ -346,10 +345,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Property<string>("PortfolioUrl")
                         .HasColumnType("text")
                         .HasColumnName("portfolio_url");
-
-                    b.Property<DateTime?>("ProfileCompletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("profile_completed_at");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
@@ -476,10 +471,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
-                    b.Property<string>("DetailedLocation")
-                        .HasColumnType("text")
-                        .HasColumnName("detailed_location");
-
                     b.Property<string>("EmployeeBenefits")
                         .HasColumnType("text")
                         .HasColumnName("employee_benefits");
@@ -498,18 +489,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("industry");
 
-                    b.Property<double?>("Latitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("latitude");
-
                     b.Property<string>("LogoUrl")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("logo_url");
-
-                    b.Property<double?>("Longitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("longitude");
 
                     b.Property<string>("MainField")
                         .HasColumnType("text")
@@ -528,29 +511,13 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("pending_company_type");
 
-                    b.Property<string>("PendingDetailedLocation")
-                        .HasColumnType("text")
-                        .HasColumnName("pending_detailed_location");
-
                     b.Property<string>("PendingHeadquartersAddress")
                         .HasColumnType("text")
                         .HasColumnName("pending_headquarters_address");
 
-                    b.Property<double?>("PendingLatitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("pending_latitude");
-
-                    b.Property<double?>("PendingLongitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("pending_longitude");
-
                     b.Property<string>("PendingName")
                         .HasColumnType("text")
                         .HasColumnName("pending_name");
-
-                    b.Property<string>("PendingProvinceCode")
-                        .HasColumnType("text")
-                        .HasColumnName("pending_province_code");
 
                     b.Property<string>("PendingTaxCode")
                         .HasColumnType("text")
@@ -563,10 +530,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Property<int?>("PendingVerificationMethod")
                         .HasColumnType("integer")
                         .HasColumnName("pending_verification_method");
-
-                    b.Property<string>("ProvinceCode")
-                        .HasColumnType("text")
-                        .HasColumnName("province_code");
 
                     b.Property<string>("RejectReason")
                         .HasColumnType("text")
@@ -727,10 +690,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
 
                     b.HasKey("Id");
 
@@ -1119,10 +1078,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("description");
-
-                    b.Property<string>("DetailedLocation")
-                        .HasColumnType("text")
-                        .HasColumnName("detailed_location");
 
                     b.Property<Vector>("DomainEmbedding")
                         .HasColumnType("vector(768)")
@@ -1649,40 +1604,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.ToTable("roles");
                 });
 
-            modelBuilder.Entity("ITHunterview.Domain.Entities.SkillAliases", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AliasName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("alias_name");
-
-                    b.Property<string>("NormalizedAliasName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("normalized_alias_name");
-
-                    b.Property<int>("SkillId")
-                        .HasColumnType("integer")
-                        .HasColumnName("skill_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NormalizedAliasName");
-
-                    b.HasIndex("SkillId");
-
-                    b.ToTable("skill_aliases");
-                });
-
             modelBuilder.Entity("ITHunterview.Domain.Entities.SkillCategories", b =>
                 {
                     b.Property<int>("Id")
@@ -1746,8 +1667,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CategoryId");
 
                     b.HasIndex("NormalizedName");
 
@@ -2244,27 +2163,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("ITHunterview.Domain.Entities.SkillAliases", b =>
-                {
-                    b.HasOne("ITHunterview.Domain.Entities.Skills", "Skill")
-                        .WithMany("Aliases")
-                        .HasForeignKey("SkillId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Skill");
-                });
-
-            modelBuilder.Entity("ITHunterview.Domain.Entities.Skills", b =>
-                {
-                    b.HasOne("ITHunterview.Domain.Entities.SkillCategories", "Category")
-                        .WithMany("Skills")
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Category");
-                });
-
             modelBuilder.Entity("ITHunterview.Domain.Entities.User", b =>
                 {
                     b.HasOne("ITHunterview.Domain.Entities.Roles", "Role")
@@ -2294,16 +2192,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("ITHunterview.Domain.Entities.Roles", b =>
                 {
                     b.Navigation("Users");
-                });
-
-            modelBuilder.Entity("ITHunterview.Domain.Entities.SkillCategories", b =>
-                {
-                    b.Navigation("Skills");
-                });
-
-            modelBuilder.Entity("ITHunterview.Domain.Entities.Skills", b =>
-                {
-                    b.Navigation("Aliases");
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.User", b =>
