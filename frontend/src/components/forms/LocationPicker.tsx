@@ -135,7 +135,7 @@ export function LocationPicker({ value, onChange, disabled }: LocationPickerProp
   return (
     <div className="space-y-4">
       <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
+        <PopoverTrigger nativeButton={false} render={
           <div className="relative">
             <Input
               placeholder="Search address..."
@@ -147,11 +147,10 @@ export function LocationPicker({ value, onChange, disabled }: LocationPickerProp
             />
             <MapPin className="absolute right-3 top-2.5 h-5 w-5 text-muted-foreground" />
           </div>
-        </PopoverTrigger>
+        } />
         <PopoverContent 
           className="w-[var(--radix-popover-trigger-width)] p-0 bg-popover text-popover-foreground border-input rounded-md shadow-md" 
           align="start"
-          onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <div className="max-h-60 overflow-y-auto">
             {suggestions.map((item, index) => (
