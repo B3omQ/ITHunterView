@@ -1,5 +1,7 @@
 using ITHunterview.Service.Config;
 using ITHunterview.Service.Infrastructure.Persistence;
+using ITHunterview.Service.Implementations.Service;
+using ITHunterview.Service.Implementations.UseCase;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.UseCase;
@@ -55,6 +57,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IGoogleAuthService, GoogleAuthService>();
             services.AddScoped<IFileUploadService, CloudinaryService>();
+            services.AddHttpClient<IAiEmbeddingService, GeminiEmbeddingService>();
 
             // Use Cases — Auth
             services.AddScoped<IAuthUseCase, AuthUseCase>();
@@ -68,6 +71,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICvUseCase, CvUseCase>();
             services.AddScoped<ICompanyUseCase, CompanyUseCase>();
             services.AddScoped<ISkillUseCase, SkillUseCase>();
+            services.AddScoped<ICvJobMatchingUseCase, CvJobMatchingUseCase>();
             services.AddScoped<IMajorUseCase, MajorUseCase>();
             services.AddScoped<IUserGovernanceUseCase, UserGovernanceUseCase>();
             services.AddScoped<IAuditLogUseCase, AuditLogUseCase>();

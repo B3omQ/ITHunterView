@@ -16,10 +16,12 @@ namespace ITHunterview.WebAPI.Controllers
     public class CvController : ControllerBase
     {
         private readonly ICvUseCase _cvUseCase;
+        private readonly ICvJobMatchingUseCase _cvJobMatchingUseCase;
 
-        public CvController(ICvUseCase cvUseCase)
+        public CvController(ICvUseCase cvUseCase, ICvJobMatchingUseCase cvJobMatchingUseCase)
         {
             _cvUseCase = cvUseCase;
+            _cvJobMatchingUseCase = cvJobMatchingUseCase;
         }
 
         [HttpPost]
@@ -85,6 +87,32 @@ namespace ITHunterview.WebAPI.Controllers
             catch (KeyNotFoundException)
             {
                 return NotFound(new ResponseBase<string>("CV not found"));
+            }
+        }
+
+        [HttpPost("{id:guid}/match-jobs")]
+        public async Task<ActionResult<ResponseBase<string>>> MatchJobs(Guid id)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+                // Optionally verify that CV belongs to user
+                await _cvUseCase.GetCvByIdAsync(id, userId);
+                await _cvJobMatchingUseCase.MatchCvWithAllJobsAsync(id);
+                return Ok(new ResponseBase<string>("Matching completed", "CV matched with jobs successfully"));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new ResponseBase<string>("CV not found"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ResponseBase<string>(null, ex.Message));
             }
         }
     }
