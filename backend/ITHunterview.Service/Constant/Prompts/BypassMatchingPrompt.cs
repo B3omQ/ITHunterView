@@ -36,7 +36,7 @@ Hãy phân tích, đối chiếu CV với JD dựa trên BỘ TIÊU CHÍ JD FIT 
         ""normalizedText"": ""string (Tên kỹ năng/yêu cầu)"",
         ""importance"": ""must_have"" | ""nice_to_have"",
         ""category"": ""tech_skill"" | ""experience"" | ""seniority_fit"" | ""domain_knowledge"" | ""language"" | ""education"" | ""soft_skill"",
-        ""categoryWeight"": 0.0, // 1.0(tech), 0.9(exp/seniority), 0.7(domain), 0.6(lang), 0.5(edu), 0.4(soft)
+        ""categoryWeight"": 0.0,
         ""entities"": {{}},
         ""handlerUsed"": ""string (Tên handler)"",
         ""handlerCode"": ""string (Mã code, vd: H_TECH_03, H_EXP_05...)"",
@@ -58,7 +58,7 @@ Hãy phân tích, đối chiếu CV với JD dựa trên BỘ TIÊU CHÍ JD FIT 
       {{
         ""code"": ""RULE_TC1_01"" | ""RULE_TC1_02"" | ""PNL_TC1_01"" | ""KSW_01"",
         ""triggered"": true/false,
-        ""deduction"": 0-100, // Hoặc ghi 15 nếu PNL_TC1_01
+        ""deduction"": 0-100,
         ""evidence"": ""string""
       }}
     ],
