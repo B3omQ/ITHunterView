@@ -394,7 +394,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                 // 4. Call LLM
                 string llmResponseText = await CallLlmBypassAsync(prompt);
 
-                // Deserialize to extract final score
+                // Deserialize to extract final score and validate JSON
                 decimal finalScore = 0m;
                 try 
                 {
@@ -407,7 +407,11 @@ namespace ITHunterview.Service.Implementations.UseCase
                         }
                     }
                 }
-                catch { /* Ignore parse error for score, just keep 0 */ }
+                catch (JsonException)
+                {
+                    // Nếu JSON không hợp lệ, throw lỗi để nhảy vào catch bên dưới, đánh dấu Failed
+                    throw new Exception("LLM returned invalid JSON format. Backend failed to parse.");
+                }
 
                 matchRecord.Status = "Completed";
                 matchRecord.MatchScore = finalScore;
