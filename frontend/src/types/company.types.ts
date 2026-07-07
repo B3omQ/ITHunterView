@@ -5,7 +5,11 @@ export interface Company {
   id: string;
   name: string;
   taxCode: string;
-  headquartersAddress: string;
+  headquartersAddress?: string;
+  provinceCode?: string;
+  detailedLocation?: string;
+  latitude?: number;
+  longitude?: number;
   industry: string;
   companySize: string;
   description: string;
@@ -49,6 +53,10 @@ export interface CreateCompanyDto {
   logoUrl?: string;
   taxCode?: string; // Optional during profile creation, required in legal
   headquartersAddress?: string; // Optional during profile creation
+  provinceCode: string;
+  detailedLocation: string;
+  latitude: number;
+  longitude: number;
 
   // New fields
   tradeName?: string;
@@ -68,6 +76,10 @@ export interface UpdateCompanyDto {
   description?: string;
   companyType?: string;
   industry?: string;
+  provinceCode?: string;
+  detailedLocation?: string;
+  latitude?: number;
+  longitude?: number;
 
   // New fields
   tradeName?: string;
