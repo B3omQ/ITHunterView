@@ -25,8 +25,10 @@ import type {
   SkillStatus,
 } from "@/types/master-data.types";
 import { SkillModal } from "./components/SkillModal";
+import { CategoryModal } from "./components/CategoryModal";
 import { MajorModal } from "./components/MajorModal";
 import { SkillDeleteDialog } from "./components/SkillDeleteDialog";
+import { CategoryDeleteDialog } from "./components/CategoryDeleteDialog";
 import { MajorDeleteDialog } from "./components/MajorDeleteDialog";
 import { SkillForceStatusDialog } from "./components/SkillForceStatusDialog";
 import { SkillsTable } from "./components/SkillsTable";
@@ -136,6 +138,13 @@ function MasterDataContent() {
 
   const restoreMajorMutation = useRestoreMajor();
 
+  // Modals / Dialogs State - Categories
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [categoryModalMode, setCategoryModalMode] = useState<"create" | "edit">("create");
+  const [selectedCategory, setSelectedCategory] = useState<SkillCategoryDto | null>(null);
+  const [isCategoryDeleteOpen, setIsCategoryDeleteOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<SkillCategoryDto | null>(null);
+
   // Modals / Dialogs State - Skills
   const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
   const [skillModalMode, setSkillModalMode] = useState<"create" | "edit">(
@@ -170,6 +179,24 @@ function MasterDataContent() {
   useEffect(() => {
     setMajorPage(1);
   }, [debouncedMajorSearch]);
+
+  // Category Form Actions
+  const handleOpenCategoryCreate = useCallback(() => {
+    setCategoryModalMode("create");
+    setSelectedCategory(null);
+    setIsCategoryModalOpen(true);
+  }, []);
+
+  const handleOpenCategoryEdit = useCallback((category: SkillCategoryDto) => {
+    setCategoryModalMode("edit");
+    setSelectedCategory(category);
+    setIsCategoryModalOpen(true);
+  }, []);
+
+  const handleCategoryDeleteClick = useCallback((category: SkillCategoryDto) => {
+    setCategoryToDelete(category);
+    setIsCategoryDeleteOpen(true);
+  }, []);
 
   // Skill Form Actions
   const handleOpenSkillCreate = useCallback(() => {
@@ -308,7 +335,7 @@ function MasterDataContent() {
             <div className="p-4 border-b border-border flex justify-between items-center bg-muted/10">
               <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Skill Categories</h2>
               <button 
-                onClick={() => showToast("Add Category feature is coming soon!", "warning")}
+                onClick={handleOpenCategoryCreate}
                 className="p-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground rounded-lg transition-colors"
                 title="Add Category"
               >
@@ -344,14 +371,14 @@ function MasterDataContent() {
                     <span className="truncate pr-2">{cat.name}</span>
                     <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-1">
                       <button 
-                        onClick={(e) => { e.stopPropagation(); showToast("Edit Category feature is coming soon!", "warning"); }}
+                        onClick={(e) => { e.stopPropagation(); handleOpenCategoryEdit(cat); }}
                         className="p-1 text-muted-foreground hover:text-primary rounded"
                         title="Edit"
                       >
                         <Edit2 size={14} />
                       </button>
                       <button 
-                        onClick={(e) => { e.stopPropagation(); showToast("Delete Category feature is coming soon!", "warning"); }}
+                        onClick={(e) => { e.stopPropagation(); handleCategoryDeleteClick(cat); }}
                         className="p-1 text-muted-foreground hover:text-destructive rounded"
                         title="Delete"
                       >
@@ -505,6 +532,31 @@ function MasterDataContent() {
         forceStatusData={forceStatusData}
         onSuccess={(msg) => {
           showToast(msg, "success");
+          refetchSkills();
+        }}
+        onError={(msg) => showToast(msg, "error")}
+      />
+
+      <CategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        mode={categoryModalMode}
+        initialData={selectedCategory}
+        onSuccess={(msg) => {
+          showToast(msg, "success");
+          refetchSkills();
+        }}
+      />
+
+      <CategoryDeleteDialog
+        isOpen={isCategoryDeleteOpen}
+        onClose={() => setIsCategoryDeleteOpen(false)}
+        categoryToDelete={categoryToDelete}
+        onSuccess={(msg) => {
+          showToast(msg, "success");
+          if (selectedCategoryId === categoryToDelete?.id) {
+            setSelectedCategoryId(null);
+          }
           refetchSkills();
         }}
         onError={(msg) => showToast(msg, "error")}

@@ -8,5 +8,9 @@ namespace ITHunterview.Service.Interface.Persistence
     {
         Task<List<SkillCategories>> GetAllCategoriesAsync();
         Task<bool> CategoryExistsAsync(int id);
+        Task<SkillCategories?> GetByIdAsync(int id);
+        Task<SkillCategories> AddAsync(SkillCategories category);
+        Task UpdateAsync(SkillCategories category);
+        Task DeleteAsync(SkillCategories category);
     }
 }

@@ -5,6 +5,14 @@ export interface SkillCategoryDto {
   name: string;
 }
 
+export interface CreateSkillCategoryDto {
+  name: string;
+}
+
+export interface UpdateSkillCategoryDto {
+  name: string;
+}
+
 export interface SkillDto {
   id: number;
   categoryId?: number;

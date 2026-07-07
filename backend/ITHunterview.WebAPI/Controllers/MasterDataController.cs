@@ -45,6 +45,36 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(response);
         }
 
+        [HttpPost("skills/categories")]
+        public async Task<IActionResult> CreateSkillCategory([FromBody] CreateSkillCategoryDto dto)
+        {
+            var response = await _skillUseCase.CreateCategoryAsync(dto);
+            if (!response.Success)
+                return BadRequest(response);
+
+            return Ok(response);
+        }
+
+        [HttpPut("skills/categories/{id}")]
+        public async Task<IActionResult> UpdateSkillCategory([FromRoute] int id, [FromBody] UpdateSkillCategoryDto dto)
+        {
+            var response = await _skillUseCase.UpdateCategoryAsync(id, dto);
+            if (!response.Success)
+                return BadRequest(response);
+
+            return Ok(response);
+        }
+
+        [HttpDelete("skills/categories/{id}")]
+        public async Task<IActionResult> DeleteSkillCategory([FromRoute] int id)
+        {
+            var response = await _skillUseCase.DeleteCategoryAsync(id);
+            if (!response.Success)
+                return BadRequest(response);
+
+            return Ok(response);
+        }
+
         [HttpPost("skills")]
         public async Task<IActionResult> CreateSkill([FromBody] CreateSkillDto dto)
         {

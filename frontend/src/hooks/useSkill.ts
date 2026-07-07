@@ -22,6 +22,42 @@ export function useSkillCategories() {
   });
 }
 
+export function useCreateSkillCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: skillService.createCategory,
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ['skill-categories'] });
+      }
+    },
+  });
+}
+
+export function useUpdateSkillCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: skillService.updateCategory,
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ['skill-categories'] });
+      }
+    },
+  });
+}
+
+export function useDeleteSkillCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: skillService.deleteCategory,
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ['skill-categories'] });
+      }
+    },
+  });
+}
+
 export function useCreateSkill() {
   const queryClient = useQueryClient();
   return useMutation({

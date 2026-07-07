@@ -71,6 +71,61 @@ namespace ITHunterview.Service.UseCase
             return new ResponseBase<List<SkillCategoryDto>>(dtos);
         }
 
+        public async Task<ResponseBase<SkillCategoryDto>> CreateCategoryAsync(CreateSkillCategoryDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Name))
+                return new ResponseBase<SkillCategoryDto>("Category name is required.");
+
+            var category = new SkillCategories
+            {
+                Name = dto.Name.Trim()
+            };
+
+            await _skillCategoryRepository.AddAsync(category);
+
+            return new ResponseBase<SkillCategoryDto>(new SkillCategoryDto
+            {
+                Id = category.Id,
+                Name = category.Name
+            });
+        }
+
+        public async Task<ResponseBase<SkillCategoryDto>> UpdateCategoryAsync(int id, UpdateSkillCategoryDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Name))
+                return new ResponseBase<SkillCategoryDto>("Category name is required.");
+
+            var category = await _skillCategoryRepository.GetByIdAsync(id);
+            if (category == null)
+                return new ResponseBase<SkillCategoryDto>("Category not found.");
+
+            category.Name = dto.Name.Trim();
+            await _skillCategoryRepository.UpdateAsync(category);
+
+            return new ResponseBase<SkillCategoryDto>(new SkillCategoryDto
+            {
+                Id = category.Id,
+                Name = category.Name
+            });
+        }
+
+        public async Task<ResponseBase> DeleteCategoryAsync(int id)
+        {
+            var category = await _skillCategoryRepository.GetByIdAsync(id);
+            if (category == null)
+                return ResponseBase.Fail("Category not found.");
+
+            // Check if there are any skills using this category
+            // We'll rely on DB constraints or explicit checks. If it's RESTRICT or Cascade, DB will handle.
+            // Better to check if skills exist but EF Core will throw an exception on SaveChanges if restricted.
+            // Wait, skills have a foreign key to category. In our EF Core configuration, it is OnDelete(DeleteBehavior.SetNull).
+            // So we can just delete it, and skills will be set to null category.
+
+            await _skillCategoryRepository.DeleteAsync(category);
+
+            return ResponseBase.Ok();
+        }
+
         public async Task<ResponseBase<SkillDto>> CreateSkillAsync(CreateSkillDto dto, Guid userId)
         {
             var isCategoryValid = await _skillCategoryRepository.CategoryExistsAsync(dto.CategoryId);
