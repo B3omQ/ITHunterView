@@ -12,6 +12,8 @@ namespace ITHunterview.Service.DTOs.MasterData
         [Required(ErrorMessage = "Skill category cannot be empty.")]
         public int CategoryId { get; set; }
 
+        public List<string>? Aliases { get; set; }
+
         public SkillStatus Status { get; set; }
     }
 }

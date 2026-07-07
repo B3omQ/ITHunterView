@@ -43,7 +43,8 @@ namespace ITHunterview.Service.UseCase
                 Name = s.Name,
                 Status = s.Status,
                 CreatedBy = s.CreatedBy,
-                UpdatedBy = s.UpdatedBy
+                UpdatedBy = s.UpdatedBy,
+                Aliases = s.Aliases?.Select(a => a.AliasName).ToList() ?? new List<string>()
             }).ToList();
 
             var result = new PagedResult<SkillDto>
@@ -93,6 +94,18 @@ namespace ITHunterview.Service.UseCase
                 CreatedBy = userId
             };
 
+            if (dto.Aliases != null && dto.Aliases.Any())
+            {
+                foreach (var alias in dto.Aliases.Where(a => !string.IsNullOrWhiteSpace(a)))
+                {
+                    skill.Aliases.Add(new SkillAliases
+                    {
+                        AliasName = alias.Trim(),
+                        NormalizedAliasName = Utils.StringNormalizationHelper.NormalizeITTerm(alias)
+                    });
+                }
+            }
+
             await _skillRepository.AddAsync(skill);
 
             var categories = await _skillCategoryRepository.GetAllCategoriesAsync();
@@ -105,7 +118,8 @@ namespace ITHunterview.Service.UseCase
                 CategoryName = categoryName,
                 Name = skill.Name,
                 Status = skill.Status,
-                CreatedBy = skill.CreatedBy
+                CreatedBy = skill.CreatedBy,
+                Aliases = skill.Aliases.Select(a => a.AliasName).ToList()
             };
 
             return new ResponseBase<SkillDto>(resultDto, "Skill created successfully.");
@@ -137,6 +151,19 @@ namespace ITHunterview.Service.UseCase
             skill.NormalizedName = Utils.StringNormalizationHelper.NormalizeITTerm(dto.Name);
             skill.UpdatedBy = userId;
 
+            skill.Aliases.Clear();
+            if (dto.Aliases != null && dto.Aliases.Any())
+            {
+                foreach (var alias in dto.Aliases.Where(a => !string.IsNullOrWhiteSpace(a)))
+                {
+                    skill.Aliases.Add(new SkillAliases
+                    {
+                        AliasName = alias.Trim(),
+                        NormalizedAliasName = Utils.StringNormalizationHelper.NormalizeITTerm(alias)
+                    });
+                }
+            }
+
             await _skillRepository.UpdateAsync(skill);
 
             var categories = await _skillCategoryRepository.GetAllCategoriesAsync();
@@ -150,7 +177,8 @@ namespace ITHunterview.Service.UseCase
                 Name = skill.Name,
                 Status = skill.Status,
                 CreatedBy = skill.CreatedBy,
-                UpdatedBy = skill.UpdatedBy
+                UpdatedBy = skill.UpdatedBy,
+                Aliases = skill.Aliases.Select(a => a.AliasName).ToList()
             };
 
             return new ResponseBase<SkillDto>(resultDto, "Skill updated successfully.");
@@ -190,7 +218,8 @@ namespace ITHunterview.Service.UseCase
                 Name = skill.Name,
                 Status = skill.Status,
                 CreatedBy = skill.CreatedBy,
-                UpdatedBy = skill.UpdatedBy
+                UpdatedBy = skill.UpdatedBy,
+                Aliases = skill.Aliases.Select(a => a.AliasName).ToList()
             };
 
             string message = "Skill status updated successfully.";
