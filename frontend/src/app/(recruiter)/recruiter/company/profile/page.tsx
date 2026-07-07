@@ -242,6 +242,7 @@ export default function CompanyProfilePage() {
       const payload = {
         ...values,
         website: values.noWebsite ? '' : values.website,
+        headquartersAddress: values.detailedLocation,
       };
 
       if (company?.id) {

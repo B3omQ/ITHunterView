@@ -11,6 +11,13 @@ namespace ITHunterview.Service.DTOs.Company
         public string? CompanyType { get; set; }
         public string? Industry { get; set; }
 
+        // Location fields
+        public string? HeadquartersAddress { get; set; }
+        public string? ProvinceCode { get; set; }
+        public string? DetailedLocation { get; set; }
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+
         // New fields
         public string? TradeName { get; set; }
         public List<string>? TargetCustomers { get; set; }
