@@ -7,6 +7,7 @@ using ITHunterview.Service.DTOs.Cv;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ITHunterview.WebAPI.Controllers
 {
@@ -17,11 +18,16 @@ namespace ITHunterview.WebAPI.Controllers
     {
         private readonly ICvUseCase _cvUseCase;
         private readonly ICvJobMatchingUseCase _cvJobMatchingUseCase;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
 
-        public CvController(ICvUseCase cvUseCase, ICvJobMatchingUseCase cvJobMatchingUseCase)
+        public CvController(
+            ICvUseCase cvUseCase, 
+            ICvJobMatchingUseCase cvJobMatchingUseCase,
+            IServiceScopeFactory serviceScopeFactory)
         {
             _cvUseCase = cvUseCase;
             _cvJobMatchingUseCase = cvJobMatchingUseCase;
+            _serviceScopeFactory = serviceScopeFactory;
         }
 
         [HttpPost]
@@ -119,8 +125,13 @@ namespace ITHunterview.WebAPI.Controllers
 
                 var jobId = await _cvJobMatchingUseCase.SubmitMatchingJobAsync(userId, request);
 
-                // Chạy ngầm trong background (thực tế nên dùng IHostedService/BackgroundWorker/Hangfire, tạm dùng Task.Run)
-                _ = Task.Run(() => _cvJobMatchingUseCase.ProcessMatchingJobAsync(jobId, userId, request));
+                // Chạy ngầm trong background với scope riêng biệt
+                _ = Task.Run(async () =>
+                {
+                    using var scope = _serviceScopeFactory.CreateScope();
+                    var useCase = scope.ServiceProvider.GetRequiredService<ICvJobMatchingUseCase>();
+                    await useCase.ProcessMatchingJobAsync(jobId, userId, request);
+                });
 
                 return Ok(new ResponseBase<Guid>(jobId, "Matching job submitted"));
             }

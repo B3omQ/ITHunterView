@@ -13,6 +13,7 @@ namespace ITHunterview.Service.DTOs.Cv.Matching
         
         public string Status { get; set; } = "Pending";
         public string? ErrorMessage { get; set; }
+        public string? MatchDetails { get; set; }
 
         public JdFitResultDto? JdFit { get; set; }
         public CvQualityResultDto? CvQuality { get; set; }

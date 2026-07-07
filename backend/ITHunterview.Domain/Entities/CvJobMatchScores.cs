@@ -15,6 +15,9 @@ namespace ITHunterview.Domain.Entities
         [Column("cv_id")]
         public Guid CvId { get; set; }
 
+        [Column("user_id")]
+        public Guid UserId { get; set; }
+
         [Column("job_id")]
         public Guid? JobId { get; set; }
 

@@ -12,7 +12,9 @@ namespace ITHunterview.Service.DTOs.Cv.Matching
         public Guid? JobId { get; set; }
         public string? RawJdText { get; set; }
 
-        public MatchingMode Mode { get; set; } = MatchingMode.Both;
+        // Removed ModelName and ApiKey as they are read from appsettings now
+
+        public MatchingMode Mode { get; set; } = MatchingMode.JdFit;
     }
 
     public enum MatchingMode

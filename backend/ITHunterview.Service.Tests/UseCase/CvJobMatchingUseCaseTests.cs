@@ -14,14 +14,21 @@ namespace ITHunterview.Service.Tests.UseCase
     public class CvJobMatchingUseCaseTests
     {
         private readonly Mock<IAiEmbeddingService> _mockAiService;
+        private readonly Mock<ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService> _mockExtractorService;
+        private readonly Mock<System.Net.Http.IHttpClientFactory> _mockHttpClientFactory;
+        private readonly Mock<Microsoft.Extensions.Configuration.IConfiguration> _mockConfiguration;
         private readonly CvJobMatchingUseCase _sut;
 
         public CvJobMatchingUseCaseTests()
         {
             _mockAiService = new Mock<IAiEmbeddingService>();
+            _mockExtractorService = new Mock<ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService>();
+            _mockHttpClientFactory = new Mock<System.Net.Http.IHttpClientFactory>();
+            _mockConfiguration = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
+            var mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<CvJobMatchingUseCase>>();
             
             // Pass null for context since we only test methods that don't hit DB
-            _sut = new CvJobMatchingUseCase(null!, _mockAiService.Object);
+            _sut = new CvJobMatchingUseCase(null!, _mockAiService.Object, _mockExtractorService.Object, _mockHttpClientFactory.Object, _mockConfiguration.Object, mockLogger.Object);
         }
 
         [Theory]

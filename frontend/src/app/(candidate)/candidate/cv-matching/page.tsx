@@ -4,13 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { useUploadFile } from '@/hooks/useUpload';
 import { useGetMyCvs } from '@/hooks/useCv';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
-import { useMatchCvJd } from '@/hooks/useCvMatch';
-import type { CvJobMatchScoreResponse, MatchJdRequest } from '@/types/cv.types';
+import { useMatchCvJd, useGetMatchResult } from '@/hooks/useCvMatch';
+import type { MatchJdRequest, MatchingOutput } from '@/types/cv.types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -33,6 +34,12 @@ import {
   Info
 } from 'lucide-react';
 
+import { ResultOverviewCard } from './components/ResultOverviewCard';
+import { RequirementBreakdown } from './components/RequirementBreakdown';
+import { CriticalGapsPanel } from './components/CriticalGapsPanel';
+import { ImprovementSuggestions } from './components/ImprovementSuggestions';
+import { PenaltyWarningPanel } from './components/PenaltyWarningPanel';
+
 type Step = 'select' | 'loading' | 'result';
 
 export default function CvMatchingPage() {
@@ -51,12 +58,41 @@ export default function CvMatchingPage() {
   const [jdText, setJdText] = useState<string>('');
   const [selectedJobId, setSelectedJobId] = useState<string>('');
 
+  // LLM Config đã được cấu hình trong appsettings (Backend)
+
   // Queries & Mutations
   const uploadMutation = useUploadFile();
   const { data: myCvsData, isLoading: isLoadingCvs } = useGetMyCvs();
   const { data: savedJobsData, isLoading: isLoadingJobs } = useSavedJobs(1, 100);
   const matchMutation = useMatchCvJd();
-  const [matchResult, setMatchResult] = useState<CvJobMatchScoreResponse | null>(null);
+  
+  const [pollingJobId, setPollingJobId] = useState<string | null>(null);
+  const [matchOutput, setMatchOutput] = useState<MatchingOutput | null>(null);
+  
+  const pollQuery = useGetMatchResult(pollingJobId);
+
+  useEffect(() => {
+    if (pollQuery.data?.data) {
+      const { status, matchDetails, errorMessage } = pollQuery.data.data;
+      if (status === 'Completed' && matchDetails) {
+        setPollingJobId(null);
+        try {
+          const parsed = JSON.parse(matchDetails) as MatchingOutput;
+          setMatchOutput(parsed);
+          setProgressPercent(100);
+          setLoadingStep(6);
+          setTimeout(() => setStep('result'), 600);
+        } catch (err) {
+          toast.error("Failed to parse matching result.");
+          setStep('select');
+        }
+      } else if (status === 'Failed') {
+        setPollingJobId(null);
+        toast.error(errorMessage || "Matching failed.");
+        setStep('select');
+      }
+    }
+  }, [pollQuery.data?.data]);
 
   // States cho loading progress
   const [progressPercent, setProgressPercent] = useState(0);
@@ -80,12 +116,8 @@ export default function CvMatchingPage() {
       
       interval = setInterval(() => {
         setProgressPercent((prev) => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setTimeout(() => {
-              setStep('result');
-            }, 600);
-            return 100;
+          if (prev >= 98) {
+            return 98; // Hold until API completes
           }
           const nextPercent = prev + Math.floor(Math.random() * 15) + 5;
           const currentStep = Math.min(
@@ -93,7 +125,7 @@ export default function CvMatchingPage() {
             loadingSteps.length - 1
           );
           setLoadingStep(currentStep);
-          return Math.min(nextPercent, 100);
+          return Math.min(nextPercent, 98);
         });
       }, 500);
     }
@@ -204,9 +236,9 @@ export default function CvMatchingPage() {
     
     try {
       const res = await matchMutation.mutateAsync(payload);
-      setMatchResult(res);
-      // Kết thúc loading ảo sớm nếu API trả về nhanh, hoặc đợi loading ảo chạy xong (handled by useEffect later, but for now we just let the API await finish the fake progress if we wanted, or just skip it. 
-      // To keep it simple, we let the fake interval run until it hits 100.
+      if (res.data) {
+        setPollingJobId(res.data);
+      }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Error matching CV and JD');
       setStep('select');
@@ -398,6 +430,8 @@ export default function CvMatchingPage() {
             </div>
           </div>
 
+
+
           {/* Action Button */}
           <div className="flex justify-center pt-4">
             <Button 
@@ -470,198 +504,61 @@ export default function CvMatchingPage() {
         </Card>
       )}
 
-      {/* 3. Giao diện Kết quả Mock */}
+      {/* 3. Giao diện Kết quả (Sử dụng Sub-Components) */}
       {step === 'result' && (
-        <div className="space-y-8 animate-in fade-in duration-500">
-          {/* Header Kết quả */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between bg-muted/20 p-6 rounded-lg border gap-4">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-                <FileCheck className="h-8 w-8" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold">Analysis Completed</h2>
-                <p className="text-sm text-muted-foreground">
-                  Job Match Score generated for: <span className="font-semibold text-foreground">Senior React Developer</span>
-                </p>
-              </div>
+        <div className="space-y-6 animate-in fade-in duration-500">
+          <div className="flex flex-col sm:flex-row justify-between items-center bg-muted/20 p-4 rounded-lg border gap-4">
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <Info className="h-5 w-5 text-primary/70" />
+              This match result is generated by our AI using your provided CV and Job Description.
             </div>
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep('select')}>
                 Analyze Another
               </Button>
-              <Button className="gap-2">
-                Improve CV
-                <Sparkles className="h-4 w-4" />
-              </Button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Cột trái (2/3) - Chi tiết đánh giá */}
+          {matchOutput?.jdFit && (
+            <>
+              <ResultOverviewCard jdFit={matchOutput.jdFit} />
+              <PenaltyWarningPanel penalties={matchOutput.jdFit.penalties} />
+            </>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              <Card className="border-muted">
-                <CardHeader>
-                  <CardTitle className="text-lg">JD Fit Requirement Breakdown</CardTitle>
-                  <CardDescription>Detailed mapping and scores of specific job requirements against your resume.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Category Group 1 */}
-                  <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-                      <Briefcase className="h-3.5 w-3.5" />
-                      Must-have Requirements (70% weight)
-                    </h3>
-                    <div className="space-y-4">
-                      {/* Req 1 */}
-                      <div className="border-b pb-4 last:border-0 last:pb-0">
-                        <div className="flex justify-between items-start gap-2 mb-1.5">
-                          <div className="space-y-0.5">
-                            <span className="text-sm font-semibold flex items-center gap-1.5">
-                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                              React.js (tech_skill_tool)
-                            </span>
-                            <p className="text-xs text-muted-foreground">Req: At least 3 years experience with React and state management.</p>
-                          </div>
-                          <span className="text-sm font-bold text-emerald-600">1.0 / 1.0</span>
-                        </div>
-                        <div className="bg-muted p-2 rounded text-xs text-muted-foreground">
-                          Evidence: Found React.js listed in 3 professional projects with active roles and technical context (Next.js, Tailwind, Redux).
-                        </div>
-                      </div>
-
-                      {/* Req 2 */}
-                      <div className="border-b pb-4 last:border-0 last:pb-0">
-                        <div className="flex justify-between items-start gap-2 mb-1.5">
-                          <div className="space-y-0.5">
-                            <span className="text-sm font-semibold flex items-center gap-1.5 text-amber-600">
-                              <AlertTriangle className="h-4 w-4 text-amber-500" />
-                              TypeScript (tech_skill_tool)
-                            </span>
-                            <p className="text-xs text-muted-foreground">Req: Experience with TypeScript in enterprise apps.</p>
-                          </div>
-                          <span className="text-sm font-bold text-amber-600">0.5 / 1.0</span>
-                        </div>
-                        <div className="bg-muted p-2 rounded text-xs text-muted-foreground">
-                          Evidence: Mentions TypeScript in the skill section, but lacks explicit project contributions or development context.
-                        </div>
-                      </div>
-
-                      {/* Req 3 */}
-                      <div className="border-b pb-4 last:border-0 last:pb-0">
-                        <div className="flex justify-between items-start gap-2 mb-1.5">
-                          <div className="space-y-0.5">
-                            <span className="text-sm font-semibold flex items-center gap-1.5 text-destructive">
-                              <X className="h-4 w-4 text-destructive" />
-                              Microfrontends architecture (tech_skill_methodology)
-                            </span>
-                            <p className="text-xs text-muted-foreground">Req: Experienced in building scalable microfrontends.</p>
-                          </div>
-                          <span className="text-sm font-bold text-destructive">0.0 / 1.0</span>
-                        </div>
-                        <div className="bg-muted p-2 rounded text-xs text-muted-foreground">
-                          Evidence: No mentions of Microfrontends, Module Federation, or module sharing architectures.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <hr />
-
-                  {/* Category Group 2 */}
-                  <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-                      <TrendingUp className="h-3.5 w-3.5" />
-                      Nice-to-have Requirements (30% weight)
-                    </h3>
-                    <div className="space-y-4">
-                      {/* Req 4 */}
-                      <div className="border-b pb-4 last:border-0 last:pb-0">
-                        <div className="flex justify-between items-start gap-2 mb-1.5">
-                          <div className="space-y-0.5">
-                            <span className="text-sm font-semibold flex items-center gap-1.5">
-                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                              Next.js (tech_skill_tool)
-                            </span>
-                            <p className="text-xs text-muted-foreground">Req: Experience with Next.js App Router is a strong plus.</p>
-                          </div>
-                          <span className="text-sm font-bold text-emerald-600">1.0 / 1.0</span>
-                        </div>
-                        <div className="bg-muted p-2 rounded text-xs text-muted-foreground">
-                          Evidence: Built an E-commerce platform using Next.js 14 and App Router with full Server Components migration.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {matchOutput?.jdFit && (
+                <RequirementBreakdown scores={matchOutput.jdFit.requirementScores} />
+              )}
+              {matchOutput?.improvements && matchOutput.improvements.length > 0 && (
+                <ImprovementSuggestions improvements={matchOutput.improvements} />
+              )}
             </div>
-
-            {/* Cột phải (1/3) - Điểm số & Tóm tắt */}
             <div className="space-y-6">
-              {/* Điểm JD Fit */}
-              <Card className="border-primary/20 bg-primary/5">
-                <CardHeader className="text-center pb-2">
-                  <CardTitle className="text-base font-bold text-muted-foreground">JD Fit Score</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center justify-center pb-6">
-                  <div className="relative flex items-center justify-center">
-                    {/* Ring score */}
-                    <div className="w-28 h-28 rounded-full border-4 border-primary/20 flex flex-col items-center justify-center bg-background shadow-md">
-                      <span className="text-3xl font-extrabold text-primary">{matchResult?.overallScore || 76}</span>
-                      <span className="text-[10px] text-muted-foreground uppercase font-bold">out of 100</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 text-center">
-                    <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-semibold">
-                      <Check className="h-3 w-3" />
-                      Suitable Candidate
-                    </span>
-                    <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
-                      Your profile matches the essential requirements well. Standard gaps can be mitigated easily.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Critical Gaps & suggestions */}
-              <Card className="border-muted">
-                <CardHeader>
-                  <CardTitle className="text-sm font-bold flex items-center gap-1.5">
-                    <AlertTriangle className="h-4.5 w-4.5 text-amber-500" />
-                    Critical Gaps Detected
+              {matchOutput?.jdFit && (
+                <CriticalGapsPanel 
+                  criticalGaps={matchOutput.jdFit.criticalGaps} 
+                  penalties={matchOutput.jdFit.penalties} 
+                />
+              )}
+              <Card className="bg-muted/30 border-muted">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    How is this calculated?
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="bg-destructive/5 p-3 rounded-lg border border-destructive/10 space-y-1">
-                    <h4 className="text-xs font-bold text-destructive flex items-center gap-1">
-                      <X className="h-3.5 w-3.5" />
-                      Missing Microfrontends Skill
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      This is a must-have requirement. Add any project related to microfrontends, or alternative module federation designs.
-                    </p>
-                  </div>
-
-                  <div className="bg-amber-50 p-3 rounded-lg border border-amber-200/50 space-y-1">
-                    <h4 className="text-xs font-bold text-amber-800 flex items-center gap-1">
-                      <AlertTriangle className="h-3.5 w-3.5" />
-                      Weak TypeScript Evidence
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      Only listed in skills section. Add explicit action outcomes incorporating TS in project entries.
-                    </p>
-                  </div>
+                <CardContent className="text-xs text-muted-foreground leading-relaxed space-y-2">
+                  <p>Our AI evaluates your CV against the JD using a 4-tier processing algorithm:</p>
+                  <ul className="list-disc pl-4 space-y-1">
+                    <li>Extracts requirements into <span className="font-semibold text-foreground">Must-have</span> (70%) and <span className="font-semibold text-foreground">Nice-to-have</span> (30%).</li>
+                    <li>Performs embedding matching to locate relevant experience.</li>
+                    <li>Analyzes evidence quality and assigns a score from 0.0 to 1.0.</li>
+                    <li>Applies penalties for weak evidence or missing critical skills.</li>
+                  </ul>
                 </CardContent>
               </Card>
-
-              {/* Quick info */}
-              <div className="rounded-lg border bg-muted/40 p-4 flex gap-3 text-xs text-muted-foreground leading-normal">
-                <Info className="h-5 w-5 text-muted-foreground/80 shrink-0 mt-0.5" />
-                <span>
-                  Matches are evaluated via a 4-tier processing algorithm including embedding matching, threshold filters and LLM checking.
-                </span>
-              </div>
             </div>
           </div>
         </div>

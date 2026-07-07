@@ -11,6 +11,11 @@ using Pgvector.EntityFrameworkCore;
 using Pgvector;
 using System.Collections.Generic;
 using ITHunterview.Service.DTOs.Cv.Matching;
+using System.Net.Http;
+using System.Net.Http.Json;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using ITHunterview.Service.Interface.Service.Matching;
 
 namespace ITHunterview.Service.Implementations.UseCase
 {
@@ -26,11 +31,25 @@ namespace ITHunterview.Service.Implementations.UseCase
     {
         private readonly ITHunterviewContext _context;
         private readonly IAiEmbeddingService _aiService;
+        private readonly ICvTextExtractorService _cvTextExtractorService;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _configuration;
+        private readonly ILogger<CvJobMatchingUseCase> _logger;
 
-        public CvJobMatchingUseCase(ITHunterviewContext context, IAiEmbeddingService aiService)
+        public CvJobMatchingUseCase(
+            ITHunterviewContext context, 
+            IAiEmbeddingService aiService,
+            ICvTextExtractorService cvTextExtractorService,
+            IHttpClientFactory httpClientFactory,
+            IConfiguration configuration,
+            ILogger<CvJobMatchingUseCase> logger)
         {
             _context = context;
             _aiService = aiService;
+            _cvTextExtractorService = cvTextExtractorService;
+            _httpClientFactory = httpClientFactory;
+            _configuration = configuration;
+            _logger = logger;
         }
 
         public string ExtractJsonField(string? jsonString, string fieldName)
@@ -294,6 +313,7 @@ namespace ITHunterview.Service.Implementations.UseCase
             var matchScore = new CvJobMatchScores
             {
                 Id = Guid.NewGuid(),
+                UserId = userId,
                 CvId = request.CvId ?? Guid.Empty,
                 JobId = request.JobId,
                 RawJdText = "", // Bắt buộc hoặc optional
@@ -318,10 +338,80 @@ namespace ITHunterview.Service.Implementations.UseCase
                 matchRecord.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
-                await Task.Delay(2000); // Skeleton delay
+                // 1. Get CV Text
+                string cvText = request.CvText ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(cvText))
+                {
+                    // KHẮC PHỤC KHUYẾT ĐIỂM: Xử lý file Upload từ Frontend
+                    if (!string.IsNullOrWhiteSpace(request.CvUrl))
+                    {
+                        cvText = await _cvTextExtractorService.ExtractTextFromUrlAsync(request.CvUrl);
+                    }
+                    else 
+                    {
+                        var cv = await _context.Cvs.FindAsync(matchRecord.CvId);
+                        if (cv != null)
+                        {
+                            if (!string.IsNullOrWhiteSpace(cv.ParsedData))
+                                cvText = cv.ParsedData;
+                            else if (!string.IsNullOrWhiteSpace(cv.FileUrl))
+                                cvText = await _cvTextExtractorService.ExtractTextFromUrlAsync(cv.FileUrl);
+                        }
+                    }
+                }
+
+                // 2. Get JD Text
+                string jdText = request.RawJdText ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(jdText) && request.JobId.HasValue)
+                {
+                    var job = await _context.JobPostings.FindAsync(request.JobId.Value);
+                    if (job != null)
+                    {
+                        jdText = $"{job.Title}\n{job.Description}\n{job.Requirements}";
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(cvText))
+                {
+                    var cvSource = request.CvId.HasValue ? $"CV ID={request.CvId}" : "uploaded file";
+                    var urlDebug = !string.IsNullOrWhiteSpace(request.CvUrl) ? $"[URL: {request.CvUrl}] " : "";
+                    throw new Exception($"Cannot extract text from CV ({cvSource}). {urlDebug}The file URL may be an invalid PDF/DOCX or blocked by Cloudinary. Please try using 'Paste Text' tab instead.");
+                }
+
+                if (string.IsNullOrWhiteSpace(jdText))
+                {
+                    var jdSource = request.JobId.HasValue ? $"Job ID={request.JobId}" : "provided JD";
+                    throw new Exception($"Cannot extract Job Description text ({jdSource}). The job posting may have no description. Please try using 'Paste JD Text' tab instead.");
+                }
+
+                // Giới hạn input để tránh nổ token
+                if (cvText.Length > 20000) cvText = cvText.Substring(0, 20000);
+                if (jdText.Length > 15000) jdText = jdText.Substring(0, 15000);
+
+                // 3. Prompt
+                var prompt = ITHunterview.Service.Constant.Prompts.BypassMatchingPrompt.GetPrompt(cvText, jdText);
+
+                // 4. Call LLM
+                string llmResponseText = await CallLlmBypassAsync(prompt);
+
+                // Deserialize to extract final score
+                decimal finalScore = 0m;
+                try 
+                {
+                    var jsonDoc = JsonDocument.Parse(llmResponseText);
+                    if (jsonDoc.RootElement.TryGetProperty("jdFit", out var jdFitElement))
+                    {
+                        if (jdFitElement.TryGetProperty("score", out var scoreElement))
+                        {
+                            finalScore = scoreElement.GetDecimal();
+                        }
+                    }
+                }
+                catch { /* Ignore parse error for score, just keep 0 */ }
 
                 matchRecord.Status = "Completed";
-                matchRecord.MatchScore = 85.5m;
+                matchRecord.MatchScore = finalScore;
+                matchRecord.MatchDetails = llmResponseText;
                 matchRecord.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
             }
@@ -334,9 +424,112 @@ namespace ITHunterview.Service.Implementations.UseCase
             }
         }
 
+        private async Task<string> CallLlmBypassAsync(string prompt)
+        {
+            var modelName = _configuration["AiBypassConfig:ModelName"];
+            var apiKey = _configuration["AiBypassConfig:ApiKey"];
+            
+            if (string.IsNullOrWhiteSpace(modelName)) modelName = "gemini-1.5-flash";
+            if (string.IsNullOrWhiteSpace(apiKey)) throw new Exception("API Key is missing for Bypass Flow in appsettings.");
+
+            using var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromMinutes(2); // Thêm timeout dài cho LLM
+
+            if (modelName.Contains("gemini"))
+            {
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/{modelName}:generateContent?key={apiKey}";
+                var payload = new
+                {
+                    contents = new[]
+                    {
+                        new { parts = new[] { new { text = prompt } } }
+                    },
+                    generationConfig = new 
+                    { 
+                        response_mime_type = "application/json",
+                        maxOutputTokens = 8192, // Tránh JSON bị cắt cụt giữa chừng
+                        temperature = 0.2 // Cần sự chính xác cao
+                    }
+                };
+
+                // Simple Retry Policy (3 attempts)
+                int maxRetries = 3;
+                for (int attempt = 1; attempt <= maxRetries; attempt++)
+                {
+                    var response = await client.PostAsJsonAsync(url, payload);
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var jsonDoc = JsonDocument.Parse(responseContent);
+                        var text = jsonDoc.RootElement
+                            .GetProperty("candidates")[0]
+                            .GetProperty("content")
+                            .GetProperty("parts")[0]
+                            .GetProperty("text")
+                            .GetString() ?? string.Empty;
+                        
+                        // Log 500 ký tự đầu để debug
+                        _logger.LogInformation("Gemini raw text (first 500 chars): {Text}", text.Length > 500 ? text.Substring(0, 500) : text);
+
+                        // Fallback: nếu model vẫn cố wrap trong markdown dù đã bật JSON mode
+                        if (text.TrimStart().StartsWith("```"))
+                        {
+                            var startIdx = text.IndexOf('\n') + 1;
+                            var endIdx = text.LastIndexOf("```");
+                            if (endIdx > startIdx)
+                                text = text.Substring(startIdx, endIdx - startIdx).Trim();
+                        }
+
+                        return text;
+                    }
+
+                    // Nếu lỗi 503 hoặc các lỗi API khác, thử lại
+                    if (attempt == maxRetries)
+                    {
+                        throw new Exception($"Gemini API Error after {maxRetries} attempts: {responseContent}");
+                    }
+                    
+                    // Đợi 2 giây trước khi thử lại
+                    await Task.Delay(2000);
+                }
+            }
+            else if (modelName.Contains("claude"))
+            {
+                var url = "https://api.anthropic.com/v1/messages";
+                client.DefaultRequestHeaders.Add("x-api-key", apiKey);
+                client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+                client.DefaultRequestHeaders.Add("User-Agent", "ITHunterview-Bypass");
+
+                var payload = new
+                {
+                    model = modelName,
+                    max_tokens = 4000,
+                    messages = new[]
+                    {
+                        new { role = "user", content = prompt }
+                    }
+                };
+
+                var response = await client.PostAsJsonAsync(url, payload);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                    throw new Exception($"Claude API Error: {responseContent}");
+
+                var jsonDoc = JsonDocument.Parse(responseContent);
+                var text = jsonDoc.RootElement.GetProperty("content")[0].GetProperty("text").GetString();
+                return text ?? string.Empty;
+            }
+
+            throw new Exception("Unsupported Model Name for Bypass Flow.");
+        }
+
         public async Task<MatchingResultDto?> GetMatchingResultAsync(Guid jobId, Guid userId)
         {
-            var matchRecord = await _context.CvJobMatchScores.FindAsync(jobId);
+            var matchRecord = await _context.CvJobMatchScores
+                .FirstOrDefaultAsync(m => m.Id == jobId && m.UserId == userId);
+                
             if (matchRecord == null) return null;
 
             return new MatchingResultDto
@@ -346,6 +539,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                 JobId = matchRecord.JobId,
                 Status = matchRecord.Status,
                 ErrorMessage = matchRecord.ErrorMessage,
+                MatchDetails = matchRecord.MatchDetails,
                 JdFit = new JdFitResultDto { Score = matchRecord.MatchScore ?? 0m }
             };
         }
