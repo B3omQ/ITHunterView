@@ -115,11 +115,9 @@ namespace ITHunterview.Service.UseCase
             if (category == null)
                 return ResponseBase.Fail("Category not found.");
 
-            // Check if there are any skills using this category
-            // We'll rely on DB constraints or explicit checks. If it's RESTRICT or Cascade, DB will handle.
-            // Better to check if skills exist but EF Core will throw an exception on SaveChanges if restricted.
-            // Wait, skills have a foreign key to category. In our EF Core configuration, it is OnDelete(DeleteBehavior.SetNull).
-            // So we can just delete it, and skills will be set to null category.
+            var hasSkills = await _skillRepository.HasSkillsInCategoryAsync(id);
+            if (hasSkills)
+                return ResponseBase.Fail("Category cannot be deleted because it is currently in use by one or more skills.");
 
             await _skillCategoryRepository.DeleteAsync(category);
 

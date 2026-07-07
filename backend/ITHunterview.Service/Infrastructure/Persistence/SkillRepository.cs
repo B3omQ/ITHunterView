@@ -113,5 +113,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         {
             return _context.JobSkillRequirements.CountAsync(jsr => jsr.SkillId == skillId);
         }
+
+        public Task<bool> HasSkillsInCategoryAsync(int categoryId)
+        {
+            return _context.Skills.AnyAsync(s => s.CategoryId == categoryId);
+        }
     }
 }

@@ -17,5 +17,6 @@ namespace ITHunterview.Service.Interface.Persistence
         Task<bool> IsSkillInUseAsync(int id);
         Task<int> CountUserSkillsAsync(int skillId);
         Task<int> CountJobRequirementsAsync(int skillId);
+        Task<bool> HasSkillsInCategoryAsync(int categoryId);
     }
 }
