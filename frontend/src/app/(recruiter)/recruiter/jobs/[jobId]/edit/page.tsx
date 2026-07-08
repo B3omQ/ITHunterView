@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ArrowLeft, Plus, X, Sparkles, AlertCircle, Loader2 } from "lucide-react"
 import { LEVELS, WORKING_MODELS, JOB_DOMAINS, JOB_EXPERTISES, VIETNAM_PROVINCES } from "@/lib/job-constants"
-import { LocationCombobox } from "@/components/shared/LocationCombobox"
 import { MajorCombobox } from "@/components/shared/MajorCombobox"
+import { recruiterService } from "@/services/recruiter.service"
 
 export default function EditJobPage() {
   const router = useRouter()
@@ -26,6 +26,7 @@ export default function EditJobPage() {
     status: "DRAFT",
     minSalary: "",
     maxSalary: "",
+    expiresAt: "",
     description: "",
     responsibilities: "",
     requirements: "",
@@ -38,11 +39,11 @@ export default function EditJobPage() {
 
   const { categories, availableSkills, majors, loading: metadataLoading, error: metadataError } = useJobMetadata()
   const { job, loading: detailLoading, saving, error: detailError, setError, updateJob } = useJobDetails(id)
-  
+
   const [selectedSkills, setSelectedSkills] = useState<Array<{ skillId: number; name: string; isMandatory: boolean }>>([])
   const [searchSkill, setSearchSkill] = useState("")
+  const [creatingSkill, setCreatingSkill] = useState(false)
 
-  const [locationType, setLocationType] = useState("TP Hồ Chí Minh")
   const [searchDomain, setSearchDomain] = useState("")
 
   const loading = metadataLoading || detailLoading
@@ -60,6 +61,7 @@ export default function EditJobPage() {
         status: job.status || "DRAFT",
         minSalary: job.minSalary ? job.minSalary.toString() : "",
         maxSalary: job.maxSalary ? job.maxSalary.toString() : "",
+        expiresAt: job.expiresAt ? new Date(job.expiresAt).toISOString().split("T")[0] : "",
         description: job.description || "",
         responsibilities: job.responsibilities || "",
         requirements: job.requirements || "",
@@ -69,7 +71,7 @@ export default function EditJobPage() {
         jobExpertise: job.jobExpertise || "",
         jobDomain: job.jobDomain || [],
       })
-      
+
       if (job.skills) {
         setSelectedSkills(job.skills.map((s: any) => ({
           skillId: s.skillId,
@@ -77,17 +79,7 @@ export default function EditJobPage() {
           isMandatory: s.isMandatory
         })))
       }
-      
-      // Determine initial locationType based on job.location
-      const standardLocations = ["Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Remote"]
-      if (job.location) {
-        if (standardLocations.includes(job.location)) {
-          setLocationType(job.location)
-        } else {
-          // Default to Other if it's not empty and not in the standard list
-          setLocationType("Other")
-        }
-      }
+
     }
   }, [job])
 
@@ -123,7 +115,57 @@ export default function EditJobPage() {
     setSelectedSkills(prev => prev.filter(s => s.skillId !== skillId))
   }
 
+  const handleCreateCustomSkill = async (isMandatory: boolean) => {
+    if (!searchSkill.trim()) return
+    setCreatingSkill(true)
+    try {
+      const res = await recruiterService.createSkill(searchSkill.trim(), 1)
+      if (res.success && res.data?.success && res.data.data) {
+        addSkill(res.data.data, isMandatory)
+      } else {
+        alert("Failed to create skill. " + (res.message || ""))
+      }
+    } catch (e: any) {
+      alert("Error creating skill.")
+    } finally {
+      setCreatingSkill(false)
+    }
+  }
+
+  const validateForm = () => {
+    if (!formData.title.trim()) return "Job Title is required"
+    if (!formData.location.trim()) return "Location is required"
+    if (!formData.level) return "Level is required"
+    if (!formData.workingModel) return "Working Model is required"
+    if (!formData.jobExpertise) return "Specialization (Expertise) is required"
+
+    if (mustHaveSkills.length === 0) return "At least one Must-have Skill is required"
+    if (niceToHaveSkills.length === 0) return "At least one Nice-to-have Skill is required"
+
+    if (!formData.description.trim()) return "Job Description is required"
+    if (!formData.responsibilities.trim()) return "Key Responsibilities is required"
+    if (!formData.requirements.trim()) return "Detailed Requirements is required"
+    if (!formData.benefits.trim()) return "Perks & Benefits is required"
+
+    if (!formData.expiresAt) return "Expiration Date is required"
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const expDate = new Date(formData.expiresAt)
+    if (expDate <= today) {
+      return "Expiration Date must be in the future (after today)"
+    }
+
+    return null
+  }
+
   const handleUpdate = async (statusVal?: string) => {
+    const validationError = validateForm()
+    if (validationError) {
+      alert(validationError)
+      return
+    }
+
     const payload = {
       ...formData,
       status: statusVal || formData.status,
@@ -131,6 +173,7 @@ export default function EditJobPage() {
       minSalary: formData.minSalary ? Number(formData.minSalary) : null,
       maxSalary: formData.maxSalary ? Number(formData.maxSalary) : null,
       currency: job?.currency || "USD",
+      expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null,
       skills: selectedSkills.map(s => ({ skillId: s.skillId, isMandatory: s.isMandatory }))
     }
 
@@ -142,7 +185,7 @@ export default function EditJobPage() {
 
   // Filter skills based on search term
   const filteredAvailableSkills = availableSkills.filter(
-    skill => 
+    skill =>
       skill.name.toLowerCase().includes(searchSkill.toLowerCase()) &&
       !selectedSkills.some(s => s.skillId === skill.id)
   )
@@ -166,12 +209,12 @@ export default function EditJobPage() {
   return (
     <div className="min-h-screen bg-background py-10 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
       <div className="max-w-4xl mx-auto space-y-6">
-        
+
         {/* Back Button & Header */}
         <div className="flex items-center gap-3">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => router.push("/recruiter/jobs")}
             className="rounded-full bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-xs"
           >
@@ -211,39 +254,22 @@ export default function EditJobPage() {
               </div>
 
               <div className="space-y-2 col-span-1 md:col-span-2">
-                <Label htmlFor="locationType" className="font-semibold text-zinc-700 dark:text-zinc-300">Location *</Label>
-                <div className="flex gap-2">
-                  <LocationCombobox
-                    value={locationType}
-                    onChange={(val) => {
-                      setLocationType(val)
-                      if (val !== "Other") {
-                        setFormData(prev => ({ ...prev, location: val }))
-                      } else {
-                        setFormData(prev => ({ ...prev, location: "" }))
-                      }
-                    }}
-                    className={locationType === "Other" ? "w-1/3" : "w-full"}
-                  />
-                  
-                  {locationType === "Other" && (
-                    <Input
-                      id="location"
-                      name="location"
-                      placeholder="e.g. Can Tho, Binh Duong"
-                      required
-                      value={formData.location}
-                      onChange={handleChange}
-                      className="flex-1 focus-visible:ring-blue-500"
-                    />
-                  )}
-                </div>
+                <Label htmlFor="location" className="font-semibold text-zinc-700 dark:text-zinc-300">Location *</Label>
+                <Input
+                  id="location"
+                  name="location"
+                  placeholder="e.g. 123 Nguyen Van Cu, District 5, HCMC"
+                  required
+                  value={formData.location}
+                  onChange={handleChange}
+                  className="w-full focus-visible:ring-blue-500"
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="level" className="font-semibold text-zinc-700 dark:text-zinc-300">Level</Label>
+                <Label htmlFor="level" className="font-semibold text-zinc-700 dark:text-zinc-300">Level *</Label>
                 <select
                   id="level"
                   name="level"
@@ -259,7 +285,7 @@ export default function EditJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="workingModel" className="font-semibold text-zinc-700 dark:text-zinc-300">Working Model</Label>
+                <Label htmlFor="workingModel" className="font-semibold text-zinc-700 dark:text-zinc-300">Working Model *</Label>
                 <select
                   id="workingModel"
                   name="workingModel"
@@ -275,7 +301,7 @@ export default function EditJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="jobExpertise" className="font-semibold text-zinc-700 dark:text-zinc-300">Specialization (Expertise)</Label>
+                <Label htmlFor="jobExpertise" className="font-semibold text-zinc-700 dark:text-zinc-300">Specialization (Expertise) *</Label>
                 <MajorCombobox
                   majors={majors}
                   value={formData.jobExpertise}
@@ -289,9 +315,9 @@ export default function EditJobPage() {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Job Domains</Label>
-                <Input 
-                  placeholder="Search domains..." 
-                  className="w-48 h-8 text-xs" 
+                <Input
+                  placeholder="Search domains..."
+                  className="w-48 h-8 text-xs"
                   value={searchDomain}
                   onChange={(e) => setSearchDomain(e.target.value)}
                 />
@@ -299,9 +325,9 @@ export default function EditJobPage() {
               <div className="flex flex-wrap gap-2 p-3 border rounded-md border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 max-h-48 overflow-y-auto">
                 {filteredDomains.map(domain => (
                   <label key={domain} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 p-1.5 rounded pr-3 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 transition-colors">
-                    <input 
-                      type="checkbox" 
-                      checked={formData.jobDomain.includes(domain)} 
+                    <input
+                      type="checkbox"
+                      checked={formData.jobDomain.includes(domain)}
                       onChange={() => handleDomainChange(domain)}
                       className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500 bg-white dark:bg-zinc-900"
                     />
@@ -341,6 +367,18 @@ export default function EditJobPage() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="expiresAt" className="font-semibold text-zinc-700 dark:text-zinc-300">Expiration Date *</Label>
+                <Input
+                  id="expiresAt"
+                  name="expiresAt"
+                  type="date"
+                  value={formData.expiresAt}
+                  onChange={handleChange}
+                  className="focus-visible:ring-blue-500"
+                />
+              </div>
+
             </div>
 
             <div className="space-y-2">
@@ -370,11 +408,79 @@ export default function EditJobPage() {
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Specify Must-have and Nice-to-have technical skills from standard list.</p>
               </div>
 
+              {/* Skill Selector Input & Dropdown */}
+              <div className="space-y-2">
+                <Label htmlFor="searchSkill" className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Add Skills from dictionary</Label>
+                <Input
+                  id="searchSkill"
+                  placeholder="Type to search e.g. React, Docker, Python..."
+                  value={searchSkill}
+                  onChange={(e) => setSearchSkill(e.target.value)}
+                  className="focus-visible:ring-blue-500"
+                />
+
+                <div className="w-full max-h-48 overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-2 space-y-1">
+                  {filteredAvailableSkills.length > 0 ? (
+                    filteredAvailableSkills.map((skill) => (
+                      <div key={skill.id} className="flex items-center justify-between p-2 hover:bg-zinc-50 dark:hover:bg-zinc-900 rounded-md transition-all">
+                        <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{skill.name} <span className="text-xs text-zinc-400">({skill.categoryName || "Other"})</span></span>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => addSkill(skill, true)}
+                            className="h-7 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400"
+                          >
+                            + Must-have
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => addSkill(skill, false)}
+                            className="h-7 text-xs bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400"
+                          >
+                            + Nice-to-have
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-4 space-y-3">
+                      <span className="text-sm text-zinc-500">"{searchSkill}" is not in the dictionary.</span>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="default"
+                          disabled={creatingSkill}
+                          onClick={() => handleCreateCustomSkill(true)}
+                          className="text-xs bg-blue-600 hover:bg-blue-700"
+                        >
+                          Create as Must-have
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="default"
+                          disabled={creatingSkill}
+                          onClick={() => handleCreateCustomSkill(false)}
+                          className="text-xs bg-emerald-600 hover:bg-emerald-700"
+                        >
+                          Create as Nice-to-have
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-zinc-50/50 dark:bg-zinc-900/30 p-4 rounded-xl border border-zinc-200/60 dark:border-zinc-800/60">
                 {/* Must-have skills list */}
                 <div className="space-y-2">
-                  <Label className="font-bold text-xs uppercase tracking-wider text-blue-600 dark:text-blue-400">Must-have Skills</Label>
-                  <div className="min-h-[100px] border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg p-2 bg-white dark:bg-zinc-955 flex flex-wrap gap-1.5 items-start content-start">
+                  <Label className="font-bold text-xs uppercase tracking-wider text-blue-600 dark:text-blue-400">Must-have Skills *</Label>
+                  <div className="min-h-[100px] border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg p-2 bg-white dark:bg-zinc-950 flex flex-wrap gap-1.5 items-start content-start">
                     {mustHaveSkills.length > 0 ? (
                       mustHaveSkills.map(s => (
                         <span key={s.skillId} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/50 px-2 py-1 rounded text-xs font-semibold">
@@ -385,15 +491,15 @@ export default function EditJobPage() {
                         </span>
                       ))
                     ) : (
-                      <span className="text-xs text-zinc-400 p-2">No Must-have skills selected</span>
+                      <span className="text-xs text-zinc-400 p-2">Select skills as Must-have from above</span>
                     )}
                   </div>
                 </div>
 
                 {/* Nice-to-have skills list */}
                 <div className="space-y-2">
-                  <Label className="font-bold text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Nice-to-have Skills</Label>
-                  <div className="min-h-[100px] border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg p-2 bg-white dark:bg-zinc-955 flex flex-wrap gap-1.5 items-start content-start">
+                  <Label className="font-bold text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Nice-to-have Skills *</Label>
+                  <div className="min-h-[100px] border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg p-2 bg-white dark:bg-zinc-950 flex flex-wrap gap-1.5 items-start content-start">
                     {niceToHaveSkills.length > 0 ? (
                       niceToHaveSkills.map(s => (
                         <span key={s.skillId} className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/50 px-2 py-1 rounded text-xs font-semibold">
@@ -404,56 +510,10 @@ export default function EditJobPage() {
                         </span>
                       ))
                     ) : (
-                      <span className="text-xs text-zinc-400 p-2">No Nice-to-have skills selected</span>
+                      <span className="text-xs text-zinc-400 p-2">Select skills as Nice-to-have from above</span>
                     )}
                   </div>
                 </div>
-              </div>
-
-              {/* Skill Selector Input & Dropdown */}
-              <div className="relative">
-                <Label htmlFor="searchSkill" className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Add Skills from dictionary</Label>
-                <Input
-                  id="searchSkill"
-                  placeholder="Type to search e.g. React, Docker, Python..."
-                  value={searchSkill}
-                  onChange={(e) => setSearchSkill(e.target.value)}
-                  className="mt-1 focus-visible:ring-blue-500"
-                />
-
-                {searchSkill.trim() && (
-                  <div className="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-lg p-2 space-y-1">
-                    {filteredAvailableSkills.length > 0 ? (
-                      filteredAvailableSkills.map((skill) => (
-                        <div key={skill.id} className="flex items-center justify-between p-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md transition-all">
-                          <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">{skill.name} <span className="text-xs text-zinc-400">({skill.categoryName || "Other"})</span></span>
-                          <div className="flex gap-2">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => addSkill(skill, true)}
-                              className="h-7 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 dark:bg-blue-955/30 dark:text-blue-400"
-                            >
-                              + Must-have
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => addSkill(skill, false)}
-                              className="h-7 text-xs bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-200 dark:bg-emerald-955/30 dark:text-emerald-400"
-                            >
-                              + Nice-to-have
-                            </Button>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center text-xs text-zinc-400 py-3">No matching skills found in dictionary.</div>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
 
@@ -474,7 +534,7 @@ export default function EditJobPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="responsibilities" className="font-semibold text-zinc-700 dark:text-zinc-300">Key Responsibilities</Label>
+              <Label htmlFor="responsibilities" className="font-semibold text-zinc-700 dark:text-zinc-300">Key Responsibilities *</Label>
               <textarea
                 id="responsibilities"
                 name="responsibilities"
@@ -487,7 +547,7 @@ export default function EditJobPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="requirements" className="font-semibold text-zinc-700 dark:text-zinc-300">Detailed Requirements</Label>
+              <Label htmlFor="requirements" className="font-semibold text-zinc-700 dark:text-zinc-300">Detailed Requirements *</Label>
               <textarea
                 id="requirements"
                 name="requirements"
@@ -500,7 +560,7 @@ export default function EditJobPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="benefits" className="font-semibold text-zinc-700 dark:text-zinc-300">Perks & Benefits</Label>
+              <Label htmlFor="benefits" className="font-semibold text-zinc-700 dark:text-zinc-300">Perks & Benefits *</Label>
               <textarea
                 id="benefits"
                 name="benefits"
@@ -516,18 +576,18 @@ export default function EditJobPage() {
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 pt-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={() => router.push("/recruiter/jobs")} 
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push("/recruiter/jobs")}
             disabled={saving}
             className="border-zinc-200/80 dark:border-zinc-800/80 hover:bg-zinc-100"
           >
             Cancel
           </Button>
-          <Button 
-            type="button" 
-            onClick={() => handleUpdate()} 
+          <Button
+            type="button"
+            onClick={() => handleUpdate()}
             disabled={saving}
             className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/10"
           >

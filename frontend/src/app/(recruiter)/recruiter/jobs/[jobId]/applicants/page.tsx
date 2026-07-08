@@ -41,6 +41,13 @@ export default function JobApplicantsPage() {
   const [selectedDetail, setSelectedDetail] = useState<JobApplicationDetailDto | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
 
+  const [searchQuery, setSearchQuery] = useState("")
+
+  const filteredApplicants = applicants.filter(a => 
+    a.candidateName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    a.email?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
   useEffect(() => {
     const fetchApplicants = async () => {
       setLoading(true)
@@ -82,12 +89,24 @@ export default function JobApplicantsPage() {
     }
   }
 
-  const handleViewProfile = async (applicantId: string) => {
+  const markAsViewedQuietly = async (applicantId: string, currentStatus: ApplicationStatus) => {
+    if (currentStatus === ApplicationStatus.APPLIED) {
+      try {
+        await JobApplicationService.updateApplicationStatus(applicantId, ApplicationStatus.VIEWED)
+        setApplicants(prev => prev.map(a => a.id === applicantId ? { ...a, status: ApplicationStatus.VIEWED } : a))
+      } catch (err) {
+        console.error("Failed to auto-update status to VIEWED")
+      }
+    }
+  }
+
+  const handleViewProfile = async (applicant: ApplicantDto) => {
+    markAsViewedQuietly(applicant.id, applicant.status)
     setDetailModalOpen(true)
     setDetailLoading(true)
     setSelectedDetail(null)
     try {
-      const detail = await JobApplicationService.getApplicationDetail(applicantId)
+      const detail = await JobApplicationService.getApplicationDetail(applicant.id)
       setSelectedDetail(detail)
     } catch (err) {
       toast.error("Failed to load application details.")
@@ -105,14 +124,18 @@ export default function JobApplicantsPage() {
     return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
   }
 
-  const handleDownloadCv = async (url: string, filename: string) => {
+  const handleDownloadCv = async (applicant: ApplicantDto) => {
+    markAsViewedQuietly(applicant.id, applicant.status)
+    const url = applicant.cvUrl!
+    const filename = applicant.cvFileName || "candidate_cv.pdf"
+    
     try {
       const response = await fetch(url);
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = blobUrl;
-      a.download = filename || 'candidate_cv';
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -198,12 +221,24 @@ export default function JobApplicantsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Button variant="outline" className="bg-white border-zinc-200 text-zinc-700 font-medium gap-2">
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0">
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="Search by name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-3 pr-9 py-2 border border-zinc-200 rounded-md text-sm outline-none focus:border-zinc-400 transition-colors"
+              />
+              <svg className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <Button variant="outline" className="bg-white border-zinc-200 text-zinc-700 font-medium gap-2 w-full sm:w-auto hidden sm:flex">
               <Filter className="h-4 w-4" /> Filter
             </Button>
-            <Button onClick={() => router.push(`/recruiter/jobs/${jobId}`)} className="bg-slate-900 hover:bg-slate-800 text-white gap-2 shadow-sm">
-              <ArrowLeft className="h-4 w-4" /> Back to Job
+            <Button onClick={() => router.push(`/recruiter/jobs`)} className="bg-slate-900 hover:bg-slate-800 text-white gap-2 shadow-sm w-full sm:w-auto">
+              <ArrowLeft className="h-4 w-4" /> Back to Jobs
             </Button>
           </div>
         </div>
@@ -235,20 +270,20 @@ export default function JobApplicantsPage() {
                       {error}
                     </td>
                   </tr>
-                ) : applicants.length === 0 ? (
+                ) : filteredApplicants.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center justify-center text-zinc-400 space-y-3">
                         <div className="bg-zinc-50 p-4 rounded-full">
                           <Users className="h-8 w-8 text-zinc-300" />
                         </div>
-                        <p className="text-sm font-medium text-zinc-600">No applicants yet</p>
-                        <p className="text-xs">Candidates who apply for this job will appear here.</p>
+                        <p className="text-sm font-medium text-zinc-600">No applicants found</p>
+                        <p className="text-xs">Try adjusting your search or filters.</p>
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  applicants.map((applicant) => (
+                  filteredApplicants.map((applicant) => (
                     <tr key={applicant.id} className="hover:bg-zinc-50/50 transition-colors group">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
@@ -292,7 +327,7 @@ export default function JobApplicantsPage() {
                           {applicant.cvUrl && (
                             <Button 
                               variant="outline"
-                              onClick={() => handleDownloadCv(applicant.cvUrl!, applicant.cvFileName || "candidate_cv.pdf")}
+                              onClick={() => handleDownloadCv(applicant)}
                               className="bg-white border-zinc-200 text-zinc-700 h-8 text-xs px-3 font-semibold shadow-sm hover:bg-zinc-50"
                               title="Download CV"
                             >
@@ -300,7 +335,7 @@ export default function JobApplicantsPage() {
                             </Button>
                           )}
                           <Button 
-                            onClick={() => handleViewProfile(applicant.id)}
+                            onClick={() => handleViewProfile(applicant)}
                             className="bg-slate-900 hover:bg-slate-800 text-white h-8 text-xs px-3 font-semibold shadow-sm"
                           >
                             <Eye className="h-3.5 w-3.5 mr-1.5" />
