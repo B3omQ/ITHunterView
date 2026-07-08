@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ITHunterviewContext))]
-    partial class ITHunterviewContextModelSnapshot : ModelSnapshot
+    [Migration("20260708043401_AddAiProviderToInterviewSessions")]
+    partial class AddAiProviderToInterviewSessions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -779,14 +782,17 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("id");
 
                     b.Property<string>("AiFeedback")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("ai_feedback");
 
                     b.Property<string>("AudioUrl")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("audio_url");
 
                     b.Property<string>("CandidateTranscript")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("candidate_transcript");
 

@@ -25,13 +25,13 @@ namespace ITHunterview.Domain.Entities
         public string QuestionText { get; set; }
 
         [Column("audio_url")]
-        public string AudioUrl { get; set; }
+        public string? AudioUrl { get; set; }
 
         [Column("candidate_transcript")]
-        public string CandidateTranscript { get; set; }
+        public string? CandidateTranscript { get; set; }
 
         [Column("ai_feedback")]
-        public string AiFeedback { get; set; }
+        public string? AiFeedback { get; set; }
 
         [Column("score_logic")]
         public int? ScoreLogic { get; set; }
