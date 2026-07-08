@@ -27,9 +27,17 @@ namespace ITHunterview.Service.DTOs.Cv.Matching
         public decimal PoolAScore { get; set; }
         public decimal PoolBScore { get; set; }
         public List<RequirementScoreDto> RequirementScores { get; set; } = new();
-        public List<string> CriticalGaps { get; set; } = new();
+        public List<CriticalGapDto> CriticalGaps { get; set; } = new();
         public List<PenaltyResultDto> Penalties { get; set; } = new();
         public string Narrative { get; set; } = string.Empty;
+    }
+
+    public class CriticalGapDto
+    {
+        public string Requirement { get; set; } = string.Empty;
+        public string GapDescription { get; set; } = string.Empty;
+        public string Severity { get; set; } = string.Empty;
+        public string Suggestion { get; set; } = string.Empty;
     }
 
     public class CvQualityResultDto
