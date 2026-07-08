@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Pgvector;
 
 namespace ITHunterview.Domain.Entities
 {
@@ -14,6 +15,18 @@ namespace ITHunterview.Domain.Entities
 
         [Column("user_id")]
         public Guid UserId { get; set; }
+
+        [Column("title_embedding", TypeName = "vector(768)")]
+        public Vector? TitleEmbedding { get; set; }
+
+        [Column("skills_embedding", TypeName = "vector(768)")]
+        public Vector? SkillsEmbedding { get; set; }
+
+        [Column("experience_embedding", TypeName = "vector(768)")]
+        public Vector? ExperienceEmbedding { get; set; }
+
+        [Column("domain_embedding", TypeName = "vector(768)")]
+        public Vector? DomainEmbedding { get; set; }
 
         [Column("file_url")]
         public string FileUrl { get; set; }

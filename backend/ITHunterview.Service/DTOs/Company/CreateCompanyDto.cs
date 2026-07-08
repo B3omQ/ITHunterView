@@ -8,6 +8,10 @@ namespace ITHunterview.Service.DTOs.Company
         public string Name { get; set; } = string.Empty;
         public string TaxCode { get; set; } = string.Empty;
         public string HeadquartersAddress { get; set; } = string.Empty;
+        public string ProvinceCode { get; set; } = string.Empty;
+        public string DetailedLocation { get; set; } = string.Empty;
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
         public string Industry { get; set; } = string.Empty;
         public string CompanySize { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;

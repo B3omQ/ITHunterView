@@ -58,11 +58,12 @@ dataSourceBuilder.MapEnum<NotificationType>("notification_type");
 dataSourceBuilder.MapEnum<EmailLogStatus>("email_log_status");
 dataSourceBuilder.MapEnum<ActivityLogCategory>("activity_log_category");
 dataSourceBuilder.MapEnum<ActivityLogStatus>("activity_log_status");
+dataSourceBuilder.UseVector();
 var dataSource = dataSourceBuilder.Build();
 
 builder.Services.AddDbContext<ITHunterviewContext>((sp, options) =>
 {
-    options.UseNpgsql(dataSource)
+    options.UseNpgsql(dataSource, o => o.UseVector())
            .AddInterceptors(sp.GetRequiredService<AuditLogInterceptor>())
            .ConfigureWarnings(w => w.Ignore(
                Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));

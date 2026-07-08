@@ -54,6 +54,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
       localStorage.removeItem('google_auth_role');
+      sessionStorage.removeItem('dismissedCompanyReminder');
       // Giữ X-Device-Fingerprint để tracking thiết bị liên tục
       
       // Xóa toàn bộ cache của React Query để tránh hiển thị data của user cũ

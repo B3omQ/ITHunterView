@@ -28,6 +28,7 @@ export interface JobCardDto {
   maxSalary?: number;
   currency: string;
   location: string;
+  detailedLocation?: string;
   level?: string;
   workingModel?: string;
   jobExpertise?: string;
@@ -61,6 +62,7 @@ export interface JobDetailViewDto {
   maxSalary?: number;
   currency: string;
   location: string;
+  detailedLocation?: string;
   level?: string;
   workingModel?: string;
   jobExpertise?: string;

@@ -22,6 +22,7 @@ export default function EditJobPage() {
     title: "",
 
     location: "",
+    detailedLocation: "",
 
     status: "DRAFT",
     minSalary: "",
@@ -57,6 +58,7 @@ export default function EditJobPage() {
         title: job.title || "",
 
         location: job.location || "",
+        detailedLocation: job.detailedLocation || "",
 
         status: job.status || "DRAFT",
         minSalary: job.minSalary ? job.minSalary.toString() : "",
@@ -263,6 +265,17 @@ export default function EditJobPage() {
                   value={formData.location}
                   onChange={handleChange}
                   className="w-full focus-visible:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2 col-span-1 md:col-span-3">
+                <Label htmlFor="detailedLocation" className="font-semibold text-zinc-700 dark:text-zinc-300">Detailed Location / Specific Address</Label>
+                <Input
+                  id="detailedLocation"
+                  name="detailedLocation"
+                  placeholder="e.g. 123 Nguyen Van Linh, District 7"
+                  value={formData.detailedLocation}
+                  onChange={handleChange}
+                  className="focus-visible:ring-blue-500"
                 />
               </div>
             </div>

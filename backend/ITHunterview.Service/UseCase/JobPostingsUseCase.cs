@@ -41,6 +41,7 @@ namespace ITHunterview.Service.UseCase
                 JobCode = j.JobCode,
                 Title = j.Title,
                 Location = j.Location,
+                DetailedLocation = j.DetailedLocation,
 
                 Status = j.Status,
                 ApplicationCount = j.ApplicationCount,
@@ -103,6 +104,7 @@ namespace ITHunterview.Service.UseCase
                 MaxSalary = dto.MaxSalary,
                 Currency = dto.Currency,
                 Location = dto.Location,
+                DetailedLocation = dto.DetailedLocation,
 
                 Status = dto.Status,
                 Level = dto.Level,
@@ -148,6 +150,7 @@ namespace ITHunterview.Service.UseCase
             job.MaxSalary = dto.MaxSalary;
             job.Currency = dto.Currency;
             job.Location = dto.Location;
+            job.DetailedLocation = dto.DetailedLocation;
             job.ExpiresAt = dto.ExpiresAt;
 
             job.Level = dto.Level;
@@ -211,6 +214,7 @@ namespace ITHunterview.Service.UseCase
                 MaxSalary = j.MaxSalary,
                 Currency = j.Currency,
                 Location = j.Location,
+                DetailedLocation = j.DetailedLocation,
 
                 Status = j.Status,
                 Level = j.Level,
