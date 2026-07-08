@@ -20,13 +20,6 @@ using ITHunterview.Service.Interface.Service.Matching;
 
 namespace ITHunterview.Service.Implementations.UseCase
 {
-    public class MatchingWeights
-    {
-        public decimal TitleWeight { get; set; } = 0.15m;
-        public decimal SkillsWeight { get; set; } = 0.45m;
-        public decimal ExperienceWeight { get; set; } = 0.30m;
-        public decimal DomainWeight { get; set; } = 0.10m;
-    }
 
     public class CvJobMatchingUseCase : ICvJobMatchingUseCase
     {
@@ -194,8 +187,6 @@ namespace ITHunterview.Service.Implementations.UseCase
                 .Where(j => j.TitleEmbedding != null && j.SkillsEmbedding != null && j.ExperienceEmbedding != null && j.DomainEmbedding != null)
                 .ToListAsync();
 
-            var weights = new MatchingWeights();
-
             var matchScores = new List<CvJobMatchScores>();
 
             foreach (var job in jobs)
@@ -205,10 +196,10 @@ namespace ITHunterview.Service.Implementations.UseCase
                 var expScore = CalculateComponentScore(cv.ExperienceEmbedding, job.ExperienceEmbedding);
                 var domainScore = CalculateComponentScore(cv.DomainEmbedding, job.DomainEmbedding);
 
-                var finalScore = (titleScore * weights.TitleWeight) +
-                                 (skillsScore * weights.SkillsWeight) +
-                                 (expScore * weights.ExperienceWeight) +
-                                 (domainScore * weights.DomainWeight);
+                var finalScore = (titleScore * 0.15m) +
+                                 (skillsScore * 0.45m) +
+                                 (expScore * 0.30m) +
+                                 (domainScore * 0.10m);
 
                 var details = JsonSerializer.Serialize(new 
                 {
@@ -217,7 +208,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                     ExperienceScore = Math.Round(expScore, 4),
                     DomainScore = Math.Round(domainScore, 4),
                     FinalScore = Math.Round(finalScore, 4),
-                    Weights = weights
+                    Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m }
                 });
 
                 var existingScore = await _context.CvJobMatchScores
@@ -258,8 +249,6 @@ namespace ITHunterview.Service.Implementations.UseCase
                 .Where(c => c.TitleEmbedding != null && c.SkillsEmbedding != null && c.ExperienceEmbedding != null && c.DomainEmbedding != null)
                 .ToListAsync();
 
-            var weights = new MatchingWeights();
-
             foreach (var cv in cvs)
             {
                 var titleScore = CalculateComponentScore(cv.TitleEmbedding, job.TitleEmbedding);
@@ -267,10 +256,10 @@ namespace ITHunterview.Service.Implementations.UseCase
                 var expScore = CalculateComponentScore(cv.ExperienceEmbedding, job.ExperienceEmbedding);
                 var domainScore = CalculateComponentScore(cv.DomainEmbedding, job.DomainEmbedding);
 
-                var finalScore = (titleScore * weights.TitleWeight) +
-                                 (skillsScore * weights.SkillsWeight) +
-                                 (expScore * weights.ExperienceWeight) +
-                                 (domainScore * weights.DomainWeight);
+                var finalScore = (titleScore * 0.15m) +
+                                 (skillsScore * 0.45m) +
+                                 (expScore * 0.30m) +
+                                 (domainScore * 0.10m);
 
                 var details = JsonSerializer.Serialize(new 
                 {
@@ -279,7 +268,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                     ExperienceScore = Math.Round(expScore, 4),
                     DomainScore = Math.Round(domainScore, 4),
                     FinalScore = Math.Round(finalScore, 4),
-                    Weights = weights
+                    Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m }
                 });
 
                 var existingScore = await _context.CvJobMatchScores
@@ -400,13 +389,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                 try 
                 {
                     var jsonDoc = JsonDocument.Parse(llmResponseText);
-                    if (jsonDoc.RootElement.TryGetProperty("jdFit", out var jdFitElement))
-                    {
-                        if (jdFitElement.TryGetProperty("score", out var scoreElement))
-                        {
-                            finalScore = scoreElement.GetDecimal();
-                        }
-                    }
+                    finalScore = EnforceScoreRules(jsonDoc);
                 }
                 catch (JsonException ex)
                 {
@@ -434,6 +417,70 @@ namespace ITHunterview.Service.Implementations.UseCase
                 matchRecord.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
             }
+        }
+
+        private decimal EnforceScoreRules(JsonDocument jsonDoc)
+        {
+            if (!jsonDoc.RootElement.TryGetProperty("jdFit", out var jdFit))
+                return 0m;
+
+            // 1. Kill-Switch check
+            if (jdFit.TryGetProperty("killSwitchTriggered", out var ksw) && ksw.GetBoolean())
+            {
+                _logger.LogInformation("KSW_01 triggered — score frozen at 15");
+                return 15m;
+            }
+
+            // 2. Lấy raw score
+            decimal rawScore = 0m;
+            if (jdFit.TryGetProperty("score", out var scoreEl))
+                rawScore = scoreEl.GetDecimal();
+
+            // 3. Pool A cap check
+            decimal poolAScore = 0m;
+            if (jdFit.TryGetProperty("poolA", out var poolA) && 
+                poolA.TryGetProperty("score", out var paScore))
+            {
+                poolAScore = paScore.GetDecimal();
+            }
+            
+            bool poolACapped = false;
+            if (jdFit.TryGetProperty("poolACapped", out var capped))
+                poolACapped = capped.GetBoolean();
+
+            if (poolACapped && poolAScore > 28m)
+            {
+                // Recalculate: clamp Pool A tại 28 và recompute total
+                decimal poolBScore = 0m;
+                if (jdFit.TryGetProperty("poolB", out var poolB) &&
+                    poolB.TryGetProperty("score", out var pbScore))
+                    poolBScore = pbScore.GetDecimal();
+                rawScore = 28m + poolBScore;
+                _logger.LogInformation("RULE_TC1_02: Pool A capped. Recalculated score = {Score}", rawScore);
+            }
+
+            // 4. Tính lại penalty deductions
+            decimal totalDeduction = 0m;
+            if (jdFit.TryGetProperty("penalties", out var penalties) &&
+                penalties.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var penalty in penalties.EnumerateArray())
+                {
+                    if (penalty.TryGetProperty("triggered", out var triggered) && triggered.GetBoolean())
+                    {
+                        if (penalty.TryGetProperty("deduction", out var ded))
+                        {
+                            var dedVal = ded.GetDecimal();
+                            // Deduction có thể là số âm hoặc dương → normalize thành dương
+                            totalDeduction += Math.Abs(dedVal);
+                            _logger.LogInformation("Penalty triggered. Deduction = {Deduction}", dedVal);
+                        }
+                    }
+                }
+            }
+
+            decimal finalScore = rawScore - totalDeduction;
+            return Math.Max(0m, Math.Min(100m, finalScore)); // Clamp [0, 100]
         }
 
         private async Task<string> CallLlmBypassAsync(string prompt)

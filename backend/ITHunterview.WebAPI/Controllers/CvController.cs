@@ -107,21 +107,6 @@ namespace ITHunterview.WebAPI.Controllers
 
             try
             {
-                Guid finalCvId = request.CvId ?? Guid.Empty;
-
-                if (finalCvId == Guid.Empty && (!string.IsNullOrEmpty(request.CvUrl) || !string.IsNullOrEmpty(request.CvText)))
-                {
-                    var createDto = new CreateCvRequestDto
-                    {
-                        FileUrl = request.CvUrl ?? string.Empty,
-                        ParsedData = request.CvText ?? string.Empty,
-                        FileName = !string.IsNullOrEmpty(request.CvUrl) ? "Uploaded CV" : "Pasted CV",
-                        FileType = "application/pdf"
-                    };
-                    var createdCv = await _cvUseCase.CreateCvAsync(userId, createDto);
-                    finalCvId = createdCv.Id;
-                    request.CvId = finalCvId;
-                }
 
                 var jobId = await _cvJobMatchingUseCase.SubmitMatchingJobAsync(userId, request);
 
