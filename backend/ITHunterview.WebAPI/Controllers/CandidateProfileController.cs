@@ -100,6 +100,29 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(new ResponseBase<PersonalInfoResponseDto>(result));
         }
 
+        // ─── C. Onboarding & Completion Gate ──────────────────────────────────
+
+        /// <summary>GET /api/v1/candidate/profile/completion-status — Check if profile meets minimum requirements</summary>
+        [HttpGet("completion-status")]
+        public async Task<ActionResult<ResponseBase<ProfileCompletionStatusResponseDto>>> GetCompletionStatus()
+        {
+            var userId = GetUserId();
+            var result = await _profileUseCase.GetProfileCompletionStatusAsync(userId);
+            return Ok(new ResponseBase<ProfileCompletionStatusResponseDto>(result));
+        }
+
+        /// <summary>PATCH /api/v1/candidate/profile/onboarding — Save required onboarding fields</summary>
+        [HttpPatch("onboarding")]
+        public async Task<ActionResult<ResponseBase<ProfileCompletionStatusResponseDto>>> UpdateOnboardingProfile([FromBody] OnboardingProfileRequestDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var userId = GetUserId();
+            var result = await _profileUseCase.CompleteOnboardingProfileAsync(userId, request);
+            return Ok(new ResponseBase<ProfileCompletionStatusResponseDto>(result));
+        }
+
         // ─── Helpers ──────────────────────────────────────────────────────────
 
         private Guid GetUserId()

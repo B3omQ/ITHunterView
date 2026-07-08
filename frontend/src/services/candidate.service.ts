@@ -18,6 +18,8 @@ import type {
   BasicInfoUpdateRequest,
   AboutMeUpdateRequest,
   SocialLinksUpdateRequest,
+  ProfileCompletionStatus,
+  OnboardingProfilePayload,
 } from '@/types/candidate.types';
 
 export const candidateService = {
@@ -29,6 +31,16 @@ export const candidateService = {
   updateVisibility: (payload: UpdateVisibilityRequest) =>
     api
       .patch<ApiResponse<boolean>>('/api/v1/candidate/profile/visibility', payload)
+      .then((r) => r.data),
+
+  getCompletionStatus: () =>
+    api
+      .get<ApiResponse<ProfileCompletionStatus>>('/api/v1/candidate/profile/completion-status')
+      .then((r) => r.data),
+
+  updateOnboardingProfile: (payload: OnboardingProfilePayload) =>
+    api
+      .patch<ApiResponse<ProfileCompletionStatus>>('/api/v1/candidate/profile/onboarding', payload)
       .then((r) => r.data),
 
   uploadAvatar: (file: File) => {

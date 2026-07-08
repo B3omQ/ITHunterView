@@ -1,10 +1,14 @@
 using ITHunterview.Service.Config;
 using ITHunterview.Service.Infrastructure.Persistence;
+using ITHunterview.Service.Implementations.Service;
+using ITHunterview.Service.Implementations.UseCase;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Service;
 using ITHunterview.Service.Service.AiProviders;
+using ITHunterview.Service.Service.Matching;
+using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.UseCase;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -60,6 +64,17 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IGoogleAuthService, GoogleAuthService>();
             services.AddScoped<IFileUploadService, CloudinaryService>();
+            services.AddHttpClient<IAiEmbeddingService, GeminiEmbeddingService>();
+
+            // Matching AI Services
+            services.AddScoped<ICvTextExtractorService, CvTextExtractorService>();
+            services.AddScoped<IJdExtractionService, JdExtractionService>();
+            services.AddScoped<IVectorEmbeddingService, VectorEmbeddingService>();
+            services.AddScoped<IVectorSearchService, VectorSearchService>();
+            services.AddScoped<IJdFitScoringService, JdFitScoringService>();
+            services.AddScoped<ICvQualityScoringService, CvQualityScoringService>();
+            services.AddScoped<IScoringAggregatorService, ScoringAggregatorService>();
+            services.AddScoped<ISummarizerService, SummarizerService>();
 
             // Use Cases — Auth
             services.AddScoped<IAuthUseCase, AuthUseCase>();
@@ -73,6 +88,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICvUseCase, CvUseCase>();
             services.AddScoped<ICompanyUseCase, CompanyUseCase>();
             services.AddScoped<ISkillUseCase, SkillUseCase>();
+            services.AddScoped<ICvJobMatchingUseCase, CvJobMatchingUseCase>();
             services.AddScoped<IMajorUseCase, MajorUseCase>();
             services.AddScoped<IUserGovernanceUseCase, UserGovernanceUseCase>();
             services.AddScoped<IAuditLogUseCase, AuditLogUseCase>();

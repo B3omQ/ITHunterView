@@ -7,6 +7,7 @@ using ITHunterview.Service.DTOs.Cv;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ITHunterview.WebAPI.Controllers
 {
@@ -16,10 +17,17 @@ namespace ITHunterview.WebAPI.Controllers
     public class CvController : ControllerBase
     {
         private readonly ICvUseCase _cvUseCase;
+        private readonly ICvJobMatchingUseCase _cvJobMatchingUseCase;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
 
-        public CvController(ICvUseCase cvUseCase)
+        public CvController(
+            ICvUseCase cvUseCase, 
+            ICvJobMatchingUseCase cvJobMatchingUseCase,
+            IServiceScopeFactory serviceScopeFactory)
         {
             _cvUseCase = cvUseCase;
+            _cvJobMatchingUseCase = cvJobMatchingUseCase;
+            _serviceScopeFactory = serviceScopeFactory;
         }
 
         [HttpPost]
@@ -85,6 +93,95 @@ namespace ITHunterview.WebAPI.Controllers
             catch (KeyNotFoundException)
             {
                 return NotFound(new ResponseBase<string>("CV not found"));
+            }
+        }
+
+        [HttpPost("match-jd")]
+        public async Task<ActionResult<ResponseBase<Guid>>> MatchJd([FromBody] ITHunterview.Service.DTOs.Cv.Matching.MatchingRequestDto request)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+                Guid finalCvId = request.CvId ?? Guid.Empty;
+
+                if (finalCvId == Guid.Empty && (!string.IsNullOrEmpty(request.CvUrl) || !string.IsNullOrEmpty(request.CvText)))
+                {
+                    var createDto = new CreateCvRequestDto
+                    {
+                        FileUrl = request.CvUrl ?? string.Empty,
+                        ParsedData = request.CvText ?? string.Empty,
+                        FileName = !string.IsNullOrEmpty(request.CvUrl) ? "Uploaded CV" : "Pasted CV",
+                        FileType = "application/pdf"
+                    };
+                    var createdCv = await _cvUseCase.CreateCvAsync(userId, createDto);
+                    finalCvId = createdCv.Id;
+                    request.CvId = finalCvId;
+                }
+
+                var jobId = await _cvJobMatchingUseCase.SubmitMatchingJobAsync(userId, request);
+
+                // Chạy ngầm trong background với scope riêng biệt
+                _ = Task.Run(async () =>
+                {
+                    using var scope = _serviceScopeFactory.CreateScope();
+                    var useCase = scope.ServiceProvider.GetRequiredService<ICvJobMatchingUseCase>();
+                    await useCase.ProcessMatchingJobAsync(jobId, userId, request);
+                });
+
+                return Ok(new ResponseBase<Guid>(jobId, "Matching job submitted"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ResponseBase<Guid>(Guid.Empty, ex.Message));
+            }
+        }
+
+        [HttpGet("match-results/{jobId:guid}")]
+        public async Task<ActionResult<ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.MatchingResultDto>>> GetMatchResult(Guid jobId)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var result = await _cvJobMatchingUseCase.GetMatchingResultAsync(jobId, userId);
+            if (result == null)
+            {
+                return NotFound(new ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.MatchingResultDto>("Job not found"));
+            }
+
+            return Ok(new ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.MatchingResultDto>(result, "Result retrieved"));
+        }
+
+        [HttpPost("{id:guid}/match-jobs")]
+        public async Task<ActionResult<ResponseBase<string>>> MatchJobs(Guid id)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+                // Optionally verify that CV belongs to user
+                await _cvUseCase.GetCvByIdAsync(id, userId);
+                await _cvJobMatchingUseCase.MatchCvWithAllJobsAsync(id);
+                return Ok(new ResponseBase<string>("Matching completed", "CV matched with jobs successfully"));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new ResponseBase<string>("CV not found"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ResponseBase<string>(null, ex.Message));
             }
         }
     }

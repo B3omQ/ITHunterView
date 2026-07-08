@@ -30,6 +30,10 @@ namespace ITHunterview.Service.UseCase
                 Name = dto.Name ?? "",
                 TaxCode = dto.TaxCode ?? "",
                 HeadquartersAddress = dto.HeadquartersAddress ?? "",
+                ProvinceCode = dto.ProvinceCode,
+                DetailedLocation = dto.DetailedLocation,
+                Latitude = dto.Latitude,
+                Longitude = dto.Longitude,
                 Industry = dto.Industry ?? "",
                 CompanySize = dto.CompanySize ?? "",
                 Description = dto.Description ?? "",
@@ -70,6 +74,10 @@ namespace ITHunterview.Service.UseCase
             company.TaxCode = dto.TaxCode;
             company.Name = dto.CompanyName;
             company.HeadquartersAddress = dto.HeadquartersAddress;
+            company.ProvinceCode = dto.ProvinceCode;
+            company.DetailedLocation = dto.DetailedLocation;
+            company.Latitude = dto.Latitude;
+            company.Longitude = dto.Longitude;
             company.CompanyType = dto.CompanyType;
             company.Status = CompanyStatus.PENDING;
             company.UpdatedBy = userId;
@@ -104,6 +112,10 @@ namespace ITHunterview.Service.UseCase
                     company.Name = company.PendingName ?? company.Name;
                     company.TaxCode = company.PendingTaxCode ?? company.TaxCode;
                     company.HeadquartersAddress = company.PendingHeadquartersAddress ?? company.HeadquartersAddress;
+                    company.ProvinceCode = company.PendingProvinceCode ?? company.ProvinceCode;
+                    company.DetailedLocation = company.PendingDetailedLocation ?? company.DetailedLocation;
+                    company.Latitude = company.PendingLatitude ?? company.Latitude;
+                    company.Longitude = company.PendingLongitude ?? company.Longitude;
                     company.CompanyType = company.PendingCompanyType ?? company.CompanyType;
                     if (company.PendingVerificationMethod.HasValue)
                     {
@@ -115,6 +127,10 @@ namespace ITHunterview.Service.UseCase
                     company.PendingName = null;
                     company.PendingTaxCode = null;
                     company.PendingHeadquartersAddress = null;
+                    company.PendingProvinceCode = null;
+                    company.PendingDetailedLocation = null;
+                    company.PendingLatitude = null;
+                    company.PendingLongitude = null;
                     company.PendingVerificationMethod = null;
                     company.PendingVerificationDocumentUrl = null;
                     company.PendingCompanyType = null;
@@ -133,6 +149,10 @@ namespace ITHunterview.Service.UseCase
                     company.PendingName = null;
                     company.PendingTaxCode = null;
                     company.PendingHeadquartersAddress = null;
+                    company.PendingProvinceCode = null;
+                    company.PendingDetailedLocation = null;
+                    company.PendingLatitude = null;
+                    company.PendingLongitude = null;
                     company.PendingVerificationMethod = null;
                     company.PendingVerificationDocumentUrl = null;
                     company.PendingCompanyType = null;
@@ -206,6 +226,10 @@ namespace ITHunterview.Service.UseCase
             company.PendingName = dto.CompanyName;
             company.PendingTaxCode = dto.TaxCode;
             company.PendingHeadquartersAddress = dto.HeadquartersAddress;
+            company.PendingProvinceCode = dto.ProvinceCode;
+            company.PendingDetailedLocation = dto.DetailedLocation;
+            company.PendingLatitude = dto.Latitude;
+            company.PendingLongitude = dto.Longitude;
             company.PendingVerificationMethod = dto.VerificationMethod;
             company.PendingVerificationDocumentUrl = dto.VerificationDocumentUrl;
             company.PendingCompanyType = dto.CompanyType;
@@ -272,6 +296,10 @@ namespace ITHunterview.Service.UseCase
                 Name = company.Name,
                 TaxCode = company.TaxCode,
                 HeadquartersAddress = company.HeadquartersAddress,
+                ProvinceCode = company.ProvinceCode,
+                DetailedLocation = company.DetailedLocation,
+                Latitude = company.Latitude,
+                Longitude = company.Longitude,
                 Industry = company.Industry,
                 CompanySize = company.CompanySize,
                 Description = company.Description,
@@ -284,6 +312,10 @@ namespace ITHunterview.Service.UseCase
                 PendingName = company.PendingName,
                 PendingTaxCode = company.PendingTaxCode,
                 PendingHeadquartersAddress = company.PendingHeadquartersAddress,
+                PendingProvinceCode = company.PendingProvinceCode,
+                PendingDetailedLocation = company.PendingDetailedLocation,
+                PendingLatitude = company.PendingLatitude,
+                PendingLongitude = company.PendingLongitude,
                 PendingVerificationMethod = company.PendingVerificationMethod,
                 PendingVerificationDocumentUrl = company.PendingVerificationDocumentUrl,
                 PendingCompanyType = company.PendingCompanyType,
@@ -315,6 +347,15 @@ namespace ITHunterview.Service.UseCase
             if (recruiterCompany == null || recruiterCompany.Id != companyId)
             {
                 throw new UnauthorizedAccessException("You are not authorized to update this company.");
+            }
+
+            if (company.Status != CompanyStatus.VERIFIED)
+            {
+                if (dto.HeadquartersAddress != null) company.HeadquartersAddress = dto.HeadquartersAddress;
+                if (dto.ProvinceCode != null) company.ProvinceCode = dto.ProvinceCode;
+                if (dto.DetailedLocation != null) company.DetailedLocation = dto.DetailedLocation;
+                if (dto.Latitude != null) company.Latitude = dto.Latitude;
+                if (dto.Longitude != null) company.Longitude = dto.Longitude;
             }
 
             if (dto.Website != null) company.Website = dto.Website;

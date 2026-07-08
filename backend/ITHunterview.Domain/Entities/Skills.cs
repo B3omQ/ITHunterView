@@ -30,5 +30,10 @@ namespace ITHunterview.Domain.Entities
         [Column("normalized_name")]
         public string NormalizedName { get; set; }
 
+        [ForeignKey("CategoryId")]
+        public virtual SkillCategories Category { get; set; }
+
+        public virtual ICollection<SkillAliases> Aliases { get; set; } = new List<SkillAliases>();
+
     }
 }

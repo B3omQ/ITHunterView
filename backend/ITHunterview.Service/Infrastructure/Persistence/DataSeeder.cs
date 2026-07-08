@@ -306,7 +306,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                             Location = avatarIdx % 2 == 0 ? "Ho Chi Minh City" : "Hanoi",
                             AboutMe = "Passionate software developer looking for opportunities.",
                             AvatarUrl = $"https://avatar.iran.liara.run/public/{avatarIdx % 50 + 1}",
-                            IsVisibleToRecruiters = true
+                            IsVisibleToRecruiters = true,
+                            IsProfileComplete = true,
+                            ProfileCompletedAt = DateTime.UtcNow
                         });
                         avatarIdx++;
                     }

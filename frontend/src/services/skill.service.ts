@@ -7,6 +7,8 @@ import type {
   UpdateSkillDto,
   UpdateSkillStatusDto,
   SkillStatus,
+  CreateSkillCategoryDto,
+  UpdateSkillCategoryDto,
 } from '@/types/master-data.types';
 
 export const skillService = {
@@ -27,6 +29,21 @@ export const skillService = {
   getCategories: () =>
     api
       .get<ApiResponse<SkillCategoryDto[]>>('/api/master-data/skills/categories')
+      .then((res) => res.data),
+
+  createCategory: (dto: CreateSkillCategoryDto) =>
+    api
+      .post<ApiResponse<SkillCategoryDto>>('/api/master-data/skills/categories', dto)
+      .then((res) => res.data),
+
+  updateCategory: (payload: { id: number; dto: UpdateSkillCategoryDto }) =>
+    api
+      .put<ApiResponse<SkillCategoryDto>>(`/api/master-data/skills/categories/${payload.id}`, payload.dto)
+      .then((res) => res.data),
+
+  deleteCategory: (id: number) =>
+    api
+      .delete<ApiResponse<null>>(`/api/master-data/skills/categories/${id}`)
       .then((res) => res.data),
 
   createSkill: (dto: CreateSkillDto) =>

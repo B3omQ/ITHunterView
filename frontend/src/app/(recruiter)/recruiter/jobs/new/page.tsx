@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { ArrowLeft, Plus, X, Sparkles, AlertCircle } from "lucide-react"
 import { LEVELS, WORKING_MODELS, JOB_DOMAINS, JOB_EXPERTISES, VIETNAM_PROVINCES } from "@/lib/job-constants"
-import { LocationCombobox } from "@/components/shared/LocationCombobox"
 import { MajorCombobox } from "@/components/shared/MajorCombobox"
 import { recruiterService } from "@/services/recruiter.service"
 
@@ -23,6 +22,7 @@ export default function CreateJobPage() {
     title: "",
 
     location: "",
+    detailedLocation: "",
 
     status: "DRAFT",
     minSalary: "",
@@ -46,7 +46,6 @@ export default function CreateJobPage() {
   const [searchSkill, setSearchSkill] = useState("")
   const [creatingSkill, setCreatingSkill] = useState(false)
   
-  const [locationType, setLocationType] = useState("TP Hồ Chí Minh")
   const [searchDomain, setSearchDomain] = useState("")
 
   const loading = metadataLoading || saving || companyLoading
@@ -102,11 +101,43 @@ export default function CreateJobPage() {
     }
   }
 
+  const validateForm = () => {
+    if (!formData.title.trim()) return "Job Title is required"
+    if (!formData.location.trim()) return "Location is required"
+    if (!formData.level) return "Level is required"
+    if (!formData.workingModel) return "Working Model is required"
+    if (!formData.jobExpertise) return "Specialization (Expertise) is required"
+    
+    if (mustHaveSkills.length === 0) return "At least one Must-have Skill is required"
+    if (niceToHaveSkills.length === 0) return "At least one Nice-to-have Skill is required"
+    
+    if (!formData.description.trim()) return "Job Description is required"
+    if (!formData.responsibilities.trim()) return "Key Responsibilities is required"
+    if (!formData.requirements.trim()) return "Detailed Requirements is required"
+    if (!formData.benefits.trim()) return "Perks & Benefits is required"
+    
+    if (!formData.expiresAt) return "Expiration Date is required"
+    
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const expDate = new Date(formData.expiresAt)
+    if (expDate <= today) {
+      return "Expiration Date must be in the future (after today)"
+    }
+    
+    return null
+  }
+
   const handleSubmit = async (statusVal: "DRAFT" | "PUBLISHED") => {
+    const validationError = validateForm()
+    if (validationError) {
+      alert(validationError)
+      return
+    }
+
     const payload = {
       ...formData,
       status: statusVal,
-
       minSalary: formData.minSalary ? Number(formData.minSalary) : null,
       maxSalary: formData.maxSalary ? Number(formData.maxSalary) : null,
       currency: formData.currency,
@@ -212,38 +243,32 @@ export default function CreateJobPage() {
                 />
               </div>
               <div className="space-y-2 col-span-1 md:col-span-2">
-                <Label htmlFor="locationType" className="font-semibold text-zinc-700 dark:text-zinc-300">Location *</Label>
-                <div className="flex gap-2">
-                  <LocationCombobox
-                    value={locationType}
-                    onChange={(val) => {
-                      setLocationType(val)
-                      if (val !== "Other") {
-                        setFormData(prev => ({ ...prev, location: val }))
-                      } else {
-                        setFormData(prev => ({ ...prev, location: "" }))
-                      }
-                    }}
-                    className={locationType === "Other" ? "w-1/3" : "w-full"}
-                  />
-                  
-                  {locationType === "Other" && (
-                    <Input
-                      id="location"
-                      name="location"
-                      placeholder="e.g. Can Tho, Binh Duong"
-                      required
-                      value={formData.location}
-                      onChange={handleChange}
-                      className="flex-1 focus-visible:ring-blue-500"
-                    />
-                  )}
-                </div>
+                <Label htmlFor="location" className="font-semibold text-zinc-700 dark:text-zinc-300">Location *</Label>
+                <Input
+                  id="location"
+                  name="location"
+                  placeholder="e.g. 123 Nguyen Van Cu, District 5, HCMC"
+                  required
+                  value={formData.location}
+                  onChange={handleChange}
+                  className="w-full focus-visible:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2 col-span-1 md:col-span-3">
+                <Label htmlFor="detailedLocation" className="font-semibold text-zinc-700 dark:text-zinc-300">Detailed Location / Specific Address</Label>
+                <Input
+                  id="detailedLocation"
+                  name="detailedLocation"
+                  placeholder="e.g. 123 Nguyen Van Linh, District 7"
+                  value={formData.detailedLocation}
+                  onChange={handleChange}
+                  className="focus-visible:ring-blue-500"
+                />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="level" className="font-semibold text-zinc-700 dark:text-zinc-300">Level</Label>
+                <Label htmlFor="level" className="font-semibold text-zinc-700 dark:text-zinc-300">Level *</Label>
                 <select
                   id="level"
                   name="level"
@@ -259,7 +284,7 @@ export default function CreateJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="workingModel" className="font-semibold text-zinc-700 dark:text-zinc-300">Working Model</Label>
+                <Label htmlFor="workingModel" className="font-semibold text-zinc-700 dark:text-zinc-300">Working Model *</Label>
                 <select
                   id="workingModel"
                   name="workingModel"
@@ -275,7 +300,7 @@ export default function CreateJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="jobExpertise" className="font-semibold text-zinc-700 dark:text-zinc-300">Specialization (Expertise)</Label>
+                <Label htmlFor="jobExpertise" className="font-semibold text-zinc-700 dark:text-zinc-300">Specialization (Expertise) *</Label>
                 <MajorCombobox
                   majors={majors}
                   value={formData.jobExpertise}
@@ -356,7 +381,7 @@ export default function CreateJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="expiresAt" className="font-semibold text-zinc-700 dark:text-zinc-300">Expiration Date</Label>
+                <Label htmlFor="expiresAt" className="font-semibold text-zinc-700 dark:text-zinc-300">Expiration Date *</Label>
                 <Input
                   id="expiresAt"
                   name="expiresAt"
@@ -451,7 +476,7 @@ export default function CreateJobPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-zinc-50/50 dark:bg-zinc-900/30 p-4 rounded-xl border border-zinc-200/60 dark:border-zinc-800/60">
                 {/* Must-have skills list */}
                 <div className="space-y-2">
-                  <Label className="font-bold text-xs uppercase tracking-wider text-blue-600 dark:text-blue-400">Must-have Skills</Label>
+                  <Label className="font-bold text-xs uppercase tracking-wider text-blue-600 dark:text-blue-400">Must-have Skills *</Label>
                   <div className="min-h-[100px] border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg p-2 bg-white dark:bg-zinc-950 flex flex-wrap gap-1.5 items-start content-start">
                     {mustHaveSkills.length > 0 ? (
                       mustHaveSkills.map(s => (
@@ -470,7 +495,7 @@ export default function CreateJobPage() {
 
                 {/* Nice-to-have skills list */}
                 <div className="space-y-2">
-                  <Label className="font-bold text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Nice-to-have Skills</Label>
+                  <Label className="font-bold text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Nice-to-have Skills *</Label>
                   <div className="min-h-[100px] border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg p-2 bg-white dark:bg-zinc-950 flex flex-wrap gap-1.5 items-start content-start">
                     {niceToHaveSkills.length > 0 ? (
                       niceToHaveSkills.map(s => (
@@ -506,7 +531,7 @@ export default function CreateJobPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="responsibilities" className="font-semibold text-zinc-700 dark:text-zinc-300">Key Responsibilities</Label>
+              <Label htmlFor="responsibilities" className="font-semibold text-zinc-700 dark:text-zinc-300">Key Responsibilities *</Label>
               <textarea
                 id="responsibilities"
                 name="responsibilities"
@@ -519,7 +544,7 @@ export default function CreateJobPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="requirements" className="font-semibold text-zinc-700 dark:text-zinc-300">Detailed Requirements</Label>
+              <Label htmlFor="requirements" className="font-semibold text-zinc-700 dark:text-zinc-300">Detailed Requirements *</Label>
               <textarea
                 id="requirements"
                 name="requirements"
@@ -532,7 +557,7 @@ export default function CreateJobPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="benefits" className="font-semibold text-zinc-700 dark:text-zinc-300">Perks & Benefits</Label>
+              <Label htmlFor="benefits" className="font-semibold text-zinc-700 dark:text-zinc-300">Perks & Benefits *</Label>
               <textarea
                 id="benefits"
                 name="benefits"
