@@ -39,9 +39,11 @@ namespace ITHunterview.Service.Service
             return _settings.DefaultProvider ?? "Gemini";
         }
 
-        public async Task<string> GenerateTextAsync(string prompt, string systemPrompt = null)
+        public async Task<string> GenerateTextAsync(string prompt, string systemPrompt = null, string providerName = null)
         {
-            var activeProviderName = await GetActiveProviderNameAsync();
+            var activeProviderName = string.IsNullOrWhiteSpace(providerName)
+                ? await GetActiveProviderNameAsync()
+                : providerName;
             var provider = _providerFactory.GetProvider(activeProviderName);
 
             string result = null;

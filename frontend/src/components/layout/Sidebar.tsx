@@ -45,6 +45,7 @@ const CANDIDATE_NAV: NavItem[] = [
   { label: "Saved Jobs", href: APP_ROUTES.CANDIDATE.SAVED_JOBS, icon: "Bookmark" },
   { label: "My Resume", href: APP_ROUTES.CANDIDATE.RESUME, icon: "FileText" },
   { label: "CV Optimizer", href: APP_ROUTES.CANDIDATE.CV_OPTIMIZER, icon: "BrainCircuit" },
+  { label: "Mock Interview", href: APP_ROUTES.CANDIDATE.INTERVIEW, icon: "MessageSquare" },
   { label: "CV-JD Matching", href: APP_ROUTES.CANDIDATE.CV_MATCHING, icon: "Sparkles" },
   { label: "Applications", href: APP_ROUTES.CANDIDATE.APPLICATIONS, icon: "ClipboardList" },
   { label: "Notifications", href: APP_ROUTES.CANDIDATE.NOTIFICATIONS, icon: "Bell", badge: 3 },

@@ -4,18 +4,20 @@ using System.Collections.Generic;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using Pgvector;
 
 #nullable disable
 
 namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ITHunterviewContext))]
-    partial class ITHunterviewContextModelSnapshot : ModelSnapshot
+    [Migration("20260708043401_AddAiProviderToInterviewSessions")]
+    partial class AddAiProviderToInterviewSessions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -44,7 +46,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "subscription_status", new[] { "active", "inactive" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "user_status", new[] { "active", "inactive", "banned", "pending_verification" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "user_subscription_status", new[] { "active", "expired", "cancelled" });
-            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "vector");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.AiApiUsageLogs", b =>
@@ -319,10 +320,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("github_url");
 
-                    b.Property<bool>("IsProfileComplete")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_profile_complete");
-
                     b.Property<bool>("IsVisibleToRecruiters")
                         .HasColumnType("boolean")
                         .HasColumnName("is_visible_to_recruiters");
@@ -346,10 +343,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Property<string>("PortfolioUrl")
                         .HasColumnType("text")
                         .HasColumnName("portfolio_url");
-
-                    b.Property<DateTime?>("ProfileCompletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("profile_completed_at");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
@@ -476,10 +469,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
-                    b.Property<string>("DetailedLocation")
-                        .HasColumnType("text")
-                        .HasColumnName("detailed_location");
-
                     b.Property<string>("EmployeeBenefits")
                         .HasColumnType("text")
                         .HasColumnName("employee_benefits");
@@ -498,18 +487,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("industry");
 
-                    b.Property<double?>("Latitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("latitude");
-
                     b.Property<string>("LogoUrl")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("logo_url");
-
-                    b.Property<double?>("Longitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("longitude");
 
                     b.Property<string>("MainField")
                         .HasColumnType("text")
@@ -528,29 +509,13 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("pending_company_type");
 
-                    b.Property<string>("PendingDetailedLocation")
-                        .HasColumnType("text")
-                        .HasColumnName("pending_detailed_location");
-
                     b.Property<string>("PendingHeadquartersAddress")
                         .HasColumnType("text")
                         .HasColumnName("pending_headquarters_address");
 
-                    b.Property<double?>("PendingLatitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("pending_latitude");
-
-                    b.Property<double?>("PendingLongitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("pending_longitude");
-
                     b.Property<string>("PendingName")
                         .HasColumnType("text")
                         .HasColumnName("pending_name");
-
-                    b.Property<string>("PendingProvinceCode")
-                        .HasColumnType("text")
-                        .HasColumnName("pending_province_code");
 
                     b.Property<string>("PendingTaxCode")
                         .HasColumnType("text")
@@ -563,10 +528,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Property<int?>("PendingVerificationMethod")
                         .HasColumnType("integer")
                         .HasColumnName("pending_verification_method");
-
-                    b.Property<string>("ProvinceCode")
-                        .HasColumnType("text")
-                        .HasColumnName("province_code");
 
                     b.Property<string>("RejectReason")
                         .HasColumnType("text")
@@ -697,11 +658,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("cv_id");
 
-                    b.Property<string>("ErrorMessage")
-                        .HasColumnType("text")
-                        .HasColumnName("error_message");
-
-                    b.Property<Guid?>("JobId")
+                    b.Property<Guid>("JobId")
                         .HasColumnType("uuid")
                         .HasColumnName("job_id");
 
@@ -719,18 +676,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("raw_jd_text");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("status");
-
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
 
                     b.HasKey("Id");
 
@@ -751,14 +699,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
-
-                    b.Property<Vector>("DomainEmbedding")
-                        .HasColumnType("vector(768)")
-                        .HasColumnName("domain_embedding");
-
-                    b.Property<Vector>("ExperienceEmbedding")
-                        .HasColumnType("vector(768)")
-                        .HasColumnName("experience_embedding");
 
                     b.Property<string>("FileName")
                         .IsRequired()
@@ -787,14 +727,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("parsed_data");
-
-                    b.Property<Vector>("SkillsEmbedding")
-                        .HasColumnType("vector(768)")
-                        .HasColumnName("skills_embedding");
-
-                    b.Property<Vector>("TitleEmbedding")
-                        .HasColumnType("vector(768)")
-                        .HasColumnName("title_embedding");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -850,14 +782,17 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("id");
 
                     b.Property<string>("AiFeedback")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("ai_feedback");
 
                     b.Property<string>("AudioUrl")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("audio_url");
 
                     b.Property<string>("CandidateTranscript")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("candidate_transcript");
 
@@ -1121,18 +1056,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
-                    b.Property<string>("DetailedLocation")
-                        .HasColumnType("text")
-                        .HasColumnName("detailed_location");
-
-                    b.Property<Vector>("DomainEmbedding")
-                        .HasColumnType("vector(768)")
-                        .HasColumnName("domain_embedding");
-
-                    b.Property<Vector>("ExperienceEmbedding")
-                        .HasColumnType("vector(768)")
-                        .HasColumnName("experience_embedding");
-
                     b.Property<DateTime?>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
@@ -1167,10 +1090,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric")
                         .HasColumnName("min_salary");
 
-                    b.Property<string>("ParsedData")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("parsed_data");
-
                     b.Property<DateTime?>("PublishedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("published_at");
@@ -1189,10 +1108,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("responsibilities");
 
-                    b.Property<Vector>("SkillsEmbedding")
-                        .HasColumnType("vector(768)")
-                        .HasColumnName("skills_embedding");
-
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
@@ -1201,10 +1116,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("title");
-
-                    b.Property<Vector>("TitleEmbedding")
-                        .HasColumnType("vector(768)")
-                        .HasColumnName("title_embedding");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1650,40 +1561,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.ToTable("roles");
                 });
 
-            modelBuilder.Entity("ITHunterview.Domain.Entities.SkillAliases", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AliasName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("alias_name");
-
-                    b.Property<string>("NormalizedAliasName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("normalized_alias_name");
-
-                    b.Property<int>("SkillId")
-                        .HasColumnType("integer")
-                        .HasColumnName("skill_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NormalizedAliasName");
-
-                    b.HasIndex("SkillId");
-
-                    b.ToTable("skill_aliases");
-                });
-
             modelBuilder.Entity("ITHunterview.Domain.Entities.SkillCategories", b =>
                 {
                     b.Property<int>("Id")
@@ -1747,8 +1624,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CategoryId");
 
                     b.HasIndex("NormalizedName");
 
@@ -2245,27 +2120,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("ITHunterview.Domain.Entities.SkillAliases", b =>
-                {
-                    b.HasOne("ITHunterview.Domain.Entities.Skills", "Skill")
-                        .WithMany("Aliases")
-                        .HasForeignKey("SkillId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Skill");
-                });
-
-            modelBuilder.Entity("ITHunterview.Domain.Entities.Skills", b =>
-                {
-                    b.HasOne("ITHunterview.Domain.Entities.SkillCategories", "Category")
-                        .WithMany("Skills")
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Category");
-                });
-
             modelBuilder.Entity("ITHunterview.Domain.Entities.User", b =>
                 {
                     b.HasOne("ITHunterview.Domain.Entities.Roles", "Role")
@@ -2295,16 +2149,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("ITHunterview.Domain.Entities.Roles", b =>
                 {
                     b.Navigation("Users");
-                });
-
-            modelBuilder.Entity("ITHunterview.Domain.Entities.SkillCategories", b =>
-                {
-                    b.Navigation("Skills");
-                });
-
-            modelBuilder.Entity("ITHunterview.Domain.Entities.Skills", b =>
-                {
-                    b.Navigation("Aliases");
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.User", b =>
