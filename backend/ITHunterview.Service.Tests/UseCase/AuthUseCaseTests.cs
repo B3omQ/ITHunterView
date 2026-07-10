@@ -291,5 +291,69 @@ namespace ITHunterview.Service.Tests.UseCase
             result.Success.Should().BeFalse();
             result.Message.Should().Contain("The system has not configured this role");
         }
+
+        // ─── CHANGE PASSWORD ASYNC TESTS ─────────────────────────────────────────
+
+        [Fact]
+        public async Task ChangePasswordAsync_UserExistsAndValidPassword_ReturnsSuccessAndRevokesTokens()
+        {
+            // Arrange
+            var userId = Guid.NewGuid();
+            var request = new ChangePasswordRequestDto { CurrentPassword = "OldPassword123!", NewPassword = "NewPassword123!" };
+            var user = new User { Id = userId, PasswordHash = PasswordHasher.HashPassword("OldPassword123!") };
+
+            _userRepositoryMock.Setup(x => x.GetUserByIdAsync(userId)).ReturnsAsync(user);
+
+            // Act
+            var result = await _authUseCase.ChangePasswordAsync(userId, request);
+
+            // Assert
+            result.Success.Should().BeTrue();
+            result.Message.Should().Be("Changed password successfully. Please login again.");
+            
+            _userRepositoryMock.Verify(x => x.UpdateUserAsync(It.Is<User>(u => u.Id == userId)), Times.Once);
+            _tokenRepositoryMock.Verify(x => x.RevokeAllUserRefreshTokensAsync(userId), Times.Once);
+        }
+
+        [Fact]
+        public async Task ChangePasswordAsync_UserDoesNotExist_ReturnsError()
+        {
+            // Arrange
+            var userId = Guid.NewGuid();
+            var request = new ChangePasswordRequestDto { CurrentPassword = "OldPassword123!", NewPassword = "NewPassword123!" };
+
+            _userRepositoryMock.Setup(x => x.GetUserByIdAsync(userId)).ReturnsAsync((User?)null);
+
+            // Act
+            var result = await _authUseCase.ChangePasswordAsync(userId, request);
+
+            // Assert
+            result.Success.Should().BeFalse();
+            result.Message.Should().Be("User does not exist.");
+            
+            _userRepositoryMock.Verify(x => x.UpdateUserAsync(It.IsAny<User>()), Times.Never);
+            _tokenRepositoryMock.Verify(x => x.RevokeAllUserRefreshTokensAsync(It.IsAny<Guid>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ChangePasswordAsync_InvalidCurrentPassword_ReturnsError()
+        {
+            // Arrange
+            var userId = Guid.NewGuid();
+            var request = new ChangePasswordRequestDto { CurrentPassword = "WrongPassword!", NewPassword = "NewPassword123!" };
+            var user = new User { Id = userId, PasswordHash = PasswordHasher.HashPassword("OldPassword123!") };
+
+            _userRepositoryMock.Setup(x => x.GetUserByIdAsync(userId)).ReturnsAsync(user);
+
+            // Act
+            var result = await _authUseCase.ChangePasswordAsync(userId, request);
+
+            // Assert
+            result.Success.Should().BeFalse();
+            result.Message.Should().Be("Current password is incorrect.");
+            
+            _userRepositoryMock.Verify(x => x.UpdateUserAsync(It.IsAny<User>()), Times.Never);
+            _tokenRepositoryMock.Verify(x => x.RevokeAllUserRefreshTokensAsync(It.IsAny<Guid>()), Times.Never);
+        }
     }
 }
