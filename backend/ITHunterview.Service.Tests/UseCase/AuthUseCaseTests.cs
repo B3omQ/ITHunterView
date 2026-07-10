@@ -185,5 +185,111 @@ namespace ITHunterview.Service.Tests.UseCase
             result.Success.Should().BeFalse();
             result.Message.Should().Be("Please verify your email before logging in.");
         }
+
+        // ─── REGISTER ASYNC TESTS ────────────────────────────────────────────────
+
+        [Fact]
+        public async Task RegisterAsync_ValidCandidate_ReturnsSuccessAndSendsEmail()
+        {
+            // Arrange
+            var request = new RegisterRequestDto { Email = "new@example.com", Password = "Password123!", RoleType = "candidate" };
+            var role = new Roles { Id = 1, Name = "candidate" };
+
+            _userRepositoryMock.Setup(x => x.GetUserByEmailAsync(request.Email))
+                .ReturnsAsync((User?)null);
+            _roleRepositoryMock.Setup(x => x.GetByNameAsync("candidate"))
+                .ReturnsAsync(role);
+
+            // Act
+            var result = await _authUseCase.RegisterAsync(request);
+
+            // Assert
+            result.Success.Should().BeTrue();
+            result.Message.Should().Contain("Registration successful");
+            
+            _userRepositoryMock.Verify(x => x.AddUserAsync(It.Is<User>(u => 
+                u.Email == "new@example.com" && 
+                u.RoleId == 1 && 
+                u.Status == UserStatus.PENDING_VERIFICATION &&
+                u.CandidateProfile != null)), Times.Once);
+            
+            _emailVerificationRepositoryMock.Verify(x => x.AddTokenAsync(It.IsAny<EmailVerificationTokens>()), Times.Once);
+            _emailServiceMock.Verify(x => x.SendVerificationEmailAsync(request.Email, It.IsAny<string>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RegisterAsync_InvalidRole_ReturnsError()
+        {
+            // Arrange
+            var request = new RegisterRequestDto { Email = "new@example.com", Password = "Password123!", RoleType = "admin" };
+
+            // Act
+            var result = await _authUseCase.RegisterAsync(request);
+
+            // Assert
+            result.Success.Should().BeFalse();
+            result.Message.Should().Contain("Invalid role");
+        }
+
+        [Fact]
+        public async Task RegisterAsync_ExistingEmailPendingVerification_ResendsEmailAndReturnsSuccess()
+        {
+            // Arrange
+            var request = new RegisterRequestDto { Email = "existing@example.com", Password = "Password123!", RoleType = "candidate" };
+            var existingUser = new User { Id = Guid.NewGuid(), Email = "existing@example.com", Status = UserStatus.PENDING_VERIFICATION };
+
+            _userRepositoryMock.Setup(x => x.GetUserByEmailAsync(request.Email))
+                .ReturnsAsync(existingUser);
+
+            // Act
+            var result = await _authUseCase.RegisterAsync(request);
+
+            // Assert
+            result.Success.Should().BeTrue();
+            result.Message.Should().StartWith("PENDING_VERIFICATION|");
+            
+            _emailVerificationRepositoryMock.Verify(x => x.AddTokenAsync(It.IsAny<EmailVerificationTokens>()), Times.Once);
+            _emailServiceMock.Verify(x => x.SendVerificationEmailAsync(request.Email, It.IsAny<string>()), Times.Once);
+            _userRepositoryMock.Verify(x => x.AddUserAsync(It.IsAny<User>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RegisterAsync_ExistingEmailActive_ReturnsError()
+        {
+            // Arrange
+            var request = new RegisterRequestDto { Email = "existing@example.com", Password = "Password123!", RoleType = "candidate" };
+            var existingUser = new User { Id = Guid.NewGuid(), Email = "existing@example.com", Status = UserStatus.ACTIVE };
+
+            _userRepositoryMock.Setup(x => x.GetUserByEmailAsync(request.Email))
+                .ReturnsAsync(existingUser);
+
+            // Act
+            var result = await _authUseCase.RegisterAsync(request);
+
+            // Assert
+            result.Success.Should().BeFalse();
+            result.Message.Should().Be("Email is already in use.");
+            
+            _userRepositoryMock.Verify(x => x.AddUserAsync(It.IsAny<User>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RegisterAsync_RoleNotFound_ReturnsError()
+        {
+            // Arrange
+            var request = new RegisterRequestDto { Email = "new@example.com", Password = "Password123!", RoleType = "candidate" };
+
+            _userRepositoryMock.Setup(x => x.GetUserByEmailAsync(request.Email))
+                .ReturnsAsync((User?)null);
+            _roleRepositoryMock.Setup(x => x.GetByNameAsync("candidate"))
+                .ReturnsAsync((Roles?)null);
+
+            // Act
+            var result = await _authUseCase.RegisterAsync(request);
+
+            // Assert
+            result.Success.Should().BeFalse();
+            result.Message.Should().Contain("The system has not configured this role");
+        }
     }
 }
