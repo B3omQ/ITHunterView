@@ -15,8 +15,11 @@ namespace ITHunterview.Domain.Entities
         [Column("cv_id")]
         public Guid CvId { get; set; }
 
+        [Column("user_id")]
+        public Guid UserId { get; set; }
+
         [Column("job_id")]
-        public Guid JobId { get; set; }
+        public Guid? JobId { get; set; }
 
         [Column("raw_jd_text")]
         public string RawJdText { get; set; }
@@ -25,7 +28,13 @@ namespace ITHunterview.Domain.Entities
         public decimal? MatchScore { get; set; }
 
         [Column("match_details")]
-        public string MatchDetails { get; set; }
+        public string MatchDetails { get; set; } = string.Empty;
+
+        [Column("status")]
+        public string Status { get; set; } = "Pending";
+
+        [Column("error_message")]
+        public string? ErrorMessage { get; set; }
 
         [Column("updated_at")]
         public DateTime UpdatedAt { get; set; }

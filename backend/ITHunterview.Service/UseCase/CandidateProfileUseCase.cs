@@ -161,6 +161,65 @@ namespace ITHunterview.Service.UseCase
             };
         }
 
+        // ─── Onboarding & Completion Gate ──────────────────────────────────────
+
+        public async Task<ProfileCompletionStatusResponseDto> GetProfileCompletionStatusAsync(Guid userId)
+        {
+            var profile = await GetOrCreateProfileAsync(userId);
+
+            if (!profile.IsProfileComplete)
+            {
+                var evaluation = EvaluateProfileCompletion(profile);
+                if (evaluation.IsComplete)
+                {
+                    profile.IsProfileComplete = true;
+                    profile.ProfileCompletedAt = DateTime.UtcNow;
+                    await _profileRepo.SaveChangesAsync();
+                }
+                return evaluation;
+            }
+
+            return new ProfileCompletionStatusResponseDto
+            {
+                IsComplete = true,
+                CompletionPercentage = 100,
+                MissingFields = new List<string>()
+            };
+        }
+
+        public async Task<ProfileCompletionStatusResponseDto> CompleteOnboardingProfileAsync(Guid userId, OnboardingProfileRequestDto request)
+        {
+            var profile = await GetOrCreateProfileAsync(userId);
+
+            if (!string.IsNullOrWhiteSpace(request.FirstName))
+                profile.FirstName = request.FirstName;
+            if (!string.IsNullOrWhiteSpace(request.LastName))
+                profile.LastName = request.LastName;
+            if (!string.IsNullOrWhiteSpace(request.Phone))
+                profile.Phone = request.Phone;
+            if (!string.IsNullOrWhiteSpace(request.Location))
+                profile.Location = request.Location;
+
+            if (profile.User != null)
+                profile.User.UpdatedAt = DateTime.UtcNow;
+
+            var evaluation = EvaluateProfileCompletion(profile);
+            
+            profile.IsProfileComplete = evaluation.IsComplete;
+            if (evaluation.IsComplete && profile.ProfileCompletedAt == null)
+            {
+                profile.ProfileCompletedAt = DateTime.UtcNow;
+            }
+            else if (!evaluation.IsComplete)
+            {
+                profile.ProfileCompletedAt = null;
+            }
+
+            await _profileRepo.SaveChangesAsync();
+
+            return evaluation;
+        }
+
         // ─── Private helpers ───────────────────────────────────────────────────
 
         private static string? ExtractPublicIdFromUrl(string url)
@@ -209,6 +268,27 @@ namespace ITHunterview.Service.UseCase
                 LinkedInUrl = profile.LinkedinUrl,
                 GithubUrl = profile.GithubUrl,
                 UpdatedAt = profile.User?.UpdatedAt
+            };
+        }
+
+        private ProfileCompletionStatusResponseDto EvaluateProfileCompletion(CandidateProfiles profile)
+        {
+            var missingFields = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(profile.FirstName)) missingFields.Add("firstName");
+            if (string.IsNullOrWhiteSpace(profile.LastName)) missingFields.Add("lastName");
+            if (string.IsNullOrWhiteSpace(profile.Phone)) missingFields.Add("phone");
+            if (string.IsNullOrWhiteSpace(profile.Location)) missingFields.Add("location");
+
+            int totalRequiredFields = 4;
+            int filledFields = totalRequiredFields - missingFields.Count;
+            int percentage = (int)Math.Round((double)filledFields / totalRequiredFields * 100);
+
+            return new ProfileCompletionStatusResponseDto
+            {
+                IsComplete = missingFields.Count == 0,
+                MissingFields = missingFields,
+                CompletionPercentage = percentage
             };
         }
     }

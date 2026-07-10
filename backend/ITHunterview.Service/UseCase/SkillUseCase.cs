@@ -43,7 +43,8 @@ namespace ITHunterview.Service.UseCase
                 Name = s.Name,
                 Status = s.Status,
                 CreatedBy = s.CreatedBy,
-                UpdatedBy = s.UpdatedBy
+                UpdatedBy = s.UpdatedBy,
+                Aliases = s.Aliases?.Select(a => a.AliasName).ToList() ?? new List<string>()
             }).ToList();
 
             var result = new PagedResult<SkillDto>
@@ -70,6 +71,59 @@ namespace ITHunterview.Service.UseCase
             return new ResponseBase<List<SkillCategoryDto>>(dtos);
         }
 
+        public async Task<ResponseBase<SkillCategoryDto>> CreateCategoryAsync(CreateSkillCategoryDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Name))
+                return new ResponseBase<SkillCategoryDto>("Category name is required.");
+
+            var category = new SkillCategories
+            {
+                Name = dto.Name.Trim()
+            };
+
+            await _skillCategoryRepository.AddAsync(category);
+
+            return new ResponseBase<SkillCategoryDto>(new SkillCategoryDto
+            {
+                Id = category.Id,
+                Name = category.Name
+            });
+        }
+
+        public async Task<ResponseBase<SkillCategoryDto>> UpdateCategoryAsync(int id, UpdateSkillCategoryDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Name))
+                return new ResponseBase<SkillCategoryDto>("Category name is required.");
+
+            var category = await _skillCategoryRepository.GetByIdAsync(id);
+            if (category == null)
+                return new ResponseBase<SkillCategoryDto>("Category not found.");
+
+            category.Name = dto.Name.Trim();
+            await _skillCategoryRepository.UpdateAsync(category);
+
+            return new ResponseBase<SkillCategoryDto>(new SkillCategoryDto
+            {
+                Id = category.Id,
+                Name = category.Name
+            });
+        }
+
+        public async Task<ResponseBase> DeleteCategoryAsync(int id)
+        {
+            var category = await _skillCategoryRepository.GetByIdAsync(id);
+            if (category == null)
+                return ResponseBase.Fail("Category not found.");
+
+            var hasSkills = await _skillRepository.HasSkillsInCategoryAsync(id);
+            if (hasSkills)
+                return ResponseBase.Fail("Category cannot be deleted because it is currently in use by one or more skills.");
+
+            await _skillCategoryRepository.DeleteAsync(category);
+
+            return ResponseBase.Ok();
+        }
+
         public async Task<ResponseBase<SkillDto>> CreateSkillAsync(CreateSkillDto dto, Guid userId)
         {
             var isCategoryValid = await _skillCategoryRepository.CategoryExistsAsync(dto.CategoryId);
@@ -93,6 +147,18 @@ namespace ITHunterview.Service.UseCase
                 CreatedBy = userId
             };
 
+            if (dto.Aliases != null && dto.Aliases.Any())
+            {
+                foreach (var alias in dto.Aliases.Where(a => !string.IsNullOrWhiteSpace(a)))
+                {
+                    skill.Aliases.Add(new SkillAliases
+                    {
+                        AliasName = alias.Trim(),
+                        NormalizedAliasName = Utils.StringNormalizationHelper.NormalizeITTerm(alias)
+                    });
+                }
+            }
+
             await _skillRepository.AddAsync(skill);
 
             var categories = await _skillCategoryRepository.GetAllCategoriesAsync();
@@ -105,7 +171,8 @@ namespace ITHunterview.Service.UseCase
                 CategoryName = categoryName,
                 Name = skill.Name,
                 Status = skill.Status,
-                CreatedBy = skill.CreatedBy
+                CreatedBy = skill.CreatedBy,
+                Aliases = skill.Aliases.Select(a => a.AliasName).ToList()
             };
 
             return new ResponseBase<SkillDto>(resultDto, "Skill created successfully.");
@@ -137,6 +204,19 @@ namespace ITHunterview.Service.UseCase
             skill.NormalizedName = Utils.StringNormalizationHelper.NormalizeITTerm(dto.Name);
             skill.UpdatedBy = userId;
 
+            skill.Aliases.Clear();
+            if (dto.Aliases != null && dto.Aliases.Any())
+            {
+                foreach (var alias in dto.Aliases.Where(a => !string.IsNullOrWhiteSpace(a)))
+                {
+                    skill.Aliases.Add(new SkillAliases
+                    {
+                        AliasName = alias.Trim(),
+                        NormalizedAliasName = Utils.StringNormalizationHelper.NormalizeITTerm(alias)
+                    });
+                }
+            }
+
             await _skillRepository.UpdateAsync(skill);
 
             var categories = await _skillCategoryRepository.GetAllCategoriesAsync();
@@ -150,7 +230,8 @@ namespace ITHunterview.Service.UseCase
                 Name = skill.Name,
                 Status = skill.Status,
                 CreatedBy = skill.CreatedBy,
-                UpdatedBy = skill.UpdatedBy
+                UpdatedBy = skill.UpdatedBy,
+                Aliases = skill.Aliases.Select(a => a.AliasName).ToList()
             };
 
             return new ResponseBase<SkillDto>(resultDto, "Skill updated successfully.");
@@ -190,7 +271,8 @@ namespace ITHunterview.Service.UseCase
                 Name = skill.Name,
                 Status = skill.Status,
                 CreatedBy = skill.CreatedBy,
-                UpdatedBy = skill.UpdatedBy
+                UpdatedBy = skill.UpdatedBy,
+                Aliases = skill.Aliases.Select(a => a.AliasName).ToList()
             };
 
             string message = "Skill status updated successfully.";

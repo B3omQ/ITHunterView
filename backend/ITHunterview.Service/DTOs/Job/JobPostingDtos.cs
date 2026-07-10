@@ -9,6 +9,7 @@ namespace ITHunterview.Service.DTOs.Job
         public string JobCode { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public string Location { get; set; } = string.Empty;
+        public string? DetailedLocation { get; set; }
 
         public JobStatus Status { get; set; }
         public int ApplicationCount { get; set; }
@@ -39,6 +40,7 @@ namespace ITHunterview.Service.DTOs.Job
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; } = "USD";
         public string Location { get; set; } = string.Empty;
+        public string? DetailedLocation { get; set; }
 
         public JobStatus Status { get; set; }
         public int ApplicationCount { get; set; }
@@ -66,6 +68,7 @@ namespace ITHunterview.Service.DTOs.Job
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; } = "USD";
         public string Location { get; set; } = string.Empty;
+        public string? DetailedLocation { get; set; }
 
         public JobStatus Status { get; set; } = JobStatus.DRAFT;
         public DateTime? ExpiresAt { get; set; }
@@ -89,6 +92,7 @@ namespace ITHunterview.Service.DTOs.Job
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; } = "USD";
         public string Location { get; set; } = string.Empty;
+        public string? DetailedLocation { get; set; }
 
         public JobStatus Status { get; set; }
         public DateTime? ExpiresAt { get; set; }

@@ -33,5 +33,7 @@ namespace ITHunterview.Domain.Entities
         [Column("ended_at")]
         public DateTime? EndedAt { get; set; }
 
+        [Column("ai_provider")]
+        public string? AiProvider { get; set; }
     }
 }

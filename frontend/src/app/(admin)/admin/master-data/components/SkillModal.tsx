@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { TagInput } from '@/components/forms/TagInput';
 import { useCreateSkill, useUpdateSkill } from '@/hooks/useSkill';
 import type { SkillDto, SkillStatus } from '@/types/master-data.types';
 
@@ -28,7 +29,7 @@ const validateSkillForm = (name: string, categoryId: string): string | null => {
 };
 
 export function SkillModal({ isOpen, onClose, mode, initialData, categories, onSuccess }: SkillModalProps) {
-  const [skillForm, setSkillForm] = useState({ name: '', categoryId: '', status: 'ACTIVE' as SkillStatus });
+  const [skillForm, setSkillForm] = useState({ name: '', categoryId: '', status: 'ACTIVE' as SkillStatus, aliases: [] as string[] });
   const [skillFormError, setSkillFormError] = useState('');
 
   const createSkillMutation = useCreateSkill();
@@ -41,12 +42,14 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
           name: initialData.name,
           categoryId: initialData.categoryId?.toString() || '',
           status: initialData.status,
+          aliases: initialData.aliases || [],
         });
       } else {
         setSkillForm({
           name: '',
           categoryId: categories?.[0]?.id?.toString() || '',
           status: 'ACTIVE',
+          aliases: [],
         });
       }
       setSkillFormError('');
@@ -71,6 +74,7 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
           name: skillForm.name.trim(),
           categoryId: categoryIdNum,
           status: skillForm.status,
+          aliases: skillForm.aliases,
         },
         {
           onSuccess: (res) => {
@@ -94,6 +98,7 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
             name: skillForm.name.trim(),
             categoryId: categoryIdNum,
             status: skillForm.status,
+            aliases: skillForm.aliases,
           },
         },
         {
@@ -159,6 +164,18 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-foreground">Aliases / Synonyms</label>
+            <TagInput
+              tags={skillForm.aliases}
+              onChange={(newTags) => setSkillForm({ ...skillForm, aliases: newTags })}
+              placeholder="e.g. ReactJS, React.js (Press Enter to add)"
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Gõ từ khóa đồng nghĩa, gõ sai chính tả của kỹ năng này và nhấn Enter để thêm mới.
+            </p>
           </div>
 
           <div className="space-y-1.5">
