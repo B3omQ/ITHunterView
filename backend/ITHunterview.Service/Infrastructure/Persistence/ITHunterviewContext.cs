@@ -55,6 +55,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         public DbSet<InterviewReports> InterviewReports { get; set; } = null!;
         public DbSet<LearningPaths> LearningPaths { get; set; } = null!;
         public DbSet<AiApiUsageLogs> AiApiUsageLogs { get; set; } = null!;
+        public DbSet<CvOptimizations> CvOptimizations { get; set; } = null!;
 
         // Finance & Billing
         public DbSet<Subscriptions> Subscriptions { get; set; } = null!;
@@ -304,6 +305,22 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 entity.HasIndex(e => e.TableName)
                       .HasMethod("gin")
                       .HasOperators("gin_trgm_ops");
+            });
+
+            // CvOptimizations
+            modelBuilder.Entity<CvOptimizations>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.HasOne(e => e.Candidate)
+                      .WithMany()
+                      .HasForeignKey(e => e.CandidateId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Cv)
+                      .WithMany()
+                      .HasForeignKey(e => e.CvId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }
