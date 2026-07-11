@@ -46,9 +46,11 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICandidateEducationRepository, CandidateEducationRepository>();
             services.AddScoped<ICandidateCertificationRepository, CandidateCertificationRepository>();
 
-            // Repositories — Interview
+            // Repositories — Interview & AI
             services.AddScoped<IInterviewSessionRepository, InterviewSessionRepository>();
             services.AddScoped<IInterviewAnswerRepository, InterviewAnswerRepository>();
+            services.AddScoped<ILearningPathRepository, LearningPathRepository>();
+            services.AddScoped<ICvOptimizationRepository, CvOptimizationRepository>();
 
             // Application Services
             services.AddHttpClient();
@@ -105,6 +107,8 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICandidateEducationUseCase, CandidateEducationUseCase>();
             services.AddScoped<ICandidateCertificationUseCase, CandidateCertificationUseCase>();
             services.AddScoped<IInterviewUseCase, InterviewUseCase>();
+            services.AddScoped<ILearningPathUseCase, LearningPathUseCase>();
+            services.AddScoped<ICvOptimizerUseCase, CvOptimizerUseCase>();
 
             // Job Search & Saved Jobs
             services.AddScoped<IJobSearchRepository, JobSearchRepository>();
