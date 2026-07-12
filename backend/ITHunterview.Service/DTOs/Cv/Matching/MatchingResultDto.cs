@@ -6,8 +6,10 @@ namespace ITHunterview.Service.DTOs.Cv.Matching
     public class MatchingResultDto
     {
         public Guid Id { get; set; }
-        public Guid CvId { get; set; }
+        public Guid? CvId { get; set; }
+        public string? CvFileName { get; set; }
         public Guid? JobId { get; set; }
+        public string? JdTitle { get; set; }
         public MatchingMode Mode { get; set; }
         public int ProcessingTimeMs { get; set; }
         

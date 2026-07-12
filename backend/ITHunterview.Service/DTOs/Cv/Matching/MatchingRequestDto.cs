@@ -11,6 +11,9 @@ namespace ITHunterview.Service.DTOs.Cv.Matching
 
         public Guid? JobId { get; set; }
         public string? RawJdText { get; set; }
+        
+        public string? CvFileName { get; set; }
+        public string? JdTitle { get; set; }
 
         // Removed ModelName and ApiKey as they are read from appsettings now
 
