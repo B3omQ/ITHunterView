@@ -169,5 +169,18 @@ namespace ITHunterview.WebAPI.Controllers
                 return BadRequest(new ResponseBase<string>(null, ex.Message));
             }
         }
+
+        [HttpGet("match-history")]
+        public async Task<ActionResult<ResponseBase<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>>> GetMatchHistory([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var result = await _cvJobMatchingUseCase.GetMatchHistoryAsync(userId, page, pageSize);
+            return Ok(new ResponseBase<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>(result, "Match history retrieved"));
+        }
     }
 }

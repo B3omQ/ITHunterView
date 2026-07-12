@@ -16,5 +16,6 @@ namespace ITHunterview.Service.Interface.UseCase
 
         // Lấy kết quả
         Task<ITHunterview.Service.DTOs.Cv.Matching.MatchingResultDto?> GetMatchingResultAsync(Guid jobId, Guid userId);
+        Task<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>> GetMatchHistoryAsync(Guid userId, int page, int pageSize);
     }
 }

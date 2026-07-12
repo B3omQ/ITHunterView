@@ -22,3 +22,10 @@ export const useGetMatchResult = (jobId: string | null) => {
     },
   });
 };
+
+export const useGetMatchHistory = (page: number = 1, pageSize: number = 10) => {
+  return useQuery({
+    queryKey: ['match-history', page, pageSize],
+    queryFn: () => cvService.getMatchHistory(page, pageSize),
+  });
+};

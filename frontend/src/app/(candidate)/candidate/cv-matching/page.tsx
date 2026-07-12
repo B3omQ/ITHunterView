@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useUploadFile } from '@/hooks/useUpload';
+import { APP_ROUTES } from '@/lib/constants';
 import { useGetMyCvs } from '@/hooks/useCv';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { useMatchCvJd, useGetMatchResult } from '@/hooks/useCvMatch';
@@ -31,7 +33,8 @@ import {
   FileCheck,
   ChevronRight,
   TrendingUp,
-  Info
+  Info,
+  History
 } from 'lucide-react';
 
 import { ResultOverviewCard } from './components/ResultOverviewCard';
@@ -42,7 +45,10 @@ import { PenaltyWarningPanel } from './components/PenaltyWarningPanel';
 
 type Step = 'select' | 'loading' | 'result';
 
-export default function CvMatchingPage() {
+function CvMatchingContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [step, setStep] = useState<Step>('select');
   
   // State CV
@@ -70,6 +76,14 @@ export default function CvMatchingPage() {
   const [matchOutput, setMatchOutput] = useState<MatchingOutput | null>(null);
   
   const pollQuery = useGetMatchResult(pollingJobId);
+
+  useEffect(() => {
+    const urlJobId = searchParams.get('jobId');
+    if (urlJobId && !pollingJobId && step === 'select') {
+      setPollingJobId(urlJobId);
+      setStep('loading');
+    }
+  }, [searchParams, pollingJobId, step]);
 
   useEffect(() => {
     if (pollQuery.data?.data) {
@@ -262,14 +276,25 @@ export default function CvMatchingPage() {
   return (
     <div className="max-w-5xl mx-auto w-full py-8 px-4">
       {/* 1. Tiêu đề chính */}
-      <div className="flex flex-col space-y-2 mb-8 text-center md:text-left">
-        <h1 className="text-3xl font-extrabold tracking-tight flex items-center justify-center md:justify-start gap-2">
-          <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-          AI CV-JD Matching
-        </h1>
-        <p className="text-muted-foreground text-sm max-w-2xl">
-          Evaluate the fit between your resume and job requirements using standard vector search and LLM scoring methodologies.
-        </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+        <div className="flex flex-col space-y-2 text-center md:text-left">
+          <h1 className="text-3xl font-extrabold tracking-tight flex items-center justify-center md:justify-start gap-2">
+            <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+            AI CV-JD Matching
+          </h1>
+          <p className="text-muted-foreground text-sm max-w-2xl">
+            Evaluate the fit between your resume and job requirements using standard vector search and LLM scoring methodologies.
+          </p>
+        </div>
+        
+        <Button 
+          variant="outline" 
+          onClick={() => router.push(`${APP_ROUTES.CANDIDATE.CV_MATCHING}/history`)}
+          className="gap-2 self-start sm:self-auto"
+        >
+          <History className="h-4 w-4" />
+          View History
+        </Button>
       </div>
 
       {step === 'select' && (
@@ -566,5 +591,13 @@ export default function CvMatchingPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CvMatchingPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+      <CvMatchingContent />
+    </Suspense>
   );
 }
