@@ -12,6 +12,8 @@ namespace ITHunterview.Service.DTOs.Cv.Matching
         public decimal? MatchScore { get; set; }
         public string Status { get; set; } = string.Empty;
         public string? ErrorMessage { get; set; }
+        public string? MatchType { get; set; }
+        public string? FileUrl { get; set; }
         public DateTime UpdatedAt { get; set; }
     }
 }

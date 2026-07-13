@@ -212,4 +212,40 @@ export const recruiterService = {
       };
     }
   },
+
+  matchJobWithCvs: async (jobId: string) => {
+    try {
+      const response = await api.post<ApiResponse<string>>(`/api/jobpostings/${jobId}/match-cvs`);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Failed to trigger match',
+      };
+    }
+  },
+
+  matchJobWithCvsHardcode: async (jobId: string) => {
+    try {
+      const response = await api.post<ApiResponse<string>>(`/api/jobpostings/${jobId}/match-cvs-hardcode`);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Failed to trigger hardcode match',
+      };
+    }
+  },
+
+  getJobMatches: async (jobId: string, page: number = 1, pageSize: number = 10) => {
+    try {
+      const response = await api.get<ApiResponse<PaginatedResult<import('@/types/cv.types').MatchHistoryDto>>>(`/api/jobpostings/${jobId}/matches?page=${page}&pageSize=${pageSize}`);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Failed to fetch matches',
+      };
+    }
+  }
 };

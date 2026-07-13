@@ -92,6 +92,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICompanyUseCase, CompanyUseCase>();
             services.AddScoped<ISkillUseCase, SkillUseCase>();
             services.AddScoped<ICvJobMatchingUseCase, CvJobMatchingUseCase>();
+            services.AddScoped<IHardcodeCvJobMatchingUseCase, HardcodeCvJobMatchingUseCase>();
             services.AddScoped<IMajorUseCase, MajorUseCase>();
             services.AddScoped<IUserGovernanceUseCase, UserGovernanceUseCase>();
             services.AddScoped<IAuditLogUseCase, AuditLogUseCase>();
