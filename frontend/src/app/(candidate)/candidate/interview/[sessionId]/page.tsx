@@ -1,0 +1,551 @@
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import {
+  useGetInterviewSessionDetail,
+  useSubmitInterviewReply,
+  useSwitchInterviewModel,
+  useCompleteInterviewSession,
+  useTranscribeAudio,
+} from '@/hooks/useInterview';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
+import {
+  Bot,
+  User,
+  ArrowLeft,
+  Send,
+  Flag,
+  Sparkles,
+  Cpu,
+  Layers,
+  CheckCircle,
+  AlertCircle,
+  Check,
+  Mic,
+  Loader2,
+} from 'lucide-react';
+
+export default function CandidateInterviewActivePage() {
+  const params = useParams();
+  const router = useRouter();
+  const sessionId = typeof params.sessionId === 'string' ? params.sessionId : '';
+
+  const { data: detailRes, isLoading, isError } = useGetInterviewSessionDetail(sessionId);
+  const submitReplyMutation = useSubmitReplyWithAutoScroll();
+  const switchModelMutation = useSwitchInterviewModel(sessionId);
+  const completeSessionMutation = useCompleteInterviewSession(sessionId);
+
+  const [inputMessage, setInputMessage] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // STT recording states
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const transcribeMutation = useTranscribeAudio();
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      
+      let options = {};
+      if (MediaRecorder.isTypeSupported('audio/webm')) {
+        options = { mimeType: 'audio/webm' };
+      }
+      
+      const mediaRecorder = new MediaRecorder(stream, options);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' });
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop());
+        
+        try {
+          const file = new File([audioBlob], 'recording.webm', { type: audioBlob.type });
+          const res = await transcribeMutation.mutateAsync(file);
+          const text = res.data;
+          if (res.success && text) {
+            setInputMessage((prev) => (prev ? prev + ' ' + text : text));
+          }
+        } catch (err) {
+          console.error('Transcription error:', err);
+        }
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingDuration(0);
+
+      timerRef.current = setInterval(() => {
+        setRecordingDuration((prev) => prev + 1);
+      }, 1000);
+
+    } catch (err) {
+      console.error('Microphone access denied:', err);
+      alert('Không thể truy cập Microphone. Vui lòng kiểm tra quyền thiết bị.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  const detail = detailRes?.data;
+  const session = detail?.session;
+  const messages = detail?.messages || [];
+
+  // Local state messages for instant optimistic render
+  const [localMessages, setLocalMessages] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (messages && messages.length > 0) {
+      setLocalMessages(messages);
+    }
+  }, [messages]);
+
+  // Helper hook to submit and scroll to bottom
+  function useSubmitReplyWithAutoScroll() {
+    return useSubmitInterviewReply(sessionId);
+  }
+
+  // Scroll to bottom when localMessages or loading state changes
+  useEffect(() => {
+    if (chatScrollContainerRef.current) {
+      chatScrollContainerRef.current.scrollTop = chatScrollContainerRef.current.scrollHeight;
+    }
+  }, [localMessages, submitReplyMutation.isPending]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[80vh] items-center justify-center bg-background text-foreground">
+        <div className="text-center space-y-4">
+          <div className="relative flex justify-center items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+            <Sparkles className="absolute h-5 w-5 text-primary animate-pulse" />
+          </div>
+          <p className="text-muted-foreground text-sm">Đang tải buổi phỏng vấn...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError || !session) {
+    return (
+      <div className="flex h-[80vh] items-center justify-center bg-background text-foreground">
+        <div className="text-center space-y-4 max-w-md mx-auto px-4">
+          <AlertCircle className="h-16 w-16 text-rose-500 mx-auto" />
+          <h2 className="text-xl font-bold">Không tìm thấy buổi phỏng vấn</h2>
+          <p className="text-muted-foreground text-sm">
+            Buổi phỏng vấn có thể không tồn tại hoặc bạn không có quyền truy cập.
+          </p>
+          <Button onClick={() => router.push('/candidate/interview')} className="bg-primary hover:bg-primary/95 text-white">
+            Quay lại lịch sử
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const handleSend = async () => {
+    if (!inputMessage.trim() || submitReplyMutation.isPending) return;
+
+    const messageToSend = inputMessage;
+    setInputMessage('');
+
+    // Optimistically update the last question with user response transcript instantly
+    if (localMessages.length > 0) {
+      const updated = [...localMessages];
+      const lastIdx = updated.length - 1;
+      updated[lastIdx] = {
+        ...updated[lastIdx],
+        candidateTranscript: messageToSend,
+      };
+      setLocalMessages(updated);
+    }
+
+    try {
+      await submitReplyMutation.mutateAsync({ message: messageToSend });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleSwitchModel = async (model: string | null) => {
+    if (!model) return;
+    try {
+      await switchModelMutation.mutateAsync({ aiProvider: model });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCompleteInterview = async () => {
+    if (window.confirm('Bạn có chắc chắn muốn kết thúc buổi phỏng vấn thử này?')) {
+      try {
+        await completeSessionMutation.mutateAsync();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  return (
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] bg-background text-foreground overflow-hidden animate-in fade-in duration-300">
+      {/* Configuration Sidebar */}
+      <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-border bg-card p-5 flex flex-col gap-6 shrink-0 shadow-sm">
+        {/* Top meta */}
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.push('/candidate/interview')}
+            className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h2 className="font-bold text-foreground text-base">Quay lại lịch sử</h2>
+            <p className="text-xs text-muted-foreground">Xem các buổi luyện tập trước</p>
+          </div>
+        </div>
+
+        <div className="border-t border-border my-1" />
+
+        {/* Configurations */}
+        <div className="space-y-5">
+          <div>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">
+              Chủ đề phỏng vấn
+            </span>
+            <div className="text-sm font-bold text-foreground line-clamp-2">
+              {session.jobTitle || 'Luyện tập tự do'}
+            </div>
+            {session.cvFileName && (
+              <div className="text-xs text-primary mt-1 truncate">
+                CV: {session.cvFileName}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
+                Cấp độ
+              </span>
+              <div className="flex items-center gap-1.5 text-foreground">
+                <Layers className="h-4 w-4 text-emerald-500" />
+                <span className="text-sm font-semibold">{session.difficultyLevel}</span>
+              </div>
+            </div>
+            <div>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
+                Trạng thái
+              </span>
+              <div className="flex items-center gap-1.5">
+                <Badge
+                  variant="secondary"
+                  className={
+                    session.status === 'IN_PROGRESS'
+                      ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px]'
+                      : 'bg-slate-100 text-slate-600 border border-slate-200 text-[10px]'
+                  }
+                >
+                  {session.status === 'IN_PROGRESS' ? 'Đang phỏng vấn' : 'Hoàn thành'}
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          {/* Model AI selection */}
+          <div className="space-y-2">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+              Mô hình AI phỏng vấn
+            </span>
+            <Select
+              value={session.aiProvider || 'Gemini'}
+              onValueChange={handleSwitchModel}
+              disabled={session.status === 'COMPLETED' || switchModelMutation.isPending}
+            >
+              <SelectTrigger className="w-full bg-card border-input focus:ring-primary text-foreground rounded-xl h-10">
+                <Cpu className="h-4 w-4 text-primary mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border text-popover-foreground">
+                <SelectItem value="Gemini">Gemini 2.5 Flash</SelectItem>
+                <SelectItem value="OpenAI">GPT-4o (OpenAI)</SelectItem>
+                <SelectItem value="Claude">Claude 3.5 Sonnet</SelectItem>
+                <SelectItem value="Groq">Groq (Llama 3.3)</SelectItem>
+              </SelectContent>
+            </Select>
+            {session.status === 'IN_PROGRESS' && (
+              <span className="text-[10px] text-muted-foreground block leading-tight">
+                *Bạn có thể thay đổi mô hình bất cứ lúc nào trong cuộc đối thoại.
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-auto pt-6 border-t border-border">
+          {session.status === 'IN_PROGRESS' ? (
+            <Button
+              onClick={handleCompleteInterview}
+              disabled={completeSessionMutation.isPending}
+              className="w-full bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl py-5 font-semibold flex items-center justify-center gap-2"
+            >
+              <Flag className="h-4 w-4" /> Kết thúc buổi phỏng vấn
+            </Button>
+          ) : (
+            <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 text-center space-y-2">
+              <CheckCircle className="h-8 w-8 text-primary mx-auto" />
+              <div className="text-sm font-bold text-foreground">Phỏng vấn hoàn thành</div>
+              <p className="text-[10px] text-muted-foreground">
+                Buổi phỏng vấn đã được ghi nhận. Bạn có thể xem lại toàn bộ câu hỏi và nhận xét đánh giá ở khung bên.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col h-full bg-background relative overflow-hidden">
+        {/* Scrollable messages history using standard div for native scrolling */}
+        <div ref={chatScrollContainerRef} className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-8 pb-12">
+          <div className="max-w-3xl mx-auto space-y-8">
+            {localMessages.map((msg) => (
+              <div key={msg.id} className="space-y-6 animate-in fade-in duration-300">
+                {/* AI Question */}
+                <div className="flex items-start gap-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary shadow-sm">
+                    <Bot className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-foreground">AI Interviewer</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(msg.createdAt).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    <div className="text-sm leading-relaxed text-foreground bg-muted/40 border border-border p-4 rounded-2xl rounded-tl-none inline-block max-w-full">
+                      {msg.questionText}
+                    </div>
+                  </div>
+                </div>
+
+                {/* User Answer (if transcript is filled) */}
+                {msg.candidateTranscript && (
+                  <div className="flex items-start justify-end gap-4">
+                    <div className="flex-1 flex flex-col items-end space-y-1.5 max-w-[85%]">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(msg.createdAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                        <span className="text-xs font-bold text-primary">Bạn</span>
+                      </div>
+                      <div className="text-sm leading-relaxed text-white bg-primary p-4 rounded-2xl rounded-tr-none text-left">
+                        {msg.candidateTranscript}
+                      </div>
+                    </div>
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-sm">
+                      <User className="h-5 w-5" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Evaluation Feedback & Scores (if present) */}
+                {msg.aiFeedback && (
+                  <div className="pl-13 max-w-3xl">
+                    <Card className="border border-border bg-card overflow-hidden rounded-2xl shadow-sm">
+                      {/* Metric Scores */}
+                      <div className="grid grid-cols-3 border-b border-border bg-muted/20 p-4 gap-4">
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                            Logic & Thuật toán
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-extrabold text-primary">{msg.scoreLogic}%</span>
+                            <Progress value={msg.scoreLogic ?? null} className="h-1.5 bg-muted" />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                            Technical Depth
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-extrabold text-indigo-600">{msg.scoreTech}%</span>
+                            <Progress value={msg.scoreTech ?? null} className="h-1.5 bg-muted" />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                            Truyền đạt (Comm)
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-extrabold text-emerald-600">{msg.scoreCommunication}%</span>
+                            <Progress value={msg.scoreCommunication ?? null} className="h-1.5 bg-muted" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Feedback Text */}
+                      <CardContent className="p-4 space-y-2">
+                        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5 text-primary" /> Đánh giá & Gợi ý cải thiện
+                        </div>
+                        <p className="text-xs md:text-sm text-muted-foreground leading-relaxed italic">
+                          "{msg.aiFeedback}"
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Simulated loading bubble when AI is processing */}
+            {submitReplyMutation.isPending && (
+              <div className="flex items-start gap-4 animate-pulse">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
+                  <Bot className="h-5 w-5" />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="text-xs font-bold text-muted-foreground">AI đang đánh giá và soạn câu hỏi tiếp theo...</div>
+                  <div className="bg-muted/40 border border-border p-4 rounded-2xl rounded-tl-none inline-block">
+                    <div className="flex gap-1.5 items-center">
+                      <span className="h-2 w-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]" />
+                      <span className="h-2 w-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]" />
+                      <span className="h-2 w-2 bg-primary rounded-full animate-bounce" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div ref={chatEndRef} />
+          </div>
+        </div>
+
+        {/* Bottom Input Area */}
+        <div className="p-4 md:p-6 border-t border-border bg-card">
+          <div className="max-w-3xl mx-auto">
+            {session.status === 'IN_PROGRESS' ? (
+              <div className="relative flex items-center bg-background border border-border rounded-2xl p-2 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+                <Textarea
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  placeholder="Nhập câu trả lời phỏng vấn của bạn tại đây... (Nhấn Enter để gửi)"
+                  disabled={submitReplyMutation.isPending}
+                  className="flex-1 min-h-[50px] max-h-[160px] bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm resize-none text-foreground placeholder-muted-foreground py-2.5 px-3"
+                  rows={1}
+                />
+                {/* Voice transcription loading indicator */}
+                {transcribeMutation.isPending && (
+                  <div className="flex items-center gap-1.5 px-3 text-xs text-primary">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Đang dịch...</span>
+                  </div>
+                )}
+                
+                {/* Recording duration counter */}
+                {isRecording && (
+                  <div className="flex items-center gap-1.5 px-3 text-xs text-rose-500 font-semibold animate-pulse">
+                    <span className="h-2 w-2 rounded-full bg-rose-500" />
+                    <span>Đang ghi âm: {formatDuration(recordingDuration)}</span>
+                  </div>
+                )}
+
+                {/* Mic Record Toggle Button */}
+                <Button
+                  type="button"
+                  onClick={isRecording ? stopRecording : startRecording}
+                  disabled={submitReplyMutation.isPending || transcribeMutation.isPending}
+                  size="icon"
+                  className={`h-10 w-10 shrink-0 rounded-xl transition-all mr-2 ${
+                    isRecording 
+                      ? "bg-rose-500 hover:bg-rose-600 text-white animate-pulse" 
+                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  }`}
+                >
+                  <Mic className="h-4.5 w-4.5" />
+                </Button>
+
+                <Button
+                  onClick={handleSend}
+                  disabled={!inputMessage.trim() || submitReplyMutation.isPending || isRecording || transcribeMutation.isPending}
+                  size="icon"
+                  className="h-10 w-10 shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl transition-all"
+                >
+                  <Send className="h-4.5 w-4.5 text-white" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center p-4 bg-primary/5 border border-primary/20 rounded-2xl text-muted-foreground gap-2">
+                <Check className="h-5 w-5 text-emerald-600 shrink-0" />
+                <span className="text-sm">Buổi phỏng vấn thử này đã hoàn thành. Hãy quay lại hoặc xem kết quả ở trên.</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center mt-2 px-1">
+              <span className="text-[10px] text-muted-foreground">
+                *Nhấn <span className="font-semibold text-foreground">Shift + Enter</span> để xuống dòng.
+              </span>
+              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <Cpu className="h-3 w-3 text-primary" />
+                Active Model: {session.aiProvider || 'Gemini'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

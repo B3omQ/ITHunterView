@@ -64,6 +64,9 @@ namespace ITHunterview.Domain.Entities
         [Column("location")]
         public string Location { get; set; }
 
+        [Column("detailed_location")]
+        public string? DetailedLocation { get; set; }
+
         [Column("status")]
         public JobStatus Status { get; set; }
 

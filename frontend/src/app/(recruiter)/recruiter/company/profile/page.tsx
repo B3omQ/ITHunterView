@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { LocationPicker } from '@/components/forms/LocationPicker';
 import {
   Select,
   SelectContent,
@@ -57,7 +58,10 @@ const profileObjectSchema = z.object({
   mainField: z.string().min(1, 'Please enter main business field'),
   companyEmail: z.string().min(1, 'Please enter company email').email('Invalid email address'),
   companySize: z.string().min(1, 'Please select company size'),
-  headquartersAddress: z.string().min(1, 'Please enter headquarters address'),
+  provinceCode: z.string().min(1, 'Province Code is required'),
+  detailedLocation: z.string().min(1, 'Please enter detailed location'),
+  latitude: z.number(),
+  longitude: z.number(),
   description: z.string().min(500, 'Company description must be at least 500 characters'),
   noWebsite: z.boolean().optional(),
   website: z.string().optional(),
@@ -110,7 +114,10 @@ export default function CompanyProfilePage() {
       mainField: '',
       companyEmail: '',
       companySize: '',
-      headquartersAddress: '',
+      provinceCode: '',
+      detailedLocation: '',
+      latitude: 21.028511,
+      longitude: 105.804817,
       description: '',
       noWebsite: false,
       website: '',
@@ -144,7 +151,10 @@ export default function CompanyProfilePage() {
         mainField: company.mainField || '',
         companyEmail: company.companyEmail || '',
         companySize: company.companySize || '',
-        headquartersAddress: company.headquartersAddress || '',
+        provinceCode: company.provinceCode || '',
+        detailedLocation: company.detailedLocation || company.headquartersAddress || '',
+        latitude: company.latitude || 21.028511,
+        longitude: company.longitude || 105.804817,
         description: company.description || '',
         noWebsite: !company.website || company.website.trim() === '',
         website: company.website || '',
@@ -232,6 +242,7 @@ export default function CompanyProfilePage() {
       const payload = {
         ...values,
         website: values.noWebsite ? '' : values.website,
+        headquartersAddress: values.detailedLocation,
       };
 
       if (company?.id) {
@@ -567,29 +578,35 @@ export default function CompanyProfilePage() {
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="headquartersAddress"
-                render={({ field }) => (
-                  <FormItem className="col-span-1 md:col-span-2">
-                    <FormLabel className="font-semibold">Headquarters Address *</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="e.g. Acme Building, 10 Street, District 1, Ho Chi Minh City" 
-                        {...field} 
-                        disabled={company?.status === 'VERIFIED'} 
-                      />
-                    </FormControl>
-                    {company?.status === 'VERIFIED' && (
-                      <p className="text-[11px] text-amber-600 mt-1 flex items-start gap-1 font-medium">
-                        <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                        Address verified. To change, please submit an update request in the Legal Verification tab.
-                      </p>
-                    )}
-                    <FormMessage />
-                  </FormItem>
+              <div className="col-span-1 md:col-span-2">
+                <FormLabel className="font-semibold mb-2 block">Headquarters Address *</FormLabel>
+                <LocationPicker
+                  disabled={company?.status === 'VERIFIED'}
+                  value={{
+                    provinceCode: form.watch('provinceCode'),
+                    detailedLocation: form.watch('detailedLocation'),
+                    latitude: form.watch('latitude'),
+                    longitude: form.watch('longitude'),
+                  }}
+                  onChange={(val) => {
+                    form.setValue('provinceCode', val.provinceCode, { shouldValidate: true });
+                    form.setValue('detailedLocation', val.detailedLocation, { shouldValidate: true });
+                    form.setValue('latitude', val.latitude, { shouldValidate: true });
+                    form.setValue('longitude', val.longitude, { shouldValidate: true });
+                  }}
+                />
+                {(form.formState.errors.detailedLocation || form.formState.errors.provinceCode) && (
+                  <p className="text-[0.8rem] font-medium text-destructive mt-2">
+                    Please search and select a valid location from the map or suggestions.
+                  </p>
                 )}
-              />
+                {company?.status === 'VERIFIED' && (
+                  <p className="text-[11px] text-amber-600 mt-1 flex items-start gap-1 font-medium">
+                    <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    Address verified. To change, please submit an update request in the Legal Verification tab.
+                  </p>
+                )}
+              </div>
 
               {/* Target Customers Checkboxes */}
               <FormField

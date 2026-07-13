@@ -24,5 +24,11 @@ namespace ITHunterview.Service.Interface.UseCase
 
         /// <summary>Lấy dữ liệu Profile Summary (Header, computed).</summary>
         Task<ProfileSummaryResponseDto> GetProfileSummaryAsync(Guid userId);
+
+        /// <summary>Lấy trạng thái hoàn thiện profile bắt buộc.</summary>
+        Task<ProfileCompletionStatusResponseDto> GetProfileCompletionStatusAsync(Guid userId);
+
+        /// <summary>Cập nhật thông tin profile bắt buộc từ màn hình onboarding.</summary>
+        Task<ProfileCompletionStatusResponseDto> CompleteOnboardingProfileAsync(Guid userId, OnboardingProfileRequestDto request);
     }
 }

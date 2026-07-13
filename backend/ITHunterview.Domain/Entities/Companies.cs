@@ -21,6 +21,18 @@ namespace ITHunterview.Domain.Entities
         [Column("headquarters_address")]
         public string HeadquartersAddress { get; set; }
 
+        [Column("province_code")]
+        public string? ProvinceCode { get; set; }
+
+        [Column("detailed_location")]
+        public string? DetailedLocation { get; set; }
+
+        [Column("latitude")]
+        public double? Latitude { get; set; }
+
+        [Column("longitude")]
+        public double? Longitude { get; set; }
+
         [Column("industry")]
         public string Industry { get; set; }
 
@@ -56,6 +68,18 @@ namespace ITHunterview.Domain.Entities
 
         [Column("pending_headquarters_address")]
         public string? PendingHeadquartersAddress { get; set; }
+
+        [Column("pending_province_code")]
+        public string? PendingProvinceCode { get; set; }
+
+        [Column("pending_detailed_location")]
+        public string? PendingDetailedLocation { get; set; }
+
+        [Column("pending_latitude")]
+        public double? PendingLatitude { get; set; }
+
+        [Column("pending_longitude")]
+        public double? PendingLongitude { get; set; }
 
         [Column("pending_verification_method")]
         public CompanyVerificationMethod? PendingVerificationMethod { get; set; }
