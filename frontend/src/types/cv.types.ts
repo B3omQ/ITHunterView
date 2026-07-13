@@ -42,7 +42,8 @@ export interface MatchHistoryDto {
   status: string;
   errorMessage?: string;
   updatedAt: string;
-  matchType?: string;
+  matchType?: 'AI' | 'Hardcode';
+  fileUrl?: string;
 }
 
 export interface PagedResult<T> {

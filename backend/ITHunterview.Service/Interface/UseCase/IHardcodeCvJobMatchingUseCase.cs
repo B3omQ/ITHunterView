@@ -5,7 +5,7 @@ namespace ITHunterview.Service.Interface.UseCase
 {
     public interface IHardcodeCvJobMatchingUseCase
     {
-        Task MatchCvWithAllJobsHardcodeAsync(Guid cvId);
-        Task MatchJobWithAllCvsHardcodeAsync(Guid jobId);
+        Task MatchCvWithAllJobsHardcodeAsync(Guid cvId, Guid userId);
+        Task MatchJobWithAllCvsHardcodeAsync(Guid jobId, Guid userId);
     }
 }

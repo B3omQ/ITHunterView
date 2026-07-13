@@ -160,7 +160,7 @@ namespace ITHunterview.WebAPI.Controllers
             {
                 // Optionally verify that CV belongs to user
                 await _cvUseCase.GetCvByIdAsync(id, userId);
-                await _cvJobMatchingUseCase.MatchCvWithAllJobsAsync(id);
+                await _cvJobMatchingUseCase.MatchCvWithAllJobsAsync(id, userId);
                 return Ok(new ResponseBase<string>("Matching completed", "CV matched with jobs successfully"));
             }
             catch (KeyNotFoundException)
@@ -198,7 +198,7 @@ namespace ITHunterview.WebAPI.Controllers
             {
                 // Verify that CV belongs to user
                 await _cvUseCase.GetCvByIdAsync(id, userId);
-                await _hardcodeCvJobMatchingUseCase.MatchCvWithAllJobsHardcodeAsync(id);
+                await _hardcodeCvJobMatchingUseCase.MatchCvWithAllJobsHardcodeAsync(id, userId);
                 return Ok(new ResponseBase<string>("Matching completed", "CV matched with jobs using Hardcode successfully"));
             }
             catch (KeyNotFoundException)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -175,7 +175,7 @@ namespace ITHunterview.Service.Implementations.UseCase
             return score < 0 ? 0 : score;
         }
 
-        public async Task MatchCvWithAllJobsAsync(Guid cvId)
+        public async Task MatchCvWithAllJobsAsync(Guid cvId, Guid userId)
         {
             var cv = await _context.Cvs.FindAsync(cvId);
             if (cv == null) throw new Exception("CV not found");
@@ -184,7 +184,7 @@ namespace ITHunterview.Service.Implementations.UseCase
 
             // Fetch all jobs that have embeddings
             var jobs = await _context.JobPostings
-                .Where(j => j.TitleEmbedding != null && j.SkillsEmbedding != null && j.ExperienceEmbedding != null && j.DomainEmbedding != null)
+                .Where(j => j.Status == ITHunterview.Domain.Enums.JobStatus.PUBLISHED && j.TitleEmbedding != null && j.SkillsEmbedding != null && j.ExperienceEmbedding != null && j.DomainEmbedding != null)
                 .ToListAsync();
 
             var matchScores = new List<CvJobMatchScores>();
@@ -212,7 +212,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                 });
 
                 var existingScore = await _context.CvJobMatchScores
-                    .FirstOrDefaultAsync(s => s.CvId == cvId && s.JobId == job.Id);
+                    .FirstOrDefaultAsync(s => s.CvId == cvId && s.JobId == job.Id && s.UserId == userId);
 
                 if (existingScore != null)
                 {
@@ -225,6 +225,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                     _context.CvJobMatchScores.Add(new CvJobMatchScores
                     {
                         Id = Guid.NewGuid(),
+                        UserId = userId,
                         CvId = cvId,
                         JobId = job.Id,
                         RawJdText = job.Title,
@@ -238,7 +239,7 @@ namespace ITHunterview.Service.Implementations.UseCase
             await _context.SaveChangesAsync();
         }
 
-        public async Task MatchJobWithAllCvsAsync(Guid jobId)
+        public async Task MatchJobWithAllCvsAsync(Guid jobId, Guid userId)
         {
             var job = await _context.JobPostings.FindAsync(jobId);
             if (job == null) throw new Exception("Job not found");
@@ -246,7 +247,7 @@ namespace ITHunterview.Service.Implementations.UseCase
             await GenerateEmbeddingsForJobAsync(job);
 
             var cvs = await _context.Cvs
-                .Where(c => c.TitleEmbedding != null && c.SkillsEmbedding != null && c.ExperienceEmbedding != null && c.DomainEmbedding != null)
+                .Where(c => c.IsPrimary && c.TitleEmbedding != null && c.SkillsEmbedding != null && c.ExperienceEmbedding != null && c.DomainEmbedding != null)
                 .ToListAsync();
 
             foreach (var cv in cvs)
@@ -272,7 +273,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                 });
 
                 var existingScore = await _context.CvJobMatchScores
-                    .FirstOrDefaultAsync(s => s.CvId == cv.Id && s.JobId == jobId);
+                    .FirstOrDefaultAsync(s => s.CvId == cv.Id && s.JobId == jobId && s.UserId == userId);
 
                 if (existingScore != null)
                 {
@@ -285,6 +286,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                     _context.CvJobMatchScores.Add(new CvJobMatchScores
                     {
                         Id = Guid.NewGuid(),
+                        UserId = userId,
                         CvId = cv.Id,
                         JobId = jobId,
                         RawJdText = job.Title,
@@ -498,7 +500,8 @@ namespace ITHunterview.Service.Implementations.UseCase
             var modelName = _configuration["AiBypassConfig:ModelName"];
             var apiKey = _configuration["AiBypassConfig:ApiKey"];
             
-            if (string.IsNullOrWhiteSpace(modelName)) modelName = "gemini-1.5-flash";
+            if (string.IsNullOrWhiteSpace(modelName)) modelName = _configuration["AiSettings:Providers:Gemini:Model"] ?? "gemini-1.5-flash-latest";
+            if (string.IsNullOrWhiteSpace(apiKey)) apiKey = _configuration["AiSettings:Providers:Gemini:ApiKey"];
             if (string.IsNullOrWhiteSpace(apiKey)) throw new Exception("API Key is missing for Bypass Flow in appsettings.");
 
             using var client = _httpClientFactory.CreateClient();
@@ -660,31 +663,35 @@ namespace ITHunterview.Service.Implementations.UseCase
         }
         public async Task<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>> GetMatchHistoryAsync(Guid userId, int page, int pageSize, Guid? cvId = null)
         {
-            var query = _context.CvJobMatchScores
-                .Where(s => s.UserId == userId);
-            
+            var query = from s in _context.CvJobMatchScores
+                        join c in _context.Cvs on s.CvId equals c.Id into cvs
+                        from c in cvs.DefaultIfEmpty()
+                        where s.UserId == userId
+                        select new { Score = s, Cv = c };
+
             if (cvId.HasValue)
             {
-                query = query.Where(s => s.CvId == cvId.Value);
+                query = query.Where(x => x.Score.CvId == cvId.Value);
             }
 
-            query = query.OrderByDescending(s => s.UpdatedAt);
+            query = query.OrderByDescending(x => x.Score.UpdatedAt);
 
             var total = await query.CountAsync();
             var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
-            var mappedItems = items.Select(s => new ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto
+            var mappedItems = items.Select(x => new ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto
             {
-                JobId = s.Id,
-                CvId = s.CvId,
-                CvFileName = s.CvFileName,
-                SourceJobId = s.JobId,
-                JdTitle = s.JdTitle,
-                MatchScore = s.MatchScore,
-                Status = s.Status,
-                ErrorMessage = s.ErrorMessage,
-                UpdatedAt = s.UpdatedAt,
-                MatchType = s.MatchType
+                JobId = x.Score.Id,
+                CvId = x.Score.CvId,
+                CvFileName = x.Cv?.FileName ?? x.Score.CvFileName ?? "Unknown CV",
+                FileUrl = x.Cv?.FileUrl,
+                SourceJobId = x.Score.JobId,
+                JdTitle = x.Score.JdTitle,
+                MatchScore = x.Score.MatchScore,
+                Status = x.Score.Status,
+                ErrorMessage = x.Score.ErrorMessage,
+                UpdatedAt = x.Score.UpdatedAt,
+                MatchType = x.Score.MatchType
             }).ToList();
 
             return new ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>
@@ -696,27 +703,31 @@ namespace ITHunterview.Service.Implementations.UseCase
             };
         }
 
-        public async Task<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>> GetJobMatchHistoryAsync(Guid jobId, int page, int pageSize)
+        public async Task<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>> GetJobMatchHistoryAsync(Guid jobId, Guid userId, int page, int pageSize)
         {
-            var query = _context.CvJobMatchScores
-                .Where(s => s.JobId == jobId)
-                .OrderByDescending(s => s.MatchScore);
+            var query = from s in _context.CvJobMatchScores
+                        join c in _context.Cvs on s.CvId equals c.Id into cvs
+                        from c in cvs.DefaultIfEmpty()
+                        where s.JobId == jobId && s.UserId == userId
+                        orderby s.MatchScore descending
+                        select new { Score = s, Cv = c };
 
             var total = await query.CountAsync();
             var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
-            var mappedItems = items.Select(s => new ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto
+            var mappedItems = items.Select(x => new ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto
             {
-                JobId = s.JobId ?? Guid.Empty,
-                CvId = s.CvId,
-                CvFileName = s.CvFileName ?? "Unknown CV",
-                SourceJobId = s.Id, // using this for primary key mapping if needed
-                JdTitle = s.JdTitle,
-                MatchScore = s.MatchScore,
-                Status = s.Status,
-                ErrorMessage = s.ErrorMessage,
-                UpdatedAt = s.UpdatedAt,
-                MatchType = s.MatchType
+                JobId = x.Score.JobId ?? Guid.Empty,
+                CvId = x.Score.CvId,
+                CvFileName = x.Cv?.FileName ?? "Unknown CV",
+                FileUrl = x.Cv?.FileUrl,
+                SourceJobId = x.Score.Id, // using this for primary key mapping if needed
+                JdTitle = x.Score.JdTitle,
+                MatchScore = x.Score.MatchScore,
+                Status = x.Score.Status,
+                ErrorMessage = x.Score.ErrorMessage,
+                UpdatedAt = x.Score.UpdatedAt,
+                MatchType = x.Score.MatchType
             }).ToList();
 
             return new ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>

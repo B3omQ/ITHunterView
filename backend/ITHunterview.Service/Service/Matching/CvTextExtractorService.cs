@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using DocumentFormat.OpenXml.Packaging;
+using ITHunterview.Service.Config;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Interface.Service.Matching;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using UglyToad.PdfPig;
 
 namespace ITHunterview.Service.Service.Matching
@@ -16,11 +19,16 @@ namespace ITHunterview.Service.Service.Matching
     {
         private readonly ILogger<CvTextExtractorService> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IOptions<AiSettings> _settings;
 
-        public CvTextExtractorService(ILogger<CvTextExtractorService> logger, IHttpClientFactory httpClientFactory)
+        public CvTextExtractorService(
+            ILogger<CvTextExtractorService> logger, 
+            IHttpClientFactory httpClientFactory,
+            IOptions<AiSettings> settings)
         {
             _logger = logger;
             _httpClientFactory = httpClientFactory;
+            _settings = settings;
         }
 
         public async Task<string> ExtractTextFromUrlAsync(string fileUrl)
@@ -29,7 +37,6 @@ namespace ITHunterview.Service.Service.Matching
 
             try
             {
-                // Sử dụng Uri thẳng, Cloudinary tự encode rồi.
                 using var client = _httpClientFactory.CreateClient();
                 client.Timeout = TimeSpan.FromSeconds(30);
                 using var response = await client.GetAsync(fileUrl);
@@ -43,20 +50,34 @@ namespace ITHunterview.Service.Service.Matching
                 var contentType = response.Content.Headers.ContentType?.MediaType?.ToLowerInvariant() ?? "";
                 var fileBytes = await response.Content.ReadAsByteArrayAsync();
 
-                // Xác định loại file: ưu tiên Content-Type, sau đó mới dùng URL extension
                 var fileType = DetermineFileType(contentType, fileUrl);
 
                 _logger.LogInformation("Extracting text from file. ContentType={ContentType}, DetectedType={Type}, URL={Url}", contentType, fileType, fileUrl);
 
-                var extracted = fileType switch
+                var extracted = string.Empty;
+
+                if (fileType == "pdf")
                 {
-                    "pdf" => SafeExtractPdf(fileBytes, fileUrl),
-                    "docx" => SafeExtractDocx(fileBytes, fileUrl),
-                    _ => throw new Exception($"Unsupported content type returned from Cloudinary: {contentType}. Cannot extract text.")
-                };
+                    extracted = SafeExtractPdf(fileBytes, fileUrl);
+                }
+                else if (fileType == "docx")
+                {
+                    extracted = SafeExtractDocx(fileBytes, fileUrl);
+                }
+
+                // If PdfPig fails (empty) or it's an image, fallback to Gemini OCR
+                if (string.IsNullOrWhiteSpace(extracted) && (fileType == "pdf" || fileType == "image" || fileType == "unknown"))
+                {
+                    var mimeTypeForGemini = fileType == "pdf" ? "application/pdf" : contentType;
+                    if (string.IsNullOrEmpty(mimeTypeForGemini) || !mimeTypeForGemini.Contains("/")) 
+                        mimeTypeForGemini = "image/jpeg"; // default fallback
+
+                    _logger.LogInformation("Falling back to Gemini Vision OCR for URL: {Url}", fileUrl);
+                    extracted = await ExtractTextWithGeminiVisionAsync(fileBytes, mimeTypeForGemini);
+                }
 
                 if (string.IsNullOrWhiteSpace(extracted)) {
-                    throw new Exception("File was downloaded but text extraction resulted in empty string (possibly image-based PDF without text layer or invalid format).");
+                    throw new Exception("File was downloaded but text extraction resulted in empty string (possibly image-based PDF without text layer or invalid format). OCR fallback also failed.");
                 }
                 
                 return extracted;
@@ -64,29 +85,28 @@ namespace ITHunterview.Service.Service.Matching
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to extract text from URL: {Url}", fileUrl);
-                throw; // Ném thẳng ra ngoài để ProcessMatchingJobAsync hứng
+                throw; 
             }
         }
 
         private string DetermineFileType(string contentType, string fileUrl)
         {
-            // 1. Ưu tiên Content-Type nếu rõ ràng
             if (contentType.Contains("pdf")) return "pdf";
             if (contentType.Contains("word") || contentType.Contains("openxmlformats")) return "docx";
+            if (contentType.StartsWith("image/")) return "image";
 
-            // 2. Nếu Content-Type là image/unknown → không cố extract như document
-            if (contentType.StartsWith("image/") || contentType.StartsWith("video/"))
+            if (contentType.StartsWith("video/"))
             {
-                _logger.LogWarning("URL returned non-document content type: {ContentType}, URL: {Url}", contentType, fileUrl);
+                _logger.LogWarning("URL returned video content type: {ContentType}, URL: {Url}", contentType, fileUrl);
                 return "unsupported";
             }
 
-            // 3. Fallback sang URL extension khi Content-Type không rõ (application/octet-stream)
             try
             {
                 var path = new Uri(fileUrl).AbsolutePath.ToLowerInvariant();
                 if (path.EndsWith(".pdf")) return "pdf";
                 if (path.EndsWith(".docx") || path.EndsWith(".doc")) return "docx";
+                if (path.EndsWith(".jpg") || path.EndsWith(".jpeg") || path.EndsWith(".png") || path.EndsWith(".webp")) return "image";
             }
             catch { }
 
@@ -95,13 +115,21 @@ namespace ITHunterview.Service.Service.Matching
 
         private string SafeExtractPdf(byte[] fileBytes, string fileUrl)
         {
-            // Kiểm tra PDF magic bytes: %PDF-
             if (fileBytes.Length < 4 || fileBytes[0] != 0x25 || fileBytes[1] != 0x50 || fileBytes[2] != 0x44 || fileBytes[3] != 0x46)
             {
                 _logger.LogWarning("File does not appear to be a valid PDF (missing magic bytes). URL: {Url}", fileUrl);
                 return string.Empty;
             }
-            return ExtractTextFromPdf(fileBytes);
+            
+            try 
+            {
+                return ExtractTextFromPdf(fileBytes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "PdfPig failed to extract PDF content. Falling back to OCR. URL: {Url}", fileUrl);
+                return string.Empty;
+            }
         }
 
         private string SafeExtractDocx(byte[] fileBytes, string fileUrl)
@@ -139,6 +167,76 @@ namespace ITHunterview.Service.Service.Matching
                 textBuilder.AppendLine(body.InnerText);
             }
             return textBuilder.ToString().Trim();
+        }
+
+        private async Task<string> ExtractTextWithGeminiVisionAsync(byte[] fileBytes, string mimeType)
+        {
+            var config = _settings.Value.Providers.TryGetValue("Gemini", out var c) ? c : new ProviderConfig();
+            if (string.IsNullOrEmpty(config.ApiKey) || config.ApiKey == "YOUR_GEMINI_API_KEY")
+            {
+                _logger.LogWarning("Gemini API Key is not configured. Cannot perform OCR.");
+                return string.Empty;
+            }
+
+            // Using the same default logic as GeminiProvider
+            var model = string.IsNullOrEmpty(config.Model) ? "gemini-flash-latest" : config.Model;
+            var baseEndpoint = string.IsNullOrEmpty(config.Endpoint)
+                ? "https://generativelanguage.googleapis.com/v1beta/models"
+                : config.Endpoint.TrimEnd('/');
+                
+            var endpoint = $"{baseEndpoint}/{model}:generateContent?key={config.ApiKey}";
+
+            using var client = _httpClientFactory.CreateClient();
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint);
+
+            var base64Data = Convert.ToBase64String(fileBytes);
+            var payload = new
+            {
+                contents = new[]
+                {
+                    new
+                    {
+                        parts = new object[]
+                        {
+                            new { text = "Extract all text from this resume/CV. Return ONLY the raw text exactly as it appears. Do not add any conversational filler, markdown formatting blocks, or comments." },
+                            new
+                            {
+                                inlineData = new
+                                {
+                                    mimeType = mimeType,
+                                    data = base64Data
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var jsonPayload = JsonSerializer.Serialize(payload);
+            requestMessage.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+            var response = await client.SendAsync(requestMessage);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Gemini Vision API call failed: {StatusCode} {Error}", response.StatusCode, errorContent);
+                return string.Empty;
+            }
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(responseContent);
+
+            if (doc.RootElement.TryGetProperty("candidates", out var candidates) &&
+                candidates.GetArrayLength() > 0 &&
+                candidates[0].TryGetProperty("content", out var content) &&
+                content.TryGetProperty("parts", out var parts) &&
+                parts.GetArrayLength() > 0 &&
+                parts[0].TryGetProperty("text", out var text))
+            {
+                return text.GetString()?.Trim() ?? string.Empty;
+            }
+
+            return string.Empty;
         }
 
         public List<CvChunkDto> ChunkCvText(string rawCvText)

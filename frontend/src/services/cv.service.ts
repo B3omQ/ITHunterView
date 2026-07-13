@@ -12,10 +12,13 @@ export const cvService = {
   deleteCv: (id: string) =>
     api.delete<ApiResponse<string>>(`/api/cvs/${id}`).then((r) => r.data),
 
-  matchCvJd: (id: string) =>
+  matchCvJd: (data: import('@/types/cv.types').MatchJdRequest) =>
+    api.post<ApiResponse<string>>('/api/cvs/match-jd', data).then((r) => r.data),
+
+  matchJobs: (id: string) =>
     api.post<ApiResponse<string>>(`/api/cvs/${id}/match-jobs`).then((r) => r.data),
 
-  matchCvJdHardcode: (id: string) =>
+  matchJobsHardcode: (id: string) =>
     api.post<ApiResponse<string>>(`/api/cvs/${id}/match-jobs-hardcode`).then((r) => r.data),
 
   getMatchResult: (jobId: string) =>

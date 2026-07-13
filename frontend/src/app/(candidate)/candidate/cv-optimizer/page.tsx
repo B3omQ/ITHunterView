@@ -83,7 +83,7 @@ export default function CvOptimizerPage() {
               {isLoadingCvs ? (
                 <div className="h-10 flex items-center"><Loader2 className="animate-spin h-4 w-4" /></div>
               ) : (
-                <Select value={selectedCvId} onValueChange={setSelectedCvId}>
+                <Select value={selectedCvId} onValueChange={(val) => val && setSelectedCvId(val)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a CV to optimize" />
                   </SelectTrigger>

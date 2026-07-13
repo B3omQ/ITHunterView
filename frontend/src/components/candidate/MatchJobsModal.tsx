@@ -18,7 +18,7 @@ interface MatchJobsModalProps {
 }
 
 export function MatchJobsModal({ cv, isOpen, onClose }: MatchJobsModalProps) {
-  const [useAI, setUseAI] = useState(true);
+  const [useAI, setUseAI] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [matches, setMatches] = useState<MatchHistoryDto[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -51,15 +51,12 @@ export function MatchJobsModal({ cv, isOpen, onClose }: MatchJobsModalProps) {
       setIsScanning(true);
       setError(null);
       if (useAI) {
-        await cvService.matchCvJd(cv.id);
+        await cvService.matchJobs(cv.id);
       } else {
-        await cvService.matchCvJdHardcode(cv.id);
+        await cvService.matchJobsHardcode(cv.id);
       }
       
-      // Wait a bit and refresh history
-      setTimeout(() => {
-        fetchMatches();
-      }, 1000);
+      await fetchMatches();
     } catch (err: any) {
       setError(err.message || 'Failed to scan for matches.');
     } finally {
@@ -95,7 +92,7 @@ export function MatchJobsModal({ cv, isOpen, onClose }: MatchJobsModalProps) {
             
             <div className="flex items-center gap-3">
               <span className={cn("text-xs font-medium", !useAI ? "text-slate-900" : "text-slate-400")}>Hardcode</span>
-              <Switch checked={useAI} onCheckedChange={setUseAI} className={useAI ? "data-[state=checked]:bg-purple-600" : ""} />
+              <Switch disabled checked={useAI} onCheckedChange={setUseAI} className={useAI ? "data-[state=checked]:bg-purple-600" : ""} />
               <span className={cn("text-xs font-medium", useAI ? "text-purple-700" : "text-slate-400")}>AI Vector</span>
             </div>
           </div>

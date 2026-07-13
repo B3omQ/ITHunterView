@@ -36,7 +36,7 @@ namespace ITHunterview.Service.Service.AiProviders
                 throw new InvalidOperationException("Gemini API Key is not configured.");
             }
 
-            var model = string.IsNullOrEmpty(_config.Model) ? "gemini-2.5-flash" : _config.Model;
+            var model = string.IsNullOrEmpty(_config.Model) ? "gemini-flash-latest" : _config.Model;
             
             // Build the standard Gemini URL
             var baseEndpoint = string.IsNullOrEmpty(_config.Endpoint)

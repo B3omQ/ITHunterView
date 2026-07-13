@@ -117,7 +117,13 @@ namespace ITHunterview.WebAPI.Controllers
                     return NotFound(new ResponseBase<string>("Job not found"));
                 }
 
-                await _cvJobMatchingUseCase.MatchJobWithAllCvsAsync(id);
+                var userIdStr = User.FindFirstValue("userId");
+                if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+                {
+                    return Unauthorized();
+                }
+
+                await _cvJobMatchingUseCase.MatchJobWithAllCvsAsync(id, userId);
                 return Ok(new ResponseBase<string>("Matching completed", "Job matched with CVs successfully"));
             }
             catch (Exception ex)
@@ -137,7 +143,13 @@ namespace ITHunterview.WebAPI.Controllers
                     return NotFound(new ResponseBase<string>("Job not found"));
                 }
 
-                await _hardcodeCvJobMatchingUseCase.MatchJobWithAllCvsHardcodeAsync(id);
+                var userIdStr = User.FindFirstValue("userId");
+                if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+                {
+                    return Unauthorized();
+                }
+
+                await _hardcodeCvJobMatchingUseCase.MatchJobWithAllCvsHardcodeAsync(id, userId);
                 return Ok(new ResponseBase<string>("Matching completed", "Job matched with CVs using Hardcode successfully"));
             }
             catch (Exception ex)
@@ -151,7 +163,13 @@ namespace ITHunterview.WebAPI.Controllers
         {
             try
             {
-                var result = await _cvJobMatchingUseCase.GetJobMatchHistoryAsync(id, page, pageSize);
+                var userIdStr = User.FindFirstValue("userId");
+                if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+                {
+                    return Unauthorized();
+                }
+
+                var result = await _cvJobMatchingUseCase.GetJobMatchHistoryAsync(id, userId, page, pageSize);
                 return Ok(new ResponseBase<PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>(result, "Job matches retrieved"));
             }
             catch (Exception ex)

@@ -13,10 +13,11 @@ import Link from 'next/link';
 
 interface MatchCvsSectionProps {
   jobId: string;
+  jobStatus?: string;
 }
 
-export function MatchCvsSection({ jobId }: MatchCvsSectionProps) {
-  const [useAI, setUseAI] = useState(true);
+export function MatchCvsSection({ jobId, jobStatus }: MatchCvsSectionProps) {
+  const [useAI, setUseAI] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [matches, setMatches] = useState<MatchHistoryDto[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -27,8 +28,8 @@ export function MatchCvsSection({ jobId }: MatchCvsSectionProps) {
     try {
       setIsLoadingHistory(true);
       const res = await recruiterService.getJobMatches(jobId, 1, 20);
-      if (res.success) {
-        setMatches(res.data.items || []);
+      if (res.success && res.data && res.data.data) {
+        setMatches(res.data.data.items || []);
       }
     } catch (err: any) {
       console.error(err);
@@ -51,10 +52,8 @@ export function MatchCvsSection({ jobId }: MatchCvsSectionProps) {
         await recruiterService.matchJobWithCvsHardcode(jobId);
       }
       
-      // Wait a bit and refresh history
-      setTimeout(() => {
-        fetchMatches();
-      }, 1500);
+      
+      await fetchMatches();
     } catch (err: any) {
       setError(err.message || 'Failed to scan for matches.');
     } finally {
@@ -75,7 +74,7 @@ export function MatchCvsSection({ jobId }: MatchCvsSectionProps) {
             <div className="flex items-center gap-2">
               <Label className="text-xs font-semibold text-slate-700">Method:</Label>
               <span className={cn("text-xs font-medium", !useAI ? "text-slate-900" : "text-slate-400")}>Hardcode</span>
-              <Switch checked={useAI} onCheckedChange={setUseAI} className={useAI ? "data-[state=checked]:bg-purple-600" : ""} />
+              <Switch disabled checked={useAI} onCheckedChange={setUseAI} className={useAI ? "data-[state=checked]:bg-purple-600" : ""} />
               <span className={cn("text-xs font-medium", useAI ? "text-purple-700" : "text-slate-400")}>AI Vector</span>
             </div>
             
@@ -83,12 +82,13 @@ export function MatchCvsSection({ jobId }: MatchCvsSectionProps) {
 
             <Button 
               onClick={handleScan} 
-              disabled={isScanning}
+              disabled={isScanning || jobStatus?.toUpperCase() !== 'PUBLISHED'}
               size="sm"
               className={cn(
                 "gap-2",
                 useAI ? "bg-purple-600 hover:bg-purple-700" : "bg-blue-600 hover:bg-blue-700"
               )}
+              title={jobStatus?.toUpperCase() !== 'PUBLISHED' ? "Job must be published to scan CVs" : "Scan CVs"}
             >
               <RefreshCcw className={cn("h-4 w-4", isScanning && "animate-spin")} />
               {isScanning ? 'Scanning...' : 'Scan DB'}
@@ -123,8 +123,8 @@ export function MatchCvsSection({ jobId }: MatchCvsSectionProps) {
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
-              {matches.map((match) => (
-                <div key={match.cvId + match.matchType} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 hover:bg-slate-50 transition-colors">
+              {matches.map((match, index) => (
+                <div key={`${match.cvId || index}-${match.matchType || 'unknown'}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 hover:bg-slate-50 transition-colors">
                   <div className="flex items-start gap-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
                       <FileText className="h-6 w-6" />
@@ -159,12 +159,12 @@ export function MatchCvsSection({ jobId }: MatchCvsSectionProps) {
                       <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Match Score</span>
                     </div>
                     
-                    <Button variant="outline" size="sm" className="gap-2" asChild>
-                      <Link href={`/recruiter/cvs/${match.cvId}`} target="_blank">
+                    <a href={match.fileUrl || '#'} target="_blank" rel="noreferrer">
+                      <Button variant="outline" size="sm" className="gap-2">
                         <Download className="h-4 w-4" />
                         View CV
-                      </Link>
-                    </Button>
+                      </Button>
+                    </a>
                   </div>
                 </div>
               ))}

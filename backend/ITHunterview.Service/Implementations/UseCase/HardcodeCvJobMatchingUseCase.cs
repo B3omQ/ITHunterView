@@ -125,7 +125,7 @@ namespace ITHunterview.Service.Implementations.UseCase
             return 0.3m;
         }
 
-        private async Task ProcessMatching(Cvs cv, JobPostings job)
+        private async Task ProcessMatching(Cvs cv, JobPostings job, Guid userId)
         {
             var cvTitle = ExtractJsonField(cv.ParsedData, "job_title");
             var cvSkills = ExtractJsonField(cv.ParsedData, "skills");
@@ -163,7 +163,7 @@ namespace ITHunterview.Service.Implementations.UseCase
             });
 
             var existingScore = await _context.CvJobMatchScores
-                .FirstOrDefaultAsync(s => s.CvId == cv.Id && s.JobId == job.Id);
+                .FirstOrDefaultAsync(s => s.CvId == cv.Id && s.JobId == job.Id && s.UserId == userId);
 
             if (existingScore != null)
             {
@@ -177,6 +177,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                 _context.CvJobMatchScores.Add(new CvJobMatchScores
                 {
                     Id = Guid.NewGuid(),
+                    UserId = userId,
                     CvId = cv.Id,
                     JobId = job.Id,
                     RawJdText = job.Title,
@@ -188,29 +189,29 @@ namespace ITHunterview.Service.Implementations.UseCase
             }
         }
 
-        public async Task MatchCvWithAllJobsHardcodeAsync(Guid cvId)
+        public async Task MatchCvWithAllJobsHardcodeAsync(Guid cvId, Guid userId)
         {
             var cv = await _context.Cvs.FindAsync(cvId);
             if (cv == null) throw new Exception("CV not found");
 
-            var jobs = await _context.JobPostings.ToListAsync();
+            var jobs = await _context.JobPostings.Where(j => j.Status == ITHunterview.Domain.Enums.JobStatus.PUBLISHED).ToListAsync();
             foreach (var job in jobs)
             {
-                await ProcessMatching(cv, job);
+                await ProcessMatching(cv, job, userId);
             }
 
             await _context.SaveChangesAsync();
         }
 
-        public async Task MatchJobWithAllCvsHardcodeAsync(Guid jobId)
+        public async Task MatchJobWithAllCvsHardcodeAsync(Guid jobId, Guid userId)
         {
             var job = await _context.JobPostings.FindAsync(jobId);
             if (job == null) throw new Exception("Job not found");
 
-            var cvs = await _context.Cvs.ToListAsync();
+            var cvs = await _context.Cvs.Where(c => c.IsPrimary).ToListAsync();
             foreach (var cv in cvs)
             {
-                await ProcessMatching(cv, job);
+                await ProcessMatching(cv, job, userId);
             }
 
             await _context.SaveChangesAsync();
