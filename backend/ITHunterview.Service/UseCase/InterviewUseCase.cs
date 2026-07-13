@@ -356,13 +356,41 @@ namespace ITHunterview.Service.UseCase
                                $"{rubricContext}\n\n" +
                                $"HƯỚNG DẪN LƯỢT NÀY:\n" +
                                $"{questionInstruction}\n\n" +
+                               $"BỘ TIÊU CHÍ ĐÁNH GIÁ (Thang điểm 1-5, điền số từ 1-5 hoặc null nếu không áp dụng):\n" +
+                               $"1. Kỹ thuật (Technical):\n" +
+                               $"   - T1: Độ chính xác kiến thức (Knowledge accuracy)\n" +
+                               $"   - T2: Độ sâu / hiểu bản chất (Depth / trade-offs / principle)\n" +
+                               $"   - T3: Khả năng giải quyết vấn đề (Approach / edge cases / reasoning)\n" +
+                               $"   - T4: Chất lượng giải pháp/code (Complexity / cleanliness / test - chỉ cho coding)\n" +
+                               $"   - T5: Ứng dụng thực tế (Real-world examples / project connection)\n" +
+                               $"   - T6: Nhận biết giới hạn bản thân (Honest admitting / logical deduction when not knowing)\n" +
+                               $"2. Kỹ năng mềm (Soft Skills):\n" +
+                               $"   - S1: Cấu trúc trình bày (STAR structure for behavioral questions)\n" +
+                               $"   - S2: Sự rõ ràng & súc tích (No repeating / direct to the point)\n" +
+                               $"   - S3: Sự tự tin & thái độ (Confidence / proactive / professional)\n" +
+                               $"   - S4: Khả năng giao tiếp kỹ thuật (Explaining hard concepts clearly with analogies)\n" +
+                               $"   - S5: Tư duy phản biện/tự nhận thức (Self-reflection / learning from failures)\n" +
+                               $"   - S6: Khả năng xử lý áp lực/tình huống bất ngờ (Calmness / asking clarifying questions)\n\n" +
                                "Bạn BẮT BUỘC phải trả về kết quả theo định dạng JSON duy nhất như sau:\n" +
                                "{\n" +
-                               "  \"feedback\": \"Nhận xét câu trả lời mới nhất (hoặc tổng kết nếu đã xong 6 câu)...\",\n" +
                                "  \"score_logic\": 80,\n" +
                                "  \"score_tech\": 85,\n" +
                                "  \"score_communication\": 90,\n" +
-                               "  \"next_question\": \"Câu hỏi tiếp theo (hoặc lời tạm biệt kết thúc phỏng vấn)...\"\n" +
+                               "  \"next_question\": \"Câu hỏi tiếp theo (hoặc lời tạm biệt kết thúc phỏng vấn)...\",\n" +
+                               "  \"rubric_evaluation\": {\n" +
+                               "    \"question_type\": \"technical | behavioral | coding | system_design\",\n" +
+                               "    \"technical_score\": {\n" +
+                               "      \"T1\": 4, \"T2\": 3, \"T3\": 4, \"T4\": null, \"T5\": 3, \"T6\": 5,\n" +
+                               "      \"average\": 3.8\n" +
+                               "    },\n" +
+                               "    \"soft_skill_score\": {\n" +
+                               "      \"S1\": 4, \"S2\": 3, \"S3\": 4, \"S4\": 3, \"S5\": null, \"S6\": null,\n" +
+                               "      \"average\": 3.5\n" +
+                               "    },\n" +
+                               "    \"general_feedback\": \"Nhận xét chung về điểm mạnh, điểm yếu trong câu trả lời của ứng viên...\",\n" +
+                               "    \"strengths\": [\"Điểm mạnh 1\", \"Điểm mạnh 2\"],\n" +
+                               "    \"improvements\": [\"Điểm cần cải thiện 1\", \"Điểm cần cải thiện 2\"]\n" +
+                               "  }\n" +
                                "}\n\n" +
                                "Lưu ý: Chỉ trả về JSON thuần túy, không bao bọc trong khối code markdown hay bất kỳ văn bản nào ngoài JSON.";
 
@@ -378,6 +406,7 @@ namespace ITHunterview.Service.UseCase
             var scoreTech = 70;
             var scoreCommunication = 70;
             var nextQuestion = "Bạn sẵn sàng cho câu hỏi tiếp theo chưa?";
+            string rubricJsonStr = "";
 
             try
             {
@@ -403,11 +432,37 @@ namespace ITHunterview.Service.UseCase
                 using var doc = JsonDocument.Parse(cleanJson);
                 var root = doc.RootElement;
 
-                if (root.TryGetProperty("feedback", out var fProp)) feedback = fProp.GetString() ?? feedback;
+                // Trích xuất rubric_evaluation dưới dạng JSON string để lưu vào db
+                if (root.TryGetProperty("rubric_evaluation", out var rubProp))
+                {
+                    rubricJsonStr = rubProp.ToString();
+                }
+
                 if (root.TryGetProperty("score_logic", out var slProp)) scoreLogic = slProp.GetInt32();
                 if (root.TryGetProperty("score_tech", out var stProp)) scoreTech = stProp.GetInt32();
                 if (root.TryGetProperty("score_communication", out var scProp)) scoreCommunication = scProp.GetInt32();
                 if (root.TryGetProperty("next_question", out var nqProp)) nextQuestion = nqProp.GetString() ?? nextQuestion;
+
+                // Đồng bộ hóa scoreTech và scoreCommunication bằng trung bình của rubric nhân 20 nếu có rubric_evaluation
+                if (root.TryGetProperty("rubric_evaluation", out var rubObj))
+                {
+                    if (rubObj.TryGetProperty("technical_score", out var techScoreObj) && 
+                        techScoreObj.TryGetProperty("average", out var techAvgEl))
+                    {
+                        if (techAvgEl.ValueKind == JsonValueKind.Number)
+                        {
+                            scoreTech = (int)Math.Round(techAvgEl.GetDouble() * 20);
+                        }
+                    }
+                    if (rubObj.TryGetProperty("soft_skill_score", out var softScoreObj) && 
+                        softScoreObj.TryGetProperty("average", out var softAvgEl))
+                    {
+                        if (softAvgEl.ValueKind == JsonValueKind.Number)
+                        {
+                            scoreCommunication = (int)Math.Round(softAvgEl.GetDouble() * 20);
+                        }
+                    }
+                }
             }
             catch
             {
@@ -417,7 +472,7 @@ namespace ITHunterview.Service.UseCase
             }
 
             // Save evaluation into active turn
-            activeTurn.AiFeedback = feedback;
+            activeTurn.AiFeedback = string.IsNullOrWhiteSpace(rubricJsonStr) ? feedback : rubricJsonStr;
             activeTurn.ScoreLogic = scoreLogic;
             activeTurn.ScoreTech = scoreTech;
             activeTurn.ScoreCommunication = scoreCommunication;
