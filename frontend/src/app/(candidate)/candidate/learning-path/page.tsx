@@ -55,12 +55,12 @@ export default function LearningPathPage() {
   const handleGenerateFromHistory = () => {
     if (generationMethod === 'cv-jd') {
       generateFromCvJdMutation.mutate({
-        timeframeInWeeks: 12,
+        timeframeInWeeks: Number(timeframeInWeeks) || 12,
         matchScoreId: selectedMatchScoreId,
       });
     } else if (generationMethod === 'interview') {
       generateFromInterviewMutation.mutate({
-        timeframeInWeeks: 12,
+        timeframeInWeeks: Number(timeframeInWeeks) || 12,
         sessionId: selectedSessionId,
       });
     }
@@ -154,17 +154,6 @@ export default function LearningPathPage() {
                       onChange={(e) => setTargetSkills(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="timeframe">Timeframe (Weeks)</Label>
-                    <Input
-                      id="timeframe"
-                      type="number"
-                      min="1"
-                      max="52"
-                      value={timeframeInWeeks}
-                      onChange={(e) => setTimeframeInWeeks(e.target.value)}
-                    />
-                  </div>
                 </div>
               )}
 
@@ -223,6 +212,19 @@ export default function LearningPathPage() {
                 </Alert>
               </div>
             )}
+
+            {/* Timeframe applies to all methods */}
+            <div className="space-y-2 mt-4 pt-4 border-t">
+              <Label htmlFor="timeframe">Desired Timeframe (Weeks)</Label>
+              <Input
+                id="timeframe"
+                type="number"
+                min="1"
+                max="52"
+                value={timeframeInWeeks}
+                onChange={(e) => setTimeframeInWeeks(e.target.value)}
+              />
+            </div>
 
             <Button
               className="w-full mt-6"
