@@ -47,6 +47,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICandidateCertificationRepository, CandidateCertificationRepository>();
 
             // Repositories — Interview & AI
+            services.AddScoped<IInterviewQuestionBankRepository, InterviewQuestionBankRepository>();
             services.AddScoped<IInterviewSessionRepository, InterviewSessionRepository>();
             services.AddScoped<IInterviewAnswerRepository, InterviewAnswerRepository>();
             services.AddScoped<ILearningPathRepository, LearningPathRepository>();
@@ -98,6 +99,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICoinConfigUseCase, CoinConfigUseCase>();
             services.AddScoped<ICandidateFeatureUsageUseCase, CandidateFeatureUsageUseCase>();
             services.AddScoped<IWalletUseCase, WalletUseCase>();
+            services.AddScoped<IInterviewQuestionBankUseCase, InterviewQuestionBankUseCase>();
 
 
             // Use Cases — Candidate Profile

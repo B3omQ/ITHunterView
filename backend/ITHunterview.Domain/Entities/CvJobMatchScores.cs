@@ -13,7 +13,10 @@ namespace ITHunterview.Domain.Entities
         public Guid Id { get; set; }
 
         [Column("cv_id")]
-        public Guid CvId { get; set; }
+        public Guid? CvId { get; set; }
+
+        [Column("cv_file_name")]
+        public string? CvFileName { get; set; }
 
         [Column("user_id")]
         public Guid UserId { get; set; }
@@ -22,7 +25,10 @@ namespace ITHunterview.Domain.Entities
         public Guid? JobId { get; set; }
 
         [Column("raw_jd_text")]
-        public string RawJdText { get; set; }
+        public string? RawJdText { get; set; }
+
+        [Column("jd_title")]
+        public string? JdTitle { get; set; }
 
         [Column("match_score")]
         public decimal? MatchScore { get; set; }

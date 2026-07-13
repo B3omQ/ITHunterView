@@ -23,6 +23,7 @@ import type {
   SkillDto,
   MajorDto,
   SkillStatus,
+  SkillCategoryDto
 } from "@/types/master-data.types";
 import { SkillModal } from "./components/SkillModal";
 import { CategoryModal } from "./components/CategoryModal";

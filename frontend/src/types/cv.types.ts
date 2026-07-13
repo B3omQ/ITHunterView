@@ -32,10 +32,31 @@ export interface MatchJdResponse {
   id: string; // JobId for polling
 }
 
+export interface MatchHistoryDto {
+  jobId: string;
+  cvId?: string;
+  cvFileName?: string;
+  sourceJobId?: string;
+  jdTitle?: string;
+  matchScore?: number;
+  status: string;
+  errorMessage?: string;
+  updatedAt: string;
+}
+
+export interface PagedResult<T> {
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  items: T[];
+}
+
 export interface MatchingResultDto {
   id: string;
-  cvId: string;
+  cvId?: string;
+  cvFileName?: string;
   jobId?: string;
+  jdTitle?: string;
   status: string;
   errorMessage?: string;
   matchDetails?: string; // The raw JSON string from LLM

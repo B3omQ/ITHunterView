@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using Pgvector;
 namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ITHunterviewContext))]
-    partial class ITHunterviewContextModelSnapshot : ModelSnapshot
+    [Migration("20260712135603_RemoveDifficultyAndSampleAnswer")]
+    partial class RemoveDifficultyAndSampleAnswer
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -693,21 +696,13 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("CvFileName")
-                        .HasColumnType("text")
-                        .HasColumnName("cv_file_name");
-
-                    b.Property<Guid?>("CvId")
+                    b.Property<Guid>("CvId")
                         .HasColumnType("uuid")
                         .HasColumnName("cv_id");
 
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("text")
                         .HasColumnName("error_message");
-
-                    b.Property<string>("JdTitle")
-                        .HasColumnType("text")
-                        .HasColumnName("jd_title");
 
                     b.Property<Guid?>("JobId")
                         .HasColumnType("uuid")
@@ -723,6 +718,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("match_score");
 
                     b.Property<string>("RawJdText")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("raw_jd_text");
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -304,9 +304,11 @@ namespace ITHunterview.Service.Implementations.UseCase
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                CvId = request.CvId ?? Guid.Empty,
+                CvId = request.CvId,
+                CvFileName = request.CvFileName ?? (string.IsNullOrEmpty(request.CvText) && string.IsNullOrEmpty(request.CvUrl) ? null : "Bypass CV"),
                 JobId = request.JobId,
-                RawJdText = "", // Bắt buộc hoặc optional
+                JdTitle = request.JdTitle ?? (string.IsNullOrEmpty(request.RawJdText) ? null : "Bypass JD"),
+                RawJdText = null,
                 MatchScore = 0,
                 Status = "Pending",
                 UpdatedAt = DateTime.UtcNow
@@ -332,14 +334,14 @@ namespace ITHunterview.Service.Implementations.UseCase
                 string cvText = request.CvText ?? string.Empty;
                 if (string.IsNullOrWhiteSpace(cvText))
                 {
-                    // KHẮC PHỤC KHUYẾT ĐIỂM: Xử lý file Upload từ Frontend
+                    // KHáº®C PHá»¤C KHUYáº¾T ÄIá»‚M: Xá»­ lÃ½ file Upload tá»« Frontend
                     if (!string.IsNullOrWhiteSpace(request.CvUrl))
                     {
                         cvText = await _cvTextExtractorService.ExtractTextFromUrlAsync(request.CvUrl);
                     }
                     else 
                     {
-                        var cv = await _context.Cvs.FindAsync(matchRecord.CvId);
+                        var cv = matchRecord.CvId.HasValue ? await _context.Cvs.FindAsync(matchRecord.CvId.Value) : null;
                         if (cv != null)
                         {
                             if (!string.IsNullOrWhiteSpace(cv.ParsedData))
@@ -358,7 +360,15 @@ namespace ITHunterview.Service.Implementations.UseCase
                     if (job != null)
                     {
                         jdText = $"{job.Title}\n{job.Description}\n{job.Requirements}";
+                        if (string.IsNullOrEmpty(matchRecord.JdTitle)) matchRecord.JdTitle = job.Title;
                     }
+                }
+                
+                // Cáº­p nháº­t tÃªn CV náº¿u lÃ  CV tá»« há»‡ thá»‘ng
+                if (matchRecord.CvId.HasValue && string.IsNullOrEmpty(matchRecord.CvFileName))
+                {
+                    var cv = await _context.Cvs.FindAsync(matchRecord.CvId.Value);
+                    if (cv != null) matchRecord.CvFileName = cv.FileName ?? "Saved CV";
                 }
 
                 if (string.IsNullOrWhiteSpace(cvText))
@@ -374,7 +384,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                     throw new Exception($"Cannot extract Job Description text ({jdSource}). The job posting may have no description. Please try using 'Paste JD Text' tab instead.");
                 }
 
-                // Giới hạn input để tránh nổ token
+                // Giá»›i háº¡n input Ä‘á»ƒ trÃ¡nh ná»• token
                 if (cvText.Length > 20000) cvText = cvText.Substring(0, 20000);
                 if (jdText.Length > 15000) jdText = jdText.Substring(0, 15000);
 
@@ -395,13 +405,13 @@ namespace ITHunterview.Service.Implementations.UseCase
                 {
                     _logger.LogError(ex, "JSON Parse Error.");
                     
-                    // Ghi đè trạng thái Failed nhưng vẫn giữ chuỗi rác trong MatchDetails để debug
+                    // Ghi Ä‘Ã¨ tráº¡ng thÃ¡i Failed nhÆ°ng váº«n giá»¯ chuá»—i rÃ¡c trong MatchDetails Ä‘á»ƒ debug
                     matchRecord.Status = "Failed";
                     matchRecord.ErrorMessage = "LLM returned invalid JSON format. Backend failed to parse.";
                     matchRecord.MatchDetails = llmResponseText;
                     matchRecord.UpdatedAt = DateTime.UtcNow;
                     await _context.SaveChangesAsync();
-                    return; // Thoát hàm sớm, không gán Completed nữa
+                    return; // ThoÃ¡t hÃ m sá»›m, khÃ´ng gÃ¡n Completed ná»¯a
                 }
 
                 matchRecord.Status = "Completed";
@@ -427,11 +437,11 @@ namespace ITHunterview.Service.Implementations.UseCase
             // 1. Kill-Switch check
             if (jdFit.TryGetProperty("killSwitchTriggered", out var ksw) && ksw.GetBoolean())
             {
-                _logger.LogInformation("KSW_01 triggered — score frozen at 15");
+                _logger.LogInformation("KSW_01 triggered â€” score frozen at 15");
                 return 15m;
             }
 
-            // 2. Lấy raw score
+            // 2. Láº¥y raw score
             decimal rawScore = 0m;
             if (jdFit.TryGetProperty("score", out var scoreEl))
                 rawScore = scoreEl.GetDecimal();
@@ -450,7 +460,7 @@ namespace ITHunterview.Service.Implementations.UseCase
 
             if (poolACapped && poolAScore > 28m)
             {
-                // Recalculate: clamp Pool A tại 28 và recompute total
+                // Recalculate: clamp Pool A táº¡i 28 vÃ  recompute total
                 decimal poolBScore = 0m;
                 if (jdFit.TryGetProperty("poolB", out var poolB) &&
                     poolB.TryGetProperty("score", out var pbScore))
@@ -459,7 +469,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                 _logger.LogInformation("RULE_TC1_02: Pool A capped. Recalculated score = {Score}", rawScore);
             }
 
-            // 4. Tính lại penalty deductions
+            // 4. TÃ­nh láº¡i penalty deductions
             decimal totalDeduction = 0m;
             if (jdFit.TryGetProperty("penalties", out var penalties) &&
                 penalties.ValueKind == JsonValueKind.Array)
@@ -471,7 +481,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                         if (penalty.TryGetProperty("deduction", out var ded))
                         {
                             var dedVal = ded.GetDecimal();
-                            // Deduction có thể là số âm hoặc dương → normalize thành dương
+                            // Deduction cÃ³ thá»ƒ lÃ  sá»‘ Ã¢m hoáº·c dÆ°Æ¡ng â†’ normalize thÃ nh dÆ°Æ¡ng
                             totalDeduction += Math.Abs(dedVal);
                             _logger.LogInformation("Penalty triggered. Deduction = {Deduction}", dedVal);
                         }
@@ -492,7 +502,7 @@ namespace ITHunterview.Service.Implementations.UseCase
             if (string.IsNullOrWhiteSpace(apiKey)) throw new Exception("API Key is missing for Bypass Flow in appsettings.");
 
             using var client = _httpClientFactory.CreateClient();
-            client.Timeout = TimeSpan.FromMinutes(2); // Thêm timeout dài cho LLM
+            client.Timeout = TimeSpan.FromMinutes(2); // ThÃªm timeout dÃ i cho LLM
 
             if (modelName.Contains("gemini"))
             {
@@ -505,8 +515,8 @@ namespace ITHunterview.Service.Implementations.UseCase
                     },
                     generationConfig = new 
                     { 
-                        maxOutputTokens = 8192, // Tránh JSON bị cắt cụt giữa chừng
-                        temperature = 0.2 // Cần sự chính xác cao
+                        maxOutputTokens = 8192, // TrÃ¡nh JSON bá»‹ cáº¯t cá»¥t giá»¯a chá»«ng
+                        temperature = 0.2 // Cáº§n sá»± chÃ­nh xÃ¡c cao
                     },
                     safetySettings = new[]
                     {
@@ -544,35 +554,35 @@ namespace ITHunterview.Service.Implementations.UseCase
                             .GetProperty("text")
                             .GetString() ?? string.Empty;
                         
-                        // Log 500 ký tự đầu để debug
+                        // Log 500 kÃ½ tá»± Ä‘áº§u Ä‘á»ƒ debug
                         _logger.LogInformation("Gemini raw text (first 500 chars): {Text}", text.Length > 500 ? text.Substring(0, 500) : text);
 
-                        // Fallback: Dùng Regex bóc JSON ra khỏi markdown ```json ... ``` hoặc lấy thẳng nếu là JSON thuần
+                        // Fallback: DÃ¹ng Regex bÃ³c JSON ra khá»i markdown ```json ... ``` hoáº·c láº¥y tháº³ng náº¿u lÃ  JSON thuáº§n
                         text = ExtractJsonFromText(text);
 
-                        // THÊM: Validate JSON ngay tại đây, nếu đứt đuôi/hỏng thì ném lỗi để Retry
+                        // THÃŠM: Validate JSON ngay táº¡i Ä‘Ã¢y, náº¿u Ä‘á»©t Ä‘uÃ´i/há»ng thÃ¬ nÃ©m lá»—i Ä‘á»ƒ Retry
                         try 
                         {
-                            using (var testParse = JsonDocument.Parse(text)) { } // Chỉ để test
-                            return text; // Hợp lệ, trả về
+                            using (var testParse = JsonDocument.Parse(text)) { } // Chá»‰ Ä‘á»ƒ test
+                            return text; // Há»£p lá»‡, tráº£ vá»
                         }
                         catch (JsonException ex)
                         {
                             if (attempt == maxRetries)
                             {
-                                throw new Exception($"Gemini trả về JSON lỗi sau {maxRetries} lần thử. Lỗi: {ex.Message}");
+                                throw new Exception($"Gemini tráº£ vá» JSON lá»—i sau {maxRetries} láº§n thá»­. Lá»—i: {ex.Message}");
                             }
-                            _logger.LogWarning("Gemini sinh JSON lỗi ở lần thử {Attempt}. Sẽ retry. Text 500 chars: {Text}", attempt, text.Length > 500 ? text.Substring(0, 500) : text);
+                            _logger.LogWarning("Gemini sinh JSON lá»—i á»Ÿ láº§n thá»­ {Attempt}. Sáº½ retry. Text 500 chars: {Text}", attempt, text.Length > 500 ? text.Substring(0, 500) : text);
                         }
                     }
 
-                    // Nếu lỗi 503 hoặc các lỗi API khác, thử lại
+                    // Náº¿u lá»—i 503 hoáº·c cÃ¡c lá»—i API khÃ¡c, thá»­ láº¡i
                     if (attempt == maxRetries)
                     {
                         throw new Exception($"Gemini API Error after {maxRetries} attempts: {responseContent}");
                     }
                     
-                    // Đợi 2 giây trước khi thử lại
+                    // Äá»£i 2 giÃ¢y trÆ°á»›c khi thá»­ láº¡i
                     await Task.Delay(2000);
                 }
             }
@@ -618,7 +628,9 @@ namespace ITHunterview.Service.Implementations.UseCase
             {
                 Id = matchRecord.Id,
                 CvId = matchRecord.CvId,
+                CvFileName = matchRecord.CvFileName,
                 JobId = matchRecord.JobId,
+                JdTitle = matchRecord.JdTitle,
                 Status = matchRecord.Status,
                 ErrorMessage = matchRecord.ErrorMessage,
                 MatchDetails = matchRecord.MatchDetails,
@@ -636,7 +648,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                 return match.Groups[1].Value.Trim();
             }
 
-            // Phòng trường hợp nó trả về {...} không có markdown nhưng thừa chữ
+            // PhÃ²ng trÆ°á»ng há»£p nÃ³ tráº£ vá» {...} khÃ´ng cÃ³ markdown nhÆ°ng thá»«a chá»¯
             var startIndex = text.IndexOf('{');
             var endIndex = text.LastIndexOf('}');
             if (startIndex >= 0 && endIndex >= startIndex)
@@ -645,6 +657,36 @@ namespace ITHunterview.Service.Implementations.UseCase
             }
 
             return text.Trim();
+        }
+        public async Task<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>> GetMatchHistoryAsync(Guid userId, int page, int pageSize)
+        {
+            var query = _context.CvJobMatchScores
+                .Where(s => s.UserId == userId)
+                .OrderByDescending(s => s.UpdatedAt);
+
+            var total = await query.CountAsync();
+            var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            var mappedItems = items.Select(s => new ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto
+            {
+                JobId = s.Id,
+                CvId = s.CvId,
+                CvFileName = s.CvFileName,
+                SourceJobId = s.JobId,
+                JdTitle = s.JdTitle,
+                MatchScore = s.MatchScore,
+                Status = s.Status,
+                ErrorMessage = s.ErrorMessage,
+                UpdatedAt = s.UpdatedAt
+            }).ToList();
+
+            return new ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>
+            {
+                Items = mappedItems,
+                TotalCount = total,
+                Page = page,
+                PageSize = pageSize
+            };
         }
     }
 }
