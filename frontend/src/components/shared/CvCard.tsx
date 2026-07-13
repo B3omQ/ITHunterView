@@ -8,9 +8,10 @@ interface CvCardProps {
   isDeleting?: boolean;
   isActive?: boolean;
   onSelect?: (cv: Cv) => void;
+  onMatchJobs?: (cv: Cv) => void;
 }
 
-export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardProps) {
+export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect, onMatchJobs }: CvCardProps) {
   // Format date: "Jun 10, 2026"
   const formattedDate = new Date(cv.createdAt).toLocaleDateString('en-US', {
     month: 'short',
@@ -54,20 +55,36 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
         <span className="text-xs text-slate-400">
           {isActive ? 'Viewing' : 'Click to view'}
         </span>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(cv.id);
-          }}
-          disabled={isDeleting}
-          className={cn(
-            "flex items-center gap-1.5 text-xs font-medium text-red-500 transition-colors hover:text-red-600",
-            isDeleting && "opacity-50 cursor-not-allowed"
+        
+        <div className="flex items-center gap-3">
+          {onMatchJobs && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onMatchJobs(cv);
+              }}
+              className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-700 transition-colors"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              Find Matches
+            </button>
           )}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          {isDeleting ? 'Deleting...' : 'Delete'}
-        </button>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(cv.id);
+            }}
+            disabled={isDeleting}
+            className={cn(
+              "flex items-center gap-1.5 text-xs font-medium text-red-500 transition-colors hover:text-red-600",
+              isDeleting && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </button>
+        </div>
       </div>
     </div>
   );

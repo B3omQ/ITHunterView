@@ -7,6 +7,7 @@ import { CvCard } from '@/components/shared/CvCard';
 import { CloudUpload, ExternalLink, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Cv } from '@/types/cv.types';
+import { MatchJobsModal } from '@/components/candidate/MatchJobsModal';
 
 export default function ResumesPage() {
   const { data: cvsResponse, isLoading: isLoadingCvs } = useGetMyCvs();
@@ -19,6 +20,8 @@ export default function ResumesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [selectedCv, setSelectedCv] = useState<Cv | null>(null);
+  const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
+  const [cvToMatch, setCvToMatch] = useState<Cv | null>(null);
 
   const cvs = cvsResponse?.data || [];
 
@@ -165,7 +168,11 @@ export default function ResumesPage() {
                     isActive={selectedCv?.id === cv.id}
                     onSelect={(c) => setSelectedCv(c)}
                     onDelete={(id) => deleteCv(id)} 
-                    isDeleting={isDeleting} 
+                    isDeleting={isDeleting}
+                    onMatchJobs={(cv) => {
+                      setCvToMatch(cv);
+                      setIsMatchModalOpen(true);
+                    }}
                   />
                 ))}
               </div>
@@ -212,6 +219,15 @@ export default function ResumesPage() {
           )}
         </div>
       </div>
+      
+      <MatchJobsModal 
+        cv={cvToMatch} 
+        isOpen={isMatchModalOpen} 
+        onClose={() => {
+          setIsMatchModalOpen(false);
+          setCvToMatch(null);
+        }} 
+      />
     </div>
   );
 }

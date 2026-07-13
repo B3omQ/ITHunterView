@@ -177,8 +177,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
   };
 
   return (
-    <Card className="border border-primary/20 bg-primary/5 rounded-xl overflow-hidden shadow-sm animate-in slide-in-from-top-4 duration-300">
-      <CardContent className="p-5 sm:p-6">
+    <div className="bg-muted/30 p-5 sm:p-6 rounded-md mb-4 border border-border">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="mb-4">
             <h3 className="text-lg font-bold text-foreground">
@@ -189,7 +188,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="title" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Job Title *</Label>
+              <Label htmlFor="title" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Job Title *</Label>
               <Input
                 id="title"
                 placeholder="e.g. Senior Frontend Developer"
@@ -199,14 +198,14 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                   setTitle(e.target.value);
                   if (errors.title) setErrors((prev) => ({ ...prev, title: undefined }));
                 }}
-                className={`bg-background/80 focus-visible:ring-primary/30 ${errors.title ? 'border-destructive focus-visible:ring-destructive' : 'border-border/60'}`}
+                className={errors.title ? 'border-destructive focus-visible:ring-destructive' : ''}
                 required
               />
               {errors.title && <p className="text-xs text-destructive mt-1 font-medium">{errors.title}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="companyName" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Company Name *</Label>
+              <Label htmlFor="companyName" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Company Name *</Label>
               <Input
                 id="companyName"
                 placeholder="e.g. Stripe"
@@ -215,16 +214,16 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                   setCompanyName(e.target.value);
                   if (errors.companyName) setErrors((prev) => ({ ...prev, companyName: undefined }));
                 }}
-                className={`bg-background/80 focus-visible:ring-primary/30 ${errors.companyName ? 'border-destructive focus-visible:ring-destructive' : 'border-border/60'}`}
+                className={errors.companyName ? 'border-destructive focus-visible:ring-destructive' : ''}
                 required
               />
               {errors.companyName && <p className="text-xs text-destructive mt-1 font-medium">{errors.companyName}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="employmentType" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Employment Type</Label>
+              <Label htmlFor="employmentType" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Employment Type</Label>
               <Select value={employmentType} onValueChange={(val) => setEmploymentType(val || '')}>
-                <SelectTrigger id="employmentType" className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
+                <SelectTrigger id="employmentType" className="w-full">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -238,7 +237,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
             </div>
 
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="locationType" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Location</Label>
+              <Label htmlFor="locationType" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Location</Label>
               <div className="flex gap-2">
                 <LocationCombobox
                   value={locationType}
@@ -259,14 +258,14 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                     placeholder="e.g. Can Tho, Binh Duong"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    className="bg-background/80 border-border/60 focus-visible:ring-primary/30 flex-1"
+                    className="flex-1"
                   />
                 )}
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Start Date *</Label>
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Start Date *</Label>
               <div className="flex gap-2">
                 <div className="w-1/2">
                   <Select
@@ -276,7 +275,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                       if (errors.startDate) setErrors((prev) => ({ ...prev, startDate: undefined }));
                     }}
                   >
-                    <SelectTrigger className={`w-full bg-background/80 focus:ring-primary/30 ${errors.startDate ? 'border-destructive focus:ring-destructive' : 'border-border/60'}`}>
+                    <SelectTrigger className={errors.startDate ? 'border-destructive focus:ring-destructive' : ''}>
                       <SelectValue placeholder="Month" />
                     </SelectTrigger>
                     <SelectContent>
@@ -292,7 +291,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                       if (errors.startDate) setErrors((prev) => ({ ...prev, startDate: undefined }));
                     }}
                   >
-                    <SelectTrigger className={`w-full bg-background/80 focus:ring-primary/30 ${errors.startDate ? 'border-destructive focus:ring-destructive' : 'border-border/60'}`}>
+                    <SelectTrigger className={errors.startDate ? 'border-destructive focus:ring-destructive' : ''}>
                       <SelectValue placeholder="Year" />
                     </SelectTrigger>
                     <SelectContent>
@@ -305,9 +304,9 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">End Date</Label>
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">End Date</Label>
               {isCurrent ? (
-                <div className="w-full h-10 bg-muted/40 border border-border/40 rounded-md flex items-center px-3 text-sm font-semibold text-muted-foreground/70 cursor-not-allowed select-none">
+                <div className="w-full h-10 bg-muted/40 border border-border rounded-md flex items-center px-3 text-sm text-muted-foreground cursor-not-allowed select-none">
                   Present
                 </div>
               ) : (
@@ -317,7 +316,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                       value={parseDateString(endDate).month}
                       onValueChange={(val) => setEndDate(buildDateString(parseDateString(endDate).year || '', val || ''))}
                     >
-                      <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Month" />
                       </SelectTrigger>
                       <SelectContent>
@@ -330,7 +329,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                       value={parseDateString(endDate).year}
                       onValueChange={(val) => setEndDate(buildDateString(val || '', parseDateString(endDate).month || ''))}
                     >
-                      <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Year" />
                       </SelectTrigger>
                       <SelectContent>
@@ -347,57 +346,54 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                 id="isCurrent"
                 checked={isCurrent}
                 onCheckedChange={(checked) => setIsCurrent(checked === true)}
-                className="rounded-[4px] w-4 h-4 border-border/60 text-primary data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all"
               />
-              <Label htmlFor="isCurrent" className="text-sm font-semibold select-none cursor-pointer">
+              <Label htmlFor="isCurrent" className="text-sm cursor-pointer">
                 I am currently working in this role
               </Label>
             </div>
 
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="description" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Description</Label>
+              <Label htmlFor="description" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
               <Textarea
                 id="description"
                 placeholder="Describe your achievements, responsibilities, and key accomplishments..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
-                className="bg-background/80 border-border/60 focus-visible:ring-primary/30 resize-none"
+                className="resize-none"
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border/10 mt-6">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t mt-6">
             <Button
               type="button"
               variant="ghost"
               onClick={handleCancelClick}
               disabled={isCreating || isUpdating}
-              className="text-muted-foreground hover:text-foreground hover:bg-muted font-semibold rounded-lg"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={!isDirty || isCreating || isUpdating}
-              className="bg-primary hover:bg-primary/95 transition-all text-primary-foreground font-semibold px-6 shadow-md shadow-primary/10 rounded-lg flex items-center gap-2"
+              className="px-6 flex items-center gap-2"
             >
               {(isCreating || isUpdating) && <Loader2 className="w-4 h-4 animate-spin" />}
               Save
             </Button>
           </div>
         </form>
-      </CardContent>
 
       {/* Cancel Confirmation Dialog */}
       <Dialog open={showConfirmCancel} onOpenChange={setShowConfirmCancel}>
-        <DialogContent className="max-w-md rounded-2xl border-border/40 backdrop-blur-lg z-[60]">
+        <DialogContent className="max-w-md z-[60]">
           <DialogHeader>
-            <div className="w-12 h-12 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center mb-4">
+            <div className="w-12 h-12 rounded-md bg-muted text-muted-foreground flex items-center justify-center mb-4">
               <AlertTriangle className="w-6 h-6" />
             </div>
             <DialogTitle className="text-lg font-bold">Discard Unsaved Changes?</DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogDescription className="text-sm">
               You have unsaved changes. Are you sure you want to discard them? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
@@ -405,7 +401,6 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
             <Button
               variant="outline"
               onClick={() => setShowConfirmCancel(false)}
-              className="border-border/60 hover:bg-muted/40 transition-all font-semibold rounded-lg"
             >
               Continue Editing
             </Button>
@@ -414,13 +409,13 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                 setShowConfirmCancel(false);
                 onCancel();
               }}
-              className="bg-destructive hover:bg-destructive/95 transition-all text-destructive-foreground font-semibold px-6 shadow-md shadow-destructive/10 rounded-lg"
+              variant="destructive"
             >
               Discard Changes
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   );
 }

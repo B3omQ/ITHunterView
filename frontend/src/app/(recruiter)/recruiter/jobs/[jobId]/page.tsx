@@ -21,6 +21,7 @@ import {
   Layers,
   Target
 } from "lucide-react"
+import { MatchCvsSection } from "@/components/recruiter/MatchCvsSection"
 
 export default function JobDetailPage() {
   const router = useRouter()
@@ -288,6 +289,10 @@ export default function JobDetailPage() {
 
           </CardContent>
         </Card>
+
+        {/* Suggested Candidates Match Section */}
+        <MatchCvsSection jobId={job.id} jobStatus={job.status} />
+
       </div>
     </div>
   )

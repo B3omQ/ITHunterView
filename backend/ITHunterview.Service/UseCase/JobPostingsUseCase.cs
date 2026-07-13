@@ -2,22 +2,33 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Job;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
+using ITHunterview.Service.Interface.Service;
+using ITHunterview.Service.Constant.Prompts;
 
 namespace ITHunterview.Service.UseCase
 {
     public class JobPostingsUseCase : IJobPostingsUseCase
     {
         private readonly IJobPostingRepository _jobPostingRepository;
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ILogger<JobPostingsUseCase> _logger;
 
-        public JobPostingsUseCase(IJobPostingRepository jobPostingRepository)
+        public JobPostingsUseCase(
+            IJobPostingRepository jobPostingRepository,
+            IServiceScopeFactory scopeFactory,
+            ILogger<JobPostingsUseCase> logger)
         {
             _jobPostingRepository = jobPostingRepository;
+            _scopeFactory = scopeFactory;
+            _logger = logger;
         }
 
         public async Task<ResponseBase<PagedResult<JobPostingSummaryDto>>> GetJobsAsync(
@@ -128,6 +139,9 @@ namespace ITHunterview.Service.UseCase
 
             var detail = MapToDetailDto(job);
             detail.Skills = await _jobPostingRepository.GetSkillsByJobIdAsync(job.Id);
+
+            _ = ParseJdBackgroundAsync(job.Id);
+
             return new ResponseBase<JobPostingDetailDto>(detail, "Job posting created successfully.");
         }
 
@@ -177,6 +191,9 @@ namespace ITHunterview.Service.UseCase
 
             var detail = MapToDetailDto(job);
             detail.Skills = await _jobPostingRepository.GetSkillsByJobIdAsync(job.Id);
+
+            _ = ParseJdBackgroundAsync(job.Id);
+
             return new ResponseBase<JobPostingDetailDto>(detail, "Job posting updated successfully.");
         }
 
@@ -227,6 +244,39 @@ namespace ITHunterview.Service.UseCase
                 ExpiresAt = j.ExpiresAt,
                 CreatedAt = j.CreatedAt
             };
+        }
+
+        private async Task ParseJdBackgroundAsync(Guid jobId)
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var repo = scope.ServiceProvider.GetRequiredService<IJobPostingRepository>();
+                var aiService = scope.ServiceProvider.GetRequiredService<IAiService>();
+
+                var job = await repo.GetByIdAsync(jobId);
+                if (job == null) return;
+
+                var rawText = $"Title: {job.Title}\nDescription: {job.Description}\nRequirements: {job.Requirements}\nBenefits: {job.Benefits}";
+                
+                var prompt = JdExtractionPrompt.BuildUser(rawText);
+                var aiResponse = await aiService.GenerateTextAsync(prompt, JdExtractionPrompt.System);
+
+                // Clean json
+                var cleanJson = aiResponse.Trim();
+                if (cleanJson.StartsWith("```json")) cleanJson = cleanJson.Substring(7);
+                if (cleanJson.StartsWith("```")) cleanJson = cleanJson.Substring(3);
+                if (cleanJson.EndsWith("```")) cleanJson = cleanJson.Substring(0, cleanJson.Length - 3);
+                cleanJson = cleanJson.Trim();
+
+                job.ParsedData = cleanJson;
+                await repo.UpdateAsync(job);
+                _logger.LogInformation($"Successfully parsed and updated JD {jobId} in background.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to parse JD {jobId} in background");
+            }
         }
     }
 }

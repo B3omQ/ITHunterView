@@ -722,6 +722,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric")
                         .HasColumnName("match_score");
 
+                    b.Property<string>("MatchType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("match_type");
+
                     b.Property<string>("RawJdText")
                         .HasColumnType("text")
                         .HasColumnName("raw_jd_text");
@@ -742,6 +747,43 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("cv_job_match_scores");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.CvOptimizations", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("candidate_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CvId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cv_id");
+
+                    b.Property<string>("FeedbackData")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("feedback_data");
+
+                    b.Property<string>("TargetJdText")
+                        .HasColumnType("text")
+                        .HasColumnName("target_jd_text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CandidateId");
+
+                    b.HasIndex("CvId");
+
+                    b.ToTable("cv_optimizations");
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.Cvs", b =>
@@ -921,19 +963,18 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
-                    b.Property<int>("Difficulty")
-                        .HasColumnType("integer")
-                        .HasColumnName("difficulty");
+                    b.Property<string>("Industry")
+                        .HasColumnType("text")
+                        .HasColumnName("industry");
+
+                    b.Property<string>("Level")
+                        .HasColumnType("text")
+                        .HasColumnName("level");
 
                     b.Property<string>("QuestionText")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("question_text");
-
-                    b.Property<string>("SampleAnswer")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("sample_answer");
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid")
@@ -2178,6 +2219,25 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.CvOptimizations", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.User", "Candidate")
+                        .WithMany()
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ITHunterview.Domain.Entities.Cvs", "Cv")
+                        .WithMany()
+                        .HasForeignKey("CvId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Candidate");
+
+                    b.Navigation("Cv");
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.Cvs", b =>

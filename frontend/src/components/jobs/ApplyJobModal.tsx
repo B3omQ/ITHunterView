@@ -87,6 +87,12 @@ export function ApplyJobModal({ isOpen, onClose, jobId, jobTitle, onSuccess }: A
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (myCvs.length === 0 && !uploadFile) {
+      toast.error('Please upload a CV to apply for this job.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -167,8 +173,12 @@ export function ApplyJobModal({ isOpen, onClose, jobId, jobTitle, onSuccess }: A
             {/* ── CV Section ─────────────────────────────────────────── */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">CV / Resume</Label>
-                <span className="text-xs text-muted-foreground">Optional</span>
+                <Label className="text-sm font-medium">
+                  CV / Resume {myCvs.length === 0 && <span className="text-destructive">*</span>}
+                </Label>
+                <span className={`text-xs ${myCvs.length === 0 ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                  {myCvs.length === 0 ? 'Required' : 'Optional'}
+                </span>
               </div>
 
               {isLoadingCvs ? (
@@ -259,8 +269,8 @@ export function ApplyJobModal({ isOpen, onClose, jobId, jobTitle, onSuccess }: A
                   </button>
 
                   {!uploadFile && !selectedCvId && myCvs.length === 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      No CV attached — you can still submit without one.
+                    <p className="text-xs text-destructive font-medium">
+                      CV is required. Please upload a CV to apply.
                     </p>
                   )}
                 </div>
