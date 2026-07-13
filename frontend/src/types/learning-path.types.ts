@@ -5,8 +5,12 @@ export interface GeneratePathRequest {
   timeframeInWeeks: number;
 }
 
-export interface GenerateFromHistoryRequest {
+export interface GenerateFromCvJdRequest {
   matchScoreId?: string;
+  timeframeInWeeks?: number;
+}
+
+export interface GenerateFromInterviewRequest {
   sessionId?: string;
   timeframeInWeeks?: number;
 }
@@ -25,4 +29,8 @@ export interface LearningPath {
   sessionId: string | null;
   pathData: LearningModule[];
   createdAt: string;
+}
+
+export interface HistoryContextPreviewDto {
+  contextPreview: string;
 }

@@ -73,26 +73,21 @@ Please generate a structured learning path.";
         // ─────────────────────────────────────────────────────────────
         // Generate từ lịch sử matching CV-JD & phỏng vấn
         // ─────────────────────────────────────────────────────────────
-        public async Task<LearningPathResponseDto> GenerateFromHistoryAsync(Guid candidateId, GenerateFromHistoryRequestDto request)
+        public async Task<LearningPathResponseDto> GenerateFromCvJdAsync(Guid candidateId, GenerateFromCvJdRequestDto request)
         {
             await EnforceMaxPathsAsync(candidateId);
 
-            // 1. Lấy thông tin từ lịch sử matching CV-JD
             var matchContext = await BuildMatchContextAsync(candidateId, request.MatchScoreId);
 
-            // 2. Lấy thông tin từ lịch sử phỏng vấn
-            var interviewContext = await BuildInterviewContextAsync(candidateId, request.SessionId);
-
-            // 3. Nếu cả hai đều rỗng → không đủ dữ liệu
-            if (string.IsNullOrWhiteSpace(matchContext) && string.IsNullOrWhiteSpace(interviewContext))
+            if (string.IsNullOrWhiteSpace(matchContext))
             {
                 throw new InvalidOperationException(
-                    "Chưa có đủ lịch sử matching CV-JD hoặc phỏng vấn để tạo lộ trình. " +
-                    "Vui lòng thực hiện ít nhất một lần matching CV-JD hoặc phỏng vấn thử trước.");
+                    "Chưa có dữ liệu matching CV-JD để tạo lộ trình. " +
+                    "Vui lòng thực hiện matching CV-JD trước.");
             }
 
             string systemPrompt = @"You are an expert IT career coach.
-Analyze the candidate's skill gaps identified from their CV-JD matching results and mock interview performance.
+Analyze the candidate's skill gaps identified from their CV-JD matching results.
 Generate a targeted, step-by-step learning path to close those specific gaps.
 The result MUST be a valid JSON array of objects, where each object represents a learning module.
 Each module must directly address one or more identified skill gaps.
@@ -103,7 +98,7 @@ Example output format:
     ""description"": ""What to learn and why it closes the gap."",
     ""durationWeeks"": 2,
     ""skills"": [""Skill A"", ""Skill B""],
-    ""gapSource"": ""cv-jd-match | interview | both""
+    ""gapSource"": ""cv-jd-match""
   }
 ]
 Do NOT include any markdown blocks like ```json, just return the raw JSON array.";
@@ -111,24 +106,80 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON array.
             var userPromptBuilder = new StringBuilder();
             userPromptBuilder.AppendLine($"Desired Timeframe: {request.TimeframeInWeeks} weeks.");
             userPromptBuilder.AppendLine();
-
-            if (!string.IsNullOrWhiteSpace(matchContext))
-            {
-                userPromptBuilder.AppendLine("=== SKILL GAPS FROM CV-JD MATCHING ===");
-                userPromptBuilder.AppendLine(matchContext);
-                userPromptBuilder.AppendLine();
-            }
-
-            if (!string.IsNullOrWhiteSpace(interviewContext))
-            {
-                userPromptBuilder.AppendLine("=== WEAK AREAS FROM MOCK INTERVIEW ===");
-                userPromptBuilder.AppendLine(interviewContext);
-                userPromptBuilder.AppendLine();
-            }
-
-            userPromptBuilder.AppendLine("Based on the above identified skill gaps and weak areas, generate a prioritized learning path.");
+            userPromptBuilder.AppendLine("=== SKILL GAPS FROM CV-JD MATCHING ===");
+            userPromptBuilder.AppendLine(matchContext);
+            userPromptBuilder.AppendLine();
+            userPromptBuilder.AppendLine("Based on the above identified skill gaps, generate a prioritized learning path.");
 
             return await CallAiAndSaveAsync(candidateId, userPromptBuilder.ToString(), systemPrompt);
+        }
+
+        public async Task<LearningPathResponseDto> GenerateFromInterviewAsync(Guid candidateId, GenerateFromInterviewRequestDto request)
+        {
+            await EnforceMaxPathsAsync(candidateId);
+
+            var interviewContext = await BuildInterviewContextAsync(candidateId, request.SessionId);
+
+            if (string.IsNullOrWhiteSpace(interviewContext))
+            {
+                throw new InvalidOperationException(
+                    "Chưa có dữ liệu phỏng vấn thử để tạo lộ trình. " +
+                    "Vui lòng thực hiện phỏng vấn thử trước.");
+            }
+
+            string systemPrompt = @"You are an expert IT career coach.
+Analyze the candidate's weak areas identified from their mock interview performance.
+Generate a targeted, step-by-step learning path to close those specific gaps.
+The result MUST be a valid JSON array of objects, where each object represents a learning module.
+Each module must directly address one or more identified skill gaps.
+Example output format:
+[
+  {
+    ""title"": ""Module 1: Gap Topic"",
+    ""description"": ""What to learn and why it closes the gap."",
+    ""durationWeeks"": 2,
+    ""skills"": [""Skill A"", ""Skill B""],
+    ""gapSource"": ""interview""
+  }
+]
+Do NOT include any markdown blocks like ```json, just return the raw JSON array.";
+
+            var userPromptBuilder = new StringBuilder();
+            userPromptBuilder.AppendLine($"Desired Timeframe: {request.TimeframeInWeeks} weeks.");
+            userPromptBuilder.AppendLine();
+            userPromptBuilder.AppendLine("=== WEAK AREAS FROM MOCK INTERVIEW ===");
+            userPromptBuilder.AppendLine(interviewContext);
+            userPromptBuilder.AppendLine();
+            userPromptBuilder.AppendLine("Based on the above identified weak areas, generate a prioritized learning path.");
+
+            return await CallAiAndSaveAsync(candidateId, userPromptBuilder.ToString(), systemPrompt);
+        }
+
+        public async Task<HistoryContextPreviewDto> PreviewHistoryContextAsync(Guid candidateId, string type, Guid? sourceId)
+        {
+            string context = string.Empty;
+            if (type == "cv-jd")
+            {
+                context = await BuildMatchContextAsync(candidateId, sourceId);
+                if (string.IsNullOrWhiteSpace(context))
+                {
+                    context = "Không tìm thấy dữ liệu lỗ hổng kỹ năng cho bản ghi CV-JD Matching này.";
+                }
+            }
+            else if (type == "interview")
+            {
+                context = await BuildInterviewContextAsync(candidateId, sourceId);
+                if (string.IsNullOrWhiteSpace(context))
+                {
+                    context = "Không tìm thấy dữ liệu đánh giá cho buổi phỏng vấn thử này.";
+                }
+            }
+            else
+            {
+                context = "Loại lịch sử không hợp lệ.";
+            }
+
+            return new HistoryContextPreviewDto { ContextPreview = context };
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -219,10 +270,20 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON array.
                             sb.AppendLine($"Penalty Reasons: {string.Join("; ", triggeredPenalties)}");
                     }
                 }
+                else if (root.TryGetProperty("Method", out var methodProp) && methodProp.GetString() == "Hardcode")
+                {
+                    sb.AppendLine("Matching Method: Keyword-based (Hardcode)");
+                    if (root.TryGetProperty("TitleScore", out var titleScore)) sb.AppendLine($"Title Score: {titleScore}");
+                    if (root.TryGetProperty("SkillsScore", out var skillsScore)) sb.AppendLine($"Skills Score: {skillsScore}");
+                    if (root.TryGetProperty("ExperienceScore", out var expScore)) sb.AppendLine($"Experience Score: {expScore}");
+                    if (root.TryGetProperty("DomainScore", out var domainScore)) sb.AppendLine($"Domain Score: {domainScore}");
+                    sb.AppendLine();
+                    sb.AppendLine("Note: Keyword-based matching does not provide specific missing skills. The AI will generate a general path based on the target role.");
+                }
                 else
                 {
-                    // Hardcode match format (TitleScore/SkillsScore/ExperienceScore/DomainScore)
-                    sb.AppendLine($"Match Details: {matchRecord.MatchDetails}");
+                    sb.AppendLine("Match Details: (Custom format)");
+                    // Avoid dumping raw JSON to the UI
                 }
             }
             catch

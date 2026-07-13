@@ -32,11 +32,19 @@ namespace ITHunterview.WebAPI.Controllers
             return new ResponseBase<LearningPathResponseDto>(result);
         }
 
-        [HttpPost("generate-from-history")]
-        public async Task<ActionResult<ResponseBase<LearningPathResponseDto>>> GenerateFromHistory([FromBody] GenerateFromHistoryRequestDto request)
+        [HttpPost("generate-from-cv-jd")]
+        public async Task<ActionResult<ResponseBase<LearningPathResponseDto>>> GenerateFromCvJd([FromBody] GenerateFromCvJdRequestDto request)
         {
             var candidateId = GetUserId();
-            var result = await _learningPathUseCase.GenerateFromHistoryAsync(candidateId, request);
+            var result = await _learningPathUseCase.GenerateFromCvJdAsync(candidateId, request);
+            return new ResponseBase<LearningPathResponseDto>(result);
+        }
+
+        [HttpPost("generate-from-interview")]
+        public async Task<ActionResult<ResponseBase<LearningPathResponseDto>>> GenerateFromInterview([FromBody] GenerateFromInterviewRequestDto request)
+        {
+            var candidateId = GetUserId();
+            var result = await _learningPathUseCase.GenerateFromInterviewAsync(candidateId, request);
             return new ResponseBase<LearningPathResponseDto>(result);
         }
 
@@ -62,6 +70,14 @@ namespace ITHunterview.WebAPI.Controllers
             var candidateId = GetUserId();
             await _learningPathUseCase.DeleteLearningPathAsync(candidateId, id);
             return new ResponseBase<string>("Learning path deleted successfully.");
+        }
+
+        [HttpGet("preview-context")]
+        public async Task<ActionResult<ResponseBase<HistoryContextPreviewDto>>> PreviewHistoryContext([FromQuery] string type, [FromQuery] Guid? sourceId)
+        {
+            var candidateId = GetUserId();
+            var result = await _learningPathUseCase.PreviewHistoryContextAsync(candidateId, type, sourceId);
+            return new ResponseBase<HistoryContextPreviewDto>(result);
         }
 
         private Guid GetUserId()

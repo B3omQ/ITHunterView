@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useGenerateLearningPath, useGenerateLearningPathFromHistory, useMyLearningPaths, useDeleteLearningPath } from '@/hooks/useLearningPath';
+import { useGenerateLearningPath, useGenerateFromCvJd, useGenerateFromInterview, useMyLearningPaths, useDeleteLearningPath, usePreviewHistoryContext } from '@/hooks/useLearningPath';
 import { useGetMatchHistory } from '@/hooks/useCvMatch';
 import { useGetInterviewSessions } from '@/hooks/useInterview';
 import { Button } from '@/components/ui/button';
@@ -11,17 +11,18 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
-import { Loader2, Sparkles, History, Trash2 } from 'lucide-react';
+import { Loader2, Sparkles, History, Trash2, Info } from 'lucide-react';
 import { LearningModule } from '@/types/learning-path.types';
 
 export default function LearningPathPage() {
   const { data: myPathsData, isLoading: isLoadingPaths } = useMyLearningPaths();
   const generateMutation = useGenerateLearningPath();
-  const generateFromHistoryMutation = useGenerateLearningPathFromHistory();
+  const generateFromCvJdMutation = useGenerateFromCvJd();
+  const generateFromInterviewMutation = useGenerateFromInterview();
 
   const { data: matchHistoryData } = useGetMatchHistory(1, 50);
   const { data: interviewSessionsData } = useGetInterviewSessions();
@@ -35,6 +36,13 @@ export default function LearningPathPage() {
   const [selectedMatchScoreId, setSelectedMatchScoreId] = useState<string>('');
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
 
+  const activeHistoryType = generationMethod === 'cv-jd' ? 'cv-jd' : 'interview';
+  const activeSourceId = generationMethod === 'cv-jd' ? selectedMatchScoreId : selectedSessionId;
+  const { data: previewContextData, isLoading: isPreviewLoading } = usePreviewHistoryContext(
+    activeHistoryType,
+    generationMethod !== 'manual' ? activeSourceId : null
+  );
+
   const handleGenerate = () => {
     generateMutation.mutate({
       targetRole,
@@ -45,14 +53,20 @@ export default function LearningPathPage() {
   };
 
   const handleGenerateFromHistory = () => {
-    generateFromHistoryMutation.mutate({
-      timeframeInWeeks: 12,
-      matchScoreId: generationMethod === 'cv-jd' && selectedMatchScoreId ? selectedMatchScoreId : undefined,
-      sessionId: generationMethod === 'interview' && selectedSessionId ? selectedSessionId : undefined,
-    });
+    if (generationMethod === 'cv-jd') {
+      generateFromCvJdMutation.mutate({
+        timeframeInWeeks: 12,
+        matchScoreId: selectedMatchScoreId,
+      });
+    } else if (generationMethod === 'interview') {
+      generateFromInterviewMutation.mutate({
+        timeframeInWeeks: 12,
+        sessionId: selectedSessionId,
+      });
+    }
   };
 
-  const isAnyPending = generateMutation.isPending || generateFromHistoryMutation.isPending;
+  const isAnyPending = generateMutation.isPending || generateFromCvJdMutation.isPending || generateFromInterviewMutation.isPending;
 
   const isGenerateDisabled = () => {
     if (generationMethod === 'manual') {
@@ -67,9 +81,10 @@ export default function LearningPathPage() {
     return true;
   };
 
-  const isAnyError = generateMutation.isError || generateFromHistoryMutation.isError;
+  const isAnyError = generateMutation.isError || generateFromCvJdMutation.isError || generateFromInterviewMutation.isError;
   const errorMessage = (generateMutation.error as any)?.response?.data?.message || 
-                       (generateFromHistoryMutation.error as any)?.response?.data?.message || 
+                       (generateFromCvJdMutation.error as any)?.response?.data?.message || 
+                       (generateFromInterviewMutation.error as any)?.response?.data?.message || 
                        'Failed to generate path. Please try again.';
 
   return (
@@ -190,6 +205,25 @@ export default function LearningPathPage() {
               )}
             </div>
 
+            {generationMethod !== 'manual' && activeSourceId && (
+              <div className="mt-4">
+                <Alert className="bg-muted/50 border-blue-100 dark:border-blue-900/50">
+                  <Info className="h-4 w-4 text-blue-500" />
+                  <AlertTitle className="text-blue-700 dark:text-blue-400">AI Analysis Preview</AlertTitle>
+                  <AlertDescription>
+                    <p className="text-sm mb-2 text-muted-foreground">The AI will use the following specific skill gaps and feedback to tailor your learning path:</p>
+                    {isPreviewLoading ? (
+                       <span className="flex items-center text-muted-foreground"><Loader2 className="mr-2 h-3 w-3 animate-spin"/> Loading AI context...</span>
+                    ) : (
+                       <pre className="whitespace-pre-wrap text-xs mt-2 text-muted-foreground font-mono bg-background p-3 rounded border overflow-auto max-h-48">
+                         {previewContextData?.data?.contextPreview || "No specific gap data available. A general path will be generated."}
+                       </pre>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+
             <Button
               className="w-full mt-6"
               disabled={isGenerateDisabled()}
@@ -205,7 +239,7 @@ export default function LearningPathPage() {
               </p>
             )}
 
-            {(generateMutation.isSuccess || generateFromHistoryMutation.isSuccess) && (
+            {(generateMutation.isSuccess || generateFromCvJdMutation.isSuccess || generateFromInterviewMutation.isSuccess) && (
               <p className="text-sm text-green-600 mt-2">
                 Learning path successfully generated! Check the list.
               </p>

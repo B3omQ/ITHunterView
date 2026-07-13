@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { learningPathService } from '@/services/learning-path.service';
-import { GeneratePathRequest, GenerateFromHistoryRequest } from '@/types/learning-path.types';
+import { GeneratePathRequest, GenerateFromCvJdRequest, GenerateFromInterviewRequest } from '@/types/learning-path.types';
 
 export function useGenerateLearningPath() {
   const queryClient = useQueryClient();
@@ -12,10 +12,20 @@ export function useGenerateLearningPath() {
   });
 }
 
-export function useGenerateLearningPathFromHistory() {
+export function useGenerateFromCvJd() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: GenerateFromHistoryRequest) => learningPathService.generateFromHistory(data),
+    mutationFn: (data: GenerateFromCvJdRequest) => learningPathService.generateFromCvJd(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['learning-paths'] });
+    },
+  });
+}
+
+export function useGenerateFromInterview() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: GenerateFromInterviewRequest) => learningPathService.generateFromInterview(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['learning-paths'] });
     },
@@ -44,5 +54,13 @@ export function useDeleteLearningPath() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['learning-paths'] });
     },
+  });
+}
+
+export function usePreviewHistoryContext(type: 'cv-jd' | 'interview', sourceId: string | null) {
+  return useQuery({
+    queryKey: ['learning-paths', 'preview', type, sourceId],
+    queryFn: () => learningPathService.previewHistoryContext(type, sourceId!),
+    enabled: !!sourceId && sourceId !== '',
   });
 }
