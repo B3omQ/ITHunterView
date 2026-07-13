@@ -7,6 +7,7 @@ using ITHunterview.Service.DTOs.Cv;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ITHunterview.WebAPI.Controllers
 {
@@ -96,6 +97,54 @@ namespace ITHunterview.WebAPI.Controllers
             {
                 return NotFound(new ResponseBase<string>("CV not found"));
             }
+        }
+
+        [HttpPost("match-jd")]
+        public async Task<ActionResult<ResponseBase<Guid>>> MatchJd([FromBody] ITHunterview.Service.DTOs.Cv.Matching.MatchingRequestDto request)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+
+                var jobId = await _cvJobMatchingUseCase.SubmitMatchingJobAsync(userId, request);
+
+                // Chạy ngầm trong background với scope riêng biệt
+                _ = Task.Run(async () =>
+                {
+                    using var scope = _serviceScopeFactory.CreateScope();
+                    var useCase = scope.ServiceProvider.GetRequiredService<ICvJobMatchingUseCase>();
+                    await useCase.ProcessMatchingJobAsync(jobId, userId, request);
+                });
+
+                return Ok(new ResponseBase<Guid>(jobId, "Matching job submitted"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ResponseBase<Guid>(Guid.Empty, ex.Message));
+            }
+        }
+
+        [HttpGet("match-results/{jobId:guid}")]
+        public async Task<ActionResult<ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.MatchingResultDto>>> GetMatchResult(Guid jobId)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var result = await _cvJobMatchingUseCase.GetMatchingResultAsync(jobId, userId);
+            if (result == null)
+            {
+                return NotFound(new ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.MatchingResultDto>("Job not found"));
+            }
+
+            return Ok(new ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.MatchingResultDto>(result, "Result retrieved"));
         }
 
         [HttpPost("{id:guid}/match-jobs")]

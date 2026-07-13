@@ -13,5 +13,7 @@ namespace ITHunterview.Service.DTOs.MasterData
         public int CategoryId { get; set; }
 
         public SkillStatus Status { get; set; } = SkillStatus.ACTIVE;
+
+        public List<string>? Aliases { get; set; }
     }
 }

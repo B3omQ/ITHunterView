@@ -1,6 +1,7 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Service.Interface.Service;
@@ -10,26 +11,39 @@ using Microsoft.EntityFrameworkCore;
 using Pgvector.EntityFrameworkCore;
 using Pgvector;
 using System.Collections.Generic;
+using ITHunterview.Service.DTOs.Cv.Matching;
+using System.Net.Http;
+using System.Net.Http.Json;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using ITHunterview.Service.Interface.Service.Matching;
 
 namespace ITHunterview.Service.Implementations.UseCase
 {
-    public class MatchingWeights
-    {
-        public decimal TitleWeight { get; set; } = 0.15m;
-        public decimal SkillsWeight { get; set; } = 0.45m;
-        public decimal ExperienceWeight { get; set; } = 0.30m;
-        public decimal DomainWeight { get; set; } = 0.10m;
-    }
 
     public class CvJobMatchingUseCase : ICvJobMatchingUseCase
     {
         private readonly ITHunterviewContext _context;
         private readonly IAiEmbeddingService _aiService;
+        private readonly ICvTextExtractorService _cvTextExtractorService;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _configuration;
+        private readonly ILogger<CvJobMatchingUseCase> _logger;
 
-        public CvJobMatchingUseCase(ITHunterviewContext context, IAiEmbeddingService aiService)
+        public CvJobMatchingUseCase(
+            ITHunterviewContext context, 
+            IAiEmbeddingService aiService,
+            ICvTextExtractorService cvTextExtractorService,
+            IHttpClientFactory httpClientFactory,
+            IConfiguration configuration,
+            ILogger<CvJobMatchingUseCase> logger)
         {
             _context = context;
             _aiService = aiService;
+            _cvTextExtractorService = cvTextExtractorService;
+            _httpClientFactory = httpClientFactory;
+            _configuration = configuration;
+            _logger = logger;
         }
 
         public string ExtractJsonField(string? jsonString, string fieldName)
@@ -173,8 +187,6 @@ namespace ITHunterview.Service.Implementations.UseCase
                 .Where(j => j.TitleEmbedding != null && j.SkillsEmbedding != null && j.ExperienceEmbedding != null && j.DomainEmbedding != null)
                 .ToListAsync();
 
-            var weights = new MatchingWeights();
-
             var matchScores = new List<CvJobMatchScores>();
 
             foreach (var job in jobs)
@@ -184,10 +196,10 @@ namespace ITHunterview.Service.Implementations.UseCase
                 var expScore = CalculateComponentScore(cv.ExperienceEmbedding, job.ExperienceEmbedding);
                 var domainScore = CalculateComponentScore(cv.DomainEmbedding, job.DomainEmbedding);
 
-                var finalScore = (titleScore * weights.TitleWeight) +
-                                 (skillsScore * weights.SkillsWeight) +
-                                 (expScore * weights.ExperienceWeight) +
-                                 (domainScore * weights.DomainWeight);
+                var finalScore = (titleScore * 0.15m) +
+                                 (skillsScore * 0.45m) +
+                                 (expScore * 0.30m) +
+                                 (domainScore * 0.10m);
 
                 var details = JsonSerializer.Serialize(new 
                 {
@@ -196,7 +208,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                     ExperienceScore = Math.Round(expScore, 4),
                     DomainScore = Math.Round(domainScore, 4),
                     FinalScore = Math.Round(finalScore, 4),
-                    Weights = weights
+                    Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m }
                 });
 
                 var existingScore = await _context.CvJobMatchScores
@@ -237,8 +249,6 @@ namespace ITHunterview.Service.Implementations.UseCase
                 .Where(c => c.TitleEmbedding != null && c.SkillsEmbedding != null && c.ExperienceEmbedding != null && c.DomainEmbedding != null)
                 .ToListAsync();
 
-            var weights = new MatchingWeights();
-
             foreach (var cv in cvs)
             {
                 var titleScore = CalculateComponentScore(cv.TitleEmbedding, job.TitleEmbedding);
@@ -246,10 +256,10 @@ namespace ITHunterview.Service.Implementations.UseCase
                 var expScore = CalculateComponentScore(cv.ExperienceEmbedding, job.ExperienceEmbedding);
                 var domainScore = CalculateComponentScore(cv.DomainEmbedding, job.DomainEmbedding);
 
-                var finalScore = (titleScore * weights.TitleWeight) +
-                                 (skillsScore * weights.SkillsWeight) +
-                                 (expScore * weights.ExperienceWeight) +
-                                 (domainScore * weights.DomainWeight);
+                var finalScore = (titleScore * 0.15m) +
+                                 (skillsScore * 0.45m) +
+                                 (expScore * 0.30m) +
+                                 (domainScore * 0.10m);
 
                 var details = JsonSerializer.Serialize(new 
                 {
@@ -258,7 +268,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                     ExperienceScore = Math.Round(expScore, 4),
                     DomainScore = Math.Round(domainScore, 4),
                     FinalScore = Math.Round(finalScore, 4),
-                    Weights = weights
+                    Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m }
                 });
 
                 var existingScore = await _context.CvJobMatchScores

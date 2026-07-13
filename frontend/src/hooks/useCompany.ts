@@ -2,11 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { companyService } from '@/services/company.service';
 import { CreateCompanyDto, UpdateCompanyDto, VerifyCompanyDto, UpdateCompanyStatusDto } from '@/types/company.types';
 
-export function useGetMyCompany() {
+export function useGetMyCompany(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['my-company'],
     queryFn: companyService.getMyCompany,
     retry: false, // Don't retry if not found
+    ...options,
   });
 }
 

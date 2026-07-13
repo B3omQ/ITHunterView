@@ -21,5 +21,7 @@ namespace ITHunterview.Domain.Entities
         [Column("updated_by")]
         public Guid? UpdatedBy { get; set; }
 
+        public virtual ICollection<Skills> Skills { get; set; } = new List<Skills>();
+
     }
 }

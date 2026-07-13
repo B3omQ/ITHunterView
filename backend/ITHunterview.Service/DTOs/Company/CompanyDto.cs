@@ -10,6 +10,10 @@ namespace ITHunterview.Service.DTOs.Company
         public string Name { get; set; } = string.Empty;
         public string TaxCode { get; set; } = string.Empty;
         public string HeadquartersAddress { get; set; } = string.Empty;
+        public string? ProvinceCode { get; set; }
+        public string? DetailedLocation { get; set; }
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
         public string Industry { get; set; } = string.Empty;
         public string CompanySize { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
@@ -22,6 +26,10 @@ namespace ITHunterview.Service.DTOs.Company
         public string? PendingName { get; set; }
         public string? PendingTaxCode { get; set; }
         public string? PendingHeadquartersAddress { get; set; }
+        public string? PendingProvinceCode { get; set; }
+        public string? PendingDetailedLocation { get; set; }
+        public double? PendingLatitude { get; set; }
+        public double? PendingLongitude { get; set; }
         public CompanyVerificationMethod? PendingVerificationMethod { get; set; }
         public string? PendingVerificationDocumentUrl { get; set; }
         public string? PendingCompanyType { get; set; }

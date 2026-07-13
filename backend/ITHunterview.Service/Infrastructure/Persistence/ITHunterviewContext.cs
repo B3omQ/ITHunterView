@@ -29,6 +29,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         public DbSet<Majors> Majors { get; set; } = null!;
         public DbSet<SkillCategories> SkillCategories { get; set; } = null!;
         public DbSet<Skills> Skills { get; set; } = null!;
+        public DbSet<SkillAliases> SkillAliases { get; set; } = null!;
 
         // Candidate Portfolio
         public DbSet<Cvs> Cvs { get; set; } = null!;
@@ -54,6 +55,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         public DbSet<InterviewReports> InterviewReports { get; set; } = null!;
         public DbSet<LearningPaths> LearningPaths { get; set; } = null!;
         public DbSet<AiApiUsageLogs> AiApiUsageLogs { get; set; } = null!;
+        public DbSet<CvOptimizations> CvOptimizations { get; set; } = null!;
 
         // Finance & Billing
         public DbSet<Subscriptions> Subscriptions { get; set; } = null!;
@@ -266,6 +268,22 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             modelBuilder.Entity<Skills>(entity =>
             {
                 entity.HasIndex(e => e.NormalizedName);
+
+                entity.HasOne(s => s.Category)
+                      .WithMany(c => c.Skills)
+                      .HasForeignKey(s => s.CategoryId)
+                      .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // SkillAliases
+            modelBuilder.Entity<SkillAliases>(entity =>
+            {
+                entity.HasIndex(e => e.NormalizedAliasName);
+
+                entity.HasOne(sa => sa.Skill)
+                      .WithMany(s => s.Aliases)
+                      .HasForeignKey(sa => sa.SkillId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Global Query Filters for Soft Delete
@@ -287,6 +305,22 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 entity.HasIndex(e => e.TableName)
                       .HasMethod("gin")
                       .HasOperators("gin_trgm_ops");
+            });
+
+            // CvOptimizations
+            modelBuilder.Entity<CvOptimizations>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.HasOne(e => e.Candidate)
+                      .WithMany()
+                      .HasForeignKey(e => e.CandidateId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Cv)
+                      .WithMany()
+                      .HasForeignKey(e => e.CvId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Building2, Briefcase } from 'lucide-react';
 
 interface CompanyLogoProps {
@@ -20,6 +20,10 @@ export function CompanyLogo({
 }: CompanyLogoProps) {
   const [imgError, setImgError] = useState(false);
 
+  useEffect(() => {
+    setImgError(false);
+  }, [src]);
+
   const Icon = fallbackType === 'building' ? Building2 : Briefcase;
 
   if (src && !imgError) {
@@ -35,3 +39,4 @@ export function CompanyLogo({
 
   return <Icon className={fallbackIconClassName} />;
 }
+
