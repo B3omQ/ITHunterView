@@ -24,8 +24,18 @@ namespace ITHunterview.Service.UseCase
             _aiService = aiService;
         }
 
+        private const int MaxLearningPathsPerCandidate = 3;
+
         public async Task<LearningPathResponseDto> GenerateLearningPathAsync(Guid candidateId, GeneratePathRequestDto request)
         {
+            var existingPaths = await _learningPathRepository.GetByCandidateIdAsync(candidateId);
+            if (existingPaths.Count >= MaxLearningPathsPerCandidate)
+            {
+                throw new InvalidOperationException(
+                    $"Bạn đã đạt giới hạn tối đa {MaxLearningPathsPerCandidate} lộ trình học. " +
+                    "Vui lòng xoá một lộ trình cũ trước khi tạo lộ trình mới.");
+            }
+
             string systemPrompt = @"You are an expert IT career coach. 
 Generate a comprehensive, step-by-step learning path based on the user's current skills and target role.
 The result MUST be a valid JSON array of objects, where each object represents a learning module.
