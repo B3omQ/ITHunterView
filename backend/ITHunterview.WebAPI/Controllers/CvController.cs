@@ -17,11 +17,19 @@ namespace ITHunterview.WebAPI.Controllers
     {
         private readonly ICvUseCase _cvUseCase;
         private readonly ICvJobMatchingUseCase _cvJobMatchingUseCase;
+        private readonly IHardcodeCvJobMatchingUseCase _hardcodeCvJobMatchingUseCase;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
 
-        public CvController(ICvUseCase cvUseCase, ICvJobMatchingUseCase cvJobMatchingUseCase)
+        public CvController(
+            ICvUseCase cvUseCase, 
+            ICvJobMatchingUseCase cvJobMatchingUseCase,
+            IHardcodeCvJobMatchingUseCase hardcodeCvJobMatchingUseCase,
+            IServiceScopeFactory serviceScopeFactory)
         {
             _cvUseCase = cvUseCase;
             _cvJobMatchingUseCase = cvJobMatchingUseCase;
+            _hardcodeCvJobMatchingUseCase = hardcodeCvJobMatchingUseCase;
+            _serviceScopeFactory = serviceScopeFactory;
         }
 
         [HttpPost]
@@ -105,6 +113,44 @@ namespace ITHunterview.WebAPI.Controllers
                 await _cvUseCase.GetCvByIdAsync(id, userId);
                 await _cvJobMatchingUseCase.MatchCvWithAllJobsAsync(id);
                 return Ok(new ResponseBase<string>("Matching completed", "CV matched with jobs successfully"));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new ResponseBase<string>("CV not found"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ResponseBase<string>(null, ex.Message));
+            }
+        }
+
+        [HttpGet("match-history")]
+        public async Task<ActionResult<ResponseBase<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>>> GetMatchHistory([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] Guid? cvId = null)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var result = await _cvJobMatchingUseCase.GetMatchHistoryAsync(userId, page, pageSize, cvId);
+            return Ok(new ResponseBase<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>(result, "Match history retrieved"));
+        }
+        [HttpPost("{id:guid}/match-jobs-hardcode")]
+        public async Task<ActionResult<ResponseBase<string>>> MatchJobsHardcode(Guid id)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+                // Verify that CV belongs to user
+                await _cvUseCase.GetCvByIdAsync(id, userId);
+                await _hardcodeCvJobMatchingUseCase.MatchCvWithAllJobsHardcodeAsync(id);
+                return Ok(new ResponseBase<string>("Matching completed", "CV matched with jobs using Hardcode successfully"));
             }
             catch (KeyNotFoundException)
             {

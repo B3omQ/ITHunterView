@@ -30,5 +30,8 @@ namespace ITHunterview.Domain.Entities
         [Column("updated_at")]
         public DateTime UpdatedAt { get; set; }
 
+        [Column("match_type")]
+        public string MatchType { get; set; } = "AI";
+
     }
 }

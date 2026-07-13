@@ -16,12 +16,18 @@ namespace ITHunterview.WebAPI.Controllers
         private readonly IJobPostingsUseCase _jobPostingsUseCase;
         private readonly IUserUseCase _userUseCase;
         private readonly ICvJobMatchingUseCase _cvJobMatchingUseCase;
+        private readonly IHardcodeCvJobMatchingUseCase _hardcodeCvJobMatchingUseCase;
 
-        public JobPostingsController(IJobPostingsUseCase jobPostingsUseCase, IUserUseCase userUseCase, ICvJobMatchingUseCase cvJobMatchingUseCase)
+        public JobPostingsController(
+            IJobPostingsUseCase jobPostingsUseCase, 
+            IUserUseCase userUseCase, 
+            ICvJobMatchingUseCase cvJobMatchingUseCase,
+            IHardcodeCvJobMatchingUseCase hardcodeCvJobMatchingUseCase)
         {
             _jobPostingsUseCase = jobPostingsUseCase;
             _userUseCase = userUseCase;
             _cvJobMatchingUseCase = cvJobMatchingUseCase;
+            _hardcodeCvJobMatchingUseCase = hardcodeCvJobMatchingUseCase;
         }
 
         [HttpGet]
@@ -117,6 +123,40 @@ namespace ITHunterview.WebAPI.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new ResponseBase<string>(null, ex.Message));
+            }
+        }
+
+        [HttpPost("{id:guid}/match-cvs-hardcode")]
+        public async Task<ActionResult<ResponseBase<string>>> MatchCvsHardcode(Guid id)
+        {
+            try
+            {
+                var jobResult = await _jobPostingsUseCase.GetJobByIdAsync(id);
+                if (!jobResult.Success)
+                {
+                    return NotFound(new ResponseBase<string>("Job not found"));
+                }
+
+                await _hardcodeCvJobMatchingUseCase.MatchJobWithAllCvsHardcodeAsync(id);
+                return Ok(new ResponseBase<string>("Matching completed", "Job matched with CVs using Hardcode successfully"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ResponseBase<string>(null, ex.Message));
+            }
+        }
+
+        [HttpGet("{id:guid}/matches")]
+        public async Task<ActionResult<ResponseBase<PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>>> GetJobMatches(Guid id, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var result = await _cvJobMatchingUseCase.GetJobMatchHistoryAsync(id, page, pageSize);
+                return Ok(new ResponseBase<PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>(result, "Job matches retrieved"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ResponseBase<PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>(null, ex.Message));
             }
         }
 
