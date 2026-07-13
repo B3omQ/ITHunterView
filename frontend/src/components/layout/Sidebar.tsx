@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, User, Briefcase, Bookmark, Bell, Settings, HelpCircle, LogOut,
   ChevronRight, Users, FileText, Building2, Shield, BarChart3, BrainCircuit,
-  ClipboardList, Database, CreditCard, MessageSquare, KeyRound, AlertCircle, Sparkles, Map
+  ClipboardList, Database, CreditCard, MessageSquare, KeyRound, AlertCircle, Sparkles, History,Map
 } from "lucide-react"
 import { useAuthStore } from "@/store/auth.store"
 import { Logo } from "@/components/layout/Logo"
@@ -33,6 +33,7 @@ const ICONS: Record<string, React.ReactNode> = {
   MessageSquare: <MessageSquare size={18} />,
   KeyRound: <KeyRound size={18} />,
   Sparkles: <Sparkles size={18} />,
+  History: <History size={18} />,
   Map: <Map size={18} />,
 }
 

@@ -17,6 +17,7 @@ namespace ITHunterview.Service.Tests.UseCase
         private readonly Mock<ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService> _mockExtractorService;
         private readonly Mock<System.Net.Http.IHttpClientFactory> _mockHttpClientFactory;
         private readonly Mock<Microsoft.Extensions.Configuration.IConfiguration> _mockConfiguration;
+        private readonly Mock<IPromptManagementService> _mockPromptService;
         private readonly CvJobMatchingUseCase _sut;
 
         public CvJobMatchingUseCaseTests()
@@ -25,10 +26,11 @@ namespace ITHunterview.Service.Tests.UseCase
             _mockExtractorService = new Mock<ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService>();
             _mockHttpClientFactory = new Mock<System.Net.Http.IHttpClientFactory>();
             _mockConfiguration = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
+            _mockPromptService = new Mock<IPromptManagementService>();
             var mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<CvJobMatchingUseCase>>();
             
             // Pass null for context since we only test methods that don't hit DB
-            _sut = new CvJobMatchingUseCase(null!, _mockAiService.Object, _mockExtractorService.Object, _mockHttpClientFactory.Object, _mockConfiguration.Object, mockLogger.Object);
+            _sut = new CvJobMatchingUseCase(null!, _mockAiService.Object, _mockExtractorService.Object, _mockHttpClientFactory.Object, _mockConfiguration.Object, mockLogger.Object, _mockPromptService.Object);
         }
 
         [Theory]

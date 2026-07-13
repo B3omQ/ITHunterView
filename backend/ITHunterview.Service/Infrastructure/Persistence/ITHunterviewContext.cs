@@ -68,7 +68,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
         // System Ops
         public DbSet<SystemConfigs> SystemConfigs { get; set; } = null!;
-        public DbSet<SystemPrompts> SystemPrompts { get; set; } = null!;
+        public DbSet<Prompts> Prompts { get; set; } = null!;
+        public DbSet<PromptVersions> PromptVersions { get; set; } = null!;
         public DbSet<Notifications> Notifications { get; set; } = null!;
         public DbSet<SysEmailLogs> SysEmailLogs { get; set; } = null!;
 
@@ -320,6 +321,29 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 entity.HasOne(e => e.Cv)
                       .WithMany()
                       .HasForeignKey(e => e.CvId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Prompts
+            modelBuilder.Entity<Prompts>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.PromptKey).IsUnique();
+            });
+
+            // PromptVersions
+            modelBuilder.Entity<PromptVersions>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                // Partial Unique Index: only one active version per prompt
+                entity.HasIndex(e => new { e.PromptId, e.IsActive })
+                      .IsUnique()
+                      .HasFilter("\"IsActive\" = true");
+                      
+                entity.HasOne(e => e.Prompt)
+                      .WithMany(p => p.Versions)
+                      .HasForeignKey(e => e.PromptId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
         }
