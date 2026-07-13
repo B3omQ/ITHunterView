@@ -5,11 +5,18 @@ export interface GeneratePathRequest {
   timeframeInWeeks: number;
 }
 
+export interface GenerateFromHistoryRequest {
+  matchScoreId?: string;
+  sessionId?: string;
+  timeframeInWeeks?: number;
+}
+
 export interface LearningModule {
   title: string;
   description: string;
   durationWeeks: number;
   skills: string[];
+  gapSource?: 'cv-jd-match' | 'interview' | 'both';
 }
 
 export interface LearningPath {

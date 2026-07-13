@@ -1,23 +1,39 @@
 'use client';
 
 import { useState } from 'react';
-import { useGenerateLearningPath, useMyLearningPaths } from '@/hooks/useLearningPath';
+import Link from 'next/link';
+import { useGenerateLearningPath, useGenerateLearningPathFromHistory, useMyLearningPaths, useDeleteLearningPath } from '@/hooks/useLearningPath';
+import { useGetMatchHistory } from '@/hooks/useCvMatch';
+import { useGetInterviewSessions } from '@/hooks/useInterview';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+
+import { Loader2, Sparkles, History, Trash2 } from 'lucide-react';
 import { LearningModule } from '@/types/learning-path.types';
 
 export default function LearningPathPage() {
   const { data: myPathsData, isLoading: isLoadingPaths } = useMyLearningPaths();
   const generateMutation = useGenerateLearningPath();
+  const generateFromHistoryMutation = useGenerateLearningPathFromHistory();
+
+  const { data: matchHistoryData } = useGetMatchHistory(1, 50);
+  const { data: interviewSessionsData } = useGetInterviewSessions();
 
   const [targetRole, setTargetRole] = useState('');
   const [currentSkills, setCurrentSkills] = useState('');
   const [targetSkills, setTargetSkills] = useState('');
   const [timeframeInWeeks, setTimeframeInWeeks] = useState('12');
+  
+  const [generationMethod, setGenerationMethod] = useState<'manual' | 'cv-jd' | 'interview'>('manual');
+  const [selectedMatchScoreId, setSelectedMatchScoreId] = useState<string>('');
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('');
 
   const handleGenerate = () => {
     generateMutation.mutate({
@@ -27,6 +43,34 @@ export default function LearningPathPage() {
       timeframeInWeeks: Number(timeframeInWeeks),
     });
   };
+
+  const handleGenerateFromHistory = () => {
+    generateFromHistoryMutation.mutate({
+      timeframeInWeeks: 12,
+      matchScoreId: generationMethod === 'cv-jd' && selectedMatchScoreId ? selectedMatchScoreId : undefined,
+      sessionId: generationMethod === 'interview' && selectedSessionId ? selectedSessionId : undefined,
+    });
+  };
+
+  const isAnyPending = generateMutation.isPending || generateFromHistoryMutation.isPending;
+
+  const isGenerateDisabled = () => {
+    if (generationMethod === 'manual') {
+       return !targetRole || !currentSkills || isAnyPending;
+    }
+    if (generationMethod === 'cv-jd') {
+       return !selectedMatchScoreId || isAnyPending;
+    }
+    if (generationMethod === 'interview') {
+       return !selectedSessionId || isAnyPending;
+    }
+    return true;
+  };
+
+  const isAnyError = generateMutation.isError || generateFromHistoryMutation.isError;
+  const errorMessage = (generateMutation.error as any)?.response?.data?.message || 
+                       (generateFromHistoryMutation.error as any)?.response?.data?.message || 
+                       'Failed to generate path. Please try again.';
 
   return (
     <div className="container mx-auto py-8 space-y-8 max-w-5xl">
@@ -39,104 +83,218 @@ export default function LearningPathPage() {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8">
+      <div className="grid md:grid-cols-2 gap-8 mt-6">
         <Card>
           <CardHeader>
             <CardTitle>Create New Path</CardTitle>
-            <CardDescription>Tell us your goals and we'll map out your journey.</CardDescription>
+            <CardDescription>Select a method to generate your learning path.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="targetRole">Target Role</Label>
-              <Input
-                id="targetRole"
-                placeholder="e.g. Senior Full Stack Developer"
-                value={targetRole}
-                onChange={(e) => setTargetRole(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="currentSkills">Current Skills</Label>
-              <Textarea
-                id="currentSkills"
-                placeholder="e.g. React, Next.js, basic Node.js"
-                value={currentSkills}
-                onChange={(e) => setCurrentSkills(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="targetSkills">Target Skills (Optional)</Label>
-              <Textarea
-                id="targetSkills"
-                placeholder="e.g. System Design, Docker, Kubernetes"
-                value={targetSkills}
-                onChange={(e) => setTargetSkills(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="timeframe">Timeframe (Weeks)</Label>
-              <Input
-                id="timeframe"
-                type="number"
-                min="1"
-                max="52"
-                value={timeframeInWeeks}
-                onChange={(e) => setTimeframeInWeeks(e.target.value)}
-              />
-            </div>
-            <Button
-              className="w-full"
-              disabled={generateMutation.isPending || !targetRole || !currentSkills}
-              onClick={handleGenerate}
+          <CardContent className="space-y-6">
+            <RadioGroup 
+              value={generationMethod} 
+              onValueChange={(val) => setGenerationMethod(val as 'manual' | 'cv-jd' | 'interview')}
+              className="flex flex-col space-y-3 mb-6"
             >
-              {generateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {generateMutation.isPending ? 'Generating Path...' : 'Generate with AI'}
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="manual" id="manual" />
+                <Label htmlFor="manual" className="font-medium cursor-pointer">Manual Input</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="cv-jd" id="cv-jd" />
+                <Label htmlFor="cv-jd" className="font-medium cursor-pointer">From CV-JD Match Result</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="interview" id="interview" />
+                <Label htmlFor="interview" className="font-medium cursor-pointer">From Mock Interview Session</Label>
+              </div>
+            </RadioGroup>
+
+            <div className="pt-4 border-t border-border">
+              {generationMethod === 'manual' && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="targetRole">Target Role</Label>
+                    <Input
+                      id="targetRole"
+                      placeholder="e.g. Senior Full Stack Developer"
+                      value={targetRole}
+                      onChange={(e) => setTargetRole(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="currentSkills">Current Skills</Label>
+                    <Textarea
+                      id="currentSkills"
+                      placeholder="e.g. React, Next.js, basic Node.js"
+                      value={currentSkills}
+                      onChange={(e) => setCurrentSkills(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="targetSkills">Target Skills (Optional)</Label>
+                    <Textarea
+                      id="targetSkills"
+                      placeholder="e.g. System Design, Docker, Kubernetes"
+                      value={targetSkills}
+                      onChange={(e) => setTargetSkills(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="timeframe">Timeframe (Weeks)</Label>
+                    <Input
+                      id="timeframe"
+                      type="number"
+                      min="1"
+                      max="52"
+                      value={timeframeInWeeks}
+                      onChange={(e) => setTimeframeInWeeks(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {generationMethod === 'cv-jd' && (
+                <div className="space-y-2">
+                  <Label>Select CV-JD Match Result</Label>
+                  <Select value={selectedMatchScoreId} onValueChange={(v) => setSelectedMatchScoreId(v || '')}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a match result..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {matchHistoryData?.data?.items?.filter(m => m.status === 'Completed').map(match => (
+                        <SelectItem key={match.jobId} value={match.jobId}>
+                          {match.jdTitle} - {match.matchScore?.toFixed(1)}/100 ({new Date(match.updatedAt).toLocaleDateString()})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {generationMethod === 'interview' && (
+                <div className="space-y-2">
+                  <Label>Select Mock Interview Session</Label>
+                  <Select value={selectedSessionId} onValueChange={(v) => setSelectedSessionId(v || '')}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an interview session..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {interviewSessionsData?.data?.filter(s => s.status === 'COMPLETED').map(session => (
+                        <SelectItem key={session.id} value={session.id}>
+                          {session.jobTitle || 'General Interview'} ({session.difficultyLevel}) - {new Date(session.endedAt || '').toLocaleDateString()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            <Button
+              className="w-full mt-6"
+              disabled={isGenerateDisabled()}
+              onClick={generationMethod === 'manual' ? handleGenerate : handleGenerateFromHistory}
+            >
+              {isAnyPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isAnyPending ? 'Generating Path...' : 'Generate with AI'}
             </Button>
 
-            {generateMutation.isError && (
-              <p className="text-sm text-destructive mt-2">Failed to generate path. Please try again.</p>
+            {isAnyError && (
+              <p className="text-sm text-destructive mt-2">
+                {errorMessage}
+              </p>
+            )}
+
+            {(generateMutation.isSuccess || generateFromHistoryMutation.isSuccess) && (
+              <p className="text-sm text-green-600 mt-2">
+                Learning path successfully generated! Check the list.
+              </p>
             )}
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
-          <h2 className="text-2xl font-semibold">Your Generated Paths</h2>
-          
-          {isLoadingPaths ? (
-            <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-          ) : myPathsData?.data && myPathsData.data.length > 0 ? (
-            <div className="space-y-4">
-              {myPathsData.data.map((path) => (
-                <Card key={path.id}>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Generated Path</CardTitle>
-                    <CardDescription>Created on {new Date(path.createdAt).toLocaleDateString()}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {path.pathData.map((module: LearningModule, index: number) => (
-                        <div key={index} className="border-l-2 border-primary pl-4 pb-4">
-                          <h4 className="font-semibold text-md">{module.title}</h4>
-                          <p className="text-sm text-muted-foreground my-1">{module.description}</p>
-                          <div className="flex gap-2 items-center text-sm">
-                            <span className="font-medium">{module.durationWeeks} Weeks</span>
-                            <span className="text-muted-foreground">•</span>
-                            <span className="text-muted-foreground">{module.skills.join(', ')}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center p-8 border border-dashed rounded-lg text-muted-foreground">
-              No learning paths generated yet.
-            </div>
-          )}
-        </div>
+        {/* Kết quả paths panel bên phải */}
+        <PathListPanel pathsData={myPathsData?.data} isLoading={isLoadingPaths} />
       </div>
+    </div>
+  );
+}
+
+// ─── Shared sub-component (only used in this file) ───────────────────────────
+function PathListPanel({
+  pathsData,
+  isLoading,
+}: {
+  pathsData?: import('@/types/learning-path.types').LearningPath[];
+  isLoading: boolean;
+}) {
+  const deleteMutation = useDeleteLearningPath();
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-semibold">Your Generated Paths</h2>
+
+      {isLoading ? (
+        <div className="flex justify-center p-8">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : pathsData && pathsData.length > 0 ? (
+        <div className="space-y-4">
+          {pathsData.map((path) => (
+            <Card key={path.id}>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0">
+                <div>
+                  <CardTitle className="text-lg">Generated Path</CardTitle>
+                  <CardDescription className="mt-1">
+                    Created on {new Date(path.createdAt).toLocaleDateString('vi-VN')}
+                  </CardDescription>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-muted-foreground hover:text-destructive -mr-2"
+                  onClick={() => {
+                    if (confirm('Are you sure you want to delete this learning path?')) {
+                      deleteMutation.mutate(path.id);
+                    }
+                  }}
+                  disabled={deleteMutation.isPending && deleteMutation.variables === path.id}
+                >
+                  {deleteMutation.isPending && deleteMutation.variables === path.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex gap-4 text-sm text-muted-foreground">
+                    <div>
+                      <span className="font-semibold text-foreground">{path.pathData.length}</span> modules
+                    </div>
+                    <div>
+                      <span className="font-semibold text-foreground">
+                        {path.pathData.reduce((acc, curr) => acc + curr.durationWeeks, 0)}
+                      </span> weeks total
+                    </div>
+                  </div>
+                  
+                  <Link href={`/candidate/learning-path/${path.id}`} passHref>
+                    <Button variant="outline" className="w-full mt-2">
+                      View Details
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center p-8 border border-dashed rounded-lg text-muted-foreground">
+          No learning paths generated yet.
+        </div>
+      )}
     </div>
   );
 }
