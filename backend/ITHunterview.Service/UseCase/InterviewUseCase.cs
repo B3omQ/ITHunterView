@@ -8,6 +8,7 @@ using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Interview;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
+using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Utils;
 
@@ -20,19 +21,22 @@ namespace ITHunterview.Service.UseCase
         private readonly ICvRepository _cvRepository;
         private readonly IJobPostingRepository _jobPostingRepository;
         private readonly IAiService _aiService;
+        private readonly ICvTextExtractorService _cvTextExtractorService;
 
         public InterviewUseCase(
             IInterviewSessionRepository sessionRepository,
             IInterviewAnswerRepository answerRepository,
             ICvRepository cvRepository,
             IJobPostingRepository jobPostingRepository,
-            IAiService aiService)
+            IAiService aiService,
+            ICvTextExtractorService cvTextExtractorService)
         {
             _sessionRepository = sessionRepository;
             _answerRepository = answerRepository;
             _cvRepository = cvRepository;
             _jobPostingRepository = jobPostingRepository;
             _aiService = aiService;
+            _cvTextExtractorService = cvTextExtractorService;
         }
 
         public async Task<List<InterviewSessionDto>> GetCandidateSessionsAsync(Guid candidateId)
@@ -171,8 +175,32 @@ namespace ITHunterview.Service.UseCase
                     {
                         cvContext = cv.ParsedData;
                     }
+                    else if (!string.IsNullOrWhiteSpace(cv.FileUrl))
+                    {
+                        try
+                        {
+                            Console.WriteLine($"[INFO] CV ParsedData is empty. Extracting text from URL: {cv.FileUrl}");
+                            var extractedText = await _cvTextExtractorService.ExtractTextFromUrlAsync(cv.FileUrl);
+                            if (!string.IsNullOrWhiteSpace(extractedText))
+                            {
+                                cv.ParsedData = extractedText;
+                                await _cvRepository.UpdateAsync(cv);
+                                cvContext = extractedText;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[ERROR] Failed to extract CV text in CreateSessionAsync: {ex.Message}");
+                        }
+                    }
                 }
             }
+
+            Console.WriteLine("================ [LOG TERMINAL: CV INFORMATION RECEIVED] ================");
+            Console.WriteLine($"CV FileName: {cvFileName}");
+            Console.WriteLine($"CV Content Preview (Length: {cvContext.Length} chars):");
+            Console.WriteLine(cvContext.Length > 1000 ? cvContext.Substring(0, 1000) + "\n...[TRUNCATED FOR LOG]..." : cvContext);
+            Console.WriteLine("=========================================================================");
 
             string jobContext = "Chưa có thông tin công việc (JD).";
             string jobTitle = "";
@@ -277,8 +305,32 @@ namespace ITHunterview.Service.UseCase
                     {
                         cvContext = cv.ParsedData;
                     }
+                    else if (!string.IsNullOrWhiteSpace(cv.FileUrl))
+                    {
+                        try
+                        {
+                            Console.WriteLine($"[INFO] CV ParsedData is empty. Extracting text from URL: {cv.FileUrl}");
+                            var extractedText = await _cvTextExtractorService.ExtractTextFromUrlAsync(cv.FileUrl);
+                            if (!string.IsNullOrWhiteSpace(extractedText))
+                            {
+                                cv.ParsedData = extractedText;
+                                await _cvRepository.UpdateAsync(cv);
+                                cvContext = extractedText;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[ERROR] Failed to extract CV text in SubmitReplyAsync: {ex.Message}");
+                        }
+                    }
                 }
             }
+
+            Console.WriteLine("================ [LOG TERMINAL: CV INFORMATION RECEIVED] ================");
+            Console.WriteLine($"CV FileName: {cvFileName}");
+            Console.WriteLine($"CV Content Preview (Length: {cvContext.Length} chars):");
+            Console.WriteLine(cvContext.Length > 1000 ? cvContext.Substring(0, 1000) + "\n...[TRUNCATED FOR LOG]..." : cvContext);
+            Console.WriteLine("=========================================================================");
 
             string jobContext = "Chưa có thông tin công việc (JD).";
             string jobTitle = "";
