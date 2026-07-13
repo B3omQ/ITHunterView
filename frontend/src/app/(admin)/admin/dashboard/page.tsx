@@ -1,79 +1,178 @@
-"use client"
+"use client";
 
-import { Users, Building2, Briefcase, ShieldCheck } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users, Banknote, Coins, Activity } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
+
+const userGrowthData = [
+  { month: "Jan", users: 1200, revenue: 4000 },
+  { month: "Feb", users: 1900, revenue: 5500 },
+  { month: "Mar", users: 2400, revenue: 6800 },
+  { month: "Apr", users: 2800, revenue: 7500 },
+  { month: "May", users: 3500, revenue: 9200 },
+  { month: "Jun", users: 4100, revenue: 11000 },
+  { month: "Jul", users: 4800, revenue: 13500 },
+];
+
+const tokenUsageData = [
+  { day: "Mon", tokens: 125000 },
+  { day: "Tue", tokens: 142000 },
+  { day: "Wed", tokens: 185000 },
+  { day: "Thu", tokens: 195000 },
+  { day: "Fri", tokens: 160000 },
+  { day: "Sat", tokens: 85000 },
+  { day: "Sun", tokens: 75000 },
+];
+
+const subscriptionData = [
+  { name: "Basic", value: 45 },
+  { name: "Pro", value: 35 },
+  { name: "Enterprise", value: 20 },
+];
+
+const COLORS = ["#3b82f6", "#8b5cf6", "#ec4899"];
 
 export default function AdminDashboard() {
   const stats = [
-    { label: "Total Users", value: "2,481", icon: <Users size={20} />, color: "from-indigo-500 to-violet-600", change: "+124 this month" },
-    { label: "Companies", value: "187", icon: <Building2 size={20} />, color: "from-blue-500 to-cyan-600", change: "12 pending review" },
-    { label: "Job Postings", value: "634", icon: <Briefcase size={20} />, color: "from-green-500 to-emerald-600", change: "48 published today" },
-    { label: "System Health", value: "99.9%", icon: <ShieldCheck size={20} />, color: "from-amber-500 to-orange-600", change: "All systems normal" },
-  ]
+    {
+      title: "Total Revenue",
+      value: "$13,500",
+      change: "+15% from last month",
+      icon: <Banknote className="h-4 w-4 text-muted-foreground" />,
+    },
+    {
+      title: "Total Users",
+      value: "4,800",
+      change: "+12% from last month",
+      icon: <Users className="h-4 w-4 text-muted-foreground" />,
+    },
+    {
+      title: "AI Tokens Used",
+      value: "967K",
+      change: "+5% from last week",
+      icon: <Coins className="h-4 w-4 text-muted-foreground" />,
+    },
+    {
+      title: "Transactions",
+      value: "1,204",
+      change: "+8% from last month",
+      icon: <Activity className="h-4 w-4 text-muted-foreground" />,
+    },
+  ];
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Platform overview and system management.</p>
+        <h1 className="text-2xl font-bold tracking-tight">Admin Dashboard</h1>
+        <p className="text-muted-foreground">
+          Platform overview, financial growth, and AI usage metrics.
+        </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s) => (
-          <div key={s.label} className="bg-card border border-border rounded-2xl p-5 hover:border-indigo-500/30 transition-all">
-            <div className={`w-10 h-10 rounded-xl mb-4`}>
-              {s.icon}
-            </div>
-            <div className="text-2xl font-bold text-foreground">{s.value}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
-            <div className="text-xs text-primary mt-2">{s.change}</div>
-          </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {stats.map((stat, i) => (
+          <Card key={i}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                {stat.title}
+              </CardTitle>
+              {stat.icon}
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stat.value}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stat.change}
+              </p>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-card border border-border rounded-2xl p-5">
-          <h2 className="font-semibold text-foreground mb-4">Pending Reviews</h2>
-          <div className="space-y-3">
-            {[
-              { type: "Company", name: "Axon Technology", priority: "High" },
-              { type: "Job Post", name: "Senior Dev at TechCo", priority: "Medium" },
-              { type: "Company", name: "Bright Solutions", priority: "Low" },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors cursor-pointer">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">{item.name}</p>
-                  <p className="text-xs text-muted-foreground">{item.type}</p>
-                </div>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                  item.priority === "High" ? "text-red-400 bg-red-400/10"
-                  : item.priority === "Medium" ? "text-amber-400 bg-amber-400/10"
-                  : "text-green-400 bg-green-400/10"
-                }`}>{item.priority}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-1 lg:col-span-4">
+          <CardHeader>
+            <CardTitle>User & Revenue Growth</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={userGrowthData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                  <XAxis dataKey="month" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="left" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
+                  <YAxis yAxisId="right" orientation="right" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                  <RechartsTooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+                  <Legend />
+                  <Line yAxisId="left" type="monotone" name="Revenue" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} activeDot={{ r: 6 }} />
+                  <Line yAxisId="right" type="monotone" name="Users" dataKey="users" stroke="#8b5cf6" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="bg-card border border-border rounded-2xl p-5">
-          <h2 className="font-semibold text-foreground mb-4">Recent Activity</h2>
-          <div className="space-y-3">
-            {[
-              { action: "New company registered", time: "2 min ago" },
-              { action: "Job post approved: VNG Corp", time: "15 min ago" },
-              { action: "User banned: spam report", time: "1 hr ago" },
-              { action: "System config updated", time: "3 hr ago" },
-            ].map((log, i) => (
-              <div key={i} className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0">
-                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm text-foreground">{log.action}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{log.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Card className="col-span-1 lg:col-span-3">
+          <CardHeader>
+            <CardTitle>AI Token Usage (Weekly)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={tokenUsageData} margin={{ top: 5, right: 0, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                  <XAxis dataKey="day" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value / 1000}k`} />
+                  <RechartsTooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+                  <Bar dataKey="tokens" name="Tokens" fill="#ec4899" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-1 lg:col-span-3">
+          <CardHeader>
+            <CardTitle>Subscriptions Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={subscriptionData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {subscriptionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
-  )
+  );
 }
