@@ -28,9 +28,17 @@ export default function LearningPathPage() {
   const { data: interviewSessionsData } = useGetInterviewSessions();
 
   const [targetRole, setTargetRole] = useState('');
+  const [specificGoal, setSpecificGoal] = useState('');
+  const [experienceLevel, setExperienceLevel] = useState('');
   const [currentSkills, setCurrentSkills] = useState('');
-  const [targetSkills, setTargetSkills] = useState('');
   const [timeframeInWeeks, setTimeframeInWeeks] = useState('12');
+  const [hoursPerWeek, setHoursPerWeek] = useState('10');
+  
+  const [strengths, setStrengths] = useState('');
+  const [weaknesses, setWeaknesses] = useState('');
+  const [targetCompanyType, setTargetCompanyType] = useState('');
+  const [learningStyle, setLearningStyle] = useState('');
+  const [additionalPreferences, setAdditionalPreferences] = useState('');
   
   const [generationMethod, setGenerationMethod] = useState<'manual' | 'cv-jd' | 'interview'>('manual');
   const [selectedMatchScoreId, setSelectedMatchScoreId] = useState<string>('');
@@ -46,9 +54,16 @@ export default function LearningPathPage() {
   const handleGenerate = () => {
     generateMutation.mutate({
       targetRole,
+      specificGoal,
+      experienceLevel,
       currentSkills,
-      targetSkills,
-      timeframeInWeeks: Number(timeframeInWeeks),
+      strengths,
+      weaknesses,
+      targetCompanyType,
+      learningStyle,
+      additionalPreferences,
+      timeframeInWeeks: Number(timeframeInWeeks) || 12,
+      hoursPerWeek: Number(hoursPerWeek) || 10,
     });
   };
 
@@ -70,7 +85,7 @@ export default function LearningPathPage() {
 
   const isGenerateDisabled = () => {
     if (generationMethod === 'manual') {
-       return !targetRole || !currentSkills || isAnyPending;
+       return !targetRole || !specificGoal || !experienceLevel || !currentSkills || isAnyPending;
     }
     if (generationMethod === 'cv-jd') {
        return !selectedMatchScoreId || isAnyPending;
@@ -126,33 +141,84 @@ export default function LearningPathPage() {
 
             <div className="pt-4 border-t border-border">
               {generationMethod === 'manual' && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="targetRole">Target Role</Label>
-                    <Input
-                      id="targetRole"
-                      placeholder="e.g. Senior Full Stack Developer"
-                      value={targetRole}
-                      onChange={(e) => setTargetRole(e.target.value)}
-                    />
+                <div className="space-y-8">
+                  {/* Section 1: Core Information */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-lg flex items-center"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Core Information</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="targetRole">Target Role <span className="text-red-500">*</span></Label>
+                        <Input id="targetRole" placeholder="e.g. Senior Frontend Developer" value={targetRole} onChange={(e) => setTargetRole(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="experienceLevel">Experience Level <span className="text-red-500">*</span></Label>
+                        <Select value={experienceLevel} onValueChange={(v) => setExperienceLevel(v || '')}>
+                          <SelectTrigger id="experienceLevel"><SelectValue placeholder="Select experience..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="< 1 year">Less than 1 year</SelectItem>
+                            <SelectItem value="1-3 years">1-3 years</SelectItem>
+                            <SelectItem value="3-5 years">3-5 years</SelectItem>
+                            <SelectItem value="5+ years">5+ years</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="specificGoal">Specific Goal <span className="text-red-500">*</span></Label>
+                      <Textarea id="specificGoal" placeholder="e.g. Pass Senior Frontend Interview at a product company, or switch from QA to Developer" value={specificGoal} onChange={(e) => setSpecificGoal(e.target.value)} />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="currentSkills">Current Skills</Label>
-                    <Textarea
-                      id="currentSkills"
-                      placeholder="e.g. React, Next.js, basic Node.js"
-                      value={currentSkills}
-                      onChange={(e) => setCurrentSkills(e.target.value)}
-                    />
+
+                  {/* Section 2: Technical Information */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-lg flex items-center border-t pt-6"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Technical Profile</h3>
+                    <div className="space-y-2">
+                      <Label htmlFor="currentSkills">Current Tech Stack & Proficiency <span className="text-red-500">*</span></Label>
+                      <Textarea id="currentSkills" placeholder="e.g. React - Advanced, Node.js - Beginner, SQL - Intermediate" value={currentSkills} onChange={(e) => setCurrentSkills(e.target.value)} />
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="strengths">Strengths</Label>
+                        <Textarea id="strengths" placeholder="e.g. UI/UX, CSS, API Integration" value={strengths} onChange={(e) => setStrengths(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="weaknesses">Weaknesses</Label>
+                        <Textarea id="weaknesses" placeholder="e.g. System Design, State Management" value={weaknesses} onChange={(e) => setWeaknesses(e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="targetCompanyType">Target Company Type</Label>
+                      <Select value={targetCompanyType} onValueChange={(v) => setTargetCompanyType(v || '')}>
+                        <SelectTrigger id="targetCompanyType"><SelectValue placeholder="Select target company type..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Product">Product Company</SelectItem>
+                          <SelectItem value="Outsourcing">Outsourcing / Agency</SelectItem>
+                          <SelectItem value="Startup">Startup</SelectItem>
+                          <SelectItem value="Any">Any / Not sure</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="targetSkills">Target Skills (Optional)</Label>
-                    <Textarea
-                      id="targetSkills"
-                      placeholder="e.g. System Design, Docker, Kubernetes"
-                      value={targetSkills}
-                      onChange={(e) => setTargetSkills(e.target.value)}
-                    />
+
+                  {/* Section 3: Personalization */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-lg flex items-center border-t pt-6"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Personalization</h3>
+                    <div className="space-y-2">
+                      <Label htmlFor="learningStyle">Preferred Learning Style</Label>
+                      <Select value={learningStyle} onValueChange={(v) => setLearningStyle(v || '')}>
+                        <SelectTrigger id="learningStyle"><SelectValue placeholder="Select preferred learning style..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Project-based">Project-based & Hands-on</SelectItem>
+                          <SelectItem value="Theory & Video">Video Courses & Theory</SelectItem>
+                          <SelectItem value="Coding Exercises">Coding Exercises (LeetCode style)</SelectItem>
+                          <SelectItem value="Mixed">Mixed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="additionalPreferences">Additional Preferences (Budget, Language, etc.)</Label>
+                      <Textarea id="additionalPreferences" placeholder="e.g. Prefer free resources, prefer Vietnamese content" value={additionalPreferences} onChange={(e) => setAdditionalPreferences(e.target.value)} />
+                    </div>
                   </div>
                 </div>
               )}
@@ -214,16 +280,32 @@ export default function LearningPathPage() {
             )}
 
             {/* Timeframe applies to all methods */}
-            <div className="space-y-2 mt-4 pt-4 border-t">
-              <Label htmlFor="timeframe">Desired Timeframe (Weeks)</Label>
-              <Input
-                id="timeframe"
-                type="number"
-                min="1"
-                max="52"
-                value={timeframeInWeeks}
-                onChange={(e) => setTimeframeInWeeks(e.target.value)}
-              />
+            <div className="mt-4 pt-6 border-t">
+              <h3 className="font-semibold text-lg flex items-center mb-4"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Time Commitment</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="timeframe">Desired Timeframe (Weeks)</Label>
+                  <Input
+                    id="timeframe"
+                    type="number"
+                    min="1"
+                    max="52"
+                    value={timeframeInWeeks}
+                    onChange={(e) => setTimeframeInWeeks(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="hoursPerWeek">Hours per Week</Label>
+                  <Input
+                    id="hoursPerWeek"
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={hoursPerWeek}
+                    onChange={(e) => setHoursPerWeek(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
 
             <Button

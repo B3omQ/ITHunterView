@@ -59,13 +59,28 @@ Example output format:
 ]
 Do NOT include any markdown blocks like ```json, just return the raw JSON array.";
 
-            string userPrompt = $@"
-Target Role: {request.TargetRole}
-Current Skills: {request.CurrentSkills}
-Target Skills: {request.TargetSkills}
-Desired Timeframe: {request.TimeframeInWeeks} weeks.
+            var userPromptBuilder = new StringBuilder();
+            userPromptBuilder.AppendLine($"Target Role: {request.TargetRole}");
+            userPromptBuilder.AppendLine($"Specific Goal: {request.SpecificGoal}");
+            userPromptBuilder.AppendLine($"Experience Level: {request.ExperienceLevel}");
+            userPromptBuilder.AppendLine($"Desired Timeframe: {request.TimeframeInWeeks} weeks ({request.HoursPerWeek} hours/week).");
+            userPromptBuilder.AppendLine();
+            
+            userPromptBuilder.AppendLine("=== TECHNICAL PROFILE ===");
+            userPromptBuilder.AppendLine($"Current Skills & Proficiency: {request.CurrentSkills}");
+            if (!string.IsNullOrWhiteSpace(request.Strengths)) userPromptBuilder.AppendLine($"Strengths: {request.Strengths}");
+            if (!string.IsNullOrWhiteSpace(request.Weaknesses)) userPromptBuilder.AppendLine($"Weaknesses: {request.Weaknesses}");
+            if (!string.IsNullOrWhiteSpace(request.TargetCompanyType)) userPromptBuilder.AppendLine($"Target Company Type: {request.TargetCompanyType}");
+            userPromptBuilder.AppendLine();
 
-Please generate a structured learning path.";
+            userPromptBuilder.AppendLine("=== PERSONALIZATION & PREFERENCES ===");
+            if (!string.IsNullOrWhiteSpace(request.LearningStyle)) userPromptBuilder.AppendLine($"Preferred Learning Style: {request.LearningStyle}");
+            if (!string.IsNullOrWhiteSpace(request.AdditionalPreferences)) userPromptBuilder.AppendLine($"Additional Preferences: {request.AdditionalPreferences}");
+            userPromptBuilder.AppendLine();
+            
+            userPromptBuilder.AppendLine("Please generate a structured, highly personalized learning path taking into account the time constraints and preferences above.");
+
+            string userPrompt = userPromptBuilder.ToString();
 
             return await CallAiAndSaveAsync(candidateId, userPrompt, systemPrompt);
         }

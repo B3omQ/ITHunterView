@@ -1,8 +1,20 @@
 export interface GeneratePathRequest {
+  // Core Information
   targetRole: string;
-  currentSkills: string;
-  targetSkills: string;
+  specificGoal: string;
+  experienceLevel: string;
   timeframeInWeeks: number;
+  hoursPerWeek: number;
+
+  // Technical Information
+  currentSkills: string;
+  targetCompanyType?: string;
+  strengths?: string;
+  weaknesses?: string;
+
+  // Personalization
+  learningStyle?: string;
+  additionalPreferences?: string;
 }
 
 export interface GenerateFromCvJdRequest {
