@@ -588,13 +588,66 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
                 throw new ArgumentException("Invalid task index.");
             }
 
-            // Toggle task completed flag
+            // Determine current status
             bool currentTaskStatus = false;
             if (tasksList[taskIndex].TryGetValue("completed", out var compVal) && compVal is JsonElement compElem)
             {
                 currentTaskStatus = compElem.ValueKind == JsonValueKind.True;
             }
-            tasksList[taskIndex]["completed"] = !currentTaskStatus;
+
+            // Determine intended next status
+            bool nextStatus = !currentTaskStatus;
+
+            // Enforcement Rules
+            if (nextStatus) // Checking
+            {
+                // Check previous module is completed
+                if (moduleIndex > 0)
+                {
+                    if (modules[moduleIndex - 1].TryGetValue("completed", out var prevModVal) && prevModVal is JsonElement prevModElem)
+                    {
+                        if (prevModElem.ValueKind != JsonValueKind.True)
+                            throw new ArgumentException("You must complete the previous module first.");
+                    }
+                }
+
+                // Check previous task in current module is completed
+                if (taskIndex > 0)
+                {
+                    if (tasksList[taskIndex - 1].TryGetValue("completed", out var prevTaskVal) && prevTaskVal is JsonElement prevTaskElem)
+                    {
+                        if (prevTaskElem.ValueKind != JsonValueKind.True)
+                            throw new ArgumentException("You must complete the previous task first.");
+                    }
+                }
+            }
+            else // Unchecking
+            {
+                // Ensure next task in current module is not completed
+                if (taskIndex < tasksList.Count - 1)
+                {
+                    if (tasksList[taskIndex + 1].TryGetValue("completed", out var nextTaskVal) && nextTaskVal is JsonElement nextTaskElem)
+                    {
+                        if (nextTaskElem.ValueKind == JsonValueKind.True)
+                            throw new ArgumentException("Cannot uncheck task because the subsequent task is already completed.");
+                    }
+                }
+                // Ensure first task of next module is not completed
+                else if (moduleIndex < modules.Count - 1)
+                {
+                    if (modules[moduleIndex + 1].TryGetValue("tasks", out var nextModTasksObj) && nextModTasksObj is JsonElement nextModTasksElem && nextModTasksElem.ValueKind == JsonValueKind.Array)
+                    {
+                        var nextModTasksList = nextModTasksElem.EnumerateArray().ToList();
+                        if (nextModTasksList.Count > 0)
+                        {
+                            if (nextModTasksList[0].TryGetProperty("completed", out var firstTaskNextMod) && firstTaskNextMod.ValueKind == JsonValueKind.True)
+                                throw new ArgumentException("Cannot uncheck task because the next module has already been started.");
+                        }
+                    }
+                }
+            }
+
+            tasksList[taskIndex]["completed"] = nextStatus;
 
             modules[moduleIndex]["tasks"] = tasksList;
 

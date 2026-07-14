@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, ArrowLeft, Clock, CheckCircle2, Circle } from 'lucide-react';
+import { Loader2, ArrowLeft, Clock, CheckCircle2, Circle, Lock } from 'lucide-react';
 import { LearningModule } from '@/types/learning-path.types';
 import {
   Accordion,
@@ -101,16 +101,20 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
         </CardHeader>
         <CardContent>
           <Accordion className="w-full space-y-4">
-            {path.pathData.map((module: LearningModule, index: number) => (
-              <AccordionItem key={index} value={`module-${index}`} className={`border rounded-lg px-4 transition-colors ${module.completed ? 'bg-muted/30 border-muted' : 'bg-card'}`}>
+            {path.pathData.map((module: LearningModule, index: number) => {
+              const isModuleLocked = index > 0 && !path.pathData[index - 1].completed;
+              return (
+              <AccordionItem key={index} value={`module-${index}`} className={`border rounded-lg px-4 transition-colors ${module.completed ? 'bg-muted/30 border-muted' : 'bg-card'} ${isModuleLocked ? 'opacity-70 grayscale-[0.5]' : ''}`}>
                 <AccordionTrigger className="hover:no-underline py-4">
                   <div className="flex flex-col sm:flex-row sm:items-center text-left gap-2 sm:gap-4 w-full pr-4">
                     <div className="flex items-center gap-3">
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 font-semibold ${module.completed ? 'bg-green-100 text-green-700' : 'bg-primary/10 text-primary'}`}>
-                        {module.completed ? <CheckCircle2 className="w-5 h-5" /> : index + 1}
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 font-semibold ${module.completed ? 'bg-green-100 text-green-700' : isModuleLocked ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
+                        {module.completed ? <CheckCircle2 className="w-5 h-5" /> : isModuleLocked ? <Lock className="w-4 h-4" /> : index + 1}
                       </div>
                       <div>
-                        <h4 className={`font-semibold text-lg ${module.completed ? 'text-muted-foreground' : ''}`}>{module.title}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className={`font-semibold text-lg ${module.completed ? 'text-muted-foreground' : ''}`}>{module.title}</h4>
+                        </div>
                         {module.tasks && module.tasks.length > 0 && (
                           <p className="text-xs text-muted-foreground font-normal mt-0.5">
                             {module.tasks.filter(t => t.completed).length}/{module.tasks.length} tasks completed
@@ -145,22 +149,31 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
                       <div>
                         <h5 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Tasks</h5>
                         <div className="space-y-3">
-                          {module.tasks.map((task, taskIdx) => (
-                            <div key={taskIdx} className={`flex items-start gap-3 p-4 border rounded-lg transition-colors ${task.completed ? 'bg-muted/50 border-muted' : 'bg-card hover:bg-muted/20'}`}>
+                          {module.tasks.map((task, taskIdx) => {
+                            const isTaskLocked = isModuleLocked || (taskIdx > 0 && !module.tasks[taskIdx - 1].completed);
+                            const isUncheckDisabled = task.completed && taskIdx < module.tasks.length - 1 && module.tasks[taskIdx + 1].completed;
+                            const isCheckboxDisabled = toggleMutation.isPending || isTaskLocked || isUncheckDisabled;
+
+                            return (
+                            <div key={taskIdx} className={`flex items-start gap-3 p-4 border rounded-lg transition-colors ${task.completed ? 'bg-muted/50 border-muted' : isTaskLocked ? 'bg-muted/20 opacity-70 cursor-not-allowed' : 'bg-card hover:bg-muted/20'}`}>
                               <Checkbox 
                                 checked={task.completed || false} 
-                                onCheckedChange={() => toggleMutation.mutate({ pathId: path.id, moduleIndex: index, taskIndex: taskIdx })}
-                                disabled={toggleMutation.isPending}
-                                className="mt-1 w-5 h-5 border-2 rounded-md data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                onCheckedChange={() => !isCheckboxDisabled && toggleMutation.mutate({ pathId: path.id, moduleIndex: index, taskIndex: taskIdx })}
+                                disabled={isCheckboxDisabled}
+                                className={`mt-1 w-5 h-5 border-2 rounded-md ${task.completed ? 'data-[state=checked]:bg-primary data-[state=checked]:border-primary' : isTaskLocked ? 'border-muted-foreground/30 bg-muted/50' : ''}`}
                               />
                               <div className="space-y-1 -mt-0.5">
-                                <h6 className={`font-medium leading-none ${task.completed ? 'text-muted-foreground line-through decoration-muted-foreground/50' : 'text-foreground'}`}>
-                                  {task.title}
-                                </h6>
+                                <div className="flex items-center gap-2">
+                                  <h6 className={`font-medium leading-none ${task.completed ? 'text-muted-foreground line-through decoration-muted-foreground/50' : 'text-foreground'}`}>
+                                    {task.title}
+                                  </h6>
+                                  {isTaskLocked && <Lock className="w-3.5 h-3.5 text-muted-foreground/50" />}
+                                </div>
                                 <p className="text-sm text-muted-foreground leading-snug">{task.description}</p>
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     ) : module.skills && module.skills.length > 0 ? (
@@ -182,7 +195,7 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
                   </div>
                 </AccordionContent>
               </AccordionItem>
-            ))}
+            )})}
           </Accordion>
         </CardContent>
       </Card>
