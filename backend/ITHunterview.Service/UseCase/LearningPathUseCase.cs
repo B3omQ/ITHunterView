@@ -47,23 +47,25 @@ namespace ITHunterview.Service.UseCase
 
             string systemPrompt = @"You are an expert IT career coach. 
 Generate a comprehensive, step-by-step learning path based on the user's current skills and target role.
-The result MUST be a valid JSON array of objects, where each object represents a learning module.
+The result MUST be a valid JSON object containing a ""title"" for the path, and a ""modules"" array where each object represents a learning module.
 Example output format:
-[
-  {
-    ""title"": ""Module 1: Introduction"",
-    ""description"": ""Basic concepts."",
-    ""durationWeeks"": 2,
-    ""skills"": [""Skill A"", ""Skill B""]
-  }
-]
-Do NOT include any markdown blocks like ```json, just return the raw JSON array.";
+{
+  ""title"": ""Mastering Senior Frontend Development"",
+  ""modules"": [
+    {
+      ""title"": ""Module 1: Advanced React Patterns"",
+      ""description"": ""Deep dive into HOCs, Render Props, and custom hooks."",
+      ""durationWeeks"": 2,
+      ""skills"": [""React"", ""Custom Hooks"", ""Performance Optimization""]
+    }
+  ]
+}
+Do NOT include any markdown blocks like ```json, just return the raw JSON object.";
 
             var userPromptBuilder = new StringBuilder();
             userPromptBuilder.AppendLine($"Target Role: {request.TargetRole}");
             userPromptBuilder.AppendLine($"Specific Goal: {request.SpecificGoal}");
             userPromptBuilder.AppendLine($"Experience Level: {request.ExperienceLevel}");
-            userPromptBuilder.AppendLine($"Desired Timeframe: {request.TimeframeInWeeks} weeks ({request.HoursPerWeek} hours/week).");
             userPromptBuilder.AppendLine();
             
             userPromptBuilder.AppendLine("=== TECHNICAL PROFILE ===");
@@ -78,7 +80,7 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON array.
             if (!string.IsNullOrWhiteSpace(request.AdditionalPreferences)) userPromptBuilder.AppendLine($"Additional Preferences: {request.AdditionalPreferences}");
             userPromptBuilder.AppendLine();
             
-            userPromptBuilder.AppendLine("Please generate a structured, highly personalized learning path taking into account the time constraints and preferences above.");
+            userPromptBuilder.AppendLine("Please generate a structured, highly personalized self-paced learning path taking into account the preferences above.");
 
             string userPrompt = userPromptBuilder.ToString();
 
@@ -104,23 +106,23 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON array.
             string systemPrompt = @"You are an expert IT career coach.
 Analyze the candidate's skill gaps identified from their CV-JD matching results.
 Generate a targeted, step-by-step learning path to close those specific gaps.
-The result MUST be a valid JSON array of objects, where each object represents a learning module.
-Each module must directly address one or more identified skill gaps.
+The result MUST be a valid JSON object containing a ""title"" for the path, and a ""modules"" array where each object represents a learning module.
 Example output format:
-[
-  {
-    ""title"": ""Module 1: Gap Topic"",
-    ""description"": ""What to learn and why it closes the gap."",
-    ""durationWeeks"": 2,
-    ""skills"": [""Skill A"", ""Skill B""],
-    ""gapSource"": ""cv-jd-match""
-  }
-]
-Do NOT include any markdown blocks like ```json, just return the raw JSON array.";
+{
+  ""title"": ""Closing the CV-JD Gap for Backend Engineer"",
+  ""modules"": [
+    {
+      ""title"": ""Module 1: Microservices Architecture"",
+      ""description"": ""Learn about service discovery, API gateways, and distributed tracing."",
+      ""durationWeeks"": 3,
+      ""skills"": [""Microservices"", ""Docker"", ""Kubernetes""],
+      ""gapSource"": ""cv-jd-match""
+    }
+  ]
+}
+Do NOT include any markdown blocks like ```json, just return the raw JSON object.";
 
             var userPromptBuilder = new StringBuilder();
-            userPromptBuilder.AppendLine($"Desired Timeframe: {request.TimeframeInWeeks} weeks.");
-            userPromptBuilder.AppendLine();
             userPromptBuilder.AppendLine("=== SKILL GAPS FROM CV-JD MATCHING ===");
             userPromptBuilder.AppendLine(matchContext);
             userPromptBuilder.AppendLine();
@@ -145,23 +147,23 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON array.
             string systemPrompt = @"You are an expert IT career coach.
 Analyze the candidate's weak areas identified from their mock interview performance.
 Generate a targeted, step-by-step learning path to close those specific gaps.
-The result MUST be a valid JSON array of objects, where each object represents a learning module.
-Each module must directly address one or more identified skill gaps.
+The result MUST be a valid JSON object containing a ""title"" for the path, and a ""modules"" array where each object represents a learning module.
 Example output format:
-[
-  {
-    ""title"": ""Module 1: Gap Topic"",
-    ""description"": ""What to learn and why it closes the gap."",
-    ""durationWeeks"": 2,
-    ""skills"": [""Skill A"", ""Skill B""],
-    ""gapSource"": ""interview""
-  }
-]
-Do NOT include any markdown blocks like ```json, just return the raw JSON array.";
+{
+  ""title"": ""Interview Preparation: Data Structures & Algorithms"",
+  ""modules"": [
+    {
+      ""title"": ""Module 1: Advanced SQL Queries"",
+      ""description"": ""Mastering window functions and CTEs to address interview weaknesses."",
+      ""durationWeeks"": 2,
+      ""skills"": [""SQL"", ""Window Functions""],
+      ""gapSource"": ""interview""
+    }
+  ]
+}
+Do NOT include any markdown blocks like ```json, just return the raw JSON object.";
 
             var userPromptBuilder = new StringBuilder();
-            userPromptBuilder.AppendLine($"Desired Timeframe: {request.TimeframeInWeeks} weeks.");
-            userPromptBuilder.AppendLine();
             userPromptBuilder.AppendLine("=== WEAK AREAS FROM MOCK INTERVIEW ===");
             userPromptBuilder.AppendLine(interviewContext);
             userPromptBuilder.AppendLine();
@@ -433,10 +435,45 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON array.
                 aiResponseText = aiResponseText.Substring(0, aiResponseText.Length - 3);
             aiResponseText = aiResponseText.Trim();
 
+            string parsedTitle = "Generated Learning Path";
+            string serializedModules = "[]";
+            
             JsonDocument jsonDoc;
             try
             {
                 jsonDoc = JsonDocument.Parse(aiResponseText);
+                if (jsonDoc.RootElement.TryGetProperty("title", out var titleElement) && titleElement.ValueKind == JsonValueKind.String)
+                {
+                    parsedTitle = titleElement.GetString() ?? parsedTitle;
+                }
+                
+                if (jsonDoc.RootElement.TryGetProperty("modules", out var modulesElement) && modulesElement.ValueKind == JsonValueKind.Array)
+                {
+                    // Add "completed": false to every module to initialize gamification
+                    var modulesList = new List<Dictionary<string, object>>();
+                    foreach (var mod in modulesElement.EnumerateArray())
+                    {
+                        var modDict = JsonSerializer.Deserialize<Dictionary<string, object>>(mod.GetRawText()) ?? new Dictionary<string, object>();
+                        modDict["completed"] = false;
+                        modulesList.Add(modDict);
+                    }
+                    serializedModules = JsonSerializer.Serialize(modulesList);
+                }
+                else 
+                {
+                    // Fallback in case AI ignored the prompt and returned an array directly
+                    if (jsonDoc.RootElement.ValueKind == JsonValueKind.Array)
+                    {
+                        var modulesList = new List<Dictionary<string, object>>();
+                        foreach (var mod in jsonDoc.RootElement.EnumerateArray())
+                        {
+                            var modDict = JsonSerializer.Deserialize<Dictionary<string, object>>(mod.GetRawText()) ?? new Dictionary<string, object>();
+                            modDict["completed"] = false;
+                            modulesList.Add(modDict);
+                        }
+                        serializedModules = JsonSerializer.Serialize(modulesList);
+                    }
+                }
             }
             catch (Exception)
             {
@@ -447,7 +484,9 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON array.
             {
                 Id = Guid.NewGuid(),
                 CandidateId = candidateId,
-                PathData = aiResponseText,
+                Title = parsedTitle.Length > 255 ? parsedTitle.Substring(0, 255) : parsedTitle,
+                Status = "Not Started",
+                PathData = serializedModules,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -457,7 +496,9 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON array.
             {
                 Id = learningPath.Id,
                 CandidateId = learningPath.CandidateId,
-                PathData = jsonDoc,
+                Title = learningPath.Title,
+                Status = learningPath.Status,
+                PathData = JsonDocument.Parse(learningPath.PathData),
                 CreatedAt = learningPath.CreatedAt
             };
         }
@@ -473,6 +514,8 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON array.
             {
                 Id = p.Id,
                 CandidateId = p.CandidateId,
+                Title = p.Title,
+                Status = p.Status,
                 PathData = JsonDocument.Parse(p.PathData),
                 CreatedAt = p.CreatedAt
             }).ToList();
@@ -490,6 +533,8 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON array.
             {
                 Id = path.Id,
                 CandidateId = path.CandidateId,
+                Title = path.Title,
+                Status = path.Status,
                 PathData = JsonDocument.Parse(path.PathData),
                 CreatedAt = path.CreatedAt
             };
@@ -504,6 +549,52 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON array.
             }
 
             await _learningPathRepository.DeleteAsync(path);
+        }
+
+        public async Task<LearningPathResponseDto> ToggleModuleCompletionAsync(Guid candidateId, Guid pathId, int moduleIndex)
+        {
+            var path = await _learningPathRepository.GetByIdAsync(pathId);
+            if (path == null || path.CandidateId != candidateId)
+            {
+                throw new KeyNotFoundException("Learning path not found or access denied.");
+            }
+
+            var modules = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(path.PathData);
+            if (modules == null || moduleIndex < 0 || moduleIndex >= modules.Count)
+            {
+                throw new ArgumentException("Invalid module index.");
+            }
+
+            // Toggle completed flag
+            bool currentStatus = false;
+            if (modules[moduleIndex].TryGetValue("completed", out var compVal) && compVal is JsonElement compElem)
+            {
+                currentStatus = compElem.ValueKind == JsonValueKind.True;
+            }
+            modules[moduleIndex]["completed"] = !currentStatus;
+
+            // Recalculate global status
+            int completedCount = modules.Count(m => 
+                m.TryGetValue("completed", out var v) && v is JsonElement e && e.ValueKind == JsonValueKind.True
+            );
+
+            if (completedCount == 0) path.Status = "Not Started";
+            else if (completedCount == modules.Count) path.Status = "Completed";
+            else path.Status = "In Progress";
+
+            path.PathData = JsonSerializer.Serialize(modules);
+
+            await _learningPathRepository.UpdateAsync(path);
+
+            return new LearningPathResponseDto
+            {
+                Id = path.Id,
+                CandidateId = path.CandidateId,
+                Title = path.Title,
+                Status = path.Status,
+                PathData = JsonDocument.Parse(path.PathData),
+                CreatedAt = path.CreatedAt
+            };
         }
     }
 }

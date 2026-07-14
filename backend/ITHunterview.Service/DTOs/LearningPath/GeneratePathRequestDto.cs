@@ -13,10 +13,6 @@ namespace ITHunterview.Service.DTOs.LearningPath
         
         [Required]
         public string ExperienceLevel { get; set; }
-        
-        public int TimeframeInWeeks { get; set; } = 12;
-        
-        public int HoursPerWeek { get; set; } = 10;
 
         // 2. Technical Information
         [Required]

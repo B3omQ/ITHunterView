@@ -10,6 +10,7 @@ namespace ITHunterview.Service.Interface.Persistence
         Task<LearningPaths> GetByIdAsync(Guid id);
         Task<List<LearningPaths>> GetByCandidateIdAsync(Guid candidateId);
         Task<LearningPaths> AddAsync(LearningPaths entity);
+        Task UpdateAsync(LearningPaths entity);
         Task DeleteAsync(LearningPaths entity);
     }
 }

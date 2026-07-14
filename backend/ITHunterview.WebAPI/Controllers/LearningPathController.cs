@@ -72,6 +72,14 @@ namespace ITHunterview.WebAPI.Controllers
             return new ResponseBase<string>("Learning path deleted successfully.");
         }
 
+        [HttpPut("{id:guid}/modules/{moduleIndex:int}/toggle")]
+        public async Task<ActionResult<ResponseBase<LearningPathResponseDto>>> ToggleModuleCompletion(Guid id, int moduleIndex)
+        {
+            var candidateId = GetUserId();
+            var result = await _learningPathUseCase.ToggleModuleCompletionAsync(candidateId, id, moduleIndex);
+            return new ResponseBase<LearningPathResponseDto>(result);
+        }
+
         [HttpGet("preview-context")]
         public async Task<ActionResult<ResponseBase<HistoryContextPreviewDto>>> PreviewHistoryContext([FromQuery] string type, [FromQuery] Guid? sourceId)
         {

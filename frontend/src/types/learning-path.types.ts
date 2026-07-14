@@ -3,8 +3,6 @@ export interface GeneratePathRequest {
   targetRole: string;
   specificGoal: string;
   experienceLevel: string;
-  timeframeInWeeks: number;
-  hoursPerWeek: number;
 
   // Technical Information
   currentSkills: string;
@@ -19,12 +17,10 @@ export interface GeneratePathRequest {
 
 export interface GenerateFromCvJdRequest {
   matchScoreId?: string;
-  timeframeInWeeks?: number;
 }
 
 export interface GenerateFromInterviewRequest {
   sessionId?: string;
-  timeframeInWeeks?: number;
 }
 
 export interface LearningModule {
@@ -33,12 +29,15 @@ export interface LearningModule {
   durationWeeks: number;
   skills: string[];
   gapSource?: 'cv-jd-match' | 'interview' | 'both';
+  completed?: boolean;
 }
 
 export interface LearningPath {
   id: string;
   candidateId: string;
   sessionId: string | null;
+  title: string;
+  status: string;
   pathData: LearningModule[];
   createdAt: string;
 }
