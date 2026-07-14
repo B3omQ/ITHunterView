@@ -225,21 +225,37 @@ namespace ITHunterview.Service.UseCase
                 : "";
 
             // Prompt chào hỏi và câu hỏi đầu tiên (Skills #1)
-            var variables = new Dictionary<string, string>
-            {
-                { "DIFFICULTY_LEVEL", dto.DifficultyLevel.ToString() },
-                { "ROLE", role },
-                { "CV_TEXT", cvContext },
-                { "JD_TEXT", jobContext },
-                { "RUBRIC_CONTEXT", rubricContext }
-            };
+            // var variables = new Dictionary<string, string>
+            // {
+            //     { "DIFFICULTY_LEVEL", dto.DifficultyLevel.ToString() },
+            //     { "ROLE", role },
+            //     { "CV_TEXT", cvContext },
+            //     { "JD_TEXT", jobContext },
+            //     { "RUBRIC_CONTEXT", rubricContext }
+            // };
 
-            var systemPrompt = await _promptManagementService.GetActivePromptContentWithVariablesAsync("MOCK_INTERVIEW_START", variables);
+            // var systemPrompt = await _promptManagementService.GetActivePromptContentWithVariablesAsync("MOCK_INTERVIEW_START", variables);
             
-            if (string.IsNullOrWhiteSpace(systemPrompt))
-            {
-                throw new Exception("Active Prompt for MOCK_INTERVIEW_START not found.");
-            }
+            // if (string.IsNullOrWhiteSpace(systemPrompt))
+            // {
+            //     throw new Exception("Active Prompt for MOCK_INTERVIEW_START not found.");
+            // }
+             var systemPrompt = $"Bạn là một người phỏng vấn IT tuyển dụng chuyên nghiệp. Nhiệm vụ của bạn là thực hiện một buổi phỏng vấn thử (mock interview) gồm đúng 6 câu hỏi ở cấp độ {dto.DifficultyLevel} (Role: {role}).\n\n" +
+                               $"LỘ TRÌNH PHỎNG VẤN:\n" +
+                               $"1. Câu 1 & 2: Kỹ năng chuyên môn / Soft skills (Skills)\n" +
+                               $"2. Câu 3 & 4: Kinh nghiệm thực tế / Dự án (Experience)\n" +
+                               $"3. Câu 5 & 6: Tình huống thực tế / Mức độ phù hợp với JD (JD & CV Match)\n\n" +
+                               $"THÔNG TIN BỐ CẢNH:\n" +
+                               $"--- START CV ---\n{cvContext}\n--- END CV ---\n\n" +
+                               $"--- START JD ---\n{jobContext}\n--- END JD ---\n\n" +
+                               $"{rubricContext}\n\n" +
+                               $"LƯU Ý QUAN TRỌNG VỀ TÌNH HUỐNG LỆCH CÔNG NGHỆ:\n" +
+                               $"- Hãy đối chiếu kỹ CV và JD. Nếu có sự lệch công nghệ lớn (ví dụ: JD yêu cầu .NET nhưng CV chỉ có Java), bạn PHẢI nhận biết được điều này và chuẩn bị các câu hỏi tình huống thích ứng công nghệ mới ở các câu tiếp theo.\n\n" +
+                               $"YÊU CẦU CHO CÂU HỎI 1:\n" +
+                               $"- Đây là câu hỏi số 1/6 (Chủ đề: Kỹ năng chuyên môn / Soft skills).\n" +
+                               $"- Hãy đưa ra lời chào đón ứng viên thân thiện từ hệ thống ITHunterView, sau đó đặt câu hỏi đầu tiên về Kỹ năng chuyên môn hoặc Kỹ năng mềm phù hợp.\n" +
+                               $"- Chỉ hỏi DUY NHẤT một câu hỏi chính trong mỗi lượt chat.\n" +
+                               $"- Trả lời ngắn gọn bằng tiếng Việt.";
 
             var firstQuestion = await _aiService.GenerateTextAsync(
                 prompt: "Bắt đầu buổi phỏng vấn thử.",
@@ -403,22 +419,67 @@ namespace ITHunterview.Service.UseCase
                                       "- Ở trường 'next_question', hãy trả về câu chào tạm biệt lịch sự từ ITHunterView và thông báo rằng buổi phỏng vấn thử đã kết thúc thành công.";
             }
 
-            var variables = new Dictionary<string, string>
-            {
-                { "DIFFICULTY_LEVEL", session.DifficultyLevel.ToString() },
-                { "ROLE", role },
-                { "CV_TEXT", cvContext },
-                { "JD_TEXT", jobContext },
-                { "RUBRIC_CONTEXT", rubricContext },
-                { "QUESTION_INSTRUCTION", questionInstruction }
-            };
+            // var variables = new Dictionary<string, string>
+            // {
+            //     { "DIFFICULTY_LEVEL", session.DifficultyLevel.ToString() },
+            //     { "ROLE", role },
+            //     { "CV_TEXT", cvContext },
+            //     { "JD_TEXT", jobContext },
+            //     { "RUBRIC_CONTEXT", rubricContext },
+            //     { "QUESTION_INSTRUCTION", questionInstruction }
+            // };
 
-            var systemPrompt = await _promptManagementService.GetActivePromptContentWithVariablesAsync("MOCK_INTERVIEW_NEXT", variables);
+            // var systemPrompt = await _promptManagementService.GetActivePromptContentWithVariablesAsync("MOCK_INTERVIEW_NEXT", variables);
 
-            if (string.IsNullOrWhiteSpace(systemPrompt))
-            {
-                throw new Exception("Active Prompt for MOCK_INTERVIEW_NEXT not found.");
-            }
+            // if (string.IsNullOrWhiteSpace(systemPrompt))
+            // {
+            //     throw new Exception("Active Prompt for MOCK_INTERVIEW_NEXT not found.");
+            // }
+            var systemPrompt = $"Bạn là một người phỏng vấn IT tuyển dụng chuyên nghiệp. Bạn đang thực hiện một buổi phỏng vấn thử với ứng viên ở cấp độ {session.DifficultyLevel} (Role: {role}).\n\n" +
+                               $"THÔNG TIN BỐ CẢNH:\n" +
+                               $"--- START CV ---\n{cvContext}\n--- END CV ---\n\n" +
+                               $"--- START JD ---\n{jobContext}\n--- END JD ---\n\n" +
+                               $"{rubricContext}\n\n" +
+                               $"HƯỚNG DẪN LƯỢT NÀY:\n" +
+                               $"{questionInstruction}\n\n" +
+                               $"BỘ TIÊU CHÍ ĐÁNH GIÁ (Thang điểm 1-5, điền số từ 1-5 hoặc null nếu không áp dụng):\n" +
+                               $"1. Kỹ thuật (Technical):\n" +
+                               $"   - T1: Độ chính xác kiến thức (Knowledge accuracy)\n" +
+                               $"   - T2: Độ sâu / hiểu bản chất (Depth / trade-offs / principle)\n" +
+                               $"   - T3: Khả năng giải quyết vấn đề (Approach / edge cases / reasoning)\n" +
+                               $"   - T4: Chất lượng giải pháp/code (Complexity / cleanliness / test - chỉ cho coding)\n" +
+                               $"   - T5: Ứng dụng thực tế (Real-world examples / project connection)\n" +
+                               $"   - T6: Nhận biết giới hạn bản thân (Honest admitting / logical deduction when not knowing)\n" +
+                               $"2. Kỹ năng mềm (Soft Skills):\n" +
+                               $"   - S1: Cấu trúc trình bày (STAR structure for behavioral questions)\n" +
+                               $"   - S2: Sự rõ ràng & súc tích (No repeating / direct to the point)\n" +
+                               $"   - S3: Sự tự tin & thái độ (Confidence / proactive / professional)\n" +
+                               $"   - S4: Khả năng giao tiếp kỹ thuật (Explaining hard concepts clearly with analogies)\n" +
+                               $"   - S5: Tư duy phản biện/tự nhận thức (Self-reflection / learning from failures)\n" +
+                               $"   - S6: Khả năng xử lý áp lực/tình huống bất ngờ (Calmness / asking clarifying questions)\n\n" +
+                               "Bạn BẮT BUỘC phải trả về kết quả theo định dạng JSON duy nhất như sau:\n" +
+                               "{\n" +
+                               "  \"score_logic\": 80,\n" +
+                               "  \"score_tech\": 85,\n" +
+                               "  \"score_communication\": 90,\n" +
+                               "  \"next_question\": \"Câu hỏi tiếp theo (hoặc lời tạm biệt kết thúc phỏng vấn)...\",\n" +
+                               "  \"rubric_evaluation\": {\n" +
+                               "    \"question_type\": \"technical | behavioral | coding | system_design\",\n" +
+                               "    \"technical_score\": {\n" +
+                               "      \"T1\": 4, \"T2\": 3, \"T3\": 4, \"T4\": null, \"T5\": 3, \"T6\": 5,\n" +
+                               "      \"average\": 3.8\n" +
+                               "    },\n" +
+                               "    \"soft_skill_score\": {\n" +
+                               "      \"S1\": 4, \"S2\": 3, \"S3\": 4, \"S4\": 3, \"S5\": null, \"S6\": null,\n" +
+                               "      \"average\": 3.5\n" +
+                               "    },\n" +
+                               "    \"general_feedback\": \"Nhận xét chung về điểm mạnh, điểm yếu trong câu trả lời của ứng viên...\",\n" +
+                               "    \"strengths\": [\"Điểm mạnh 1\", \"Điểm mạnh 2\"],\n" +
+                               "    \"improvements\": [\"Điểm cần cải thiện 1\", \"Điểm cần cải thiện 2\"]\n" +
+                               "  }\n" +
+                               "}\n\n" +
+                               "Lưu ý: Chỉ trả về JSON thuần túy, không bao bọc trong khối code markdown hay bất kỳ văn bản nào ngoài JSON.";
+
 
             var responseText = await _aiService.GenerateTextAsync(
                 prompt: $"Lịch sử phỏng vấn:\n{historyText}\n\nỨng viên trả lời mới nhất: \"{dto.Message}\"",

@@ -364,7 +364,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                     var job = await _context.JobPostings.FindAsync(request.JobId.Value);
                     if (job != null)
                     {
-                        jdText = $"{job.Title}\n{job.Description}\n{job.Requirements}";
+                        jdText = $"{job.Title}\n\nDescription:\n{job.Description}\n\nResponsibilities:\n{job.Responsibilities}\n\nRequirements:\n{job.Requirements}\n\nBenefits & Perks:\n{job.Benefits}";
                         if (string.IsNullOrEmpty(matchRecord.JdTitle)) matchRecord.JdTitle = job.Title;
                     }
                 }
@@ -401,6 +401,8 @@ namespace ITHunterview.Service.Implementations.UseCase
                 };
                 var prompt = await _promptManagementService.GetActivePromptContentWithVariablesAsync(
                     ITHunterview.Service.Constant.Prompts.BypassMatchingPrompt.Key, variables);
+
+                _logger.LogInformation("\n========== START LLM PROMPT FOR CV-JD MATCHING ==========\n{Prompt}\n========== END LLM PROMPT ==========\n", prompt);
 
                 if (string.IsNullOrWhiteSpace(prompt))
                 {
