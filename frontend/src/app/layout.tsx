@@ -3,6 +3,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import ReactQueryProvider from "@/lib/ReactQueryProvider"
 import { Toaster } from "@/components/ui/sonner"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 const inter = Inter({
   variable: "--font-inter",
@@ -24,7 +25,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full`}>
       <body className="min-h-full flex flex-col antialiased">
-        <ReactQueryProvider>{children}</ReactQueryProvider>
+        <ReactQueryProvider>
+          <TooltipProvider>{children}</TooltipProvider>
+        </ReactQueryProvider>
         <Toaster position="bottom-right" richColors />
       </body>
     </html>
