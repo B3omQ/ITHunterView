@@ -14,6 +14,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, Sparkles, Info, ArrowLeft } from 'lucide-react';
+import AILoadingState from '../components/AILoadingState';
 
 export default function NewLearningPathPage() {
   const router = useRouter();
@@ -99,6 +100,14 @@ export default function NewLearningPathPage() {
       router.push('/candidate/learning-path');
     }
   }, [generateMutation.isSuccess, generateFromCvJdMutation.isSuccess, generateFromInterviewMutation.isSuccess, router]);
+
+  if (isAnyPending) {
+    return (
+      <div className="container mx-auto py-8">
+        <AILoadingState />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8 space-y-8 max-w-6xl">
