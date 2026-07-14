@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { useMyLearningPaths, useDeleteLearningPath } from '@/hooks/useLearningPath';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Plus, Trash2, Map } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Loader2, Plus, Trash2, Map, CheckCircle2, Clock, Circle } from 'lucide-react';
 
 export default function LearningPathDashboard() {
   const { data: myPathsData, isLoading } = useMyLearningPaths();
@@ -37,19 +39,47 @@ export default function LearningPathDashboard() {
         </div>
       ) : paths.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {paths.map((path) => (
-            <Card key={path.id} className="flex flex-col">
+          {paths.map((path) => {
+            const totalModules = path.pathData.length;
+            const completedModules = path.pathData.filter(m => m.completed).length;
+            const progressPercentage = totalModules === 0 ? 0 : Math.round((completedModules / totalModules) * 100);
+
+            return (
+            <Card key={path.id} className="flex flex-col relative overflow-hidden group">
+              {progressPercentage === 100 && (
+                <div className="absolute top-0 left-0 w-full h-1 bg-green-500" />
+              )}
+              {progressPercentage > 0 && progressPercentage < 100 && (
+                <div className="absolute top-0 left-0 h-1 bg-blue-500 transition-all" style={{ width: `${progressPercentage}%` }} />
+              )}
+
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                <div>
-                  <CardTitle className="text-xl">Generated Path</CardTitle>
+                <div className="flex-1 pr-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant={
+                      path.status === 'Completed' ? 'default' : 
+                      path.status === 'In Progress' ? 'secondary' : 'outline'
+                    } className={
+                      path.status === 'Completed' ? 'bg-green-500 hover:bg-green-600' : 
+                      path.status === 'In Progress' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 border-none' : ''
+                    }>
+                      {path.status === 'Completed' && <CheckCircle2 className="w-3 h-3 mr-1" />}
+                      {path.status === 'In Progress' && <Clock className="w-3 h-3 mr-1" />}
+                      {path.status === 'Not Started' && <Circle className="w-3 h-3 mr-1 text-muted-foreground" />}
+                      {path.status}
+                    </Badge>
+                  </div>
+                  <CardTitle className="text-xl line-clamp-2 leading-tight" title={path.title}>
+                    {path.title}
+                  </CardTitle>
                   <CardDescription className="mt-1">
-                    {new Date(path.createdAt).toLocaleDateString('vi-VN')}
+                    Generated on {new Date(path.createdAt).toLocaleDateString('vi-VN')}
                   </CardDescription>
                 </div>
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="text-muted-foreground hover:text-destructive -mr-2 -mt-2"
+                  className="text-muted-foreground hover:text-destructive shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={() => {
                     if (confirm('Are you sure you want to delete this learning path?')) {
                       deleteMutation.mutate(path.id);
@@ -65,10 +95,19 @@ export default function LearningPathDashboard() {
                 </Button>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col justify-between pt-4">
-                <div className="space-y-4 mb-6">
+                <div className="space-y-5 mb-6">
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className="font-medium">{progressPercentage}%</span>
+                    </div>
+                    <Progress value={progressPercentage} className="h-2" />
+                  </div>
+
                   <div className="flex items-center gap-4 text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
                     <div className="flex flex-col">
-                      <span className="font-semibold text-foreground text-lg">{path.pathData.length}</span>
+                      <span className="font-semibold text-foreground text-lg">{completedModules}/{totalModules}</span>
                       <span className="text-xs uppercase tracking-wider">Modules</span>
                     </div>
                     <div className="w-px h-8 bg-border"></div>
@@ -88,7 +127,8 @@ export default function LearningPathDashboard() {
                 </Link>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed rounded-xl bg-muted/10">

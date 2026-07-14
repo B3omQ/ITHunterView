@@ -29,12 +29,15 @@ export interface LearningModule {
   durationWeeks: number;
   skills: string[];
   gapSource?: 'cv-jd-match' | 'interview' | 'both';
+  completed?: boolean;
 }
 
 export interface LearningPath {
   id: string;
   candidateId: string;
   sessionId: string | null;
+  title: string;
+  status: string;
   pathData: LearningModule[];
   createdAt: string;
 }

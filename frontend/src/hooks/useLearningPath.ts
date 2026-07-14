@@ -64,3 +64,15 @@ export function usePreviewHistoryContext(type: 'cv-jd' | 'interview', sourceId: 
     enabled: !!sourceId && sourceId !== '',
   });
 }
+
+export function useToggleModule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ pathId, moduleIndex }: { pathId: string; moduleIndex: number }) => 
+      learningPathService.toggleModuleCompletion(pathId, moduleIndex),
+    onSuccess: (_, { pathId }) => {
+      queryClient.invalidateQueries({ queryKey: ['learning-paths'] });
+      queryClient.invalidateQueries({ queryKey: ['learning-paths', pathId] });
+    },
+  });
+}
