@@ -57,7 +57,7 @@ export default function LearningPathDashboard() {
             </Tooltip>
           ) : (
             <Link href="/candidate/learning-path/new" passHref>
-              <Button className="bg-gradient-to-r from-blue-600 to-emerald-400 hover:from-blue-700 hover:to-emerald-500 text-white shadow-lg shadow-blue-500/25 transition-all">
+              <Button className="bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">
                 <Plus className="mr-1 h-4 w-4" />
                 Create New Path
                 <Sparkles className="mr-2 h-4 w-4 ml-1" />
@@ -72,8 +72,8 @@ export default function LearningPathDashboard() {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : paths.length > 0 ? (
-        <div className="flex flex-col lg:flex-row gap-12 items-start">
-          <div className="w-full lg:w-[45%] lg:max-w-[420px] flex flex-col gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-10 gap-8 lg:gap-12 w-full">
+          <div className="col-span-1 lg:col-span-6 flex flex-col gap-4">
             {paths.map((path) => {
               const totalModules = path.pathData.length;
               const completedModules = path.pathData.filter(m => m.completed).length;
@@ -134,27 +134,26 @@ export default function LearningPathDashboard() {
                     </div>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col justify-end pt-3 pb-3 px-4">
-                    <div className="space-y-2 mt-auto">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="font-semibold text-muted-foreground text-xs">{completedModules} / {totalModules} Modules</span>
-                        <span className="font-bold text-primary text-sm leading-none">{progressPercentage}%</span>
-                      </div>
-                      <Progress value={progressPercentage} className="h-2 rounded-full bg-muted/60" />
+                    <div className="flex items-center gap-3 mt-auto">
+                      <Progress value={progressPercentage} className="flex-1 [&_[data-slot=progress-track]]:h-4 [&_[data-slot=progress-track]]:bg-muted/60" />
+                      <span className="font-bold text-primary text-sm w-8 text-right">{progressPercentage}%</span>
                     </div>
                   </CardContent>
                 </Card>
               );
             })}
           </div>
-          <div className="hidden lg:flex w-full lg:w-[55%] sticky top-8 flex-col items-center justify-center p-8">
-            <div className="relative w-full max-w-md aspect-square flex items-center justify-center">
-              <DotLottieReact
-                src="/images/ai-animation.json"
-                loop
-                autoplay
-                speed={0.25}
-                className="w-full h-full drop-shadow-2xl"
-              />
+          <div className="hidden lg:block col-span-1 lg:col-span-4">
+            <div className="sticky top-8 flex flex-col items-center justify-center p-8">
+              <div className="relative w-full max-w-md aspect-square flex items-center justify-center">
+                <DotLottieReact
+                  src="/images/ai-animation.json"
+                  loop
+                  autoplay
+                  speed={0.25}
+                  className="w-full h-full drop-shadow-2xl"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -168,7 +167,7 @@ export default function LearningPathDashboard() {
             Let our AI analyze your CV, mock interviews, or manual goals to generate a personalized step-by-step career path.
           </p>
           <Link href="/candidate/learning-path/new" passHref>
-            <Button size="lg" className="h-12 px-8 bg-gradient-to-r from-blue-600 to-emerald-400 hover:from-blue-700 hover:to-emerald-500 text-white shadow-lg shadow-blue-500/25 transition-all">
+            <Button size="lg" className="h-12 px-8 bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">
               <Plus className="mr-1 h-5 w-5" />
               <Sparkles className="mr-2 h-5 w-5" />
               Create Your First Path
