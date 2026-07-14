@@ -55,7 +55,6 @@ Example output format:
     {
       ""title"": ""Module 1: Advanced React Patterns"",
       ""description"": ""Deep dive into HOCs, Render Props, and custom hooks."",
-      ""durationWeeks"": 2,
       ""skills"": [""React"", ""Custom Hooks"", ""Performance Optimization""]
     }
   ]
@@ -114,7 +113,6 @@ Example output format:
     {
       ""title"": ""Module 1: Microservices Architecture"",
       ""description"": ""Learn about service discovery, API gateways, and distributed tracing."",
-      ""durationWeeks"": 3,
       ""skills"": [""Microservices"", ""Docker"", ""Kubernetes""],
       ""gapSource"": ""cv-jd-match""
     }
@@ -155,7 +153,6 @@ Example output format:
     {
       ""title"": ""Module 1: Advanced SQL Queries"",
       ""description"": ""Mastering window functions and CTEs to address interview weaknesses."",
-      ""durationWeeks"": 2,
       ""skills"": [""SQL"", ""Window Functions""],
       ""gapSource"": ""interview""
     }

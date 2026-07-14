@@ -26,7 +26,6 @@ export interface GenerateFromInterviewRequest {
 export interface LearningModule {
   title: string;
   description: string;
-  durationWeeks: number;
   skills: string[];
   gapSource?: 'cv-jd-match' | 'interview' | 'both';
   completed?: boolean;

@@ -127,14 +127,7 @@ export default function LearningPathDashboard() {
                   <div className="flex items-center gap-4 text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
                     <div className="flex flex-col">
                       <span className="font-semibold text-foreground text-lg">{completedModules}/{totalModules}</span>
-                      <span className="text-xs uppercase tracking-wider">Modules</span>
-                    </div>
-                    <div className="w-px h-8 bg-border"></div>
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-foreground text-lg">
-                        {path.pathData.reduce((acc, curr) => acc + curr.durationWeeks, 0)}
-                      </span>
-                      <span className="text-xs uppercase tracking-wider">Est. Weeks</span>
+                      <span className="text-xs uppercase tracking-wider">Modules Completed</span>
                     </div>
                   </div>
                 </div>

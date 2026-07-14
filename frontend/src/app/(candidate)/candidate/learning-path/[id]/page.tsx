@@ -85,7 +85,7 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
             <div>
               <CardTitle>Modules Overview</CardTitle>
               <CardDescription className="mt-1">
-                {completedModules}/{totalModules} modules completed • {path.pathData.reduce((acc, curr) => acc + curr.durationWeeks, 0)} weeks total
+                {completedModules}/{totalModules} modules completed
               </CardDescription>
             </div>
             <div className="text-2xl font-bold text-primary">{progressPercentage}%</div>
@@ -123,10 +123,6 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
                             : 'Both'}
                         </Badge>
                       )}
-                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground shrink-0 bg-muted/30 px-2.5 py-1 rounded-md">
-                        <Clock className="w-4 h-4" />
-                        <span className="font-medium">{module.durationWeeks} Weeks</span>
-                      </div>
                     </div>
                   </div>
                 </AccordionTrigger>
