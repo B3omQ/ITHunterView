@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useLearningPath, useToggleTaskCompletion as useLearningPathToggle } from '@/hooks/useLearningPath';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, ArrowLeft, Clock, CheckCircle2, Circle, Lock } from 'lucide-react';
@@ -36,8 +36,8 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
       <div className="container mx-auto py-16 text-center">
         <h2 className="text-2xl font-bold mb-4">Path Not Found</h2>
         <p className="text-muted-foreground mb-6">Could not load the learning path details.</p>
-        <Link href="/candidate/learning-path" passHref>
-          <Button>Back to Learning Paths</Button>
+        <Link href="/candidate/learning-path" className={buttonVariants({ variant: 'default' })}>
+          Back to Learning Paths
         </Link>
       </div>
     );
@@ -59,10 +59,8 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
   return (
     <div className="container mx-auto py-8 space-y-8 max-w-6xl">
       <div className="flex items-center gap-4">
-        <Link href="/candidate/learning-path" passHref>
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+        <Link href="/candidate/learning-path" className={buttonVariants({ variant: 'ghost', size: 'icon' })}>
+          <ArrowLeft className="h-5 w-5" />
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-1">

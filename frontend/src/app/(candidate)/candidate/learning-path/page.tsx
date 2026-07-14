@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { useMyLearningPaths, useDeleteLearningPath } from '@/hooks/useLearningPath';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -42,7 +42,7 @@ export default function LearningPathDashboard() {
         {paths.length > 0 && (
           paths.length >= 3 ? (
             <Tooltip>
-              <TooltipTrigger className="cursor-not-allowed" onClick={(e) => e.preventDefault()}>
+              <TooltipTrigger render={<span className="cursor-not-allowed" />} onClick={(e) => e.preventDefault()}>
                 <span className="pointer-events-none">
                   <Button disabled className="bg-muted text-muted-foreground cursor-not-allowed border-none shadow-none hover:bg-muted">
                     <Plus className="mr-1 h-4 w-4" />
@@ -56,12 +56,10 @@ export default function LearningPathDashboard() {
               </TooltipContent>
             </Tooltip>
           ) : (
-            <Link href="/candidate/learning-path/new" passHref>
-              <Button className="bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">
-                <Plus className="mr-1 h-4 w-4" />
-                Create New Path
-                <Sparkles className="mr-2 h-4 w-4 ml-1" />
-              </Button>
+            <Link href="/candidate/learning-path/new" className={buttonVariants({ variant: 'default', className: "bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all" })}>
+              <Plus className="mr-1 h-4 w-4" />
+              Create New Path
+              <Sparkles className="mr-2 h-4 w-4 ml-1" />
             </Link>
           )
         )}
@@ -172,12 +170,10 @@ export default function LearningPathDashboard() {
           <p className="text-muted-foreground max-w-md mb-8">
             Let our AI analyze your CV, mock interviews, or manual goals to generate a personalized step-by-step career path.
           </p>
-          <Link href="/candidate/learning-path/new" passHref>
-            <Button size="lg" className="h-12 px-8 bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">
-              <Plus className="mr-1 h-5 w-5" />
-              <Sparkles className="mr-2 h-5 w-5" />
-              Create Your First Path
-            </Button>
+          <Link href="/candidate/learning-path/new" className={buttonVariants({ size: 'lg', className: "h-12 px-8 bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all" })}>
+            <Plus className="mr-1 h-5 w-5" />
+            <Sparkles className="mr-2 h-5 w-5" />
+            Create Your First Path
           </Link>
         </div>
       )}
