@@ -1375,6 +1375,18 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("session_id");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("title");
+
                     b.HasKey("Id");
 
                     b.ToTable("learning_paths");
@@ -1582,6 +1594,71 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("permissions");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.PromptVersions", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ModelConfig")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("PromptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("VersionTag")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PromptId", "IsActive")
+                        .IsUnique()
+                        .HasFilter("\"IsActive\" = true");
+
+                    b.ToTable("PromptVersions");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.Prompts", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PromptKey")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PromptKey")
+                        .IsUnique();
+
+                    b.ToTable("Prompts");
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.RecruiterProfiles", b =>
@@ -1918,30 +1995,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.HasKey("ConfigKey");
 
                     b.ToTable("system_configs");
-                });
-
-            modelBuilder.Entity("ITHunterview.Domain.Entities.SystemPrompts", b =>
-                {
-                    b.Property<string>("PromptKey")
-                        .HasColumnType("text")
-                        .HasColumnName("prompt_key");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("content");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.Property<int>("Version")
-                        .HasColumnType("integer")
-                        .HasColumnName("version");
-
-                    b.HasKey("PromptKey");
-
-                    b.ToTable("system_prompts");
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.User", b =>
@@ -2283,6 +2336,17 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("ITHunterview.Domain.Entities.PromptVersions", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.Prompts", "Prompt")
+                        .WithMany("Versions")
+                        .HasForeignKey("PromptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Prompt");
+                });
+
             modelBuilder.Entity("ITHunterview.Domain.Entities.RecruiterProfiles", b =>
                 {
                     b.HasOne("ITHunterview.Domain.Entities.Companies", "Company")
@@ -2357,6 +2421,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("ITHunterview.Domain.Entities.Majors", b =>
                 {
                     b.Navigation("Children");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.Prompts", b =>
+                {
+                    b.Navigation("Versions");
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.Roles", b =>

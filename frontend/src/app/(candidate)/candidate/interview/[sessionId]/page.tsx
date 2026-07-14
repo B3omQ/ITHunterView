@@ -403,50 +403,243 @@ export default function CandidateInterviewActivePage() {
 
                 {/* Evaluation Feedback & Scores (if present) */}
                 {msg.aiFeedback && (
-                  <div className="pl-13 max-w-3xl">
-                    <Card className="border border-border bg-card overflow-hidden rounded-2xl shadow-sm">
-                      {/* Metric Scores */}
-                      <div className="grid grid-cols-3 border-b border-border bg-muted/20 p-4 gap-4">
-                        <div className="space-y-1.5">
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                            Logic & Thuật toán
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-extrabold text-primary">{msg.scoreLogic}%</span>
-                            <Progress value={msg.scoreLogic ?? null} className="h-1.5 bg-muted" />
-                          </div>
-                        </div>
-                        <div className="space-y-1.5">
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                            Technical Depth
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-extrabold text-indigo-600">{msg.scoreTech}%</span>
-                            <Progress value={msg.scoreTech ?? null} className="h-1.5 bg-muted" />
-                          </div>
-                        </div>
-                        <div className="space-y-1.5">
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                            Truyền đạt (Comm)
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-extrabold text-emerald-600">{msg.scoreCommunication}%</span>
-                            <Progress value={msg.scoreCommunication ?? null} className="h-1.5 bg-muted" />
-                          </div>
-                        </div>
-                      </div>
+                  (() => {
+                    interface RubricEvaluation {
+                      question_type: string;
+                      technical_score?: {
+                        [key: string]: number | null | undefined;
+                        average?: number;
+                      };
+                      soft_skill_score?: {
+                        [key: string]: number | null | undefined;
+                        average?: number;
+                      };
+                      evidence?: string;
+                      general_feedback?: string;
+                      strengths?: string[];
+                      improvements?: string[];
+                    }
 
-                      {/* Feedback Text */}
-                      <CardContent className="p-4 space-y-2">
-                        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                          <Sparkles className="h-3.5 w-3.5 text-primary" /> Đánh giá & Gợi ý cải thiện
+                    const rubric = (() => {
+                      if (!msg.aiFeedback) return null;
+                      const trimmed = msg.aiFeedback.trim();
+                      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+                        try {
+                          return JSON.parse(trimmed) as RubricEvaluation;
+                        } catch (e) {
+                          return null;
+                        }
+                      }
+                      return null;
+                    })();
+
+                    const rubricDefinitions: Record<string, string> = {
+                      T1: "Độ chính xác kiến thức",
+                      T2: "Độ sâu / hiểu bản chất",
+                      T3: "Khả năng giải quyết vấn đề",
+                      T4: "Chất lượng giải pháp/code",
+                      T5: "Ứng dụng thực tế",
+                      T6: "Nhận biết giới hạn bản thân",
+                      S1: "Cấu trúc trình bày (STAR)",
+                      S2: "Sự rõ ràng & súc tích",
+                      S3: "Sự tự tin & thái độ",
+                      S4: "Khả năng giao tiếp kỹ thuật",
+                      S5: "Tư duy phản biện/tự nhận thức",
+                      S6: "Khả năng xử lý áp lực",
+                    };
+
+                    const getBadgeColor = (score: number | null | undefined) => {
+                      if (score === null || score === undefined) return "bg-muted/40 text-muted-foreground border-border";
+                      if (score >= 4) return "bg-emerald-50 text-emerald-600 border-emerald-200";
+                      if (score >= 3) return "bg-amber-50 text-amber-600 border-amber-200";
+                      return "bg-rose-50 text-rose-600 border-rose-200";
+                    };
+
+                    if (!rubric) {
+                      // Fallback: render old simple text feedback
+                      return (
+                        <div className="pl-13 max-w-3xl">
+                          <Card className="border border-border bg-card overflow-hidden rounded-2xl shadow-sm">
+                            {/* Metric Scores */}
+                            <div className="grid grid-cols-3 border-b border-border bg-muted/20 p-4 gap-4">
+                              <div className="space-y-1.5">
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                                  Logic & Thuật toán
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-extrabold text-primary">{msg.scoreLogic}%</span>
+                                  <Progress value={msg.scoreLogic ?? null} className="h-1.5 bg-muted" />
+                                </div>
+                              </div>
+                              <div className="space-y-1.5">
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                                  Technical Depth
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-extrabold text-indigo-600">{msg.scoreTech}%</span>
+                                  <Progress value={msg.scoreTech ?? null} className="h-1.5 bg-muted" />
+                                </div>
+                              </div>
+                              <div className="space-y-1.5">
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                                  Truyền đạt (Comm)
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-extrabold text-emerald-600">{msg.scoreCommunication}%</span>
+                                  <Progress value={msg.scoreCommunication ?? null} className="h-1.5 bg-muted" />
+                                </div>
+                              </div>
+                            </div>
+                            {/* Feedback Text */}
+                            <CardContent className="p-4 space-y-2">
+                              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                <Sparkles className="h-3.5 w-3.5 text-primary" /> Đánh giá & Gợi ý cải thiện
+                              </div>
+                              <p className="text-xs md:text-sm text-muted-foreground leading-relaxed italic">
+                                "{msg.aiFeedback}"
+                              </p>
+                            </CardContent>
+                          </Card>
                         </div>
-                        <p className="text-xs md:text-sm text-muted-foreground leading-relaxed italic">
-                          "{msg.aiFeedback}"
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </div>
+                      );
+                    }
+
+                    // Render beautiful rubric scorecard
+                    return (
+                      <div className="pl-13 max-w-3xl space-y-3">
+                        <Card className="border border-border bg-card overflow-hidden rounded-2xl shadow-sm">
+                          {/* Top averages */}
+                          <div className="grid grid-cols-3 border-b border-border bg-muted/20 p-4 gap-4">
+                            <div className="space-y-1.5">
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                                Logic & Thuật toán
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-extrabold text-primary">{msg.scoreLogic}%</span>
+                                <Progress value={msg.scoreLogic ?? null} className="h-1.5 bg-muted" />
+                              </div>
+                            </div>
+                            <div className="space-y-1.5">
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                                Technical Depth (T1-T6)
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-extrabold text-indigo-600">{msg.scoreTech}%</span>
+                                <Progress value={msg.scoreTech ?? null} className="h-1.5 bg-muted" />
+                              </div>
+                            </div>
+                            <div className="space-y-1.5">
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                                Kỹ năng mềm (S1-S6)
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-extrabold text-emerald-600">{msg.scoreCommunication}%</span>
+                                <Progress value={msg.scoreCommunication ?? null} className="h-1.5 bg-muted" />
+                              </div>
+                            </div>
+                          </div>
+
+                          <CardContent className="p-5 space-y-5">
+                            {/* Rubric metrics grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Technical Rubric */}
+                              {rubric.technical_score && (
+                                <div className="space-y-2">
+                                  <div className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
+                                    Tiêu chí Kỹ thuật (Technical)
+                                  </div>
+                                  <div className="flex flex-col gap-1.5">
+                                    {["T1", "T2", "T3", "T4", "T5", "T6"].map((tKey) => {
+                                      const score = rubric.technical_score?.[tKey];
+                                      return (
+                                        <div
+                                          key={tKey}
+                                          className={`px-3 py-1.5 text-xs font-semibold rounded-lg border flex items-center justify-between transition-all duration-200 hover:scale-[1.01] ${getBadgeColor(score)}`}
+                                        >
+                                          <span>{rubricDefinitions[tKey]}</span>
+                                          <span>{score !== null && score !== undefined ? `${score}/5` : 'N/A'}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Soft Skill Rubric */}
+                              {rubric.soft_skill_score && (
+                                <div className="space-y-2">
+                                  <div className="text-xs font-bold text-emerald-600 uppercase tracking-wider">
+                                    Tiêu chí Kỹ năng mềm (Soft Skills)
+                                  </div>
+                                  <div className="flex flex-col gap-1.5">
+                                    {["S1", "S2", "S3", "S4", "S5", "S6"].map((sKey) => {
+                                      const score = rubric.soft_skill_score?.[sKey];
+                                      return (
+                                        <div
+                                          key={sKey}
+                                          className={`px-3 py-1.5 text-xs font-semibold rounded-lg border flex items-center justify-between transition-all duration-200 hover:scale-[1.01] ${getBadgeColor(score)}`}
+                                        >
+                                          <span>{rubricDefinitions[sKey]}</span>
+                                          <span>{score !== null && score !== undefined ? `${score}/5` : 'N/A'}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* General Feedback Block */}
+                            {(rubric.general_feedback || rubric.evidence) && (
+                              <div className="bg-muted/30 border border-border/80 rounded-xl p-3.5 space-y-1">
+                                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                  Nhận xét chung về câu trả lời
+                                </div>
+                                <p className="text-xs text-foreground leading-relaxed">
+                                  {rubric.general_feedback || rubric.evidence}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Strengths & Improvements */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {rubric.strengths && rubric.strengths.length > 0 && (
+                                <div className="space-y-2">
+                                  <div className="text-xs font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1">
+                                    <CheckCircle className="h-3.5 w-3.5" /> Điểm mạnh nổi bật
+                                  </div>
+                                  <ul className="text-xs text-muted-foreground space-y-1.5 pl-1">
+                                    {rubric.strengths.map((str, idx) => (
+                                      <li key={idx} className="flex items-start gap-1.5">
+                                        <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                        <span>{str}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {rubric.improvements && rubric.improvements.length > 0 && (
+                                <div className="space-y-2">
+                                  <div className="text-xs font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1">
+                                    <AlertCircle className="h-3.5 w-3.5" /> Gợi ý cải thiện
+                                  </div>
+                                  <ul className="text-xs text-muted-foreground space-y-1.5 pl-1">
+                                    {rubric.improvements.map((imp, idx) => (
+                                      <li key={idx} className="flex items-start gap-1.5">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0 mt-1.5 ml-1" />
+                                        <span>{imp}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    );
+                  })()
                 )}
               </div>
             ))}

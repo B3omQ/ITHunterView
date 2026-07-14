@@ -32,6 +32,22 @@ namespace ITHunterview.WebAPI.Controllers
             return new ResponseBase<LearningPathResponseDto>(result);
         }
 
+        [HttpPost("generate-from-cv-jd")]
+        public async Task<ActionResult<ResponseBase<LearningPathResponseDto>>> GenerateFromCvJd([FromBody] GenerateFromCvJdRequestDto request)
+        {
+            var candidateId = GetUserId();
+            var result = await _learningPathUseCase.GenerateFromCvJdAsync(candidateId, request);
+            return new ResponseBase<LearningPathResponseDto>(result);
+        }
+
+        [HttpPost("generate-from-interview")]
+        public async Task<ActionResult<ResponseBase<LearningPathResponseDto>>> GenerateFromInterview([FromBody] GenerateFromInterviewRequestDto request)
+        {
+            var candidateId = GetUserId();
+            var result = await _learningPathUseCase.GenerateFromInterviewAsync(candidateId, request);
+            return new ResponseBase<LearningPathResponseDto>(result);
+        }
+
         [HttpGet]
         public async Task<ActionResult<ResponseBase<List<LearningPathResponseDto>>>> GetMyLearningPaths()
         {
@@ -46,6 +62,30 @@ namespace ITHunterview.WebAPI.Controllers
             var candidateId = GetUserId();
             var result = await _learningPathUseCase.GetLearningPathByIdAsync(candidateId, id);
             return new ResponseBase<LearningPathResponseDto>(result);
+        }
+
+        [HttpDelete("{id:guid}")]
+        public async Task<ActionResult<ResponseBase<string>>> Delete(Guid id)
+        {
+            var candidateId = GetUserId();
+            await _learningPathUseCase.DeleteLearningPathAsync(candidateId, id);
+            return new ResponseBase<string>("Learning path deleted successfully.");
+        }
+
+        [HttpPut("{id:guid}/modules/{moduleIndex:int}/toggle")]
+        public async Task<ActionResult<ResponseBase<LearningPathResponseDto>>> ToggleModuleCompletion(Guid id, int moduleIndex)
+        {
+            var candidateId = GetUserId();
+            var result = await _learningPathUseCase.ToggleModuleCompletionAsync(candidateId, id, moduleIndex);
+            return new ResponseBase<LearningPathResponseDto>(result);
+        }
+
+        [HttpGet("preview-context")]
+        public async Task<ActionResult<ResponseBase<HistoryContextPreviewDto>>> PreviewHistoryContext([FromQuery] string type, [FromQuery] Guid? sourceId)
+        {
+            var candidateId = GetUserId();
+            var result = await _learningPathUseCase.PreviewHistoryContextAsync(candidateId, type, sourceId);
+            return new ResponseBase<HistoryContextPreviewDto>(result);
         }
 
         private Guid GetUserId()

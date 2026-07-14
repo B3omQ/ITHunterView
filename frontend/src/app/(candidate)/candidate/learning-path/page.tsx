@@ -1,142 +1,175 @@
 'use client';
 
-import { useState } from 'react';
-import { useGenerateLearningPath, useMyLearningPaths } from '@/hooks/useLearningPath';
+import Link from 'next/link';
+import { useMyLearningPaths, useDeleteLearningPath } from '@/hooks/useLearningPath';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
-import { LearningModule } from '@/types/learning-path.types';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Loader2, Plus, Trash2, Map, CheckCircle2, Clock, Circle } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from '@/components/ui/dialog';
 
-export default function LearningPathPage() {
-  const { data: myPathsData, isLoading: isLoadingPaths } = useMyLearningPaths();
-  const generateMutation = useGenerateLearningPath();
+export default function LearningPathDashboard() {
+  const { data: myPathsData, isLoading } = useMyLearningPaths();
+  const deleteMutation = useDeleteLearningPath();
 
-  const [targetRole, setTargetRole] = useState('');
-  const [currentSkills, setCurrentSkills] = useState('');
-  const [targetSkills, setTargetSkills] = useState('');
-  const [timeframeInWeeks, setTimeframeInWeeks] = useState('12');
-
-  const handleGenerate = () => {
-    generateMutation.mutate({
-      targetRole,
-      currentSkills,
-      targetSkills,
-      timeframeInWeeks: Number(timeframeInWeeks),
-    });
-  };
+  const paths = myPathsData?.data || [];
 
   return (
-    <div className="container mx-auto py-8 space-y-8 max-w-5xl">
-      <div className="flex justify-between items-center">
+    <div className="container mx-auto py-8 space-y-8 max-w-6xl">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">AI Learning Path Generator</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Learning Paths</h1>
           <p className="text-muted-foreground mt-2">
-            Generate a personalized, step-by-step career path using our advanced AI.
+            Manage your AI-generated learning journeys.
           </p>
         </div>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Create New Path</CardTitle>
-            <CardDescription>Tell us your goals and we'll map out your journey.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="targetRole">Target Role</Label>
-              <Input
-                id="targetRole"
-                placeholder="e.g. Senior Full Stack Developer"
-                value={targetRole}
-                onChange={(e) => setTargetRole(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="currentSkills">Current Skills</Label>
-              <Textarea
-                id="currentSkills"
-                placeholder="e.g. React, Next.js, basic Node.js"
-                value={currentSkills}
-                onChange={(e) => setCurrentSkills(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="targetSkills">Target Skills (Optional)</Label>
-              <Textarea
-                id="targetSkills"
-                placeholder="e.g. System Design, Docker, Kubernetes"
-                value={targetSkills}
-                onChange={(e) => setTargetSkills(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="timeframe">Timeframe (Weeks)</Label>
-              <Input
-                id="timeframe"
-                type="number"
-                min="1"
-                max="52"
-                value={timeframeInWeeks}
-                onChange={(e) => setTimeframeInWeeks(e.target.value)}
-              />
-            </div>
-            <Button
-              className="w-full"
-              disabled={generateMutation.isPending || !targetRole || !currentSkills}
-              onClick={handleGenerate}
-            >
-              {generateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {generateMutation.isPending ? 'Generating Path...' : 'Generate with AI'}
+        {paths.length > 0 && (
+          <Link href="/candidate/learning-path/new" passHref>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Create New Path
             </Button>
-
-            {generateMutation.isError && (
-              <p className="text-sm text-destructive mt-2">Failed to generate path. Please try again.</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="space-y-6">
-          <h2 className="text-2xl font-semibold">Your Generated Paths</h2>
-          
-          {isLoadingPaths ? (
-            <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-          ) : myPathsData?.data && myPathsData.data.length > 0 ? (
-            <div className="space-y-4">
-              {myPathsData.data.map((path) => (
-                <Card key={path.id}>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Generated Path</CardTitle>
-                    <CardDescription>Created on {new Date(path.createdAt).toLocaleDateString()}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {path.pathData.map((module: LearningModule, index: number) => (
-                        <div key={index} className="border-l-2 border-primary pl-4 pb-4">
-                          <h4 className="font-semibold text-md">{module.title}</h4>
-                          <p className="text-sm text-muted-foreground my-1">{module.description}</p>
-                          <div className="flex gap-2 items-center text-sm">
-                            <span className="font-medium">{module.durationWeeks} Weeks</span>
-                            <span className="text-muted-foreground">•</span>
-                            <span className="text-muted-foreground">{module.skills.join(', ')}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center p-8 border border-dashed rounded-lg text-muted-foreground">
-              No learning paths generated yet.
-            </div>
-          )}
-        </div>
+          </Link>
+        )}
       </div>
+
+      {isLoading ? (
+        <div className="flex justify-center items-center py-24">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : paths.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {paths.map((path) => {
+            const totalModules = path.pathData.length;
+            const completedModules = path.pathData.filter(m => m.completed).length;
+            const progressPercentage = totalModules === 0 ? 0 : Math.round((completedModules / totalModules) * 100);
+
+            return (
+            <Card key={path.id} className="flex flex-col relative overflow-hidden group">
+              {progressPercentage === 100 && (
+                <div className="absolute top-0 left-0 w-full h-1 bg-green-500" />
+              )}
+              {progressPercentage > 0 && progressPercentage < 100 && (
+                <div className="absolute top-0 left-0 h-1 bg-blue-500 transition-all" style={{ width: `${progressPercentage}%` }} />
+              )}
+
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                <div className="flex-1 pr-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant={
+                      path.status === 'Completed' ? 'default' : 
+                      path.status === 'In Progress' ? 'secondary' : 'outline'
+                    } className={
+                      path.status === 'Completed' ? 'bg-green-500 hover:bg-green-600' : 
+                      path.status === 'In Progress' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 border-none' : ''
+                    }>
+                      {path.status === 'Completed' && <CheckCircle2 className="w-3 h-3 mr-1" />}
+                      {path.status === 'In Progress' && <Clock className="w-3 h-3 mr-1" />}
+                      {path.status === 'Not Started' && <Circle className="w-3 h-3 mr-1 text-muted-foreground" />}
+                      {path.status}
+                    </Badge>
+                  </div>
+                  <CardTitle className="text-xl line-clamp-2 leading-tight" title={path.title}>
+                    {path.title}
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    Generated on {new Date(path.createdAt).toLocaleDateString('vi-VN')}
+                  </CardDescription>
+                </div>
+                <Dialog>
+                  <DialogTrigger
+                    render={
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-muted-foreground hover:text-destructive shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        disabled={deleteMutation.isPending && deleteMutation.variables === path.id}
+                      />
+                    }
+                  >
+                    {deleteMutation.isPending && deleteMutation.variables === path.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Delete Learning Path</DialogTitle>
+                      <DialogDescription>
+                        Are you sure you want to delete this learning path? This action cannot be undone.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+                      <DialogClose render={<Button variant="destructive" onClick={() => deleteMutation.mutate(path.id)} />}>Delete</DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col justify-between pt-4">
+                <div className="space-y-5 mb-6">
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className="font-medium">{progressPercentage}%</span>
+                    </div>
+                    <Progress value={progressPercentage} className="h-2" />
+                  </div>
+
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-foreground text-lg">{completedModules}/{totalModules}</span>
+                      <span className="text-xs uppercase tracking-wider">Modules</span>
+                    </div>
+                    <div className="w-px h-8 bg-border"></div>
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-foreground text-lg">
+                        {path.pathData.reduce((acc, curr) => acc + curr.durationWeeks, 0)}
+                      </span>
+                      <span className="text-xs uppercase tracking-wider">Est. Weeks</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <Link href={`/candidate/learning-path/${path.id}`} passHref className="mt-auto">
+                  <Button variant="outline" className="w-full">
+                    View Details
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed rounded-xl bg-muted/10">
+          <div className="bg-primary/10 p-4 rounded-full mb-4">
+            <Map className="h-12 w-12 text-primary" />
+          </div>
+          <h3 className="text-2xl font-semibold tracking-tight mb-2">No learning paths yet</h3>
+          <p className="text-muted-foreground max-w-md mb-8">
+            Let our AI analyze your CV, mock interviews, or manual goals to generate a personalized step-by-step career path.
+          </p>
+          <Link href="/candidate/learning-path/new" passHref>
+            <Button size="lg" className="h-12 px-8">
+              <Plus className="mr-2 h-5 w-5" />
+              Create Your First Path
+            </Button>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
