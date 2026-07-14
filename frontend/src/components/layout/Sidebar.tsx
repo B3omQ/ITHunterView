@@ -148,7 +148,7 @@ export function Sidebar() {
   }, [pathname, navItems])
 
   return (
-    <aside className="flex flex-col w-[240px] min-h-screen bg-sidebar flex-shrink-0">
+    <aside className="flex flex-col w-[240px] min-h-screen bg-sidebar border-r border-transparent hover:border-sidebar-border transition-colors duration-300 flex-shrink-0">
       {/* 1. Logo (Kept clean at the top) */}
       <div className="px-5 h-[68px] flex items-center">
         <Logo size="sm" href="/" />
