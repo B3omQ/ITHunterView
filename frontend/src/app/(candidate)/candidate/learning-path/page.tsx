@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Plus, Trash2, Map, CheckCircle2, Clock, Circle } from 'lucide-react';
+import { Loader2, Plus, Trash2, Map, CheckCircle2, Clock, Circle, Sparkles } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -35,8 +35,8 @@ export default function LearningPathDashboard() {
         </div>
         {paths.length > 0 && (
           <Link href="/candidate/learning-path/new" passHref>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
+            <Button className="bg-gradient-to-r from-blue-600 to-emerald-400 hover:from-blue-700 hover:to-emerald-500 text-white shadow-lg shadow-blue-500/25 transition-all">
+              <Sparkles className="mr-2 h-4 w-4" />
               Create New Path
             </Button>
           </Link>
@@ -55,32 +55,24 @@ export default function LearningPathDashboard() {
             const progressPercentage = totalModules === 0 ? 0 : Math.round((completedModules / totalModules) * 100);
 
             return (
-            <Card key={path.id} className="flex flex-col relative overflow-hidden group">
+            <Card key={path.id} className="flex flex-col relative overflow-hidden group rounded-[20px] border-none shadow-[0_10px_40px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_50px_rgba(0,0,0,0.06)] transition-all duration-300 bg-card p-2">
 
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div className="flex-1 pr-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant={
-                      path.status === 'Completed' ? 'default' : 
-                      path.status === 'In Progress' ? 'secondary' : 'outline'
-                    } className={
-                      path.status === 'Completed' ? 'bg-green-500 hover:bg-green-600' : 
-                      path.status === 'In Progress' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 border-none' : ''
-                    }>
-                      {path.status === 'Completed' && <CheckCircle2 className="w-3 h-3 mr-1" />}
-                      {path.status === 'In Progress' && <Clock className="w-3 h-3 mr-1" />}
-                      {path.status === 'Not Started' && <Circle className="w-3 h-3 mr-1 text-muted-foreground" />}
+                  <div className="flex items-center gap-2 mb-4">
+                    <Badge className={`font-medium px-3 py-1 border-none shadow-none text-xs rounded-lg ${
+                      path.status === 'Completed' ? 'bg-[#E6F4EA] text-[#137333] hover:bg-[#CEEAD6]' : 
+                      path.status === 'In Progress' ? 'bg-[#E6F0FF] text-[#0052CC] hover:bg-[#CCE0FF]' : 
+                      'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}>
                       {path.status}
                     </Badge>
                   </div>
                   <Link href={`/candidate/learning-path/${path.id}`} passHref>
-                    <CardTitle className="text-xl line-clamp-2 leading-tight hover:text-primary transition-colors cursor-pointer" title={path.title}>
+                    <CardTitle className="text-xl font-extrabold tracking-tight line-clamp-2 leading-snug hover:text-primary transition-colors cursor-pointer" title={path.title}>
                       {path.title}
                     </CardTitle>
                   </Link>
-                  <CardDescription className="mt-1">
-                    Generated on {new Date(path.createdAt).toLocaleDateString('vi-VN')}
-                  </CardDescription>
                 </div>
                 <Dialog>
                   <DialogTrigger
@@ -113,24 +105,23 @@ export default function LearningPathDashboard() {
                   </DialogContent>
                 </Dialog>
               </CardHeader>
-              <CardContent className="flex-1 flex flex-col justify-between pt-4">
-                <div className="space-y-5 mb-6">
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span className="font-medium">{progressPercentage}%</span>
+              <CardContent className="flex-1 flex flex-col justify-end pt-8 pb-4">
+                  <div className="space-y-4 mt-auto">
+                    <div className="flex justify-between items-end text-sm">
+                      <div className="flex flex-col">
+                        <span className="text-muted-foreground text-[10px] uppercase tracking-wider font-bold mb-1">Progress</span>
+                        <span className="font-bold text-foreground text-sm leading-none">{completedModules} / {totalModules} Modules</span>
+                      </div>
+                      <span className="font-bold text-primary text-base leading-none">{progressPercentage}%</span>
                     </div>
-                    <Progress value={progressPercentage} className="h-2" />
-                  </div>
-
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-foreground text-lg">{completedModules}/{totalModules}</span>
-                      <span className="text-xs uppercase tracking-wider">Modules Completed</span>
+                    <Progress value={progressPercentage} className="h-2.5 rounded-full bg-muted/60" />
+                    
+                    <div className="pt-3 border-t border-border/40 mt-4">
+                      <p className="text-[11px] text-muted-foreground/60 font-medium tracking-wide">
+                        Generated on {new Date(path.createdAt).toLocaleDateString('vi-VN')}
+                      </p>
                     </div>
                   </div>
-                </div>
               </CardContent>
             </Card>
             );
@@ -146,8 +137,8 @@ export default function LearningPathDashboard() {
             Let our AI analyze your CV, mock interviews, or manual goals to generate a personalized step-by-step career path.
           </p>
           <Link href="/candidate/learning-path/new" passHref>
-            <Button size="lg" className="h-12 px-8">
-              <Plus className="mr-2 h-5 w-5" />
+            <Button size="lg" className="h-12 px-8 bg-gradient-to-r from-blue-600 to-emerald-400 hover:from-blue-700 hover:to-emerald-500 text-white shadow-lg shadow-blue-500/25 transition-all">
+              <Sparkles className="mr-2 h-5 w-5" />
               Create Your First Path
             </Button>
           </Link>

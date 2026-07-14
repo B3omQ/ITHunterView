@@ -14,27 +14,28 @@ import { APP_ROUTES } from "@/lib/constants"
 import { useGetMyCompany } from "@/hooks/useCompany"
 
 // ---- Lucide icon map ----
+const iconProps = { size: 18, strokeWidth: 2.5, className: "drop-shadow-sm" };
 const ICONS: Record<string, React.ReactNode> = {
-  LayoutDashboard: <LayoutDashboard size={18} />,
-  User: <User size={18} />,
-  Briefcase: <Briefcase size={18} />,
-  Bookmark: <Bookmark size={18} />,
-  Bell: <Bell size={18} />,
-  Settings: <Settings size={18} />,
-  Users: <Users size={18} />,
-  FileText: <FileText size={18} />,
-  Building2: <Building2 size={18} />,
-  Shield: <Shield size={18} />,
-  BarChart3: <BarChart3 size={18} />,
-  BrainCircuit: <BrainCircuit size={18} />,
-  ClipboardList: <ClipboardList size={18} />,
-  Database: <Database size={18} />,
-  CreditCard: <CreditCard size={18} />,
-  MessageSquare: <MessageSquare size={18} />,
-  KeyRound: <KeyRound size={18} />,
-  Sparkles: <Sparkles size={18} />,
-  History: <History size={18} />,
-  Map: <Map size={18} />,
+  LayoutDashboard: <LayoutDashboard {...iconProps} />,
+  User: <User {...iconProps} />,
+  Briefcase: <Briefcase {...iconProps} />,
+  Bookmark: <Bookmark {...iconProps} />,
+  Bell: <Bell {...iconProps} />,
+  Settings: <Settings {...iconProps} />,
+  Users: <Users {...iconProps} />,
+  FileText: <FileText {...iconProps} />,
+  Building2: <Building2 {...iconProps} />,
+  Shield: <Shield {...iconProps} />,
+  BarChart3: <BarChart3 {...iconProps} />,
+  BrainCircuit: <BrainCircuit {...iconProps} />,
+  ClipboardList: <ClipboardList {...iconProps} />,
+  Database: <Database {...iconProps} />,
+  CreditCard: <CreditCard {...iconProps} />,
+  MessageSquare: <MessageSquare {...iconProps} />,
+  KeyRound: <KeyRound {...iconProps} />,
+  Sparkles: <Sparkles {...iconProps} />,
+  History: <History {...iconProps} />,
+  Map: <Map {...iconProps} />,
 }
 
 // ---- Nav definitions per role ----
