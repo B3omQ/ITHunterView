@@ -1,7 +1,5 @@
 using ITHunterview.Service.Config;
 using ITHunterview.Service.Infrastructure.Persistence;
-using ITHunterview.Service.Implementations.Service;
-using ITHunterview.Service.Implementations.UseCase;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.UseCase;

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using ITHunterview.Service.Interface.Service;
 using Microsoft.Extensions.Configuration;
 
-namespace ITHunterview.Service.Implementations.Service
+namespace ITHunterview.Service.Service
 {
     public class GeminiEmbeddingService : IAiEmbeddingService
     {

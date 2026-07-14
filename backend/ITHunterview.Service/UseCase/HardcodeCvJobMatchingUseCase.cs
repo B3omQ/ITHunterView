@@ -9,7 +9,7 @@ using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
-namespace ITHunterview.Service.Implementations.UseCase
+namespace ITHunterview.Service.UseCase
 {
     public class HardcodeCvJobMatchingUseCase : IHardcodeCvJobMatchingUseCase
     {

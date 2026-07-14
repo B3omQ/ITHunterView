@@ -18,7 +18,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ITHunterview.Service.Interface.Service.Matching;
 
-namespace ITHunterview.Service.Implementations.UseCase
+namespace ITHunterview.Service.UseCase
 {
 
     public class CvJobMatchingUseCase : ICvJobMatchingUseCase
