@@ -13,7 +13,7 @@ namespace ITHunterview.Service.Interface.UseCase
         Task<List<LearningPathResponseDto>> GetMyLearningPathsAsync(Guid candidateId);
         Task<LearningPathResponseDto> GetLearningPathByIdAsync(Guid candidateId, Guid id);
         Task DeleteLearningPathAsync(Guid candidateId, Guid id);
-        Task<LearningPathResponseDto> ToggleModuleCompletionAsync(Guid candidateId, Guid pathId, int moduleIndex);
+        Task<LearningPathResponseDto> ToggleTaskCompletionAsync(Guid candidateId, Guid pathId, int moduleIndex, int taskIndex);
         Task<HistoryContextPreviewDto> PreviewHistoryContextAsync(Guid candidateId, string type, Guid? sourceId);
     }
 }

@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { useLearningPath, useToggleModule as useLearningPathToggle } from '@/hooks/useLearningPath';
+import { useLearningPath, useToggleTaskCompletion as useLearningPathToggle } from '@/hooks/useLearningPath';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -45,9 +45,16 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
 
   const path = pathData.data;
   
-  const totalModules = path.pathData.length;
-  const completedModules = path.pathData.filter(m => m.completed).length;
-  const progressPercentage = totalModules === 0 ? 0 : Math.round((completedModules / totalModules) * 100);
+  let totalTasks = 0;
+  let completedTasks = 0;
+  path.pathData.forEach((m: LearningModule) => {
+    if (m.tasks && m.tasks.length > 0) {
+      totalTasks += m.tasks.length;
+      completedTasks += m.tasks.filter(t => t.completed).length;
+    }
+  });
+  
+  const progressPercentage = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
   return (
     <div className="container mx-auto py-8 space-y-8 max-w-6xl">
@@ -85,7 +92,7 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
             <div>
               <CardTitle>Modules Overview</CardTitle>
               <CardDescription className="mt-1">
-                {completedModules}/{totalModules} modules completed
+                {completedTasks}/{totalTasks} tasks completed
               </CardDescription>
             </div>
             <div className="text-2xl font-bold text-primary">{progressPercentage}%</div>
@@ -96,21 +103,20 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
           <Accordion className="w-full space-y-4">
             {path.pathData.map((module: LearningModule, index: number) => (
               <AccordionItem key={index} value={`module-${index}`} className={`border rounded-lg px-4 transition-colors ${module.completed ? 'bg-muted/30 border-muted' : 'bg-card'}`}>
-                <div className="flex items-center py-4 -mb-4 relative z-10 w-fit" onClick={(e) => e.stopPropagation()}>
-                  <Checkbox 
-                    checked={module.completed || false} 
-                    onCheckedChange={() => toggleMutation.mutate({ pathId: path.id, moduleIndex: index })}
-                    disabled={toggleMutation.isPending}
-                    className="mr-4 w-6 h-6 border-2 data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 rounded-full"
-                  />
-                </div>
-                <AccordionTrigger className="hover:no-underline py-4 pt-0">
-                  <div className="flex flex-col sm:flex-row sm:items-center text-left gap-2 sm:gap-4 w-full pr-4 pl-10">
+                <AccordionTrigger className="hover:no-underline py-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center text-left gap-2 sm:gap-4 w-full pr-4">
                     <div className="flex items-center gap-3">
                       <div className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 font-semibold ${module.completed ? 'bg-green-100 text-green-700' : 'bg-primary/10 text-primary'}`}>
                         {module.completed ? <CheckCircle2 className="w-5 h-5" /> : index + 1}
                       </div>
-                      <h4 className={`font-semibold text-lg ${module.completed ? 'text-muted-foreground line-through decoration-muted-foreground/50' : ''}`}>{module.title}</h4>
+                      <div>
+                        <h4 className={`font-semibold text-lg ${module.completed ? 'text-muted-foreground' : ''}`}>{module.title}</h4>
+                        {module.tasks && module.tasks.length > 0 && (
+                          <p className="text-xs text-muted-foreground font-normal mt-0.5">
+                            {module.tasks.filter(t => t.completed).length}/{module.tasks.length} tasks completed
+                          </p>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="flex items-center gap-3 sm:ml-auto">
@@ -130,26 +136,49 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
                 <AccordionContent className="pt-2 pb-6 border-t">
                   <div className="space-y-6 mt-4 pl-11">
                     <div>
-                      <h5 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">Description</h5>
                       <p className="text-foreground leading-relaxed">
                         {module.description}
                       </p>
                     </div>
                     
-                    <div>
-                      <h5 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Key Topics & Tasks</h5>
-                      <div className="flex flex-wrap gap-2">
-                        {module.skills.map((skill, skillIdx) => (
-                          <Badge 
-                            key={skillIdx} 
-                            variant="secondary" 
-                            className="bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 px-3 py-1.5 font-medium rounded-md transition-colors"
-                          >
-                            {skill}
-                          </Badge>
-                        ))}
+                    {module.tasks && module.tasks.length > 0 ? (
+                      <div>
+                        <h5 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Tasks</h5>
+                        <div className="space-y-3">
+                          {module.tasks.map((task, taskIdx) => (
+                            <div key={taskIdx} className={`flex items-start gap-3 p-4 border rounded-lg transition-colors ${task.completed ? 'bg-muted/50 border-muted' : 'bg-card hover:bg-muted/20'}`}>
+                              <Checkbox 
+                                checked={task.completed || false} 
+                                onCheckedChange={() => toggleMutation.mutate({ pathId: path.id, moduleIndex: index, taskIndex: taskIdx })}
+                                disabled={toggleMutation.isPending}
+                                className="mt-1 w-5 h-5 border-2 rounded-md data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                              />
+                              <div className="space-y-1 -mt-0.5">
+                                <h6 className={`font-medium leading-none ${task.completed ? 'text-muted-foreground line-through decoration-muted-foreground/50' : 'text-foreground'}`}>
+                                  {task.title}
+                                </h6>
+                                <p className="text-sm text-muted-foreground leading-snug">{task.description}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    ) : module.skills && module.skills.length > 0 ? (
+                      <div>
+                        <h5 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Key Topics</h5>
+                        <div className="flex flex-wrap gap-2">
+                          {module.skills.map((skill, skillIdx) => (
+                            <Badge 
+                              key={skillIdx} 
+                              variant="secondary" 
+                              className="bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 px-3 py-1.5 font-medium rounded-md transition-colors"
+                            >
+                              {skill}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </AccordionContent>
               </AccordionItem>

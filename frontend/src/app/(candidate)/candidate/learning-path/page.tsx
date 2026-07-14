@@ -75,9 +75,15 @@ export default function LearningPathDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-10 gap-8 lg:gap-12 w-full">
           <div className="col-span-1 lg:col-span-6 flex flex-col gap-4">
             {paths.map((path) => {
-              const totalModules = path.pathData.length;
-              const completedModules = path.pathData.filter(m => m.completed).length;
-              const progressPercentage = totalModules === 0 ? 0 : Math.round((completedModules / totalModules) * 100);
+              let totalTasks = 0;
+              let completedTasks = 0;
+              path.pathData.forEach((m: any) => {
+                if (m.tasks && m.tasks.length > 0) {
+                  totalTasks += m.tasks.length;
+                  completedTasks += m.tasks.filter((t: any) => t.completed).length;
+                }
+              });
+              const progressPercentage = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
               return (
                 <Card key={path.id} className="flex flex-col relative overflow-hidden group rounded-[20px] border-none shadow-[0_10px_40px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_50px_rgba(0,0,0,0.06)] transition-all duration-300 bg-card p-1">
