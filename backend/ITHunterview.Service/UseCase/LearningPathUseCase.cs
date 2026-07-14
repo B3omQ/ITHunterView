@@ -63,7 +63,6 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON array.
             userPromptBuilder.AppendLine($"Target Role: {request.TargetRole}");
             userPromptBuilder.AppendLine($"Specific Goal: {request.SpecificGoal}");
             userPromptBuilder.AppendLine($"Experience Level: {request.ExperienceLevel}");
-            userPromptBuilder.AppendLine($"Desired Timeframe: {request.TimeframeInWeeks} weeks ({request.HoursPerWeek} hours/week).");
             userPromptBuilder.AppendLine();
             
             userPromptBuilder.AppendLine("=== TECHNICAL PROFILE ===");
@@ -78,7 +77,7 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON array.
             if (!string.IsNullOrWhiteSpace(request.AdditionalPreferences)) userPromptBuilder.AppendLine($"Additional Preferences: {request.AdditionalPreferences}");
             userPromptBuilder.AppendLine();
             
-            userPromptBuilder.AppendLine("Please generate a structured, highly personalized learning path taking into account the time constraints and preferences above.");
+            userPromptBuilder.AppendLine("Please generate a structured, highly personalized self-paced learning path taking into account the preferences above.");
 
             string userPrompt = userPromptBuilder.ToString();
 
@@ -119,8 +118,6 @@ Example output format:
 Do NOT include any markdown blocks like ```json, just return the raw JSON array.";
 
             var userPromptBuilder = new StringBuilder();
-            userPromptBuilder.AppendLine($"Desired Timeframe: {request.TimeframeInWeeks} weeks.");
-            userPromptBuilder.AppendLine();
             userPromptBuilder.AppendLine("=== SKILL GAPS FROM CV-JD MATCHING ===");
             userPromptBuilder.AppendLine(matchContext);
             userPromptBuilder.AppendLine();
@@ -160,8 +157,6 @@ Example output format:
 Do NOT include any markdown blocks like ```json, just return the raw JSON array.";
 
             var userPromptBuilder = new StringBuilder();
-            userPromptBuilder.AppendLine($"Desired Timeframe: {request.TimeframeInWeeks} weeks.");
-            userPromptBuilder.AppendLine();
             userPromptBuilder.AppendLine("=== WEAK AREAS FROM MOCK INTERVIEW ===");
             userPromptBuilder.AppendLine(interviewContext);
             userPromptBuilder.AppendLine();

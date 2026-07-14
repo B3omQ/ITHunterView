@@ -31,8 +31,6 @@ export default function LearningPathPage() {
   const [specificGoal, setSpecificGoal] = useState('');
   const [experienceLevel, setExperienceLevel] = useState('');
   const [currentSkills, setCurrentSkills] = useState('');
-  const [timeframeInWeeks, setTimeframeInWeeks] = useState('12');
-  const [hoursPerWeek, setHoursPerWeek] = useState('10');
   
   const [strengths, setStrengths] = useState('');
   const [weaknesses, setWeaknesses] = useState('');
@@ -62,20 +60,16 @@ export default function LearningPathPage() {
       targetCompanyType,
       learningStyle,
       additionalPreferences,
-      timeframeInWeeks: Number(timeframeInWeeks) || 12,
-      hoursPerWeek: Number(hoursPerWeek) || 10,
     });
   };
 
   const handleGenerateFromHistory = () => {
     if (generationMethod === 'cv-jd') {
       generateFromCvJdMutation.mutate({
-        timeframeInWeeks: Number(timeframeInWeeks) || 12,
         matchScoreId: selectedMatchScoreId,
       });
     } else if (generationMethod === 'interview') {
       generateFromInterviewMutation.mutate({
-        timeframeInWeeks: Number(timeframeInWeeks) || 12,
         sessionId: selectedSessionId,
       });
     }
@@ -278,35 +272,6 @@ export default function LearningPathPage() {
                 </Alert>
               </div>
             )}
-
-            {/* Timeframe applies to all methods */}
-            <div className="mt-4 pt-6 border-t">
-              <h3 className="font-semibold text-lg flex items-center mb-4"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Time Commitment</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="timeframe">Desired Timeframe (Weeks)</Label>
-                  <Input
-                    id="timeframe"
-                    type="number"
-                    min="1"
-                    max="52"
-                    value={timeframeInWeeks}
-                    onChange={(e) => setTimeframeInWeeks(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="hoursPerWeek">Hours per Week</Label>
-                  <Input
-                    id="hoursPerWeek"
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={hoursPerWeek}
-                    onChange={(e) => setHoursPerWeek(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
 
             <Button
               className="w-full mt-6"
