@@ -101,7 +101,7 @@ export default function NewLearningPathPage() {
   }, [generateMutation.isSuccess, generateFromCvJdMutation.isSuccess, generateFromInterviewMutation.isSuccess, router]);
 
   return (
-    <div className="container mx-auto py-8 space-y-8 max-w-3xl">
+    <div className="container mx-auto py-8 space-y-8 max-w-6xl">
       <div className="flex items-center space-x-4">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
