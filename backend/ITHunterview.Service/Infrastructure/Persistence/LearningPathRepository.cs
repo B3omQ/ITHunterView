@@ -37,5 +37,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             await _context.SaveChangesAsync();
             return entity;
         }
+
+        public async Task DeleteAsync(LearningPaths entity)
+        {
+            _context.LearningPaths.Remove(entity);
+            await _context.SaveChangesAsync();
+        }
     }
 }
