@@ -17,10 +17,10 @@ export const interviewService = {
     api.get<ApiResponse<InterviewSessionDetail>>(`/api/interview/sessions/${sessionId}`).then((r) => r.data),
 
   createSession: (data: CreateInterviewSessionRequest) =>
-    api.post<ApiResponse<InterviewSession>>('/api/interview/sessions', data).then((r) => r.data),
+    api.post<ApiResponse<InterviewSession>>('/api/interview/sessions', data, { timeout: 120000 }).then((r) => r.data),
 
   submitReply: (sessionId: string, data: SubmitReplyRequest) =>
-    api.post<ApiResponse<InterviewAnswer>>(`/api/interview/sessions/${sessionId}/reply`, data).then((r) => r.data),
+    api.post<ApiResponse<InterviewAnswer>>(`/api/interview/sessions/${sessionId}/reply`, data, { timeout: 120000 }).then((r) => r.data),
 
   switchModel: (sessionId: string, data: SwitchModelRequest) =>
     api.post<ApiResponse<string>>(`/api/interview/sessions/${sessionId}/switch-model`, data).then((r) => r.data),
@@ -34,6 +34,7 @@ export const interviewService = {
     return api
       .post<ApiResponse<string>>('/api/interview/transcribe', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000,
       })
       .then((r) => r.data);
   },

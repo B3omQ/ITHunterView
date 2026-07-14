@@ -4,13 +4,13 @@ import { GeneratePathRequest, GenerateFromCvJdRequest, GenerateFromInterviewRequ
 
 export const learningPathService = {
   generate: (data: GeneratePathRequest) =>
-    api.post<ApiResponse<LearningPath>>('/api/learning-paths/generate', data).then(r => r.data),
+    api.post<ApiResponse<LearningPath>>('/api/learning-paths/generate', data, { timeout: 120000 }).then(r => r.data),
 
   generateFromCvJd: (data: GenerateFromCvJdRequest) =>
-    api.post<ApiResponse<LearningPath>>('/api/learning-paths/generate-from-cv-jd', data).then(r => r.data),
+    api.post<ApiResponse<LearningPath>>('/api/learning-paths/generate-from-cv-jd', data, { timeout: 120000 }).then(r => r.data),
 
   generateFromInterview: (data: GenerateFromInterviewRequest) =>
-    api.post<ApiResponse<LearningPath>>('/api/learning-paths/generate-from-interview', data).then(r => r.data),
+    api.post<ApiResponse<LearningPath>>('/api/learning-paths/generate-from-interview', data, { timeout: 120000 }).then(r => r.data),
 
   getMyPaths: () =>
     api.get<ApiResponse<LearningPath[]>>('/api/learning-paths').then(r => r.data),
