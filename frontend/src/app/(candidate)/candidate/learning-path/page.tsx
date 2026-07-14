@@ -7,6 +7,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Loader2, Plus, Trash2, Map, CheckCircle2, Clock, Circle } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from '@/components/ui/dialog';
 
 export default function LearningPathDashboard() {
   const { data: myPathsData, isLoading } = useMyLearningPaths();
@@ -76,23 +86,36 @@ export default function LearningPathDashboard() {
                     Generated on {new Date(path.createdAt).toLocaleDateString('vi-VN')}
                   </CardDescription>
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="text-muted-foreground hover:text-destructive shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => {
-                    if (confirm('Are you sure you want to delete this learning path?')) {
-                      deleteMutation.mutate(path.id);
+                <Dialog>
+                  <DialogTrigger
+                    render={
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-muted-foreground hover:text-destructive shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        disabled={deleteMutation.isPending && deleteMutation.variables === path.id}
+                      />
                     }
-                  }}
-                  disabled={deleteMutation.isPending && deleteMutation.variables === path.id}
-                >
-                  {deleteMutation.isPending && deleteMutation.variables === path.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
-                </Button>
+                  >
+                    {deleteMutation.isPending && deleteMutation.variables === path.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Delete Learning Path</DialogTitle>
+                      <DialogDescription>
+                        Are you sure you want to delete this learning path? This action cannot be undone.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+                      <DialogClose render={<Button variant="destructive" onClick={() => deleteMutation.mutate(path.id)} />}>Delete</DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col justify-between pt-4">
                 <div className="space-y-5 mb-6">

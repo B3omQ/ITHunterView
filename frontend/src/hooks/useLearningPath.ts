@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { learningPathService } from '@/services/learning-path.service';
 import { GeneratePathRequest, GenerateFromCvJdRequest, GenerateFromInterviewRequest } from '@/types/learning-path.types';
+import { toast } from 'sonner';
 
 export function useGenerateLearningPath() {
   const queryClient = useQueryClient();
@@ -53,6 +54,10 @@ export function useDeleteLearningPath() {
     mutationFn: (id: string) => learningPathService.deleteLearningPath(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['learning-paths'] });
+      toast.success('Learning path deleted successfully.');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to delete learning path.');
     },
   });
 }
