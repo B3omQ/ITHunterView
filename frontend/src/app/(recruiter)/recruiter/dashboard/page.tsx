@@ -1,84 +1,175 @@
-"use client"
+"use client";
 
-import { useAuthStore } from "@/store/auth.store"
-import { Briefcase, Users, CheckCircle, Clock } from "lucide-react"
+import { useAuthStore } from "@/store/auth.store";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Briefcase, Users, Eye, FileText } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
+
+const dailyApplicationsData = [
+  { day: "1", apps: 12 },
+  { day: "5", apps: 19 },
+  { day: "10", apps: 15 },
+  { day: "15", apps: 28 },
+  { day: "20", apps: 22 },
+  { day: "25", apps: 35 },
+  { day: "30", apps: 41 },
+];
+
+const topJobsData = [
+  { title: "Senior React Dev", applicants: 120 },
+  { title: "Backend Node.js", applicants: 85 },
+  { title: "UI/UX Designer", applicants: 65 },
+  { title: "DevOps Engineer", applicants: 45 },
+  { title: "Product Manager", applicants: 30 },
+];
+
+const applicationStatusData = [
+  { name: "Applied", value: 156 },
+  { name: "Viewed", value: 89 },
+];
+
+const COLORS = ["#3b82f6", "#10b981"];
 
 export default function RecruiterDashboard() {
-  const { user } = useAuthStore()
+  const { user } = useAuthStore();
 
   const stats = [
-    { label: "Active Jobs", value: "8", icon: <Briefcase size={20} />, color: "from-indigo-500 to-violet-600", change: "2 pending review" },
-    { label: "Total Applicants", value: "143", icon: <Users size={20} />, color: "from-blue-500 to-indigo-600", change: "+18 this week" },
-    { label: "Shortlisted", value: "23", icon: <CheckCircle size={20} />, color: "from-green-500 to-emerald-600", change: "5 for interview" },
-    { label: "Time to Hire", value: "12d", icon: <Clock size={20} />, color: "from-amber-500 to-orange-600", change: "Avg. 12 days" },
-  ]
+    {
+      title: "Active Jobs",
+      value: "12",
+      change: "2 new this week",
+      icon: <Briefcase className="h-4 w-4 text-muted-foreground" />,
+    },
+    {
+      title: "Total Applications",
+      value: "245",
+      change: "+18% from last month",
+      icon: <Users className="h-4 w-4 text-muted-foreground" />,
+    },
+    {
+      title: "Total Views",
+      value: "12.5K",
+      change: "+24% from last month",
+      icon: <Eye className="h-4 w-4 text-muted-foreground" />,
+    },
+    {
+      title: "Application Status",
+      value: "89 Viewed",
+      change: "156 Applied (Pending)",
+      icon: <FileText className="h-4 w-4 text-muted-foreground" />,
+    },
+  ];
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Recruiter Dashboard</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Manage your job postings and candidate pipeline.
+        <h1 className="text-2xl font-bold tracking-tight">Recruiter Dashboard</h1>
+        <p className="text-muted-foreground">
+          Analytics for your job postings and candidate pipeline.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s) => (
-          <div key={s.label} className="bg-card border border-border rounded-2xl p-5 hover:border-indigo-500/30 transition-all">
-            <div className={`w-10 h-10 rounded-xl mb-4`}>
-              {s.icon}
-            </div>
-            <div className="text-2xl font-bold text-foreground">{s.value}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
-            <div className="text-xs text-primary mt-2">{s.change}</div>
-          </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {stats.map((stat, i) => (
+          <Card key={i}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                {stat.title}
+              </CardTitle>
+              {stat.icon}
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stat.value}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stat.change}
+              </p>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-card border border-border rounded-2xl p-5">
-          <h2 className="font-semibold text-foreground mb-4">Active Job Postings</h2>
-          <div className="space-y-3">
-            {[
-              { title: "Senior Frontend Dev", applicants: 34, status: "Published" },
-              { title: "Backend Engineer", applicants: 21, status: "Published" },
-              { title: "DevOps Engineer", applicants: 12, status: "Pending" },
-            ].map((job) => (
-              <div key={job.title} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors cursor-pointer">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">{job.title}</p>
-                  <p className="text-xs text-muted-foreground">{job.applicants} applicants</p>
-                </div>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                  job.status === "Published" ? "text-green-400 bg-green-400/10" : "text-amber-400 bg-amber-400/10"
-                }`}>{job.status}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-1 lg:col-span-4">
+          <CardHeader>
+            <CardTitle>Daily Applications (This Month)</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={dailyApplicationsData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                  <XAxis dataKey="day" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                  <RechartsTooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+                  <Line type="monotone" name="Applications" dataKey="apps" stroke="#3b82f6" strokeWidth={2} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="bg-card border border-border rounded-2xl p-5">
-          <h2 className="font-semibold text-foreground mb-4">Recent Applicants</h2>
-          <div className="space-y-3">
-            {[
-              { name: "Nguyen Van A", role: "Senior Frontend", score: "92%" },
-              { name: "Tran Thi B", role: "Backend Eng.", score: "85%" },
-              { name: "Le Van C", role: "Backend Eng.", score: "78%" },
-            ].map((c) => (
-              <div key={c.name} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors cursor-pointer">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center bg-muted text-xs font-bold flex-shrink-0">
-                  {c.name.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">{c.name}</p>
-                  <p className="text-xs text-muted-foreground">{c.role}</p>
-                </div>
-                <span className="text-xs font-semibold text-primary bg-indigo-400/10 px-2 py-0.5 rounded-full">{c.score}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Card className="col-span-1 lg:col-span-3">
+          <CardHeader>
+            <CardTitle>Application Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={applicationStatusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {applicationStatusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-1 lg:col-span-7">
+          <CardHeader>
+            <CardTitle>Top Jobs by Applications</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topJobsData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e5e7eb" />
+                  <XAxis type="number" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis dataKey="title" type="category" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} width={100} />
+                  <RechartsTooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+                  <Bar dataKey="applicants" name="Applicants" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={32} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
-  )
+  );
 }

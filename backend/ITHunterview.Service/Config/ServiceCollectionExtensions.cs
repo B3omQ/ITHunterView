@@ -36,6 +36,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IAuditLogRepository, AuditLogRepository>();
             services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
             services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
+            services.AddScoped<IPromptAdminRepository, PromptAdminRepository>();
 
             // Repositories — Candidate Profile
             services.AddScoped<ICandidateProfileRepository, CandidateProfileRepository>();
@@ -60,6 +61,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IAiProvider, GroqProvider>();
             services.AddScoped<IAiProviderFactory, AiProviderFactory>();
             services.AddScoped<IAiService, AiService>();
+            services.AddScoped<IPromptManagementService, PromptManagementService>();
             services.AddScoped<ISpeechToTextService, AssemblyAiService>();
 
             services.AddScoped<IEmailService, EmailService>();
@@ -99,6 +101,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICandidateFeatureUsageUseCase, CandidateFeatureUsageUseCase>();
             services.AddScoped<IWalletUseCase, WalletUseCase>();
             services.AddScoped<IInterviewQuestionBankUseCase, InterviewQuestionBankUseCase>();
+            services.AddScoped<IPromptAdminUseCase, PromptAdminUseCase>();
 
 
             // Use Cases — Candidate Profile

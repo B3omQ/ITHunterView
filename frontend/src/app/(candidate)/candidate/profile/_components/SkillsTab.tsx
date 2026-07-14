@@ -92,12 +92,12 @@ export function SkillsTab() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-3xl mx-auto w-full">
       {/* Manage Skills Card */}
-      <Card className="border border-border/40 bg-card/60 backdrop-blur-md rounded-xl shadow-md overflow-hidden">
-        <CardHeader className="border-b border-border/10 pb-4">
+      <Card>
+        <CardHeader className="border-b pb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+            <div className="p-2 rounded-md bg-muted text-muted-foreground">
               <Award className="w-5 h-5" />
             </div>
             <div>
@@ -136,52 +136,50 @@ export function SkillsTab() {
                     setShowDropdown(false);
                   }
                 }}
-                className="pl-9 bg-background/50 border-border/60 focus-visible:ring-primary/30"
+                className="pl-9"
               />
             </div>
 
             {/* Dropdown Menu */}
             {showDropdown && (keyword.trim() !== '' || searchResults.length > 0) && (
-              <Card className="absolute left-0 right-0 mt-1.5 z-20 border border-border/40 bg-popover/95 backdrop-blur-md shadow-lg max-h-60 overflow-y-auto rounded-xl">
-                <CardContent className="p-2">
-                  {searchResults.length === 0 ? (
-                    <div className="py-3 px-4 text-xs text-muted-foreground">
-                      No matching skills found
-                    </div>
-                  ) : (
-                    <ul className="space-y-0.5">
-                      {searchResults.map((s, index) => (
-                        <li key={s.id}>
-                          <button
-                            type="button"
-                            onClick={() => handleAddSkillId(s.id)}
-                            disabled={isAddingSkill}
-                            className={cn(
-                              "w-full text-left px-3 py-2 text-sm rounded-lg transition-colors flex items-center justify-between",
-                              focusedIndex === index ? "bg-accent/80 text-accent-foreground" : "hover:bg-accent/50"
-                            )}
-                          >
-                            <span className="font-medium">{s.name}</span>
-                            <Plus className={cn("w-3.5 h-3.5", focusedIndex === index ? "text-foreground" : "text-muted-foreground")} />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </CardContent>
-              </Card>
+              <div className="absolute left-0 right-0 mt-1.5 z-20 border bg-popover text-popover-foreground shadow-md max-h-60 overflow-y-auto rounded-md p-1">
+                {searchResults.length === 0 ? (
+                  <div className="py-3 px-4 text-sm text-muted-foreground text-center">
+                    No matching skills found
+                  </div>
+                ) : (
+                  <ul className="space-y-0.5">
+                    {searchResults.map((s, index) => (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          onClick={() => handleAddSkillId(s.id)}
+                          disabled={isAddingSkill}
+                          className={cn(
+                            "w-full text-left px-3 py-2 text-sm rounded-sm transition-colors flex items-center justify-between",
+                            focusedIndex === index ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
+                          )}
+                        >
+                          <span className="font-medium">{s.name}</span>
+                          <Plus className={cn("w-3.5 h-3.5", focusedIndex === index ? "text-foreground" : "text-muted-foreground")} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
           </div>
 
           {/* User Skills Chips List */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Added Skills</h3>
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Added Skills</h3>
             {skills.length === 0 ? (
-              <p className="text-sm text-muted-foreground italic bg-muted/20 p-4 rounded-xl border border-dashed border-border/30">
+              <div className="text-sm text-muted-foreground py-8 text-center bg-muted/30 rounded-md">
                 No skills added yet. Use the search box above to add your skills.
-              </p>
+              </div>
             ) : (
-              <div className="flex flex-wrap gap-2.5">
+              <div className="flex flex-wrap gap-2">
                 {skills.map((s) => (
                   <SkillChip
                     key={s.skillId}
@@ -189,7 +187,6 @@ export function SkillsTab() {
                     name={s.name}
                     proficiencyLevel={s.proficiencyLevel}
                     onDelete={handleRemoveSkillId}
-                    className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-100"
                   />
                 ))}
               </div>
