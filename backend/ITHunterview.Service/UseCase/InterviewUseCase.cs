@@ -22,6 +22,7 @@ namespace ITHunterview.Service.UseCase
         private readonly IJobPostingRepository _jobPostingRepository;
         private readonly IAiService _aiService;
         private readonly ICvTextExtractorService _cvTextExtractorService;
+        private readonly IPromptManagementService _promptManagementService;
 
         public InterviewUseCase(
             IInterviewSessionRepository sessionRepository,
@@ -29,7 +30,8 @@ namespace ITHunterview.Service.UseCase
             ICvRepository cvRepository,
             IJobPostingRepository jobPostingRepository,
             IAiService aiService,
-            ICvTextExtractorService cvTextExtractorService)
+            ICvTextExtractorService cvTextExtractorService,
+            IPromptManagementService promptManagementService)
         {
             _sessionRepository = sessionRepository;
             _answerRepository = answerRepository;
@@ -37,6 +39,7 @@ namespace ITHunterview.Service.UseCase
             _jobPostingRepository = jobPostingRepository;
             _aiService = aiService;
             _cvTextExtractorService = cvTextExtractorService;
+            _promptManagementService = promptManagementService;
         }
 
         public async Task<List<InterviewSessionDto>> GetCandidateSessionsAsync(Guid candidateId)
@@ -222,7 +225,22 @@ namespace ITHunterview.Service.UseCase
                 : "";
 
             // Prompt chào hỏi và câu hỏi đầu tiên (Skills #1)
-            var systemPrompt = $"Bạn là một người phỏng vấn IT tuyển dụng chuyên nghiệp. Nhiệm vụ của bạn là thực hiện một buổi phỏng vấn thử (mock interview) gồm đúng 6 câu hỏi ở cấp độ {dto.DifficultyLevel} (Role: {role}).\n\n" +
+            // var variables = new Dictionary<string, string>
+            // {
+            //     { "DIFFICULTY_LEVEL", dto.DifficultyLevel.ToString() },
+            //     { "ROLE", role },
+            //     { "CV_TEXT", cvContext },
+            //     { "JD_TEXT", jobContext },
+            //     { "RUBRIC_CONTEXT", rubricContext }
+            // };
+
+            // var systemPrompt = await _promptManagementService.GetActivePromptContentWithVariablesAsync("MOCK_INTERVIEW_START", variables);
+            
+            // if (string.IsNullOrWhiteSpace(systemPrompt))
+            // {
+            //     throw new Exception("Active Prompt for MOCK_INTERVIEW_START not found.");
+            // }
+             var systemPrompt = $"Bạn là một người phỏng vấn IT tuyển dụng chuyên nghiệp. Nhiệm vụ của bạn là thực hiện một buổi phỏng vấn thử (mock interview) gồm đúng 6 câu hỏi ở cấp độ {dto.DifficultyLevel} (Role: {role}).\n\n" +
                                $"LỘ TRÌNH PHỎNG VẤN:\n" +
                                $"1. Câu 1 & 2: Kỹ năng chuyên môn / Soft skills (Skills)\n" +
                                $"2. Câu 3 & 4: Kinh nghiệm thực tế / Dự án (Experience)\n" +
@@ -401,6 +419,22 @@ namespace ITHunterview.Service.UseCase
                                       "- Ở trường 'next_question', hãy trả về câu chào tạm biệt lịch sự từ ITHunterView và thông báo rằng buổi phỏng vấn thử đã kết thúc thành công.";
             }
 
+            // var variables = new Dictionary<string, string>
+            // {
+            //     { "DIFFICULTY_LEVEL", session.DifficultyLevel.ToString() },
+            //     { "ROLE", role },
+            //     { "CV_TEXT", cvContext },
+            //     { "JD_TEXT", jobContext },
+            //     { "RUBRIC_CONTEXT", rubricContext },
+            //     { "QUESTION_INSTRUCTION", questionInstruction }
+            // };
+
+            // var systemPrompt = await _promptManagementService.GetActivePromptContentWithVariablesAsync("MOCK_INTERVIEW_NEXT", variables);
+
+            // if (string.IsNullOrWhiteSpace(systemPrompt))
+            // {
+            //     throw new Exception("Active Prompt for MOCK_INTERVIEW_NEXT not found.");
+            // }
             var systemPrompt = $"Bạn là một người phỏng vấn IT tuyển dụng chuyên nghiệp. Bạn đang thực hiện một buổi phỏng vấn thử với ứng viên ở cấp độ {session.DifficultyLevel} (Role: {role}).\n\n" +
                                $"THÔNG TIN BỐ CẢNH:\n" +
                                $"--- START CV ---\n{cvContext}\n--- END CV ---\n\n" +
@@ -445,6 +479,7 @@ namespace ITHunterview.Service.UseCase
                                "  }\n" +
                                "}\n\n" +
                                "Lưu ý: Chỉ trả về JSON thuần túy, không bao bọc trong khối code markdown hay bất kỳ văn bản nào ngoài JSON.";
+
 
             var responseText = await _aiService.GenerateTextAsync(
                 prompt: $"Lịch sử phỏng vấn:\n{historyText}\n\nỨng viên trả lời mới nhất: \"{dto.Message}\"",

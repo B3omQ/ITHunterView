@@ -29,6 +29,7 @@ namespace ITHunterview.Service.Implementations.UseCase
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
         private readonly ILogger<CvJobMatchingUseCase> _logger;
+        private readonly IPromptManagementService _promptManagementService;
 
         public CvJobMatchingUseCase(
             ITHunterviewContext context, 
@@ -36,7 +37,8 @@ namespace ITHunterview.Service.Implementations.UseCase
             ICvTextExtractorService cvTextExtractorService,
             IHttpClientFactory httpClientFactory,
             IConfiguration configuration,
-            ILogger<CvJobMatchingUseCase> logger)
+            ILogger<CvJobMatchingUseCase> logger,
+            IPromptManagementService promptManagementService)
         {
             _context = context;
             _aiService = aiService;
@@ -44,6 +46,7 @@ namespace ITHunterview.Service.Implementations.UseCase
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
             _logger = logger;
+            _promptManagementService = promptManagementService;
         }
 
         public string ExtractJsonField(string? jsonString, string fieldName)
@@ -361,7 +364,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                     var job = await _context.JobPostings.FindAsync(request.JobId.Value);
                     if (job != null)
                     {
-                        jdText = $"{job.Title}\n{job.Description}\n{job.Requirements}";
+                        jdText = $"{job.Title}\n\nDescription:\n{job.Description}\n\nResponsibilities:\n{job.Responsibilities}\n\nRequirements:\n{job.Requirements}\n\nBenefits & Perks:\n{job.Benefits}";
                         if (string.IsNullOrEmpty(matchRecord.JdTitle)) matchRecord.JdTitle = job.Title;
                     }
                 }
@@ -391,7 +394,20 @@ namespace ITHunterview.Service.Implementations.UseCase
                 if (jdText.Length > 15000) jdText = jdText.Substring(0, 15000);
 
                 // 3. Prompt
-                var prompt = ITHunterview.Service.Constant.Prompts.BypassMatchingPrompt.GetPrompt(cvText, jdText);
+                var variables = new Dictionary<string, string>
+                {
+                    { "CV_TEXT", cvText },
+                    { "JD_TEXT", jdText }
+                };
+                var prompt = await _promptManagementService.GetActivePromptContentWithVariablesAsync(
+                    ITHunterview.Service.Constant.Prompts.BypassMatchingPrompt.Key, variables);
+
+                _logger.LogInformation("\n========== START LLM PROMPT FOR CV-JD MATCHING ==========\n{Prompt}\n========== END LLM PROMPT ==========\n", prompt);
+
+                if (string.IsNullOrWhiteSpace(prompt))
+                {
+                    throw new Exception("Active Prompt for JD_MATCHING_PROMPT not found. Please contact Administrator.");
+                }
 
                 // 4. Call LLM
                 string llmResponseText = await CallLlmBypassAsync(prompt);
