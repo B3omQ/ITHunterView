@@ -56,12 +56,6 @@ export default function LearningPathDashboard() {
 
             return (
             <Card key={path.id} className="flex flex-col relative overflow-hidden group">
-              {progressPercentage === 100 && (
-                <div className="absolute top-0 left-0 w-full h-1 bg-green-500" />
-              )}
-              {progressPercentage > 0 && progressPercentage < 100 && (
-                <div className="absolute top-0 left-0 h-1 bg-blue-500 transition-all" style={{ width: `${progressPercentage}%` }} />
-              )}
 
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div className="flex-1 pr-4">
@@ -79,9 +73,11 @@ export default function LearningPathDashboard() {
                       {path.status}
                     </Badge>
                   </div>
-                  <CardTitle className="text-xl line-clamp-2 leading-tight" title={path.title}>
-                    {path.title}
-                  </CardTitle>
+                  <Link href={`/candidate/learning-path/${path.id}`} passHref>
+                    <CardTitle className="text-xl line-clamp-2 leading-tight hover:text-primary transition-colors cursor-pointer" title={path.title}>
+                      {path.title}
+                    </CardTitle>
+                  </Link>
                   <CardDescription className="mt-1">
                     Generated on {new Date(path.createdAt).toLocaleDateString('vi-VN')}
                   </CardDescription>
@@ -142,12 +138,6 @@ export default function LearningPathDashboard() {
                     </div>
                   </div>
                 </div>
-                
-                <Link href={`/candidate/learning-path/${path.id}`} passHref className="mt-auto">
-                  <Button variant="outline" className="w-full">
-                    View Details
-                  </Button>
-                </Link>
               </CardContent>
             </Card>
             );
