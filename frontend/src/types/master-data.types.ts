@@ -122,5 +122,22 @@ export interface SfiaSkillDto {
   skillCode: string;
   skillName: string;
   category: string;
+  subcategory: string;
+  description: string;
 }
 
+export interface CreateSfiaSkillDto {
+  skillCode: string;
+  skillName: string;
+  category: string;
+  subcategory: string;
+  description: string;
+}
+
+export interface UpdateSfiaSkillDto {
+  skillCode: string;
+  skillName: string;
+  category: string;
+  subcategory: string;
+  description: string;
+}
