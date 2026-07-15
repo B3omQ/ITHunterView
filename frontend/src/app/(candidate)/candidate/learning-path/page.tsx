@@ -75,7 +75,8 @@ export default function LearningPathDashboard() {
             {paths.map((path) => {
               let totalTasks = 0;
               let completedTasks = 0;
-              path.pathData.forEach((m: any) => {
+              const modules = path.pathData?.modules || [];
+              modules.forEach((m: any) => {
                 if (m.tasks && m.tasks.length > 0) {
                   totalTasks += m.tasks.length;
                   completedTasks += m.tasks.filter((t: any) => t.completed).length;

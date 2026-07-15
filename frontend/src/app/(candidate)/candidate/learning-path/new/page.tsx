@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useGenerateLearningPath, useGenerateFromCvJd, useGenerateFromInterview, usePreviewHistoryContext } from '@/hooks/useLearningPath';
+import { useGenerateLearningPath, useGenerateFromCvJd, useGenerateFromInterview, usePreviewHistoryContext, useTargetRoles } from '@/hooks/useLearningPath';
 import { useGetMatchHistory } from '@/hooks/useCvMatch';
 import { useGetInterviewSessions } from '@/hooks/useInterview';
 import { Button } from '@/components/ui/button';
@@ -26,14 +26,13 @@ export default function NewLearningPathPage() {
   const { data: matchHistoryData } = useGetMatchHistory(1, 50);
   const { data: interviewSessionsData } = useGetInterviewSessions();
 
-  const [targetRole, setTargetRole] = useState('');
+  const { data: targetRolesData, isLoading: isTargetRolesLoading } = useTargetRoles();
+
+  const [targetRoleTemplateId, setTargetRoleTemplateId] = useState('');
   const [specificGoal, setSpecificGoal] = useState('');
   const [experienceLevel, setExperienceLevel] = useState('');
-  const [currentSkills, setCurrentSkills] = useState('');
+  const [currentSkills, setCurrentSkills] = useState<{ skillCode: string; currentLevel: number }[]>([]);
   
-  const [strengths, setStrengths] = useState('');
-  const [weaknesses, setWeaknesses] = useState('');
-  const [targetCompanyType, setTargetCompanyType] = useState('');
   const [learningStyle, setLearningStyle] = useState('');
   const [additionalPreferences, setAdditionalPreferences] = useState('');
   
@@ -48,15 +47,26 @@ export default function NewLearningPathPage() {
     generationMethod !== 'manual' ? activeSourceId : null
   );
 
+  const selectedRoleTemplate = targetRolesData?.data?.find(r => r.id === targetRoleTemplateId);
+
+  useEffect(() => {
+    if (selectedRoleTemplate) {
+      setCurrentSkills(selectedRoleTemplate.requiredSkills.map(rs => ({ skillCode: rs.skillCode, currentLevel: 1 })));
+    } else {
+      setCurrentSkills([]);
+    }
+  }, [selectedRoleTemplate]);
+
+  const handleSkillLevelChange = (skillCode: string, level: number) => {
+    setCurrentSkills(prev => prev.map(s => s.skillCode === skillCode ? { ...s, currentLevel: level } : s));
+  };
+
   const handleGenerate = () => {
     generateMutation.mutate({
-      targetRole,
+      targetRoleTemplateId,
       specificGoal,
       experienceLevel,
       currentSkills,
-      strengths,
-      weaknesses,
-      targetCompanyType,
       learningStyle,
       additionalPreferences,
     });
@@ -78,7 +88,7 @@ export default function NewLearningPathPage() {
 
   const isGenerateDisabled = () => {
     if (generationMethod === 'manual') {
-       return !targetRole || !specificGoal || !experienceLevel || !currentSkills || isAnyPending;
+       return !targetRoleTemplateId || !specificGoal || !experienceLevel || isAnyPending;
     }
     if (generationMethod === 'cv-jd') {
        return !selectedMatchScoreId || isAnyPending;
@@ -162,8 +172,20 @@ export default function NewLearningPathPage() {
                   <h3 className="font-semibold text-lg flex items-center"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Core Information</h3>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="targetRole">Target Role <span className="text-red-500">*</span></Label>
-                      <Input id="targetRole" placeholder="e.g. Senior Frontend Developer" value={targetRole} onChange={(e) => setTargetRole(e.target.value)} />
+                      <Label htmlFor="targetRole">Target Role (SFIA Template) <span className="text-red-500">*</span></Label>
+                      <Select value={targetRoleTemplateId} onValueChange={(v) => setTargetRoleTemplateId(v || '')}>
+                        <SelectTrigger id="targetRole">
+                          <SelectValue placeholder={isTargetRolesLoading ? "Loading templates..." : "Select a target role..."} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {targetRolesData?.data?.map(role => (
+                            <SelectItem key={role.id} value={role.id}>{role.roleName}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedRoleTemplate && (
+                        <p className="text-xs text-muted-foreground">{selectedRoleTemplate.description}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="experienceLevel">Experience Level <span className="text-red-500">*</span></Label>
@@ -185,35 +207,50 @@ export default function NewLearningPathPage() {
                 </div>
 
                 {/* Section 2: Technical Information */}
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-lg flex items-center border-t pt-6"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Technical Profile</h3>
-                  <div className="space-y-2">
-                    <Label htmlFor="currentSkills">Current Tech Stack & Proficiency <span className="text-red-500">*</span></Label>
-                    <Textarea id="currentSkills" placeholder="e.g. React - Advanced, Node.js - Beginner, SQL - Intermediate" value={currentSkills} onChange={(e) => setCurrentSkills(e.target.value)} />
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="strengths">Strengths</Label>
-                      <Textarea id="strengths" placeholder="e.g. UI/UX, CSS, API Integration" value={strengths} onChange={(e) => setStrengths(e.target.value)} />
+                {selectedRoleTemplate && (
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-lg flex items-center border-t pt-6"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Self-Assess SFIA Skills</h3>
+                    <p className="text-sm text-muted-foreground mb-4">Please assess your current proficiency level for the core skills required by this role. The AI will calculate the gaps.</p>
+                    
+                    <div className="space-y-6">
+                      {selectedRoleTemplate.requiredSkills.map(skill => {
+                        const currentLvl = currentSkills.find(s => s.skillCode === skill.skillCode)?.currentLevel || 1;
+                        return (
+                          <div key={skill.skillCode} className="space-y-2 border p-4 rounded-md">
+                            <div className="flex justify-between items-center mb-2">
+                              <div>
+                                <h4 className="font-medium">{skill.skillName} ({skill.skillCode})</h4>
+                                <p className="text-xs text-muted-foreground">Target Level: {skill.targetLevel}</p>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-sm font-semibold text-primary">Your Level: {currentLvl}</span>
+                              </div>
+                            </div>
+                            <input 
+                              type="range" 
+                              min="0" 
+                              max="7" 
+                              step="1" 
+                              value={currentLvl} 
+                              onChange={(e) => handleSkillLevelChange(skill.skillCode, parseInt(e.target.value))}
+                              className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer"
+                            />
+                            <div className="flex justify-between text-xs text-muted-foreground px-1">
+                              <span>0 (None)</span>
+                              <span>1</span>
+                              <span>2</span>
+                              <span>3</span>
+                              <span>4</span>
+                              <span>5</span>
+                              <span>6</span>
+                              <span>7</span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="weaknesses">Weaknesses</Label>
-                      <Textarea id="weaknesses" placeholder="e.g. System Design, State Management" value={weaknesses} onChange={(e) => setWeaknesses(e.target.value)} />
-                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="targetCompanyType">Target Company Type</Label>
-                    <Select value={targetCompanyType} onValueChange={(v) => setTargetCompanyType(v || '')}>
-                      <SelectTrigger id="targetCompanyType"><SelectValue placeholder="Select target company type..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Product">Product Company</SelectItem>
-                        <SelectItem value="Outsourcing">Outsourcing / Agency</SelectItem>
-                        <SelectItem value="Startup">Startup</SelectItem>
-                        <SelectItem value="Any">Any / Not sure</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                )}
 
                 {/* Section 3: Personalization */}
                 <div className="space-y-4">

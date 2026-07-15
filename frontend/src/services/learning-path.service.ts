@@ -1,8 +1,11 @@
 import api from './api-client';
 import { ApiResponse } from '@/types/api.types';
-import { GeneratePathRequest, GenerateFromCvJdRequest, GenerateFromInterviewRequest, LearningPath, HistoryContextPreviewDto } from '@/types/learning-path.types';
+import { GeneratePathRequest, GenerateFromCvJdRequest, GenerateFromInterviewRequest, LearningPath, HistoryContextPreviewDto, TargetRoleResponseDto } from '@/types/learning-path.types';
 
 export const learningPathService = {
+  getTargetRoles: () =>
+    api.get<ApiResponse<TargetRoleResponseDto[]>>('/api/learning-paths/target-roles').then(r => r.data),
+
   generate: (data: GeneratePathRequest) =>
     api.post<ApiResponse<LearningPath>>('/api/learning-paths/generate', data, { timeout: 60000 }).then(r => r.data),
 

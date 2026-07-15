@@ -3,6 +3,13 @@ import { learningPathService } from '@/services/learning-path.service';
 import { GeneratePathRequest, GenerateFromCvJdRequest, GenerateFromInterviewRequest } from '@/types/learning-path.types';
 import { toast } from 'sonner';
 
+export function useTargetRoles() {
+  return useQuery({
+    queryKey: ['learning-paths', 'target-roles'],
+    queryFn: () => learningPathService.getTargetRoles(),
+  });
+}
+
 export function useGenerateLearningPath() {
   const queryClient = useQueryClient();
   return useMutation({

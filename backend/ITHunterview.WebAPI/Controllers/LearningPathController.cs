@@ -24,6 +24,13 @@ namespace ITHunterview.WebAPI.Controllers
             _learningPathUseCase = learningPathUseCase;
         }
 
+        [HttpGet("target-roles")]
+        public async Task<ActionResult<ResponseBase<List<TargetRoleResponseDto>>>> GetTargetRoles()
+        {
+            var result = await _learningPathUseCase.GetTargetRolesAsync();
+            return new ResponseBase<List<TargetRoleResponseDto>>(result);
+        }
+
         [HttpPost("generate")]
         public async Task<ActionResult<ResponseBase<LearningPathResponseDto>>> Generate([FromBody] GeneratePathRequestDto request)
         {

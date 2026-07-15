@@ -15,6 +15,7 @@ namespace ITHunterview.Service.Interface.UseCase
         Task DeleteLearningPathAsync(Guid candidateId, Guid id);
         Task<LearningPathResponseDto> ToggleTaskCompletionAsync(Guid candidateId, Guid pathId, int moduleIndex, int taskIndex);
         Task<HistoryContextPreviewDto> PreviewHistoryContextAsync(Guid candidateId, string type, Guid? sourceId);
+        Task<List<TargetRoleResponseDto>> GetTargetRolesAsync();
     }
 }
 

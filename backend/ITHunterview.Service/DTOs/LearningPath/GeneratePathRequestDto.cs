@@ -6,7 +6,7 @@ namespace ITHunterview.Service.DTOs.LearningPath
     {
         // 1. Core Information
         [Required]
-        public string TargetRole { get; set; }
+        public Guid TargetRoleTemplateId { get; set; }
         
         [Required]
         public string SpecificGoal { get; set; }
@@ -16,17 +16,21 @@ namespace ITHunterview.Service.DTOs.LearningPath
 
         // 2. Technical Information
         [Required]
-        public string CurrentSkills { get; set; }
-
-        public string TargetCompanyType { get; set; }
-        
-        public string Strengths { get; set; }
-        
-        public string Weaknesses { get; set; }
+        public List<CandidateSfiaSkillDto> CurrentSkills { get; set; } = new List<CandidateSfiaSkillDto>();
 
         // 3. Personalization
         public string LearningStyle { get; set; }
         
         public string AdditionalPreferences { get; set; }
+    }
+
+    public class CandidateSfiaSkillDto
+    {
+        [Required]
+        public string SkillCode { get; set; }
+
+        [Required]
+        [Range(1, 7)]
+        public int CurrentLevel { get; set; }
     }
 }
