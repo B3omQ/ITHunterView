@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -22,13 +23,10 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetPagedSfiaSkills(
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10,
-            [FromQuery] string? search = null)
+        public async Task<IActionResult> GetAllSfiaSkills([FromQuery] string? search = null)
         {
-            var response = await _sfiaSkillUseCase.GetPagedSfiaSkillsAsync(page, pageSize, search);
-            return Ok(new ResponseBase<PagedSfiaSkillResponseDto>(response));
+            var response = await _sfiaSkillUseCase.GetAllSfiaSkillsAsync(search);
+            return Ok(new ResponseBase<List<SfiaSkillResponseDto>>(response));
         }
 
         [HttpPost]

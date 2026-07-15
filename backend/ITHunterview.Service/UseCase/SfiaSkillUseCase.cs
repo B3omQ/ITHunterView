@@ -23,7 +23,7 @@ namespace ITHunterview.Service.UseCase
             _context = context;
         }
 
-        public async Task<PagedSfiaSkillResponseDto> GetPagedSfiaSkillsAsync(int page, int pageSize, string? search)
+        public async Task<List<SfiaSkillResponseDto>> GetAllSfiaSkillsAsync(string? search)
         {
             var query = _context.SfiaSkills.AsNoTracking().AsQueryable();
 
@@ -35,25 +35,13 @@ namespace ITHunterview.Service.UseCase
                                          s.Category.ToLower().Contains(lowerSearch));
             }
 
-            var totalItems = await query.CountAsync();
-            var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
-
             var items = await query
-                .OrderBy(s => s.SkillCode)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
+                .OrderBy(s => s.Category)
+                .ThenBy(s => s.Subcategory)
+                .ThenBy(s => s.SkillCode)
                 .ToListAsync();
 
-            var responseItems = items.Select(MapToResponseDto).ToList();
-
-            return new PagedSfiaSkillResponseDto
-            {
-                TotalItems = totalItems,
-                TotalPages = totalPages,
-                CurrentPage = page,
-                PageSize = pageSize,
-                Items = responseItems
-            };
+            return items.Select(MapToResponseDto).ToList();
         }
 
         public async Task<SfiaSkillResponseDto> CreateSfiaSkillAsync(CreateSfiaSkillDto dto)

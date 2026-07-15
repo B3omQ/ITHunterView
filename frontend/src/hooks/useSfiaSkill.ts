@@ -5,10 +5,10 @@ import {
   UpdateSfiaSkillDto,
 } from "@/types/master-data.types";
 
-export const useSfiaSkills = (page: number, pageSize: number, search?: string) => {
+export const useSfiaSkills = (search?: string) => {
   return useQuery({
-    queryKey: ["sfiaSkills", page, pageSize, search],
-    queryFn: () => sfiaSkillService.getPagedSfiaSkills(page, pageSize, search),
+    queryKey: ["sfiaSkills", search],
+    queryFn: () => sfiaSkillService.getAllSfiaSkills(search),
     placeholderData: (previousData) => previousData,
   });
 };

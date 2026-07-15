@@ -9,11 +9,6 @@ interface SfiaSkillsTableProps {
   skills: SfiaSkillDto[];
   isLoading: boolean;
   isError: boolean;
-  totalItems: number;
-  totalPages: number;
-  currentPage: number;
-  pageSize: number;
-  onPageChange: (page: number) => void;
   onEdit: (skill: SfiaSkillDto) => void;
   onDelete: (skill: SfiaSkillDto) => void;
   onRetry: () => void;
@@ -23,9 +18,6 @@ export function SfiaSkillsTable({
   skills,
   isLoading,
   isError,
-  totalPages,
-  currentPage,
-  onPageChange,
   onEdit,
   onDelete,
   onRetry,
@@ -73,6 +65,8 @@ export function SfiaSkillsTable({
   const groupedData = React.useMemo(() => {
     const categories: Record<string, Record<string, SfiaSkillDto[]>> = {};
     
+    if (!Array.isArray(skills)) return categories;
+
     skills.forEach(skill => {
       if (!categories[skill.category]) {
         categories[skill.category] = {};
@@ -181,32 +175,6 @@ export function SfiaSkillsTable({
           </tbody>
         </table>
       </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-card">
-          <span className="text-sm text-muted-foreground">
-            Page <span className="font-medium text-foreground">{currentPage}</span> of{" "}
-            <span className="font-medium text-foreground">{totalPages}</span>
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onPageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="p-1.5 rounded-lg border border-border hover:bg-muted text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="p-1.5 rounded-lg border border-border hover:bg-muted text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

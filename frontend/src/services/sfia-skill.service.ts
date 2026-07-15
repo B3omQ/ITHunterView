@@ -9,14 +9,10 @@ import { PagedResponse, ResponseBase } from "@/types/common.types";
 const BASE_URL = "/api/master-data/sfia-skills";
 
 export const sfiaSkillService = {
-  getPagedSfiaSkills: async (
-    page: number = 1,
-    pageSize: number = 10,
+  getAllSfiaSkills: async (
     search?: string
-  ): Promise<ResponseBase<PagedResponse<SfiaSkillDto>>> => {
+  ): Promise<ResponseBase<SfiaSkillDto[]>> => {
     const params = new URLSearchParams();
-    params.append("page", page.toString());
-    params.append("pageSize", pageSize.toString());
     if (search) params.append("search", search);
 
     const response = await api.get(`${BASE_URL}?${params.toString()}`);

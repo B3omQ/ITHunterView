@@ -17,9 +17,6 @@ export default function SfiaSkillsPage() {
     return () => clearTimeout(timer);
   }, [skillSearch]);
 
-  const [skillPage, setSkillPage] = useState(1);
-  const skillPageSize = 10;
-
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
@@ -44,7 +41,7 @@ export default function SfiaSkillsPage() {
     isLoading,
     isError,
     refetch,
-  } = useSfiaSkills(skillPage, skillPageSize, debouncedSkillSearch);
+  } = useSfiaSkills(debouncedSkillSearch);
 
   const deleteMutation = useDeleteSfiaSkill();
 
@@ -53,10 +50,6 @@ export default function SfiaSkillsPage() {
   const [selectedSkill, setSelectedSkill] = useState<SfiaSkillDto | null>(null);
 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-
-  useEffect(() => {
-    setSkillPage(1);
-  }, [debouncedSkillSearch]);
 
   const handleOpenCreate = useCallback(() => {
     setSkillModalMode("create");
@@ -130,20 +123,15 @@ export default function SfiaSkillsPage() {
             )}
           </div>
           <div className="text-sm text-muted-foreground font-medium px-2">
-            Total: {sfiaSkillsData?.data?.totalItems || 0} skills
+            Total: {sfiaSkillsData?.data?.length || 0} skills
           </div>
         </div>
         
         <div className="flex-1 overflow-hidden relative">
           <SfiaSkillsTable
-            skills={sfiaSkillsData?.data?.items || []}
+            skills={sfiaSkillsData?.data || []}
             isLoading={isLoading}
             isError={isError}
-            totalItems={sfiaSkillsData?.data?.totalItems || 0}
-            totalPages={sfiaSkillsData?.data?.totalPages || 0}
-            currentPage={skillPage}
-            pageSize={skillPageSize}
-            onPageChange={setSkillPage}
             onEdit={handleOpenEdit}
             onDelete={handleDelete}
             onRetry={refetch}
