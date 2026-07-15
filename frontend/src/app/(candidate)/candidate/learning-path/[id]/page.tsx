@@ -44,10 +44,12 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
   }
 
   const path = pathData.data;
+  const pathDataContent = path.pathData;
+  const modules = pathDataContent.modules || [];
   
   let totalTasks = 0;
   let completedTasks = 0;
-  path.pathData.forEach((m: LearningModule) => {
+  modules.forEach((m: LearningModule) => {
     if (m.tasks && m.tasks.length > 0) {
       totalTasks += m.tasks.length;
       completedTasks += m.tasks.filter(t => t.completed).length;
@@ -84,6 +86,44 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
         </div>
       </div>
 
+      {pathDataContent.target_profile && (
+        <Card className="bg-primary/5 border-primary/20">
+          <CardHeader>
+            <CardTitle className="text-xl">Target Role: {pathDataContent.target_profile.role_name}</CardTitle>
+            <CardDescription className="text-primary/80">
+              {pathDataContent.target_profile.description}
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
+
+      {pathDataContent.gap_summary && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Skill Gap Analysis</CardTitle>
+            <CardDescription>
+              We identified {pathDataContent.gap_summary.total_gaps} core skill gaps for this role.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {pathDataContent.gap_summary.gaps.map((gap, idx) => (
+                <div key={idx} className="flex justify-between items-center border-b pb-2 last:border-0">
+                  <div>
+                    <span className="font-semibold">{gap.skill_name}</span> 
+                    <span className="text-xs text-muted-foreground ml-2">({gap.skill_code})</span>
+                  </div>
+                  <div className="flex gap-4 text-sm">
+                    <span className="text-muted-foreground">Current: Lvl {gap.current_level}</span>
+                    <span className="text-primary font-medium">Target: Lvl {gap.target_level}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <div className="flex justify-between items-end mb-4">
@@ -99,8 +139,8 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
         </CardHeader>
         <CardContent>
           <Accordion className="w-full space-y-4">
-            {path.pathData.map((module: LearningModule, index: number) => {
-              const isModuleLocked = index > 0 && !path.pathData[index - 1].completed;
+            {modules.map((module: LearningModule, index: number) => {
+              const isModuleLocked = index > 0 && !modules[index - 1].completed;
               return (
               <AccordionItem key={index} value={`module-${index}`} className={`border rounded-lg px-4 transition-colors ${module.completed ? 'bg-muted/30 border-muted' : 'bg-card'} ${isModuleLocked ? 'opacity-70 grayscale-[0.5]' : ''}`}>
                 <AccordionTrigger className="hover:no-underline py-4">
@@ -122,13 +162,9 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
                     </div>
                     
                     <div className="flex items-center gap-3 sm:ml-auto">
-                      {module.gapSource && (
+                      {module.sfia_target && (
                         <Badge variant="outline" className="shrink-0 text-xs bg-muted/50 border-muted">
-                          {module.gapSource === 'cv-jd-match'
-                            ? 'CV-JD Gap'
-                            : module.gapSource === 'interview'
-                            ? 'Interview Gap'
-                            : 'Both'}
+                          {module.sfia_target.skill_code} (Lvl {module.sfia_target.from_level} → {module.sfia_target.to_level})
                         </Badge>
                       )}
                     </div>
@@ -172,21 +208,6 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
                             </div>
                             );
                           })}
-                        </div>
-                      </div>
-                    ) : module.skills && module.skills.length > 0 ? (
-                      <div>
-                        <h5 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Key Topics</h5>
-                        <div className="flex flex-wrap gap-2">
-                          {module.skills.map((skill, skillIdx) => (
-                            <Badge 
-                              key={skillIdx} 
-                              variant="secondary" 
-                              className="bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 px-3 py-1.5 font-medium rounded-md transition-colors"
-                            >
-                              {skill}
-                            </Badge>
-                          ))}
                         </div>
                       </div>
                     ) : null}

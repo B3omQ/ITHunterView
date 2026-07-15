@@ -20,6 +20,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             await SeedSubscriptionsAsync(context);
             await SeedCoinConfigAsync(context);
             await SeedJobPostingsAsync(context);
+            await SeedSfiaSkillsAsync(context);
         }
 
         private static async Task SeedRolesAndPermissionsAsync(ITHunterviewContext context)
@@ -749,6 +750,68 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     context.JobSkillRequirements.AddRange(jobSkills);
                     await context.SaveChangesAsync();
                 }
+            }
+        }
+
+        private static async Task SeedSfiaSkillsAsync(ITHunterviewContext context)
+        {
+            if (!context.SfiaSkills.Any())
+            {
+                var skills = new List<SfiaSkill>
+                {
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "PROG", SkillName = "Programming/Software Development", Category = "Development and Implementation", Subcategory = "Systems development" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "SWDN", SkillName = "Software Design", Category = "Development and Implementation", Subcategory = "Systems development" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "DESN", SkillName = "Systems Design", Category = "Development and Implementation", Subcategory = "Systems development" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "ARCH", SkillName = "Solution Architecture", Category = "Strategy and architecture", Subcategory = "Advice/guidance" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "SINT", SkillName = "Systems Integration and Build", Category = "Development and Implementation", Subcategory = "Systems development" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "TEST", SkillName = "Testing", Category = "Development and Implementation", Subcategory = "Systems development" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "SCTY", SkillName = "Information Security", Category = "Strategy and architecture", Subcategory = "Security/privacy" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "DATS", SkillName = "Data Science", Category = "Development and Implementation", Subcategory = "Data/analytics" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "MLNG", SkillName = "Machine Learning", Category = "Development and Implementation", Subcategory = "Data/analytics" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "DBAD", SkillName = "Database Administration", Category = "Delivery and operation", Subcategory = "Data/records operations" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "RELM", SkillName = "Release Management", Category = "Delivery and operation", Subcategory = "Technology management" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "DEPL", SkillName = "Systems Installation/Decommissioning", Category = "Delivery and operation", Subcategory = "Technology management" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "HCEV", SkillName = "Human-centred evaluation", Category = "Development and Implementation", Subcategory = "User centred design" }
+                };
+
+                context.SfiaSkills.AddRange(skills);
+                await context.SaveChangesAsync();
+            }
+
+            if (!context.TargetRoleTemplates.Any())
+            {
+                var role1 = new TargetRoleTemplate { Id = System.Guid.NewGuid(), RoleName = "Senior Backend Developer", Description = "Experienced backend developer leading technical decisions" };
+                var role2 = new TargetRoleTemplate { Id = System.Guid.NewGuid(), RoleName = "Data Scientist", Description = "Data analytics and machine learning specialist" };
+                var role3 = new TargetRoleTemplate { Id = System.Guid.NewGuid(), RoleName = "DevOps Engineer", Description = "Infrastructure and CI/CD specialist" };
+
+                context.TargetRoleTemplates.AddRange(role1, role2, role3);
+                await context.SaveChangesAsync();
+
+                var getSkill = (string code) => context.SfiaSkills.First(s => s.SkillCode == code).Id;
+
+                var targetSkills = new List<TargetRoleSkill>
+                {
+                    // Senior Backend Developer
+                    new TargetRoleSkill { RoleTemplateId = role1.Id, SfiaSkillId = getSkill("PROG"), TargetLevel = 5 },
+                    new TargetRoleSkill { RoleTemplateId = role1.Id, SfiaSkillId = getSkill("SWDN"), TargetLevel = 4 },
+                    new TargetRoleSkill { RoleTemplateId = role1.Id, SfiaSkillId = getSkill("DBAD"), TargetLevel = 4 },
+                    new TargetRoleSkill { RoleTemplateId = role1.Id, SfiaSkillId = getSkill("ARCH"), TargetLevel = 4 },
+                    new TargetRoleSkill { RoleTemplateId = role1.Id, SfiaSkillId = getSkill("SINT"), TargetLevel = 4 },
+                    new TargetRoleSkill { RoleTemplateId = role1.Id, SfiaSkillId = getSkill("SCTY"), TargetLevel = 3 },
+
+                    // Data Scientist
+                    new TargetRoleSkill { RoleTemplateId = role2.Id, SfiaSkillId = getSkill("DATS"), TargetLevel = 4 },
+                    new TargetRoleSkill { RoleTemplateId = role2.Id, SfiaSkillId = getSkill("MLNG"), TargetLevel = 4 },
+                    new TargetRoleSkill { RoleTemplateId = role2.Id, SfiaSkillId = getSkill("PROG"), TargetLevel = 3 },
+
+                    // DevOps Engineer
+                    new TargetRoleSkill { RoleTemplateId = role3.Id, SfiaSkillId = getSkill("DEPL"), TargetLevel = 4 },
+                    new TargetRoleSkill { RoleTemplateId = role3.Id, SfiaSkillId = getSkill("RELM"), TargetLevel = 4 },
+                    new TargetRoleSkill { RoleTemplateId = role3.Id, SfiaSkillId = getSkill("PROG"), TargetLevel = 3 }
+                };
+
+                context.TargetRoleSkills.AddRange(targetSkills);
+                await context.SaveChangesAsync();
             }
         }
     }

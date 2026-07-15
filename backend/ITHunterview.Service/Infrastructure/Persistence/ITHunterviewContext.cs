@@ -57,6 +57,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         public DbSet<AiApiUsageLogs> AiApiUsageLogs { get; set; } = null!;
         public DbSet<CvOptimizations> CvOptimizations { get; set; } = null!;
 
+        // SFIA & Learning Paths
+        public DbSet<SfiaSkill> SfiaSkills { get; set; } = null!;
+        public DbSet<TargetRoleTemplate> TargetRoleTemplates { get; set; } = null!;
+        public DbSet<TargetRoleSkill> TargetRoleSkills { get; set; } = null!;
+
         // Finance & Billing
         public DbSet<Subscriptions> Subscriptions { get; set; } = null!;
         public DbSet<UserSubscriptions> UserSubscriptions { get; set; } = null!;
@@ -344,6 +349,22 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 entity.HasOne(e => e.Prompt)
                       .WithMany(p => p.Versions)
                       .HasForeignKey(e => e.PromptId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // TargetRoleSkills
+            modelBuilder.Entity<TargetRoleSkill>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.HasOne(e => e.RoleTemplate)
+                      .WithMany(rt => rt.RequiredSkills)
+                      .HasForeignKey(e => e.RoleTemplateId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.SfiaSkill)
+                      .WithMany(s => s.TargetRoleSkills)
+                      .HasForeignKey(e => e.SfiaSkillId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
         }

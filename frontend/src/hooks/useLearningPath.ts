@@ -1,7 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { learningPathService } from '@/services/learning-path.service';
-import { GeneratePathRequest, GenerateFromCvJdRequest, GenerateFromInterviewRequest } from '@/types/learning-path.types';
+import { GeneratePathRequest } from '@/types/learning-path.types';
 import { toast } from 'sonner';
+
+export function useTargetRoles() {
+  return useQuery({
+    queryKey: ['learning-paths', 'target-roles'],
+    queryFn: () => learningPathService.getTargetRoles(),
+  });
+}
 
 export function useGenerateLearningPath() {
   const queryClient = useQueryClient();
@@ -13,23 +20,15 @@ export function useGenerateLearningPath() {
   });
 }
 
-export function useGenerateFromCvJd() {
-  const queryClient = useQueryClient();
+export function useExtractFromCvJd() {
   return useMutation({
-    mutationFn: (data: GenerateFromCvJdRequest) => learningPathService.generateFromCvJd(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['learning-paths'] });
-    },
+    mutationFn: (matchScoreId: string) => learningPathService.extractFromCvJd(matchScoreId),
   });
 }
 
-export function useGenerateFromInterview() {
-  const queryClient = useQueryClient();
+export function useExtractFromInterview() {
   return useMutation({
-    mutationFn: (data: GenerateFromInterviewRequest) => learningPathService.generateFromInterview(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['learning-paths'] });
-    },
+    mutationFn: (sessionId: string) => learningPathService.extractFromInterview(sessionId),
   });
 }
 

@@ -86,8 +86,9 @@ const ADMIN_NAV: NavItem[] = [
     href: APP_ROUTES.ADMIN.MASTER_DATA, 
     icon: "Database",
     children: [
-      { label: "Skills", href: `${APP_ROUTES.ADMIN.MASTER_DATA}?tab=skills` },
-      { label: "Majors", href: `${APP_ROUTES.ADMIN.MASTER_DATA}?tab=majors` }
+      { label: "Skills", href: `${APP_ROUTES.ADMIN.MASTER_DATA}/skills` },
+      { label: "Majors", href: `${APP_ROUTES.ADMIN.MASTER_DATA}/majors` },
+      { label: "Target Roles", href: `${APP_ROUTES.ADMIN.MASTER_DATA}/target-roles` }
     ]
   },
   { label: "Subscriptions", href: APP_ROUTES.ADMIN.SUBSCRIPTIONS, icon: "CreditCard" },
@@ -204,7 +205,7 @@ export function Sidebar() {
                 <div className="pl-9 pr-2 py-1 space-y-1">
                   {item.children.map(child => {
                     // Check strict match for children, support searchParams
-                    const childActive = typeof window !== 'undefined' && window.location.href.includes(child.href)
+                    const childActive = pathname === child.href || pathname.startsWith(child.href + '/');
                     return (
                       <Link
                         key={child.label}
