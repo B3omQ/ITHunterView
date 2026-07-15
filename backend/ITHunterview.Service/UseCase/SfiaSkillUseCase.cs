@@ -45,6 +45,21 @@ namespace ITHunterview.Service.UseCase
             return items.Select(MapToResponseDto).ToList();
         }
 
+        public async Task<SfiaSkillResponseDto> GetSfiaSkillByIdAsync(Guid id)
+        {
+            var entity = await _context.SfiaSkills
+                .Include(s => s.Levels)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (entity == null)
+            {
+                throw new KeyNotFoundException("SFIA Skill not found.");
+            }
+
+            return MapToResponseDto(entity);
+        }
+
         public async Task<SfiaSkillResponseDto> CreateSfiaSkillAsync(CreateSfiaSkillDto dto)
         {
             var exists = await _context.SfiaSkills.AnyAsync(s => s.SkillCode == dto.SkillCode);

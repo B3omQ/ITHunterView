@@ -29,6 +29,13 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(new ResponseBase<List<SfiaSkillResponseDto>>(response));
         }
 
+        [HttpGet("{id:guid}")]
+        public async Task<IActionResult> GetSfiaSkillById([FromRoute] Guid id)
+        {
+            var response = await _sfiaSkillUseCase.GetSfiaSkillByIdAsync(id);
+            return Ok(new ResponseBase<SfiaSkillResponseDto>(response));
+        }
+
         [HttpPost]
         public async Task<IActionResult> CreateSfiaSkill([FromBody] CreateSfiaSkillDto dto)
         {

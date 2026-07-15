@@ -19,6 +19,11 @@ export const sfiaSkillService = {
     return response.data;
   },
 
+  getSfiaSkillById: async (id: string): Promise<ResponseBase<SfiaSkillDto>> => {
+    const response = await api.get(`${BASE_URL}/${id}`);
+    return response.data;
+  },
+
   createSfiaSkill: async (
     dto: CreateSfiaSkillDto
   ): Promise<ResponseBase<SfiaSkillDto>> => {

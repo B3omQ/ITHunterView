@@ -13,6 +13,14 @@ export const useSfiaSkills = (search?: string) => {
   });
 };
 
+export const useSfiaSkill = (id: string) => {
+  return useQuery({
+    queryKey: ["sfiaSkill", id],
+    queryFn: () => sfiaSkillService.getSfiaSkillById(id),
+    enabled: !!id,
+  });
+};
+
 export const useCreateSfiaSkill = () => {
   const queryClient = useQueryClient();
   return useMutation({

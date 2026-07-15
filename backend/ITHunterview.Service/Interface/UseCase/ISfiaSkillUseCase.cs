@@ -10,6 +10,7 @@ namespace ITHunterview.Service.Interface.UseCase
     public interface ISfiaSkillUseCase
     {
         Task<List<SfiaSkillResponseDto>> GetAllSfiaSkillsAsync(string? search);
+        Task<SfiaSkillResponseDto> GetSfiaSkillByIdAsync(Guid id);
         Task<SfiaSkillResponseDto> CreateSfiaSkillAsync(CreateSfiaSkillDto dto);
         Task<SfiaSkillResponseDto> UpdateSfiaSkillAsync(Guid id, UpdateSfiaSkillDto dto);
         Task<bool> DeleteSfiaSkillAsync(Guid id);
