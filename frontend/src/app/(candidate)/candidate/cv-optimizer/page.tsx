@@ -45,7 +45,7 @@ export default function CvOptimizerPage() {
 
   const handleOptimize = async () => {
     if (!selectedCvId) return;
-    
+
     try {
       const response = await optimizeMutation.mutateAsync({
         cvId: selectedCvId,
@@ -83,7 +83,10 @@ export default function CvOptimizerPage() {
               {isLoadingCvs ? (
                 <div className="h-10 flex items-center"><Loader2 className="animate-spin h-4 w-4" /></div>
               ) : (
-                <Select value={selectedCvId} onValueChange={(val) => val && setSelectedCvId(val)}>
+
+
+                <Select value={selectedCvId} onValueChange={(val) => setSelectedCvId(val || '')}>
+
                   <SelectTrigger>
                     <SelectValue placeholder="Select a CV to optimize" />
                   </SelectTrigger>
@@ -100,17 +103,17 @@ export default function CvOptimizerPage() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Target Job Description (Optional)</label>
-              <Textarea 
-                placeholder="Paste the Job Description here to get tailored feedback..." 
+              <Textarea
+                placeholder="Paste the Job Description here to get tailored feedback..."
                 className="h-32 resize-none"
                 value={targetJdText}
                 onChange={(e) => setTargetJdText(e.target.value)}
               />
             </div>
 
-            <Button 
-              className="w-full" 
-              onClick={handleOptimize} 
+            <Button
+              className="w-full"
+              onClick={handleOptimize}
               disabled={!selectedCvId || optimizeMutation.isPending}
             >
               {optimizeMutation.isPending ? (
@@ -121,7 +124,7 @@ export default function CvOptimizerPage() {
                 'Optimize My CV'
               )}
             </Button>
-            
+
             {optimizeMutation.isError && (
               <p className="text-sm text-destructive mt-2">Failed to optimize CV. Please try again.</p>
             )}
