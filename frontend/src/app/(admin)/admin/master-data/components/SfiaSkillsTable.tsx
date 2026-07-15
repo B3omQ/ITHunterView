@@ -69,54 +69,115 @@ export function SfiaSkillsTable({
     );
   }
 
+  // Group skills by category -> subcategory -> skills
+  const groupedData = React.useMemo(() => {
+    const categories: Record<string, Record<string, SfiaSkillDto[]>> = {};
+    
+    skills.forEach(skill => {
+      if (!categories[skill.category]) {
+        categories[skill.category] = {};
+      }
+      const subcat = skill.subcategory || "Other";
+      if (!categories[skill.category][subcat]) {
+        categories[skill.category][subcat] = [];
+      }
+      categories[skill.category][subcat].push(skill);
+    });
+    
+    return categories;
+  }, [skills]);
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-auto">
-        <table className="w-full text-sm text-left">
-          <thead className="text-xs text-muted-foreground uppercase bg-muted/30 sticky top-0 z-10 backdrop-blur-sm">
+        <table className="w-full text-sm text-left border-collapse">
+          <thead className="text-xs text-muted-foreground bg-muted/30 sticky top-0 z-10 backdrop-blur-sm">
             <tr>
-              <th className="px-4 py-3 font-semibold">Code</th>
-              <th className="px-4 py-3 font-semibold">Name</th>
-              <th className="px-4 py-3 font-semibold">Category</th>
-              <th className="px-4 py-3 font-semibold">Subcategory</th>
-              <th className="px-4 py-3 font-semibold text-right">Actions</th>
+              <th className="px-4 py-3 font-semibold text-left border-b border-border">Category</th>
+              <th className="px-4 py-3 font-semibold text-left border-b border-border">Subcategory</th>
+              <th className="px-4 py-3 font-semibold text-left border-b border-border">Skill</th>
+              <th className="px-2 py-3 font-semibold text-center border-b border-border" colSpan={7}>Levels</th>
+              <th className="px-4 py-3 font-semibold text-right border-b border-border">Actions</th>
+            </tr>
+            <tr className="border-b border-border bg-muted/10">
+              <th colSpan={3} className="border-b border-border"></th>
+              {[1, 2, 3, 4, 5, 6, 7].map(level => (
+                <th key={level} className="px-2 py-1.5 font-medium text-center w-8 border-b border-border">{level}</th>
+              ))}
+              <th className="border-b border-border"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {skills.map((skill) => (
-              <tr key={skill.id} className="hover:bg-muted/20 transition-colors group">
-                <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
-                  {skill.skillCode}
-                </td>
-                <td className="px-4 py-3 text-foreground font-medium">
-                  {skill.skillName}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                  {skill.category}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                  {skill.subcategory}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => onEdit(skill)}
-                      className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                      title="Edit Skill"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button
-                      onClick={() => onDelete(skill)}
-                      className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                      title="Delete Skill"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+          <tbody className="divide-y divide-border/50">
+            {Object.entries(groupedData).map(([category, subcategories]) => {
+              const totalCategoryRows = Object.values(subcategories).reduce((sum, skills) => sum + skills.length, 0);
+              let isFirstInCategory = true;
+
+              return (
+                <React.Fragment key={category}>
+                  {Object.entries(subcategories).map(([subcategory, subcatSkills]) => {
+                    const totalSubcategoryRows = subcatSkills.length;
+                    let isFirstInSubcategory = true;
+
+                    return subcatSkills.map(skill => {
+                      const availableLevels = skill.availableLevels ? skill.availableLevels.split(',').map(Number) : [];
+                      
+                      const tr = (
+                        <tr key={skill.id} className="hover:bg-muted/10 transition-colors group border-b border-border/50">
+                          {isFirstInCategory && (
+                            <td className="px-4 py-3 font-semibold text-primary align-top border-r border-border/50 bg-card/30" rowSpan={totalCategoryRows}>
+                              {category}
+                            </td>
+                          )}
+                          {isFirstInSubcategory && (
+                            <td className="px-4 py-3 text-muted-foreground align-top border-r border-border/50" rowSpan={totalSubcategoryRows}>
+                              {subcategory === "Other" ? <span className="italic opacity-50">None</span> : subcategory}
+                            </td>
+                          )}
+                          <td className="px-4 py-3 text-foreground">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium hover:underline cursor-pointer" onClick={() => onEdit(skill)}>{skill.skillName}</span>
+                              <span className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">{skill.skillCode}</span>
+                            </div>
+                          </td>
+                          {[1, 2, 3, 4, 5, 6, 7].map(level => (
+                            <td key={level} className={`px-2 py-3 text-center ${availableLevels.includes(level) ? 'bg-primary/5' : ''}`}>
+                              {availableLevels.includes(level) ? (
+                                <span className="font-semibold text-primary">{level}</span>
+                              ) : (
+                                <span className="text-muted-foreground/20">-</span>
+                              )}
+                            </td>
+                          ))}
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => onEdit(skill)}
+                                className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                                title="Edit Skill"
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                              <button
+                                onClick={() => onDelete(skill)}
+                                className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                                title="Delete Skill"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+
+                      isFirstInCategory = false;
+                      isFirstInSubcategory = false;
+                      
+                      return tr;
+                    });
+                  })}
+                </React.Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>

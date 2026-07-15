@@ -25,6 +25,7 @@ export function SfiaSkillModal({
   const [category, setCategory] = useState("");
   const [subcategory, setSubcategory] = useState("");
   const [description, setDescription] = useState("");
+  const [selectedLevels, setSelectedLevels] = useState<number[]>([]);
   const [error, setError] = useState("");
 
   const createMutation = useCreateSfiaSkill();
@@ -38,12 +39,18 @@ export function SfiaSkillModal({
         setCategory(initialData.category || "");
         setSubcategory(initialData.subcategory || "");
         setDescription(initialData.description || "");
+        setSelectedLevels(
+          initialData.availableLevels
+            ? initialData.availableLevels.split(",").map(Number).filter((n) => !isNaN(n))
+            : []
+        );
       } else {
         setSkillCode("");
         setSkillName("");
         setCategory("");
         setSubcategory("");
         setDescription("");
+        setSelectedLevels([]);
       }
       setError("");
     }
@@ -68,6 +75,7 @@ export function SfiaSkillModal({
       category,
       subcategory,
       description,
+      availableLevels: selectedLevels.sort((a, b) => a - b).join(","),
     };
 
     if (mode === "create") {
@@ -199,6 +207,39 @@ export function SfiaSkillModal({
                 className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
                 disabled={isPending}
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Available Levels
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {[1, 2, 3, 4, 5, 6, 7].map((level) => (
+                  <label
+                    key={level}
+                    className={`cursor-pointer px-3 py-1.5 rounded-full border text-sm font-medium transition-colors ${
+                      selectedLevels.includes(level)
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-input hover:border-primary/50"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={selectedLevels.includes(level)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedLevels([...selectedLevels, level]);
+                        } else {
+                          setSelectedLevels(selectedLevels.filter((l) => l !== level));
+                        }
+                      }}
+                      disabled={isPending}
+                    />
+                    Level {level}
+                  </label>
+                ))}
+              </div>
             </div>
           </form>
         </div>

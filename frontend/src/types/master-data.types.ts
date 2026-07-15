@@ -124,6 +124,7 @@ export interface SfiaSkillDto {
   category: string;
   subcategory: string;
   description: string;
+  availableLevels: string;
 }
 
 export interface CreateSfiaSkillDto {
@@ -132,6 +133,7 @@ export interface CreateSfiaSkillDto {
   category: string;
   subcategory: string;
   description: string;
+  availableLevels: string;
 }
 
 export interface UpdateSfiaSkillDto {
@@ -140,4 +142,5 @@ export interface UpdateSfiaSkillDto {
   category: string;
   subcategory: string;
   description: string;
+  availableLevels: string;
 }

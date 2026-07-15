@@ -91,8 +91,9 @@ export function ImportSfiaSkillModal({
             <h3 className="text-sm font-medium mb-2">CSV Format Requirements:</h3>
             <div className="text-xs text-muted-foreground space-y-1">
               <p>1. Must include headers in the first row.</p>
-              <p>2. Columns (in order): <strong>SkillCode, SkillName, Category, Subcategory, Description</strong>.</p>
-              <p>3. If SkillCode already exists, it will update the existing skill.</p>
+              <p>2. Columns (in order): <strong>SkillCode, SkillName, Category, Subcategory, Description, AvailableLevels</strong>.</p>
+              <p>3. AvailableLevels format (comma-separated): <strong>4,5,6,7</strong>.</p>
+              <p>4. If SkillCode already exists, it will update the existing skill.</p>
             </div>
           </div>
 

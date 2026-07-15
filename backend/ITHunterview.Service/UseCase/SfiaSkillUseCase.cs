@@ -70,7 +70,8 @@ namespace ITHunterview.Service.UseCase
                 SkillName = dto.SkillName,
                 Category = dto.Category,
                 Subcategory = dto.Subcategory,
-                Description = dto.Description
+                Description = dto.Description,
+                AvailableLevels = dto.AvailableLevels
             };
 
             _context.SfiaSkills.Add(entity);
@@ -99,6 +100,7 @@ namespace ITHunterview.Service.UseCase
             entity.Category = dto.Category;
             entity.Subcategory = dto.Subcategory;
             entity.Description = dto.Description;
+            entity.AvailableLevels = dto.AvailableLevels;
 
             await _context.SaveChangesAsync();
 
@@ -161,6 +163,7 @@ namespace ITHunterview.Service.UseCase
                         var category = fields[2]?.Trim();
                         var subcategory = fields[3]?.Trim();
                         var description = fields.Length > 4 ? fields[4]?.Trim() : string.Empty;
+                        var availableLevels = fields.Length > 5 ? fields[5]?.Trim() : string.Empty;
 
                         if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(category))
                         {
@@ -174,6 +177,7 @@ namespace ITHunterview.Service.UseCase
                             existingSkill.Category = category;
                             existingSkill.Subcategory = subcategory;
                             existingSkill.Description = description ?? string.Empty;
+                            existingSkill.AvailableLevels = availableLevels ?? string.Empty;
                             updatedCount++;
                         }
                         else
@@ -185,7 +189,8 @@ namespace ITHunterview.Service.UseCase
                                 SkillName = name,
                                 Category = category,
                                 Subcategory = subcategory,
-                                Description = description ?? string.Empty
+                                Description = description ?? string.Empty,
+                                AvailableLevels = availableLevels ?? string.Empty
                             };
                             _context.SfiaSkills.Add(newSkill);
                             importedCount++;
@@ -209,7 +214,8 @@ namespace ITHunterview.Service.UseCase
                 SkillName = entity.SkillName,
                 Category = entity.Category,
                 Subcategory = entity.Subcategory,
-                Description = entity.Description
+                Description = entity.Description,
+                AvailableLevels = entity.AvailableLevels
             };
         }
     }
