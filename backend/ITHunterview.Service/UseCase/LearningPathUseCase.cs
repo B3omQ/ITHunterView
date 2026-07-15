@@ -129,17 +129,10 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
 
             var userPromptBuilder = new StringBuilder();
             userPromptBuilder.AppendLine($"Target Role: {template.RoleName}");
-            userPromptBuilder.AppendLine($"Specific Goal: {request.SpecificGoal}");
-            userPromptBuilder.AppendLine($"Experience Level: {request.ExperienceLevel}");
             userPromptBuilder.AppendLine();
             
             userPromptBuilder.AppendLine("=== SFIA SKILL GAPS ===");
             userPromptBuilder.AppendLine(JsonSerializer.Serialize(gaps));
-            userPromptBuilder.AppendLine();
-
-            userPromptBuilder.AppendLine("=== PERSONALIZATION & PREFERENCES ===");
-            if (!string.IsNullOrWhiteSpace(request.LearningStyle)) userPromptBuilder.AppendLine($"Preferred Learning Style: {request.LearningStyle}");
-            if (!string.IsNullOrWhiteSpace(request.AdditionalPreferences)) userPromptBuilder.AppendLine($"Additional Preferences: {request.AdditionalPreferences}");
             userPromptBuilder.AppendLine();
             
             userPromptBuilder.AppendLine("Please generate a structured, highly personalized self-paced learning path following the SFIA progression rules.");

@@ -5,11 +5,7 @@ export interface CandidateSfiaSkillDto {
 
 export interface GeneratePathRequest {
   targetRoleTemplateId: string;
-  specificGoal: string;
-  experienceLevel: string;
   currentSkills: CandidateSfiaSkillDto[];
-  learningStyle?: string;
-  additionalPreferences?: string;
 }
 
 export interface TargetRoleSkillDto {

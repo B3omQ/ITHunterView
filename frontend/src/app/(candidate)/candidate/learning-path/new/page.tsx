@@ -29,12 +29,7 @@ export default function NewLearningPathPage() {
   const { data: targetRolesData, isLoading: isTargetRolesLoading } = useTargetRoles();
 
   const [targetRoleTemplateId, setTargetRoleTemplateId] = useState('');
-  const [specificGoal, setSpecificGoal] = useState('');
-  const [experienceLevel, setExperienceLevel] = useState('');
   const [currentSkills, setCurrentSkills] = useState<{ skillCode: string; currentLevel: number }[]>([]);
-  
-  const [learningStyle, setLearningStyle] = useState('');
-  const [additionalPreferences, setAdditionalPreferences] = useState('');
   
   const [generationMethod, setGenerationMethod] = useState<'manual' | 'cv-jd' | 'interview'>('manual');
   const [selectedMatchScoreId, setSelectedMatchScoreId] = useState<string>('');
@@ -64,11 +59,7 @@ export default function NewLearningPathPage() {
   const handleGenerate = () => {
     generateMutation.mutate({
       targetRoleTemplateId,
-      specificGoal,
-      experienceLevel,
       currentSkills,
-      learningStyle,
-      additionalPreferences,
     });
   };
 
@@ -88,7 +79,7 @@ export default function NewLearningPathPage() {
 
   const isGenerateDisabled = () => {
     if (generationMethod === 'manual') {
-       return !targetRoleTemplateId || !specificGoal || !experienceLevel || isAnyPending;
+       return !targetRoleTemplateId || isAnyPending;
     }
     if (generationMethod === 'cv-jd') {
        return !selectedMatchScoreId || isAnyPending;
@@ -169,40 +160,22 @@ export default function NewLearningPathPage() {
               <div className="space-y-8">
                 {/* Section 1: Core Information */}
                 <div className="space-y-4">
-                  <h3 className="font-semibold text-lg flex items-center"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Core Information</h3>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="targetRole">Target Role (SFIA Template) <span className="text-red-500">*</span></Label>
-                      <Select value={targetRoleTemplateId} onValueChange={(v) => setTargetRoleTemplateId(v || '')}>
-                        <SelectTrigger id="targetRole">
-                          <SelectValue placeholder={isTargetRolesLoading ? "Loading templates..." : "Select a target role..."} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {targetRolesData?.data?.map(role => (
-                            <SelectItem key={role.id} value={role.id}>{role.roleName}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {selectedRoleTemplate && (
-                        <p className="text-xs text-muted-foreground">{selectedRoleTemplate.description}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="experienceLevel">Experience Level <span className="text-red-500">*</span></Label>
-                      <Select value={experienceLevel} onValueChange={(v) => setExperienceLevel(v || '')}>
-                        <SelectTrigger id="experienceLevel"><SelectValue placeholder="Select experience..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="< 1 year">Less than 1 year</SelectItem>
-                          <SelectItem value="1-3 years">1-3 years</SelectItem>
-                          <SelectItem value="3-5 years">3-5 years</SelectItem>
-                          <SelectItem value="5+ years">5+ years</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                  <h3 className="font-semibold text-lg flex items-center"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Target Role</h3>
                   <div className="space-y-2">
-                    <Label htmlFor="specificGoal">Specific Goal <span className="text-red-500">*</span></Label>
-                    <Textarea id="specificGoal" placeholder="e.g. Pass Senior Frontend Interview at a product company, or switch from QA to Developer" value={specificGoal} onChange={(e) => setSpecificGoal(e.target.value)} />
+                    <Label htmlFor="targetRole">Target Role (SFIA Template) <span className="text-red-500">*</span></Label>
+                    <Select value={targetRoleTemplateId} onValueChange={(v) => setTargetRoleTemplateId(v || '')}>
+                      <SelectTrigger id="targetRole">
+                        <SelectValue placeholder={isTargetRolesLoading ? "Loading templates..." : "Select a target role..."} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {targetRolesData?.data?.map(role => (
+                          <SelectItem key={role.id} value={role.id}>{role.roleName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedRoleTemplate && (
+                      <p className="text-xs text-muted-foreground">{selectedRoleTemplate.description}</p>
+                    )}
                   </div>
                 </div>
 
@@ -252,26 +225,6 @@ export default function NewLearningPathPage() {
                   </div>
                 )}
 
-                {/* Section 3: Personalization */}
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-lg flex items-center border-t pt-6"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Personalization</h3>
-                  <div className="space-y-2">
-                    <Label htmlFor="learningStyle">Preferred Learning Style</Label>
-                    <Select value={learningStyle} onValueChange={(v) => setLearningStyle(v || '')}>
-                      <SelectTrigger id="learningStyle"><SelectValue placeholder="Select preferred learning style..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Project-based">Project-based & Hands-on</SelectItem>
-                        <SelectItem value="Theory & Video">Video Courses & Theory</SelectItem>
-                        <SelectItem value="Coding Exercises">Coding Exercises (LeetCode style)</SelectItem>
-                        <SelectItem value="Mixed">Mixed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="additionalPreferences">Additional Preferences (Budget, Language, etc.)</Label>
-                    <Textarea id="additionalPreferences" placeholder="e.g. Prefer free resources, prefer Vietnamese content" value={additionalPreferences} onChange={(e) => setAdditionalPreferences(e.target.value)} />
-                  </div>
-                </div>
               </div>
             )}
 
