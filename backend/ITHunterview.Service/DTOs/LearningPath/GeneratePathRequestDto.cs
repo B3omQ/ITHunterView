@@ -30,7 +30,7 @@ namespace ITHunterview.Service.DTOs.LearningPath
         public string SkillCode { get; set; }
 
         [Required]
-        [Range(1, 7)]
+        [Range(0, 7)]
         public int CurrentLevel { get; set; }
     }
 }
