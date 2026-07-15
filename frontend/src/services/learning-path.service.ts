@@ -24,6 +24,6 @@ export const learningPathService = {
   previewHistoryContext: (type: 'cv-jd' | 'interview', sourceId: string) =>
     api.get<ApiResponse<HistoryContextPreviewDto>>(`/api/learning-paths/preview-context?type=${type}&sourceId=${sourceId}`).then(r => r.data),
 
-  toggleModuleCompletion: (pathId: string, moduleIndex: number) =>
-    api.put<ApiResponse<LearningPath>>(`/api/learning-paths/${pathId}/modules/${moduleIndex}/toggle`).then(r => r.data),
+  toggleTaskCompletion: (pathId: string, moduleIndex: number, taskIndex: number) =>
+    api.put<ApiResponse<LearningPath>>(`/api/learning-paths/${pathId}/modules/${moduleIndex}/tasks/${taskIndex}/toggle`).then(r => r.data),
 };

@@ -23,12 +23,18 @@ export interface GenerateFromInterviewRequest {
   sessionId?: string;
 }
 
+export interface LearningTask {
+  title: string;
+  description: string;
+  completed?: boolean;
+}
+
 export interface LearningModule {
   title: string;
   description: string;
-  durationWeeks: number;
-  skills: string[];
+  skills?: string[];
   gapSource?: 'cv-jd-match' | 'interview' | 'both';
+  tasks: LearningTask[];
   completed?: boolean;
 }
 

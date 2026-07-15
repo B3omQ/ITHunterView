@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { useMyLearningPaths, useDeleteLearningPath } from '@/hooks/useLearningPath';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Plus, Trash2, Map, CheckCircle2, Clock, Circle } from 'lucide-react';
+import { Loader2, Plus, Trash2, Map, CheckCircle2, Clock, Circle, Sparkles } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,11 @@ import {
   DialogTrigger,
   DialogClose,
 } from '@/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function LearningPathDashboard() {
   const { data: myPathsData, isLoading } = useMyLearningPaths();
@@ -34,12 +40,28 @@ export default function LearningPathDashboard() {
           </p>
         </div>
         {paths.length > 0 && (
-          <Link href="/candidate/learning-path/new" passHref>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
+          paths.length >= 3 ? (
+            <Tooltip>
+              <TooltipTrigger render={<span className="cursor-not-allowed" />} onClick={(e) => e.preventDefault()}>
+                <span className="pointer-events-none">
+                  <Button disabled className="bg-muted text-muted-foreground cursor-not-allowed border-none shadow-none hover:bg-muted">
+                    <Plus className="mr-1 h-4 w-4" />
+                    Create New Path
+                    <Sparkles className="mr-2 h-4 w-4 ml-1" />
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>You have reached the maximum of 3 learning paths.</p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <Link href="/candidate/learning-path/new" className={buttonVariants({ variant: 'default', className: "bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all" })}>
+              <Plus className="mr-1 h-4 w-4" />
               Create New Path
-            </Button>
-          </Link>
+              <Sparkles className="mr-2 h-4 w-4 ml-1" />
+            </Link>
+          )
         )}
       </div>
 
@@ -48,110 +70,96 @@ export default function LearningPathDashboard() {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : paths.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {paths.map((path) => {
-            const totalModules = path.pathData.length;
-            const completedModules = path.pathData.filter(m => m.completed).length;
-            const progressPercentage = totalModules === 0 ? 0 : Math.round((completedModules / totalModules) * 100);
+        <div className="grid grid-cols-1 lg:grid-cols-10 gap-8 lg:gap-12 w-full">
+          <div className="col-span-1 lg:col-span-6 flex flex-col gap-4">
+            {paths.map((path) => {
+              let totalTasks = 0;
+              let completedTasks = 0;
+              path.pathData.forEach((m: any) => {
+                if (m.tasks && m.tasks.length > 0) {
+                  totalTasks += m.tasks.length;
+                  completedTasks += m.tasks.filter((t: any) => t.completed).length;
+                }
+              });
+              const progressPercentage = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
-            return (
-            <Card key={path.id} className="flex flex-col relative overflow-hidden group">
-              {progressPercentage === 100 && (
-                <div className="absolute top-0 left-0 w-full h-1 bg-green-500" />
-              )}
-              {progressPercentage > 0 && progressPercentage < 100 && (
-                <div className="absolute top-0 left-0 h-1 bg-blue-500 transition-all" style={{ width: `${progressPercentage}%` }} />
-              )}
+              return (
+                <Card key={path.id} className="flex flex-col relative overflow-hidden group rounded-[20px] border-none shadow-[0_10px_40px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_50px_rgba(0,0,0,0.06)] transition-all duration-300 bg-card p-1">
 
-              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                <div className="flex-1 pr-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant={
-                      path.status === 'Completed' ? 'default' : 
-                      path.status === 'In Progress' ? 'secondary' : 'outline'
-                    } className={
-                      path.status === 'Completed' ? 'bg-green-500 hover:bg-green-600' : 
-                      path.status === 'In Progress' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 border-none' : ''
-                    }>
-                      {path.status === 'Completed' && <CheckCircle2 className="w-3 h-3 mr-1" />}
-                      {path.status === 'In Progress' && <Clock className="w-3 h-3 mr-1" />}
-                      {path.status === 'Not Started' && <Circle className="w-3 h-3 mr-1 text-muted-foreground" />}
-                      {path.status}
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-xl line-clamp-2 leading-tight" title={path.title}>
-                    {path.title}
-                  </CardTitle>
-                  <CardDescription className="mt-1">
-                    Generated on {new Date(path.createdAt).toLocaleDateString('vi-VN')}
-                  </CardDescription>
-                </div>
-                <Dialog>
-                  <DialogTrigger
-                    render={
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-muted-foreground hover:text-destructive shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                        disabled={deleteMutation.isPending && deleteMutation.variables === path.id}
-                      />
-                    }
-                  >
-                    {deleteMutation.isPending && deleteMutation.variables === path.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Delete Learning Path</DialogTitle>
-                      <DialogDescription>
-                        Are you sure you want to delete this learning path? This action cannot be undone.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                      <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-                      <DialogClose render={<Button variant="destructive" onClick={() => deleteMutation.mutate(path.id)} />}>Delete</DialogClose>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col justify-between pt-4">
-                <div className="space-y-5 mb-6">
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span className="font-medium">{progressPercentage}%</span>
-                    </div>
-                    <Progress value={progressPercentage} className="h-2" />
-                  </div>
+                  <CardHeader className="flex flex-col items-start justify-between space-y-0 pb-1 pt-3 px-4 relative">
+                    <Dialog>
+                      <DialogTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute top-2 right-2 text-muted-foreground hover:text-destructive shrink-0 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                            disabled={deleteMutation.isPending && deleteMutation.variables === path.id}
+                          />
+                        }
+                      >
+                        {deleteMutation.isPending && deleteMutation.variables === path.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3 w-3" />
+                        )}
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Delete Learning Path</DialogTitle>
+                          <DialogDescription>
+                            Are you sure you want to delete this learning path? This action cannot be undone.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                          <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+                          <DialogClose render={<Button variant="destructive" onClick={() => deleteMutation.mutate(path.id)} />}>Delete</DialogClose>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
 
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-foreground text-lg">{completedModules}/{totalModules}</span>
-                      <span className="text-xs uppercase tracking-wider">Modules</span>
+                    <div className="w-full pr-8">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="bg-primary/10 p-1.5 rounded-lg flex-shrink-0">
+                          <Map className="w-3.5 h-3.5 text-primary" />
+                        </div>
+                        <Badge className={`font-semibold px-2 py-0.5 border-none shadow-none text-[10px] rounded-md ${path.status === 'Completed' ? 'bg-[#E6F4EA] text-[#137333] hover:bg-[#CEEAD6]' :
+                          path.status === 'In Progress' ? 'bg-[#E6F0FF] text-[#0052CC] hover:bg-[#CCE0FF]' :
+                            'bg-[#F3F4F6] text-gray-700 hover:bg-gray-200'
+                          }`}>
+                          {path.status}
+                        </Badge>
+                      </div>
+                      <Link href={`/candidate/learning-path/${path.id}`} passHref>
+                        <CardTitle className="text-base font-extrabold tracking-tight line-clamp-2 leading-snug hover:text-primary transition-colors cursor-pointer" title={path.title}>
+                          {path.title}
+                        </CardTitle>
+                      </Link>
                     </div>
-                    <div className="w-px h-8 bg-border"></div>
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-foreground text-lg">
-                        {path.pathData.reduce((acc, curr) => acc + curr.durationWeeks, 0)}
-                      </span>
-                      <span className="text-xs uppercase tracking-wider">Est. Weeks</span>
+                  </CardHeader>
+                  <CardContent className="flex-1 flex flex-col justify-end pt-3 pb-3 px-4">
+                    <div className="flex items-center gap-3 mt-auto">
+                      <Progress value={progressPercentage} className="flex-1 [&_[data-slot=progress-track]]:h-4 [&_[data-slot=progress-track]]:bg-muted/60" />
+                      <span className="font-bold text-primary text-sm w-8 text-right">{progressPercentage}%</span>
                     </div>
-                  </div>
-                </div>
-                
-                <Link href={`/candidate/learning-path/${path.id}`} passHref className="mt-auto">
-                  <Button variant="outline" className="w-full">
-                    View Details
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-            );
-          })}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+          <div className="hidden lg:block col-span-1 lg:col-span-4">
+            <div className="sticky top-8 flex flex-col items-center justify-center p-8">
+              <div className="relative w-full max-w-md aspect-square flex items-center justify-center">
+                <DotLottieReact
+                  src="/images/ai-animation.json"
+                  loop
+                  autoplay
+                  speed={0.25}
+                  className="w-full h-full drop-shadow-2xl"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed rounded-xl bg-muted/10">
@@ -162,11 +170,10 @@ export default function LearningPathDashboard() {
           <p className="text-muted-foreground max-w-md mb-8">
             Let our AI analyze your CV, mock interviews, or manual goals to generate a personalized step-by-step career path.
           </p>
-          <Link href="/candidate/learning-path/new" passHref>
-            <Button size="lg" className="h-12 px-8">
-              <Plus className="mr-2 h-5 w-5" />
-              Create Your First Path
-            </Button>
+          <Link href="/candidate/learning-path/new" className={buttonVariants({ size: 'lg', className: "h-12 px-8 bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all" })}>
+            <Plus className="mr-1 h-5 w-5" />
+            <Sparkles className="mr-2 h-5 w-5" />
+            Create Your First Path
           </Link>
         </div>
       )}

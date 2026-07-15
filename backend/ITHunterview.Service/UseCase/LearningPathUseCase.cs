@@ -53,10 +53,12 @@ Example output format:
   ""title"": ""Mastering Senior Frontend Development"",
   ""modules"": [
     {
-      ""title"": ""Module 1: Advanced React Patterns"",
+      ""title"": ""Part 1: Advanced React Patterns"",
       ""description"": ""Deep dive into HOCs, Render Props, and custom hooks."",
-      ""durationWeeks"": 2,
-      ""skills"": [""React"", ""Custom Hooks"", ""Performance Optimization""]
+      ""tasks"": [
+        { ""title"": ""Understand Custom Hooks"", ""description"": ""Read the documentation on custom hooks."" },
+        { ""title"": ""Implement useFetch"", ""description"": ""Write a generic data fetching hook."" }
+      ]
     }
   ]
 }
@@ -112,11 +114,13 @@ Example output format:
   ""title"": ""Closing the CV-JD Gap for Backend Engineer"",
   ""modules"": [
     {
-      ""title"": ""Module 1: Microservices Architecture"",
+      ""title"": ""Part 1: Microservices Architecture"",
       ""description"": ""Learn about service discovery, API gateways, and distributed tracing."",
-      ""durationWeeks"": 3,
-      ""skills"": [""Microservices"", ""Docker"", ""Kubernetes""],
-      ""gapSource"": ""cv-jd-match""
+      ""gapSource"": ""cv-jd-match"",
+      ""tasks"": [
+        { ""title"": ""Study API Gateways"", ""description"": ""Understand how an API gateway routes traffic."" },
+        { ""title"": ""Dockerize an App"", ""description"": ""Create a Dockerfile for a basic web service."" }
+      ]
     }
   ]
 }
@@ -153,11 +157,13 @@ Example output format:
   ""title"": ""Interview Preparation: Data Structures & Algorithms"",
   ""modules"": [
     {
-      ""title"": ""Module 1: Advanced SQL Queries"",
+      ""title"": ""Part 1: Advanced SQL Queries"",
       ""description"": ""Mastering window functions and CTEs to address interview weaknesses."",
-      ""durationWeeks"": 2,
-      ""skills"": [""SQL"", ""Window Functions""],
-      ""gapSource"": ""interview""
+      ""gapSource"": ""interview"",
+      ""tasks"": [
+        { ""title"": ""Review Window Functions"", ""description"": ""Study ROW_NUMBER, RANK, and DENSE_RANK."" },
+        { ""title"": ""Practice CTEs"", ""description"": ""Solve 5 SQL problems using CTEs."" }
+      ]
     }
   ]
 }
@@ -447,32 +453,33 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
                     parsedTitle = titleElement.GetString() ?? parsedTitle;
                 }
                 
-                if (jsonDoc.RootElement.TryGetProperty("modules", out var modulesElement) && modulesElement.ValueKind == JsonValueKind.Array)
+                var sourceArray = jsonDoc.RootElement;
+                bool hasModules = jsonDoc.RootElement.TryGetProperty("modules", out var modulesElement) && modulesElement.ValueKind == JsonValueKind.Array;
+                if (hasModules) sourceArray = modulesElement;
+
+                if (sourceArray.ValueKind == JsonValueKind.Array)
                 {
-                    // Add "completed": false to every module to initialize gamification
                     var modulesList = new List<Dictionary<string, object>>();
-                    foreach (var mod in modulesElement.EnumerateArray())
+                    foreach (var mod in sourceArray.EnumerateArray())
                     {
                         var modDict = JsonSerializer.Deserialize<Dictionary<string, object>>(mod.GetRawText()) ?? new Dictionary<string, object>();
                         modDict["completed"] = false;
+                        
+                        if (modDict.TryGetValue("tasks", out var tasksObj) && tasksObj is JsonElement tasksElem && tasksElem.ValueKind == JsonValueKind.Array)
+                        {
+                            var tasksList = new List<Dictionary<string, object>>();
+                            foreach (var task in tasksElem.EnumerateArray())
+                            {
+                                var taskDict = JsonSerializer.Deserialize<Dictionary<string, object>>(task.GetRawText()) ?? new Dictionary<string, object>();
+                                taskDict["completed"] = false;
+                                tasksList.Add(taskDict);
+                            }
+                            modDict["tasks"] = tasksList;
+                        }
+                        
                         modulesList.Add(modDict);
                     }
                     serializedModules = JsonSerializer.Serialize(modulesList);
-                }
-                else 
-                {
-                    // Fallback in case AI ignored the prompt and returned an array directly
-                    if (jsonDoc.RootElement.ValueKind == JsonValueKind.Array)
-                    {
-                        var modulesList = new List<Dictionary<string, object>>();
-                        foreach (var mod in jsonDoc.RootElement.EnumerateArray())
-                        {
-                            var modDict = JsonSerializer.Deserialize<Dictionary<string, object>>(mod.GetRawText()) ?? new Dictionary<string, object>();
-                            modDict["completed"] = false;
-                            modulesList.Add(modDict);
-                        }
-                        serializedModules = JsonSerializer.Serialize(modulesList);
-                    }
                 }
             }
             catch (Exception)
@@ -551,7 +558,7 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
             await _learningPathRepository.DeleteAsync(path);
         }
 
-        public async Task<LearningPathResponseDto> ToggleModuleCompletionAsync(Guid candidateId, Guid pathId, int moduleIndex)
+        public async Task<LearningPathResponseDto> ToggleTaskCompletionAsync(Guid candidateId, Guid pathId, int moduleIndex, int taskIndex)
         {
             var path = await _learningPathRepository.GetByIdAsync(pathId);
             if (path == null || path.CandidateId != candidateId)
@@ -565,24 +572,116 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
                 throw new ArgumentException("Invalid module index.");
             }
 
-            // Toggle completed flag
-            bool currentStatus = false;
-            if (modules[moduleIndex].TryGetValue("completed", out var compVal) && compVal is JsonElement compElem)
+            if (!modules[moduleIndex].TryGetValue("tasks", out var tasksObj) || !(tasksObj is JsonElement tasksElem) || tasksElem.ValueKind != JsonValueKind.Array)
             {
-                currentStatus = compElem.ValueKind == JsonValueKind.True;
+                throw new ArgumentException("This module does not contain any tasks.");
             }
-            modules[moduleIndex]["completed"] = !currentStatus;
 
-            // Recalculate global status
-            int completedCount = modules.Count(m => 
-                m.TryGetValue("completed", out var v) && v is JsonElement e && e.ValueKind == JsonValueKind.True
-            );
+            var tasksList = new List<Dictionary<string, object>>();
+            foreach (var t in tasksElem.EnumerateArray())
+            {
+                tasksList.Add(JsonSerializer.Deserialize<Dictionary<string, object>>(t.GetRawText()) ?? new Dictionary<string, object>());
+            }
 
-            if (completedCount == 0) path.Status = "Not Started";
-            else if (completedCount == modules.Count) path.Status = "Completed";
-            else path.Status = "In Progress";
+            if (taskIndex < 0 || taskIndex >= tasksList.Count)
+            {
+                throw new ArgumentException("Invalid task index.");
+            }
+
+            // Determine current status
+            bool currentTaskStatus = false;
+            if (tasksList[taskIndex].TryGetValue("completed", out var compVal) && compVal is JsonElement compElem)
+            {
+                currentTaskStatus = compElem.ValueKind == JsonValueKind.True;
+            }
+
+            // Determine intended next status
+            bool nextStatus = !currentTaskStatus;
+
+            // Enforcement Rules
+            if (nextStatus) // Checking
+            {
+                // Check previous module is completed
+                if (moduleIndex > 0)
+                {
+                    if (modules[moduleIndex - 1].TryGetValue("completed", out var prevModVal) && prevModVal is JsonElement prevModElem)
+                    {
+                        if (prevModElem.ValueKind != JsonValueKind.True)
+                            throw new ArgumentException("You must complete the previous module first.");
+                    }
+                }
+
+                // Check previous task in current module is completed
+                if (taskIndex > 0)
+                {
+                    if (tasksList[taskIndex - 1].TryGetValue("completed", out var prevTaskVal) && prevTaskVal is JsonElement prevTaskElem)
+                    {
+                        if (prevTaskElem.ValueKind != JsonValueKind.True)
+                            throw new ArgumentException("You must complete the previous task first.");
+                    }
+                }
+            }
+            else // Unchecking
+            {
+                // Ensure next task in current module is not completed
+                if (taskIndex < tasksList.Count - 1)
+                {
+                    if (tasksList[taskIndex + 1].TryGetValue("completed", out var nextTaskVal) && nextTaskVal is JsonElement nextTaskElem)
+                    {
+                        if (nextTaskElem.ValueKind == JsonValueKind.True)
+                            throw new ArgumentException("Cannot uncheck task because the subsequent task is already completed.");
+                    }
+                }
+                // Ensure first task of next module is not completed
+                else if (moduleIndex < modules.Count - 1)
+                {
+                    if (modules[moduleIndex + 1].TryGetValue("tasks", out var nextModTasksObj) && nextModTasksObj is JsonElement nextModTasksElem && nextModTasksElem.ValueKind == JsonValueKind.Array)
+                    {
+                        var nextModTasksList = nextModTasksElem.EnumerateArray().ToList();
+                        if (nextModTasksList.Count > 0)
+                        {
+                            if (nextModTasksList[0].TryGetProperty("completed", out var firstTaskNextMod) && firstTaskNextMod.ValueKind == JsonValueKind.True)
+                                throw new ArgumentException("Cannot uncheck task because the next module has already been started.");
+                        }
+                    }
+                }
+            }
+
+            tasksList[taskIndex]["completed"] = nextStatus;
+
+            modules[moduleIndex]["tasks"] = tasksList;
+
+            // Update module completion status based on its tasks
+            bool isModuleCompleted = tasksList.All(t => t.TryGetValue("completed", out var cv) && cv is JsonElement ce && ce.ValueKind == JsonValueKind.True);
+            modules[moduleIndex]["completed"] = isModuleCompleted;
 
             path.PathData = JsonSerializer.Serialize(modules);
+
+            // Recalculate global status based on ALL tasks across ALL modules
+            // Parse from the serialized string to ensure consistent JsonElement types
+            var updatedDoc = JsonDocument.Parse(path.PathData);
+            
+            int totalTasks = 0;
+            int totalCompletedTasks = 0;
+
+            foreach (var mod in updatedDoc.RootElement.EnumerateArray())
+            {
+                if (mod.TryGetProperty("tasks", out var tElem) && tElem.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var t in tElem.EnumerateArray())
+                    {
+                        totalTasks++;
+                        if (t.TryGetProperty("completed", out var cProp) && cProp.ValueKind == JsonValueKind.True)
+                        {
+                            totalCompletedTasks++;
+                        }
+                    }
+                }
+            }
+
+            if (totalTasks == 0 || totalCompletedTasks == 0) path.Status = "Not Started";
+            else if (totalCompletedTasks == totalTasks) path.Status = "Completed";
+            else path.Status = "In Progress";
 
             await _learningPathRepository.UpdateAsync(path);
 

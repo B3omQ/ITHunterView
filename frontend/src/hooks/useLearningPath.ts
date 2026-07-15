@@ -70,11 +70,11 @@ export function usePreviewHistoryContext(type: 'cv-jd' | 'interview', sourceId: 
   });
 }
 
-export function useToggleModule() {
+export function useToggleTaskCompletion() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ pathId, moduleIndex }: { pathId: string; moduleIndex: number }) => 
-      learningPathService.toggleModuleCompletion(pathId, moduleIndex),
+    mutationFn: ({ pathId, moduleIndex, taskIndex }: { pathId: string; moduleIndex: number; taskIndex: number }) => 
+      learningPathService.toggleTaskCompletion(pathId, moduleIndex, taskIndex),
     onSuccess: (_, { pathId }) => {
       queryClient.invalidateQueries({ queryKey: ['learning-paths'] });
       queryClient.invalidateQueries({ queryKey: ['learning-paths', pathId] });

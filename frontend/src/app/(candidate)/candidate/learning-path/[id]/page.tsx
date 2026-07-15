@@ -2,13 +2,13 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { useLearningPath, useToggleModule as useLearningPathToggle } from '@/hooks/useLearningPath';
+import { useLearningPath, useToggleTaskCompletion as useLearningPathToggle } from '@/hooks/useLearningPath';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, ArrowLeft, Clock, CheckCircle2, Circle } from 'lucide-react';
+import { Loader2, ArrowLeft, Clock, CheckCircle2, Circle, Lock } from 'lucide-react';
 import { LearningModule } from '@/types/learning-path.types';
 import {
   Accordion,
@@ -36,8 +36,8 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
       <div className="container mx-auto py-16 text-center">
         <h2 className="text-2xl font-bold mb-4">Path Not Found</h2>
         <p className="text-muted-foreground mb-6">Could not load the learning path details.</p>
-        <Link href="/candidate/learning-path" passHref>
-          <Button>Back to Learning Paths</Button>
+        <Link href="/candidate/learning-path" className={buttonVariants({ variant: 'default' })}>
+          Back to Learning Paths
         </Link>
       </div>
     );
@@ -45,17 +45,22 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
 
   const path = pathData.data;
   
-  const totalModules = path.pathData.length;
-  const completedModules = path.pathData.filter(m => m.completed).length;
-  const progressPercentage = totalModules === 0 ? 0 : Math.round((completedModules / totalModules) * 100);
+  let totalTasks = 0;
+  let completedTasks = 0;
+  path.pathData.forEach((m: LearningModule) => {
+    if (m.tasks && m.tasks.length > 0) {
+      totalTasks += m.tasks.length;
+      completedTasks += m.tasks.filter(t => t.completed).length;
+    }
+  });
+  
+  const progressPercentage = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
   return (
     <div className="container mx-auto py-8 space-y-8 max-w-6xl">
       <div className="flex items-center gap-4">
-        <Link href="/candidate/learning-path" passHref>
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+        <Link href="/candidate/learning-path" className={buttonVariants({ variant: 'ghost', size: 'icon' })}>
+          <ArrowLeft className="h-5 w-5" />
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-1">
@@ -85,7 +90,7 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
             <div>
               <CardTitle>Modules Overview</CardTitle>
               <CardDescription className="mt-1">
-                {completedModules}/{totalModules} modules completed • {path.pathData.reduce((acc, curr) => acc + curr.durationWeeks, 0)} weeks total
+                {completedTasks}/{totalTasks} tasks completed
               </CardDescription>
             </div>
             <div className="text-2xl font-bold text-primary">{progressPercentage}%</div>
@@ -94,23 +99,26 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
         </CardHeader>
         <CardContent>
           <Accordion className="w-full space-y-4">
-            {path.pathData.map((module: LearningModule, index: number) => (
-              <AccordionItem key={index} value={`module-${index}`} className={`border rounded-lg px-4 transition-colors ${module.completed ? 'bg-muted/30 border-muted' : 'bg-card'}`}>
-                <div className="flex items-center py-4 -mb-4 relative z-10 w-fit" onClick={(e) => e.stopPropagation()}>
-                  <Checkbox 
-                    checked={module.completed || false} 
-                    onCheckedChange={() => toggleMutation.mutate({ pathId: path.id, moduleIndex: index })}
-                    disabled={toggleMutation.isPending}
-                    className="mr-4 w-6 h-6 border-2 data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 rounded-full"
-                  />
-                </div>
-                <AccordionTrigger className="hover:no-underline py-4 pt-0">
-                  <div className="flex flex-col sm:flex-row sm:items-center text-left gap-2 sm:gap-4 w-full pr-4 pl-10">
+            {path.pathData.map((module: LearningModule, index: number) => {
+              const isModuleLocked = index > 0 && !path.pathData[index - 1].completed;
+              return (
+              <AccordionItem key={index} value={`module-${index}`} className={`border rounded-lg px-4 transition-colors ${module.completed ? 'bg-muted/30 border-muted' : 'bg-card'} ${isModuleLocked ? 'opacity-70 grayscale-[0.5]' : ''}`}>
+                <AccordionTrigger className="hover:no-underline py-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center text-left gap-2 sm:gap-4 w-full pr-4">
                     <div className="flex items-center gap-3">
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 font-semibold ${module.completed ? 'bg-green-100 text-green-700' : 'bg-primary/10 text-primary'}`}>
-                        {module.completed ? <CheckCircle2 className="w-5 h-5" /> : index + 1}
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 font-semibold ${module.completed ? 'bg-green-100 text-green-700' : isModuleLocked ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
+                        {module.completed ? <CheckCircle2 className="w-5 h-5" /> : isModuleLocked ? <Lock className="w-4 h-4" /> : index + 1}
                       </div>
-                      <h4 className={`font-semibold text-lg ${module.completed ? 'text-muted-foreground line-through decoration-muted-foreground/50' : ''}`}>{module.title}</h4>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className={`font-semibold text-lg ${module.completed ? 'text-muted-foreground' : ''}`}>{module.title}</h4>
+                        </div>
+                        {module.tasks && module.tasks.length > 0 && (
+                          <p className="text-xs text-muted-foreground font-normal mt-0.5">
+                            {module.tasks.filter(t => t.completed).length}/{module.tasks.length} tasks completed
+                          </p>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="flex items-center gap-3 sm:ml-auto">
@@ -123,10 +131,6 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
                             : 'Both'}
                         </Badge>
                       )}
-                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground shrink-0 bg-muted/30 px-2.5 py-1 rounded-md">
-                        <Clock className="w-4 h-4" />
-                        <span className="font-medium">{module.durationWeeks} Weeks</span>
-                      </div>
                     </div>
                   </div>
                 </AccordionTrigger>
@@ -134,30 +138,62 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
                 <AccordionContent className="pt-2 pb-6 border-t">
                   <div className="space-y-6 mt-4 pl-11">
                     <div>
-                      <h5 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">Description</h5>
                       <p className="text-foreground leading-relaxed">
                         {module.description}
                       </p>
                     </div>
                     
-                    <div>
-                      <h5 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Key Topics & Tasks</h5>
-                      <div className="flex flex-wrap gap-2">
-                        {module.skills.map((skill, skillIdx) => (
-                          <Badge 
-                            key={skillIdx} 
-                            variant="secondary" 
-                            className="bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 px-3 py-1.5 font-medium rounded-md transition-colors"
-                          >
-                            {skill}
-                          </Badge>
-                        ))}
+                    {module.tasks && module.tasks.length > 0 ? (
+                      <div>
+                        <h5 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Tasks</h5>
+                        <div className="space-y-3">
+                          {module.tasks.map((task, taskIdx) => {
+                            const isTaskLocked = isModuleLocked || (taskIdx > 0 && !module.tasks[taskIdx - 1].completed);
+                            const isUncheckDisabled = task.completed && taskIdx < module.tasks.length - 1 && module.tasks[taskIdx + 1].completed;
+                            const isCheckboxDisabled = toggleMutation.isPending || isTaskLocked || isUncheckDisabled;
+
+                            return (
+                            <div key={taskIdx} className={`flex items-start gap-3 p-4 border rounded-lg transition-colors ${task.completed ? 'bg-muted/50 border-muted' : isTaskLocked ? 'bg-muted/20 opacity-70 cursor-not-allowed' : 'bg-card hover:bg-muted/20'}`}>
+                              <Checkbox 
+                                checked={task.completed || false} 
+                                onCheckedChange={() => !isCheckboxDisabled && toggleMutation.mutate({ pathId: path.id, moduleIndex: index, taskIndex: taskIdx })}
+                                disabled={isCheckboxDisabled}
+                                className={`mt-1 w-5 h-5 border-2 rounded-md ${task.completed ? 'data-[state=checked]:bg-primary data-[state=checked]:border-primary' : isTaskLocked ? 'border-muted-foreground/30 bg-muted/50' : ''}`}
+                              />
+                              <div className="space-y-1 -mt-0.5">
+                                <div className="flex items-center gap-2">
+                                  <h6 className={`font-medium leading-none ${task.completed ? 'text-muted-foreground line-through decoration-muted-foreground/50' : 'text-foreground'}`}>
+                                    {task.title}
+                                  </h6>
+                                  {isTaskLocked && <Lock className="w-3.5 h-3.5 text-muted-foreground/50" />}
+                                </div>
+                                <p className="text-sm text-muted-foreground leading-snug">{task.description}</p>
+                              </div>
+                            </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
+                    ) : module.skills && module.skills.length > 0 ? (
+                      <div>
+                        <h5 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Key Topics</h5>
+                        <div className="flex flex-wrap gap-2">
+                          {module.skills.map((skill, skillIdx) => (
+                            <Badge 
+                              key={skillIdx} 
+                              variant="secondary" 
+                              className="bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 px-3 py-1.5 font-medium rounded-md transition-colors"
+                            >
+                              {skill}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </AccordionContent>
               </AccordionItem>
-            ))}
+            )})}
           </Accordion>
         </CardContent>
       </Card>

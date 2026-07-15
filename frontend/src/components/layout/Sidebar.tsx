@@ -14,27 +14,28 @@ import { APP_ROUTES } from "@/lib/constants"
 import { useGetMyCompany } from "@/hooks/useCompany"
 
 // ---- Lucide icon map ----
+const iconProps = { size: 18, strokeWidth: 2.5, className: "drop-shadow-sm" };
 const ICONS: Record<string, React.ReactNode> = {
-  LayoutDashboard: <LayoutDashboard size={18} />,
-  User: <User size={18} />,
-  Briefcase: <Briefcase size={18} />,
-  Bookmark: <Bookmark size={18} />,
-  Bell: <Bell size={18} />,
-  Settings: <Settings size={18} />,
-  Users: <Users size={18} />,
-  FileText: <FileText size={18} />,
-  Building2: <Building2 size={18} />,
-  Shield: <Shield size={18} />,
-  BarChart3: <BarChart3 size={18} />,
-  BrainCircuit: <BrainCircuit size={18} />,
-  ClipboardList: <ClipboardList size={18} />,
-  Database: <Database size={18} />,
-  CreditCard: <CreditCard size={18} />,
-  MessageSquare: <MessageSquare size={18} />,
-  KeyRound: <KeyRound size={18} />,
-  Sparkles: <Sparkles size={18} />,
-  History: <History size={18} />,
-  Map: <Map size={18} />,
+  LayoutDashboard: <LayoutDashboard {...iconProps} />,
+  User: <User {...iconProps} />,
+  Briefcase: <Briefcase {...iconProps} />,
+  Bookmark: <Bookmark {...iconProps} />,
+  Bell: <Bell {...iconProps} />,
+  Settings: <Settings {...iconProps} />,
+  Users: <Users {...iconProps} />,
+  FileText: <FileText {...iconProps} />,
+  Building2: <Building2 {...iconProps} />,
+  Shield: <Shield {...iconProps} />,
+  BarChart3: <BarChart3 {...iconProps} />,
+  BrainCircuit: <BrainCircuit {...iconProps} />,
+  ClipboardList: <ClipboardList {...iconProps} />,
+  Database: <Database {...iconProps} />,
+  CreditCard: <CreditCard {...iconProps} />,
+  MessageSquare: <MessageSquare {...iconProps} />,
+  KeyRound: <KeyRound {...iconProps} />,
+  Sparkles: <Sparkles {...iconProps} />,
+  History: <History {...iconProps} />,
+  Map: <Map {...iconProps} />,
 }
 
 // ---- Nav definitions per role ----
@@ -148,14 +149,14 @@ export function Sidebar() {
   }, [pathname, navItems])
 
   return (
-    <aside className="flex flex-col w-[240px] min-h-screen bg-sidebar border-r border-sidebar-border flex-shrink-0">
+    <aside className="flex flex-col w-[240px] min-h-screen bg-sidebar border-r border-transparent hover:border-sidebar-border transition-colors duration-300 flex-shrink-0">
       {/* 1. Logo (Kept clean at the top) */}
-      <div className="px-5 h-[68px] flex items-center border-b border-sidebar-border">
+      <div className="px-5 h-[68px] flex items-center">
         <Logo size="sm" href="/" />
       </div>
 
       {/* 2. Navigation (Moved up, immediately visible) */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {navItems.map((item) => {
           const active = isActive(item.href)
           const isExpanded = expandedGroups.includes(item.label)
@@ -226,7 +227,7 @@ export function Sidebar() {
       </nav>
 
       {/* 3. Bottom Actions & User Profile Footer */}
-      <div className="p-3 border-t border-sidebar-border flex flex-col gap-2">
+      <div className="p-3 flex flex-col gap-2">
         {/* Secondary Links */}
 
 

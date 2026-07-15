@@ -90,10 +90,16 @@ export default function NewLearningPathPage() {
   };
 
   const isAnyError = generateMutation.isError || generateFromCvJdMutation.isError || generateFromInterviewMutation.isError;
-  const errorMessage = (generateMutation.error as any)?.response?.data?.message || 
-                       (generateFromCvJdMutation.error as any)?.response?.data?.message || 
-                       (generateFromInterviewMutation.error as any)?.response?.data?.message || 
-                       'Failed to generate path. Please try again.';
+  const errorObj = generateMutation.error || generateFromCvJdMutation.error || generateFromInterviewMutation.error;
+  let errorMessage = 'Failed to generate path. Please try again.';
+  if (errorObj) {
+    const axiosError = errorObj as any;
+    if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ETIMEDOUT') {
+      errorMessage = 'The AI is taking too long to respond. Please try again.';
+    } else if (axiosError.response?.data?.message) {
+      errorMessage = axiosError.response.data.message;
+    }
+  }
 
   useEffect(() => {
     if (generateMutation.isSuccess || generateFromCvJdMutation.isSuccess || generateFromInterviewMutation.isSuccess) {
