@@ -8,6 +8,11 @@ export interface GeneratePathRequest {
   currentSkills: CandidateSfiaSkillDto[];
 }
 
+export interface ExtractSfiaProfileResponse {
+  targetRoleTemplateId: string;
+  currentSkills: CandidateSfiaSkillDto[];
+}
+
 export interface TargetRoleSkillDto {
   skillCode: string;
   skillName: string;
@@ -19,14 +24,6 @@ export interface TargetRoleResponseDto {
   roleName: string;
   description: string;
   requiredSkills: TargetRoleSkillDto[];
-}
-
-export interface GenerateFromCvJdRequest {
-  matchScoreId?: string;
-}
-
-export interface GenerateFromInterviewRequest {
-  sessionId?: string;
 }
 
 export interface SfiaTarget {

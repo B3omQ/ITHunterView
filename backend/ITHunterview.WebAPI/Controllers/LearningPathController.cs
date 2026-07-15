@@ -39,20 +39,20 @@ namespace ITHunterview.WebAPI.Controllers
             return new ResponseBase<LearningPathResponseDto>(result);
         }
 
-        [HttpPost("generate-from-cv-jd")]
-        public async Task<ActionResult<ResponseBase<LearningPathResponseDto>>> GenerateFromCvJd([FromBody] GenerateFromCvJdRequestDto request)
+        [HttpGet("extract-cv-jd/{matchScoreId:guid}")]
+        public async Task<ActionResult<ResponseBase<ExtractSfiaProfileResponseDto>>> ExtractFromCvJd(Guid matchScoreId)
         {
             var candidateId = GetUserId();
-            var result = await _learningPathUseCase.GenerateFromCvJdAsync(candidateId, request);
-            return new ResponseBase<LearningPathResponseDto>(result);
+            var result = await _learningPathUseCase.ExtractFromCvJdAsync(candidateId, matchScoreId);
+            return new ResponseBase<ExtractSfiaProfileResponseDto>(result);
         }
 
-        [HttpPost("generate-from-interview")]
-        public async Task<ActionResult<ResponseBase<LearningPathResponseDto>>> GenerateFromInterview([FromBody] GenerateFromInterviewRequestDto request)
+        [HttpGet("extract-interview/{sessionId:guid}")]
+        public async Task<ActionResult<ResponseBase<ExtractSfiaProfileResponseDto>>> ExtractFromInterview(Guid sessionId)
         {
             var candidateId = GetUserId();
-            var result = await _learningPathUseCase.GenerateFromInterviewAsync(candidateId, request);
-            return new ResponseBase<LearningPathResponseDto>(result);
+            var result = await _learningPathUseCase.ExtractFromInterviewAsync(candidateId, sessionId);
+            return new ResponseBase<ExtractSfiaProfileResponseDto>(result);
         }
 
         [HttpGet]

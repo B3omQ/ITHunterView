@@ -1,6 +1,6 @@
 import api from './api-client';
 import { ApiResponse } from '@/types/api.types';
-import { GeneratePathRequest, GenerateFromCvJdRequest, GenerateFromInterviewRequest, LearningPath, HistoryContextPreviewDto, TargetRoleResponseDto } from '@/types/learning-path.types';
+import { GeneratePathRequest, LearningPath, HistoryContextPreviewDto, TargetRoleResponseDto, ExtractSfiaProfileResponse } from '@/types/learning-path.types';
 
 export const learningPathService = {
   getTargetRoles: () =>
@@ -9,11 +9,11 @@ export const learningPathService = {
   generate: (data: GeneratePathRequest) =>
     api.post<ApiResponse<LearningPath>>('/api/learning-paths/generate', data, { timeout: 120000 }).then(r => r.data),
 
-  generateFromCvJd: (data: GenerateFromCvJdRequest) =>
-    api.post<ApiResponse<LearningPath>>('/api/learning-paths/generate-from-cv-jd', data, { timeout: 120000 }).then(r => r.data),
+  extractFromCvJd: (matchScoreId: string) =>
+    api.get<ApiResponse<ExtractSfiaProfileResponse>>(`/api/learning-paths/extract-cv-jd/${matchScoreId}`, { timeout: 120000 }).then(r => r.data),
 
-  generateFromInterview: (data: GenerateFromInterviewRequest) =>
-    api.post<ApiResponse<LearningPath>>('/api/learning-paths/generate-from-interview', data, { timeout: 120000 }).then(r => r.data),
+  extractFromInterview: (sessionId: string) =>
+    api.get<ApiResponse<ExtractSfiaProfileResponse>>(`/api/learning-paths/extract-interview/${sessionId}`, { timeout: 120000 }).then(r => r.data),
 
   getMyPaths: () =>
     api.get<ApiResponse<LearningPath[]>>('/api/learning-paths').then(r => r.data),

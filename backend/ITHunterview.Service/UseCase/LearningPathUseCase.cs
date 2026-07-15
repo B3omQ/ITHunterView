@@ -145,102 +145,77 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
         // ─────────────────────────────────────────────────────────────
         // Generate từ lịch sử matching CV-JD & phỏng vấn
         // ─────────────────────────────────────────────────────────────
-        public async Task<LearningPathResponseDto> GenerateFromCvJdAsync(Guid candidateId, GenerateFromCvJdRequestDto request)
+        public async Task<ExtractSfiaProfileResponseDto> ExtractFromCvJdAsync(Guid candidateId, Guid matchScoreId)
         {
-            await EnforceMaxPathsAsync(candidateId);
-
-            var matchContext = await BuildMatchContextAsync(candidateId, request.MatchScoreId);
-
+            var matchContext = await BuildMatchContextAsync(candidateId, matchScoreId);
             if (string.IsNullOrWhiteSpace(matchContext))
-            {
-                throw new InvalidOperationException(
-                    "Chưa có dữ liệu matching CV-JD để tạo lộ trình. " +
-                    "Vui lòng thực hiện matching CV-JD trước.");
-            }
+                throw new InvalidOperationException("Chưa có dữ liệu matching CV-JD.");
 
-            string systemPrompt = @"You are an expert IT career coach.
-Analyze the candidate's skill gaps identified from their CV-JD matching results.
-Generate a targeted, step-by-step learning path to close those specific gaps.
-The result MUST be a valid JSON object strictly following this schema:
-{
-  ""title"": ""Closing the CV-JD Gap"",
-  ""target_profile"": { ""role_name"": ""..."", ""description"": ""..."" },
-  ""gap_summary"": {
-    ""total_gaps"": 2,
-    ""gaps"": [ { ""skill_code"": ""... "", ""skill_name"": ""..."", ""current_level"": 3, ""target_level"": 4, ""gap_delta"": 1 } ]
-  },
-  ""modules"": [
-    {
-      ""module_index"": 0,
-      ""title"": ""..."",
-      ""description"": ""..."",
-      ""sfia_target"": { ""skill_code"": ""..."", ""from_level"": 3, ""to_level"": 4 },
-      ""tasks"": [
-        { ""task_index"": 0, ""title"": ""..."", ""description"": ""..."", ""estimated_hours"": 8 }
-      ]
-    }
-  ],
-  ""progress"": { ""total_modules"": 1, ""completed_modules"": 0, ""total_tasks"": 1, ""completed_tasks"": 0, ""percentage"": 0 }
-}
-Rule: Try to map the gaps to SFIA skills. Create one module per 1 level jump per skill.
-Do NOT include any markdown blocks like ```json, just return the raw JSON object.";
-
-            var userPromptBuilder = new StringBuilder();
-            userPromptBuilder.AppendLine("=== SKILL GAPS FROM CV-JD MATCHING ===");
-            userPromptBuilder.AppendLine(matchContext);
-            userPromptBuilder.AppendLine();
-            userPromptBuilder.AppendLine("Based on the above identified skill gaps, generate a prioritized learning path.");
-
-            return await CallAiAndSaveAsync(candidateId, userPromptBuilder.ToString(), systemPrompt);
+            return await PerformExtractionAsync(matchContext, "CV-JD Matching");
         }
 
-        public async Task<LearningPathResponseDto> GenerateFromInterviewAsync(Guid candidateId, GenerateFromInterviewRequestDto request)
+        public async Task<ExtractSfiaProfileResponseDto> ExtractFromInterviewAsync(Guid candidateId, Guid sessionId)
         {
-            await EnforceMaxPathsAsync(candidateId);
-
-            var interviewContext = await BuildInterviewContextAsync(candidateId, request.SessionId);
-
+            var interviewContext = await BuildInterviewContextAsync(candidateId, sessionId);
             if (string.IsNullOrWhiteSpace(interviewContext))
-            {
-                throw new InvalidOperationException(
-                    "Chưa có dữ liệu phỏng vấn thử để tạo lộ trình. " +
-                    "Vui lòng thực hiện phỏng vấn thử trước.");
-            }
+                throw new InvalidOperationException("Chưa có dữ liệu phỏng vấn thử.");
 
-            string systemPrompt = @"You are an expert IT career coach.
-Analyze the candidate's weak areas identified from their mock interview performance.
-Generate a targeted, step-by-step learning path to close those specific gaps.
+            return await PerformExtractionAsync(interviewContext, "Mock Interview");
+        }
+
+        private async Task<ExtractSfiaProfileResponseDto> PerformExtractionAsync(string contextText, string sourceName)
+        {
+            var templates = await _context.TargetRoleTemplates
+                .Include(t => t.RequiredSkills)
+                .ThenInclude(rs => rs.SfiaSkill)
+                .ToListAsync();
+
+            var templateListJson = JsonSerializer.Serialize(templates.Select(t => new
+            {
+                t.Id,
+                t.RoleName,
+                RequiredSkills = t.RequiredSkills.Select(rs => new { rs.SfiaSkill.SkillCode, rs.SfiaSkill.SkillName })
+            }));
+
+            string systemPrompt = @"You are an expert IT career coach and data extractor.
+Analyze the candidate's skill gaps identified from their " + sourceName + @" context.
+You will be provided a list of available Target Role Templates and their Required Skills.
+Your job is to:
+1. Select the BEST matching targetRoleTemplateId from the provided list that fits the candidate's context.
+2. For EACH required skill of the selected Target Role, estimate the candidate's CURRENT proficiency level (from 0 to 7, where 0 is no experience, 1-7 are SFIA levels). Use the context to make an educated guess.
 The result MUST be a valid JSON object strictly following this schema:
 {
-  ""title"": ""Interview Preparation"",
-  ""target_profile"": { ""role_name"": ""..."", ""description"": ""..."" },
-  ""gap_summary"": {
-    ""total_gaps"": 1,
-    ""gaps"": [ { ""skill_code"": ""... "", ""skill_name"": ""..."", ""current_level"": 3, ""target_level"": 4, ""gap_delta"": 1 } ]
-  },
-  ""modules"": [
-    {
-      ""module_index"": 0,
-      ""title"": ""..."",
-      ""description"": ""..."",
-      ""sfia_target"": { ""skill_code"": ""..."", ""from_level"": 3, ""to_level"": 4 },
-      ""tasks"": [
-        { ""task_index"": 0, ""title"": ""..."", ""description"": ""..."", ""estimated_hours"": 8 }
-      ]
-    }
-  ],
-  ""progress"": { ""total_modules"": 1, ""completed_modules"": 0, ""total_tasks"": 1, ""completed_tasks"": 0, ""percentage"": 0 }
+  ""targetRoleTemplateId"": ""GUID_HERE"",
+  ""currentSkills"": [
+    { ""skillCode"": ""..."", ""currentLevel"": 3 }
+  ]
 }
-Rule: Try to map the weak areas to SFIA skills. Create one module per 1 level jump per skill.
 Do NOT include any markdown blocks like ```json, just return the raw JSON object.";
 
             var userPromptBuilder = new StringBuilder();
-            userPromptBuilder.AppendLine("=== WEAK AREAS FROM MOCK INTERVIEW ===");
-            userPromptBuilder.AppendLine(interviewContext);
+            userPromptBuilder.AppendLine("=== AVAILABLE TARGET ROLE TEMPLATES ===");
+            userPromptBuilder.AppendLine(templateListJson);
             userPromptBuilder.AppendLine();
-            userPromptBuilder.AppendLine("Based on the above identified weak areas, generate a prioritized learning path.");
+            userPromptBuilder.AppendLine("=== CANDIDATE CONTEXT ===");
+            userPromptBuilder.AppendLine(contextText);
 
-            return await CallAiAndSaveAsync(candidateId, userPromptBuilder.ToString(), systemPrompt);
+            var aiResponseText = await _aiService.GenerateTextAsync(userPromptBuilder.ToString(), systemPrompt);
+
+            aiResponseText = aiResponseText.Trim();
+            if (aiResponseText.StartsWith("```json")) aiResponseText = aiResponseText.Substring(7);
+            if (aiResponseText.StartsWith("```")) aiResponseText = aiResponseText.Substring(3);
+            if (aiResponseText.EndsWith("```")) aiResponseText = aiResponseText.Substring(0, aiResponseText.Length - 3);
+            aiResponseText = aiResponseText.Trim();
+
+            try
+            {
+                return JsonSerializer.Deserialize<ExtractSfiaProfileResponseDto>(aiResponseText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                       ?? throw new Exception("AI returned null object.");
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Không thể trích xuất SFIA Profile từ AI: {ex.Message}");
+            }
         }
 
         public async Task<HistoryContextPreviewDto> PreviewHistoryContextAsync(Guid candidateId, string type, Guid? sourceId)
