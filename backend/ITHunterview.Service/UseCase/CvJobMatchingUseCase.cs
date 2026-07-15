@@ -173,9 +173,24 @@ namespace ITHunterview.Service.UseCase
         public decimal CalculateComponentScore(Vector? v1, Vector? v2)
         {
             if (v1 == null || v2 == null) return 0m;
-            var distance = v1.CosineDistance(v2);
-            var score = 1.0m - (decimal)distance;
-            return score < 0 ? 0 : score;
+            
+            var arr1 = v1.ToArray();
+            var arr2 = v2.ToArray();
+            
+            if (arr1.Length != arr2.Length || arr1.Length == 0) return 0m;
+
+            double dot = 0, mag1 = 0, mag2 = 0;
+            for(int i = 0; i < arr1.Length; i++)
+            {
+                dot += arr1[i] * arr2[i];
+                mag1 += arr1[i] * arr1[i];
+                mag2 += arr2[i] * arr2[i];
+            }
+
+            if (mag1 == 0 || mag2 == 0) return 0m;
+
+            var similarity = (decimal)(dot / (Math.Sqrt(mag1) * Math.Sqrt(mag2)));
+            return similarity < 0 ? 0 : similarity;
         }
 
         public async Task MatchCvWithAllJobsAsync(Guid cvId, Guid userId)
