@@ -7,13 +7,13 @@ export const learningPathService = {
     api.get<ApiResponse<TargetRoleResponseDto[]>>('/api/learning-paths/target-roles').then(r => r.data),
 
   generate: (data: GeneratePathRequest) =>
-    api.post<ApiResponse<LearningPath>>('/api/learning-paths/generate', data, { timeout: 60000 }).then(r => r.data),
+    api.post<ApiResponse<LearningPath>>('/api/learning-paths/generate', data, { timeout: 120000 }).then(r => r.data),
 
   generateFromCvJd: (data: GenerateFromCvJdRequest) =>
-    api.post<ApiResponse<LearningPath>>('/api/learning-paths/generate-from-cv-jd', data, { timeout: 60000 }).then(r => r.data),
+    api.post<ApiResponse<LearningPath>>('/api/learning-paths/generate-from-cv-jd', data, { timeout: 120000 }).then(r => r.data),
 
   generateFromInterview: (data: GenerateFromInterviewRequest) =>
-    api.post<ApiResponse<LearningPath>>('/api/learning-paths/generate-from-interview', data, { timeout: 60000 }).then(r => r.data),
+    api.post<ApiResponse<LearningPath>>('/api/learning-paths/generate-from-interview', data, { timeout: 120000 }).then(r => r.data),
 
   getMyPaths: () =>
     api.get<ApiResponse<LearningPath[]>>('/api/learning-paths').then(r => r.data),

@@ -3,7 +3,7 @@ import { authStore } from '@/store/auth.store';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
-  timeout: 15000,
+  timeout: 60000,
   paramsSerializer: {
     indexes: null
   }
