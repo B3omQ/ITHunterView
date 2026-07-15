@@ -26,6 +26,7 @@ export function SfiaSkillModal({
   const [subcategory, setSubcategory] = useState("");
   const [description, setDescription] = useState("");
   const [selectedLevels, setSelectedLevels] = useState<number[]>([]);
+  const [levelDescriptions, setLevelDescriptions] = useState<Record<number, string>>({});
   const [error, setError] = useState("");
 
   const createMutation = useCreateSfiaSkill();
@@ -44,6 +45,11 @@ export function SfiaSkillModal({
             ? initialData.availableLevels.split(",").map(Number).filter((n) => !isNaN(n))
             : []
         );
+        const descs: Record<number, string> = {};
+        initialData.levels?.forEach(l => {
+          descs[l.level] = l.description;
+        });
+        setLevelDescriptions(descs);
       } else {
         setSkillCode("");
         setSkillName("");
@@ -51,6 +57,7 @@ export function SfiaSkillModal({
         setSubcategory("");
         setDescription("");
         setSelectedLevels([]);
+        setLevelDescriptions({});
       }
       setError("");
     }
@@ -76,6 +83,10 @@ export function SfiaSkillModal({
       subcategory,
       description,
       availableLevels: selectedLevels.sort((a, b) => a - b).join(","),
+      levels: selectedLevels.map(level => ({
+        level,
+        description: levelDescriptions[level] || ""
+      })),
     };
 
     if (mode === "create") {
@@ -240,6 +251,27 @@ export function SfiaSkillModal({
                   </label>
                 ))}
               </div>
+
+              {selectedLevels.length > 0 && (
+                <div className="space-y-3 mt-4 p-4 bg-muted/20 rounded-xl border border-border">
+                  <h3 className="text-sm font-medium text-foreground">Level Descriptions</h3>
+                  {selectedLevels.sort((a, b) => a - b).map((level) => (
+                    <div key={level}>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        Level {level}
+                      </label>
+                      <textarea
+                        value={levelDescriptions[level] || ""}
+                        onChange={(e) => setLevelDescriptions({ ...levelDescriptions, [level]: e.target.value })}
+                        placeholder={`Description for Level ${level}...`}
+                        rows={2}
+                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
+                        disabled={isPending}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </form>
         </div>

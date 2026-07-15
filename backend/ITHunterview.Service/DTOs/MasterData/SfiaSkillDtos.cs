@@ -11,6 +11,7 @@ namespace ITHunterview.Service.DTOs.MasterData
         public string Subcategory { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string AvailableLevels { get; set; } = string.Empty;
+        public List<CreateSfiaSkillLevelDto> Levels { get; set; } = new();
     }
 
     public class UpdateSfiaSkillDto
@@ -21,6 +22,7 @@ namespace ITHunterview.Service.DTOs.MasterData
         public string Subcategory { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string AvailableLevels { get; set; } = string.Empty;
+        public List<CreateSfiaSkillLevelDto> Levels { get; set; } = new();
     }
 
     public class SfiaSkillResponseDto
@@ -32,14 +34,6 @@ namespace ITHunterview.Service.DTOs.MasterData
         public string Subcategory { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string AvailableLevels { get; set; } = string.Empty;
-    }
-
-    public class PagedSfiaSkillResponseDto
-    {
-        public int TotalItems { get; set; }
-        public int TotalPages { get; set; }
-        public int CurrentPage { get; set; }
-        public int PageSize { get; set; }
-        public List<SfiaSkillResponseDto> Items { get; set; } = new List<SfiaSkillResponseDto>();
+        public List<SfiaSkillLevelDto> Levels { get; set; } = new();
     }
 }

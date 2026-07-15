@@ -59,6 +59,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
         // SFIA & Learning Paths
         public DbSet<SfiaSkill> SfiaSkills { get; set; } = null!;
+        public DbSet<SfiaSkillLevel> SfiaSkillLevels { get; set; } = null!;
         public DbSet<TargetRoleTemplate> TargetRoleTemplates { get; set; } = null!;
         public DbSet<TargetRoleSkill> TargetRoleSkills { get; set; } = null!;
 
@@ -364,6 +365,17 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
                 entity.HasOne(e => e.SfiaSkill)
                       .WithMany(s => s.TargetRoleSkills)
+                      .HasForeignKey(e => e.SfiaSkillId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // SfiaSkillLevels
+            modelBuilder.Entity<SfiaSkillLevel>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.HasOne(e => e.SfiaSkill)
+                      .WithMany(s => s.Levels)
                       .HasForeignKey(e => e.SfiaSkillId)
                       .OnDelete(DeleteBehavior.Cascade);
             });

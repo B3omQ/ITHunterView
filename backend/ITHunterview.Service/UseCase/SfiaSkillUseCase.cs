@@ -36,6 +36,7 @@ namespace ITHunterview.Service.UseCase
             }
 
             var items = await query
+                .Include(s => s.Levels)
                 .OrderBy(s => s.Category)
                 .ThenBy(s => s.Subcategory)
                 .ThenBy(s => s.SkillCode)
@@ -59,7 +60,12 @@ namespace ITHunterview.Service.UseCase
                 Category = dto.Category,
                 Subcategory = dto.Subcategory,
                 Description = dto.Description,
-                AvailableLevels = dto.AvailableLevels
+                AvailableLevels = dto.AvailableLevels,
+                Levels = dto.Levels.Select(l => new SfiaSkillLevel
+                {
+                    Level = l.Level,
+                    Description = l.Description
+                }).ToList()
             };
 
             _context.SfiaSkills.Add(entity);
@@ -70,7 +76,7 @@ namespace ITHunterview.Service.UseCase
 
         public async Task<SfiaSkillResponseDto> UpdateSfiaSkillAsync(Guid id, UpdateSfiaSkillDto dto)
         {
-            var entity = await _context.SfiaSkills.FindAsync(id);
+            var entity = await _context.SfiaSkills.Include(s => s.Levels).FirstOrDefaultAsync(s => s.Id == id);
             if (entity == null)
             {
                 throw new KeyNotFoundException("SFIA Skill not found.");
@@ -89,6 +95,14 @@ namespace ITHunterview.Service.UseCase
             entity.Subcategory = dto.Subcategory;
             entity.Description = dto.Description;
             entity.AvailableLevels = dto.AvailableLevels;
+
+            // Update levels
+            _context.SfiaSkillLevels.RemoveRange(entity.Levels);
+            entity.Levels = dto.Levels.Select(l => new SfiaSkillLevel
+            {
+                Level = l.Level,
+                Description = l.Description
+            }).ToList();
 
             await _context.SaveChangesAsync();
 
@@ -139,7 +153,7 @@ namespace ITHunterview.Service.UseCase
                         parser.ReadFields();
                     }
 
-                    var existingSkills = await _context.SfiaSkills.ToDictionaryAsync(s => s.SkillCode.ToLower());
+                    var existingSkills = await _context.SfiaSkills.Include(s => s.Levels).ToDictionaryAsync(s => s.SkillCode.ToLower());
 
                     while (!parser.EndOfData)
                     {
@@ -158,6 +172,22 @@ namespace ITHunterview.Service.UseCase
                             continue; // Skip invalid rows
                         }
 
+                        // Extract levels 1-7
+                        var levels = new List<SfiaSkillLevel>();
+                        for (int i = 1; i <= 7; i++)
+                        {
+                            var descIdx = 5 + i; // 6 is Level1_Desc
+                            var levelDesc = fields.Length > descIdx ? fields[descIdx]?.Trim() : string.Empty;
+                            if (!string.IsNullOrWhiteSpace(levelDesc))
+                            {
+                                levels.Add(new SfiaSkillLevel
+                                {
+                                    Level = i,
+                                    Description = levelDesc
+                                });
+                            }
+                        }
+
                         if (existingSkills.TryGetValue(code.ToLower(), out var existingSkill))
                         {
                             // Update existing
@@ -166,6 +196,10 @@ namespace ITHunterview.Service.UseCase
                             existingSkill.Subcategory = subcategory;
                             existingSkill.Description = description ?? string.Empty;
                             existingSkill.AvailableLevels = availableLevels ?? string.Empty;
+                            
+                            _context.SfiaSkillLevels.RemoveRange(existingSkill.Levels);
+                            existingSkill.Levels = levels;
+                            
                             updatedCount++;
                         }
                         else
@@ -178,7 +212,8 @@ namespace ITHunterview.Service.UseCase
                                 Category = category,
                                 Subcategory = subcategory,
                                 Description = description ?? string.Empty,
-                                AvailableLevels = availableLevels ?? string.Empty
+                                AvailableLevels = availableLevels ?? string.Empty,
+                                Levels = levels
                             };
                             _context.SfiaSkills.Add(newSkill);
                             importedCount++;
@@ -203,7 +238,13 @@ namespace ITHunterview.Service.UseCase
                 Category = entity.Category,
                 Subcategory = entity.Subcategory,
                 Description = entity.Description,
-                AvailableLevels = entity.AvailableLevels
+                AvailableLevels = entity.AvailableLevels,
+                Levels = entity.Levels?.Select(l => new SfiaSkillLevelDto
+                {
+                    Id = l.Id,
+                    Level = l.Level,
+                    Description = l.Description
+                }).OrderBy(l => l.Level).ToList() ?? new List<SfiaSkillLevelDto>()
             };
         }
     }

@@ -1,9 +1,8 @@
 "use client";
 
 import React from "react";
-import { Edit2, Trash2, AlertCircle } from "lucide-react";
+import { Edit2, Trash2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { SfiaSkillDto } from "@/types/master-data.types";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface SfiaSkillsTableProps {
   skills: SfiaSkillDto[];
@@ -22,6 +21,37 @@ export function SfiaSkillsTable({
   onDelete,
   onRetry,
 }: SfiaSkillsTableProps) {
+  const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set());
+
+  const toggleRow = (id: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Group skills by category -> subcategory -> skills
+  const groupedData = React.useMemo(() => {
+    const categories: Record<string, Record<string, SfiaSkillDto[]>> = {};
+    
+    if (!Array.isArray(skills)) return categories;
+
+    skills.forEach(skill => {
+      if (!categories[skill.category]) {
+        categories[skill.category] = {};
+      }
+      const subcat = skill.subcategory || "Other";
+      if (!categories[skill.category][subcat]) {
+        categories[skill.category][subcat] = [];
+      }
+      categories[skill.category][subcat].push(skill);
+    });
+    
+    return categories;
+  }, [skills]);
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
@@ -61,26 +91,6 @@ export function SfiaSkillsTable({
     );
   }
 
-  // Group skills by category -> subcategory -> skills
-  const groupedData = React.useMemo(() => {
-    const categories: Record<string, Record<string, SfiaSkillDto[]>> = {};
-    
-    if (!Array.isArray(skills)) return categories;
-
-    skills.forEach(skill => {
-      if (!categories[skill.category]) {
-        categories[skill.category] = {};
-      }
-      const subcat = skill.subcategory || "Other";
-      if (!categories[skill.category][subcat]) {
-        categories[skill.category][subcat] = [];
-      }
-      categories[skill.category][subcat].push(skill);
-    });
-    
-    return categories;
-  }, [skills]);
-
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-auto">
@@ -103,17 +113,21 @@ export function SfiaSkillsTable({
           </thead>
           <tbody className="divide-y divide-border/50">
             {Object.entries(groupedData).map(([category, subcategories]) => {
-              const totalCategoryRows = Object.values(subcategories).reduce((sum, skills) => sum + skills.length, 0);
+              const totalCategoryRows = Object.values(subcategories).reduce((sum, skills) => {
+                const expandedCount = skills.filter(s => expandedRows.has(s.id)).length;
+                return sum + skills.length + expandedCount;
+              }, 0);
               let isFirstInCategory = true;
 
               return (
                 <React.Fragment key={category}>
                   {Object.entries(subcategories).map(([subcategory, subcatSkills]) => {
-                    const totalSubcategoryRows = subcatSkills.length;
+                    const totalSubcategoryRows = subcatSkills.length + subcatSkills.filter(s => expandedRows.has(s.id)).length;
                     let isFirstInSubcategory = true;
 
                     return subcatSkills.map(skill => {
                       const availableLevels = skill.availableLevels ? skill.availableLevels.split(',').map(Number) : [];
+                      const isExpanded = expandedRows.has(skill.id);
                       
                       const tr = (
                         <tr key={skill.id} className="hover:bg-muted/10 transition-colors group border-b border-border/50">
@@ -145,6 +159,14 @@ export function SfiaSkillsTable({
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button
+                                onClick={() => toggleRow(skill.id)}
+                                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
+                                title={isExpanded ? "Collapse Details" : "Expand Details"}
+                              >
+                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                              </button>
+                              <div className="w-px h-4 bg-border mx-1"></div>
+                              <button
                                 onClick={() => onEdit(skill)}
                                 className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
                                 title="Edit Skill"
@@ -166,7 +188,40 @@ export function SfiaSkillsTable({
                       isFirstInCategory = false;
                       isFirstInSubcategory = false;
                       
-                      return tr;
+                      const expandedTr = isExpanded ? (
+                        <tr key={`${skill.id}-expanded`} className="bg-muted/5 border-b border-border/50">
+                          <td colSpan={9} className="px-6 py-4 shadow-inner">
+                            <div className="space-y-4">
+                              <div>
+                                <h4 className="text-sm font-semibold text-foreground mb-1">Description</h4>
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{skill.description || "No description provided."}</p>
+                              </div>
+                              {skill.levels && skill.levels.length > 0 && (
+                                <div>
+                                  <h4 className="text-sm font-semibold text-foreground mb-3">Level Requirements</h4>
+                                  <div className="space-y-3">
+                                    {skill.levels.map(l => (
+                                      <div key={l.level} className="flex gap-4 items-start bg-background p-3 rounded-xl border border-border/50">
+                                        <span className="inline-flex items-center justify-center min-w-[24px] h-6 rounded-md bg-primary/10 text-primary text-xs font-bold shrink-0">
+                                          {l.level}
+                                        </span>
+                                        <p className="text-sm text-muted-foreground whitespace-pre-wrap pt-0.5">{l.description}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null;
+
+                      return (
+                        <React.Fragment key={skill.id}>
+                          {tr}
+                          {expandedTr}
+                        </React.Fragment>
+                      );
                     });
                   })}
                 </React.Fragment>

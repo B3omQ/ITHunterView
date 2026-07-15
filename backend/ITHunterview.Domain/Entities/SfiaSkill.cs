@@ -35,6 +35,7 @@ namespace ITHunterview.Domain.Entities
         public string AvailableLevels { get; set; } = string.Empty;
 
         // Relation
+        public virtual ICollection<SfiaSkillLevel> Levels { get; set; } = new List<SfiaSkillLevel>();
         public virtual ICollection<TargetRoleSkill> TargetRoleSkills { get; set; } = new List<TargetRoleSkill>();
     }
 }
