@@ -215,7 +215,7 @@ export const recruiterService = {
 
   matchJobWithCvs: async (jobId: string) => {
     try {
-      const response = await api.post<ApiResponse<string>>(`/api/jobpostings/${jobId}/match-cvs`);
+      const response = await api.post<ApiResponse<string>>(`/api/jobpostings/${jobId}/match-cvs`, null, { timeout: 120000 });
       return { success: true, data: response.data };
     } catch (error: any) {
       return {
@@ -227,7 +227,7 @@ export const recruiterService = {
 
   matchJobWithCvsHardcode: async (jobId: string) => {
     try {
-      const response = await api.post<ApiResponse<string>>(`/api/jobpostings/${jobId}/match-cvs-hardcode`);
+      const response = await api.post<ApiResponse<string>>(`/api/jobpostings/${jobId}/match-cvs-hardcode`, null, { timeout: 120000 });
       return { success: true, data: response.data };
     } catch (error: any) {
       return {
