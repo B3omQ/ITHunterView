@@ -113,6 +113,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IInterviewUseCase, InterviewUseCase>();
             services.AddScoped<ILearningPathUseCase, LearningPathUseCase>();
             services.AddScoped<ICvOptimizerUseCase, CvOptimizerUseCase>();
+            services.AddScoped<ITargetRoleUseCase, TargetRoleUseCase>();
 
             // Job Search & Saved Jobs
             services.AddScoped<IJobSearchRepository, JobSearchRepository>();
