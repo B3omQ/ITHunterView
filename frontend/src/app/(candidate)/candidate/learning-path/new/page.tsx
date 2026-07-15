@@ -51,7 +51,7 @@ export default function NewLearningPathPage() {
 
   useEffect(() => {
     if (selectedRoleTemplate) {
-      setCurrentSkills(selectedRoleTemplate.requiredSkills.map(rs => ({ skillCode: rs.skillCode, currentLevel: 1 })));
+      setCurrentSkills(selectedRoleTemplate.requiredSkills.map(rs => ({ skillCode: rs.skillCode, currentLevel: 0 })));
     } else {
       setCurrentSkills([]);
     }
@@ -210,11 +210,11 @@ export default function NewLearningPathPage() {
                 {selectedRoleTemplate && (
                   <div className="space-y-4">
                     <h3 className="font-semibold text-lg flex items-center border-t pt-6"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Self-Assess SFIA Skills</h3>
-                    <p className="text-sm text-muted-foreground mb-4">Please assess your current proficiency level for the core skills required by this role. The AI will calculate the gaps.</p>
+                    <p className="text-sm text-muted-foreground mb-4">Please assess your current proficiency level for the core skills required by this role (0 = No experience, 1-7 = SFIA Levels).</p>
                     
                     <div className="space-y-6">
                       {selectedRoleTemplate.requiredSkills.map(skill => {
-                        const currentLvl = currentSkills.find(s => s.skillCode === skill.skillCode)?.currentLevel || 1;
+                        const currentLvl = currentSkills.find(s => s.skillCode === skill.skillCode)?.currentLevel || 0;
                         return (
                           <div key={skill.skillCode} className="space-y-2 border p-4 rounded-md">
                             <div className="flex justify-between items-center mb-2">
@@ -235,15 +235,15 @@ export default function NewLearningPathPage() {
                               onChange={(e) => handleSkillLevelChange(skill.skillCode, parseInt(e.target.value))}
                               className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer"
                             />
-                            <div className="flex justify-between text-xs text-muted-foreground px-1">
-                              <span>0 (None)</span>
-                              <span>1</span>
-                              <span>2</span>
-                              <span>3</span>
-                              <span>4</span>
-                              <span>5</span>
-                              <span>6</span>
-                              <span>7</span>
+                            <div className="flex justify-between text-xs text-muted-foreground px-1 mt-1">
+                              <span className="w-4 text-left">0</span>
+                              <span className="w-4 text-center">1</span>
+                              <span className="w-4 text-center">2</span>
+                              <span className="w-4 text-center">3</span>
+                              <span className="w-4 text-center">4</span>
+                              <span className="w-4 text-center">5</span>
+                              <span className="w-4 text-center">6</span>
+                              <span className="w-4 text-right">7</span>
                             </div>
                           </div>
                         );
