@@ -40,6 +40,12 @@ export interface LearningTask {
   completed?: boolean;
 }
 
+export interface LearningTask {
+  title: string;
+  description: string;
+  completed?: boolean;
+}
+
 export interface LearningModule {
   module_index: number;
   title: string;
