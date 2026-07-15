@@ -12,6 +12,7 @@ import { useAuthStore } from "@/store/auth.store"
 import { Logo } from "@/components/layout/Logo"
 import { APP_ROUTES } from "@/lib/constants"
 import { useGetMyCompany } from "@/hooks/useCompany"
+import { NotificationDialog } from "@/components/shared/NotificationDialog"
 
 // ---- Lucide icon map ----
 const iconProps = { size: 18, strokeWidth: 2.5, className: "drop-shadow-sm" };
@@ -108,10 +109,11 @@ function getNavItems(role: string): NavItem[] {
 }
 
 export function Sidebar() {
-  const pathname = usePathname()
-  const router = useRouter()
   const { user, logout } = useAuthStore()
+  const router = useRouter()
+  const pathname = usePathname()
   const [expandedGroups, setExpandedGroups] = React.useState<string[]>([])
+  const [isNotificationOpen, setIsNotificationOpen] = React.useState(false)
 
   const isRecruiter = user?.role?.name?.toLowerCase() === "recruiter"
   const { data: company, isLoading: companyLoading } = useGetMyCompany({
@@ -166,7 +168,9 @@ export function Sidebar() {
             <div key={item.label} className="space-y-0.5">
               <div
                 onClick={() => {
-                  if (item.children) {
+                  if (item.label === "Notifications" && (user?.role?.name === "candidate" || user?.role?.name === "recruiter")) {
+                    setIsNotificationOpen(true)
+                  } else if (item.children) {
                     toggleExpand(item.label)
                   } else {
                     router.push(item.href)
@@ -264,6 +268,8 @@ export function Sidebar() {
           </div>
         )}
       </div>
+
+      <NotificationDialog open={isNotificationOpen} onOpenChange={setIsNotificationOpen} />
     </aside>
   )
 }

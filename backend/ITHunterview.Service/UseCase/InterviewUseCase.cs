@@ -484,7 +484,7 @@ namespace ITHunterview.Service.UseCase
             var responseText = await _aiService.GenerateTextAsync(
                 prompt: $"Lịch sử phỏng vấn:\n{historyText}\n\nỨng viên trả lời mới nhất: \"{dto.Message}\"",
                 systemPrompt: systemPrompt,
-                providerName: session.AiProvider
+                providerName: session.AiProvider ?? string.Empty
             );
 
             // Parse response

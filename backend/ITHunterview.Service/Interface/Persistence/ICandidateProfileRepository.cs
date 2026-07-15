@@ -7,6 +7,9 @@ namespace ITHunterview.Service.Interface.Persistence
         /// <summary>Lấy profile theo userId, trả null nếu không tồn tại.</summary>
         Task<CandidateProfiles?> GetByUserIdAsync(Guid userId);
 
+        /// <summary>Lấy profile theo Id (CandidateId).</summary>
+        Task<CandidateProfiles?> GetByIdAsync(Guid id);
+
         /// <summary>Tạo profile mới.</summary>
         Task<CandidateProfiles> CreateAsync(CandidateProfiles profile);
 

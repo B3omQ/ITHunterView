@@ -20,6 +20,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 .FirstOrDefaultAsync(p => p.UserId == userId);
         }
 
+        public async Task<CandidateProfiles?> GetByIdAsync(Guid id)
+        {
+            return await _context.CandidateProfiles.FirstOrDefaultAsync(cp => cp.Id == id);
+        }
+
         public async Task<CandidateProfiles> CreateAsync(CandidateProfiles profile)
         {
             _context.CandidateProfiles.Add(profile);
