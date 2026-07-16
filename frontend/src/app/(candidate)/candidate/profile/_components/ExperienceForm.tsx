@@ -6,6 +6,7 @@ import {
   useUpdateExperience,
 } from '@/hooks/useCandidateProfile';
 import type { CandidateExperience, ExperienceUpsertRequest } from '@/types/candidate.types';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -181,9 +182,9 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
         <form onSubmit={handleSubmit} className="space-y-4">
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="title" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Job Title *</Label>
-              <Input
+            <div className={cn("sm:col-span-2 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm", errors.title && "border-destructive focus-within:border-destructive focus-within:ring-destructive/30")}>
+              <Label htmlFor="title" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Job Title <span className="text-destructive">*</span></Label>
+              <input
                 id="title"
                 placeholder="e.g. Senior Frontend Developer"
                 value={title}
@@ -192,15 +193,15 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                   setTitle(e.target.value);
                   if (errors.title) setErrors((prev) => ({ ...prev, title: undefined }));
                 }}
-                className={errors.title ? 'border-destructive focus-visible:ring-destructive' : ''}
+                className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50"
                 required
               />
-              {errors.title && <p className="text-xs text-destructive mt-1 font-medium">{errors.title}</p>}
+              {errors.title && <p className="text-[10px] text-destructive mt-1 font-medium">{errors.title}</p>}
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="companyName" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Company Name *</Label>
-              <Input
+            <div className={cn("border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm", errors.companyName && "border-destructive focus-within:border-destructive focus-within:ring-destructive/30")}>
+              <Label htmlFor="companyName" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Company Name <span className="text-destructive">*</span></Label>
+              <input
                 id="companyName"
                 placeholder="e.g. Stripe"
                 value={companyName}
@@ -208,16 +209,16 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                   setCompanyName(e.target.value);
                   if (errors.companyName) setErrors((prev) => ({ ...prev, companyName: undefined }));
                 }}
-                className={errors.companyName ? 'border-destructive focus-visible:ring-destructive' : ''}
+                className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50"
                 required
               />
-              {errors.companyName && <p className="text-xs text-destructive mt-1 font-medium">{errors.companyName}</p>}
+              {errors.companyName && <p className="text-[10px] text-destructive mt-1 font-medium">{errors.companyName}</p>}
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="employmentType" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Employment Type</Label>
+            <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+              <Label htmlFor="employmentType" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Employment Type</Label>
               <Select value={employmentType} onValueChange={(val) => setEmploymentType(val || '')}>
-                <SelectTrigger id="employmentType" className="w-full">
+                <SelectTrigger id="employmentType" className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -230,9 +231,9 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
               </Select>
             </div>
 
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="locationType" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Location</Label>
-              <div className="flex gap-2">
+            <div className="sm:col-span-2 flex gap-4">
+              <div className="flex-1 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+                <Label htmlFor="locationType" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Location</Label>
                 <LocationCombobox
                   value={locationType}
                   onChange={(val) => {
@@ -243,25 +244,28 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                       setLocation("")
                     }
                   }}
-                  className={locationType === "Other" ? "w-1/3" : "w-full"}
+                  className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none outline-none focus:ring-0 text-sm font-medium justify-between"
                 />
-                
-                {locationType === "Other" && (
-                  <Input
+              </div>
+              
+              {locationType === "Other" && (
+                <div className="flex-1 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+                  <Label htmlFor="location" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Specific address</Label>
+                  <input
                     id="location"
                     placeholder="e.g. Can Tho, Binh Duong"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    className="flex-1"
+                    className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50"
                   />
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Start Date *</Label>
+            <div className={cn("border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm", errors.startDate && "border-destructive focus-within:border-destructive focus-within:ring-destructive/30")}>
+              <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Start Date <span className="text-destructive">*</span></Label>
               <div className="flex gap-2">
-                <div className="w-1/2">
+                <div className="w-1/2 border-r border-border/50 pr-2">
                   <Select
                     value={parseDateString(startDate).month}
                     onValueChange={(val) => {
@@ -269,7 +273,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                       if (errors.startDate) setErrors((prev) => ({ ...prev, startDate: undefined }));
                     }}
                   >
-                    <SelectTrigger className={errors.startDate ? 'border-destructive focus:ring-destructive' : ''}>
+                    <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
                       <SelectValue placeholder="Month" />
                     </SelectTrigger>
                     <SelectContent>
@@ -285,7 +289,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                       if (errors.startDate) setErrors((prev) => ({ ...prev, startDate: undefined }));
                     }}
                   >
-                    <SelectTrigger className={errors.startDate ? 'border-destructive focus:ring-destructive' : ''}>
+                    <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
                       <SelectValue placeholder="Year" />
                     </SelectTrigger>
                     <SelectContent>
@@ -294,23 +298,23 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                   </Select>
                 </div>
               </div>
-              {errors.startDate && <p className="text-xs text-destructive mt-1 font-medium">{errors.startDate}</p>}
+              {errors.startDate && <p className="text-[10px] text-destructive mt-1 font-medium">{errors.startDate}</p>}
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">End Date</Label>
+            <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+              <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">End Date</Label>
               {isCurrent ? (
-                <div className="w-full h-10 bg-muted/40 border border-border rounded-md flex items-center px-3 text-sm text-muted-foreground cursor-not-allowed select-none">
+                <div className="w-full bg-transparent p-0 text-sm font-medium text-foreground/70 cursor-not-allowed select-none">
                   Present
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  <div className="w-1/2">
+                  <div className="w-1/2 border-r border-border/50 pr-2">
                     <Select
                       value={parseDateString(endDate).month}
                       onValueChange={(val) => setEndDate(buildDateString(parseDateString(endDate).year || '', val || ''))}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
                         <SelectValue placeholder="Month" />
                       </SelectTrigger>
                       <SelectContent>
@@ -323,7 +327,7 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
                       value={parseDateString(endDate).year}
                       onValueChange={(val) => setEndDate(buildDateString(val || '', parseDateString(endDate).month || ''))}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
                         <SelectValue placeholder="Year" />
                       </SelectTrigger>
                       <SelectContent>
@@ -335,26 +339,26 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
               )}
             </div>
 
-            <div className="flex items-center gap-2.5 pt-2 sm:col-span-2">
+            <div className="flex items-center gap-2.5 sm:col-span-2 ml-1">
               <Checkbox
                 id="isCurrent"
                 checked={isCurrent}
                 onCheckedChange={(checked) => setIsCurrent(checked === true)}
               />
-              <Label htmlFor="isCurrent" className="text-sm cursor-pointer">
+              <Label htmlFor="isCurrent" className="text-sm font-medium cursor-pointer">
                 I am currently working in this role
               </Label>
             </div>
 
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="description" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
-              <Textarea
+            <div className="sm:col-span-2 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+              <Label htmlFor="description" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Description</Label>
+              <textarea
                 id="description"
                 placeholder="Describe your achievements, responsibilities, and key accomplishments..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
-                className="resize-none"
+                className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 resize-none min-h-[80px]"
               />
             </div>
           </div>

@@ -151,9 +151,9 @@ export function SkillsTab() {
           </DialogHeader>
           
           <div className="pt-2 relative" ref={dropdownRef}>
-            <div className="relative">
-              <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-              <Input
+            <div className="border border-border/60 rounded-lg px-3 py-2.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm flex items-center">
+              <Search className="w-4 h-4 text-muted-foreground mr-2 shrink-0" />
+              <input
                 placeholder="Type a skill (e.g. React, Docker...)"
                 value={keyword}
                 autoFocus
@@ -179,7 +179,7 @@ export function SkillsTab() {
                     setShowDropdown(false);
                   }
                 }}
-                className="pl-9"
+                className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50"
               />
             </div>
 

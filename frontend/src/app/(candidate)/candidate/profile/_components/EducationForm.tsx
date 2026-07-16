@@ -7,6 +7,7 @@ import {
   useMajors,
 } from '@/hooks/useCandidateProfile';
 import type { CandidateEducation, EducationUpsertRequest } from '@/types/candidate.types';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -173,9 +174,9 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="institutionName" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Institution Name *</Label>
-              <Input
+            <div className={cn("sm:col-span-2 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm", errors.institutionName && "border-destructive focus-within:border-destructive focus-within:ring-destructive/30")}>
+              <Label htmlFor="institutionName" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Institution Name <span className="text-destructive">*</span></Label>
+              <input
                 id="institutionName"
                 placeholder="e.g. Stanford University"
                 value={institutionName}
@@ -184,14 +185,14 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
                   setInstitutionName(e.target.value);
                   if (errors.institutionName) setErrors((prev) => ({ ...prev, institutionName: undefined }));
                 }}
-                className={`bg-background/80 focus-visible:ring-primary/30 ${errors.institutionName ? 'border-destructive focus-visible:ring-destructive' : 'border-border/60'}`}
+                className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50"
               />
-              {errors.institutionName && <p className="text-xs text-destructive mt-1 font-medium">{errors.institutionName}</p>}
+              {errors.institutionName && <p className="text-[10px] text-destructive mt-1 font-medium">{errors.institutionName}</p>}
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="degree" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Degree *</Label>
-              <Input
+            <div className={cn("border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm", errors.degree && "border-destructive focus-within:border-destructive focus-within:ring-destructive/30")}>
+              <Label htmlFor="degree" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Degree <span className="text-destructive">*</span></Label>
+              <input
                 id="degree"
                 placeholder="e.g. Bachelor of Science"
                 value={degree}
@@ -199,15 +200,15 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
                   setDegree(e.target.value);
                   if (errors.degree) setErrors((prev) => ({ ...prev, degree: undefined }));
                 }}
-                className={`bg-background/80 focus-visible:ring-primary/30 ${errors.degree ? 'border-destructive focus-visible:ring-destructive' : 'border-border/60'}`}
+                className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50"
               />
-              {errors.degree && <p className="text-xs text-destructive mt-1 font-medium">{errors.degree}</p>}
+              {errors.degree && <p className="text-[10px] text-destructive mt-1 font-medium">{errors.degree}</p>}
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="majorId" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Field of Study</Label>
+            <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+              <Label htmlFor="majorId" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Field of Study</Label>
               <Select value={majorId} onValueChange={(val) => setMajorId(val || '')}>
-                <SelectTrigger id="majorId" className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
+                <SelectTrigger id="majorId" className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
                   <SelectValue placeholder="Select a major" />
                 </SelectTrigger>
                 <SelectContent>
@@ -221,15 +222,15 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Start Date</Label>
+            <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+              <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Start Date</Label>
               <div className="flex gap-2">
-                <div className="w-1/2">
+                <div className="w-1/2 border-r border-border/50 pr-2">
                   <Select
                     value={parseDateString(startDate).month}
                     onValueChange={(val) => setStartDate(buildDateString(parseDateString(startDate).year || '', val || ''))}
                   >
-                    <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
+                    <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
                       <SelectValue placeholder="Month" />
                     </SelectTrigger>
                     <SelectContent>
@@ -242,7 +243,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
                     value={parseDateString(startDate).year}
                     onValueChange={(val) => setStartDate(buildDateString(val || '', parseDateString(startDate).month || ''))}
                   >
-                    <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
+                    <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
                       <SelectValue placeholder="Year" />
                     </SelectTrigger>
                     <SelectContent>
@@ -253,15 +254,15 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">End Date (or Expected)</Label>
+            <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+              <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">End Date (or Expected)</Label>
               <div className="flex gap-2">
-                <div className="w-1/2">
+                <div className="w-1/2 border-r border-border/50 pr-2">
                   <Select
                     value={parseDateString(endDate).month}
                     onValueChange={(val) => setEndDate(buildDateString(parseDateString(endDate).year || '', val || ''))}
                   >
-                    <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
+                    <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
                       <SelectValue placeholder="Month" />
                     </SelectTrigger>
                     <SelectContent>
@@ -274,7 +275,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
                     value={parseDateString(endDate).year}
                     onValueChange={(val) => setEndDate(buildDateString(val || '', parseDateString(endDate).month || ''))}
                   >
-                    <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
+                    <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
                       <SelectValue placeholder="Year" />
                     </SelectTrigger>
                     <SelectContent>
@@ -285,10 +286,10 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
               </div>
             </div>
             
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Grade / GPA</Label>
+            <div className={cn("sm:col-span-2 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm", errors.gpa && "border-destructive focus-within:border-destructive focus-within:ring-destructive/30")}>
+              <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Grade / GPA</Label>
               <div className="flex items-center gap-3">
-                <Input
+                <input
                   type="number"
                   step="0.01"
                   placeholder="e.g. 3.8"
@@ -297,10 +298,10 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
                     setGpa(e.target.value);
                     if (errors.gpa) setErrors((prev) => ({ ...prev, gpa: undefined }));
                   }}
-                  className={`w-24 bg-background/80 focus-visible:ring-primary/30 ${errors.gpa ? 'border-destructive focus-visible:ring-destructive' : 'border-border/60'}`}
+                  className="w-16 bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 text-center"
                 />
-                <span className="text-muted-foreground font-medium">out of</span>
-                <Input
+                <span className="text-[11px] text-muted-foreground font-semibold uppercase">out of</span>
+                <input
                   type="number"
                   step="0.1"
                   placeholder="e.g. 4.0"
@@ -309,21 +310,21 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
                     setMaxGpa(e.target.value);
                     if (errors.gpa) setErrors((prev) => ({ ...prev, gpa: undefined }));
                   }}
-                  className={`w-24 bg-background/80 border-border/60 focus-visible:ring-primary/30 ${errors.gpa ? 'border-destructive focus-visible:ring-destructive' : 'border-border/60'}`}
+                  className="w-16 bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 text-center"
                 />
               </div>
-              {errors.gpa && <p className="text-xs text-destructive mt-1 font-medium">{errors.gpa}</p>}
+              {errors.gpa && <p className="text-[10px] text-destructive mt-1 font-medium">{errors.gpa}</p>}
             </div>
 
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="description" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Description</Label>
-              <Textarea
+            <div className="sm:col-span-2 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+              <Label htmlFor="description" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Description</Label>
+              <textarea
                 id="description"
                 placeholder="Activities and societies, coursework, achievements..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
-                className="bg-background/80 border-border/60 focus-visible:ring-primary/30 resize-none"
+                className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 resize-none min-h-[80px]"
               />
             </div>
           </div>
