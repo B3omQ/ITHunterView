@@ -36,7 +36,7 @@ export function ExperienceCard({ experience, onEdit, onDelete }: ExperienceCardP
   };
 
   return (
-    <div className="flex gap-4 py-6 border-b border-border/40 last:border-0 items-start justify-between group">
+    <div className="flex gap-4 py-4 first:pt-0 last:pb-0 border-b border-border/40 last:border-0 items-start justify-between group">
       <div className="flex gap-4 items-start flex-1">
         {/* Company Logo Placeholder */}
         <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0">
@@ -74,7 +74,7 @@ export function ExperienceCard({ experience, onEdit, onDelete }: ExperienceCardP
           </div>
 
           {experience.description && (
-            <p className="text-sm text-muted-foreground leading-relaxed pt-2.5 whitespace-pre-wrap max-w-2xl border-t border-border/40 mt-2">
+            <p className="text-sm text-muted-foreground leading-relaxed pt-1.5 whitespace-pre-wrap max-w-2xl">
               {experience.description}
             </p>
           )}

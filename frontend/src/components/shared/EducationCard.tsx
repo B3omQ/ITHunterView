@@ -32,7 +32,7 @@ export function EducationCard({ education, onEdit, onDelete }: EducationCardProp
   };
 
   return (
-    <div className="flex gap-4 py-6 border-b border-border/40 last:border-0 items-start justify-between group">
+    <div className="flex gap-4 py-4 first:pt-0 last:pb-0 border-b border-border/40 last:border-0 items-start justify-between group">
         <div className="flex gap-4 items-start flex-1">
           {/* Logo Academy Placeholder */}
           <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary flex-shrink-0">
@@ -67,7 +67,7 @@ export function EducationCard({ education, onEdit, onDelete }: EducationCardProp
             </div>
 
             {education.description && (
-              <p className="text-sm text-muted-foreground/90 leading-relaxed pt-2.5 whitespace-pre-wrap max-w-2xl border-t border-border/10 mt-2">
+              <p className="text-sm text-muted-foreground/90 leading-relaxed pt-1.5 whitespace-pre-wrap max-w-2xl">
                 {education.description}
               </p>
             )}

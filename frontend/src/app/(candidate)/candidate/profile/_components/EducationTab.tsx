@@ -81,7 +81,7 @@ export function EducationTab() {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Education Block */}
       <Card className="border border-border/40 bg-card/60 backdrop-blur-md rounded-xl shadow-md overflow-hidden">
         <CardHeader className="border-b pb-4 flex flex-row items-start justify-between gap-4">
@@ -104,9 +104,9 @@ export function EducationTab() {
             <Plus className="w-5 h-5" />
           </Button>
         </CardHeader>
-        <CardContent className={mappedEducations.length === 0 ? "p-0" : "px-6 py-4"}>
+        <CardContent className={mappedEducations.length === 0 ? "p-0" : "px-6 py-2"}>
           {mappedEducations.length > 0 && (
-            <div className="space-y-4">
+            <div className="flex flex-col">
               {mappedEducations.map((edu) => (
                 <React.Fragment key={edu.id}>
                   <EducationCard
@@ -180,9 +180,9 @@ export function EducationTab() {
             <Plus className="w-5 h-5" />
           </Button>
         </CardHeader>
-        <CardContent className={certifications.length === 0 ? "p-0" : "px-6 py-4"}>
+        <CardContent className={certifications.length === 0 ? "p-0" : "px-6 py-2"}>
           {certifications.length > 0 && (
-            <div className="space-y-4">
+            <div className="flex flex-col">
               {certifications.map((cert) => (
                 <React.Fragment key={cert.id}>
                   <CertificationCard

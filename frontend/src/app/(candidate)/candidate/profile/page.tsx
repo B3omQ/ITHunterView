@@ -42,7 +42,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Right Column */}
-        <div className="space-y-8 min-w-0">
+        <div className="space-y-6 min-w-0">
           <div id="skills">
             <SkillsTab />
           </div>
