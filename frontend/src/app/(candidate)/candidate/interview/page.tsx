@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   useGetInterviewSessions,
   useCreateInterviewSession,
@@ -59,8 +59,12 @@ import {
 } from 'lucide-react';
 import type { DifficultyLevel } from '@/types/interview.types';
 
-export default function CandidateInterviewPage() {
+import { Suspense } from 'react';
+import { PageLoader } from '@/components/shared/PageLoader';
+
+function CandidateInterviewContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('MEDIUM');
   const [selectedCv, setSelectedCv] = useState<string>('none');
@@ -93,6 +97,17 @@ export default function CandidateInterviewPage() {
       setCurrentPage(maxPage);
     }
   }, [currentPage, maxPage]);
+
+  useEffect(() => {
+    const prefill = searchParams.get('prefillJobId');
+    const openModal = searchParams.get('openModal');
+    if (prefill) {
+      setSelectedJob(prefill);
+    }
+    if (openModal === 'true') {
+      setIsOpen(true);
+    }
+  }, [searchParams]);
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedSessions = sessions.slice(startIndex, startIndex + itemsPerPage);
@@ -557,7 +572,7 @@ export default function CandidateInterviewPage() {
                             <span className="text-muted-foreground font-normal">Không dùng JD (Câu hỏi tự do)</span>
                           ) : (
                             <span className="font-semibold text-foreground truncate max-w-[220px]">
-                              {jobs.find((job) => job.id === selectedJob)?.title || 'Chọn Tin tuyển dụng'}
+                              {jobs.find((job) => job.id === selectedJob)?.title || jobDetail?.title || selectedJob}
                             </span>
                           )}
                         </span>
@@ -793,5 +808,13 @@ export default function CandidateInterviewPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function CandidateInterviewPage() {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <CandidateInterviewContent />
+    </Suspense>
   );
 }

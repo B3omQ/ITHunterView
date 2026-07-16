@@ -61,6 +61,12 @@ export function useCvMatchingForm() {
       setCurrentJobId(urlJobId);
       setStep('loading');
     }
+    
+    const prefill = searchParams.get('prefillJobId');
+    if (prefill && step === 'select') {
+      setJdTab('saved');
+      setSelectedJobId(prefill);
+    }
   }, [searchParams, pollingJobId, step]);
 
   useEffect(() => {

@@ -60,7 +60,14 @@ export function JdSelectionPanel({
             ) : (
               <Select value={selectedJobId} onValueChange={(val) => setSelectedJobId(val || '')}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a job" />
+                  <SelectValue placeholder="Select a job">
+                    {selectedJobId 
+                      ? (() => {
+                          const matched = savedJobs.find(j => j.jobId === selectedJobId);
+                          return matched ? `${matched.title} - ${matched.companyName}` : "Loading...";
+                        })()
+                      : "Select a job"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {savedJobs.map((job) => (
