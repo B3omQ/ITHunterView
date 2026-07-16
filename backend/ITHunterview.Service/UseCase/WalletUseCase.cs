@@ -405,6 +405,8 @@ namespace ITHunterview.Service.UseCase
                 .ToListAsync();
 
             var dtos = items.Select(MapToDto).ToList();
+            await PopulateSubscriptionNamesAsync(dtos);
+            
             var result = new PagedResult<PaymentDto>
             {
                 Items = dtos,
@@ -416,12 +418,94 @@ namespace ITHunterview.Service.UseCase
             return new ResponseBase<PagedResult<PaymentDto>>(result, "Lấy danh sách thanh toán thành công");
         }
 
+        public async Task<ResponseBase<PagedResult<PaymentDto>>> GetMyPaymentsAsync(Guid userId, int page, int pageSize, string? status = null, string? targetType = null)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+
+            var query = _context.Payments.Where(p => p.UserId == userId);
+            
+            if (!string.IsNullOrEmpty(status) && Enum.TryParse<PaymentStatus>(status, true, out var parsedStatus))
+            {
+                query = query.Where(p => p.Status == parsedStatus);
+            }
+            
+            if (!string.IsNullOrEmpty(targetType) && Enum.TryParse<PaymentTargetType>(targetType, true, out var parsedTargetType))
+            {
+                query = query.Where(p => p.TargetType == parsedTargetType);
+            }
+
+            query = query.OrderByDescending(p => p.CreatedAt);
+            
+            var total = await query.CountAsync();
+            var items = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var dtos = items.Select(MapToDto).ToList();
+            await PopulateSubscriptionNamesAsync(dtos);
+
+            var result = new PagedResult<PaymentDto>
+            {
+                Items = dtos,
+                Total = total,
+                Page = page,
+                PageSize = pageSize
+            };
+
+            return new ResponseBase<PagedResult<PaymentDto>>(result, "Lấy danh sách thanh toán cá nhân thành công");
+        }
+
+        private async Task PopulateSubscriptionNamesAsync(List<PaymentDto> dtos)
+        {
+            var subIds = new List<int>();
+            foreach (var dto in dtos)
+            {
+                if (dto.TargetType == PaymentTargetType.SUBSCRIPTION.ToString() && dto.TargetId.HasValue)
+                {
+                    var targetIdHex = dto.TargetId.Value.ToString("N");
+                    var trimmed = targetIdHex.TrimStart('0');
+                    if (string.IsNullOrEmpty(trimmed)) trimmed = "0";
+                    if (int.TryParse(trimmed, out var subId))
+                    {
+                        subIds.Add(subId);
+                    }
+                }
+            }
+
+            if (subIds.Any())
+            {
+                var subs = await _context.Subscriptions
+                    .Where(s => subIds.Contains(s.Id))
+                    .ToDictionaryAsync(s => s.Id, s => s.Name);
+
+                foreach (var dto in dtos)
+                {
+                    if (dto.TargetType == PaymentTargetType.SUBSCRIPTION.ToString() && dto.TargetId.HasValue)
+                    {
+                        var targetIdHex = dto.TargetId.Value.ToString("N");
+                        var trimmed = targetIdHex.TrimStart('0');
+                        if (string.IsNullOrEmpty(trimmed)) trimmed = "0";
+                        if (int.TryParse(trimmed, out var subId))
+                        {
+                            if (subs.TryGetValue(subId, out var name))
+                            {
+                                dto.SubscriptionName = name;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         private PaymentDto MapToDto(Payments p)
         {
             return new PaymentDto
             {
                 Id = p.Id,
                 UserId = p.UserId,
+                OrderCode = p.OrderCode,
                 Amount = p.Amount,
                 Currency = p.Currency,
                 CreditsGranted = p.CreditsGranted,

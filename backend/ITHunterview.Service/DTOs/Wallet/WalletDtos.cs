@@ -38,6 +38,7 @@ namespace ITHunterview.Service.DTOs.Wallet
     {
         public Guid Id { get; set; }
         public Guid UserId { get; set; }
+        public long? OrderCode { get; set; }
         public decimal Amount { get; set; }
         public string Currency { get; set; } = null!;
         public int? CreditsGranted { get; set; }
@@ -45,6 +46,7 @@ namespace ITHunterview.Service.DTOs.Wallet
         public string GatewayTransactionId { get; set; } = null!;
         public string TargetType { get; set; } = null!;
         public Guid? TargetId { get; set; }
+        public string? SubscriptionName { get; set; }
         public string Status { get; set; } = null!;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

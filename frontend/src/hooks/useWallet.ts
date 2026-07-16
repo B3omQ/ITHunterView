@@ -26,3 +26,10 @@ export function useWalletTransactions(params?: { page?: number; pageSize?: numbe
     queryFn: () => walletService.getTransactions(params),
   });
 }
+
+export function useMyPayments(params?: { page?: number; pageSize?: number; status?: string; targetType?: string }) {
+  return useQuery({
+    queryKey: ['my-payments', params],
+    queryFn: () => walletService.getMyPayments(params),
+  });
+}

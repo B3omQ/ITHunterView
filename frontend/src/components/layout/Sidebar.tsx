@@ -51,6 +51,7 @@ const CANDIDATE_NAV: NavItem[] = [
   { label: "CV-JD Matching", href: APP_ROUTES.CANDIDATE.CV_MATCHING, icon: "Sparkles" },
   { label: "Learning Path", href: APP_ROUTES.CANDIDATE.LEARNING_PATH, icon: "Map" },
   { label: "Applications", href: APP_ROUTES.CANDIDATE.APPLICATIONS, icon: "ClipboardList" },
+  { label: "Billing History", href: APP_ROUTES.CANDIDATE.BILLING_HISTORY, icon: "History" },
   { label: "Notifications", href: APP_ROUTES.CANDIDATE.NOTIFICATIONS, icon: "Bell", badge: 3 },
   { label: "Change Password", href: APP_ROUTES.CANDIDATE.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
@@ -60,6 +61,7 @@ const RECRUITER_NAV: NavItem[] = [
   { label: "Company", href: APP_ROUTES.RECRUITER.COMPANY, icon: "Building2" },
   { label: "Job Postings", href: APP_ROUTES.RECRUITER.JOBS, icon: "Briefcase" },
   { label: "Analytics", href: APP_ROUTES.RECRUITER.ANALYTICS, icon: "BarChart3" },
+  { label: "Billing History", href: APP_ROUTES.RECRUITER.BILLING_HISTORY, icon: "History" },
   { label: "Notifications", href: APP_ROUTES.RECRUITER.NOTIFICATIONS, icon: "Bell", badge: 2 },
   { label: "Change Password", href: APP_ROUTES.RECRUITER.CHANGE_PASSWORD, icon: "KeyRound" },
 ]

@@ -103,6 +103,28 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         /// <summary>
+        /// Xem lịch sử thanh toán cá nhân của Candidate hoặc Recruiter
+        /// </summary>
+        [HttpGet("my-payments")]
+        [Authorize(Policy = "CandidateOrRecruiter")]
+        public async Task<IActionResult> GetMyPayments(
+            [FromQuery] int page = 1, 
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? status = null,
+            [FromQuery] string? targetType = null)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            var result = await _walletUseCase.GetMyPaymentsAsync(userId.Value, page, pageSize, status, targetType);
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+            return Ok(result);
+        }
+
+        /// <summary>
         /// Admin giả lập kết quả callback từ cổng thanh toán Momo/VNPay để cập nhật ví/subscription
         /// </summary>
         [HttpPost("admin/payments/simulate")]
