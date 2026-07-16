@@ -55,7 +55,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         public DbSet<InterviewReports> InterviewReports { get; set; } = null!;
         public DbSet<LearningPaths> LearningPaths { get; set; } = null!;
         public DbSet<AiApiUsageLogs> AiApiUsageLogs { get; set; } = null!;
-        public DbSet<CvOptimizations> CvOptimizations { get; set; } = null!;
 
         // SFIA & Learning Paths
         public DbSet<SfiaSkill> SfiaSkills { get; set; } = null!;
@@ -314,21 +313,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                       .HasOperators("gin_trgm_ops");
             });
 
-            // CvOptimizations
-            modelBuilder.Entity<CvOptimizations>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                
-                entity.HasOne(e => e.Candidate)
-                      .WithMany()
-                      .HasForeignKey(e => e.CandidateId)
-                      .OnDelete(DeleteBehavior.Cascade);
-
-                entity.HasOne(e => e.Cv)
-                      .WithMany()
-                      .HasForeignKey(e => e.CvId)
-                      .OnDelete(DeleteBehavior.Cascade);
-            });
 
             // Prompts
             modelBuilder.Entity<Prompts>(entity =>
