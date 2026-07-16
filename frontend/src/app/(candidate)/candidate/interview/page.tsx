@@ -500,11 +500,11 @@ function CandidateInterviewContent() {
           <div className="sticky top-8 flex flex-col items-center justify-center p-8">
             <div className="relative w-full max-w-md aspect-square flex items-center justify-center">
               <DotLottieReact
-                src="/images/ai-animation.json"
+                src="/images/Live chatbot.json"
                 loop
                 autoplay
-                speed={0.25}
-                className="w-full h-full drop-shadow-2xl"
+                speed={0.5}
+                className="w-full h-full drop-shadow-2xl hover:scale-105 transition-transform duration-500"
               />
             </div>
           </div>
