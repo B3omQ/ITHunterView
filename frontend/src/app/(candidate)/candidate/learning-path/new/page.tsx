@@ -42,6 +42,9 @@ export default function NewLearningPathPage() {
   const [targetRoleTemplateId, setTargetRoleTemplateId] = useState('');
   const [currentSkills, setCurrentSkills] = useState<{ skillCode: string; currentLevel: number | null }[]>([]);
   
+  const [roleSearchQuery, setRoleSearchQuery] = useState('');
+  const [roleLevelFilter, setRoleLevelFilter] = useState('All');
+  
   const [selectedMatchScoreId, setSelectedMatchScoreId] = useState<string>('');
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
   
@@ -49,7 +52,11 @@ export default function NewLearningPathPage() {
 
   const selectedRoleTemplate = targetRolesData?.data?.find(r => r.id === targetRoleTemplateId);
 
-
+  const filteredRoles = (targetRolesData?.data || []).filter(role => {
+    const matchesSearch = role.roleName.toLowerCase().includes(roleSearchQuery.toLowerCase());
+    if (roleLevelFilter === 'All') return matchesSearch;
+    return matchesSearch && role.roleName.toLowerCase().includes(roleLevelFilter.toLowerCase());
+  });
 
   const handleSkillLevelChange = (skillCode: string, level: number) => {
     setCurrentSkills(prev => {
@@ -104,14 +111,26 @@ export default function NewLearningPathPage() {
     });
   };
 
+  const allAssessed = selectedRoleTemplate ? selectedRoleTemplate.requiredSkills.every(reqSkill => {
+    const skillState = currentSkills.find(s => s.skillCode === reqSkill.skillCode);
+    return skillState && skillState.currentLevel !== null;
+  }) : false;
+
+  const totalGaps = selectedRoleTemplate ? selectedRoleTemplate.requiredSkills.reduce((acc, reqSkill) => {
+    const skillState = currentSkills.find(s => s.skillCode === reqSkill.skillCode);
+    if (skillState && skillState.currentLevel !== null) {
+      const gap = reqSkill.targetLevel - skillState.currentLevel;
+      return acc + (gap > 0 ? gap : 0);
+    }
+    return acc;
+  }, 0) : 0;
+
   const isGenerateDisabled = () => {
     if (!targetRoleTemplateId || generateMutation.isPending) return true;
     if (selectedRoleTemplate) {
-      const allAssessed = selectedRoleTemplate.requiredSkills.every(reqSkill => {
-        const skillState = currentSkills.find(s => s.skillCode === reqSkill.skillCode);
-        return skillState && skillState.currentLevel !== null;
-      });
-      return !allAssessed;
+      if (!allAssessed) return true;
+      if (totalGaps === 0) return true;
+      return false;
     }
     return true;
   };
@@ -223,22 +242,55 @@ export default function NewLearningPathPage() {
             {/* Section 1: Core Information */}
             <div className="space-y-4">
               <h3 className="font-semibold text-lg flex items-center"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Target Role</h3>
-              <div className="space-y-2">
-                <Label htmlFor="targetRole">Target Role (SFIA Template) <span className="text-red-500">*</span></Label>
-                <Select value={targetRoleTemplateId} onValueChange={(v) => handleRoleChange(v || '')}>
-                  <SelectTrigger id="targetRole">
-                    <SelectValue placeholder={isTargetRolesLoading ? "Loading templates..." : "Select a target role..."}>
-                      {selectedRoleTemplate?.roleName}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {targetRolesData?.data?.map(role => (
-                      <SelectItem key={role.id} value={role.id}>{role.roleName}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-3 bg-muted/20 p-4 rounded-xl border border-border/50">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Search Role</Label>
+                    <Input 
+                      placeholder="e.g. Developer, Data..." 
+                      value={roleSearchQuery}
+                      onChange={(e) => setRoleSearchQuery(e.target.value)}
+                      className="bg-background"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Filter by Seniority</Label>
+                    <Select value={roleLevelFilter} onValueChange={setRoleLevelFilter}>
+                      <SelectTrigger className="bg-background">
+                        <SelectValue placeholder="All Levels" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="All">All Levels</SelectItem>
+                        <SelectItem value="Junior">Junior</SelectItem>
+                        <SelectItem value="Mid">Mid-level</SelectItem>
+                        <SelectItem value="Senior">Senior</SelectItem>
+                        <SelectItem value="Lead">Lead</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 pt-2">
+                  <Label htmlFor="targetRole">Select Target Role Template <span className="text-red-500">*</span></Label>
+                  <Select value={targetRoleTemplateId} onValueChange={(v) => handleRoleChange(v || '')}>
+                    <SelectTrigger id="targetRole" className="bg-background font-medium">
+                      <SelectValue placeholder={isTargetRolesLoading ? "Loading templates..." : `Select a role (${filteredRoles.length} found)...`}>
+                        {selectedRoleTemplate?.roleName}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredRoles.map(role => (
+                        <SelectItem key={role.id} value={role.id}>{role.roleName}</SelectItem>
+                      ))}
+                      {filteredRoles.length === 0 && (
+                        <div className="p-3 text-center text-sm text-muted-foreground">No roles match your search.</div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {selectedRoleTemplate && (
-                  <p className="text-xs text-muted-foreground">{selectedRoleTemplate.description}</p>
+                  <p className="text-xs text-muted-foreground pt-1">{selectedRoleTemplate.description}</p>
                 )}
               </div>
             </div>
@@ -341,6 +393,16 @@ export default function NewLearningPathPage() {
               </div>
             )}
           </div>
+
+          {allAssessed && totalGaps === 0 && (
+            <Alert variant="default" className="mt-6 border-green-500 bg-green-50/50">
+              <Sparkles className="h-4 w-4 text-green-600" />
+              <AlertTitle className="text-green-700">Congratulations!</AlertTitle>
+              <AlertDescription className="text-green-700/90">
+                You already meet or exceed all the required skills for this role! There are no skill gaps to bridge. We recommend choosing a higher-level role (e.g., Mid-level or Senior) to discover new areas for career growth.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <Button
             className="w-full mt-6"
