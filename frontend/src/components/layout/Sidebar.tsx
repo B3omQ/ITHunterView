@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, User, Briefcase, Bookmark, Bell, Settings, HelpCircle, LogOut,
   ChevronRight, Users, FileText, Building2, Shield, BarChart3, BrainCircuit,
-  ClipboardList, Database, CreditCard, MessageSquare, KeyRound, AlertCircle, Sparkles, History,Map, FileSearch
+  ClipboardList, Database, CreditCard, MessageSquare, KeyRound, AlertCircle, Sparkles, History, Map, Coins, FileSearch
 } from "lucide-react"
 import { useAuthStore } from "@/store/auth.store"
 import { Logo } from "@/components/layout/Logo"
@@ -38,6 +38,7 @@ const ICONS: Record<string, React.ReactNode> = {
   History: <History {...iconProps} />,
   Map: <Map {...iconProps} />,
   FileSearch: <FileSearch {...iconProps} />,
+  Coins: <Coins {...iconProps} />,
 }
 
 // ---- Nav definitions per role ----
@@ -53,6 +54,18 @@ const CANDIDATE_NAV: NavItem[] = [
   { label: "Mock Interview", href: APP_ROUTES.CANDIDATE.INTERVIEW, icon: "MessageSquare" },
   { label: "CV-JD Matching", href: APP_ROUTES.CANDIDATE.CV_MATCHING, icon: "FileSearch" },
   { label: "Learning Path", href: APP_ROUTES.CANDIDATE.LEARNING_PATH, icon: "Map" },
+  { label: "Applications", href: APP_ROUTES.CANDIDATE.APPLICATIONS, icon: "ClipboardList" },
+  { 
+    label: "Billing & Plans", 
+    href: "", 
+    icon: "CreditCard",
+    children: [
+      { label: "Subscriptions", href: APP_ROUTES.CANDIDATE.PRICING },
+      { label: "Top Up Coins", href: APP_ROUTES.CANDIDATE.TOP_UP },
+      { label: "Transaction History", href: APP_ROUTES.CANDIDATE.BILLING_HISTORY }
+    ]
+  },
+  { label: "Notifications", href: APP_ROUTES.CANDIDATE.NOTIFICATIONS, icon: "Bell" },
   { label: "Change Password", href: APP_ROUTES.CANDIDATE.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
@@ -61,6 +74,16 @@ const RECRUITER_NAV: NavItem[] = [
   { label: "Company", href: APP_ROUTES.RECRUITER.COMPANY, icon: "Building2" },
   { label: "Job Postings", href: APP_ROUTES.RECRUITER.JOBS, icon: "Briefcase" },
   { label: "Analytics", href: APP_ROUTES.RECRUITER.ANALYTICS, icon: "BarChart3" },
+  { 
+    label: "Billing & Plans", 
+    href: "", 
+    icon: "CreditCard",
+    children: [
+      { label: "Subscriptions", href: "/recruiter/billing" },
+      { label: "Transaction History", href: APP_ROUTES.RECRUITER.BILLING_HISTORY }
+    ]
+  },
+  { label: "Notifications", href: APP_ROUTES.RECRUITER.NOTIFICATIONS, icon: "Bell" },
   { label: "Change Password", href: APP_ROUTES.RECRUITER.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
@@ -171,12 +194,12 @@ export function Sidebar() {
                   }
                 }}
                 className={`sidebar-item cursor-pointer flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium transition-all group ${
-                  active && !item.children
+                  (active || (item.children && item.children.some(c => isActive(c.href)))) && !item.children
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
                     : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
                 }`}
               >
-                <span className={active ? "text-primary" : "text-muted-foreground group-hover:text-sidebar-foreground transition-colors"}>
+                <span className={(active || (item.children && item.children.some(c => isActive(c.href)))) ? "text-primary" : "text-muted-foreground group-hover:text-sidebar-foreground transition-colors"}>
                   {ICONS[item.icon]}
                 </span>
                 <span className="flex-1 truncate">{item.label}</span>
@@ -203,7 +226,7 @@ export function Sidebar() {
                 <div className="pl-9 pr-2 py-1 space-y-1">
                   {item.children.map(child => {
                     // Check strict match for children, support searchParams
-                    const childActive = pathname === child.href || pathname.startsWith(child.href + '/');
+                    const childActive = isActive(child.href)
                     return (
                       <Link
                         key={child.label}

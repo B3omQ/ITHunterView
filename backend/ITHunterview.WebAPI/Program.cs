@@ -107,6 +107,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("CandidateOnly",    p => p.RequireRole("candidate"));
     options.AddPolicy("StaffOrAdmin",     p => p.RequireRole("admin", "staff"));
     options.AddPolicy("RecruiterOrAdmin", p => p.RequireRole("admin", "staff", "recruiter"));
+    options.AddPolicy("CandidateOrRecruiter", p => p.RequireRole("candidate", "recruiter"));
     options.AddPolicy("AllRoles",         p => p.RequireRole("admin", "staff", "recruiter", "candidate"));
 });
 
