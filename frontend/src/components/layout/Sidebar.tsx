@@ -54,7 +54,6 @@ const CANDIDATE_NAV: NavItem[] = [
   { label: "Mock Interview", href: APP_ROUTES.CANDIDATE.INTERVIEW, icon: "MessageSquare" },
   { label: "CV-JD Matching", href: APP_ROUTES.CANDIDATE.CV_MATCHING, icon: "FileSearch" },
   { label: "Learning Path", href: APP_ROUTES.CANDIDATE.LEARNING_PATH, icon: "Map" },
-  { label: "Applications", href: APP_ROUTES.CANDIDATE.APPLICATIONS, icon: "ClipboardList" },
   { 
     label: "Billing & Plans", 
     href: "", 
