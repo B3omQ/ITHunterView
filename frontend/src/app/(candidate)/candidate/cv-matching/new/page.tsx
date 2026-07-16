@@ -125,7 +125,12 @@ function CvMatchingContent() {
               {state.matchOutput?.improvements && state.matchOutput.improvements.some(imp => imp.example?.before && imp.example?.after) && (
                 <Button 
                   className="bg-primary hover:bg-primary/90 gap-2"
-                  onClick={() => router.push(`${APP_ROUTES.CANDIDATE.CV_MATCHING}/${state.currentJobId}/optimize`)}
+                  onClick={() => {
+                    const queryParams = new URLSearchParams();
+                    if (state.cvUrl) queryParams.set('cvUrl', state.cvUrl);
+                    if (state.selectedCvId) queryParams.set('cvId', state.selectedCvId);
+                    router.push(`${APP_ROUTES.CANDIDATE.CV_MATCHING}/${state.currentJobId}/optimize?${queryParams.toString()}`);
+                  }}
                 >
                   <Sparkles className="h-4 w-4" />
                   Optimize CV

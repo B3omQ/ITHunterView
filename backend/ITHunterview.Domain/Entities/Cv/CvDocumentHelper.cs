@@ -131,4 +131,70 @@ public static class CvDocumentHelper
 
         return null;
     }
+
+    /// <summary>
+    /// Recursively searches for targetText within all string properties of the object and replaces it with replacementText.
+    /// Returns true if at least one replacement was made.
+    /// </summary>
+    public static bool ReplaceTextInDocument(object? obj, string targetText, string replacementText)
+    {
+        if (obj == null || string.IsNullOrEmpty(targetText)) return false;
+
+        bool replaced = false;
+        var type = obj.GetType();
+
+        // If the object is a list, iterate through its elements
+        if (obj is IList list)
+        {
+            for (int i = 0; i < list.Count; i++)
+            {
+                var item = list[i];
+                if (item is string strItem)
+                {
+                    if (strItem.Contains(targetText, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // String replacement (case-insensitive search, but preserves original casing for rest of string)
+                        var newStr = Regex.Replace(strItem, Regex.Escape(targetText), replacementText, RegexOptions.IgnoreCase);
+                        list[i] = newStr;
+                        replaced = true;
+                    }
+                }
+                else
+                {
+                    if (ReplaceTextInDocument(item, targetText, replacementText))
+                        replaced = true;
+                }
+            }
+            return replaced;
+        }
+
+        // Iterate through properties
+        var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                             .Where(p => p.CanRead && p.CanWrite); // Only editable properties
+
+        foreach (var prop in properties)
+        {
+            var value = prop.GetValue(obj);
+            if (value == null) continue;
+
+            if (prop.PropertyType == typeof(string))
+            {
+                var strValue = (string)value;
+                if (strValue.Contains(targetText, StringComparison.OrdinalIgnoreCase))
+                {
+                    var newStr = Regex.Replace(strValue, Regex.Escape(targetText), replacementText, RegexOptions.IgnoreCase);
+                    prop.SetValue(obj, newStr);
+                    replaced = true;
+                }
+            }
+            else if (!prop.PropertyType.IsPrimitive && prop.PropertyType != typeof(DateTime) && prop.PropertyType != typeof(Guid))
+            {
+                // Recursive call for nested objects
+                if (ReplaceTextInDocument(value, targetText, replacementText))
+                    replaced = true;
+            }
+        }
+
+        return replaced;
+    }
 }

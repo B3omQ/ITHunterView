@@ -1,4 +1,4 @@
-using ITHunterview.Service.DTOs;
+using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,12 +17,19 @@ public class OptimizeController : ControllerBase
         _optimizeUseCase = optimizeUseCase;
     }
 
-    [HttpPost("match-sessions/{matchId}")]
-    public async Task<ActionResult<ResponseBase<Guid>>> CreateSession(Guid matchId, IFormFile file)
+    public class CreateOptimizeSessionRequest
     {
-        if (file == null || file.Length == 0) return BadRequest("File is required.");
+        public string? CvUrl { get; set; }
+        public Guid? CvId { get; set; }
+    }
+
+    [HttpPost("match-sessions/{matchId}")]
+    public async Task<ActionResult<ResponseBase<Guid>>> CreateSession(Guid matchId, [FromBody] CreateOptimizeSessionRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.CvUrl) && !request.CvId.HasValue) 
+            return BadRequest("CvUrl or CvId is required.");
         
-        var sessionId = await _optimizeUseCase.CreateSessionAsync(matchId, file.OpenReadStream(), file.ContentType);
+        var sessionId = await _optimizeUseCase.CreateSessionAsync(matchId, request.CvUrl, request.CvId);
         return new ResponseBase<Guid>(sessionId);
     }
 
@@ -37,12 +44,14 @@ public class OptimizeController : ControllerBase
     {
         public required string Action { get; set; } // "accept", "edit", "skip"
         public string? EditedText { get; set; }
+        public string? OriginalText { get; set; }
+        public string? SuggestedText { get; set; }
     }
 
     [HttpPatch("{id}/suggestions/{suggestionId}")]
     public async Task<ActionResult<ResponseBase<object>>> ApplySuggestion(Guid id, string suggestionId, [FromBody] PatchSuggestionRequest request)
     {
-        var result = await _optimizeUseCase.ApplySuggestionAsync(id, suggestionId, request.Action, request.EditedText);
+        var result = await _optimizeUseCase.ApplySuggestionAsync(id, suggestionId, request.Action, request.EditedText, request.OriginalText, request.SuggestedText);
         return new ResponseBase<object>(result);
     }
 

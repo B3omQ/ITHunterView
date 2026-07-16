@@ -1,12 +1,15 @@
 import { useState, useMemo } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { optimizeService, ApplySuggestionPayload } from '@/services/optimize.service';
 import type { MatchingOutput, ImprovementSuggestion } from '@/types/cv.types';
+import { toast } from 'sonner';
 
 export interface AcceptedChange {
   suggestion: ImprovementSuggestion;
   modifiedText: string;
 }
 
-export function useCvOptimizer(matchOutput: MatchingOutput | null) {
+export function useCvOptimizer(matchOutput: MatchingOutput | null, sessionId: string | null) {
   // 1. Filter and sort valid suggestions
   const validSuggestions = useMemo(() => {
     if (!matchOutput?.improvements) return [];
@@ -38,9 +41,10 @@ export function useCvOptimizer(matchOutput: MatchingOutput | null) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentScore, setCurrentScore] = useState(baseScore);
   const [acceptedChanges, setAcceptedChanges] = useState<AcceptedChange[]>([]);
-  const [isComplete, setIsComplete] = useState(validSuggestions.length === 0);
+  const [isManuallyCompleted, setIsManuallyCompleted] = useState(false);
 
   // Derived state
+  const isComplete = isManuallyCompleted || (validSuggestions.length > 0 && currentIndex >= validSuggestions.length);
   const currentSuggestion = validSuggestions[currentIndex];
   const progressPercent = validSuggestions.length > 0 
     ? Math.round((currentIndex / validSuggestions.length) * 100) 
@@ -62,11 +66,27 @@ export function useCvOptimizer(matchOutput: MatchingOutput | null) {
       const pointGained = (weight / totalWeight) * availablePoints;
       setCurrentScore(prev => Math.min(prev + pointGained, theoreticalMax));
     }
+
+    if (sessionId && currentSuggestion.example?.before && modifiedText) {
+      optimizeService.applySuggestion(sessionId, `sugg-${currentIndex}`, {
+        action: modifiedText !== currentSuggestion.example.after ? 'edit' : 'accept',
+        editedText: modifiedText,
+        originalText: currentSuggestion.example.before,
+        suggestedText: currentSuggestion.example.after
+      }).catch(err => {
+         console.error('Failed to apply suggestion:', err);
+         toast.error('Failed to sync change with server, but continuing locally.');
+      });
+    }
     
     advance();
   };
 
   const handleSkip = () => {
+    if (sessionId && currentSuggestion) {
+      optimizeService.applySuggestion(sessionId, `sugg-${currentIndex}`, { action: 'skip' })
+        .catch(console.error);
+    }
     advance();
   };
 
@@ -74,7 +94,7 @@ export function useCvOptimizer(matchOutput: MatchingOutput | null) {
     if (currentIndex < validSuggestions.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
-      setIsComplete(true);
+      setIsManuallyCompleted(true);
     }
   };
 

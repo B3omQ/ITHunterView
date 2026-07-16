@@ -3,8 +3,8 @@ using ITHunterview.Domain.Entities.Cv;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.UseCase;
-using ITHunterview.Service.Service;
 using Microsoft.Extensions.DependencyInjection;
+using System.Net.Http;
 
 namespace ITHunterview.Service.UseCase;
 
@@ -13,31 +13,57 @@ public class OptimizeUseCase : IOptimizeUseCase
     private readonly IOptimizeSessionRepository _sessionRepo;
     private readonly IServiceProvider _serviceProvider;
 
-    public OptimizeUseCase(IOptimizeSessionRepository sessionRepo, IServiceProvider serviceProvider)
+    private readonly IHttpClientFactory _httpClientFactory;
+
+    public OptimizeUseCase(IOptimizeSessionRepository sessionRepo, IServiceProvider serviceProvider, IHttpClientFactory httpClientFactory)
     {
         _sessionRepo = sessionRepo;
         _serviceProvider = serviceProvider;
+        _httpClientFactory = httpClientFactory;
     }
 
-    public async Task<Guid> CreateSessionAsync(Guid matchId, Stream fileStream, string contentType)
+    public async Task<Guid> CreateSessionAsync(Guid matchId, string? cvUrl, Guid? cvId)
     {
-        // Route to correct extractor based on content type
+        if (string.IsNullOrWhiteSpace(cvUrl) && !cvId.HasValue)
+            throw new ArgumentException("Either CvUrl or CvId must be provided.");
+
+        string finalUrl = cvUrl ?? "";
+        
+        // If cvId is provided but no url, fetch it from DB
+        if (string.IsNullOrWhiteSpace(finalUrl) && cvId.HasValue)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ITHunterview.Service.Infrastructure.Persistence.ITHunterviewContext>();
+            var cv = await dbContext.Cvs.FindAsync(cvId.Value);
+            if (cv == null || string.IsNullOrWhiteSpace(cv.FileUrl))
+                throw new ArgumentException("CV not found or has no FileUrl.");
+            finalUrl = cv.FileUrl;
+        }
+
+        using var client = _httpClientFactory.CreateClient();
+        var response = await client.GetAsync(finalUrl);
+        response.EnsureSuccessStatusCode();
+        var fileStream = await response.Content.ReadAsStreamAsync();
+        
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
+
+        // Route to correct extractor based on content type or URL extension
         ICvExtractor extractor;
         string fileType;
 
-        if (contentType.Contains("pdf"))
+        if (contentType.Contains("pdf") || finalUrl.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
         {
-            extractor = _serviceProvider.GetRequiredService<PdfCvExtractor>();
+            extractor = _serviceProvider.GetRequiredService<ITHunterview.Service.Service.PdfCvExtractor>();
             fileType = "pdf";
         }
-        else if (contentType.Contains("wordprocessingml"))
+        else if (contentType.Contains("wordprocessingml") || finalUrl.EndsWith(".docx", StringComparison.OrdinalIgnoreCase))
         {
-            extractor = _serviceProvider.GetRequiredService<DocxCvExtractor>();
+            extractor = _serviceProvider.GetRequiredService<ITHunterview.Service.Service.DocxCvExtractor>();
             fileType = "docx";
         }
         else
         {
-            throw new ArgumentException("Unsupported file type.");
+            throw new ArgumentException($"Unsupported file type: {contentType}");
         }
 
         var cvDoc = await extractor.ExtractAsync(fileStream);
@@ -64,26 +90,24 @@ public class OptimizeUseCase : IOptimizeUseCase
         return new { Suggestions = new List<object>() };
     }
 
-    public async Task<object> ApplySuggestionAsync(Guid sessionId, string suggestionId, string action, string? editedText)
+    public async Task<object> ApplySuggestionAsync(Guid sessionId, string suggestionId, string action, string? editedText, string? originalText, string? suggestedText)
     {
         var session = await _sessionRepo.GetByIdAsync(sessionId);
         if (session == null || session.CvDocument == null) 
             throw new KeyNotFoundException("Session or CV Document not found");
 
-        // In a real scenario, fetch the suggestion details from DB using suggestionId to get FieldPath.
-        // Mock suggestion path and text
-        string mockFieldPath = "Summary"; // e.g., suggestion.FieldPath
-        string mockSuggestedText = "Optimized Summary"; // e.g., suggestion.SuggestedText
-
         if (action.Equals("accept", StringComparison.OrdinalIgnoreCase))
         {
-            CvDocumentHelper.SetFieldByPath(session.CvDocument, mockFieldPath, mockSuggestedText);
+            if (string.IsNullOrEmpty(originalText) || string.IsNullOrEmpty(suggestedText)) 
+                throw new ArgumentException("OriginalText and SuggestedText are required for accept action");
+            CvDocumentHelper.ReplaceTextInDocument(session.CvDocument, originalText, suggestedText);
             await _sessionRepo.UpdateAsync(session);
         }
         else if (action.Equals("edit", StringComparison.OrdinalIgnoreCase))
         {
-            if (string.IsNullOrEmpty(editedText)) throw new ArgumentException("Edited text is required for edit action");
-            CvDocumentHelper.SetFieldByPath(session.CvDocument, mockFieldPath, editedText);
+            if (string.IsNullOrEmpty(originalText) || string.IsNullOrEmpty(editedText)) 
+                throw new ArgumentException("OriginalText and EditedText are required for edit action");
+            CvDocumentHelper.ReplaceTextInDocument(session.CvDocument, originalText, editedText);
             await _sessionRepo.UpdateAsync(session);
         }
         else if (action.Equals("skip", StringComparison.OrdinalIgnoreCase))
@@ -98,8 +122,8 @@ public class OptimizeUseCase : IOptimizeUseCase
             {
                 using var scope = _serviceProvider.CreateScope();
                 ICvRenderer renderer = session.OriginalFileType == "pdf" 
-                    ? scope.ServiceProvider.GetRequiredService<PdfCvRenderer>() 
-                    : scope.ServiceProvider.GetRequiredService<DocxCvRenderer>();
+                    ? scope.ServiceProvider.GetRequiredService<ITHunterview.Service.Service.PdfCvRenderer>() 
+                    : scope.ServiceProvider.GetRequiredService<ITHunterview.Service.Service.DocxCvRenderer>();
                 
                 using var previewStream = await renderer.RenderPreviewImageAsync(session.CvDocument);
                 // Save stream to blob storage and notify via SignalR
@@ -126,8 +150,8 @@ public class OptimizeUseCase : IOptimizeUseCase
             throw new KeyNotFoundException("Session not found");
 
         ICvRenderer renderer = session.OriginalFileType == "pdf" 
-            ? _serviceProvider.GetRequiredService<PdfCvRenderer>() 
-            : _serviceProvider.GetRequiredService<DocxCvRenderer>();
+            ? _serviceProvider.GetRequiredService<ITHunterview.Service.Service.PdfCvRenderer>() 
+            : _serviceProvider.GetRequiredService<ITHunterview.Service.Service.DocxCvRenderer>();
 
         using var finalStream = await renderer.RenderFinalAsync(session.CvDocument);
         

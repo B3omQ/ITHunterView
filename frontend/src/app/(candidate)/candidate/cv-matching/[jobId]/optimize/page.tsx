@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useGetMatchResult } from '@/hooks/useCvMatch';
+import { useMutation } from '@tanstack/react-query';
+import { optimizeService } from '@/services/optimize.service';
 import type { MatchingOutput } from '@/types/cv.types';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { APP_ROUTES } from '@/lib/constants';
@@ -16,9 +18,33 @@ import { toast } from 'sonner';
 
 export default function CvOptimizePage({ params }: { params: Promise<{ jobId: string }> }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const resolvedParams = React.use(params);
+  
   const { data: pollData, isLoading, isError } = useGetMatchResult(resolvedParams.jobId);
   const [matchOutput, setMatchOutput] = useState<MatchingOutput | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  const createSessionMutation = useMutation({
+    mutationFn: (payload: { cvUrl?: string; cvId?: string }) => 
+      optimizeService.createSession(resolvedParams.jobId, payload),
+    onSuccess: (res) => {
+      if (res.data) setSessionId(res.data);
+    },
+    onError: (err) => {
+      console.error("Failed to create optimize session", err);
+      toast.error("Could not initialize optimization session. Proceeding with frontend-only mode.");
+    }
+  });
+
+  useEffect(() => {
+    // Create session on mount
+    const cvUrl = searchParams.get('cvUrl');
+    const cvId = searchParams.get('cvId');
+    if (cvUrl || cvId) {
+      createSessionMutation.mutate({ cvUrl: cvUrl || undefined, cvId: cvId || undefined });
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (pollData?.data?.matchDetails) {
@@ -31,7 +57,18 @@ export default function CvOptimizePage({ params }: { params: Promise<{ jobId: st
     }
   }, [pollData]);
 
-  const { state, handlers } = useCvOptimizer(matchOutput);
+  const { state, handlers } = useCvOptimizer(matchOutput, sessionId);
+
+  const generateFileMutation = useMutation({
+    mutationFn: () => optimizeService.generateFile(sessionId!),
+    onSuccess: (res) => {
+      if (res.data) {
+        window.open(res.data, '_blank');
+        toast.success("CV Downloaded successfully!");
+      }
+    },
+    onError: () => toast.error("Failed to generate CV file.")
+  });
 
   // Loading state
   if (isLoading || !matchOutput) {
@@ -64,7 +101,7 @@ export default function CvOptimizePage({ params }: { params: Promise<{ jobId: st
   };
 
   const handlePreview = () => {
-    toast.info("Preview feature is coming soon!");
+    toast.info("Preview generation is running in the background. Feature coming soon!");
   };
 
   const handleSave = () => {
@@ -72,8 +109,14 @@ export default function CvOptimizePage({ params }: { params: Promise<{ jobId: st
     router.push(`${APP_ROUTES.CANDIDATE.CV_MATCHING}/new?jobId=${resolvedParams.jobId}`);
   };
 
+
   const handleDownload = () => {
-    toast.info("Download functionality is coming soon!");
+    if (!sessionId) {
+      toast.error("Cannot download: Session not initialized.");
+      return;
+    }
+    toast.info("Generating your optimized CV...");
+    generateFileMutation.mutate();
   };
 
   return (

@@ -4,8 +4,8 @@ namespace ITHunterview.Service.Interface.UseCase;
 
 public interface IOptimizeUseCase
 {
-    Task<Guid> CreateSessionAsync(Guid matchId, Stream fileStream, string contentType);
+    Task<Guid> CreateSessionAsync(Guid matchId, string? cvUrl, Guid? cvId);
     Task<object> GetSuggestionsAsync(Guid sessionId);
-    Task<object> ApplySuggestionAsync(Guid sessionId, string suggestionId, string action, string? editedText);
+    Task<object> ApplySuggestionAsync(Guid sessionId, string suggestionId, string action, string? editedText, string? originalText, string? suggestedText);
     Task<string> GenerateFinalFileAsync(Guid sessionId);
 }
