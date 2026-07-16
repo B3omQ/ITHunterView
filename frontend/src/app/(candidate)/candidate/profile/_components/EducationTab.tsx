@@ -86,32 +86,31 @@ export function EducationTab() {
       <Card className="border border-border/40 bg-card/60 backdrop-blur-md rounded-xl shadow-md overflow-hidden">
         <CardHeader className="border-b border-border/10 pb-4 flex flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
-              <GraduationCap className="w-5 h-5" />
-            </div>
             <div>
               <CardTitle className="text-lg font-bold">Education</CardTitle>
               <CardDescription className="text-xs">Your academic background and credentials</CardDescription>
             </div>
           </div>
-          <Button
-            onClick={() => {
-              setEditingEduId(null);
-              setIsAddingEdu(true);
-            }}
-            disabled={isAddingEdu || editingEduId !== null}
-            className="bg-primary hover:bg-primary/95 transition-all text-primary-foreground font-semibold px-4 rounded-lg flex items-center gap-1.5 shadow-md shadow-primary/10"
-          >
-            <Plus className="w-4 h-4" />
-            Add Education
-          </Button>
+          {mappedEducations.length > 0 && (
+            <Button
+              onClick={() => {
+                setEditingEduId(null);
+                setIsAddingEdu(true);
+              }}
+              disabled={isAddingEdu || editingEduId !== null}
+              className="bg-primary hover:bg-primary/95 transition-all text-primary-foreground font-semibold px-4 rounded-lg flex items-center gap-1.5 shadow-md shadow-primary/10"
+            >
+              <Plus className="w-4 h-4" />
+              Add Education
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="p-6">
           {mappedEducations.length === 0 && !isAddingEdu ? (
-            <div className="text-center py-12 border border-dashed border-border/30 rounded-xl bg-muted/10">
-              <p className="text-sm text-muted-foreground italic mb-3">No education history added yet.</p>
-              <Button onClick={() => setIsAddingEdu(true)} variant="outline" className="text-xs font-semibold rounded-lg">
-                Add your education details
+            <div className="text-center py-4 border-2 border-dashed border-border rounded-xl bg-muted/10">
+              <p className="text-sm text-muted-foreground mb-2">No education history added yet.</p>
+              <Button onClick={() => setIsAddingEdu(true)} variant="outline" size="sm" className="font-semibold">
+                <Plus className="w-4 h-4 mr-2" /> Add Education
               </Button>
             </div>
           ) : (
@@ -151,32 +150,31 @@ export function EducationTab() {
       <Card className="border border-border/40 bg-card/60 backdrop-blur-md rounded-xl shadow-md overflow-hidden">
         <CardHeader className="border-b border-border/10 pb-4 flex flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
-              <Award className="w-5 h-5" />
-            </div>
             <div>
               <CardTitle className="text-lg font-bold">Certifications</CardTitle>
               <CardDescription className="text-xs">Professional certifications and licenses</CardDescription>
             </div>
           </div>
-          <Button
-            onClick={() => {
-              setEditingCertId(null);
-              setIsAddingCert(true);
-            }}
-            disabled={isAddingCert || editingCertId !== null}
-            className="bg-primary hover:bg-primary/95 transition-all text-primary-foreground font-semibold px-4 rounded-lg flex items-center gap-1.5 shadow-md shadow-primary/10"
-          >
-            <Plus className="w-4 h-4" />
-            Add Certification
-          </Button>
+          {certifications.length > 0 && (
+            <Button
+              onClick={() => {
+                setEditingCertId(null);
+                setIsAddingCert(true);
+              }}
+              disabled={isAddingCert || editingCertId !== null}
+              className="bg-primary hover:bg-primary/95 transition-all text-primary-foreground font-semibold px-4 rounded-lg flex items-center gap-1.5 shadow-md shadow-primary/10"
+            >
+              <Plus className="w-4 h-4" />
+              Add Certification
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="p-6">
           {certifications.length === 0 && !isAddingCert ? (
-            <div className="text-center py-12 border border-dashed border-border/30 rounded-xl bg-muted/10">
-              <p className="text-sm text-muted-foreground italic mb-3">No certifications added yet.</p>
-              <Button onClick={() => setIsAddingCert(true)} variant="outline" className="text-xs font-semibold rounded-lg">
-                Add your certifications
+            <div className="text-center py-4 border-2 border-dashed border-border rounded-xl bg-muted/10">
+              <p className="text-sm text-muted-foreground mb-2">No certifications added yet.</p>
+              <Button onClick={() => setIsAddingCert(true)} variant="outline" size="sm" className="font-semibold">
+                <Plus className="w-4 h-4 mr-2" /> Add Certification
               </Button>
             </div>
           ) : (

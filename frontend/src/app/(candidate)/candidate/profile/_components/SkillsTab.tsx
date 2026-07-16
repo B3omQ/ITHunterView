@@ -92,14 +92,11 @@ export function SkillsTab() {
   };
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto w-full">
+    <div className="space-y-6 w-full">
       {/* Manage Skills Card */}
       <Card>
         <CardHeader className="border-b pb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-md bg-muted text-muted-foreground">
-              <Award className="w-5 h-5" />
-            </div>
             <div>
               <CardTitle className="text-lg font-bold">Skills</CardTitle>
               <CardDescription className="text-xs">Add your professional skills and expertise</CardDescription>
@@ -175,7 +172,7 @@ export function SkillsTab() {
           <div className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Added Skills</h3>
             {skills.length === 0 ? (
-              <div className="text-sm text-muted-foreground py-8 text-center bg-muted/30 rounded-md">
+              <div className="text-sm text-muted-foreground py-4 text-center border-2 border-dashed border-border rounded-xl bg-muted/10">
                 No skills added yet. Use the search box above to add your skills.
               </div>
             ) : (

@@ -66,26 +66,25 @@ export function ExperienceTab() {
   });
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto w-full">
+    <div className="space-y-6 w-full">
       <Card>
         <CardHeader className="border-b pb-4 flex flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-md bg-muted text-muted-foreground">
-              <Briefcase className="w-5 h-5" />
-            </div>
             <div>
               <CardTitle className="text-lg font-bold">Work Experience</CardTitle>
               <CardDescription className="text-xs">Your employment history and job details</CardDescription>
             </div>
           </div>
-          <Button
-            onClick={() => setIsAdding(true)}
-            disabled={isAdding || !!editingId}
-            className="flex items-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            Add Experience
-          </Button>
+          {sortedExperiences.length > 0 && (
+            <Button
+              onClick={() => setIsAdding(true)}
+              disabled={isAdding || !!editingId}
+              className="flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              Add Experience
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="p-6">
           {isAdding && (
@@ -99,10 +98,10 @@ export function ExperienceTab() {
           )}
 
           {!isAdding && sortedExperiences.length === 0 ? (
-            <div className="text-center py-12 bg-muted/30 rounded-md">
-              <p className="text-sm text-muted-foreground mb-3">No work experiences added yet.</p>
-              <Button onClick={() => setIsAdding(true)} disabled={!!editingId} variant="outline" className="text-sm">
-                Add your first experience
+            <div className="text-center py-4 border-2 border-dashed border-border rounded-xl bg-muted/10">
+              <p className="text-sm text-muted-foreground mb-2">No work experiences added yet.</p>
+              <Button onClick={() => setIsAdding(true)} disabled={!!editingId} variant="outline" size="sm" className="font-semibold">
+                <Plus className="w-4 h-4 mr-2" /> Add Experience
               </Button>
             </div>
           ) : (
