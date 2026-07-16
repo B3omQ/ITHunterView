@@ -1,7 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { learningPathService } from '@/services/learning-path.service';
-import { GeneratePathRequest, GenerateFromCvJdRequest, GenerateFromInterviewRequest } from '@/types/learning-path.types';
+import { GeneratePathRequest } from '@/types/learning-path.types';
 import { toast } from 'sonner';
+
+export function useTargetRoles() {
+  return useQuery({
+    queryKey: ['learning-paths', 'target-roles'],
+    queryFn: () => learningPathService.getTargetRoles(),
+  });
+}
 
 export function useGenerateLearningPath() {
   const queryClient = useQueryClient();
@@ -13,23 +20,31 @@ export function useGenerateLearningPath() {
   });
 }
 
-export function useGenerateFromCvJd() {
+export function useExtractFromCvJd() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: GenerateFromCvJdRequest) => learningPathService.generateFromCvJd(data),
+    mutationFn: (matchScoreId: string) => learningPathService.extractFromCvJd(matchScoreId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['learning-paths'] });
-    },
+      queryClient.invalidateQueries({ queryKey: ['learning-paths', 'target-roles'] });
+    }
   });
 }
 
-export function useGenerateFromInterview() {
+export function useExtractFromInterview() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: GenerateFromInterviewRequest) => learningPathService.generateFromInterview(data),
+    mutationFn: (sessionId: string) => learningPathService.extractFromInterview(sessionId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['learning-paths'] });
-    },
+      queryClient.invalidateQueries({ queryKey: ['learning-paths', 'target-roles'] });
+    }
+  });
+}
+
+export function usePreviewContext(type: string, sourceId?: string) {
+  return useQuery({
+    queryKey: ['learning-paths', 'preview', type, sourceId],
+    queryFn: () => learningPathService.getPreviewContext(type, sourceId),
+    enabled: !!type && !!sourceId,
   });
 }
 
@@ -70,11 +85,11 @@ export function usePreviewHistoryContext(type: 'cv-jd' | 'interview', sourceId: 
   });
 }
 
-export function useToggleModule() {
+export function useToggleTaskCompletion() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ pathId, moduleIndex }: { pathId: string; moduleIndex: number }) => 
-      learningPathService.toggleModuleCompletion(pathId, moduleIndex),
+    mutationFn: ({ pathId, moduleIndex, taskIndex }: { pathId: string; moduleIndex: number; taskIndex: number }) => 
+      learningPathService.toggleTaskCompletion(pathId, moduleIndex, taskIndex),
     onSuccess: (_, { pathId }) => {
       queryClient.invalidateQueries({ queryKey: ['learning-paths'] });
       queryClient.invalidateQueries({ queryKey: ['learning-paths', pathId] });

@@ -48,5 +48,8 @@ namespace ITHunterview.Domain.Entities
         [Column("match_type")]
         public string MatchType { get; set; } = "AI";
 
+        [Column("sfia_extract_result")]
+        public string? SfiaExtractResult { get; set; }
+
     }
 }

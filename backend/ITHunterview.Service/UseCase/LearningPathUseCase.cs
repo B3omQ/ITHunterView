@@ -39,48 +39,143 @@ namespace ITHunterview.Service.UseCase
         private const int MaxLearningPathsPerCandidate = 3;
 
         // ─────────────────────────────────────────────────────────────
+        // Target Roles
+        // ─────────────────────────────────────────────────────────────
+        public async Task<List<TargetRoleResponseDto>> GetTargetRolesAsync()
+        {
+            var templates = await _context.TargetRoleTemplates
+                .Include(t => t.RequiredSkills)
+                .ThenInclude(rs => rs.SfiaSkill)
+                .ToListAsync();
+
+            return templates.Select(t => new TargetRoleResponseDto
+            {
+                Id = t.Id,
+                RoleName = t.RoleName,
+                Description = t.Description,
+                RequiredSkills = t.RequiredSkills.Select(rs => new TargetRoleSkillDto
+                {
+                    SkillCode = rs.SfiaSkill.SkillCode,
+                    SkillName = rs.SfiaSkill.SkillName,
+                    Description = rs.SfiaSkill.Description ?? "",
+                    AvailableLevels = rs.SfiaSkill.AvailableLevels ?? "",
+                    TargetLevel = rs.TargetLevel
+                }).ToList()
+            }).ToList();
+        }
+
+        // ─────────────────────────────────────────────────────────────
         // Generate từ input thủ công (giữ nguyên)
         // ─────────────────────────────────────────────────────────────
         public async Task<LearningPathResponseDto> GenerateLearningPathAsync(Guid candidateId, GeneratePathRequestDto request)
         {
             await EnforceMaxPathsAsync(candidateId);
 
+            string roleName = string.Empty;
+            var gaps = new List<object>();
+
+            if (request.TargetRoleTemplateId != null && request.TargetRoleTemplateId != Guid.Empty)
+            {
+                var template = await _context.TargetRoleTemplates
+                    .Include(t => t.RequiredSkills)
+                    .ThenInclude(rs => rs.SfiaSkill)
+                    .FirstOrDefaultAsync(t => t.Id == request.TargetRoleTemplateId);
+
+                if (template == null)
+                    throw new ArgumentException("Target role template not found.");
+
+                roleName = template.RoleName;
+                var userSkillsDict = request.CurrentSkills.ToDictionary(s => s.SkillCode, s => s.CurrentLevel);
+
+                foreach (var requiredSkill in template.RequiredSkills)
+                {
+                    int currentLevel = userSkillsDict.ContainsKey(requiredSkill.SfiaSkill.SkillCode) ? userSkillsDict[requiredSkill.SfiaSkill.SkillCode] : 0;
+                    int gap = requiredSkill.TargetLevel - currentLevel;
+
+                    if (gap > 0)
+                    {
+                        gaps.Add(new
+                        {
+                            skill_code = requiredSkill.SfiaSkill.SkillCode,
+                            skill_name = requiredSkill.SfiaSkill.SkillName,
+                            current_level = currentLevel,
+                            target_level = requiredSkill.TargetLevel,
+                            gap_delta = gap
+                        });
+                    }
+                }
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(request.CustomTargetRoleName) || request.CustomTargetSkills == null || !request.CustomTargetSkills.Any())
+                {
+                    throw new ArgumentException("Custom target role name and skills are required when TargetRoleTemplateId is not provided.");
+                }
+
+                roleName = request.CustomTargetRoleName;
+                var allSkills = await _context.SfiaSkills.ToDictionaryAsync(s => s.SkillCode, s => s.SkillName);
+
+                foreach (var customSkill in request.CustomTargetSkills)
+                {
+                    int gap = customSkill.TargetLevel - customSkill.CurrentLevel;
+                    if (gap > 0)
+                    {
+                        string skillName = allSkills.ContainsKey(customSkill.SkillCode) ? allSkills[customSkill.SkillCode] : customSkill.SkillCode;
+                        gaps.Add(new
+                        {
+                            skill_code = customSkill.SkillCode,
+                            skill_name = skillName,
+                            current_level = customSkill.CurrentLevel,
+                            target_level = customSkill.TargetLevel,
+                            gap_delta = gap
+                        });
+                    }
+                }
+            }
+
             string systemPrompt = @"You are an expert IT career coach. 
-Generate a comprehensive, step-by-step learning path based on the user's current skills and target role.
-The result MUST be a valid JSON object containing a ""title"" for the path, and a ""modules"" array where each object represents a learning module.
-Example output format:
+Generate a comprehensive, step-by-step learning path based on the user's SFIA skill gaps.
+The result MUST be a valid JSON object strictly following this schema:
 {
-  ""title"": ""Mastering Senior Frontend Development"",
+  ""title"": ""Path to Senior Backend Developer"",
+  ""target_profile"": { ""role_name"": ""..."", ""description"": ""..."" },
+  ""gap_summary"": {
+    ""total_gaps"": 2,
+    ""gaps"": [ { ""skill_code"": ""PROG"", ""skill_name"": ""..."", ""current_level"": 3, ""target_level"": 5, ""gap_delta"": 2 } ]
+  },
   ""modules"": [
     {
-      ""title"": ""Module 1: Advanced React Patterns"",
-      ""description"": ""Deep dive into HOCs, Render Props, and custom hooks."",
-      ""durationWeeks"": 2,
-      ""skills"": [""React"", ""Custom Hooks"", ""Performance Optimization""]
+      ""module_index"": 0,
+      ""title"": ""Module 1: PROG Level 3 to 4"",
+      ""description"": ""..."",
+      ""sfia_target"": { ""skill_code"": ""PROG"", ""from_level"": 3, ""to_level"": 4 },
+      ""tasks"": [
+        { ""task_index"": 0, ""title"": ""..."", ""description"": ""..."", ""estimated_hours"": 8 }
+      ]
     }
-  ]
+  ],
+  ""progress"": { ""total_modules"": 1, ""completed_modules"": 0, ""total_tasks"": 1, ""completed_tasks"": 0, ""percentage"": 0 }
 }
+Rule: Create one module per 1 level jump per skill. If gap is 2 levels, create 2 sequential modules for that skill.
 Do NOT include any markdown blocks like ```json, just return the raw JSON object.";
 
             var userPromptBuilder = new StringBuilder();
-            userPromptBuilder.AppendLine($"Target Role: {request.TargetRole}");
-            userPromptBuilder.AppendLine($"Specific Goal: {request.SpecificGoal}");
-            userPromptBuilder.AppendLine($"Experience Level: {request.ExperienceLevel}");
+            userPromptBuilder.AppendLine($"Target Role: {roleName}");
             userPromptBuilder.AppendLine();
             
-            userPromptBuilder.AppendLine("=== TECHNICAL PROFILE ===");
-            userPromptBuilder.AppendLine($"Current Skills & Proficiency: {request.CurrentSkills}");
-            if (!string.IsNullOrWhiteSpace(request.Strengths)) userPromptBuilder.AppendLine($"Strengths: {request.Strengths}");
-            if (!string.IsNullOrWhiteSpace(request.Weaknesses)) userPromptBuilder.AppendLine($"Weaknesses: {request.Weaknesses}");
-            if (!string.IsNullOrWhiteSpace(request.TargetCompanyType)) userPromptBuilder.AppendLine($"Target Company Type: {request.TargetCompanyType}");
+            userPromptBuilder.AppendLine("=== SFIA SKILL GAPS ===");
+            userPromptBuilder.AppendLine(JsonSerializer.Serialize(gaps));
             userPromptBuilder.AppendLine();
 
-            userPromptBuilder.AppendLine("=== PERSONALIZATION & PREFERENCES ===");
-            if (!string.IsNullOrWhiteSpace(request.LearningStyle)) userPromptBuilder.AppendLine($"Preferred Learning Style: {request.LearningStyle}");
-            if (!string.IsNullOrWhiteSpace(request.AdditionalPreferences)) userPromptBuilder.AppendLine($"Additional Preferences: {request.AdditionalPreferences}");
-            userPromptBuilder.AppendLine();
+            if (!string.IsNullOrWhiteSpace(request.PersonalContext))
+            {
+                userPromptBuilder.AppendLine("=== CANDIDATE'S PERSONAL CONTEXT & PRIOR KNOWLEDGE ===");
+                userPromptBuilder.AppendLine(request.PersonalContext);
+                userPromptBuilder.AppendLine("Rule: Use this context to skip basic topics the candidate already knows, even if their current formal SFIA level is low. Tailor the learning tasks specifically to their actual starting point and context.");
+                userPromptBuilder.AppendLine();
+            }
             
-            userPromptBuilder.AppendLine("Please generate a structured, highly personalized self-paced learning path taking into account the preferences above.");
+            userPromptBuilder.AppendLine("Please generate a structured, highly personalized self-paced learning path following the SFIA progression rules.");
 
             string userPrompt = userPromptBuilder.ToString();
 
@@ -90,86 +185,120 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
         // ─────────────────────────────────────────────────────────────
         // Generate từ lịch sử matching CV-JD & phỏng vấn
         // ─────────────────────────────────────────────────────────────
-        public async Task<LearningPathResponseDto> GenerateFromCvJdAsync(Guid candidateId, GenerateFromCvJdRequestDto request)
+        public async Task<ExtractSfiaProfileResponseDto> ExtractFromCvJdAsync(Guid candidateId, Guid matchScoreId)
         {
-            await EnforceMaxPathsAsync(candidateId);
-
-            var matchContext = await BuildMatchContextAsync(candidateId, request.MatchScoreId);
-
-            if (string.IsNullOrWhiteSpace(matchContext))
+            var matchScore = await _context.CvJobMatchScores.FirstOrDefaultAsync(m => m.Id == matchScoreId);
+            if (matchScore != null && !string.IsNullOrWhiteSpace(matchScore.SfiaExtractResult))
             {
-                throw new InvalidOperationException(
-                    "Chưa có dữ liệu matching CV-JD để tạo lộ trình. " +
-                    "Vui lòng thực hiện matching CV-JD trước.");
+                try
+                {
+                    var cached = JsonSerializer.Deserialize<ExtractSfiaProfileResponseDto>(matchScore.SfiaExtractResult, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (cached != null) return cached;
+                }
+                catch { /* Ignore and re-extract if parse fails */ }
             }
 
-            string systemPrompt = @"You are an expert IT career coach.
-Analyze the candidate's skill gaps identified from their CV-JD matching results.
-Generate a targeted, step-by-step learning path to close those specific gaps.
-The result MUST be a valid JSON object containing a ""title"" for the path, and a ""modules"" array where each object represents a learning module.
-Example output format:
-{
-  ""title"": ""Closing the CV-JD Gap for Backend Engineer"",
-  ""modules"": [
-    {
-      ""title"": ""Module 1: Microservices Architecture"",
-      ""description"": ""Learn about service discovery, API gateways, and distributed tracing."",
-      ""durationWeeks"": 3,
-      ""skills"": [""Microservices"", ""Docker"", ""Kubernetes""],
-      ""gapSource"": ""cv-jd-match""
-    }
-  ]
-}
-Do NOT include any markdown blocks like ```json, just return the raw JSON object.";
+            var matchContext = await BuildMatchContextAsync(candidateId, matchScoreId);
+            if (string.IsNullOrWhiteSpace(matchContext))
+                throw new InvalidOperationException("Chưa có dữ liệu matching CV-JD.");
 
-            var userPromptBuilder = new StringBuilder();
-            userPromptBuilder.AppendLine("=== SKILL GAPS FROM CV-JD MATCHING ===");
-            userPromptBuilder.AppendLine(matchContext);
-            userPromptBuilder.AppendLine();
-            userPromptBuilder.AppendLine("Based on the above identified skill gaps, generate a prioritized learning path.");
+            var result = await PerformExtractionAsync(matchContext, "CV-JD Matching");
 
-            return await CallAiAndSaveAsync(candidateId, userPromptBuilder.ToString(), systemPrompt);
+            if (matchScore != null)
+            {
+                matchScore.SfiaExtractResult = JsonSerializer.Serialize(result);
+                await _context.SaveChangesAsync();
+            }
+
+            return result;
         }
 
-        public async Task<LearningPathResponseDto> GenerateFromInterviewAsync(Guid candidateId, GenerateFromInterviewRequestDto request)
+        public async Task<ExtractSfiaProfileResponseDto> ExtractFromInterviewAsync(Guid candidateId, Guid sessionId)
         {
-            await EnforceMaxPathsAsync(candidateId);
-
-            var interviewContext = await BuildInterviewContextAsync(candidateId, request.SessionId);
-
-            if (string.IsNullOrWhiteSpace(interviewContext))
+            var session = await _context.InterviewSessions.FirstOrDefaultAsync(s => s.Id == sessionId);
+            if (session != null && !string.IsNullOrWhiteSpace(session.SfiaExtractResult))
             {
-                throw new InvalidOperationException(
-                    "Chưa có dữ liệu phỏng vấn thử để tạo lộ trình. " +
-                    "Vui lòng thực hiện phỏng vấn thử trước.");
+                try
+                {
+                    var cached = JsonSerializer.Deserialize<ExtractSfiaProfileResponseDto>(session.SfiaExtractResult, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (cached != null) return cached;
+                }
+                catch { /* Ignore and re-extract if parse fails */ }
             }
 
-            string systemPrompt = @"You are an expert IT career coach.
-Analyze the candidate's weak areas identified from their mock interview performance.
-Generate a targeted, step-by-step learning path to close those specific gaps.
-The result MUST be a valid JSON object containing a ""title"" for the path, and a ""modules"" array where each object represents a learning module.
-Example output format:
+            var interviewContext = await BuildInterviewContextAsync(candidateId, sessionId);
+            if (string.IsNullOrWhiteSpace(interviewContext))
+                throw new InvalidOperationException("Chưa có dữ liệu phỏng vấn thử.");
+
+            var result = await PerformExtractionAsync(interviewContext, "Mock Interview");
+
+            if (session != null)
+            {
+                session.SfiaExtractResult = JsonSerializer.Serialize(result);
+                await _context.SaveChangesAsync();
+            }
+
+            return result;
+        }
+
+        private async Task<ExtractSfiaProfileResponseDto> PerformExtractionAsync(string contextText, string sourceName)
+        {
+            var allSkills = await _context.SfiaSkills.ToListAsync();
+            var allSkillsJson = JsonSerializer.Serialize(allSkills.Select(s => new { s.SkillCode, s.SkillName }));
+
+            var genericLevelsJson = JsonSerializer.Serialize(ITHunterview.Service.Constant.SfiaGenericLevels.Matrix.Select(x => new { Level = x.Key, Description = x.Value.Essence }));
+
+            string systemPrompt = @"You are an expert IT career coach and data extractor.
+Analyze the candidate's skill gaps identified from their " + sourceName + @" context.
+You will be provided a list of all 147 SFIA skills AND a guide on SFIA Generic Levels (1-7).
+Your job is to:
+1. Define a highly relevant `customRoleName` based on the candidate's target job and context.
+2. Provide a short `customRoleDescription`.
+3. Identify the EXACT SFIA skills the candidate needs to develop or demonstrate to bridge the gaps identified in the context. DO NOT snap to predefined templates. Tailor this specifically to the context.
+4. For EACH identified skill, provide:
+   - `skillCode`: the SFIA skill code.
+   - `targetLevel`: the expected proficiency level for the role (1-7).
+   - `currentLevel`: estimate the candidate's CURRENT proficiency level (0-7).
+   - `justification`: brief reasoning for the gap and levels assigned.
+The result MUST be a valid JSON object strictly following this schema:
 {
-  ""title"": ""Interview Preparation: Data Structures & Algorithms"",
-  ""modules"": [
-    {
-      ""title"": ""Module 1: Advanced SQL Queries"",
-      ""description"": ""Mastering window functions and CTEs to address interview weaknesses."",
-      ""durationWeeks"": 2,
-      ""skills"": [""SQL"", ""Window Functions""],
-      ""gapSource"": ""interview""
-    }
+  ""customRoleName"": ""..."",
+  ""customRoleDescription"": ""..."",
+  ""skills"": [
+    { ""skillCode"": ""..."", ""targetLevel"": 4, ""currentLevel"": 2, ""justification"": ""..."" }
   ]
 }
 Do NOT include any markdown blocks like ```json, just return the raw JSON object.";
 
             var userPromptBuilder = new StringBuilder();
-            userPromptBuilder.AppendLine("=== WEAK AREAS FROM MOCK INTERVIEW ===");
-            userPromptBuilder.AppendLine(interviewContext);
+            userPromptBuilder.AppendLine("=== ALL SFIA SKILLS ===");
+            userPromptBuilder.AppendLine(allSkillsJson);
             userPromptBuilder.AppendLine();
-            userPromptBuilder.AppendLine("Based on the above identified weak areas, generate a prioritized learning path.");
+            userPromptBuilder.AppendLine("=== SFIA GENERIC LEVELS GUIDE ===");
+            userPromptBuilder.AppendLine(genericLevelsJson);
+            userPromptBuilder.AppendLine();
+            userPromptBuilder.AppendLine("=== CANDIDATE CONTEXT ===");
+            userPromptBuilder.AppendLine(contextText);
 
-            return await CallAiAndSaveAsync(candidateId, userPromptBuilder.ToString(), systemPrompt);
+            var aiResponseText = await _aiService.GenerateTextAsync(userPromptBuilder.ToString(), systemPrompt);
+
+            aiResponseText = aiResponseText.Trim();
+            if (aiResponseText.StartsWith("```json")) aiResponseText = aiResponseText.Substring(7);
+            if (aiResponseText.StartsWith("```")) aiResponseText = aiResponseText.Substring(3);
+            if (aiResponseText.EndsWith("```")) aiResponseText = aiResponseText.Substring(0, aiResponseText.Length - 3);
+            aiResponseText = aiResponseText.Trim();
+
+            try
+            {
+                var dto = JsonSerializer.Deserialize<ExtractSfiaProfileResponseDto>(aiResponseText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                       ?? throw new Exception("AI returned null object.");
+
+                return dto;
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Không thể trích xuất SFIA Profile từ AI: {ex.Message}");
+            }
         }
 
         public async Task<HistoryContextPreviewDto> PreviewHistoryContextAsync(Guid candidateId, string type, Guid? sourceId)
@@ -250,42 +379,92 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
 
                 if (root.TryGetProperty("jdFit", out var jdFit))
                 {
-                    // Pool A - Technical skills
-                    if (jdFit.TryGetProperty("poolA", out var poolA))
+                    // Pool A & Pool B
+                    if (jdFit.TryGetProperty("poolA", out var poolA) && poolA.TryGetProperty("score", out var poolAScore))
+                        sb.AppendLine($"Technical Skills Score: {poolAScore}/70");
+                    if (jdFit.TryGetProperty("poolB", out var poolB) && poolB.TryGetProperty("score", out var poolBScore))
+                        sb.AppendLine($"Experience/Soft Skill Score: {poolBScore}/30");
+
+                    // Requirement Scores (Weak & Missing)
+                    if (jdFit.TryGetProperty("requirementScores", out var reqScores) && reqScores.ValueKind == JsonValueKind.Array)
                     {
-                        if (poolA.TryGetProperty("missingSkills", out var missingSkills))
-                            sb.AppendLine($"Missing Technical Skills: {missingSkills}");
+                        var weakReqs = reqScores.EnumerateArray()
+                            .Where(r => r.TryGetProperty("handlerScore", out var hs) && hs.GetDouble() < 0.8)
+                            .Select(r => 
+                            {
+                                var text = r.TryGetProperty("normalizedText", out var t) ? t.GetString() : "Unknown Skill";
+                                var score = r.TryGetProperty("handlerScore", out var s) ? s.GetDouble() : 0.0;
+                                var reason = r.TryGetProperty("reasoning", out var rs) ? rs.GetString() : "";
+                                return $"- {text} (Score: {score}): {reason}";
+                            })
+                            .ToList();
 
-                        if (poolA.TryGetProperty("weakSkills", out var weakSkills))
-                            sb.AppendLine($"Weak Technical Skills: {weakSkills}");
+                        if (weakReqs.Any())
+                        {
+                            sb.AppendLine("Identified Skill Gaps & Weaknesses:");
+                            sb.AppendLine(string.Join("\n", weakReqs));
+                        }
 
-                        if (poolA.TryGetProperty("score", out var poolAScore))
-                            sb.AppendLine($"Technical Skills Score: {poolAScore}/40");
+                        var strongReqs = reqScores.EnumerateArray()
+                            .Where(r => r.TryGetProperty("handlerScore", out var hs) && hs.GetDouble() >= 0.8)
+                            .Select(r => 
+                            {
+                                var text = r.TryGetProperty("normalizedText", out var t) ? t.GetString() : "Unknown Skill";
+                                var score = r.TryGetProperty("handlerScore", out var s) ? s.GetDouble() : 0.0;
+                                var reason = r.TryGetProperty("reasoning", out var rs) ? rs.GetString() : "";
+                                return $"- {text} (Score: {score}): {reason}";
+                            })
+                            .ToList();
+
+                        if (strongReqs.Any())
+                        {
+                            sb.AppendLine("Identified Strengths & Mastered Skills:");
+                            sb.AppendLine(string.Join("\n", strongReqs));
+                        }
                     }
 
-                    // Pool B - Soft skills / experience
-                    if (jdFit.TryGetProperty("poolB", out var poolB))
+                    // Narrative
+                    if (jdFit.TryGetProperty("narrative", out var narrative))
                     {
-                        if (poolB.TryGetProperty("gaps", out var gaps))
-                            sb.AppendLine($"Experience/Soft Skill Gaps: {gaps}");
+                        var narrativeStr = narrative.GetString();
+                        if (!string.IsNullOrWhiteSpace(narrativeStr))
+                            sb.AppendLine($"AI Narrative Assessment: {narrativeStr}");
+                    }
 
-                        if (poolB.TryGetProperty("score", out var poolBScore))
-                            sb.AppendLine($"Experience/Soft Skill Score: {poolBScore}/60");
+                    // Critical Gaps
+                    if (jdFit.TryGetProperty("criticalGaps", out var criticalGaps) && criticalGaps.ValueKind == JsonValueKind.Array)
+                    {
+                        var gaps = criticalGaps.EnumerateArray()
+                            .Select(g => g.TryGetProperty("gapDescription", out var desc) ? desc.GetString() : null)
+                            .Where(d => !string.IsNullOrWhiteSpace(d))
+                            .ToList();
+                        if (gaps.Any())
+                            sb.AppendLine($"Critical Gaps: {string.Join("; ", gaps)}");
                     }
 
                     // Penalties
-                    if (jdFit.TryGetProperty("penalties", out var penalties) &&
-                        penalties.ValueKind == JsonValueKind.Array)
+                    if (jdFit.TryGetProperty("penalties", out var penalties) && penalties.ValueKind == JsonValueKind.Array)
                     {
                         var triggeredPenalties = penalties.EnumerateArray()
                             .Where(p => p.TryGetProperty("triggered", out var t) && t.GetBoolean())
-                            .Select(p => p.TryGetProperty("reason", out var r) ? r.GetString() : null)
-                            .Where(r => r != null)
+                            .Select(p => p.TryGetProperty("evidence", out var e) ? e.GetString() : null)
+                            .Where(e => !string.IsNullOrWhiteSpace(e))
                             .ToList();
 
                         if (triggeredPenalties.Any())
-                            sb.AppendLine($"Penalty Reasons: {string.Join("; ", triggeredPenalties)}");
+                            sb.AppendLine($"Penalty Evidence: {string.Join("; ", triggeredPenalties)}");
                     }
+                }
+
+                // Improvements (Root level)
+                if (root.TryGetProperty("improvements", out var improvements) && improvements.ValueKind == JsonValueKind.Array)
+                {
+                    var issues = improvements.EnumerateArray()
+                        .Select(i => i.TryGetProperty("issue", out var issue) ? issue.GetString() : null)
+                        .Where(i => !string.IsNullOrWhiteSpace(i))
+                        .ToList();
+                    if (issues.Any())
+                        sb.AppendLine($"Areas for Improvement: {string.Join("; ", issues)}");
                 }
                 else if (root.TryGetProperty("Method", out var methodProp) && methodProp.GetString() == "Hardcode")
                 {
@@ -436,44 +615,42 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
             aiResponseText = aiResponseText.Trim();
 
             string parsedTitle = "Generated Learning Path";
-            string serializedModules = "[]";
+            string serializedData = "{}";
             
-            JsonDocument jsonDoc;
             try
             {
-                jsonDoc = JsonDocument.Parse(aiResponseText);
-                if (jsonDoc.RootElement.TryGetProperty("title", out var titleElement) && titleElement.ValueKind == JsonValueKind.String)
+                var rootDict = JsonSerializer.Deserialize<Dictionary<string, object>>(aiResponseText) ?? new Dictionary<string, object>();
+                
+                if (rootDict.TryGetValue("title", out var titleObj) && titleObj is JsonElement titleElem && titleElem.ValueKind == JsonValueKind.String)
                 {
-                    parsedTitle = titleElement.GetString() ?? parsedTitle;
+                    parsedTitle = titleElem.GetString() ?? parsedTitle;
                 }
                 
-                if (jsonDoc.RootElement.TryGetProperty("modules", out var modulesElement) && modulesElement.ValueKind == JsonValueKind.Array)
+                if (rootDict.TryGetValue("modules", out var modulesObj) && modulesObj is JsonElement modulesElem && modulesElem.ValueKind == JsonValueKind.Array)
                 {
-                    // Add "completed": false to every module to initialize gamification
                     var modulesList = new List<Dictionary<string, object>>();
-                    foreach (var mod in modulesElement.EnumerateArray())
+                    foreach (var mod in modulesElem.EnumerateArray())
                     {
                         var modDict = JsonSerializer.Deserialize<Dictionary<string, object>>(mod.GetRawText()) ?? new Dictionary<string, object>();
                         modDict["completed"] = false;
+                        
+                        if (modDict.TryGetValue("tasks", out var tasksObj) && tasksObj is JsonElement tasksElem && tasksElem.ValueKind == JsonValueKind.Array)
+                        {
+                            var tasksList = new List<Dictionary<string, object>>();
+                            foreach (var task in tasksElem.EnumerateArray())
+                            {
+                                var taskDict = JsonSerializer.Deserialize<Dictionary<string, object>>(task.GetRawText()) ?? new Dictionary<string, object>();
+                                taskDict["completed"] = false;
+                                tasksList.Add(taskDict);
+                            }
+                            modDict["tasks"] = tasksList;
+                        }
+                        
                         modulesList.Add(modDict);
                     }
-                    serializedModules = JsonSerializer.Serialize(modulesList);
+                    rootDict["modules"] = modulesList;
                 }
-                else 
-                {
-                    // Fallback in case AI ignored the prompt and returned an array directly
-                    if (jsonDoc.RootElement.ValueKind == JsonValueKind.Array)
-                    {
-                        var modulesList = new List<Dictionary<string, object>>();
-                        foreach (var mod in jsonDoc.RootElement.EnumerateArray())
-                        {
-                            var modDict = JsonSerializer.Deserialize<Dictionary<string, object>>(mod.GetRawText()) ?? new Dictionary<string, object>();
-                            modDict["completed"] = false;
-                            modulesList.Add(modDict);
-                        }
-                        serializedModules = JsonSerializer.Serialize(modulesList);
-                    }
-                }
+                serializedData = JsonSerializer.Serialize(rootDict);
             }
             catch (Exception)
             {
@@ -486,7 +663,7 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
                 CandidateId = candidateId,
                 Title = parsedTitle.Length > 255 ? parsedTitle.Substring(0, 255) : parsedTitle,
                 Status = "Not Started",
-                PathData = serializedModules,
+                PathData = serializedData,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -551,7 +728,7 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
             await _learningPathRepository.DeleteAsync(path);
         }
 
-        public async Task<LearningPathResponseDto> ToggleModuleCompletionAsync(Guid candidateId, Guid pathId, int moduleIndex)
+        public async Task<LearningPathResponseDto> ToggleTaskCompletionAsync(Guid candidateId, Guid pathId, int moduleIndex, int taskIndex)
         {
             var path = await _learningPathRepository.GetByIdAsync(pathId);
             if (path == null || path.CandidateId != candidateId)
@@ -559,30 +736,141 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
                 throw new KeyNotFoundException("Learning path not found or access denied.");
             }
 
-            var modules = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(path.PathData);
-            if (modules == null || moduleIndex < 0 || moduleIndex >= modules.Count)
+            var rootDict = JsonSerializer.Deserialize<Dictionary<string, object>>(path.PathData);
+            if (rootDict == null || !rootDict.TryGetValue("modules", out var modulesObj) || !(modulesObj is JsonElement modulesElem) || modulesElem.ValueKind != JsonValueKind.Array)
+            {
+                throw new ArgumentException("Invalid path data format. Modules not found.");
+            }
+
+            var modules = new List<Dictionary<string, object>>();
+            foreach (var m in modulesElem.EnumerateArray())
+            {
+                modules.Add(JsonSerializer.Deserialize<Dictionary<string, object>>(m.GetRawText()) ?? new Dictionary<string, object>());
+            }
+
+            if (moduleIndex < 0 || moduleIndex >= modules.Count)
             {
                 throw new ArgumentException("Invalid module index.");
             }
 
-            // Toggle completed flag
-            bool currentStatus = false;
-            if (modules[moduleIndex].TryGetValue("completed", out var compVal) && compVal is JsonElement compElem)
+            if (!modules[moduleIndex].TryGetValue("tasks", out var tasksObj) || !(tasksObj is JsonElement tasksElem) || tasksElem.ValueKind != JsonValueKind.Array)
             {
-                currentStatus = compElem.ValueKind == JsonValueKind.True;
+                throw new ArgumentException("This module does not contain any tasks.");
             }
-            modules[moduleIndex]["completed"] = !currentStatus;
 
-            // Recalculate global status
-            int completedCount = modules.Count(m => 
-                m.TryGetValue("completed", out var v) && v is JsonElement e && e.ValueKind == JsonValueKind.True
-            );
+            var tasksList = new List<Dictionary<string, object>>();
+            foreach (var t in tasksElem.EnumerateArray())
+            {
+                tasksList.Add(JsonSerializer.Deserialize<Dictionary<string, object>>(t.GetRawText()) ?? new Dictionary<string, object>());
+            }
 
-            if (completedCount == 0) path.Status = "Not Started";
-            else if (completedCount == modules.Count) path.Status = "Completed";
+            if (taskIndex < 0 || taskIndex >= tasksList.Count)
+            {
+                throw new ArgumentException("Invalid task index.");
+            }
+
+            // Determine current status
+            bool currentTaskStatus = false;
+            if (tasksList[taskIndex].TryGetValue("completed", out var compVal) && compVal is JsonElement compElem)
+            {
+                currentTaskStatus = compElem.ValueKind == JsonValueKind.True;
+            }
+
+            // Determine intended next status
+            bool nextStatus = !currentTaskStatus;
+
+            // Enforcement Rules
+            if (nextStatus) // Checking
+            {
+                // Check previous module is completed
+                if (moduleIndex > 0)
+                {
+                    if (modules[moduleIndex - 1].TryGetValue("completed", out var prevModVal) && prevModVal is JsonElement prevModElem)
+                    {
+                        if (prevModElem.ValueKind != JsonValueKind.True)
+                            throw new ArgumentException("You must complete the previous module first.");
+                    }
+                }
+
+                // Check previous task in current module is completed
+                if (taskIndex > 0)
+                {
+                    if (tasksList[taskIndex - 1].TryGetValue("completed", out var prevTaskVal) && prevTaskVal is JsonElement prevTaskElem)
+                    {
+                        if (prevTaskElem.ValueKind != JsonValueKind.True)
+                            throw new ArgumentException("You must complete the previous task first.");
+                    }
+                }
+            }
+            else // Unchecking
+            {
+                // Ensure next task in current module is not completed
+                if (taskIndex < tasksList.Count - 1)
+                {
+                    if (tasksList[taskIndex + 1].TryGetValue("completed", out var nextTaskVal) && nextTaskVal is JsonElement nextTaskElem)
+                    {
+                        if (nextTaskElem.ValueKind == JsonValueKind.True)
+                            throw new ArgumentException("Cannot uncheck task because the subsequent task is already completed.");
+                    }
+                }
+                // Ensure first task of next module is not completed
+                else if (moduleIndex < modules.Count - 1)
+                {
+                    if (modules[moduleIndex + 1].TryGetValue("tasks", out var nextModTasksObj) && nextModTasksObj is JsonElement nextModTasksElem && nextModTasksElem.ValueKind == JsonValueKind.Array)
+                    {
+                        var nextModTasksList = nextModTasksElem.EnumerateArray().ToList();
+                        if (nextModTasksList.Count > 0)
+                        {
+                            if (nextModTasksList[0].TryGetProperty("completed", out var firstTaskNextMod) && firstTaskNextMod.ValueKind == JsonValueKind.True)
+                                throw new ArgumentException("Cannot uncheck task because the next module has already been started.");
+                        }
+                    }
+                }
+            }
+
+            tasksList[taskIndex]["completed"] = nextStatus;
+            modules[moduleIndex]["tasks"] = tasksList;
+
+            // Update module completion status based on its tasks
+            bool isModuleCompleted = tasksList.All(t => t.TryGetValue("completed", out var cv) && cv is JsonElement ce && ce.ValueKind == JsonValueKind.True);
+            modules[moduleIndex]["completed"] = isModuleCompleted;
+
+            rootDict["modules"] = modules;
+            path.PathData = JsonSerializer.Serialize(rootDict);
+
+            // Recalculate global status based on ALL tasks across ALL modules
+            var updatedDoc = JsonDocument.Parse(path.PathData);
+            
+            int totalTasks = 0;
+            int totalCompletedTasks = 0;
+            int completedModulesCount = 0;
+
+            if (updatedDoc.RootElement.TryGetProperty("modules", out var upModulesElem) && upModulesElem.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var mod in upModulesElem.EnumerateArray())
+                {
+                    if (mod.TryGetProperty("completed", out var modComp) && modComp.ValueKind == JsonValueKind.True)
+                    {
+                        completedModulesCount++;
+                    }
+                    if (mod.TryGetProperty("tasks", out var tElem) && tElem.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var t in tElem.EnumerateArray())
+                        {
+                            totalTasks++;
+                            if (t.TryGetProperty("completed", out var cProp) && cProp.ValueKind == JsonValueKind.True)
+                            {
+                                totalCompletedTasks++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (totalTasks == 0 || totalCompletedTasks == 0) path.Status = "Not Started";
+            else if (totalCompletedTasks == totalTasks) path.Status = "Completed";
             else path.Status = "In Progress";
 
-            path.PathData = JsonSerializer.Serialize(modules);
 
             await _learningPathRepository.UpdateAsync(path);
 

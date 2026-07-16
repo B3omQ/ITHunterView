@@ -36,7 +36,11 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IAuditLogRepository, AuditLogRepository>();
             services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
             services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
+
             services.AddScoped<IPromptAdminRepository, PromptAdminRepository>();
+
+            services.AddScoped<INotificationRepository, NotificationRepository>();
+
 
             // Repositories — Candidate Profile
             services.AddScoped<ICandidateProfileRepository, CandidateProfileRepository>();
@@ -102,6 +106,8 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IWalletUseCase, WalletUseCase>();
             services.AddScoped<IInterviewQuestionBankUseCase, InterviewQuestionBankUseCase>();
             services.AddScoped<IPromptAdminUseCase, PromptAdminUseCase>();
+            services.AddScoped<INotificationUseCase, NotificationUseCase>();
+
 
 
             // Use Cases — Candidate Profile
@@ -113,6 +119,8 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IInterviewUseCase, InterviewUseCase>();
             services.AddScoped<ILearningPathUseCase, LearningPathUseCase>();
             services.AddScoped<ICvOptimizerUseCase, CvOptimizerUseCase>();
+            services.AddScoped<ITargetRoleUseCase, TargetRoleUseCase>();
+            services.AddScoped<ISfiaSkillUseCase, SfiaSkillUseCase>();
 
             // Job Search & Saved Jobs
             services.AddScoped<IJobSearchRepository, JobSearchRepository>();

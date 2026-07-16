@@ -731,6 +731,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("raw_jd_text");
 
+                    b.Property<string>("SfiaExtractResult")
+                        .HasColumnType("text")
+                        .HasColumnName("sfia_extract_result");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1040,6 +1044,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("JobId")
                         .HasColumnType("uuid")
                         .HasColumnName("job_id");
+
+                    b.Property<string>("SfiaExtractResult")
+                        .HasColumnType("text")
+                        .HasColumnName("sfia_extract_result");
 
                     b.Property<DateTime?>("StartedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1775,6 +1783,84 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.ToTable("roles");
                 });
 
+            modelBuilder.Entity("ITHunterview.Domain.Entities.SfiaSkill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AvailableLevels")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("available_levels");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("SkillCode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("skill_code");
+
+                    b.Property<string>("SkillName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("skill_name");
+
+                    b.Property<string>("Subcategory")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("subcategory");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("sfia_skills");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.SfiaSkillLevel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer")
+                        .HasColumnName("level");
+
+                    b.Property<Guid>("SfiaSkillId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sfia_skill_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SfiaSkillId");
+
+                    b.ToTable("sfia_skill_levels");
+                });
+
             modelBuilder.Entity("ITHunterview.Domain.Entities.SkillAliases", b =>
                 {
                     b.Property<int>("Id")
@@ -1995,6 +2081,67 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.HasKey("ConfigKey");
 
                     b.ToTable("system_configs");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.TargetRoleSkill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RoleTemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_template_id");
+
+                    b.Property<Guid>("SfiaSkillId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sfia_skill_id");
+
+                    b.Property<int>("TargetLevel")
+                        .HasColumnType("integer")
+                        .HasColumnName("target_level");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleTemplateId");
+
+                    b.HasIndex("SfiaSkillId");
+
+                    b.ToTable("target_role_skills");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.TargetRoleTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("RoleName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("role_name");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("target_role_templates");
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.User", b =>
@@ -2376,6 +2523,17 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("ITHunterview.Domain.Entities.SfiaSkillLevel", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.SfiaSkill", "SfiaSkill")
+                        .WithMany("Levels")
+                        .HasForeignKey("SfiaSkillId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SfiaSkill");
+                });
+
             modelBuilder.Entity("ITHunterview.Domain.Entities.SkillAliases", b =>
                 {
                     b.HasOne("ITHunterview.Domain.Entities.Skills", "Skill")
@@ -2395,6 +2553,25 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.TargetRoleSkill", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.TargetRoleTemplate", "RoleTemplate")
+                        .WithMany("RequiredSkills")
+                        .HasForeignKey("RoleTemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ITHunterview.Domain.Entities.SfiaSkill", "SfiaSkill")
+                        .WithMany("TargetRoleSkills")
+                        .HasForeignKey("SfiaSkillId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RoleTemplate");
+
+                    b.Navigation("SfiaSkill");
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.User", b =>
@@ -2433,6 +2610,13 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Navigation("Users");
                 });
 
+            modelBuilder.Entity("ITHunterview.Domain.Entities.SfiaSkill", b =>
+                {
+                    b.Navigation("Levels");
+
+                    b.Navigation("TargetRoleSkills");
+                });
+
             modelBuilder.Entity("ITHunterview.Domain.Entities.SkillCategories", b =>
                 {
                     b.Navigation("Skills");
@@ -2441,6 +2625,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("ITHunterview.Domain.Entities.Skills", b =>
                 {
                     b.Navigation("Aliases");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.TargetRoleTemplate", b =>
+                {
+                    b.Navigation("RequiredSkills");
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.User", b =>

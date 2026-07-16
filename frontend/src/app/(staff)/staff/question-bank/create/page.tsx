@@ -7,29 +7,44 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default function CreateQuestionPage() {
   const router = useRouter();
-  const { importExcel } = useQuestionBank();
+  const { importExcel, createQuestion } = useQuestionBank();
 
-  const [formData, setFormData] = useState<{industry: string; level: string; file: File | null}>({
+  const [formData, setFormData] = useState<{industry: string; level: string; file: File | null; questionText: string}>({
     industry: "BA",
     level: "INTERN_FRESHER",
     file: null,
+    questionText: "",
   });
 
   const [formError, setFormError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const hasFile = !!formData.file;
+  const hasText = !!formData.questionText.trim();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
 
-    if (!formData.industry || !formData.level || !formData.file) {
-      setFormError("All fields are required, including the Excel file.");
+    if (!formData.industry || !formData.level) {
+      setFormError("Industry and Level are required.");
+      return;
+    }
+
+    if (!hasFile && !hasText) {
+      setFormError("You must provide EITHER an Excel file OR enter a manual question.");
+      return;
+    }
+
+    if (hasFile && hasText) {
+      setFormError("You can only choose ONE method: either upload an Excel file OR enter a manual question, not both.");
       return;
     }
 
@@ -38,14 +53,30 @@ export default function CreateQuestionPage() {
     setSuccessMsg("");
 
     try {
-      const res = await importExcel(formData.industry, formData.level, formData.file);
-      if (res.success) {
-        setSuccessMsg(`Successfully imported ${res.importedCount} questions.`);
-        setTimeout(() => {
-          router.push("/staff/question-bank");
-        }, 1500);
+      if (hasFile) {
+        const res = await importExcel(formData.industry, formData.level, formData.file!);
+        if (res.success) {
+          setSuccessMsg(`Successfully imported ${res.importedCount} questions.`);
+          setTimeout(() => {
+            router.push("/staff/question-bank");
+          }, 1500);
+        } else {
+          setFormError(res.message || "Failed to import questions");
+        }
       } else {
-        setFormError(res.message || "Failed to import questions");
+        const res = await createQuestion({
+          industry: formData.industry,
+          level: formData.level,
+          questionText: formData.questionText.trim(),
+        });
+        if (res.success) {
+          setSuccessMsg(`Successfully added the question.`);
+          setTimeout(() => {
+            router.push("/staff/question-bank");
+          }, 1500);
+        } else {
+          setFormError(res.message || "Failed to add question");
+        }
       }
     } catch (err) {
       setFormError("An unexpected error occurred");
@@ -101,16 +132,52 @@ export default function CreateQuestionPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="fileUpload">Question Excel File <span className="text-red-500">*</span></Label>
-              <Input
-                id="fileUpload"
-                type="file"
-                accept=".xlsx"
-                onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
-                className="bg-white dark:bg-zinc-950 cursor-pointer"
-              />
-              <p className="text-xs text-zinc-500 mt-1">Upload an Excel (.xlsx) file containing questions in the first column (Column A). Row 1 is skipped as header.</p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="questionText" className={hasFile ? "opacity-50" : ""}>Manual Question Entry</Label>
+                <Textarea
+                  id="questionText"
+                  placeholder="Enter the question text here..."
+                  value={formData.questionText}
+                  onChange={(e) => setFormData({ ...formData, questionText: e.target.value })}
+                  className="bg-white dark:bg-zinc-950 min-h-[100px]"
+                  disabled={hasFile}
+                />
+              </div>
+
+              <div className="flex items-center">
+                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                <span className="px-4 text-xs font-medium text-zinc-500 uppercase">OR</span>
+                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="fileUpload" className={hasText ? "opacity-50" : ""}>Question Excel File</Label>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    id="fileUpload"
+                    type="file"
+                    accept=".xlsx"
+                    onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
+                    className="bg-white dark:bg-zinc-950 cursor-pointer flex-1"
+                    disabled={hasText}
+                  />
+                  {hasFile && (
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => {
+                        const fileInput = document.getElementById('fileUpload') as HTMLInputElement;
+                        if (fileInput) fileInput.value = '';
+                        setFormData({ ...formData, file: null });
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                <p className={`text-xs mt-1 ${hasText ? 'text-zinc-400' : 'text-zinc-500'}`}>Upload an Excel (.xlsx) file containing questions in the first column (Column A). Row 1 is skipped as header.</p>
+              </div>
             </div>
 
             {formError && (

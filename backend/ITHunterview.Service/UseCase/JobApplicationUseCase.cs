@@ -14,15 +14,18 @@ namespace ITHunterview.Service.UseCase
         private readonly IJobApplicationRepository _jobApplicationRepository;
         private readonly ICandidateProfileRepository _candidateProfileRepository;
         private readonly IJobPostingRepository _jobPostingRepository;
+        private readonly INotificationUseCase _notificationUseCase;
 
         public JobApplicationUseCase(
             IJobApplicationRepository jobApplicationRepository, 
             ICandidateProfileRepository candidateProfileRepository,
-            IJobPostingRepository jobPostingRepository)
+            IJobPostingRepository jobPostingRepository,
+            INotificationUseCase notificationUseCase)
         {
             _jobApplicationRepository = jobApplicationRepository;
             _candidateProfileRepository = candidateProfileRepository;
             _jobPostingRepository = jobPostingRepository;
+            _notificationUseCase = notificationUseCase;
         }
 
         public async Task<PagedResult<ApplicantDto>> GetApplicantsByJobIdAsync(Guid jobId, int page, int pageSize)
@@ -93,9 +96,27 @@ namespace ITHunterview.Service.UseCase
                 throw new ArgumentException("Status can only be updated to APPLIED or VIEWED.");
             }
 
+            var oldStatus = application.Status;
             application.Status = status;
             application.UpdatedAt = DateTime.UtcNow;
             await _jobApplicationRepository.UpdateAsync(application);
+
+            if (oldStatus != ApplicationStatus.VIEWED && status == ApplicationStatus.VIEWED)
+            {
+                var candidate = await _candidateProfileRepository.GetByIdAsync(application.CandidateId);
+                var job = await _jobPostingRepository.GetByIdAsync(application.JobId);
+                
+                if (candidate != null && job != null)
+                {
+                    await _notificationUseCase.CreateNotificationAsync(new DTOs.Notification.CreateNotificationDto
+                    {
+                        UserId = candidate.UserId,
+                        Title = "Hồ sơ của bạn đã được xem",
+                        Message = $"Nhà tuyển dụng đã xem hồ sơ của bạn cho vị trí: {job.Title}",
+                        Type = NotificationType.APPLICATION
+                    });
+                }
+            }
 
             return true;
         }

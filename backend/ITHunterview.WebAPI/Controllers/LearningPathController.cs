@@ -24,6 +24,13 @@ namespace ITHunterview.WebAPI.Controllers
             _learningPathUseCase = learningPathUseCase;
         }
 
+        [HttpGet("target-roles")]
+        public async Task<ActionResult<ResponseBase<List<TargetRoleResponseDto>>>> GetTargetRoles()
+        {
+            var result = await _learningPathUseCase.GetTargetRolesAsync();
+            return new ResponseBase<List<TargetRoleResponseDto>>(result);
+        }
+
         [HttpPost("generate")]
         public async Task<ActionResult<ResponseBase<LearningPathResponseDto>>> Generate([FromBody] GeneratePathRequestDto request)
         {
@@ -32,20 +39,20 @@ namespace ITHunterview.WebAPI.Controllers
             return new ResponseBase<LearningPathResponseDto>(result);
         }
 
-        [HttpPost("generate-from-cv-jd")]
-        public async Task<ActionResult<ResponseBase<LearningPathResponseDto>>> GenerateFromCvJd([FromBody] GenerateFromCvJdRequestDto request)
+        [HttpGet("extract-cv-jd/{matchScoreId:guid}")]
+        public async Task<ActionResult<ResponseBase<ExtractSfiaProfileResponseDto>>> ExtractFromCvJd(Guid matchScoreId)
         {
             var candidateId = GetUserId();
-            var result = await _learningPathUseCase.GenerateFromCvJdAsync(candidateId, request);
-            return new ResponseBase<LearningPathResponseDto>(result);
+            var result = await _learningPathUseCase.ExtractFromCvJdAsync(candidateId, matchScoreId);
+            return new ResponseBase<ExtractSfiaProfileResponseDto>(result);
         }
 
-        [HttpPost("generate-from-interview")]
-        public async Task<ActionResult<ResponseBase<LearningPathResponseDto>>> GenerateFromInterview([FromBody] GenerateFromInterviewRequestDto request)
+        [HttpGet("extract-interview/{sessionId:guid}")]
+        public async Task<ActionResult<ResponseBase<ExtractSfiaProfileResponseDto>>> ExtractFromInterview(Guid sessionId)
         {
             var candidateId = GetUserId();
-            var result = await _learningPathUseCase.GenerateFromInterviewAsync(candidateId, request);
-            return new ResponseBase<LearningPathResponseDto>(result);
+            var result = await _learningPathUseCase.ExtractFromInterviewAsync(candidateId, sessionId);
+            return new ResponseBase<ExtractSfiaProfileResponseDto>(result);
         }
 
         [HttpGet]
@@ -72,11 +79,11 @@ namespace ITHunterview.WebAPI.Controllers
             return new ResponseBase<string>("Learning path deleted successfully.");
         }
 
-        [HttpPut("{id:guid}/modules/{moduleIndex:int}/toggle")]
-        public async Task<ActionResult<ResponseBase<LearningPathResponseDto>>> ToggleModuleCompletion(Guid id, int moduleIndex)
+        [HttpPut("{id:guid}/modules/{moduleIndex:int}/tasks/{taskIndex:int}/toggle")]
+        public async Task<ActionResult<ResponseBase<LearningPathResponseDto>>> ToggleTaskCompletion(Guid id, int moduleIndex, int taskIndex)
         {
             var candidateId = GetUserId();
-            var result = await _learningPathUseCase.ToggleModuleCompletionAsync(candidateId, id, moduleIndex);
+            var result = await _learningPathUseCase.ToggleTaskCompletionAsync(candidateId, id, moduleIndex, taskIndex);
             return new ResponseBase<LearningPathResponseDto>(result);
         }
 

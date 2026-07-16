@@ -19,7 +19,7 @@ export function SavedJobCard({ job, onUnsave, isUnsaving }: SavedJobCardProps) {
   };
 
   return (
-    <Link href={`/candidate/jobs/${job.jobId}`}>
+    <Link href={`/jobs/${job.jobId}`}>
       <Card className="hover:border-primary/50 transition-colors group">
         <CardContent className="p-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 flex-1">
