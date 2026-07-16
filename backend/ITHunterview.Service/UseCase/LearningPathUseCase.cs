@@ -136,6 +136,14 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
             userPromptBuilder.AppendLine("=== SFIA SKILL GAPS ===");
             userPromptBuilder.AppendLine(JsonSerializer.Serialize(gaps));
             userPromptBuilder.AppendLine();
+
+            if (!string.IsNullOrWhiteSpace(request.PersonalContext))
+            {
+                userPromptBuilder.AppendLine("=== CANDIDATE'S PERSONAL CONTEXT & PRIOR KNOWLEDGE ===");
+                userPromptBuilder.AppendLine(request.PersonalContext);
+                userPromptBuilder.AppendLine("Rule: Use this context to skip basic topics the candidate already knows, even if their current formal SFIA level is low. Tailor the learning tasks specifically to their actual starting point and context.");
+                userPromptBuilder.AppendLine();
+            }
             
             userPromptBuilder.AppendLine("Please generate a structured, highly personalized self-paced learning path following the SFIA progression rules.");
 

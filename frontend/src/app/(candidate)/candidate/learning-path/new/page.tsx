@@ -45,6 +45,8 @@ export default function NewLearningPathPage() {
   const [roleSearchQuery, setRoleSearchQuery] = useState('');
   const [roleLevelFilter, setRoleLevelFilter] = useState('All');
   
+  const [personalContext, setPersonalContext] = useState('');
+
   const [selectedMatchScoreId, setSelectedMatchScoreId] = useState<string>('');
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
   
@@ -71,6 +73,7 @@ export default function NewLearningPathPage() {
     generateMutation.mutate({
       targetRoleTemplateId,
       currentSkills: currentSkills.filter(s => s.currentLevel !== null) as { skillCode: string, currentLevel: number }[],
+      personalContext: personalContext.trim() !== '' ? personalContext : undefined,
     });
   };
 
@@ -191,7 +194,14 @@ export default function NewLearningPathPage() {
                 <div className="flex gap-2">
                   <Select value={selectedMatchScoreId} onValueChange={(v) => setSelectedMatchScoreId(v || '')}>
                     <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select a match result..." />
+                      <SelectValue placeholder="Select a match result...">
+                        {selectedMatchScoreId && matchHistoryData?.data?.items?.find(m => m.jobId === selectedMatchScoreId) 
+                          ? (() => {
+                              const match = matchHistoryData.data.items.find(m => m.jobId === selectedMatchScoreId)!;
+                              return `${match.jdTitle || 'Unknown Job'} - ${match.matchScore?.toFixed(1) || 0}/100`;
+                            })()
+                          : null}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {matchHistoryData?.data?.items?.filter(m => m.status === 'Completed').map(match => (
@@ -216,7 +226,14 @@ export default function NewLearningPathPage() {
                 <div className="flex gap-2">
                   <Select value={selectedSessionId} onValueChange={(v) => setSelectedSessionId(v || '')}>
                     <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select an interview..." />
+                      <SelectValue placeholder="Select an interview...">
+                        {selectedSessionId && interviewSessionsData?.data?.find(s => s.id === selectedSessionId)
+                          ? (() => {
+                              const session = interviewSessionsData.data.find(s => s.id === selectedSessionId)!;
+                              return `${session.jobTitle || 'General'} (${session.difficultyLevel})`;
+                            })()
+                          : null}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {interviewSessionsData?.data?.filter(s => s.status === 'COMPLETED').map(session => (
@@ -354,35 +371,37 @@ export default function NewLearningPathPage() {
                             const isSelected = currentLvlState === lvl;
                             
                             return (
-                              <Tooltip key={lvl}>
-                                <TooltipTrigger 
-                                  type="button"
-                                  onClick={() => isValid && handleSkillLevelChange(skill.skillCode, lvl)}
-                                  className={`
-                                    relative px-4 py-2 text-sm font-medium rounded-lg border transition-all
-                                    ${!isValid ? 'bg-muted/50 text-muted-foreground/30 border-transparent cursor-not-allowed' : 
-                                      isSelected ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 
-                                      'bg-background hover:bg-muted text-foreground border-border'}
-                                  `}
-                                >
-                                  {lvl}
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-[250px] p-3 shadow-lg">
-                                  {!isValid ? (
-                                    <p className="text-xs text-primary-foreground/90 leading-relaxed text-center">
-                                      This skill is not defined at Level {lvl} in the SFIA framework.
-                                    </p>
-                                  ) : (
-                                    <>
-                                      <p className="font-semibold text-[13px] text-primary-foreground mb-1">Level {lvl}: {SFIA_LEVEL_HINTS[lvl]?.title}</p>
-                                      <p className="text-xs text-primary-foreground/90 leading-relaxed">
-                                        {SFIA_LEVEL_HINTS[lvl]?.essence}
+                                <Tooltip key={lvl}>
+                                  <TooltipTrigger 
+                                    type="button"
+                                    onClick={() => handleSkillLevelChange(skill.skillCode, lvl)}
+                                    className={`
+                                      relative px-4 py-2 text-sm font-medium rounded-lg border transition-all
+                                      ${isSelected 
+                                        ? 'bg-primary text-primary-foreground border-primary shadow-sm' 
+                                        : !isValid 
+                                          ? 'bg-muted/30 text-muted-foreground/60 border-dashed hover:bg-muted/50' 
+                                          : 'bg-background hover:bg-muted text-foreground border-border'}
+                                    `}
+                                  >
+                                    {lvl}
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-[250px] p-3 shadow-lg">
+                                    {!isValid ? (
+                                      <p className="text-xs text-primary-foreground/90 leading-relaxed text-center">
+                                        This skill is not officially defined at Level {lvl} in SFIA. However, you can still select it to represent your approximate experience level.
                                       </p>
-                                    </>
-                                  )}
-                                </TooltipContent>
-                              </Tooltip>
-                            );
+                                    ) : (
+                                      <>
+                                        <p className="font-semibold text-[13px] text-primary-foreground mb-1">Level {lvl}: {SFIA_LEVEL_HINTS[lvl]?.title}</p>
+                                        <p className="text-xs text-primary-foreground/90 leading-relaxed">
+                                          {SFIA_LEVEL_HINTS[lvl]?.essence}
+                                        </p>
+                                      </>
+                                    )}
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
                           })}
                         </div>
                       </div>
@@ -390,6 +409,21 @@ export default function NewLearningPathPage() {
                   })}
                 </div>
               </TooltipProvider>
+              
+              {/* Section 3: Personal Context */}
+              <div className="mt-8 space-y-4 pt-6 border-t">
+                <h3 className="font-semibold text-lg flex items-center"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Prior Knowledge & Context (Optional)</h3>
+                <p className="text-sm text-muted-foreground">
+                  If you are between SFIA levels or already know some specific tools (e.g. &quot;I know basic React but not Redux&quot;), describe it here. The AI will use this to skip redundant basics and tailor your learning path.
+                </p>
+                <Textarea 
+                  placeholder="E.g., I have 1 year of experience with Python but I'm completely new to Django..."
+                  value={personalContext}
+                  onChange={(e) => setPersonalContext(e.target.value)}
+                  className="min-h-[100px] resize-y"
+                />
+              </div>
+
               </div>
             )}
           </div>

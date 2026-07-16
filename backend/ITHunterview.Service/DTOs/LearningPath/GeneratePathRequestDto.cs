@@ -11,6 +11,9 @@ namespace ITHunterview.Service.DTOs.LearningPath
         // 2. Technical Information
         [Required]
         public List<CandidateSfiaSkillDto> CurrentSkills { get; set; } = new List<CandidateSfiaSkillDto>();
+
+        // 3. Additional Context
+        public string? PersonalContext { get; set; }
     }
 
     public class CandidateSfiaSkillDto

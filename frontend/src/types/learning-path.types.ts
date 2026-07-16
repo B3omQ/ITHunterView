@@ -6,6 +6,7 @@ export interface CandidateSfiaSkillDto {
 export interface GeneratePathRequest {
   targetRoleTemplateId: string;
   currentSkills: CandidateSfiaSkillDto[];
+  personalContext?: string;
 }
 
 export interface ExtractSfiaProfileResponse {
