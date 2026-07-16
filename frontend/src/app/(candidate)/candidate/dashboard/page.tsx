@@ -127,7 +127,7 @@ export default function CandidateDashboard() {
   }
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10 max-w-7xl mx-auto pt-6 px-4 md:px-8">
+    <div className="pb-10 max-w-7xl mx-auto pt-6 px-4 md:px-8">
       
       {/* Header Greeting */}
       <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
