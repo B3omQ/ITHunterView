@@ -129,9 +129,9 @@ export function SfiaSkillsTable({
                           )}
                           <td className="px-4 py-3 text-foreground">
                             <div className="flex items-center gap-2">
-                              <Link href={`/admin/master-data/sfia-skills/${skill.id}`} className="font-medium hover:underline hover:text-primary transition-colors">
+                              <span className="font-medium text-foreground">
                                 {skill.skillName}
-                              </Link>
+                              </span>
                               <span className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">{skill.skillCode}</span>
                             </div>
                           </td>

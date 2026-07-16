@@ -8,7 +8,7 @@ import { useSfiaSkill } from "@/hooks/useSfiaSkill";
 export default function SfiaSkillDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id } = use(params);
-  
+
   const { data, isLoading, isError } = useSfiaSkill(id);
   const skill = data?.data;
 
@@ -60,7 +60,7 @@ export default function SfiaSkillDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="p-6 overflow-y-auto flex-1">
         <div className="max-w-5xl mx-auto space-y-6">
-          
+
           {/* General Information */}
           <div className="grid gap-6 md:grid-cols-3">
             <div className="md:col-span-1 space-y-6">
@@ -103,7 +103,7 @@ export default function SfiaSkillDetailPage({ params }: { params: Promise<{ id: 
               <Layers size={20} className="text-primary" />
               Level Requirements
             </h3>
-            
+
             {skill.levels && skill.levels.length > 0 ? (
               <div className="grid gap-4">
                 {skill.levels.map((levelObj) => (

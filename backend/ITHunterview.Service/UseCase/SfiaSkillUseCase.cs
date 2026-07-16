@@ -57,7 +57,32 @@ namespace ITHunterview.Service.UseCase
                 throw new KeyNotFoundException("SFIA Skill not found.");
             }
 
-            return MapToResponseDto(entity);
+            var responseDto = MapToResponseDto(entity);
+
+            // Fallback to generic levels if missing
+            if (!string.IsNullOrEmpty(entity.AvailableLevels))
+            {
+                var expectedLevels = entity.AvailableLevels.Split(',').Select(int.Parse).ToList();
+                foreach (var lvl in expectedLevels)
+                {
+                    if (!responseDto.Levels.Any(l => l.Level == lvl))
+                    {
+                        var genericDesc = ITHunterview.Service.Constant.SfiaGenericLevels.GetFullDescription(lvl);
+                        if (!string.IsNullOrEmpty(genericDesc))
+                        {
+                            responseDto.Levels.Add(new SfiaSkillLevelDto
+                            {
+                                Level = lvl,
+                                Description = genericDesc
+                            });
+                        }
+                    }
+                }
+                // Re-sort levels after injecting fallbacks
+                responseDto.Levels = responseDto.Levels.OrderBy(l => l.Level).ToList();
+            }
+
+            return responseDto;
         }
 
         public async Task<SfiaSkillResponseDto> CreateSfiaSkillAsync(CreateSfiaSkillDto dto)
@@ -212,8 +237,11 @@ namespace ITHunterview.Service.UseCase
                             existingSkill.Description = description ?? string.Empty;
                             existingSkill.AvailableLevels = availableLevels ?? string.Empty;
                             
-                            _context.SfiaSkillLevels.RemoveRange(existingSkill.Levels);
-                            existingSkill.Levels = levels;
+                            if (fields.Length > 6)
+                            {
+                                _context.SfiaSkillLevels.RemoveRange(existingSkill.Levels);
+                                existingSkill.Levels = levels;
+                            }
                             
                             updatedCount++;
                         }
