@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Interview;
@@ -11,6 +13,7 @@ using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Utils;
+using ITHunterview.Service.Infrastructure.Persistence;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -23,6 +26,7 @@ namespace ITHunterview.Service.UseCase
         private readonly IAiService _aiService;
         private readonly ICvTextExtractorService _cvTextExtractorService;
         private readonly IPromptManagementService _promptManagementService;
+        private readonly ITHunterviewContext _context;
 
         public InterviewUseCase(
             IInterviewSessionRepository sessionRepository,
@@ -31,7 +35,8 @@ namespace ITHunterview.Service.UseCase
             IJobPostingRepository jobPostingRepository,
             IAiService aiService,
             ICvTextExtractorService cvTextExtractorService,
-            IPromptManagementService promptManagementService)
+            IPromptManagementService promptManagementService,
+            ITHunterviewContext context)
         {
             _sessionRepository = sessionRepository;
             _answerRepository = answerRepository;
@@ -40,6 +45,7 @@ namespace ITHunterview.Service.UseCase
             _aiService = aiService;
             _cvTextExtractorService = cvTextExtractorService;
             _promptManagementService = promptManagementService;
+            _context = context;
         }
 
         public async Task<List<InterviewSessionDto>> GetCandidateSessionsAsync(Guid candidateId)
@@ -136,10 +142,27 @@ namespace ITHunterview.Service.UseCase
                 CreatedAt = a.CreatedAt
             }).ToList();
 
+            InterviewReportDto? reportDto = null;
+            if (session.Status == InterviewSessionStatus.COMPLETED)
+            {
+                var report = await GenerateSessionReportAsync(sessionId, candidateId);
+                if (report != null)
+                {
+                    reportDto = new InterviewReportDto
+                    {
+                        Id = report.Id,
+                        SessionId = report.SessionId,
+                        TotalScore = report.TotalScore,
+                        OverallFeedback = report.OverallFeedback
+                    };
+                }
+            }
+
             return new InterviewSessionDetailDto
             {
                 Session = sessionDto,
-                Messages = messages
+                Messages = messages,
+                Report = reportDto
             };
         }
 
@@ -484,7 +507,7 @@ namespace ITHunterview.Service.UseCase
             var responseText = await _aiService.GenerateTextAsync(
                 prompt: $"Lịch sử phỏng vấn:\n{historyText}\n\nỨng viên trả lời mới nhất: \"{dto.Message}\"",
                 systemPrompt: systemPrompt,
-                providerName: session.AiProvider
+                providerName: session.AiProvider ?? string.Empty
             );
 
             // Parse response
@@ -497,24 +520,33 @@ namespace ITHunterview.Service.UseCase
 
             try
             {
-                var cleanJson = responseText ?? "";
-                if (cleanJson.Contains("```json"))
+                var (cleanJson, preamble) = ExtractJsonAndPreamble(responseText);
+
+                // Attempt to mutate the JSON and prepend the preamble to general_feedback
+                if (!string.IsNullOrWhiteSpace(cleanJson))
                 {
-                    cleanJson = cleanJson.Substring(cleanJson.IndexOf("```json") + 7);
-                    if (cleanJson.Contains("```"))
+                    try
                     {
-                        cleanJson = cleanJson.Substring(0, cleanJson.IndexOf("```"));
+                        var jsonNode = JsonNode.Parse(cleanJson);
+                        if (jsonNode != null && !string.IsNullOrWhiteSpace(preamble))
+                        {
+                            var rubricNode = jsonNode["rubric_evaluation"];
+                            if (rubricNode != null)
+                            {
+                                var generalFeedback = rubricNode["general_feedback"]?.GetValue<string>();
+                                string combinedFeedback = string.IsNullOrWhiteSpace(generalFeedback)
+                                    ? preamble
+                                    : $"{preamble}\n\n{generalFeedback}";
+                                rubricNode["general_feedback"] = combinedFeedback;
+                                cleanJson = jsonNode.ToJsonString();
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[WARNING] Failed to parse or mutate JSON nodes in SubmitReplyAsync: {ex.Message}");
                     }
                 }
-                else if (cleanJson.Contains("```"))
-                {
-                    cleanJson = cleanJson.Substring(cleanJson.IndexOf("```") + 3);
-                    if (cleanJson.Contains("```"))
-                    {
-                        cleanJson = cleanJson.Substring(0, cleanJson.IndexOf("```"));
-                    }
-                }
-                cleanJson = cleanJson.Trim();
 
                 using var doc = JsonDocument.Parse(cleanJson);
                 var root = doc.RootElement;
@@ -551,10 +583,38 @@ namespace ITHunterview.Service.UseCase
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Fallback if parsing fails
-                feedback = responseText ?? feedback;
+                Console.WriteLine($"[ERROR] Failed to parse AI response JSON in SubmitReplyAsync: {ex.Message}");
+                
+                // Extract preamble as human-readable feedback
+                var (_, preamble) = ExtractJsonAndPreamble(responseText);
+                var cleanFeedback = !string.IsNullOrWhiteSpace(preamble) ? preamble : (responseText ?? "Cảm ơn câu trả lời của bạn.");
+                
+                // Remove raw JSON substring from the feedback if it got included
+                if (cleanFeedback.Contains("{") && cleanFeedback.Contains("}"))
+                {
+                    int braceIndex = cleanFeedback.IndexOf("{");
+                    if (braceIndex >= 0)
+                    {
+                        cleanFeedback = cleanFeedback.Substring(0, braceIndex).Trim();
+                    }
+                }
+                if (string.IsNullOrWhiteSpace(cleanFeedback))
+                {
+                    cleanFeedback = "Cảm ơn câu trả lời của bạn.";
+                }
+
+                // Construct a valid JSON string for rubricJsonStr so the frontend parser succeeds
+                var fallbackRubric = new
+                {
+                    question_type = "technical",
+                    general_feedback = cleanFeedback,
+                    strengths = new string[0],
+                    improvements = new string[0]
+                };
+                
+                rubricJsonStr = JsonSerializer.Serialize(fallbackRubric);
                 nextQuestion = "Bạn vui lòng chia sẻ thêm hoặc chúng ta đi tiếp nhé.";
             }
 
@@ -572,6 +632,16 @@ namespace ITHunterview.Service.UseCase
                 session.EndedAt = DateTime.UtcNow;
                 await _sessionRepository.UpdateAsync(session);
                 await _sessionRepository.SaveChangesAsync();
+
+                // Warm-up cache: generate report on completion
+                try
+                {
+                    await GenerateSessionReportAsync(sessionId, candidateId);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[WARNING] Failed to pre-generate report in SubmitReplyAsync: {ex.Message}");
+                }
 
                 return new InterviewAnswerDto
                 {
@@ -628,6 +698,16 @@ namespace ITHunterview.Service.UseCase
             session.EndedAt = DateTime.UtcNow;
             await _sessionRepository.UpdateAsync(session);
             await _sessionRepository.SaveChangesAsync();
+
+            // Warm-up cache: generate report on completion
+            try
+            {
+                await GenerateSessionReportAsync(sessionId, candidateId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[WARNING] Failed to pre-generate report in CompleteSessionAsync: {ex.Message}");
+            }
         }
 
         public async Task DeleteSessionAsync(Guid sessionId, Guid candidateId)
@@ -688,6 +768,163 @@ namespace ITHunterview.Service.UseCase
                 }
             }
             return sampleQuestions;
+        }
+
+        private (string cleanJson, string preamble) ExtractJsonAndPreamble(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return (string.Empty, string.Empty);
+
+            string cleanJson = text;
+            string preamble = string.Empty;
+
+            var match = System.Text.RegularExpressions.Regex.Match(text, @"```(?:json)?\s*([\s\S]*?)```");
+            if (match.Success)
+            {
+                cleanJson = match.Groups[1].Value;
+                int mdIndex = text.IndexOf("```");
+                if (mdIndex > 0)
+                {
+                    preamble = text.Substring(0, mdIndex).Trim();
+                }
+            }
+
+            var startIndex = cleanJson.IndexOf('{');
+            var endIndex = cleanJson.LastIndexOf('}');
+            if (startIndex >= 0 && endIndex >= startIndex)
+            {
+                if (startIndex > 0)
+                {
+                    string extraPreamble = cleanJson.Substring(0, startIndex).Trim();
+                    preamble = string.IsNullOrWhiteSpace(preamble)
+                        ? extraPreamble
+                        : $"{preamble}\n\n{extraPreamble}";
+                }
+                cleanJson = cleanJson.Substring(startIndex, endIndex - startIndex + 1).Trim();
+            }
+            else
+            {
+                cleanJson = cleanJson.Trim();
+            }
+
+            return (cleanJson, preamble.Trim());
+        }
+
+        private async Task<InterviewReports?> GenerateSessionReportAsync(Guid sessionId, Guid candidateId)
+        {
+            // Check if report already exists
+            var existingReport = await _context.InterviewReports
+                .FirstOrDefaultAsync(r => r.SessionId == sessionId);
+            if (existingReport != null)
+            {
+                return existingReport;
+            }
+
+            var session = await _sessionRepository.GetByIdAsync(sessionId);
+            if (session == null || session.CandidateId != candidateId)
+            {
+                return null;
+            }
+
+            // Retrieve all answers for the session
+            var answers = await _answerRepository.GetBySessionIdAsync(sessionId);
+            if (answers == null || !answers.Any())
+            {
+                return null;
+            }
+
+            // Construct prompt for overall evaluation
+            var systemPrompt = "Bạn là một chuyên gia đánh giá nhân sự cao cấp. Nhiệm vụ của bạn là tổng hợp và đưa ra báo cáo đánh giá tổng quan cho buổi phỏng vấn thử (mock interview) của ứng viên.\n" +
+                               "Bạn sẽ nhận được danh sách các câu hỏi của AI và câu trả lời của ứng viên, kèm theo điểm số và nhận xét từng câu.\n\n" +
+                               "Hãy đưa ra đánh giá tổng thể gồm:\n" +
+                               "1. Tổng điểm (thang điểm 100) - tính toán khách quan dựa trên điểm trung bình chất lượng các câu trả lời.\n" +
+                               "2. Đánh giá tổng quan (overall_feedback): Tóm tắt ngắn gọn và chuyên nghiệp về năng lực của ứng viên (2-3 đoạn văn).\n" +
+                               "3. Các điểm mạnh chính (strengths): danh sách các thế mạnh nổi bật nhất của ứng viên.\n" +
+                               "4. Các điểm cần cải thiện (improvements): danh sách các khía cạnh cần bổ sung kiến thức hoặc kỹ năng giao tiếp.\n\n" +
+                               "Bạn BẮT BUỘC phải trả về kết quả theo định dạng JSON duy nhất như sau:\n" +
+                               "{\n" +
+                               "  \"total_score\": 85,\n" +
+                               "  \"overall_feedback\": \"Đánh giá tổng quan...\",\n" +
+                               "  \"strengths\": [\"Điểm mạnh 1\", \"Điểm mạnh 2\"],\n" +
+                               "  \"improvements\": [\"Điểm cần cải thiện 1\", \"Điểm cần cải thiện 2\"]\n" +
+                               "}\n\n" +
+                               "Lưu ý: Chỉ trả về JSON thuần túy, không bao bọc trong khối code markdown hay bất kỳ văn bản nào ngoài JSON.";
+
+            var turnsDescription = string.Join("\n\n", answers.Select((a, idx) => 
+                $"LƯỢT HỎI {idx + 1}:\n" +
+                $"AI Question: {a.QuestionText}\n" +
+                $"Candidate Answer: {a.CandidateTranscript ?? "(Không trả lời)"}\n" +
+                $"Scores: Logic={a.ScoreLogic}%, Tech={a.ScoreTech}%, Comm={a.ScoreCommunication}%\n" +
+                $"Feedback: {a.AiFeedback}"));
+
+            var responseText = await _aiService.GenerateTextAsync(
+                prompt: $"Dưới đây là chi tiết buổi phỏng vấn:\n\n{turnsDescription}",
+                systemPrompt: systemPrompt,
+                providerName: session.AiProvider
+            );
+
+            // Clean & Parse response
+            var (cleanJson, _) = ExtractJsonAndPreamble(responseText);
+            
+            decimal totalScore = 0;
+            string overallFeedbackJson = string.Empty;
+
+            try
+            {
+                using var doc = JsonDocument.Parse(cleanJson);
+                var root = doc.RootElement;
+
+                if (root.TryGetProperty("total_score", out var tsProp))
+                {
+                    totalScore = tsProp.GetDecimal();
+                }
+                else
+                {
+                    // Fallback to average score
+                    var validAnswers = answers.Where(a => a.CandidateTranscript != null).ToList();
+                    if (validAnswers.Any())
+                    {
+                        var avg = validAnswers.Average(a => ((a.ScoreLogic ?? 0) + (a.ScoreTech ?? 0) + (a.ScoreCommunication ?? 0)) / 3.0);
+                        totalScore = (decimal)Math.Round(avg);
+                    }
+                }
+
+                overallFeedbackJson = cleanJson;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Failed to parse AI overall report JSON: {ex.Message}");
+
+                // Fallback score computation
+                var validAnswers = answers.Where(a => a.CandidateTranscript != null).ToList();
+                if (validAnswers.Any())
+                {
+                    var avg = validAnswers.Average(a => ((a.ScoreLogic ?? 0) + (a.ScoreTech ?? 0) + (a.ScoreCommunication ?? 0)) / 3.0);
+                    totalScore = (decimal)Math.Round(avg);
+                }
+
+                // Construct fallback overall feedback JSON
+                var fallbackFeedback = new
+                {
+                    total_score = totalScore,
+                    overall_feedback = responseText ?? "Đã hoàn thành buổi phỏng vấn thử.",
+                    strengths = new string[0],
+                    improvements = new string[0]
+                };
+                overallFeedbackJson = JsonSerializer.Serialize(fallbackFeedback);
+            }
+
+            var report = new InterviewReports
+            {
+                Id = Guid.NewGuid(),
+                SessionId = sessionId,
+                TotalScore = totalScore,
+                OverallFeedback = overallFeedbackJson
+            };
+
+            _context.InterviewReports.Add(report);
+            await _context.SaveChangesAsync();
+
+            return report;
         }
     }
 }

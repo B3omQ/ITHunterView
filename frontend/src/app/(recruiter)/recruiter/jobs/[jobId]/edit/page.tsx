@@ -267,17 +267,6 @@ export default function EditJobPage() {
                   className="w-full focus-visible:ring-blue-500"
                 />
               </div>
-              <div className="space-y-2 col-span-1 md:col-span-3">
-                <Label htmlFor="detailedLocation" className="font-semibold text-zinc-700 dark:text-zinc-300">Detailed Location / Specific Address</Label>
-                <Input
-                  id="detailedLocation"
-                  name="detailedLocation"
-                  placeholder="e.g. 123 Nguyen Van Linh, District 7"
-                  value={formData.detailedLocation}
-                  onChange={handleChange}
-                  className="focus-visible:ring-blue-500"
-                />
-              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -1,10 +1,50 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { learningPathService } from '@/services/learning-path.service';
 import { GeneratePathRequest } from '@/types/learning-path.types';
+import { toast } from 'sonner';
+
+export function useTargetRoles() {
+  return useQuery({
+    queryKey: ['learning-paths', 'target-roles'],
+    queryFn: () => learningPathService.getTargetRoles(),
+  });
+}
 
 export function useGenerateLearningPath() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: GeneratePathRequest) => learningPathService.generate(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['learning-paths'] });
+    },
+  });
+}
+
+export function useExtractFromCvJd() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (matchScoreId: string) => learningPathService.extractFromCvJd(matchScoreId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['learning-paths', 'target-roles'] });
+    }
+  });
+}
+
+export function useExtractFromInterview() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) => learningPathService.extractFromInterview(sessionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['learning-paths', 'target-roles'] });
+    }
+  });
+}
+
+export function usePreviewContext(type: string, sourceId?: string) {
+  return useQuery({
+    queryKey: ['learning-paths', 'preview', type, sourceId],
+    queryFn: () => learningPathService.getPreviewContext(type, sourceId),
+    enabled: !!type && !!sourceId,
   });
 }
 
@@ -20,5 +60,39 @@ export function useLearningPath(id: string) {
     queryKey: ['learning-paths', id],
     queryFn: () => learningPathService.getById(id),
     enabled: !!id,
+  });
+}
+
+export function useDeleteLearningPath() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => learningPathService.deleteLearningPath(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['learning-paths'] });
+      toast.success('Learning path deleted successfully.');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to delete learning path.');
+    },
+  });
+}
+
+export function usePreviewHistoryContext(type: 'cv-jd' | 'interview', sourceId: string | null) {
+  return useQuery({
+    queryKey: ['learning-paths', 'preview', type, sourceId],
+    queryFn: () => learningPathService.previewHistoryContext(type, sourceId!),
+    enabled: !!sourceId && sourceId !== '',
+  });
+}
+
+export function useToggleTaskCompletion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ pathId, moduleIndex, taskIndex }: { pathId: string; moduleIndex: number; taskIndex: number }) => 
+      learningPathService.toggleTaskCompletion(pathId, moduleIndex, taskIndex),
+    onSuccess: (_, { pathId }) => {
+      queryClient.invalidateQueries({ queryKey: ['learning-paths'] });
+      queryClient.invalidateQueries({ queryKey: ['learning-paths', pathId] });
+    },
   });
 }

@@ -31,9 +31,17 @@ export interface InterviewAnswer {
   createdAt: string;
 }
 
+export interface InterviewReport {
+  id: string;
+  sessionId: string;
+  totalScore?: number;
+  overallFeedback: string;
+}
+
 export interface InterviewSessionDetail {
   session: InterviewSession;
   messages: InterviewAnswer[];
+  report?: InterviewReport;
 }
 
 export interface CreateInterviewSessionRequest {

@@ -1,83 +1,174 @@
-"use client"
+"use client";
 
-import { BrainCircuit, FileText, CheckCircle, BarChart3 } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FileQuestion, HelpCircle, Building2, AlertTriangle } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
+
+const categoryData = [
+  { name: "Frontend", value: 340 },
+  { name: "Backend", value: 410 },
+  { name: "DevOps", value: 180 },
+  { name: "Data", value: 120 },
+  { name: "Mobile", value: 90 },
+];
+
+const levelData = [
+  { level: "Intern", count: 80 },
+  { level: "Fresher", count: 250 },
+  { level: "Junior", count: 420 },
+  { level: "Middle", count: 280 },
+  { level: "Senior", count: 110 },
+];
+
+const verificationData = [
+  { week: "Week 1", new: 45, verified: 30 },
+  { week: "Week 2", new: 52, verified: 48 },
+  { week: "Week 3", new: 38, verified: 40 },
+  { week: "Week 4", new: 65, verified: 55 },
+];
+
+const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"];
 
 export default function StaffDashboard() {
   const stats = [
-    { label: "Interviews Today", value: "24", icon: <BrainCircuit size={20} />, color: "from-indigo-500 to-violet-600", change: "+6 from yesterday" },
-    { label: "Questions Bank", value: "1,248", icon: <FileText size={20} />, color: "from-blue-500 to-indigo-600", change: "32 added this week" },
-    { label: "Sessions Completed", value: "96", icon: <CheckCircle size={20} />, color: "from-green-500 to-emerald-600", change: "This month" },
-    { label: "Avg. Score", value: "74%", icon: <BarChart3 size={20} />, color: "from-amber-500 to-orange-600", change: "+2% vs last month" },
-  ]
+    {
+      title: "Total Questions",
+      value: "1,140",
+      change: "+120 this month",
+      icon: <FileQuestion className="h-4 w-4 text-muted-foreground" />,
+    },
+    {
+      title: "New Questions",
+      value: "35",
+      change: "Added this week",
+      icon: <HelpCircle className="h-4 w-4 text-muted-foreground" />,
+    },
+    {
+      title: "Pending Companies",
+      value: "18",
+      change: "Needs verification",
+      icon: <Building2 className="h-4 w-4 text-muted-foreground" />,
+    },
+    {
+      title: "Audit Warnings",
+      value: "3",
+      change: "System flags",
+      icon: <AlertTriangle className="h-4 w-4 text-amber-500" />,
+    },
+  ];
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Staff / Interview Manager</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Monitor AI interview sessions and manage the question bank.</p>
+        <h1 className="text-2xl font-bold tracking-tight">Staff Dashboard</h1>
+        <p className="text-muted-foreground">
+          Question bank analytics and company verification tracking.
+        </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s) => (
-          <div key={s.label} className="bg-card border border-border rounded-2xl p-5 hover:border-indigo-500/30 transition-all">
-            <div className={`w-10 h-10 rounded-xl mb-4`}>
-              {s.icon}
-            </div>
-            <div className="text-2xl font-bold text-foreground">{s.value}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
-            <div className="text-xs text-primary mt-2">{s.change}</div>
-          </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {stats.map((stat, i) => (
+          <Card key={i}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                {stat.title}
+              </CardTitle>
+              {stat.icon}
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stat.value}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stat.change}
+              </p>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-card border border-border rounded-2xl p-5">
-          <h2 className="font-semibold text-foreground mb-4">Recent Interview Sessions</h2>
-          <div className="space-y-3">
-            {[
-              { candidate: "Nguyen Van A", job: "Frontend Dev", score: "88%", status: "Completed" },
-              { candidate: "Tran Thi B", job: "Backend Eng.", score: "72%", status: "Completed" },
-              { candidate: "Le Van C", job: "DevOps", score: "—", status: "In Progress" },
-            ].map((s, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-muted text-xs font-bold flex-shrink-0">
-                  {s.candidate.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{s.candidate}</p>
-                  <p className="text-xs text-muted-foreground">{s.job}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-primary">{s.score}</p>
-                  <p className={`text-xs ${s.status === "In Progress" ? "text-amber-400" : "text-green-400"}`}>{s.status}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-6">
+        <Card className="col-span-1 lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Questions by Category</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {categoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="bg-card border border-border rounded-2xl p-5">
-          <h2 className="font-semibold text-foreground mb-4">Question Categories</h2>
-          <div className="space-y-3">
-            {[
-              { category: "Frontend", count: 342, pct: 27 },
-              { category: "Backend", count: 415, pct: 33 },
-              { category: "DevOps", count: 198, pct: 16 },
-              { category: "System Design", count: 293, pct: 24 },
-            ].map((c) => (
-              <div key={c.category}>
-                <div className="flex justify-between text-sm mb-1.5">
-                  <span className="text-foreground font-medium">{c.category}</span>
-                  <span className="text-muted-foreground">{c.count} questions</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500" style={{ width: `${c.pct}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Card className="col-span-1 lg:col-span-4">
+          <CardHeader>
+            <CardTitle>Questions by Level</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={levelData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                  <XAxis dataKey="level" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                  <RechartsTooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+                  <Bar dataKey="count" name="Questions" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-1 lg:col-span-6">
+          <CardHeader>
+            <CardTitle>Company Verifications</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={verificationData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                  <XAxis dataKey="week" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                  <RechartsTooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+                  <Legend />
+                  <Line type="monotone" name="New Companies" dataKey="new" stroke="#8b5cf6" strokeWidth={2} activeDot={{ r: 6 }} />
+                  <Line type="monotone" name="Verified Companies" dataKey="verified" stroke="#10b981" strokeWidth={2} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
-  )
+  );
 }

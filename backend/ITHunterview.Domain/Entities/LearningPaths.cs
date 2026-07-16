@@ -24,5 +24,12 @@ namespace ITHunterview.Domain.Entities
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }
 
+        [Column("title")]
+        [StringLength(255)]
+        public string Title { get; set; } = "Learning Path";
+
+        [Column("status")]
+        [StringLength(50)]
+        public string Status { get; set; } = "Not Started";
     }
 }

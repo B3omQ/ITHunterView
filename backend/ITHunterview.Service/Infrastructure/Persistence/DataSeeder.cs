@@ -20,6 +20,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             await SeedSubscriptionsAsync(context);
             await SeedCoinConfigAsync(context);
             await SeedJobPostingsAsync(context);
+            await SeedSfiaSkillsAsync(context);
         }
 
         private static async Task SeedRolesAndPermissionsAsync(ITHunterviewContext context)
@@ -750,6 +751,33 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     await context.SaveChangesAsync();
                 }
             }
+        }
+
+        private static async Task SeedSfiaSkillsAsync(ITHunterviewContext context)
+        {
+            if (!context.SfiaSkills.Any())
+            {
+                var skills = new List<SfiaSkill>
+                {
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "PROG", SkillName = "Programming/Software Development", Category = "Development and Implementation", Subcategory = "Systems development" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "SWDN", SkillName = "Software Design", Category = "Development and Implementation", Subcategory = "Systems development" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "DESN", SkillName = "Systems Design", Category = "Development and Implementation", Subcategory = "Systems development" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "ARCH", SkillName = "Solution Architecture", Category = "Strategy and architecture", Subcategory = "Advice/guidance" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "SINT", SkillName = "Systems Integration and Build", Category = "Development and Implementation", Subcategory = "Systems development" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "TEST", SkillName = "Testing", Category = "Development and Implementation", Subcategory = "Systems development" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "SCTY", SkillName = "Information Security", Category = "Strategy and architecture", Subcategory = "Security/privacy" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "DATS", SkillName = "Data Science", Category = "Development and Implementation", Subcategory = "Data/analytics" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "MLNG", SkillName = "Machine Learning", Category = "Development and Implementation", Subcategory = "Data/analytics" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "DBAD", SkillName = "Database Administration", Category = "Delivery and operation", Subcategory = "Data/records operations" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "RELM", SkillName = "Release Management", Category = "Delivery and operation", Subcategory = "Technology management" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "DEPL", SkillName = "Systems Installation/Decommissioning", Category = "Delivery and operation", Subcategory = "Technology management" },
+                    new SfiaSkill { Id = System.Guid.NewGuid(), SkillCode = "HCEV", SkillName = "Human-centred evaluation", Category = "Development and Implementation", Subcategory = "User centred design" }
+                };
+
+                context.SfiaSkills.AddRange(skills);
+                await context.SaveChangesAsync();
+            }
+
         }
     }
 }

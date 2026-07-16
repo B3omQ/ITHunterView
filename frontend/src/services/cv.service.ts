@@ -13,13 +13,13 @@ export const cvService = {
     api.delete<ApiResponse<string>>(`/api/cvs/${id}`).then((r) => r.data),
 
   matchCvJd: (data: import('@/types/cv.types').MatchJdRequest) =>
-    api.post<ApiResponse<string>>('/api/cvs/match-jd', data).then((r) => r.data),
+    api.post<ApiResponse<string>>('/api/cvs/match-jd', data, { timeout: 120000 }).then((r) => r.data),
 
   matchJobs: (id: string) =>
-    api.post<ApiResponse<string>>(`/api/cvs/${id}/match-jobs`).then((r) => r.data),
+    api.post<ApiResponse<string>>(`/api/cvs/${id}/match-jobs`, null, { timeout: 120000 }).then((r) => r.data),
 
   matchJobsHardcode: (id: string) =>
-    api.post<ApiResponse<string>>(`/api/cvs/${id}/match-jobs-hardcode`).then((r) => r.data),
+    api.post<ApiResponse<string>>(`/api/cvs/${id}/match-jobs-hardcode`, null, { timeout: 120000 }).then((r) => r.data),
 
   getMatchResult: (jobId: string) =>
     api.get<ApiResponse<import('@/types/cv.types').MatchingResultDto>>(`/api/cvs/match-results/${jobId}`).then((r) => r.data),

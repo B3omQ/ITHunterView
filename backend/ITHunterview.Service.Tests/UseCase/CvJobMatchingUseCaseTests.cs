@@ -1,7 +1,7 @@
 using System;
 using System.Text.Json;
 using System.Threading.Tasks;
-using ITHunterview.Service.Implementations.UseCase;
+using ITHunterview.Service.UseCase;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Moq;

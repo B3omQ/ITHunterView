@@ -86,3 +86,70 @@ export interface UpdateMajorDto {
   /** ID của chuyên ngành cha. Không được thay đổi so với giá trị ban đầu. */
   parentId?: number | null;
 }
+
+export interface TargetRoleSkillDto {
+  skillCode: string;
+  skillName: string;
+  targetLevel: number;
+}
+
+export interface TargetRoleTemplateDto {
+  id: string;
+  roleName: string;
+  description: string;
+  requiredSkills: TargetRoleSkillDto[];
+}
+
+export interface CreateTargetRoleSkillDto {
+  sfiaSkillId: string;
+  targetLevel: number;
+}
+
+export interface CreateTargetRoleTemplateDto {
+  roleName: string;
+  description: string;
+  requiredSkills: CreateTargetRoleSkillDto[];
+}
+
+export interface UpdateTargetRoleTemplateDto {
+  roleName: string;
+  description: string;
+  requiredSkills: CreateTargetRoleSkillDto[];
+}
+
+export interface SfiaSkillLevelDto {
+  id?: string;
+  level: number;
+  description: string;
+}
+
+export interface SfiaSkillDto {
+  id: string;
+  skillCode: string;
+  skillName: string;
+  category: string;
+  subcategory: string;
+  description: string;
+  availableLevels: string;
+  levels: SfiaSkillLevelDto[];
+}
+
+export interface CreateSfiaSkillDto {
+  skillCode: string;
+  skillName: string;
+  category: string;
+  subcategory: string;
+  description: string;
+  availableLevels: string;
+  levels: SfiaSkillLevelDto[];
+}
+
+export interface UpdateSfiaSkillDto {
+  skillCode: string;
+  skillName: string;
+  category: string;
+  subcategory: string;
+  description: string;
+  availableLevels: string;
+  levels: SfiaSkillLevelDto[];
+}

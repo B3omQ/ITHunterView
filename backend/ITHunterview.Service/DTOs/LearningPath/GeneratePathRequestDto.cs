@@ -4,33 +4,41 @@ namespace ITHunterview.Service.DTOs.LearningPath
 {
     public class GeneratePathRequestDto
     {
-        // 1. Core Information
-        [Required]
-        public string TargetRole { get; set; }
-        
-        [Required]
-        public string SpecificGoal { get; set; }
-        
-        [Required]
-        public string ExperienceLevel { get; set; }
-        
-        public int TimeframeInWeeks { get; set; } = 12;
-        
-        public int HoursPerWeek { get; set; } = 10;
+        // 1. Core Information (Manual Mode)
+        public Guid? TargetRoleTemplateId { get; set; }
 
-        // 2. Technical Information
+        // 1. Core Information (Custom AI Mode)
+        public string? CustomTargetRoleName { get; set; }
+        public List<CustomSfiaSkillDto>? CustomTargetSkills { get; set; }
+
+        // 2. Technical Information (Used only in Manual Mode)
+        public List<CandidateSfiaSkillDto> CurrentSkills { get; set; } = new List<CandidateSfiaSkillDto>();
+
+        // 3. Additional Context
+        public string? PersonalContext { get; set; }
+    }
+
+    public class CandidateSfiaSkillDto
+    {
         [Required]
-        public string CurrentSkills { get; set; }
+        public string SkillCode { get; set; }
 
-        public string TargetCompanyType { get; set; }
-        
-        public string Strengths { get; set; }
-        
-        public string Weaknesses { get; set; }
+        [Required]
+        [Range(0, 7)]
+        public int CurrentLevel { get; set; }
+    }
 
-        // 3. Personalization
-        public string LearningStyle { get; set; }
-        
-        public string AdditionalPreferences { get; set; }
+    public class CustomSfiaSkillDto
+    {
+        [Required]
+        public string SkillCode { get; set; }
+
+        [Required]
+        [Range(1, 7)]
+        public int TargetLevel { get; set; }
+
+        [Required]
+        [Range(0, 7)]
+        public int CurrentLevel { get; set; }
     }
 }

@@ -1,6 +1,5 @@
 using ITHunterview.Service.Config;
 using ITHunterview.Service.Infrastructure.Persistence;
-using ITHunterview.Service.Implementations.Service;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.UseCase;
@@ -38,7 +37,11 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IAuditLogRepository, AuditLogRepository>();
             services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
             services.AddScoped<ISystemConfigRepository, SystemConfigRepository>();
+
             services.AddScoped<IPromptAdminRepository, PromptAdminRepository>();
+
+            services.AddScoped<INotificationRepository, NotificationRepository>();
+
 
             // Repositories — Candidate Profile
             services.AddScoped<ICandidateProfileRepository, CandidateProfileRepository>();
@@ -52,7 +55,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IInterviewSessionRepository, InterviewSessionRepository>();
             services.AddScoped<IInterviewAnswerRepository, InterviewAnswerRepository>();
             services.AddScoped<ILearningPathRepository, LearningPathRepository>();
-            services.AddScoped<ICvOptimizationRepository, CvOptimizationRepository>();
+            services.AddScoped<IOptimizeSessionRepository, OptimizeSessionRepository>();
 
             // Application Services
             services.AddHttpClient();
@@ -89,6 +92,11 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IScoringAggregatorService, ScoringAggregatorService>();
             services.AddScoped<ISummarizerService, SummarizerService>();
 
+            services.AddScoped<PdfCvExtractor>();
+            services.AddScoped<DocxCvExtractor>();
+            services.AddScoped<PdfCvRenderer>();
+            services.AddScoped<DocxCvRenderer>();
+
             // Use Cases — Auth
             services.AddScoped<IAuthUseCase, AuthUseCase>();
             services.AddScoped<IJobPostingsUseCase, JobPostingsUseCase>();
@@ -113,6 +121,9 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IWalletUseCase, WalletUseCase>();
             services.AddScoped<IInterviewQuestionBankUseCase, InterviewQuestionBankUseCase>();
             services.AddScoped<IPromptAdminUseCase, PromptAdminUseCase>();
+            services.AddScoped<INotificationUseCase, NotificationUseCase>();
+            services.AddScoped<IOptimizeUseCase, OptimizeUseCase>();
+
 
 
             // Use Cases — Candidate Profile
@@ -123,7 +134,8 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICandidateCertificationUseCase, CandidateCertificationUseCase>();
             services.AddScoped<IInterviewUseCase, InterviewUseCase>();
             services.AddScoped<ILearningPathUseCase, LearningPathUseCase>();
-            services.AddScoped<ICvOptimizerUseCase, CvOptimizerUseCase>();
+            services.AddScoped<ITargetRoleUseCase, TargetRoleUseCase>();
+            services.AddScoped<ISfiaSkillUseCase, SfiaSkillUseCase>();
 
             // Job Search & Saved Jobs
             services.AddScoped<IJobSearchRepository, JobSearchRepository>();
