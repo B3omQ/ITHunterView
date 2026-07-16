@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Loader2, Sparkles, Info, ArrowLeft } from 'lucide-react';
+import { Loader2, Sparkles, Info, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const SFIA_LEVEL_HINTS: Record<number, { title: string; essence: string }> = {
@@ -52,9 +52,13 @@ export default function NewLearningPathPage() {
   
   const [extractedRawData, setExtractedRawData] = useState<any>(null);
 
+  const [confirmedRoleId, setConfirmedRoleId] = useState('');
+
   const selectedRoleTemplate = targetRolesData?.data?.find(r => r.id === targetRoleTemplateId);
+  const assessingRoleTemplate = targetRolesData?.data?.find(r => r.id === confirmedRoleId);
 
   const filteredRoles = (targetRolesData?.data || []).filter(role => {
+
     const matchesSearch = role.roleName.toLowerCase().includes(roleSearchQuery.toLowerCase());
     if (roleLevelFilter === 'All') return matchesSearch;
     return matchesSearch && role.roleName.toLowerCase().includes(roleLevelFilter.toLowerCase());
@@ -71,7 +75,7 @@ export default function NewLearningPathPage() {
 
   const handleGenerate = () => {
     generateMutation.mutate({
-      targetRoleTemplateId,
+      targetRoleTemplateId: confirmedRoleId,
       currentSkills: currentSkills.filter(s => s.currentLevel !== null) as { skillCode: string, currentLevel: number }[],
       personalContext: personalContext.trim() !== '' ? personalContext : undefined,
     });
@@ -79,12 +83,9 @@ export default function NewLearningPathPage() {
 
   const handleRoleChange = (roleId: string) => {
     setTargetRoleTemplateId(roleId);
-    const template = targetRolesData?.data?.find(r => r.id === roleId);
-    if (template) {
-      setCurrentSkills(template.requiredSkills.map(rs => ({ skillCode: rs.skillCode, currentLevel: null })));
-    } else {
-      setCurrentSkills([]);
-    }
+    // Intentionally NOT wiping currentSkills here.
+    // This preserves the user's assessments if they accidentally click another role and switch back,
+    // or if they switch to a role that shares the same skills (e.g. from Junior to Mid-level).
   };
 
   const handleExtractCvJd = () => {
@@ -93,9 +94,9 @@ export default function NewLearningPathPage() {
       onSuccess: (res) => {
         if (res.data) {
           setTargetRoleTemplateId(res.data.targetRoleTemplateId);
+          setConfirmedRoleId(res.data.targetRoleTemplateId);
           setCurrentSkills(res.data.currentSkills);
           setExtractedRawData(res.data);
-          // Auto-select Role is triggered but useEffect is avoided because handleRoleChange does it explicitly for manual interactions
         }
       }
     });
@@ -107,6 +108,7 @@ export default function NewLearningPathPage() {
       onSuccess: (res) => {
         if (res.data) {
           setTargetRoleTemplateId(res.data.targetRoleTemplateId);
+          setConfirmedRoleId(res.data.targetRoleTemplateId);
           setCurrentSkills(res.data.currentSkills);
           setExtractedRawData(res.data);
         }
@@ -114,12 +116,12 @@ export default function NewLearningPathPage() {
     });
   };
 
-  const allAssessed = selectedRoleTemplate ? selectedRoleTemplate.requiredSkills.every(reqSkill => {
+  const allAssessed = assessingRoleTemplate ? assessingRoleTemplate.requiredSkills.every(reqSkill => {
     const skillState = currentSkills.find(s => s.skillCode === reqSkill.skillCode);
     return skillState && skillState.currentLevel !== null;
   }) : false;
 
-  const totalGaps = selectedRoleTemplate ? selectedRoleTemplate.requiredSkills.reduce((acc, reqSkill) => {
+  const totalGaps = assessingRoleTemplate ? assessingRoleTemplate.requiredSkills.reduce((acc, reqSkill) => {
     const skillState = currentSkills.find(s => s.skillCode === reqSkill.skillCode);
     if (skillState && skillState.currentLevel !== null) {
       const gap = reqSkill.targetLevel - skillState.currentLevel;
@@ -129,8 +131,8 @@ export default function NewLearningPathPage() {
   }, 0) : 0;
 
   const isGenerateDisabled = () => {
-    if (!targetRoleTemplateId || generateMutation.isPending) return true;
-    if (selectedRoleTemplate) {
+    if (!confirmedRoleId || generateMutation.isPending) return true;
+    if (assessingRoleTemplate) {
       if (!allAssessed) return true;
       if (totalGaps === 0) return true;
       return false;
@@ -309,13 +311,27 @@ export default function NewLearningPathPage() {
                 {selectedRoleTemplate && (
                   <p className="text-xs text-muted-foreground pt-1">{selectedRoleTemplate.description}</p>
                 )}
+                
+                <div className="flex justify-end pt-4">
+                  <Button 
+                    type="button"
+                    onClick={() => setConfirmedRoleId(targetRoleTemplateId)}
+                    disabled={!targetRoleTemplateId || targetRoleTemplateId === confirmedRoleId}
+                  >
+                    {targetRoleTemplateId === confirmedRoleId ? (
+                      <><CheckCircle2 className="mr-2 h-4 w-4" /> Role Confirmed</>
+                    ) : (
+                      'Confirm Target Role'
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
 
             {/* Section 2: Technical Information */}
-            {selectedRoleTemplate && (
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg flex items-center border-t pt-6"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Self-Assess SFIA Skills</h3>
+            {assessingRoleTemplate && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <h3 className="font-semibold text-lg flex items-center border-t pt-6"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Self-Assess SFIA Skills for {assessingRoleTemplate.roleName}</h3>
                 <p className="text-sm text-muted-foreground mb-4">
                   Please verify or assess your current proficiency level for the core skills required by this role (0 = No experience, 1-7 = SFIA Levels).{' '}
                   <a href="https://sfia-online.org/en/sfia-9/responsibilities" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center">
@@ -325,7 +341,7 @@ export default function NewLearningPathPage() {
                 
                 <TooltipProvider delay={200}>
                   <div className="space-y-6">
-                    {selectedRoleTemplate.requiredSkills.map(skill => {
+                    {assessingRoleTemplate.requiredSkills.map(skill => {
                     const currentLvlState = currentSkills.find(s => s.skillCode === skill.skillCode)?.currentLevel;
                     const isAssessed = currentLvlState !== undefined && currentLvlState !== null;
                     
