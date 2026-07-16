@@ -14,6 +14,17 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, Sparkles, Info, ArrowLeft } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+const SFIA_LEVEL_HINTS: Record<number, { title: string; essence: string }> = {
+  1: { title: "Follow", essence: "Works under close supervision. Uses little discretion." },
+  2: { title: "Assist", essence: "Works under routine supervision. Uses minor discretion." },
+  3: { title: "Apply", essence: "Works under general supervision. Uses discretion in identifying and responding to complex issues." },
+  4: { title: "Enable", essence: "Works under general direction within a clear framework of accountability. Exercises substantial personal responsibility." },
+  5: { title: "Ensure, advise", essence: "Works under broad direction. Is fully accountable for own technical work and/or project/supervisory responsibilities." },
+  6: { title: "Initiate, influence", essence: "Has defined authority and responsibility for a significant area of work, including technical, financial and quality aspects." },
+  7: { title: "Set strategy, inspire, mobilise", essence: "At the highest organizational level, has authority over all aspects of a significant area of work." }
+};
 import AILoadingState from '../components/AILoadingState';
 
 export default function NewLearningPathPage() {
@@ -236,10 +247,16 @@ export default function NewLearningPathPage() {
             {selectedRoleTemplate && (
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg flex items-center border-t pt-6"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Self-Assess SFIA Skills</h3>
-                <p className="text-sm text-muted-foreground mb-4">Please verify or assess your current proficiency level for the core skills required by this role (0 = No experience, 1-7 = SFIA Levels).</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Please verify or assess your current proficiency level for the core skills required by this role (0 = No experience, 1-7 = SFIA Levels).{' '}
+                  <a href="https://sfia-online.org/en/sfia-9/responsibilities" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center">
+                    Learn more about SFIA levels <Info className="w-3 h-3 ml-1" />
+                  </a>
+                </p>
                 
-                <div className="space-y-6">
-                  {selectedRoleTemplate.requiredSkills.map(skill => {
+                <TooltipProvider delay={200}>
+                  <div className="space-y-6">
+                    {selectedRoleTemplate.requiredSkills.map(skill => {
                     const currentLvlState = currentSkills.find(s => s.skillCode === skill.skillCode)?.currentLevel;
                     const isAssessed = currentLvlState !== undefined && currentLvlState !== null;
                     
@@ -251,11 +268,11 @@ export default function NewLearningPathPage() {
                               {skill.skillName} 
                               <span className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">{skill.skillCode}</span>
                             </h4>
-                            <div className="flex items-center gap-2 mt-2">
-                              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20">
-                                Target Level {skill.targetLevel}
-                              </span>
-                            </div>
+                            {skill.description && (
+                              <p className="text-sm text-muted-foreground mt-1 line-clamp-2" title={skill.description}>
+                                {skill.description}
+                              </p>
+                            )}
                           </div>
                           <div className="text-left sm:text-right">
                             {isAssessed ? (
@@ -280,30 +297,39 @@ export default function NewLearningPathPage() {
                           {[1, 2, 3, 4, 5, 6, 7].map(lvl => {
                             const cleanLevels = skill.availableLevels ? skill.availableLevels.replace(/"/g, '') : '';
                             const validLevels = cleanLevels ? cleanLevels.split(',').map(s => Number(s.trim())) : [1, 2, 3, 4, 5, 6, 7];
-                            if (!validLevels.includes(lvl)) return null;
+                            const isValid = validLevels.includes(lvl);
 
-                            const isTarget = lvl === skill.targetLevel;
                             const isSelected = currentLvlState === lvl;
                             
                             return (
-                              <button
-                                key={lvl}
-                                type="button"
-                                onClick={() => handleSkillLevelChange(skill.skillCode, lvl)}
-                                className={`
-                                  relative px-4 py-2 text-sm font-medium rounded-lg border transition-all
-                                  ${isSelected ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'bg-background hover:bg-muted text-foreground border-border'}
-                                  ${isTarget && !isSelected ? 'ring-2 ring-amber-500/50 ring-offset-1 ring-offset-background' : ''}
-                                `}
-                                title={isTarget ? "Target Required Level" : `Level ${lvl}`}
-                              >
-                                {lvl}
-                                {isTarget && !isSelected && (
-                                  <span className="absolute -top-2 -right-2 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center animate-pulse">
-                                    <span className="w-1.5 h-1.5 bg-background rounded-full"></span>
-                                  </span>
-                                )}
-                              </button>
+                              <Tooltip key={lvl}>
+                                <TooltipTrigger 
+                                  type="button"
+                                  onClick={() => isValid && handleSkillLevelChange(skill.skillCode, lvl)}
+                                  className={`
+                                    relative px-4 py-2 text-sm font-medium rounded-lg border transition-all
+                                    ${!isValid ? 'bg-muted/50 text-muted-foreground/30 border-transparent cursor-not-allowed' : 
+                                      isSelected ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 
+                                      'bg-background hover:bg-muted text-foreground border-border'}
+                                  `}
+                                >
+                                  {lvl}
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-[250px] p-3 shadow-lg">
+                                  {!isValid ? (
+                                    <p className="text-xs text-primary-foreground/90 leading-relaxed text-center">
+                                      This skill is not defined at Level {lvl} in the SFIA framework.
+                                    </p>
+                                  ) : (
+                                    <>
+                                      <p className="font-semibold text-[13px] text-primary-foreground mb-1">Level {lvl}: {SFIA_LEVEL_HINTS[lvl]?.title}</p>
+                                      <p className="text-xs text-primary-foreground/90 leading-relaxed">
+                                        {SFIA_LEVEL_HINTS[lvl]?.essence}
+                                      </p>
+                                    </>
+                                  )}
+                                </TooltipContent>
+                              </Tooltip>
                             );
                           })}
                         </div>
@@ -311,6 +337,7 @@ export default function NewLearningPathPage() {
                     );
                   })}
                 </div>
+              </TooltipProvider>
               </div>
             )}
           </div>

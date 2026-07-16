@@ -15,6 +15,7 @@ namespace ITHunterview.Service.DTOs.LearningPath
     {
         public string SkillCode { get; set; }
         public string SkillName { get; set; }
+        public string Description { get; set; }
         public string AvailableLevels { get; set; }
         public int TargetLevel { get; set; }
     }

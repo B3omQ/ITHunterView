@@ -57,6 +57,7 @@ namespace ITHunterview.Service.UseCase
                 {
                     SkillCode = rs.SfiaSkill.SkillCode,
                     SkillName = rs.SfiaSkill.SkillName,
+                    Description = rs.SfiaSkill.Description ?? "",
                     AvailableLevels = rs.SfiaSkill.AvailableLevels ?? "",
                     TargetLevel = rs.TargetLevel
                 }).ToList()
