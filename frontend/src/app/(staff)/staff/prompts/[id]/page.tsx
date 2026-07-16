@@ -85,7 +85,7 @@ export default function PromptDetailPage() {
   if (isError || !prompt) return <div className="p-8 text-center text-destructive">Failed to load prompt</div>;
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto pt-6 pb-10 px-4 md:px-8 space-y-6">
       <div className="flex items-center gap-4">
         <Link href={APP_ROUTES.STAFF.PROMPTS}>
           <Button variant="outline" size="icon">

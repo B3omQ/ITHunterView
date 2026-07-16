@@ -42,7 +42,8 @@ export default function CreateSystemNotificationPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto py-8">
+    <div className="max-w-7xl mx-auto pt-6 pb-10 px-4 md:px-8">
+      <div className="space-y-6 max-w-2xl mx-auto">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" onClick={() => router.push("/staff/notifications")}>
           <ArrowLeft className="h-4 w-4" />
@@ -88,6 +89,7 @@ export default function CreateSystemNotificationPage() {
           </Button>
         </div>
       </form>
+    </div>
     </div>
   );
 }

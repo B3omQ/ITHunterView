@@ -75,8 +75,8 @@ export default function QuestionBankPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background py-6 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
-      <div className="max-w-7xl mx-auto space-y-4">
+    <div className="min-h-screen bg-background transition-colors duration-200">
+      <div className="max-w-7xl mx-auto pt-6 pb-10 px-4 md:px-8 space-y-4">
 
         {/* Top Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-2">
