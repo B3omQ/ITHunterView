@@ -1,9 +1,10 @@
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using ITHunterview.Domain.Entities.Cv;
 using ITHunterview.Service.Interface.Service;
 
-namespace ITHunterview.Service.Infrastructure.Service;
+namespace ITHunterview.Service.Service;
 
 public class DocxCvRenderer : ICvRenderer
 {

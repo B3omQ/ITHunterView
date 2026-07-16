@@ -3,6 +3,7 @@ using ITHunterview.Domain.Entities.Cv;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.UseCase;
+using ITHunterview.Service.Service;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ITHunterview.Service.UseCase;
@@ -104,7 +105,7 @@ public class OptimizeUseCase : IOptimizeUseCase
                 // Save stream to blob storage and notify via SignalR
                 // e.g. await blobService.UploadAsync($"previews/{sessionId}.png", previewStream);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Log exception
             }

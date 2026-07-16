@@ -1,44 +1,42 @@
 using System.Text;
 using System.Text.Json;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
 using ITHunterview.Domain.Entities.Cv;
 using ITHunterview.Service.Interface.Service;
-using Microsoft.Extensions.AI;
-using UglyToad.PdfPig;
 
-namespace ITHunterview.Service.Infrastructure.Service;
+namespace ITHunterview.Service.Service;
 
-public class PdfCvExtractor : ICvExtractor
+public class DocxCvExtractor : ICvExtractor
 {
-    private readonly IChatClient _chatClient;
+    private readonly IAiService _aiService;
 
-    public PdfCvExtractor(IChatClient chatClient)
+    public DocxCvExtractor(IAiService aiService)
     {
-        _chatClient = chatClient;
+        _aiService = aiService;
     }
 
     public async Task<CvDocument> ExtractAsync(Stream fileStream)
     {
-        // 1. Extract text and logic layout from PDF
-        var rawText = ExtractTextFromPdf(fileStream);
-
-        // 2. Call LLM to map to structured JSON
+        var rawText = ExtractTextFromDocx(fileStream);
         return await MapToCvDocumentAsync(rawText);
     }
 
-    private string ExtractTextFromPdf(Stream stream)
+    private string ExtractTextFromDocx(Stream stream)
     {
         var sb = new StringBuilder();
-        
-        using var pdfDocument = PdfDocument.Open(stream);
-        foreach (var page in pdfDocument.GetPages())
+
+        using (var wordDocument = WordprocessingDocument.Open(stream, false))
         {
-            // Simple extraction for now.
-            // A more complex heuristic would analyze word.BoundingBox and word.FontName
-            foreach (var word in page.GetWords())
+            var body = wordDocument.MainDocumentPart?.Document.Body;
+            if (body == null) return string.Empty;
+
+            foreach (var paragraph in body.Elements<Paragraph>())
             {
-                sb.Append(word.Text).Append(' ');
+                // Simple extraction: can enhance with style reading for LLM hints
+                // e.g. if (paragraph.ParagraphProperties?.ParagraphStyleId?.Val != null) ...
+                sb.AppendLine(paragraph.InnerText);
             }
-            sb.AppendLine();
         }
 
         return sb.ToString();
@@ -67,10 +65,8 @@ public class PdfCvExtractor : ICvExtractor
         {
             try
             {
-                var response = await _chatClient.CompleteAsync(prompt);
-                var json = response.Message.Text?.Trim();
+                var json = await _aiService.GenerateTextAsync(prompt);
                 
-                // Clean markdown code blocks if any
                 if (json != null && json.StartsWith("```json"))
                 {
                     json = json.Substring(7);
@@ -84,7 +80,6 @@ public class PdfCvExtractor : ICvExtractor
             catch (JsonException ex)
             {
                 if (attempt == 3) throw new Exception("Failed to map CV to structured JSON after 3 attempts.", ex);
-                // In a real implementation, we could append the exception message to the prompt for the retry.
             }
         }
 

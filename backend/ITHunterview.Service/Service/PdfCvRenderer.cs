@@ -4,7 +4,7 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 
-namespace ITHunterview.Service.Infrastructure.Service;
+namespace ITHunterview.Service.Service;
 
 public class PdfCvRenderer : ICvRenderer
 {
