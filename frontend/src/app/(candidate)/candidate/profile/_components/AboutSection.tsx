@@ -69,12 +69,11 @@ export function AboutSection() {
         </div>
         <Button 
           variant="ghost" 
-          size="sm" 
+          size="icon" 
           onClick={() => setIsEditing(true)} 
-          className={`text-muted-foreground hover:text-primary h-8 px-2 text-xs ${isEditing ? 'invisible' : ''}`}
+          className={`text-muted-foreground hover:text-primary w-8 h-8 rounded-full transition-colors ${isEditing ? 'invisible' : ''}`}
         >
-          <Edit2 className="w-3.5 h-3.5 mr-1.5" />
-          Edit
+          <Edit2 className="w-4 h-4" />
         </Button>
       </div>
       

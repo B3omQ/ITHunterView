@@ -195,28 +195,28 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
     <Card className="p-6 md:p-8 flex flex-col gap-6 relative shadow-md overflow-hidden bg-card/60 backdrop-blur-md">
       {/* Top Actions: Visibility Toggle & Edit */}
       <div className="absolute top-4 right-4 z-20 flex flex-row items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(true)} className="flex items-center gap-1.5 bg-background/80 backdrop-blur shadow-sm hover:bg-muted text-xs h-8">
-          <Edit2 className="w-3.5 h-3.5" /> Edit Profile
-        </Button>
-        <div className="flex items-center gap-2 bg-background/80 backdrop-blur px-2.5 py-1.5 rounded-lg border border-border/50 shadow-sm">
-          <Label className="cursor-pointer flex items-center gap-2 text-xs text-muted-foreground font-medium">
-            {isUpdatingVisibility ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Switch
-                checked={summary.isVisibleToRecruiters}
-                onCheckedChange={handleVisibilityChange}
-                className="scale-75 data-[state=checked]:bg-primary m-0"
-              />
-            )}
-            Visible
-          </Label>
-        </div>
+      <div className="flex items-center gap-2 bg-background/80 backdrop-blur px-2.5 py-1.5 rounded-lg border border-border/50 shadow-sm">
+        <Label className="cursor-pointer flex items-center gap-2 text-xs text-muted-foreground font-medium">
+          {isUpdatingVisibility ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <Switch
+              checked={summary.isVisibleToRecruiters}
+              onCheckedChange={handleVisibilityChange}
+              className="scale-75 data-[state=checked]:bg-primary m-0"
+            />
+          )}
+          Visible to recruiters
+        </Label>
       </div>
+      <Button variant="ghost" size="icon" onClick={() => setIsEditModalOpen(true)} className="text-muted-foreground hover:text-primary w-8 h-8 rounded-full transition-colors">
+        <Edit2 className="w-4 h-4" />
+      </Button>
+    </div>
 
       <div className="flex flex-col items-center mt-6">
         {/* Avatar Area */}
-        <div className="relative group cursor-pointer shrink-0 mb-4 z-10" onClick={handleAvatarClick}>
+        <div className="relative shrink-0 mb-4 z-10">
           <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-border relative bg-muted shadow-sm flex items-center justify-center">
             {summary.avatarUrl && !imageError ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -224,7 +224,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
                 src={summary.avatarUrl}
                 alt={summary.fullName}
                 onError={() => setImageError(true)}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 text-transparent"
+                className="w-full h-full object-cover text-transparent"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-muted-foreground text-4xl font-bold uppercase">
@@ -232,18 +232,13 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
               </div>
             )}
 
-            <div
-              className={`absolute inset-0 z-20 flex items-center justify-center transition-opacity duration-300 ${
-                isUploadingAvatar ? 'opacity-100 bg-black/60' : 'opacity-0 group-hover:opacity-100 bg-black/40'
-              }`}
-            >
-              {isUploadingAvatar ? (
+            {isUploadingAvatar && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60">
                 <Loader2 className="w-6 h-6 text-white animate-spin" />
-              ) : (
-                <Camera className="w-6 h-6 text-white" />
-              )}
-            </div>
+              </div>
+            )}
           </div>
+          
           <input
             type="file"
             ref={fileInputRef}
@@ -337,94 +332,129 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
       </Dialog>
 
       {/* Edit Profile Modal */}
-      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Profile Information</DialogTitle>
-            <DialogDescription>
-              Update your contact details and online presence.
-            </DialogDescription>
+      <Dialog disablePointerDismissal open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="sm:max-w-[750px] p-0 overflow-hidden gap-0 bg-background border-none shadow-xl rounded-xl">
+          <DialogHeader className="px-6 py-4 border-b border-border/40 bg-card/50 backdrop-blur-sm">
+            <DialogTitle className="text-xl font-extrabold tracking-tight">Personal details</DialogTitle>
           </DialogHeader>
           
-          <form onSubmit={handleSaveProfile} className="space-y-6 pt-4">
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Contact Info</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
-                </div>
-              </div>
+          <form onSubmit={handleSaveProfile} className="flex flex-col">
+            <div className="grid grid-cols-1 sm:grid-cols-[220px_1fr] gap-8 p-6 max-h-[75vh] overflow-y-auto">
               
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              {/* Left Column - Avatar */}
+              <div className="flex flex-col items-center gap-4">
+                <div className="relative">
+                  <div className="w-36 h-36 rounded-full overflow-hidden border border-border/50 relative bg-primary/5 flex items-center justify-center shadow-sm">
+                    {summary.avatarUrl && !imageError ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={summary.avatarUrl}
+                        alt={summary.fullName}
+                        onError={() => setImageError(true)}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-primary/40 text-5xl font-bold uppercase">
+                        {(summary?.fullName || 'NA').slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    
+                    {isUploadingAvatar && (
+                      <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60">
+                        <Loader2 className="w-6 h-6 text-white animate-spin" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <Button type="button" variant="ghost" size="sm" onClick={handleAvatarClick} disabled={isUploadingAvatar} className="text-primary font-bold hover:text-primary hover:bg-primary/10 gap-1.5 h-8">
+                  <Camera className="w-4 h-4" /> {isUploadingAvatar ? 'Uploading...' : 'Edit Avatar'}
+                </Button>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="locationType">Location</Label>
-                <div className="flex gap-2">
-                  <LocationCombobox
-                    value={locationType}
-                    onChange={(val) => {
-                      setLocationType(val)
-                      if (val !== "Other") setLocation(val)
-                      else setLocation("")
-                    }}
-                    className={locationType === "Other" ? "w-1/3" : "w-full"}
-                  />
-                  {locationType === "Other" && (
-                    <Input
-                      id="location"
-                      placeholder="e.g. Can Tho"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      className="flex-1"
+              {/* Right Column - Inputs */}
+              <div className="space-y-5">
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+                    <Label htmlFor="firstName" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">First name <span className="text-destructive">*</span></Label>
+                    <input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} required className="w-full bg-transparent border-none outline-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="e.g. Tra" />
+                  </div>
+                  <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+                    <Label htmlFor="lastName" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Last name <span className="text-destructive">*</span></Label>
+                    <input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} required className="w-full bg-transparent border-none outline-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="e.g. Pham" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="border border-border/60 rounded-lg px-3 py-1.5 bg-muted/30 opacity-70 cursor-not-allowed shadow-sm">
+                    <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Email address</Label>
+                    <input value={info?.email || ''} disabled className="w-full bg-transparent border-none outline-none p-0 text-sm font-medium text-foreground cursor-not-allowed truncate" />
+                  </div>
+                  <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+                    <Label htmlFor="phone" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Phone number</Label>
+                    <input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-transparent border-none outline-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="e.g. 0947852588" />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="locationType" className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider ml-1">Current Location <span className="text-destructive">*</span></Label>
+                  <div className="flex gap-3">
+                    <LocationCombobox
+                      value={locationType}
+                      onChange={(val) => {
+                        setLocationType(val)
+                        if (val !== "Other") setLocation(val)
+                        else setLocation("")
+                      }}
+                      className={locationType === "Other" ? "w-1/3 h-12 rounded-lg" : "w-full h-12 rounded-lg"}
                     />
-                  )}
+                    {locationType === "Other" && (
+                      <Input
+                        id="location"
+                        placeholder="Specific address or district..."
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        className="flex-1 h-12 rounded-lg bg-card"
+                      />
+                    )}
+                  </div>
                 </div>
+
+                <div className="space-y-3 pt-4 border-t border-border/30">
+                  <h4 className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider ml-1">Personal Links</h4>
+                  
+                  <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+                    <Label htmlFor="linkedInUrl" className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1.5 mb-0.5">
+                      <LinkedinIcon className="w-3 h-3" /> LinkedIn URL
+                    </Label>
+                    <input id="linkedInUrl" value={linkedInUrl} onChange={(e) => setLinkedInUrl(e.target.value)} className="w-full bg-transparent border-none outline-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="https://linkedin.com/in/username" />
+                  </div>
+                  
+                  <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+                    <Label htmlFor="portfolioUrl" className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1.5 mb-0.5">
+                      <Globe className="w-3 h-3" /> Portfolio URL
+                    </Label>
+                    <input id="portfolioUrl" value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} className="w-full bg-transparent border-none outline-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="https://yourportfolio.com" />
+                  </div>
+                  
+                  <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+                    <Label htmlFor="githubUrl" className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1.5 mb-0.5">
+                      <GithubIcon className="w-3 h-3" /> GitHub URL
+                    </Label>
+                    <input id="githubUrl" value={githubUrl} onChange={(e) => setGithubUrl(e.target.value)} className="w-full bg-transparent border-none outline-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="https://github.com/username" />
+                  </div>
+                </div>
+
               </div>
             </div>
 
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Online Presence</h3>
-              
-              <div className="space-y-2">
-                <Label htmlFor="linkedInUrl">LinkedIn URL</Label>
-                <div className="relative">
-                  <LinkedinIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input id="linkedInUrl" placeholder="linkedin.com/in/username" value={linkedInUrl} onChange={(e) => setLinkedInUrl(e.target.value)} className="pl-9" />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="githubUrl">GitHub URL</Label>
-                <div className="relative">
-                  <GithubIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input id="githubUrl" placeholder="github.com/username" value={githubUrl} onChange={(e) => setGithubUrl(e.target.value)} className="pl-9" />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="portfolioUrl">Portfolio URL</Label>
-                <div className="relative">
-                  <Globe className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input id="portfolioUrl" placeholder="yourportfolio.com" value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} className="pl-9" />
-                </div>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
+            <DialogFooter className="px-6 pt-4 pb-6 border-t border-border/40 bg-muted/10 sm:justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => setIsEditModalOpen(false)} className="h-10 px-6 font-semibold hover:bg-muted text-muted-foreground">
                 Cancel
               </Button>
-              <Button type="submit" disabled={isPending || !firstName || !lastName}>
+              <Button type="submit" disabled={isPending || !firstName || !lastName} className="h-10 px-8 font-bold shadow-sm">
                 {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Save Changes
+                Save
               </Button>
             </DialogFooter>
           </form>

@@ -107,6 +107,7 @@ export function ExperienceTab() {
 
       {/* Form Dialog */}
       <Dialog 
+        disablePointerDismissal
         open={isAdding || !!editingId} 
         onOpenChange={(open) => {
           if (!open) {

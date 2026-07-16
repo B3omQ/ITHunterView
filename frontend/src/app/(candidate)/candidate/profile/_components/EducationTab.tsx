@@ -125,6 +125,7 @@ export function EducationTab() {
       </Card>
 
       <Dialog 
+        disablePointerDismissal
         open={isAddingEdu || !!editingEduId} 
         onOpenChange={(open) => {
           if (!open) {
@@ -201,6 +202,7 @@ export function EducationTab() {
       </Card>
 
       <Dialog 
+        disablePointerDismissal
         open={isAddingCert || !!editingCertId} 
         onOpenChange={(open) => {
           if (!open) {

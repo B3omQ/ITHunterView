@@ -141,7 +141,7 @@ export function SkillsTab() {
         </CardContent>
       </Card>
 
-      <Dialog open={isAdding} onOpenChange={setIsAdding}>
+      <Dialog disablePointerDismissal open={isAdding} onOpenChange={setIsAdding}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="text-xl">Add Skills</DialogTitle>
