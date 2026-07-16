@@ -13,6 +13,7 @@ namespace ITHunterview.Service.Interface.UseCase
         Task<ResponseBase<TargetRoleResponseDto>> CreateRoleAsync(CreateTargetRoleTemplateDto dto);
         Task<ResponseBase<TargetRoleResponseDto>> UpdateRoleAsync(Guid id, UpdateTargetRoleTemplateDto dto);
         Task<ResponseBase<bool>> DeleteRoleAsync(Guid id);
+        Task<ResponseBase<TargetRoleImportResultDto>> ImportTargetRolesAsync(Microsoft.AspNetCore.Http.IFormFile file);
         
         // Also a helper to get all SfiaSkills so the admin can pick them in the dropdown
         Task<List<SfiaSkillDto>> GetAllSfiaSkillsAsync();

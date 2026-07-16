@@ -193,13 +193,30 @@ namespace ITHunterview.Service.UseCase
                         parser.ReadFields();
                     }
 
-                    var existingSkills = await _context.SfiaSkills.Include(s => s.Levels).ToDictionaryAsync(s => s.SkillCode.ToLower());
+                    var skillsList = await _context.SfiaSkills.Include(s => s.Levels).ToListAsync();
+                    var existingSkills = skillsList
+                        .GroupBy(s => s.SkillCode.ToLower())
+                        .ToDictionary(g => g.Key, g => g.First());
 
+                    var parsedRows = new List<string[]>();
                     while (!parser.EndOfData)
                     {
                         var fields = parser.ReadFields();
-                        if (fields == null || fields.Length < 4) continue;
+                        if (fields != null && fields.Length >= 4)
+                        {
+                            parsedRows.Add(fields);
+                        }
+                    }
 
+                    // Deduplicate by SkillCode (taking the last occurrence in the file)
+                    var uniqueRows = parsedRows
+                        .Where(f => !string.IsNullOrWhiteSpace(f[0]))
+                        .GroupBy(f => f[0].Trim().ToLower())
+                        .Select(g => g.Last())
+                        .ToList();
+
+                    foreach (var fields in uniqueRows)
+                    {
                         var code = fields[0]?.Trim();
                         var name = fields[1]?.Trim();
                         var category = fields[2]?.Trim();

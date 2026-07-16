@@ -9,6 +9,9 @@ using ITHunterview.Service.DTOs.LearningPath;
 using ITHunterview.Service.DTOs.MasterData;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http;
+using Microsoft.VisualBasic.FileIO;
+using System.IO;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -146,6 +149,136 @@ namespace ITHunterview.Service.UseCase
                 SkillName = s.SkillName,
                 Category = s.Category
             }).ToList();
+        }
+
+        public async Task<ResponseBase<TargetRoleImportResultDto>> ImportTargetRolesAsync(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                throw new ArgumentException("File is empty.");
+            }
+
+            var result = new TargetRoleImportResultDto();
+            
+            var sfiaSkillsList = await _context.SfiaSkills.Select(s => new { s.SkillCode, s.Id }).ToListAsync();
+            var existingSfiaSkills = sfiaSkillsList
+                .GroupBy(s => s.SkillCode.ToLower())
+                .ToDictionary(g => g.Key, g => g.First().Id);
+
+            var rolesList = await _context.TargetRoleTemplates.Include(t => t.RequiredSkills).ToListAsync();
+            var existingRoles = rolesList
+                .GroupBy(r => r.RoleName.ToLower())
+                .ToDictionary(g => g.Key, g => g.First());
+
+            using (var stream = file.OpenReadStream())
+            using (var reader = new StreamReader(stream))
+            using (var parser = new TextFieldParser(reader))
+            {
+                parser.TextFieldType = FieldType.Delimited;
+                parser.SetDelimiters(",");
+                parser.HasFieldsEnclosedInQuotes = true;
+
+                // Skip header
+                if (!parser.EndOfData)
+                {
+                    parser.ReadFields();
+                }
+
+                    var parsedRows = new List<string[]>();
+                    while (!parser.EndOfData)
+                    {
+                        var fields = parser.ReadFields();
+                        if (fields != null && fields.Length >= 3)
+                        {
+                            parsedRows.Add(fields);
+                        }
+                    }
+
+                    // Deduplicate by RoleName (taking the last occurrence in the file)
+                    var uniqueRows = parsedRows
+                        .Where(f => !string.IsNullOrWhiteSpace(f[0]))
+                        .GroupBy(f => f[0].Trim().ToLower())
+                        .Select(g => g.Last())
+                        .ToList();
+
+                    foreach (var fields in uniqueRows)
+                    {
+                        var roleName = fields[0]?.Trim();
+                        var description = fields[1]?.Trim();
+                        var requiredSkillsRaw = fields[2]?.Trim();
+
+                    if (string.IsNullOrWhiteSpace(roleName))
+                    {
+                        continue;
+                    }
+
+                    var roleSkills = new List<TargetRoleSkill>();
+                    var skillParts = requiredSkillsRaw?.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+                    
+                    bool hasErrors = false;
+                    foreach (var part in skillParts)
+                    {
+                        var kvp = part.Split(new[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+                        if (kvp.Length == 2)
+                        {
+                            var skillCode = kvp[0].Trim().ToLower();
+                            if (int.TryParse(kvp[1].Trim(), out int targetLevel))
+                            {
+                                if (existingSfiaSkills.TryGetValue(skillCode, out var sfiaSkillId))
+                                {
+                                    roleSkills.Add(new TargetRoleSkill
+                                    {
+                                        SfiaSkillId = sfiaSkillId,
+                                        TargetLevel = targetLevel
+                                    });
+                                }
+                                else
+                                {
+                                    result.Errors.Add($"Role '{roleName}': Unknown skill code '{kvp[0].Trim()}'.");
+                                    hasErrors = true;
+                                }
+                            }
+                        }
+                    }
+
+                    if (hasErrors && roleSkills.Count == 0)
+                    {
+                        continue; // skip if totally invalid
+                    }
+
+                    if (existingRoles.TryGetValue(roleName.ToLower(), out var existingRole))
+                    {
+                        // Update
+                        existingRole.Description = description ?? "";
+                        _context.TargetRoleSkills.RemoveRange(existingRole.RequiredSkills);
+                        existingRole.RequiredSkills = roleSkills;
+                        result.UpdatedCount++;
+                    }
+                    else
+                    {
+                        // Insert
+                        var newRole = new TargetRoleTemplate
+                        {
+                            RoleName = roleName,
+                            Description = description ?? "",
+                            RequiredSkills = roleSkills
+                        };
+                        _context.TargetRoleTemplates.Add(newRole);
+                        existingRoles[roleName.ToLower()] = newRole;
+                        result.ImportedCount++;
+                    }
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            string msg = $"Imported {result.ImportedCount} roles. Updated {result.UpdatedCount} roles.";
+            if (result.Errors.Any())
+            {
+                msg += $" Encountered {result.Errors.Count} errors (see details).";
+            }
+
+            return new ResponseBase<TargetRoleImportResultDto>(result, msg);
         }
 
         private TargetRoleResponseDto MapToResponseDto(TargetRoleTemplate entity)
