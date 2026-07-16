@@ -8,10 +8,9 @@ interface CvCardProps {
   isDeleting?: boolean;
   isActive?: boolean;
   onSelect?: (cv: Cv) => void;
-  onMatchJobs?: (cv: Cv) => void;
 }
 
-export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect, onMatchJobs }: CvCardProps) {
+export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardProps) {
   // Format date: "Jun 10, 2026"
   const formattedDate = new Date(cv.createdAt).toLocaleDateString('en-US', {
     month: 'short',
@@ -57,18 +56,6 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect, onMatchJo
         </span>
         
         <div className="flex items-center gap-4">
-          {onMatchJobs && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onMatchJobs(cv);
-              }}
-              className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
-            >
-              <Eye className="h-4 w-4" />
-              Find Matches
-            </button>
-          )}
 
           <button
             onClick={(e) => {
