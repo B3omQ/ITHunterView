@@ -778,41 +778,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 await context.SaveChangesAsync();
             }
 
-            if (!context.TargetRoleTemplates.Any())
-            {
-                var role1 = new TargetRoleTemplate { Id = System.Guid.NewGuid(), RoleName = "Senior Backend Developer", Description = "Experienced backend developer leading technical decisions" };
-                var role2 = new TargetRoleTemplate { Id = System.Guid.NewGuid(), RoleName = "Data Scientist", Description = "Data analytics and machine learning specialist" };
-                var role3 = new TargetRoleTemplate { Id = System.Guid.NewGuid(), RoleName = "DevOps Engineer", Description = "Infrastructure and CI/CD specialist" };
-
-                context.TargetRoleTemplates.AddRange(role1, role2, role3);
-                await context.SaveChangesAsync();
-
-                var getSkill = (string code) => context.SfiaSkills.First(s => s.SkillCode == code).Id;
-
-                var targetSkills = new List<TargetRoleSkill>
-                {
-                    // Senior Backend Developer
-                    new TargetRoleSkill { RoleTemplateId = role1.Id, SfiaSkillId = getSkill("PROG"), TargetLevel = 5 },
-                    new TargetRoleSkill { RoleTemplateId = role1.Id, SfiaSkillId = getSkill("SWDN"), TargetLevel = 4 },
-                    new TargetRoleSkill { RoleTemplateId = role1.Id, SfiaSkillId = getSkill("DBAD"), TargetLevel = 4 },
-                    new TargetRoleSkill { RoleTemplateId = role1.Id, SfiaSkillId = getSkill("ARCH"), TargetLevel = 4 },
-                    new TargetRoleSkill { RoleTemplateId = role1.Id, SfiaSkillId = getSkill("SINT"), TargetLevel = 4 },
-                    new TargetRoleSkill { RoleTemplateId = role1.Id, SfiaSkillId = getSkill("SCTY"), TargetLevel = 3 },
-
-                    // Data Scientist
-                    new TargetRoleSkill { RoleTemplateId = role2.Id, SfiaSkillId = getSkill("DATS"), TargetLevel = 4 },
-                    new TargetRoleSkill { RoleTemplateId = role2.Id, SfiaSkillId = getSkill("MLNG"), TargetLevel = 4 },
-                    new TargetRoleSkill { RoleTemplateId = role2.Id, SfiaSkillId = getSkill("PROG"), TargetLevel = 3 },
-
-                    // DevOps Engineer
-                    new TargetRoleSkill { RoleTemplateId = role3.Id, SfiaSkillId = getSkill("DEPL"), TargetLevel = 4 },
-                    new TargetRoleSkill { RoleTemplateId = role3.Id, SfiaSkillId = getSkill("RELM"), TargetLevel = 4 },
-                    new TargetRoleSkill { RoleTemplateId = role3.Id, SfiaSkillId = getSkill("PROG"), TargetLevel = 3 }
-                };
-
-                context.TargetRoleSkills.AddRange(targetSkills);
-                await context.SaveChangesAsync();
-            }
         }
     }
 }

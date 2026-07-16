@@ -120,6 +120,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ILearningPathUseCase, LearningPathUseCase>();
             services.AddScoped<ICvOptimizerUseCase, CvOptimizerUseCase>();
             services.AddScoped<ITargetRoleUseCase, TargetRoleUseCase>();
+            services.AddScoped<ISfiaSkillUseCase, SfiaSkillUseCase>();
 
             // Job Search & Saved Jobs
             services.AddScoped<IJobSearchRepository, JobSearchRepository>();

@@ -88,6 +88,7 @@ const ADMIN_NAV: NavItem[] = [
     icon: "Database",
     children: [
       { label: "Skills", href: `${APP_ROUTES.ADMIN.MASTER_DATA}/skills` },
+      { label: "SFIA Skills", href: `${APP_ROUTES.ADMIN.MASTER_DATA}/sfia-skills` },
       { label: "Majors", href: `${APP_ROUTES.ADMIN.MASTER_DATA}/majors` },
       { label: "Target Roles", href: `${APP_ROUTES.ADMIN.MASTER_DATA}/target-roles` }
     ]

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using Pgvector;
 namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ITHunterviewContext))]
-    partial class ITHunterviewContextModelSnapshot : ModelSnapshot
+    [Migration("20260715145240_AddAvailableLevelsToSfiaSkill")]
+    partial class AddAvailableLevelsToSfiaSkill
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -731,10 +734,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("raw_jd_text");
 
-                    b.Property<string>("SfiaExtractResult")
-                        .HasColumnType("text")
-                        .HasColumnName("sfia_extract_result");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1044,10 +1043,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("JobId")
                         .HasColumnType("uuid")
                         .HasColumnName("job_id");
-
-                    b.Property<string>("SfiaExtractResult")
-                        .HasColumnType("text")
-                        .HasColumnName("sfia_extract_result");
 
                     b.Property<DateTime?>("StartedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1834,33 +1829,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.ToTable("sfia_skills");
                 });
 
-            modelBuilder.Entity("ITHunterview.Domain.Entities.SfiaSkillLevel", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("description");
-
-                    b.Property<int>("Level")
-                        .HasColumnType("integer")
-                        .HasColumnName("level");
-
-                    b.Property<Guid>("SfiaSkillId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("sfia_skill_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SfiaSkillId");
-
-                    b.ToTable("sfia_skill_levels");
-                });
-
             modelBuilder.Entity("ITHunterview.Domain.Entities.SkillAliases", b =>
                 {
                     b.Property<int>("Id")
@@ -2523,17 +2491,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("ITHunterview.Domain.Entities.SfiaSkillLevel", b =>
-                {
-                    b.HasOne("ITHunterview.Domain.Entities.SfiaSkill", "SfiaSkill")
-                        .WithMany("Levels")
-                        .HasForeignKey("SfiaSkillId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("SfiaSkill");
-                });
-
             modelBuilder.Entity("ITHunterview.Domain.Entities.SkillAliases", b =>
                 {
                     b.HasOne("ITHunterview.Domain.Entities.Skills", "Skill")
@@ -2612,8 +2569,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.SfiaSkill", b =>
                 {
-                    b.Navigation("Levels");
-
                     b.Navigation("TargetRoleSkills");
                 });
 
