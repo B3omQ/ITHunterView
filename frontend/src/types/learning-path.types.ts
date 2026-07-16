@@ -14,6 +14,10 @@ export interface ExtractSfiaProfileResponse {
   currentSkills: CandidateSfiaSkillDto[];
 }
 
+export interface HistoryContextPreviewDto {
+  contextPreview: string;
+}
+
 export interface TargetRoleSkillDto {
   skillCode: string;
   skillName: string;

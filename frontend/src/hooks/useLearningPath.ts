@@ -21,14 +21,30 @@ export function useGenerateLearningPath() {
 }
 
 export function useExtractFromCvJd() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (matchScoreId: string) => learningPathService.extractFromCvJd(matchScoreId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['learning-paths', 'target-roles'] });
+    }
   });
 }
 
 export function useExtractFromInterview() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (sessionId: string) => learningPathService.extractFromInterview(sessionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['learning-paths', 'target-roles'] });
+    }
+  });
+}
+
+export function usePreviewContext(type: string, sourceId?: string) {
+  return useQuery({
+    queryKey: ['learning-paths', 'preview', type, sourceId],
+    queryFn: () => learningPathService.getPreviewContext(type, sourceId),
+    enabled: !!type && !!sourceId,
   });
 }
 

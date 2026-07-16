@@ -187,15 +187,24 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
                 RequiredSkills = t.RequiredSkills.Select(rs => new { rs.SfiaSkill.SkillCode, rs.SfiaSkill.SkillName })
             }));
 
+            var allSkills = await _context.SfiaSkills.ToListAsync();
+            var allSkillsJson = JsonSerializer.Serialize(allSkills.Select(s => new { s.SkillCode, s.SkillName }));
+
             string systemPrompt = @"You are an expert IT career coach and data extractor.
 Analyze the candidate's skill gaps identified from their " + sourceName + @" context.
-You will be provided a list of available Target Role Templates and their Required Skills.
+You will be provided a list of available Target Role Templates and their Required Skills, AND a list of all 147 SFIA skills.
 Your job is to:
 1. Select the BEST matching targetRoleTemplateId from the provided list that fits the candidate's context.
-2. For EACH required skill of the selected Target Role, estimate the candidate's CURRENT proficiency level (from 0 to 7, where 0 is no experience, 1-7 are SFIA levels). Use the context to make an educated guess.
+2. If AND ONLY IF absolutely no role from the list matches the candidate's context (e.g., highly specialized), leave targetRoleTemplateId null and generate a `newRole` by defining its name, description, and required skills from the SFIA list.
+3. For EACH required skill (either from the selected role OR the newly generated role), estimate the candidate's CURRENT proficiency level (from 0 to 7, where 0 is no experience, 1-7 are SFIA levels). Use the context to make an educated guess.
 The result MUST be a valid JSON object strictly following this schema:
 {
-  ""targetRoleTemplateId"": ""GUID_HERE"",
+  ""targetRoleTemplateId"": ""GUID_HERE"" | null,
+  ""newRole"": null | {
+      ""roleName"": ""..."",
+      ""description"": ""..."",
+      ""requiredSkills"": [ { ""skillCode"": ""..."", ""targetLevel"": 4 } ]
+  },
   ""currentSkills"": [
     { ""skillCode"": ""..."", ""currentLevel"": 3 }
   ]
@@ -205,6 +214,9 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
             var userPromptBuilder = new StringBuilder();
             userPromptBuilder.AppendLine("=== AVAILABLE TARGET ROLE TEMPLATES ===");
             userPromptBuilder.AppendLine(templateListJson);
+            userPromptBuilder.AppendLine();
+            userPromptBuilder.AppendLine("=== ALL SFIA SKILLS ===");
+            userPromptBuilder.AppendLine(allSkillsJson);
             userPromptBuilder.AppendLine();
             userPromptBuilder.AppendLine("=== CANDIDATE CONTEXT ===");
             userPromptBuilder.AppendLine(contextText);
@@ -219,8 +231,47 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
 
             try
             {
-                return JsonSerializer.Deserialize<ExtractSfiaProfileResponseDto>(aiResponseText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                var dto = JsonSerializer.Deserialize<ExtractSfiaProfileResponseDto>(aiResponseText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                        ?? throw new Exception("AI returned null object.");
+
+                if (dto.TargetRoleTemplateId == null && dto.NewRole != null)
+                {
+                    var newRole = new TargetRoleTemplate
+                    {
+                        Id = Guid.NewGuid(),
+                        RoleName = dto.NewRole.RoleName,
+                        Description = dto.NewRole.Description,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    
+                    foreach(var rs in dto.NewRole.RequiredSkills)
+                    {
+                        var dbSkill = await _context.SfiaSkills.FirstOrDefaultAsync(s => s.SkillCode == rs.SkillCode);
+                        if (dbSkill != null)
+                        {
+                            newRole.RequiredSkills.Add(new TargetRoleSkill
+                            {
+                                Id = Guid.NewGuid(),
+                                RoleTemplateId = newRole.Id,
+                                SfiaSkillId = dbSkill.Id,
+                                TargetLevel = rs.TargetLevel
+                            });
+                        }
+                    }
+
+                    _context.TargetRoleTemplates.Add(newRole);
+                    await _context.SaveChangesAsync();
+
+                    dto.TargetRoleTemplateId = newRole.Id;
+                }
+
+                if (dto.TargetRoleTemplateId == null || dto.TargetRoleTemplateId == Guid.Empty)
+                {
+                    throw new Exception("AI failed to return a valid Target Role.");
+                }
+
+                return dto;
             }
             catch (Exception ex)
             {
