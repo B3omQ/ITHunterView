@@ -216,7 +216,9 @@ export default function NewLearningPathPage() {
                 <Label htmlFor="targetRole">Target Role (SFIA Template) <span className="text-red-500">*</span></Label>
                 <Select value={targetRoleTemplateId} onValueChange={(v) => handleRoleChange(v || '')}>
                   <SelectTrigger id="targetRole">
-                    <SelectValue placeholder={isTargetRolesLoading ? "Loading templates..." : "Select a target role..."} />
+                    <SelectValue placeholder={isTargetRolesLoading ? "Loading templates..." : "Select a target role..."}>
+                      {selectedRoleTemplate?.roleName}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {targetRolesData?.data?.map(role => (
