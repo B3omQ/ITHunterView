@@ -439,27 +439,27 @@ export default function Home() {
             <div className="space-y-4">
               <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Platform</h4>
               <ul className="space-y-2.5 text-xs text-muted-foreground">
-                <li><Link href="#jobs" className="hover:text-primary transition-colors">Browse Jobs</Link></li>
-                <li><Link href="#mock-interview" className="hover:text-primary transition-colors">Mock Interviews</Link></li>
-                <li><Link href="/cv-builder" className="hover:text-primary transition-colors">CV Builder</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">Browse Jobs</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">Mock Interviews</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">CV Builder</Link></li>
               </ul>
             </div>
 
             <div className="space-y-4">
               <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Company</h4>
               <ul className="space-y-2.5 text-xs text-muted-foreground">
-                <li><Link href="/about" className="hover:text-primary transition-colors">About Us</Link></li>
-                <li><Link href="/blog" className="hover:text-primary transition-colors">Blog</Link></li>
-                <li><Link href="/press" className="hover:text-primary transition-colors">Press</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">About Us</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">Blog</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">Press</Link></li>
               </ul>
             </div>
 
             <div className="space-y-4">
               <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Resources</h4>
               <ul className="space-y-2.5 text-xs text-muted-foreground">
-                <li><Link href="/guides" className="hover:text-primary transition-colors">Interview Prep Guide</Link></li>
-                <li><Link href="/salaries" className="hover:text-primary transition-colors">Salary Insights</Link></li>
-                <li><Link href="/roadmap" className="hover:text-primary transition-colors">IT Career Roadmap</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">Interview Prep Guide</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">Salary Insights</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">IT Career Roadmap</Link></li>
               </ul>
             </div>
           </div>
@@ -467,27 +467,15 @@ export default function Home() {
           <div className="pt-8 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-muted-foreground">
             <p>&copy; {new Date().getFullYear()} ITHunterView. All rights reserved.</p>
             <div className="flex items-center gap-6">
-              <Link href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
-              <Link href="/terms" className="hover:text-primary transition-colors">Terms of Service</Link>
-              <Link href="/cookies" className="hover:text-primary transition-colors">Cookie Settings</Link>
+              <Link href="/#" className="hover:text-primary transition-colors">Privacy Policy</Link>
+              <Link href="/#" className="hover:text-primary transition-colors">Terms of Service</Link>
+              <Link href="/#" className="hover:text-primary transition-colors">Cookie Settings</Link>
             </div>
           </div>
         </div>
       </footer>
 
-      {/* Floating AI Copilot */}
-      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
-        <div className="glass-panel hidden sm:flex items-center px-4 py-2 rounded-full text-xs font-semibold text-foreground shadow-lg cursor-pointer hover:bg-white/80 transition-colors">
-          Need help? Ask our AI
-        </div>
-        <button className="w-14 h-14 bg-foreground text-background rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform hover:shadow-primary/20 relative group">
-          <span className="absolute -top-1 -right-1 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary border-2 border-background"></span>
-          </span>
-          <ZapIcon size={24} className="group-hover:animate-bounce" />
-        </button>
-      </div>
+
     </div>
   )
 }

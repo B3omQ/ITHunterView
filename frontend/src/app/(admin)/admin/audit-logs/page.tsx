@@ -169,7 +169,7 @@ export default function AuditLogsPage() {
   const totalItems = data?.data?.total || 0;
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-6">
+    <div className="w-full pb-8 text-foreground">
       {/* Toast Notification */}
       {toast && (
         <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-4 duration-300">

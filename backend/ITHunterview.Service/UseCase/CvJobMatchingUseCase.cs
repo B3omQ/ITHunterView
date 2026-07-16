@@ -785,5 +785,19 @@ namespace ITHunterview.Service.UseCase
                 PageSize = pageSize
             };
         }
+
+        public async Task DeleteMatchHistoryAsync(Guid jobId, Guid userId)
+        {
+            var matchRecord = await _context.CvJobMatchScores
+                .FirstOrDefaultAsync(m => m.Id == jobId && m.UserId == userId);
+
+            if (matchRecord == null)
+            {
+                throw new KeyNotFoundException("Match history not found or you do not have permission to delete it.");
+            }
+
+            _context.CvJobMatchScores.Remove(matchRecord);
+            await _context.SaveChangesAsync();
+        }
     }
 }

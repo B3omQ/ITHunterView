@@ -31,7 +31,7 @@ export default function LearningPathDashboard() {
   const paths = myPathsData?.data || [];
 
   return (
-    <div className="container mx-auto py-8 space-y-8 max-w-6xl">
+    <div className="w-full pb-8 space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Learning Paths</h1>
@@ -152,7 +152,7 @@ export default function LearningPathDashboard() {
             <div className="sticky top-8 flex flex-col items-center justify-center p-8">
               <div className="relative w-full max-w-md aspect-square flex items-center justify-center">
                 <DotLottieReact
-                  src="/images/ai-animation.json"
+                  src="/images/roadmap.json"
                   loop
                   autoplay
                   speed={0.25}

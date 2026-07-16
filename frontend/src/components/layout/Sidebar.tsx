@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, User, Briefcase, Bookmark, Bell, Settings, HelpCircle, LogOut,
   ChevronRight, Users, FileText, Building2, Shield, BarChart3, BrainCircuit,
-  ClipboardList, Database, CreditCard, MessageSquare, KeyRound, AlertCircle, Sparkles, History, Map, Coins
+  ClipboardList, Database, CreditCard, MessageSquare, KeyRound, AlertCircle, Sparkles, History, Map, Coins, FileSearch
 } from "lucide-react"
 import { useAuthStore } from "@/store/auth.store"
 import { Logo } from "@/components/layout/Logo"
@@ -37,6 +37,7 @@ const ICONS: Record<string, React.ReactNode> = {
   Sparkles: <Sparkles {...iconProps} />,
   History: <History {...iconProps} />,
   Map: <Map {...iconProps} />,
+  FileSearch: <FileSearch {...iconProps} />,
   Coins: <Coins {...iconProps} />,
 }
 
@@ -48,9 +49,10 @@ const CANDIDATE_NAV: NavItem[] = [
   { label: "My Profile", href: APP_ROUTES.CANDIDATE.PROFILE, icon: "User" },
   { label: "Job Listings", href: APP_ROUTES.CANDIDATE.JOBS, icon: "Briefcase" },
   { label: "Saved Jobs", href: APP_ROUTES.CANDIDATE.SAVED_JOBS, icon: "Bookmark" },
+  { label: "Applications", href: APP_ROUTES.CANDIDATE.APPLICATIONS, icon: "ClipboardList" },
   { label: "My Resume", href: APP_ROUTES.CANDIDATE.RESUME, icon: "FileText" },
   { label: "Mock Interview", href: APP_ROUTES.CANDIDATE.INTERVIEW, icon: "MessageSquare" },
-  { label: "Matching History", href: APP_ROUTES.CANDIDATE.CV_MATCHING, icon: "History" },
+  { label: "CV-JD Matching", href: APP_ROUTES.CANDIDATE.CV_MATCHING, icon: "FileSearch" },
   { label: "Learning Path", href: APP_ROUTES.CANDIDATE.LEARNING_PATH, icon: "Map" },
   { label: "Applications", href: APP_ROUTES.CANDIDATE.APPLICATIONS, icon: "ClipboardList" },
   { 
@@ -92,7 +94,6 @@ const STAFF_NAV: NavItem[] = [
   { label: "Prompts", href: APP_ROUTES.STAFF.PROMPTS, icon: "MessageSquare" },
   { label: "Question Bank", href: APP_ROUTES.STAFF.QUESTION_BANK, icon: "FileText" },
   { label: "Audit Logs", href: APP_ROUTES.STAFF.AUDIT_LOGS, icon: "ClipboardList" },
-  { label: "Notifications", href: APP_ROUTES.STAFF.NOTIFICATIONS, icon: "Bell" },
   { label: "Change Password", href: APP_ROUTES.STAFF.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
@@ -114,7 +115,6 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Subscriptions", href: APP_ROUTES.ADMIN.SUBSCRIPTIONS, icon: "CreditCard" },
   { label: "Finance", href: APP_ROUTES.ADMIN.FINANCE, icon: "BarChart3" },
   { label: "Platform Safety", href: APP_ROUTES.ADMIN.AUDIT_LOGS, icon: "Shield" },
-  { label: "Notifications", href: APP_ROUTES.ADMIN.NOTIFICATIONS, icon: "Bell" },
   { label: "Change Password", href: APP_ROUTES.ADMIN.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
@@ -187,9 +187,7 @@ export function Sidebar() {
             <div key={item.label} className="space-y-0.5">
               <div
                 onClick={() => {
-                  if (item.label === "Notifications" && (user?.role?.name === "candidate" || user?.role?.name === "recruiter")) {
-                    setIsNotificationOpen(true)
-                  } else if (item.children) {
+                  if (item.children) {
                     toggleExpand(item.label)
                   } else {
                     router.push(item.href)
@@ -251,9 +249,17 @@ export function Sidebar() {
       </nav>
 
       {/* 3. Bottom Actions & User Profile Footer */}
-      <div className="p-3 flex flex-col gap-2">
-        {/* Secondary Links */}
-
+      <div className="p-3 flex flex-col gap-2 border-t border-border/40">
+        {/* Global Actions (e.g., Notifications) */}
+        <div
+          onClick={() => setIsNotificationOpen(true)}
+          className="sidebar-item cursor-pointer flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium transition-all group text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+        >
+          <span className="text-muted-foreground group-hover:text-sidebar-foreground transition-colors">
+            <Bell size={18} strokeWidth={2.5} className="drop-shadow-sm" />
+          </span>
+          <span className="flex-1 truncate">Notifications</span>
+        </div>
 
         {/* User Card (Replaces top block & standalone logout) */}
         {user && (

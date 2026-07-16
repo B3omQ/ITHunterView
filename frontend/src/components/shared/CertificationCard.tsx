@@ -31,8 +31,7 @@ export function CertificationCard({ certification, onEdit, onDelete }: Certifica
   };
 
   return (
-    <Card className="group border border-border/30 bg-card/40 hover:bg-card/75 backdrop-blur-sm transition-all duration-300 rounded-xl overflow-hidden shadow-sm hover:shadow-md">
-      <CardContent className="p-5 sm:p-6 flex gap-4 items-start justify-between">
+    <div className="flex gap-4 py-4 first:pt-0 last:pb-0 border-b border-border/40 last:border-0 items-start justify-between group">
         <div className="flex gap-4 items-start flex-1">
           {/* Logo Cert Placeholder */}
           <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary flex-shrink-0">
@@ -41,17 +40,19 @@ export function CertificationCard({ certification, onEdit, onDelete }: Certifica
 
           {/* Certification Details */}
           <div className="space-y-1.5 flex-1">
-            <h3 className="text-base sm:text-lg font-bold text-foreground tracking-tight leading-snug">
+            <h3 className="text-base sm:text-lg font-bold text-foreground tracking-tight leading-none capitalize">
               {certification.name}
             </h3>
 
-            <p className="text-sm font-semibold text-muted-foreground/90">
+            <p className="text-sm font-semibold text-muted-foreground/90 capitalize mt-1.5">
               {certification.issuingOrganization}
             </p>
 
-            <div className="flex items-center gap-2 text-xs text-muted-foreground/80 font-medium">
-              <Calendar className="w-3.5 h-3.5 text-primary/70" />
-              <span>{formatPeriod(certification.issueDate, certification.expirationDate)}</span>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground/80 font-medium mt-1.5">
+              <span className="flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-primary/70" />
+                {formatPeriod(certification.issueDate, certification.expirationDate)}
+              </span>
             </div>
 
             {certification.credentialUrl && (
@@ -72,7 +73,7 @@ export function CertificationCard({ certification, onEdit, onDelete }: Certifica
 
         {/* Action Buttons */}
         {(onEdit || onDelete) && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus-within:opacity-100 ml-2">
+          <div className="flex items-center gap-1 ml-2">
             {onEdit && (
               <Button
                 variant="ghost"
@@ -95,7 +96,6 @@ export function CertificationCard({ certification, onEdit, onDelete }: Certifica
             )}
           </div>
         )}
-      </CardContent>
-    </Card>
+    </div>
   );
 }
