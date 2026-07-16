@@ -12,8 +12,10 @@ import { useAuthStore } from "@/store/auth.store"
 import { Logo } from "@/components/layout/Logo"
 import { APP_ROUTES } from "@/lib/constants"
 import { useGetMyCompany } from "@/hooks/useCompany"
+import { NotificationDialog } from "@/components/shared/NotificationDialog"
 
 // ---- Lucide icon map ----
+const iconProps = { size: 18, strokeWidth: 2.5, className: "drop-shadow-sm" };
 const ICONS: Record<string, React.ReactNode> = {
   LayoutDashboard: <LayoutDashboard size={18} />,
   User: <User size={18} />,

@@ -8,28 +8,20 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
-namespace ITHunterview.Service.Implementations.UseCase
+namespace ITHunterview.Service.UseCase
 {
     public class HardcodeCvJobMatchingUseCase : IHardcodeCvJobMatchingUseCase
     {
         private readonly ITHunterviewContext _context;
-        private readonly Microsoft.Extensions.Logging.ILogger<HardcodeCvJobMatchingUseCase> _logger;
 
-        public HardcodeCvJobMatchingUseCase(
-            ITHunterviewContext context,
-            Microsoft.Extensions.Logging.ILogger<HardcodeCvJobMatchingUseCase> logger)
+        public HardcodeCvJobMatchingUseCase(ITHunterviewContext context)
         {
             _context = context;
-            _logger = logger;
         }
 
         private string ExtractJsonField(string? jsonString, string fieldName)
         {
-            _logger.LogInformation("ExtractJsonField called for field: {FieldName}. jsonString is null: {IsNull}, is empty: {IsEmpty}, whitespace: {IsWhiteSpace}", 
-                fieldName, jsonString == null, jsonString == string.Empty, string.IsNullOrWhiteSpace(jsonString));
-
             if (string.IsNullOrWhiteSpace(jsonString)) return string.Empty;
             try
             {
@@ -135,7 +127,13 @@ namespace ITHunterview.Service.Implementations.UseCase
 
         private async Task ProcessMatching(Cvs cv, JobPostings job, Guid userId)
         {
-            _logger.LogWarning("ProcessMatching started for CV {CvId} and Job {JobId}. cv.ParsedData is: '{ParsedData}'", cv.Id, job.Id, cv.ParsedData ?? "NULL");
+            var existingScore = await _context.CvJobMatchScores
+                .FirstOrDefaultAsync(s => s.CvId == cv.Id && s.JobId == job.Id && s.UserId == userId);
+
+            if (existingScore != null && existingScore.Status != "Pending")
+            {
+                return; // Do not rescan or overwrite
+            }
 
             var cvTitle = ExtractJsonField(cv.ParsedData, "job_title");
             var cvSkills = ExtractJsonField(cv.ParsedData, "skills");
@@ -172,7 +170,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                 Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m }
             });
 
-            var existingScore = await _context.CvJobMatchScores
+            existingScore = await _context.CvJobMatchScores
                 .FirstOrDefaultAsync(s => s.CvId == cv.Id && s.JobId == job.Id && s.UserId == userId);
 
             if (existingScore != null)
@@ -180,6 +178,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                 existingScore.MatchScore = finalScore;
                 existingScore.UpdatedAt = DateTime.UtcNow;
                 existingScore.MatchDetails = details;
+                existingScore.Status = "Completed";
                 existingScore.MatchType = "Hardcode";
             }
             else
@@ -194,6 +193,7 @@ namespace ITHunterview.Service.Implementations.UseCase
                     MatchScore = finalScore,
                     MatchDetails = details,
                     MatchType = "Hardcode",
+                    Status = "Completed",
                     UpdatedAt = DateTime.UtcNow
                 });
             }
