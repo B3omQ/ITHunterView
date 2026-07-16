@@ -55,6 +55,13 @@ public class OptimizeController : ControllerBase
         return new ResponseBase<object>(result);
     }
 
+    [HttpGet("{id}/preview")]
+    public async Task<ActionResult<ResponseBase<string?>>> GetPreview(Guid id)
+    {
+        var base64Image = await _optimizeUseCase.GeneratePreviewAsync(id);
+        return new ResponseBase<string?>(base64Image);
+    }
+
     [HttpPost("{id}/generate")]
     public async Task<ActionResult<ResponseBase<string>>> GenerateFile(Guid id)
     {

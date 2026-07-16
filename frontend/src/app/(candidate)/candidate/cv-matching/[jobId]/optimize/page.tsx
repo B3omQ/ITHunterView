@@ -6,9 +6,10 @@ import { useGetMatchResult } from '@/hooks/useCvMatch';
 import { useMutation } from '@tanstack/react-query';
 import { optimizeService } from '@/services/optimize.service';
 import type { MatchingOutput } from '@/types/cv.types';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, FileText } from 'lucide-react';
 import { APP_ROUTES } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 import { useCvOptimizer } from '@/hooks/useCvOptimizer';
 import { OptimizerHeader } from '../../components/optimizer/OptimizerHeader';
@@ -59,6 +60,9 @@ export default function CvOptimizePage({ params }: { params: Promise<{ jobId: st
 
   const { state, handlers } = useCvOptimizer(matchOutput, sessionId);
 
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewImageBase64, setPreviewImageBase64] = useState<string | null>(null);
+
   const generateFileMutation = useMutation({
     mutationFn: () => optimizeService.generateFile(sessionId!),
     onSuccess: (res) => {
@@ -68,6 +72,22 @@ export default function CvOptimizePage({ params }: { params: Promise<{ jobId: st
       }
     },
     onError: () => toast.error("Failed to generate CV file.")
+  });
+
+  const getPreviewMutation = useMutation({
+    mutationFn: () => optimizeService.getPreview(sessionId!),
+    onSuccess: (res) => {
+      if (res.data) {
+        setPreviewImageBase64(res.data);
+        setIsPreviewOpen(true);
+      } else {
+        toast.info(
+          "Real-time preview is only available for PDF files. " +
+          "For Word Documents (.docx), please use the Download button to view changes."
+        );
+      }
+    },
+    onError: () => toast.error("Failed to load preview image.")
   });
 
   // Loading state
@@ -101,7 +121,11 @@ export default function CvOptimizePage({ params }: { params: Promise<{ jobId: st
   };
 
   const handlePreview = () => {
-    toast.info("Preview generation is running in the background. Feature coming soon!");
+    if (!sessionId) {
+      toast.error("Session not initialized.");
+      return;
+    }
+    getPreviewMutation.mutate();
   };
 
   const handleSave = () => {
@@ -150,6 +174,29 @@ export default function CvOptimizePage({ params }: { params: Promise<{ jobId: st
           />
         )}
       </main>
+
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" /> CV Preview
+            </DialogTitle>
+            <DialogDescription>
+              This is a real-time preview of your optimized CV.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto bg-muted p-4 rounded border mt-4 flex justify-center">
+            {getPreviewMutation.isPending ? (
+              <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-4">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <p>Generating preview image...</p>
+              </div>
+            ) : previewImageBase64 ? (
+              <img src={previewImageBase64} alt="CV Preview" className="max-w-full h-auto border shadow-sm bg-white" />
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

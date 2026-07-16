@@ -17,6 +17,7 @@ import { CvSelectionPanel } from '../components/CvSelectionPanel';
 import { JdSelectionPanel } from '../components/JdSelectionPanel';
 import { MatchingLoadingState } from '../components/MatchingLoadingState';
 import { useCvMatchingForm } from '@/hooks/useCvMatchingForm';
+import { toast } from 'sonner';
 
 function CvMatchingContent() {
   const router = useRouter();
@@ -129,6 +130,13 @@ function CvMatchingContent() {
                     const queryParams = new URLSearchParams();
                     if (state.cvUrl) queryParams.set('cvUrl', state.cvUrl);
                     if (state.selectedCvId) queryParams.set('cvId', state.selectedCvId);
+                    else if (state.matchedCvId) queryParams.set('cvId', state.matchedCvId);
+                    
+                    if (!queryParams.has('cvUrl') && !queryParams.has('cvId')) {
+                      toast.error("Cannot optimize: Original CV file not found. Please start a new matching session.");
+                      return;
+                    }
+
                     router.push(`${APP_ROUTES.CANDIDATE.CV_MATCHING}/${state.currentJobId}/optimize?${queryParams.toString()}`);
                   }}
                 >

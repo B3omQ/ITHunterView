@@ -46,6 +46,7 @@ export function useCvMatchingForm() {
   const [pollingJobId, setPollingJobId] = useState<string | null>(null);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [matchOutput, setMatchOutput] = useState<MatchingOutput | null>(null);
+  const [matchedCvId, setMatchedCvId] = useState<string | null>(null);
   
   const pollQuery = useGetMatchResult(pollingJobId);
 
@@ -70,6 +71,7 @@ export function useCvMatchingForm() {
         try {
           const parsed = JSON.parse(matchDetails) as MatchingOutput;
           setMatchOutput(parsed);
+          setMatchedCvId(pollQuery.data.data.cvId || null);
           setProgressPercent(100);
           setLoadingStep(MATCHING_LOADING_STEPS.length - 1);
           setTimeout(() => setStep('result'), 600);
@@ -225,6 +227,7 @@ export function useCvMatchingForm() {
       progressPercent,
       loadingStep,
       matchOutput,
+      matchedCvId,
       isUploading: uploadMutation.isPending,
       isSubmitDisabled: isSubmitDisabled()
     },

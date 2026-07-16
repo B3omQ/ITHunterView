@@ -29,6 +29,7 @@ public class OptimizeUseCase : IOptimizeUseCase
 
         string finalUrl = cvUrl ?? "";
         
+        string? dbFileType = null;
         // If cvId is provided but no url, fetch it from DB
         if (string.IsNullOrWhiteSpace(finalUrl) && cvId.HasValue)
         {
@@ -38,6 +39,7 @@ public class OptimizeUseCase : IOptimizeUseCase
             if (cv == null || string.IsNullOrWhiteSpace(cv.FileUrl))
                 throw new ArgumentException("CV not found or has no FileUrl.");
             finalUrl = cv.FileUrl;
+            dbFileType = cv.FileType;
         }
 
         using var client = _httpClientFactory.CreateClient();
@@ -51,19 +53,19 @@ public class OptimizeUseCase : IOptimizeUseCase
         ICvExtractor extractor;
         string fileType;
 
-        if (contentType.Contains("pdf") || finalUrl.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        if (contentType.Contains("pdf") || finalUrl.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) || (dbFileType != null && dbFileType.Contains("pdf", StringComparison.OrdinalIgnoreCase)))
         {
             extractor = _serviceProvider.GetRequiredService<ITHunterview.Service.Service.PdfCvExtractor>();
             fileType = "pdf";
         }
-        else if (contentType.Contains("wordprocessingml") || finalUrl.EndsWith(".docx", StringComparison.OrdinalIgnoreCase))
+        else if (contentType.Contains("wordprocessingml") || finalUrl.EndsWith(".docx", StringComparison.OrdinalIgnoreCase) || (dbFileType != null && dbFileType.Contains("word", StringComparison.OrdinalIgnoreCase)) || (dbFileType != null && dbFileType.Contains("docx", StringComparison.OrdinalIgnoreCase)))
         {
             extractor = _serviceProvider.GetRequiredService<ITHunterview.Service.Service.DocxCvExtractor>();
             fileType = "docx";
         }
         else
         {
-            throw new ArgumentException($"Unsupported file type: {contentType}");
+            throw new ArgumentException($"Unsupported file type. ContentType: {contentType}, FinalUrl: {finalUrl}, DbFileType: {dbFileType}");
         }
 
         var cvDoc = await extractor.ExtractAsync(fileStream);
@@ -115,32 +117,35 @@ public class OptimizeUseCase : IOptimizeUseCase
             // Do nothing to document, just mark skipped in DB (if tracking suggestion states)
         }
 
-        // Trigger async preview generation (fire and forget)
-        _ = Task.Run(async () => 
-        {
-            try 
-            {
-                using var scope = _serviceProvider.CreateScope();
-                ICvRenderer renderer = session.OriginalFileType == "pdf" 
-                    ? scope.ServiceProvider.GetRequiredService<ITHunterview.Service.Service.PdfCvRenderer>() 
-                    : scope.ServiceProvider.GetRequiredService<ITHunterview.Service.Service.DocxCvRenderer>();
-                
-                using var previewStream = await renderer.RenderPreviewImageAsync(session.CvDocument);
-                // Save stream to blob storage and notify via SignalR
-                // e.g. await blobService.UploadAsync($"previews/{sessionId}.png", previewStream);
-            }
-            catch (Exception)
-            {
-                // Log exception
-            }
-        });
+        // We no longer trigger background preview generation here, 
+        // because the frontend will call GeneratePreviewAsync on demand.
 
         // Mock new score logic: return the predefined scoreIfAccepted from the suggestion
         return new 
         { 
-            NewScore = 85.5, 
-            PreviewImageUrl = $"https://storage.local/previews/{sessionId}.png" // Placeholder
+            NewScore = 85.5
         };
+    }
+
+    public async Task<string?> GeneratePreviewAsync(Guid sessionId)
+    {
+        var session = await _sessionRepo.GetByIdAsync(sessionId);
+        if (session == null || session.CvDocument == null) 
+            throw new KeyNotFoundException("Session not found");
+
+        if (session.OriginalFileType == "pdf")
+        {
+            var renderer = _serviceProvider.GetRequiredService<ITHunterview.Service.Service.PdfCvRenderer>();
+            using var previewStream = await renderer.RenderPreviewImageAsync(session.CvDocument);
+            using var memoryStream = new MemoryStream();
+            await previewStream.CopyToAsync(memoryStream);
+            
+            return $"data:image/png;base64,{Convert.ToBase64String(memoryStream.ToArray())}";
+        }
+        
+        // For DOCX, we cannot easily generate an image without LibreOffice.
+        // Return null or a placeholder to let the frontend know.
+        return null;
     }
 
     public async Task<string> GenerateFinalFileAsync(Guid sessionId)
