@@ -377,28 +377,28 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
                     <Label htmlFor="firstName" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">First name <span className="text-destructive">*</span></Label>
-                    <input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} required className="w-full bg-transparent border-none outline-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="e.g. Tra" />
+                    <input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} required className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="e.g. Tra" />
                   </div>
                   <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
                     <Label htmlFor="lastName" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Last name <span className="text-destructive">*</span></Label>
-                    <input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} required className="w-full bg-transparent border-none outline-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="e.g. Pham" />
+                    <input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} required className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="e.g. Pham" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="border border-border/60 rounded-lg px-3 py-1.5 bg-muted/30 opacity-70 cursor-not-allowed shadow-sm">
                     <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Email address</Label>
-                    <input value={info?.email || ''} disabled className="w-full bg-transparent border-none outline-none p-0 text-sm font-medium text-foreground cursor-not-allowed truncate" />
+                    <input value={info?.email || ''} disabled className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground cursor-not-allowed truncate" />
                   </div>
                   <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
                     <Label htmlFor="phone" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Phone number</Label>
-                    <input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-transparent border-none outline-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="e.g. 0947852588" />
+                    <input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="e.g. 0947852588" />
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="locationType" className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider ml-1">Current Location <span className="text-destructive">*</span></Label>
-                  <div className="flex gap-3">
+                <div className="flex gap-4">
+                  <div className="flex-1 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+                    <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Current Location <span className="text-destructive">*</span></Label>
                     <LocationCombobox
                       value={locationType}
                       onChange={(val) => {
@@ -406,18 +406,21 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
                         if (val !== "Other") setLocation(val)
                         else setLocation("")
                       }}
-                      className={locationType === "Other" ? "w-1/3 h-12 rounded-lg" : "w-full h-12 rounded-lg"}
+                      className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none outline-none focus:ring-0 text-sm font-medium justify-between"
                     />
-                    {locationType === "Other" && (
-                      <Input
+                  </div>
+                  {locationType === "Other" && (
+                    <div className="flex-1 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+                      <Label htmlFor="location" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Specific address</Label>
+                      <input
                         id="location"
-                        placeholder="Specific address or district..."
+                        placeholder="e.g. 123 Main St..."
                         value={location}
                         onChange={(e) => setLocation(e.target.value)}
-                        className="flex-1 h-12 rounded-lg bg-card"
+                        className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50"
                       />
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-3 pt-4 border-t border-border/30">
@@ -427,21 +430,21 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
                     <Label htmlFor="linkedInUrl" className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1.5 mb-0.5">
                       <LinkedinIcon className="w-3 h-3" /> LinkedIn URL
                     </Label>
-                    <input id="linkedInUrl" value={linkedInUrl} onChange={(e) => setLinkedInUrl(e.target.value)} className="w-full bg-transparent border-none outline-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="https://linkedin.com/in/username" />
+                    <input id="linkedInUrl" value={linkedInUrl} onChange={(e) => setLinkedInUrl(e.target.value)} className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="https://linkedin.com/in/username" />
                   </div>
                   
                   <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
                     <Label htmlFor="portfolioUrl" className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1.5 mb-0.5">
                       <Globe className="w-3 h-3" /> Portfolio URL
                     </Label>
-                    <input id="portfolioUrl" value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} className="w-full bg-transparent border-none outline-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="https://yourportfolio.com" />
+                    <input id="portfolioUrl" value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="https://yourportfolio.com" />
                   </div>
                   
                   <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
                     <Label htmlFor="githubUrl" className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1.5 mb-0.5">
                       <GithubIcon className="w-3 h-3" /> GitHub URL
                     </Label>
-                    <input id="githubUrl" value={githubUrl} onChange={(e) => setGithubUrl(e.target.value)} className="w-full bg-transparent border-none outline-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="https://github.com/username" />
+                    <input id="githubUrl" value={githubUrl} onChange={(e) => setGithubUrl(e.target.value)} className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="https://github.com/username" />
                   </div>
                 </div>
 
