@@ -42,6 +42,7 @@ export default function CandidateInterviewActivePage() {
   const completeSessionMutation = useCompleteInterviewSession(sessionId);
 
   const [inputMessage, setInputMessage] = useState('');
+  const [isReportOpen, setIsReportOpen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatScrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -130,6 +131,13 @@ export default function CandidateInterviewActivePage() {
   const detail = detailRes?.data;
   const session = detail?.session;
   const messages = detail?.messages || [];
+
+  // Show report automatically if completed
+  useEffect(() => {
+    if (session?.status === 'COMPLETED') {
+      setIsReportOpen(true);
+    }
+  }, [session?.status]);
 
   // Local state messages for instant optimistic render
   const [localMessages, setLocalMessages] = useState<any[]>([]);
@@ -314,7 +322,7 @@ export default function CandidateInterviewActivePage() {
                 <Cpu className="h-4 w-4 text-primary mr-2" />
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-popover border-border text-popover-foreground">
+              <SelectContent alignItemWithTrigger={false} className="bg-popover border-border text-popover-foreground">
                 <SelectItem value="Gemini">Gemini 2.5 Flash</SelectItem>
                 <SelectItem value="OpenAI">GPT-4o (OpenAI)</SelectItem>
                 <SelectItem value="Claude">Claude 3.5 Sonnet</SelectItem>
@@ -722,9 +730,17 @@ export default function CandidateInterviewActivePage() {
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center justify-center p-4 bg-primary/5 border border-primary/20 rounded-2xl text-muted-foreground gap-2">
-                <Check className="h-5 w-5 text-emerald-600 shrink-0" />
-                <span className="text-sm">Buổi phỏng vấn thử này đã hoàn thành. Hãy quay lại hoặc xem kết quả ở trên.</span>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-primary/5 border border-primary/20 rounded-2xl animate-in fade-in duration-300">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0" />
+                  <span className="text-sm font-semibold text-foreground">Buổi phỏng vấn thử này đã hoàn thành.</span>
+                </div>
+                <Button 
+                  onClick={() => setIsReportOpen(true)}
+                  className="bg-primary hover:bg-primary/95 text-white font-semibold rounded-xl flex items-center gap-2 shadow-sm shrink-0 w-full sm:w-auto h-10 px-5"
+                >
+                  <Sparkles className="h-4.5 w-4.5 text-white" /> Xem đánh giá tổng quan
+                </Button>
               </div>
             )}
             <div className="flex justify-between items-center mt-2 px-1">
@@ -739,6 +755,130 @@ export default function CandidateInterviewActivePage() {
           </div>
         </div>
       </div>
+
+      {/* Overall Report Popup Modal */}
+      {isReportOpen && session.status === 'COMPLETED' && detail?.report && (() => {
+        const report = detail.report;
+        const parsedReport = (() => {
+          const trimmed = report.overallFeedback.trim();
+          if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+            try {
+              return JSON.parse(trimmed);
+            } catch (e) {
+              return null;
+            }
+          }
+          return null;
+        })();
+
+        const overallScore = parsedReport?.total_score ?? report.totalScore ?? 0;
+        const overallFeedback = parsedReport?.overall_feedback ?? report.overallFeedback;
+        const strengths = parsedReport?.strengths ?? [];
+        const improvements = parsedReport?.improvements ?? [];
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="relative w-full max-w-3xl bg-card border border-border shadow-2xl rounded-3xl overflow-hidden max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
+              
+              {/* Close Button */}
+              <button 
+                onClick={() => setIsReportOpen(false)}
+                className="absolute top-4 right-4 text-muted-foreground hover:text-foreground hover:bg-muted p-2 rounded-xl transition-all z-10"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
+              <div className="overflow-y-auto p-6 md:p-8 space-y-6">
+                {/* Header Section */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border/80 pb-5 pr-8">
+                  <div className="space-y-1">
+                    <h3 className="text-lg md:text-xl font-extrabold text-foreground flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-primary" /> BÁO CÁO ĐÁNH GIÁ TỔNG QUAN
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Tổng hợp kết quả phỏng vấn thử từ AI Interviewer
+                    </p>
+                  </div>
+                  {/* Score Badge */}
+                  <div className="flex items-center gap-3 bg-card px-4 py-2.5 rounded-xl border border-border shadow-sm shrink-0">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                      Tổng điểm năng lực
+                    </span>
+                    <div className="flex items-baseline gap-0.5">
+                      <span className="text-2xl font-black text-primary">{overallScore}</span>
+                      <span className="text-xs text-muted-foreground">/100</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* General overview text */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-primary uppercase tracking-wider">
+                    Đánh giá chung
+                  </h4>
+                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-line bg-muted/20 border border-border/40 rounded-2xl p-4">
+                    {overallFeedback}
+                  </p>
+                </div>
+
+                {/* Strengths & Improvements */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Strengths */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckCircle className="h-4 w-4" /> Điểm mạnh nổi bật
+                    </h4>
+                    {strengths.length > 0 ? (
+                      <ul className="space-y-2 bg-emerald-50/10 border border-emerald-500/10 rounded-2xl p-4">
+                        {strengths.map((str: string, idx: number) => (
+                          <li key={idx} className="flex items-start gap-2 text-xs md:text-sm text-muted-foreground">
+                            <Check className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                            <span className="leading-relaxed">{str}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">Không có thông tin.</p>
+                    )}
+                  </div>
+
+                  {/* Improvements */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <AlertCircle className="h-4 w-4" /> Khía cạnh cần cải thiện
+                    </h4>
+                    {improvements.length > 0 ? (
+                      <ul className="space-y-2 bg-amber-50/10 border border-amber-500/10 rounded-2xl p-4">
+                        {improvements.map((imp: string, idx: number) => (
+                          <li key={idx} className="flex items-start gap-2 text-xs md:text-sm text-muted-foreground">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0 mt-2 ml-1.5" />
+                            <span className="leading-relaxed">{imp}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">Không có thông tin.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="border-t border-border p-4 bg-muted/20 flex justify-end gap-3 shrink-0">
+                <Button 
+                  onClick={() => setIsReportOpen(false)}
+                  className="bg-primary hover:bg-primary/95 text-white font-semibold rounded-xl px-6"
+                >
+                  Đóng
+                </Button>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

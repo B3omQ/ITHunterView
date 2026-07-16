@@ -6,5 +6,6 @@ namespace ITHunterview.Service.DTOs.Interview
     {
         public InterviewSessionDto Session { get; set; } = null!;
         public List<InterviewAnswerDto> Messages { get; set; } = new();
+        public InterviewReportDto? Report { get; set; }
     }
 }
