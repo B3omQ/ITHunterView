@@ -16,6 +16,7 @@ export interface ExtractSfiaProfileResponse {
 export interface TargetRoleSkillDto {
   skillCode: string;
   skillName: string;
+  availableLevels?: string;
   targetLevel: number;
 }
 

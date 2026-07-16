@@ -29,7 +29,7 @@ export default function NewLearningPathPage() {
   const { data: targetRolesData, isLoading: isTargetRolesLoading } = useTargetRoles();
 
   const [targetRoleTemplateId, setTargetRoleTemplateId] = useState('');
-  const [currentSkills, setCurrentSkills] = useState<{ skillCode: string; currentLevel: number }[]>([]);
+  const [currentSkills, setCurrentSkills] = useState<{ skillCode: string; currentLevel: number | null }[]>([]);
   
   const [selectedMatchScoreId, setSelectedMatchScoreId] = useState<string>('');
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
@@ -41,13 +41,18 @@ export default function NewLearningPathPage() {
 
 
   const handleSkillLevelChange = (skillCode: string, level: number) => {
-    setCurrentSkills(prev => prev.map(s => s.skillCode === skillCode ? { ...s, currentLevel: level } : s));
+    setCurrentSkills(prev => {
+      if (prev.some(s => s.skillCode === skillCode)) {
+        return prev.map(s => s.skillCode === skillCode ? { ...s, currentLevel: level } : s);
+      }
+      return [...prev, { skillCode, currentLevel: level }];
+    });
   };
 
   const handleGenerate = () => {
     generateMutation.mutate({
       targetRoleTemplateId,
-      currentSkills,
+      currentSkills: currentSkills.filter(s => s.currentLevel !== null) as { skillCode: string, currentLevel: number }[],
     });
   };
 
@@ -55,7 +60,7 @@ export default function NewLearningPathPage() {
     setTargetRoleTemplateId(roleId);
     const template = targetRolesData?.data?.find(r => r.id === roleId);
     if (template) {
-      setCurrentSkills(template.requiredSkills.map(rs => ({ skillCode: rs.skillCode, currentLevel: 0 })));
+      setCurrentSkills(template.requiredSkills.map(rs => ({ skillCode: rs.skillCode, currentLevel: null })));
     } else {
       setCurrentSkills([]);
     }
@@ -89,7 +94,15 @@ export default function NewLearningPathPage() {
   };
 
   const isGenerateDisabled = () => {
-    return !targetRoleTemplateId || generateMutation.isPending;
+    if (!targetRoleTemplateId || generateMutation.isPending) return true;
+    if (selectedRoleTemplate) {
+      const allAssessed = selectedRoleTemplate.requiredSkills.every(reqSkill => {
+        const skillState = currentSkills.find(s => s.skillCode === reqSkill.skillCode);
+        return skillState && skillState.currentLevel !== null;
+      });
+      return !allAssessed;
+    }
+    return true;
   };
 
   const isAnyError = generateMutation.isError || extractFromCvJdMutation.isError || extractFromInterviewMutation.isError;
@@ -225,36 +238,72 @@ export default function NewLearningPathPage() {
                 
                 <div className="space-y-6">
                   {selectedRoleTemplate.requiredSkills.map(skill => {
-                    const currentLvl = currentSkills.find(s => s.skillCode === skill.skillCode)?.currentLevel || 0;
+                    const currentLvlState = currentSkills.find(s => s.skillCode === skill.skillCode)?.currentLevel;
+                    const isAssessed = currentLvlState !== undefined && currentLvlState !== null;
+                    
                     return (
-                      <div key={skill.skillCode} className="space-y-2 border p-4 rounded-md">
-                        <div className="flex justify-between items-center mb-2">
+                      <div key={skill.skillCode} className={`space-y-4 border p-5 rounded-xl transition-colors ${isAssessed ? 'border-primary/20 bg-primary/5' : 'border-border'}`}>
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2">
                           <div>
-                            <h4 className="font-medium">{skill.skillName} ({skill.skillCode})</h4>
-                            <p className="text-xs text-muted-foreground">Target Level: {skill.targetLevel}</p>
+                            <h4 className="font-medium text-foreground flex items-center gap-2">
+                              {skill.skillName} 
+                              <span className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">{skill.skillCode}</span>
+                            </h4>
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                                Target Level {skill.targetLevel}
+                              </span>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <span className="text-sm font-semibold text-primary">Your Level: {currentLvl}</span>
+                          <div className="text-left sm:text-right">
+                            {isAssessed ? (
+                              <span className="text-sm font-semibold text-primary">Assessed Level: {currentLvlState}</span>
+                            ) : (
+                              <span className="text-sm font-medium text-destructive flex items-center gap-1.5">
+                                <Info size={14} /> Action Required
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <input 
-                          type="range" 
-                          min="0" 
-                          max="7" 
-                          step="1" 
-                          value={currentLvl} 
-                          onChange={(e) => handleSkillLevelChange(skill.skillCode, parseInt(e.target.value))}
-                          className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer"
-                        />
-                        <div className="flex justify-between text-xs text-muted-foreground px-1 mt-1">
-                          <span className="w-4 text-left">0</span>
-                          <span className="w-4 text-center">1</span>
-                          <span className="w-4 text-center">2</span>
-                          <span className="w-4 text-center">3</span>
-                          <span className="w-4 text-center">4</span>
-                          <span className="w-4 text-center">5</span>
-                          <span className="w-4 text-center">6</span>
-                          <span className="w-4 text-right">7</span>
+                        
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => handleSkillLevelChange(skill.skillCode, 0)}
+                            className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all ${currentLvlState === 0 ? 'bg-destructive/10 text-destructive border-destructive/30' : 'bg-background hover:bg-muted text-muted-foreground border-border'}`}
+                          >
+                            0 - No experience
+                          </button>
+                          
+                          {[1, 2, 3, 4, 5, 6, 7].map(lvl => {
+                            const cleanLevels = skill.availableLevels ? skill.availableLevels.replace(/"/g, '') : '';
+                            const validLevels = cleanLevels ? cleanLevels.split(',').map(s => Number(s.trim())) : [1, 2, 3, 4, 5, 6, 7];
+                            if (!validLevels.includes(lvl)) return null;
+
+                            const isTarget = lvl === skill.targetLevel;
+                            const isSelected = currentLvlState === lvl;
+                            
+                            return (
+                              <button
+                                key={lvl}
+                                type="button"
+                                onClick={() => handleSkillLevelChange(skill.skillCode, lvl)}
+                                className={`
+                                  relative px-4 py-2 text-sm font-medium rounded-lg border transition-all
+                                  ${isSelected ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'bg-background hover:bg-muted text-foreground border-border'}
+                                  ${isTarget && !isSelected ? 'ring-2 ring-amber-500/50 ring-offset-1 ring-offset-background' : ''}
+                                `}
+                                title={isTarget ? "Target Required Level" : `Level ${lvl}`}
+                              >
+                                {lvl}
+                                {isTarget && !isSelected && (
+                                  <span className="absolute -top-2 -right-2 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center animate-pulse">
+                                    <span className="w-1.5 h-1.5 bg-background rounded-full"></span>
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     );
