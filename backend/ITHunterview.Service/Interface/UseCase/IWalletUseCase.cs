@@ -9,8 +9,9 @@ namespace ITHunterview.Service.Interface.UseCase
     {
         Task<ResponseBase<WalletBalanceDto>> GetWalletBalanceAsync(Guid userId);
         Task<ResponseBase<PagedResult<WalletTransactionDto>>> GetWalletTransactionsAsync(Guid userId, int page, int pageSize);
-        Task<ResponseBase<PaymentDto>> CreatePaymentRequestAsync(Guid userId, CreatePaymentDto dto);
+        Task<ResponseBase<CreatePaymentResponseDto>> CreatePaymentRequestAsync(Guid userId, CreatePaymentDto dto);
         Task<ResponseBase<PaymentDto>> ProcessPaymentCallbackAsync(Guid actorUserId, PaymentSimulationDto simulationDto);
+        Task ProcessWebhookAsync(long orderCode, string transactionDateTime);
         Task<ResponseBase<PagedResult<PaymentDto>>> GetPagedPaymentsAsync(int page, int pageSize);
     }
 }

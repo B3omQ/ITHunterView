@@ -26,6 +26,14 @@ namespace ITHunterview.Service.DTOs.Wallet
         public PaymentGateway PaymentGateway { get; set; }
     }
 
+    public class CreatePaymentResponseDto
+    {
+        public Guid PaymentId { get; set; }
+        public long OrderCode { get; set; }
+        public string CheckoutUrl { get; set; } = "";
+        public string QrCode { get; set; } = "";
+    }
+
     public class PaymentDto
     {
         public Guid Id { get; set; }

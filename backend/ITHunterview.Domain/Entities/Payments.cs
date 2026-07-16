@@ -12,6 +12,9 @@ namespace ITHunterview.Domain.Entities
         [Column("id")]
         public Guid Id { get; set; }
 
+        [Column("order_code")]
+        public long? OrderCode { get; set; }
+
         [Column("user_id")]
         public Guid UserId { get; set; }
 

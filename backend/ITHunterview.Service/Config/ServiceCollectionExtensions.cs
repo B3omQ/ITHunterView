@@ -12,6 +12,7 @@ using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.UseCase;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace ITHunterview.Service.Config
 {
@@ -71,6 +72,14 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IFileUploadService, CloudinaryService>();
             services.AddHttpClient<IAiEmbeddingService, GeminiEmbeddingService>();
 
+            // PayOS Payment Gateway
+            services.Configure<PayOsSettings>(configuration.GetSection("PayOS"));
+            services.AddSingleton<PayOS.PayOSClient>(sp =>
+            {
+                var settings = sp.GetRequiredService<IOptions<PayOsSettings>>().Value;
+                return new PayOS.PayOSClient(settings.ClientId, settings.ApiKey, settings.ChecksumKey);
+            });
+
             // Matching AI Services
             services.AddScoped<ICvTextExtractorService, CvTextExtractorService>();
             services.AddScoped<IJdExtractionService, JdExtractionService>();
@@ -99,6 +108,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IUserGovernanceUseCase, UserGovernanceUseCase>();
             services.AddScoped<IAuditLogUseCase, AuditLogUseCase>();
             services.AddScoped<ISubscriptionAdminUseCase, SubscriptionAdminUseCase>();
+            services.AddScoped<IPublicSubscriptionUseCase, PublicSubscriptionUseCase>();
             services.AddScoped<ICoinConfigUseCase, CoinConfigUseCase>();
             services.AddScoped<ICandidateFeatureUsageUseCase, CandidateFeatureUsageUseCase>();
             services.AddScoped<IWalletUseCase, WalletUseCase>();
