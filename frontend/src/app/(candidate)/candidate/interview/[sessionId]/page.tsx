@@ -322,7 +322,7 @@ export default function CandidateInterviewActivePage() {
                 <Cpu className="h-4 w-4 text-primary mr-2" />
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-popover border-border text-popover-foreground">
+              <SelectContent alignItemWithTrigger={false} className="bg-popover border-border text-popover-foreground">
                 <SelectItem value="Gemini">Gemini 2.5 Flash</SelectItem>
                 <SelectItem value="OpenAI">GPT-4o (OpenAI)</SelectItem>
                 <SelectItem value="Claude">Claude 3.5 Sonnet</SelectItem>
