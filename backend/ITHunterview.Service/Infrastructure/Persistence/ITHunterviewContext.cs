@@ -55,6 +55,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         public DbSet<InterviewReports> InterviewReports { get; set; } = null!;
         public DbSet<LearningPaths> LearningPaths { get; set; } = null!;
         public DbSet<AiApiUsageLogs> AiApiUsageLogs { get; set; } = null!;
+        public DbSet<OptimizeSession> OptimizeSessions { get; set; } = null!;
 
         // SFIA & Learning Paths
         public DbSet<SfiaSkill> SfiaSkills { get; set; } = null!;
@@ -362,6 +363,12 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                       .WithMany(s => s.Levels)
                       .HasForeignKey(e => e.SfiaSkillId)
                       .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // OptimizeSession
+            modelBuilder.Entity<OptimizeSession>(entity =>
+            {
+                entity.HasKey(e => e.Id);
             });
         }
     }

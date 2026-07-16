@@ -44,6 +44,7 @@ export function useCvMatchingForm() {
   const matchMutation = useMatchCvJd();
   
   const [pollingJobId, setPollingJobId] = useState<string | null>(null);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [matchOutput, setMatchOutput] = useState<MatchingOutput | null>(null);
   
   const pollQuery = useGetMatchResult(pollingJobId);
@@ -56,6 +57,7 @@ export function useCvMatchingForm() {
     const urlJobId = searchParams.get('jobId');
     if (urlJobId && !pollingJobId && step === 'select') {
       setPollingJobId(urlJobId);
+      setCurrentJobId(urlJobId);
       setStep('loading');
     }
   }, [searchParams, pollingJobId, step]);
@@ -193,6 +195,7 @@ export function useCvMatchingForm() {
       const res = await matchMutation.mutateAsync(payload);
       if (res.data) {
         setPollingJobId(res.data);
+        setCurrentJobId(res.data);
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Error matching CV and JD');
@@ -218,6 +221,7 @@ export function useCvMatchingForm() {
       jdTab,
       jdText,
       selectedJobId,
+      currentJobId,
       progressPercent,
       loadingStep,
       matchOutput,

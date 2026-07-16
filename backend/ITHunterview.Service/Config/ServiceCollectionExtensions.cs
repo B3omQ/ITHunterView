@@ -54,6 +54,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IInterviewSessionRepository, InterviewSessionRepository>();
             services.AddScoped<IInterviewAnswerRepository, InterviewAnswerRepository>();
             services.AddScoped<ILearningPathRepository, LearningPathRepository>();
+            services.AddScoped<IOptimizeSessionRepository, OptimizeSessionRepository>();
 
             // Application Services
             services.AddHttpClient();
@@ -82,6 +83,11 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IScoringAggregatorService, ScoringAggregatorService>();
             services.AddScoped<ISummarizerService, SummarizerService>();
 
+            services.AddScoped<PdfCvExtractor>();
+            services.AddScoped<DocxCvExtractor>();
+            services.AddScoped<PdfCvRenderer>();
+            services.AddScoped<DocxCvRenderer>();
+
             // Use Cases — Auth
             services.AddScoped<IAuthUseCase, AuthUseCase>();
             services.AddScoped<IJobPostingsUseCase, JobPostingsUseCase>();
@@ -106,6 +112,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IInterviewQuestionBankUseCase, InterviewQuestionBankUseCase>();
             services.AddScoped<IPromptAdminUseCase, PromptAdminUseCase>();
             services.AddScoped<INotificationUseCase, NotificationUseCase>();
+            services.AddScoped<IOptimizeUseCase, OptimizeUseCase>();
 
 
 

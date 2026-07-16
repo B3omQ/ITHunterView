@@ -122,6 +122,15 @@ function CvMatchingContent() {
               <Button variant="outline" onClick={() => setters.setStep('select')}>
                 Analyze Another
               </Button>
+              {state.matchOutput?.improvements && state.matchOutput.improvements.some(imp => imp.example?.before && imp.example?.after) && (
+                <Button 
+                  className="bg-primary hover:bg-primary/90 gap-2"
+                  onClick={() => router.push(`${APP_ROUTES.CANDIDATE.CV_MATCHING}/${state.currentJobId}/optimize`)}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Optimize CV
+                </Button>
+              )}
             </div>
           </div>
 
