@@ -47,11 +47,11 @@ const CANDIDATE_NAV: NavItem[] = [
   { label: "My Profile", href: APP_ROUTES.CANDIDATE.PROFILE, icon: "User" },
   { label: "Job Listings", href: APP_ROUTES.CANDIDATE.JOBS, icon: "Briefcase" },
   { label: "Saved Jobs", href: APP_ROUTES.CANDIDATE.SAVED_JOBS, icon: "Bookmark" },
+  { label: "Applications", href: APP_ROUTES.CANDIDATE.APPLICATIONS, icon: "ClipboardList" },
   { label: "My Resume", href: APP_ROUTES.CANDIDATE.RESUME, icon: "FileText" },
   { label: "Mock Interview", href: APP_ROUTES.CANDIDATE.INTERVIEW, icon: "MessageSquare" },
   { label: "Matching History", href: APP_ROUTES.CANDIDATE.CV_MATCHING, icon: "History" },
   { label: "Learning Path", href: APP_ROUTES.CANDIDATE.LEARNING_PATH, icon: "Map" },
-  { label: "Applications", href: APP_ROUTES.CANDIDATE.APPLICATIONS, icon: "ClipboardList" },
   { label: "Change Password", href: APP_ROUTES.CANDIDATE.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
