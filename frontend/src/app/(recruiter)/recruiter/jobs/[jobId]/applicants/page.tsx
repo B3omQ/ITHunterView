@@ -200,8 +200,8 @@ export default function JobApplicantsPage() {
   const totalPages = Math.ceil(totalCount / pageSize)
 
   return (
-    <div className="min-h-screen bg-background py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen bg-background transition-colors duration-200">
+      <div className="max-w-7xl mx-auto pt-6 pb-10 px-4 md:px-8 space-y-6">
         
         {/* Header Breadcrumb & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
