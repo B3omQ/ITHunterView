@@ -71,35 +71,65 @@ namespace ITHunterview.Service.UseCase
         {
             await EnforceMaxPathsAsync(candidateId);
 
-            var template = await _context.TargetRoleTemplates
-                .Include(t => t.RequiredSkills)
-                .ThenInclude(rs => rs.SfiaSkill)
-                .FirstOrDefaultAsync(t => t.Id == request.TargetRoleTemplateId);
-
-            if (template == null)
-            {
-                throw new ArgumentException("Target role template not found.");
-            }
-
-            // 1. Gap Calculation
+            string roleName = string.Empty;
             var gaps = new List<object>();
-            var userSkillsDict = request.CurrentSkills.ToDictionary(s => s.SkillCode, s => s.CurrentLevel);
 
-            foreach (var requiredSkill in template.RequiredSkills)
+            if (request.TargetRoleTemplateId != null && request.TargetRoleTemplateId != Guid.Empty)
             {
-                int currentLevel = userSkillsDict.ContainsKey(requiredSkill.SfiaSkill.SkillCode) ? userSkillsDict[requiredSkill.SfiaSkill.SkillCode] : 0;
-                int gap = requiredSkill.TargetLevel - currentLevel;
+                var template = await _context.TargetRoleTemplates
+                    .Include(t => t.RequiredSkills)
+                    .ThenInclude(rs => rs.SfiaSkill)
+                    .FirstOrDefaultAsync(t => t.Id == request.TargetRoleTemplateId);
 
-                if (gap > 0)
+                if (template == null)
+                    throw new ArgumentException("Target role template not found.");
+
+                roleName = template.RoleName;
+                var userSkillsDict = request.CurrentSkills.ToDictionary(s => s.SkillCode, s => s.CurrentLevel);
+
+                foreach (var requiredSkill in template.RequiredSkills)
                 {
-                    gaps.Add(new
+                    int currentLevel = userSkillsDict.ContainsKey(requiredSkill.SfiaSkill.SkillCode) ? userSkillsDict[requiredSkill.SfiaSkill.SkillCode] : 0;
+                    int gap = requiredSkill.TargetLevel - currentLevel;
+
+                    if (gap > 0)
                     {
-                        skill_code = requiredSkill.SfiaSkill.SkillCode,
-                        skill_name = requiredSkill.SfiaSkill.SkillName,
-                        current_level = currentLevel,
-                        target_level = requiredSkill.TargetLevel,
-                        gap_delta = gap
-                    });
+                        gaps.Add(new
+                        {
+                            skill_code = requiredSkill.SfiaSkill.SkillCode,
+                            skill_name = requiredSkill.SfiaSkill.SkillName,
+                            current_level = currentLevel,
+                            target_level = requiredSkill.TargetLevel,
+                            gap_delta = gap
+                        });
+                    }
+                }
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(request.CustomTargetRoleName) || request.CustomTargetSkills == null || !request.CustomTargetSkills.Any())
+                {
+                    throw new ArgumentException("Custom target role name and skills are required when TargetRoleTemplateId is not provided.");
+                }
+
+                roleName = request.CustomTargetRoleName;
+                var allSkills = await _context.SfiaSkills.ToDictionaryAsync(s => s.SkillCode, s => s.SkillName);
+
+                foreach (var customSkill in request.CustomTargetSkills)
+                {
+                    int gap = customSkill.TargetLevel - customSkill.CurrentLevel;
+                    if (gap > 0)
+                    {
+                        string skillName = allSkills.ContainsKey(customSkill.SkillCode) ? allSkills[customSkill.SkillCode] : customSkill.SkillCode;
+                        gaps.Add(new
+                        {
+                            skill_code = customSkill.SkillCode,
+                            skill_name = skillName,
+                            current_level = customSkill.CurrentLevel,
+                            target_level = customSkill.TargetLevel,
+                            gap_delta = gap
+                        });
+                    }
                 }
             }
 
@@ -130,7 +160,7 @@ Rule: Create one module per 1 level jump per skill. If gap is 2 levels, create 2
 Do NOT include any markdown blocks like ```json, just return the raw JSON object.";
 
             var userPromptBuilder = new StringBuilder();
-            userPromptBuilder.AppendLine($"Target Role: {template.RoleName}");
+            userPromptBuilder.AppendLine($"Target Role: {roleName}");
             userPromptBuilder.AppendLine();
             
             userPromptBuilder.AppendLine("=== SFIA SKILL GAPS ===");
@@ -157,36 +187,62 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
         // ─────────────────────────────────────────────────────────────
         public async Task<ExtractSfiaProfileResponseDto> ExtractFromCvJdAsync(Guid candidateId, Guid matchScoreId)
         {
+            var matchScore = await _context.CvJobMatchScores.FirstOrDefaultAsync(m => m.Id == matchScoreId);
+            if (matchScore != null && !string.IsNullOrWhiteSpace(matchScore.SfiaExtractResult))
+            {
+                try
+                {
+                    var cached = JsonSerializer.Deserialize<ExtractSfiaProfileResponseDto>(matchScore.SfiaExtractResult, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (cached != null) return cached;
+                }
+                catch { /* Ignore and re-extract if parse fails */ }
+            }
+
             var matchContext = await BuildMatchContextAsync(candidateId, matchScoreId);
             if (string.IsNullOrWhiteSpace(matchContext))
                 throw new InvalidOperationException("Chưa có dữ liệu matching CV-JD.");
 
-            return await PerformExtractionAsync(matchContext, "CV-JD Matching");
+            var result = await PerformExtractionAsync(matchContext, "CV-JD Matching");
+
+            if (matchScore != null)
+            {
+                matchScore.SfiaExtractResult = JsonSerializer.Serialize(result);
+                await _context.SaveChangesAsync();
+            }
+
+            return result;
         }
 
         public async Task<ExtractSfiaProfileResponseDto> ExtractFromInterviewAsync(Guid candidateId, Guid sessionId)
         {
+            var session = await _context.InterviewSessions.FirstOrDefaultAsync(s => s.Id == sessionId);
+            if (session != null && !string.IsNullOrWhiteSpace(session.SfiaExtractResult))
+            {
+                try
+                {
+                    var cached = JsonSerializer.Deserialize<ExtractSfiaProfileResponseDto>(session.SfiaExtractResult, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (cached != null) return cached;
+                }
+                catch { /* Ignore and re-extract if parse fails */ }
+            }
+
             var interviewContext = await BuildInterviewContextAsync(candidateId, sessionId);
             if (string.IsNullOrWhiteSpace(interviewContext))
                 throw new InvalidOperationException("Chưa có dữ liệu phỏng vấn thử.");
 
-            return await PerformExtractionAsync(interviewContext, "Mock Interview");
+            var result = await PerformExtractionAsync(interviewContext, "Mock Interview");
+
+            if (session != null)
+            {
+                session.SfiaExtractResult = JsonSerializer.Serialize(result);
+                await _context.SaveChangesAsync();
+            }
+
+            return result;
         }
 
         private async Task<ExtractSfiaProfileResponseDto> PerformExtractionAsync(string contextText, string sourceName)
         {
-            var templates = await _context.TargetRoleTemplates
-                .Include(t => t.RequiredSkills)
-                .ThenInclude(rs => rs.SfiaSkill)
-                .ToListAsync();
-
-            var templateListJson = JsonSerializer.Serialize(templates.Select(t => new
-            {
-                t.Id,
-                t.RoleName,
-                RequiredSkills = t.RequiredSkills.Select(rs => new { rs.SfiaSkill.SkillCode, rs.SfiaSkill.SkillName })
-            }));
-
             var allSkills = await _context.SfiaSkills.ToListAsync();
             var allSkillsJson = JsonSerializer.Serialize(allSkills.Select(s => new { s.SkillCode, s.SkillName }));
 
@@ -194,29 +250,27 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
 
             string systemPrompt = @"You are an expert IT career coach and data extractor.
 Analyze the candidate's skill gaps identified from their " + sourceName + @" context.
-You will be provided a list of available Target Role Templates and their Required Skills, a list of all 147 SFIA skills, AND a guide on SFIA Generic Levels (1-7).
+You will be provided a list of all 147 SFIA skills AND a guide on SFIA Generic Levels (1-7).
 Your job is to:
-1. Select the BEST matching targetRoleTemplateId from the provided list that fits the candidate's context.
-2. If AND ONLY IF absolutely no role from the list matches the candidate's context (e.g., highly specialized), leave targetRoleTemplateId null and generate a `newRole` by defining its name, description, and required skills from the SFIA list.
-3. For EACH required skill (either from the selected role OR the newly generated role), estimate the candidate's CURRENT proficiency level (from 0 to 7, where 0 is no experience, 1-7 are SFIA levels). Use the context to make an educated guess.
+1. Define a highly relevant `customRoleName` based on the candidate's target job and context.
+2. Provide a short `customRoleDescription`.
+3. Identify the EXACT SFIA skills the candidate needs to develop or demonstrate to bridge the gaps identified in the context. DO NOT snap to predefined templates. Tailor this specifically to the context.
+4. For EACH identified skill, provide:
+   - `skillCode`: the SFIA skill code.
+   - `targetLevel`: the expected proficiency level for the role (1-7).
+   - `currentLevel`: estimate the candidate's CURRENT proficiency level (0-7).
+   - `justification`: brief reasoning for the gap and levels assigned.
 The result MUST be a valid JSON object strictly following this schema:
 {
-  ""targetRoleTemplateId"": ""GUID_HERE"" | null,
-  ""newRole"": null | {
-      ""roleName"": ""..."",
-      ""description"": ""..."",
-      ""requiredSkills"": [ { ""skillCode"": ""..."", ""targetLevel"": 4 } ]
-  },
-  ""currentSkills"": [
-    { ""skillCode"": ""..."", ""currentLevel"": 3 }
+  ""customRoleName"": ""..."",
+  ""customRoleDescription"": ""..."",
+  ""skills"": [
+    { ""skillCode"": ""..."", ""targetLevel"": 4, ""currentLevel"": 2, ""justification"": ""..."" }
   ]
 }
 Do NOT include any markdown blocks like ```json, just return the raw JSON object.";
 
             var userPromptBuilder = new StringBuilder();
-            userPromptBuilder.AppendLine("=== AVAILABLE TARGET ROLE TEMPLATES ===");
-            userPromptBuilder.AppendLine(templateListJson);
-            userPromptBuilder.AppendLine();
             userPromptBuilder.AppendLine("=== ALL SFIA SKILLS ===");
             userPromptBuilder.AppendLine(allSkillsJson);
             userPromptBuilder.AppendLine();
@@ -238,43 +292,6 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
             {
                 var dto = JsonSerializer.Deserialize<ExtractSfiaProfileResponseDto>(aiResponseText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                        ?? throw new Exception("AI returned null object.");
-
-                if (dto.TargetRoleTemplateId == null && dto.NewRole != null)
-                {
-                    var newRole = new TargetRoleTemplate
-                    {
-                        Id = Guid.NewGuid(),
-                        RoleName = dto.NewRole.RoleName,
-                        Description = dto.NewRole.Description,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-                    
-                    foreach(var rs in dto.NewRole.RequiredSkills)
-                    {
-                        var dbSkill = await _context.SfiaSkills.FirstOrDefaultAsync(s => s.SkillCode == rs.SkillCode);
-                        if (dbSkill != null)
-                        {
-                            newRole.RequiredSkills.Add(new TargetRoleSkill
-                            {
-                                Id = Guid.NewGuid(),
-                                RoleTemplateId = newRole.Id,
-                                SfiaSkillId = dbSkill.Id,
-                                TargetLevel = rs.TargetLevel
-                            });
-                        }
-                    }
-
-                    _context.TargetRoleTemplates.Add(newRole);
-                    await _context.SaveChangesAsync();
-
-                    dto.TargetRoleTemplateId = newRole.Id;
-                }
-
-                if (dto.TargetRoleTemplateId == null || dto.TargetRoleTemplateId == Guid.Empty)
-                {
-                    throw new Exception("AI failed to return a valid Target Role.");
-                }
 
                 return dto;
             }

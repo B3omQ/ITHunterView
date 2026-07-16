@@ -50,7 +50,7 @@ export default function NewLearningPathPage() {
   const [selectedMatchScoreId, setSelectedMatchScoreId] = useState<string>('');
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
   
-  const [extractedRawData, setExtractedRawData] = useState<any>(null);
+  const [customProfile, setCustomProfile] = useState<any>(null);
 
   const { data: cvJdPreview } = usePreviewContext('cv-jd', selectedMatchScoreId);
   const { data: interviewPreview } = usePreviewContext('interview', selectedSessionId);
@@ -77,30 +77,36 @@ export default function NewLearningPathPage() {
   };
 
   const handleGenerate = () => {
-    generateMutation.mutate({
-      targetRoleTemplateId: confirmedRoleId,
-      currentSkills: currentSkills.filter(s => s.currentLevel !== null) as { skillCode: string, currentLevel: number }[],
-      personalContext: personalContext.trim() !== '' ? personalContext : undefined,
-    });
+    if (customProfile) {
+      generateMutation.mutate({
+        customTargetRoleName: customProfile.customRoleName,
+        customTargetSkills: customProfile.skills.map((s: any) => ({
+          skillCode: s.skillCode,
+          targetLevel: s.targetLevel,
+          currentLevel: s.currentLevel
+        })),
+        currentSkills: [],
+        personalContext: personalContext.trim() !== '' ? personalContext : undefined,
+      });
+    } else {
+      generateMutation.mutate({
+        targetRoleTemplateId: confirmedRoleId,
+        currentSkills: currentSkills.filter(s => s.currentLevel !== null) as { skillCode: string, currentLevel: number }[],
+        personalContext: personalContext.trim() !== '' ? personalContext : undefined,
+      });
+    }
   };
 
   const handleRoleChange = (roleId: string) => {
     setTargetRoleTemplateId(roleId);
-    // Intentionally NOT wiping currentSkills here.
-    // This preserves the user's assessments if they accidentally click another role and switch back,
-    // or if they switch to a role that shares the same skills (e.g. from Junior to Mid-level).
+    setCustomProfile(null);
   };
 
   const handleExtractCvJd = () => {
     if (!selectedMatchScoreId) return;
     extractFromCvJdMutation.mutate(selectedMatchScoreId, {
       onSuccess: (res) => {
-        if (res.data) {
-          setTargetRoleTemplateId(res.data.targetRoleTemplateId);
-          setConfirmedRoleId(res.data.targetRoleTemplateId);
-          setCurrentSkills(res.data.currentSkills);
-          setExtractedRawData(res.data);
-        }
+        if (res.data) setCustomProfile(res.data);
       }
     });
   };
@@ -109,13 +115,18 @@ export default function NewLearningPathPage() {
     if (!selectedSessionId) return;
     extractFromInterviewMutation.mutate(selectedSessionId, {
       onSuccess: (res) => {
-        if (res.data) {
-          setTargetRoleTemplateId(res.data.targetRoleTemplateId);
-          setConfirmedRoleId(res.data.targetRoleTemplateId);
-          setCurrentSkills(res.data.currentSkills);
-          setExtractedRawData(res.data);
-        }
+        if (res.data) setCustomProfile(res.data);
       }
+    });
+  };
+
+  const handleCustomSkillLevelChange = (skillCode: string, newLevel: number) => {
+    setCustomProfile((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        skills: prev.skills.map((s: any) => s.skillCode === skillCode ? { ...s, currentLevel: newLevel } : s)
+      };
     });
   };
 
@@ -134,7 +145,10 @@ export default function NewLearningPathPage() {
   }, 0) : 0;
 
   const isGenerateDisabled = () => {
-    if (!confirmedRoleId || generateMutation.isPending) return true;
+    if (generateMutation.isPending) return true;
+    if (customProfile) return false;
+    
+    if (!confirmedRoleId) return true;
     if (assessingRoleTemplate) {
       if (!allAssessed) return true;
       if (totalGaps === 0) return true;
@@ -285,6 +299,102 @@ export default function NewLearningPathPage() {
           </div>
 
           <div className="space-y-8">
+            {customProfile ? (
+              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="bg-primary/5 p-6 rounded-xl border border-primary/20 space-y-2">
+                  <h3 className="font-semibold text-xl flex items-center text-primary">
+                    <Sparkles className="mr-2 h-5 w-5" /> AI Custom Role: {customProfile.customRoleName}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">{customProfile.customRoleDescription}</p>
+                </div>
+                
+                <h3 className="font-semibold text-lg flex items-center border-t pt-6">
+                  <CheckCircle2 className="mr-2 h-5 w-5 text-primary" /> Target Skills & Gap Analysis
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  The AI has mapped your gaps to specific SFIA skills. Review and adjust your current proficiency level if necessary.
+                </p>
+
+                <TooltipProvider delay={200}>
+                  <div className="space-y-6">
+                    {customProfile.skills.map((skill: any) => {
+                      const currentLvlState = skill.currentLevel;
+                      const isAssessed = currentLvlState !== undefined && currentLvlState !== null;
+                      
+                      return (
+                        <div key={skill.skillCode} className={`space-y-4 border p-5 rounded-xl transition-colors ${isAssessed ? 'border-primary/20 bg-primary/5' : 'border-border'}`}>
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-2">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-foreground flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">{skill.skillCode}</span>
+                              </h4>
+                              <p className="text-sm text-muted-foreground mt-1" title={skill.justification}>
+                                {skill.justification}
+                              </p>
+                            </div>
+                            <div className="text-left sm:text-right shrink-0">
+                              <span className="text-sm font-semibold bg-primary/10 text-primary px-2 py-1 rounded">Target Level: {skill.targetLevel}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-2 pt-2">
+                            <button
+                              type="button"
+                              onClick={() => handleCustomSkillLevelChange(skill.skillCode, 0)}
+                              className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all ${currentLvlState === 0 ? 'bg-destructive/10 text-destructive border-destructive/30' : 'bg-background hover:bg-muted text-muted-foreground border-border'}`}
+                            >
+                              0 - No experience
+                            </button>
+                            
+                            {[1, 2, 3, 4, 5, 6, 7].map(lvl => {
+                              const isSelected = currentLvlState === lvl;
+                              
+                              return (
+                                <Tooltip key={lvl}>
+                                  <TooltipTrigger 
+                                    type="button"
+                                    onClick={() => handleCustomSkillLevelChange(skill.skillCode, lvl)}
+                                    className={`
+                                      relative px-4 py-2 text-sm font-medium rounded-lg border transition-all
+                                      ${isSelected 
+                                        ? 'bg-primary text-primary-foreground border-primary shadow-sm' 
+                                        : 'bg-background hover:bg-muted text-foreground border-border'}
+                                    `}
+                                  >
+                                    {lvl}
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-[250px] p-3 shadow-lg">
+                                    <p className="font-semibold text-[13px] text-primary-foreground mb-1">Level {lvl}: {SFIA_LEVEL_HINTS[lvl]?.title}</p>
+                                    <p className="text-xs text-primary-foreground/90 leading-relaxed">
+                                      {SFIA_LEVEL_HINTS[lvl]?.essence}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </TooltipProvider>
+
+                {/* Section 3: Personal Context */}
+                <div className="mt-8 space-y-4 pt-6 border-t">
+                  <h3 className="font-semibold text-lg flex items-center"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Prior Knowledge & Context (Optional)</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Describe any other relevant context.
+                  </p>
+                  <Textarea 
+                    placeholder="E.g., I have 1 year of experience with Python..."
+                    value={personalContext}
+                    onChange={(e) => setPersonalContext(e.target.value)}
+                    className="min-h-[100px] resize-y"
+                  />
+                </div>
+              </div>
+            ) : (
+            <>
             {/* Section 1: Core Information */}
             <div className="space-y-4">
               <h3 className="font-semibold text-lg flex items-center"><Sparkles className="mr-2 h-5 w-5 text-primary" /> Target Role</h3>
@@ -469,9 +579,11 @@ export default function NewLearningPathPage() {
 
               </div>
             )}
+            </>
+            )}
           </div>
 
-          {allAssessed && totalGaps === 0 && (
+          {!customProfile && allAssessed && totalGaps === 0 && (
             <Alert variant="default" className="mt-6 border-green-500 bg-green-50/50">
               <Sparkles className="h-4 w-4 text-green-600" />
               <AlertTitle className="text-green-700">Congratulations!</AlertTitle>
@@ -502,14 +614,14 @@ export default function NewLearningPathPage() {
           )}
 
           {/* Debug Section for AI Extracted Data */}
-          {extractedRawData && (
+          {customProfile && (
             <div className="mt-8 border-t pt-6">
               <details className="group cursor-pointer">
                 <summary className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors flex items-center">
                   <span>View AI Extracted Raw Data (Debug)</span>
                 </summary>
                 <div className="mt-4 bg-muted/30 p-4 rounded-lg border overflow-auto text-xs font-mono max-h-96">
-                  <pre>{JSON.stringify(extractedRawData, null, 2)}</pre>
+                  <pre>{JSON.stringify(customProfile, null, 2)}</pre>
                 </div>
               </details>
             </div>
@@ -517,4 +629,5 @@ export default function NewLearningPathPage() {
         </CardContent>
       </Card>
     </div>
-); }
+  );
+}
