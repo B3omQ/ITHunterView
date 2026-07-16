@@ -16,8 +16,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
-import { Award, Plus, Search, Loader2 } from 'lucide-react';
+import { Award, Plus, Search, Loader2, X } from 'lucide-react';
 
 export function SkillsTab() {
   const { data: skills, isLoading: isLoadingSkills, isError: isErrorSkills } = useCandidateSkills();
@@ -28,6 +35,7 @@ export function SkillsTab() {
   // Search autocomplete states
   const [keyword, setKeyword] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -95,22 +103,60 @@ export function SkillsTab() {
     <div className="space-y-6 w-full">
       {/* Manage Skills Card */}
       <Card>
-        <CardHeader className="border-b pb-4">
-          <div className="flex items-center gap-3">
-            <div>
-              <CardTitle className="text-lg font-bold">Skills</CardTitle>
-              <CardDescription className="text-xs">Add your professional skills and expertise</CardDescription>
-            </div>
+        <CardHeader className="border-b pb-4 flex flex-row items-start justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <CardTitle className="text-xl font-bold mt-1">Skills</CardTitle>
+            {skills.length === 0 && (
+              <CardDescription className="text-sm">Add your professional skills and expertise</CardDescription>
+            )}
           </div>
+          <Button
+            onClick={() => setIsAdding(true)}
+            variant="outline"
+            size="icon"
+            className="rounded-full border-primary text-primary hover:bg-primary/10 w-8 h-8 shrink-0 transition-colors mt-0"
+          >
+            <Plus className="w-5 h-5" />
+          </Button>
         </CardHeader>
-        <CardContent className="p-6 space-y-6">
-          {/* Autocomplete Input Container */}
-          <div className="relative max-w-md" ref={dropdownRef}>
+        <CardContent className={skills.length === 0 ? "p-0" : "px-6 py-4 space-y-4"}>
+
+          {/* User Skills Chips List */}
+          {skills.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Added Skills</h3>
+              <div className="flex flex-wrap gap-2">
+                {skills.map((s) => (
+                  <SkillChip
+                    key={s.skillId}
+                    skillId={s.skillId}
+                    name={s.name}
+                    proficiencyLevel={s.proficiencyLevel}
+                    onDelete={handleRemoveSkillId}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={isAdding} onOpenChange={setIsAdding}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Add Skills</DialogTitle>
+            <DialogDescription>
+              Search and select skills to add to your profile.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="pt-2 relative" ref={dropdownRef}>
             <div className="relative">
               <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Type a skill (e.g. React, Docker...)"
                 value={keyword}
+                autoFocus
                 onChange={(e) => {
                   setKeyword(e.target.value);
                   setShowDropdown(true);
@@ -167,16 +213,11 @@ export function SkillsTab() {
               </div>
             )}
           </div>
-
-          {/* User Skills Chips List */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Added Skills</h3>
-            {skills.length === 0 ? (
-              <div className="text-sm text-muted-foreground py-4 text-center border-2 border-dashed border-border rounded-xl bg-muted/10">
-                No skills added yet. Use the search box above to add your skills.
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
+          
+          {skills.length > 0 && (
+            <div className="space-y-3 mt-6">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Added Skills</h3>
+              <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto pr-2 pb-2">
                 {skills.map((s) => (
                   <SkillChip
                     key={s.skillId}
@@ -187,10 +228,14 @@ export function SkillsTab() {
                   />
                 ))}
               </div>
-            )}
+            </div>
+          )}
+          
+          <div className="flex justify-end pt-4 mt-2 border-t">
+            <Button onClick={() => setIsAdding(false)}>Done</Button>
           </div>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

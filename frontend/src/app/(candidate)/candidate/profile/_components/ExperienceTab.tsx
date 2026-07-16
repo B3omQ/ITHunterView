@@ -68,68 +68,77 @@ export function ExperienceTab() {
   return (
     <div className="space-y-6 w-full">
       <Card>
-        <CardHeader className="border-b pb-4 flex flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div>
-              <CardTitle className="text-lg font-bold">Work Experience</CardTitle>
-              <CardDescription className="text-xs">Your employment history and job details</CardDescription>
-            </div>
+        <CardHeader className="border-b pb-4 flex flex-row items-start justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <CardTitle className="text-xl font-bold mt-1">Work Experience</CardTitle>
+            {sortedExperiences.length === 0 && (
+              <CardDescription className="text-sm">Highlight detailed information about your job history</CardDescription>
+            )}
           </div>
-          {sortedExperiences.length > 0 && (
-            <Button
-              onClick={() => setIsAdding(true)}
-              disabled={isAdding || !!editingId}
-              className="flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              Add Experience
-            </Button>
-          )}
+          <Button
+            onClick={() => setIsAdding(true)}
+            disabled={isAdding || !!editingId}
+            variant="outline"
+            size="icon"
+            className="rounded-full border-primary text-primary hover:bg-primary/10 w-8 h-8 shrink-0 transition-colors mt-0"
+          >
+            <Plus className="w-5 h-5" />
+          </Button>
         </CardHeader>
-        <CardContent className="p-6">
-          {isAdding && (
-            <div className="mb-6">
-              <ExperienceForm
-                initialData={null}
-                onCancel={() => setIsAdding(false)}
-                onSuccess={() => setIsAdding(false)}
-              />
-            </div>
-          )}
-
-          {!isAdding && sortedExperiences.length === 0 ? (
-            <div className="text-center py-4 border-2 border-dashed border-border rounded-xl bg-muted/10">
-              <p className="text-sm text-muted-foreground mb-2">No work experiences added yet.</p>
-              <Button onClick={() => setIsAdding(true)} disabled={!!editingId} variant="outline" size="sm" className="font-semibold">
-                <Plus className="w-4 h-4 mr-2" /> Add Experience
-              </Button>
-            </div>
-          ) : (
+        <CardContent className={sortedExperiences.length === 0 ? "p-0" : "px-6 py-4"}>
+          {sortedExperiences.length > 0 && (
             <div className="space-y-4">
               {sortedExperiences.map((exp) => (
                 <React.Fragment key={exp.id}>
-                  {editingId === exp.id ? (
-                    <ExperienceForm
-                      initialData={exp}
-                      onCancel={() => setEditingId(null)}
-                      onSuccess={() => setEditingId(null)}
-                    />
-                  ) : (
-                    <ExperienceCard
-                      experience={exp}
-                      onEdit={() => {
-                        setIsAdding(false);
-                        setEditingId(exp.id);
-                      }}
-                      onDelete={setDeleteId}
-                    />
-                  )}
+                  <ExperienceCard
+                    experience={exp}
+                    onEdit={() => {
+                      setIsAdding(false);
+                      setEditingId(exp.id);
+                    }}
+                    onDelete={setDeleteId}
+                  />
                 </React.Fragment>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Form Dialog */}
+      <Dialog 
+        open={isAdding || !!editingId} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsAdding(false);
+            setEditingId(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">
+              {isAdding ? 'Add Work Experience' : 'Edit Work Experience'}
+            </DialogTitle>
+            <DialogDescription>
+              Fill in the details of your job position below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="pt-2">
+            <ExperienceForm
+              initialData={editingId ? sortedExperiences.find(e => e.id === editingId) || null : null}
+              onCancel={() => {
+                setIsAdding(false);
+                setEditingId(null);
+              }}
+              onSuccess={() => {
+                setIsAdding(false);
+                setEditingId(null);
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteId} onOpenChange={(open) => {

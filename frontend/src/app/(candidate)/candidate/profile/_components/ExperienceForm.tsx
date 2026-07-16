@@ -177,14 +177,8 @@ export function ExperienceForm({ initialData, onCancel, onSuccess }: ExperienceF
   };
 
   return (
-    <div className="bg-muted/30 p-5 sm:p-6 rounded-md mb-4 border border-border">
+    <div className="w-full mt-2">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="mb-4">
-            <h3 className="text-lg font-bold text-foreground">
-              {initialData ? 'Edit Work Experience' : 'Add Work Experience'}
-            </h3>
-            <p className="text-xs text-muted-foreground">Fill in the details of your job position below</p>
-          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5 sm:col-span-2">

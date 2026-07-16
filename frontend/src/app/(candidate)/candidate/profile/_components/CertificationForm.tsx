@@ -150,15 +150,8 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
   };
 
   return (
-    <Card className="border border-primary/20 bg-primary/5 rounded-xl overflow-hidden shadow-sm animate-in slide-in-from-top-4 duration-300">
-      <CardContent className="p-5 sm:p-6">
+    <div className="w-full mt-2">
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-          <div className="mb-4">
-            <h3 className="text-lg font-bold text-foreground">
-              {initialData ? 'Edit Certification' : 'Add Certification'}
-            </h3>
-            <p className="text-xs text-muted-foreground">Fill in the details of your certification below</p>
-          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5 sm:col-span-2">
@@ -289,7 +282,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
             </Button>
           </div>
         </form>
-      </CardContent>
+
 
       {/* Cancel Confirmation Dialog */}
       <Dialog open={showConfirmCancel} onOpenChange={setShowConfirmCancel}>
@@ -323,6 +316,6 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   );
 }

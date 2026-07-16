@@ -32,8 +32,7 @@ export function EducationCard({ education, onEdit, onDelete }: EducationCardProp
   };
 
   return (
-    <Card className="group border border-border/30 bg-card/40 hover:bg-card/75 backdrop-blur-sm transition-all duration-300 rounded-xl overflow-hidden shadow-sm hover:shadow-md">
-      <CardContent className="p-5 sm:p-6 flex gap-4 items-start justify-between">
+    <div className="flex gap-4 py-6 border-b border-border/40 last:border-0 items-start justify-between group">
         <div className="flex gap-4 items-start flex-1">
           {/* Logo Academy Placeholder */}
           <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary flex-shrink-0">
@@ -42,27 +41,29 @@ export function EducationCard({ education, onEdit, onDelete }: EducationCardProp
 
           {/* Education Details */}
           <div className="space-y-1.5 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-base sm:text-lg font-bold text-foreground tracking-tight leading-snug">
+            <div className="flex flex-wrap items-center gap-3">
+              <h3 className="text-base sm:text-lg font-bold text-foreground tracking-tight leading-none capitalize">
                 {education.degree}
               </h3>
               {education.gpa !== null && education.gpa !== undefined && (
-                <Badge variant="outline" className="text-[10px] py-0 px-2 font-mono font-bold uppercase border-primary/20 bg-primary/5 text-primary">
+                <Badge variant="outline" className="text-[10px] py-0 px-2 font-mono font-bold uppercase border-primary/20 bg-primary/5 text-primary shrink-0">
                   GPA: {education.gpa}/{education.maxGpa || 4.0}
                 </Badge>
               )}
             </div>
 
-            <p className="text-sm font-semibold text-muted-foreground/90">
+            <p className="text-sm font-semibold text-muted-foreground/90 capitalize mt-1.5">
               {education.institutionName}
               {education.majorName && (
-                <span className="text-muted-foreground/60 font-medium"> • {education.majorName}</span>
+                <span className="text-muted-foreground/60 font-medium normal-case"> • {education.majorName}</span>
               )}
             </p>
 
-            <div className="flex items-center gap-2 text-xs text-muted-foreground/80 font-medium">
-              <Calendar className="w-3.5 h-3.5 text-primary/70" />
-              <span>{formatPeriod(education.startDate, education.endDate)}</span>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground/80 font-medium mt-1.5">
+              <span className="flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-primary/70" />
+                {formatPeriod(education.startDate, education.endDate)}
+              </span>
             </div>
 
             {education.description && (
@@ -75,7 +76,7 @@ export function EducationCard({ education, onEdit, onDelete }: EducationCardProp
 
         {/* Action Buttons */}
         {(onEdit || onDelete) && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus-within:opacity-100 ml-2">
+          <div className="flex items-center gap-1 ml-2">
             {onEdit && (
               <Button
                 variant="ghost"
@@ -98,7 +99,6 @@ export function EducationCard({ education, onEdit, onDelete }: EducationCardProp
             )}
           </div>
         )}
-      </CardContent>
-    </Card>
+    </div>
   );
 }
