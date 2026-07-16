@@ -1,182 +1,174 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useGetMatchHistory } from '@/hooks/useCvMatch';
 import { APP_ROUTES } from '@/lib/constants';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Sparkles, ArrowRight, CheckCircle2, Info, History } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, FileText, Briefcase, Eye, Plus } from 'lucide-react';
 
-import { ResultOverviewCard } from './components/ResultOverviewCard';
-import { RequirementBreakdown } from './components/RequirementBreakdown';
-import { CriticalGapsPanel } from './components/CriticalGapsPanel';
-import { ImprovementSuggestions } from './components/ImprovementSuggestions';
-import { PenaltyWarningPanel } from './components/PenaltyWarningPanel';
-
-import { CvSelectionPanel } from './components/CvSelectionPanel';
-import { JdSelectionPanel } from './components/JdSelectionPanel';
-import { MatchingLoadingState } from './components/MatchingLoadingState';
-import { useCvMatchingForm } from '@/hooks/useCvMatchingForm';
-
-function CvMatchingContent() {
+export default function CvMatchingHistoryPage() {
   const router = useRouter();
-  const { state, queries, setters, handlers } = useCvMatchingForm();
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
+  const { data: response, isLoading } = useGetMatchHistory(page, pageSize);
+  const historyData = response?.data;
+  const items = historyData?.items || [];
+  const totalCount = historyData?.totalCount || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage > 0 && newPage <= totalPages) {
+      setPage(newPage);
+    }
+  };
+
+  const navigateToDetail = (jobId: string) => {
+    router.push(`${APP_ROUTES.CANDIDATE.CV_MATCHING}/new?jobId=${jobId}`);
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'Completed':
+        return <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/20">Completed</Badge>;
+      case 'Failed':
+        return <Badge variant="destructive" className="bg-red-500/10 text-red-600 hover:bg-red-500/20 border-red-500/20">Failed</Badge>;
+      default:
+        return <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/20">{status}</Badge>;
+    }
+  };
 
   return (
-    <div className="max-w-5xl mx-auto w-full py-8 px-4">
-      {/* 1. Tiêu đề chính */}
+    <div className="max-w-6xl mx-auto w-full py-8 px-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-        <div className="flex flex-col space-y-2 text-center md:text-left">
-          <h1 className="text-3xl font-extrabold tracking-tight flex items-center justify-center md:justify-start gap-2">
-            <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-            AI CV-JD Matching
-          </h1>
-          <p className="text-muted-foreground text-sm max-w-2xl">
-            Evaluate the fit between your resume and job requirements using standard vector search and LLM scoring methodologies.
-          </p>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Matching History</h1>
+          <p className="text-sm text-muted-foreground">View your previous AI CV-JD matching results</p>
         </div>
-        
-        <Button 
-          variant="outline" 
-          onClick={() => router.push(`${APP_ROUTES.CANDIDATE.CV_MATCHING}/history`)}
-          className="gap-2 self-start sm:self-auto"
-        >
-          <History className="h-4 w-4" />
-          View History
+        <Button onClick={() => router.push(`${APP_ROUTES.CANDIDATE.CV_MATCHING}/new`)} className="gap-2">
+          <Plus className="h-4 w-4" />
+          New Match
         </Button>
       </div>
 
-      {state.step === 'select' && (
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <CvSelectionPanel 
-              cvTab={state.cvTab}
-              setCvTab={setters.setCvTab}
-              cvFile={state.cvFile}
-              cvFileName={state.cvFileName}
-              cvText={state.cvText}
-              setCvText={setters.setCvText}
-              selectedCvId={state.selectedCvId}
-              setSelectedCvId={setters.setSelectedCvId}
-              isUploading={state.isUploading}
-              myCvs={queries.myCvs}
-              isLoadingCvs={queries.isLoadingCvs}
-              handleFileChange={handlers.handleFileChange}
-              handleDragOver={handlers.handleDragOver}
-              handleDrop={handlers.handleDrop}
-              handleRemoveFile={handlers.handleRemoveFile}
-            />
-            <JdSelectionPanel 
-              jdTab={state.jdTab}
-              setJdTab={setters.setJdTab}
-              jdText={state.jdText}
-              setJdText={setters.setJdText}
-              selectedJobId={state.selectedJobId}
-              setSelectedJobId={setters.setSelectedJobId}
-              savedJobs={queries.savedJobs}
-              isLoadingJobs={queries.isLoadingJobs}
-            />
-          </div>
-
-          {/* Action Button */}
-          <div className="flex justify-center pt-4">
-            <Button 
-              size="lg" 
-              onClick={handlers.handleStartAnalysis} 
-              disabled={state.isSubmitDisabled}
-              className="px-8 font-semibold text-base transition-all gap-2"
-            >
-              {state.isUploading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Uploading Resume...
-                </>
+      <div className="bg-card border rounded-lg shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableHead className="w-[180px]">Date</TableHead>
+                <TableHead>Resume</TableHead>
+                <TableHead>Job Description</TableHead>
+                <TableHead className="w-[120px] text-center">Score</TableHead>
+                <TableHead className="w-[120px] text-center">Status</TableHead>
+                <TableHead className="w-[100px] text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-48 text-center">
+                    <div className="flex flex-col items-center justify-center text-muted-foreground gap-2">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                      Loading history...
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : items.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
+                    No matching history found.
+                  </TableCell>
+                </TableRow>
               ) : (
-                <>
-                  Start Analysis
-                  <ArrowRight className="h-5 w-5" />
-                </>
+                items.map((item) => (
+                  <TableRow key={item.jobId} className="group hover:bg-muted/30">
+                    <TableCell className="text-sm font-medium text-muted-foreground">
+                      {new Date(item.updatedAt).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-primary/70 shrink-0" />
+                        <span className="font-medium truncate max-w-[200px]" title={item.cvFileName || 'Bypass CV'}>
+                          {item.cvFileName || 'Bypass CV'}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Briefcase className="h-4 w-4 text-primary/70 shrink-0" />
+                        <span className="truncate max-w-[250px]" title={item.jdTitle || 'Bypass JD'}>
+                          {item.jdTitle || 'Bypass JD'}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {item.status === 'Completed' && item.matchScore !== undefined ? (
+                        <span className="font-bold text-primary">{item.matchScore.toFixed(1)}</span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {getStatusBadge(item.status)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="opacity-0 group-hover:opacity-100 transition-opacity gap-1 text-primary hover:text-primary hover:bg-primary/10"
+                        onClick={() => navigateToDetail(item.jobId)}
+                        disabled={item.status !== 'Completed'}
+                      >
+                        <Eye className="h-4 w-4" />
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
-            </Button>
-          </div>
+            </TableBody>
+          </Table>
         </div>
-      )}
 
-      {/* 2. Giao diện Loading (Progress Steps) */}
-      {state.step === 'loading' && (
-        <MatchingLoadingState 
-          progressPercent={state.progressPercent} 
-          loadingStep={state.loadingStep} 
-        />
-      )}
-
-      {/* 3. Giao diện Kết quả (Sử dụng Sub-Components) */}
-      {state.step === 'result' && (
-        <div className="space-y-6 animate-in fade-in duration-500">
-          <div className="flex flex-col sm:flex-row justify-between items-center bg-muted/20 p-4 rounded-lg border gap-4">
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <Info className="h-5 w-5 text-primary/70" />
-              This match result is generated by our AI using your provided CV and Job Description.
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setters.setStep('select')}>
-                Analyze Another
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t bg-muted/20 p-4">
+            <span className="text-sm text-muted-foreground">
+              Showing page <strong className="text-foreground">{page}</strong> of{' '}
+              <strong className="text-foreground">{totalPages}</strong> ({totalCount} total)
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(page - 1)}
+                disabled={page <= 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(page + 1)}
+                disabled={page >= totalPages}
+              >
+                Next
               </Button>
             </div>
           </div>
-
-          {state.matchOutput?.jdFit && (
-            <>
-              <ResultOverviewCard jdFit={state.matchOutput.jdFit} />
-              <PenaltyWarningPanel penalties={state.matchOutput.jdFit.penalties} />
-            </>
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              {state.matchOutput?.jdFit && (
-                <RequirementBreakdown scores={state.matchOutput.jdFit.requirementScores} />
-              )}
-              {state.matchOutput?.improvements && state.matchOutput.improvements.length > 0 && (
-                <ImprovementSuggestions improvements={state.matchOutput.improvements} />
-              )}
-            </div>
-            <div className="space-y-6">
-              {state.matchOutput?.jdFit && (
-                <CriticalGapsPanel 
-                  criticalGaps={state.matchOutput.jdFit.criticalGaps} 
-                  penalties={state.matchOutput.jdFit.penalties} 
-                />
-              )}
-              <Card className="bg-muted/30 border-muted">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    How is this calculated?
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-xs text-muted-foreground leading-relaxed space-y-2">
-                  <p>Our AI evaluates your CV against the JD using a 4-tier processing algorithm:</p>
-                  <ul className="list-disc pl-4 space-y-1">
-                    <li>Extracts requirements into <span className="font-semibold text-foreground">Must-have</span> (70%) and <span className="font-semibold text-foreground">Nice-to-have</span> (30%).</li>
-                    <li>Performs embedding matching to locate relevant experience.</li>
-                    <li>Analyzes evidence quality and assigns a score from 0.0 to 1.0.</li>
-                    <li>Applies penalties for weak evidence or missing critical skills.</li>
-                  </ul>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
-  );
-}
-
-export default function CvMatchingPage() {
-  return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
-      <CvMatchingContent />
-    </Suspense>
   );
 }
