@@ -193,26 +193,30 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
 
   return (
     <Card className="p-6 md:p-8 flex flex-col gap-6 relative shadow-md overflow-hidden bg-card/60 backdrop-blur-md">
-      {/* Top Actions: Visibility Toggle & Edit */}
-      <div className="absolute top-4 right-4 z-20 flex flex-row items-center gap-2">
-      <div className="flex items-center gap-2 bg-background/80 backdrop-blur px-2.5 py-1.5 rounded-lg border border-border/50 shadow-sm">
-        <Label className="cursor-pointer flex items-center gap-2 text-xs text-muted-foreground font-medium">
-          {isUpdatingVisibility ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <Switch
-              checked={summary.isVisibleToRecruiters}
-              onCheckedChange={handleVisibilityChange}
-              className="scale-75 data-[state=checked]:bg-primary m-0"
-            />
-          )}
-          Visible to recruiters
-        </Label>
+      {/* Top Left: Visibility Toggle */}
+      <div className="absolute top-4 left-4 z-20">
+        <div className="flex items-center gap-2 bg-background/80 backdrop-blur px-2.5 py-1.5 rounded-lg border border-border/50 shadow-sm">
+          <Label className="cursor-pointer flex items-center gap-2 text-xs text-muted-foreground font-medium">
+            {isUpdatingVisibility ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Switch
+                checked={summary.isVisibleToRecruiters}
+                onCheckedChange={handleVisibilityChange}
+                className="scale-75 data-[state=checked]:bg-primary m-0"
+              />
+            )}
+            Visible to recruiters
+          </Label>
+        </div>
       </div>
-      <Button variant="ghost" size="icon" onClick={() => setIsEditModalOpen(true)} className="text-muted-foreground hover:text-primary w-8 h-8 rounded-full transition-colors">
-        <Edit2 className="w-4 h-4" />
-      </Button>
-    </div>
+
+      {/* Top Right: Edit Action */}
+      <div className="absolute top-4 right-4 z-20">
+        <Button variant="ghost" size="icon" onClick={() => setIsEditModalOpen(true)} className="text-muted-foreground hover:text-primary w-8 h-8 rounded-full transition-colors">
+          <Edit2 className="w-4 h-4" />
+        </Button>
+      </div>
 
       <div className="flex flex-col items-center mt-6">
         {/* Avatar Area */}
