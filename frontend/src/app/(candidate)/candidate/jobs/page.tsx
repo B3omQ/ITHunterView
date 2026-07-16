@@ -72,13 +72,13 @@ function CandidateJobsContent() {
     <div className="flex flex-col min-h-[calc(100vh-64px)] bg-white">
       {/* Top Filter */}
       <div className="bg-white w-full">
-        <div className="container mx-auto px-4 pt-4 pb-0 lg:px-6 lg:pt-4 lg:pb-0">
+        <div className="mx-auto px-4 md:px-8 pt-6 pb-10 lg:px-6 lg:pb-10 max-w-7xl">
           <JobSearchFilter />
         </div>
       </div>
 
       {/* Main Split Content */}
-      <div className="flex flex-1 container mx-auto px-4 lg:px-6 items-start gap-4 lg:gap-5">
+      <div className="flex flex-1 mx-auto px-4 md:px-8 items-start gap-4 lg:gap-5">
         {/* Left Column: Job List */}
         <div className="w-full lg:w-[40%] xl:w-[35%] flex flex-col bg-white">
           <div className="pb-4 pt-2 lg:pb-6 lg:pt-2 flex-1">

@@ -49,7 +49,7 @@ export default function CvMatchingHistoryPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto w-full py-8 px-4">
+    <div className="max-w-7xl mx-auto w-full pt-6 pb-10 px-4 md:px-8">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Matching History</h1>

@@ -313,7 +313,7 @@ export default function CandidateInterviewPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-[1400px] space-y-8 animate-in fade-in duration-500">
+    <div className="mx-auto px-4 md:px-8 pt-6 pb-10 max-w-[1400px] space-y-8 animate-in fade-in duration-500">
       {/* Header section with glassy gradients aligned with light theme */}
       <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-8 md:p-12 shadow-sm">
         <div className="absolute -right-20 -top-20 h-60 w-60 rounded-full bg-primary/10 blur-[100px] pointer-events-none" />
