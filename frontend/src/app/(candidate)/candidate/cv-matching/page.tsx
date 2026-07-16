@@ -52,7 +52,7 @@ export default function CvMatchingHistoryPage() {
     <div className="w-full pb-8">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Matching History</h1>
+          <h1 className="text-2xl font-bold tracking-tight">CV-JD Matching</h1>
           <p className="text-sm text-muted-foreground">View your previous AI CV-JD matching results</p>
         </div>
         <Button onClick={() => router.push(`${APP_ROUTES.CANDIDATE.CV_MATCHING}/new`)} className="gap-2">

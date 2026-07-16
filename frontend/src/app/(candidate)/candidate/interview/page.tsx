@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import {
   useGetInterviewSessions,
   useCreateInterviewSession,
@@ -329,42 +330,28 @@ function CandidateInterviewContent() {
 
   return (
     <div className="w-full pb-8 space-y-8">
-      {/* Header section with glassy gradients aligned with light theme */}
-      <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-8 md:p-12 shadow-sm">
-        <div className="absolute -right-20 -top-20 h-60 w-60 rounded-full bg-primary/10 blur-[100px] pointer-events-none" />
-        <div className="absolute -left-20 -bottom-20 h-60 w-60 rounded-full bg-indigo-500/10 blur-[100px] pointer-events-none" />
-
-        <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-4 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-semibold">
-              <BrainCircuit className="h-4 w-4" /> AI Mock Interview
-            </div>
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
-              Luyện Tập Phỏng Vấn Với AI
-            </h1>
-            <p className="text-muted-foreground leading-relaxed text-sm md:text-base">
-              Nâng cao kỹ năng phỏng vấn của bạn. AI Interviewer sẽ hỏi các câu hỏi kỹ thuật, 
-              kỹ năng mềm phù hợp dựa trên CV và công việc bạn ứng tuyển, kèm theo nhận xét chi tiết sau mỗi câu trả lời.
-            </p>
-          </div>
-          <Button
-            size="lg"
-            onClick={() => setIsOpen(true)}
-            className="w-full md:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm px-8 py-6 rounded-2xl transition-all duration-300 font-semibold"
-          >
-            <Plus className="h-5 w-5 mr-2" /> Bắt đầu phỏng vấn thử
-          </Button>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">AI Mock Interview</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">
+            Improve your interview skills. The AI Interviewer will ask technical and soft skill questions tailored to your CV and the job you are applying for.
+          </p>
         </div>
+        <Button onClick={() => setIsOpen(true)} className="bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">
+          <Plus className="mr-1 h-4 w-4" />
+          Start Mock Interview
+          <Sparkles className="mr-2 h-4 w-4 ml-1" />
+        </Button>
       </div>
 
-      {/* Main Sessions Section */}
-      <div className="space-y-6">
-        <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-          <MessageSquare className="h-5 w-5 text-primary" /> Lịch sử phỏng vấn thử ({sessions.length})
-        </h2>
+      <div className="grid grid-cols-1 lg:grid-cols-10 gap-8 lg:gap-12 w-full">
+        <div className="col-span-1 lg:col-span-6 flex flex-col gap-6">
+          <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-primary" /> Mock Interview History ({sessions.length})
+          </h2>
 
-        {sessionsLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {sessionsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[1, 2, 3].map((n) => (
               <Card key={n} className="bg-card border-border">
                 <CardHeader className="space-y-2">
@@ -400,7 +387,7 @@ function CandidateInterviewContent() {
           </Card>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {paginatedSessions.map((session) => (
                 <Card
                   key={session.id}
@@ -507,6 +494,21 @@ function CandidateInterviewContent() {
             )}
           </>
         )}
+        </div>
+
+        <div className="hidden lg:block col-span-1 lg:col-span-4">
+          <div className="sticky top-8 flex flex-col items-center justify-center p-8">
+            <div className="relative w-full max-w-md aspect-square flex items-center justify-center">
+              <DotLottieReact
+                src="/images/ai-animation.json"
+                loop
+                autoplay
+                speed={0.25}
+                className="w-full h-full drop-shadow-2xl"
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Startup Session Modal */}
