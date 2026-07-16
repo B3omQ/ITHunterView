@@ -1,4 +1,4 @@
-export type PaymentTargetType = 'SUBSCRIPTION' | 'COIN_PACKAGE';
+export type PaymentTargetType = 'SUBSCRIPTION' | 'WALLET_TOPUP';
 export type PaymentGateway = 'PAYOS';
 export type PaymentStatus = 'PENDING' | 'PAID' | 'CANCELLED' | 'FAILED';
 

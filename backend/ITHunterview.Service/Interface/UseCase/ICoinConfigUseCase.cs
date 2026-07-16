@@ -8,6 +8,7 @@ namespace ITHunterview.Service.Interface.UseCase
     public interface ICoinConfigUseCase
     {
         Task<ResponseBase<UpdateCoinConfigDto>> GetCoinConfigAsync();
+        Task<ResponseBase<UpdateCoinConfigDto>> GetPublicCoinConfigAsync();
         Task<ResponseBase<UpdateCoinConfigDto>> UpdateCoinConfigAsync(UpdateCoinConfigDto dto, Guid actorUserId);
     }
 }

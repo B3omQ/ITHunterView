@@ -59,6 +59,46 @@ namespace ITHunterview.Service.UseCase
             return new ResponseBase<UpdateCoinConfigDto>(result, "Lấy cấu hình Coin thành công");
         }
 
+        public async Task<ResponseBase<UpdateCoinConfigDto>> GetPublicCoinConfigAsync()
+        {
+            var result = new UpdateCoinConfigDto();
+
+            // 1. Lấy chi phí tính năng
+            var dbFeatures = await _context.CoinFeatures.AsNoTracking().ToListAsync();
+            result.FeatureCosts = new CoinFeatureCostsDto
+            {
+                CvJdMatching = dbFeatures.FirstOrDefault(f => f.FeatureKey == "CvJdMatching")?.CoinCost ?? 2,
+                MockInterview = dbFeatures.FirstOrDefault(f => f.FeatureKey == "MockInterview")?.CoinCost ?? 10,
+                CvOptimize = dbFeatures.FirstOrDefault(f => f.FeatureKey == "CvOptimize")?.CoinCost ?? 3
+            };
+
+            // 2. Lấy danh sách gói nạp coin (chỉ lấy IsActive = true)
+            var dbPackages = await _context.CoinPackages
+                .Where(p => p.IsActive)
+                .AsNoTracking()
+                .OrderBy(p => p.Price)
+                .ToListAsync();
+
+            if (dbPackages.Count > 0)
+            {
+                result.Packages = dbPackages.Select(p => new CoinPackageDto
+                {
+                    Id = p.Id.ToString("D"),
+                    Name = p.Name,
+                    Coins = p.Coins,
+                    Price = p.Price,
+                    IsActive = p.IsActive
+                }).ToList();
+            }
+            else
+            {
+                // Fallback default packages if DB is empty, but filter by IsActive conceptually
+                result.Packages = GetDefaultPackages().Where(p => p.IsActive).ToList();
+            }
+
+            return new ResponseBase<UpdateCoinConfigDto>(result, "Lấy cấu hình gói Coin public thành công");
+        }
+
         public async Task<ResponseBase<UpdateCoinConfigDto>> UpdateCoinConfigAsync(UpdateCoinConfigDto dto, Guid actorUserId)
         {
             // Validate dữ liệu đầu vào

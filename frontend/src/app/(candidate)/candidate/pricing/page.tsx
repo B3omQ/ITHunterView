@@ -31,14 +31,14 @@ export default function CandidatePricingPage() {
 
   return (
     <div className="container mx-auto py-16 px-4 max-w-5xl">
-      <div className="text-center mb-16 space-y-4">
-        <div className="inline-block bg-zinc-100 text-zinc-800 text-xs font-semibold tracking-wider uppercase px-3 py-1 rounded-full mb-4">
+      <div className="text-center mb-12 space-y-4">
+        <div className="inline-block bg-zinc-100 text-zinc-600 text-xs font-semibold tracking-wider uppercase px-3 py-1 rounded-full mb-2 ring-1 ring-inset ring-zinc-200">
           Bảng giá minh bạch
         </div>
-        <h1 className="text-4xl font-extrabold tracking-tight text-zinc-900 sm:text-5xl">
+        <h1 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
           Nâng Cấp Trải Nghiệm Ứng Tuyển
         </h1>
-        <p className="text-lg text-zinc-500 max-w-2xl mx-auto">
+        <p className="text-base text-zinc-500 max-w-2xl mx-auto">
           Mở khóa các tính năng AI mạnh mẽ để tối ưu hóa CV, luyện phỏng vấn và tìm được công việc mơ ước nhanh hơn. Bắt đầu miễn phí, nâng cấp khi bạn sẵn sàng.
         </p>
       </div>
@@ -49,33 +49,33 @@ export default function CandidatePricingPage() {
           const isPremium = idx === 1; // Giả sử gói thứ 2 là gói Premium
           
           return (
-            <Card 
+              <Card 
               key={sub.id} 
-              className={`flex flex-col flex-1 relative rounded-2xl ${
+              className={`flex flex-col flex-1 relative rounded-2xl transition-all ${
                 isPremium 
-                  ? 'border-zinc-900 border-2 shadow-sm' 
-                  : 'border-zinc-200 bg-white'
+                  ? 'border-zinc-300 bg-white ring-1 ring-zinc-900 shadow-md' 
+                  : 'border-zinc-200 bg-zinc-50/50'
               }`}
             >
               {isPremium && (
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                  <span className="bg-zinc-900 text-zinc-50 text-[10px] font-bold uppercase tracking-wider py-1 px-3 rounded-full">
+                  <span className="bg-zinc-900 text-zinc-50 text-[11px] font-semibold tracking-wide py-1 px-4 rounded-full shadow-sm">
                     Khuyên dùng
                   </span>
                 </div>
               )}
               
-              <CardHeader className="pt-10 pb-6 text-left">
-                <CardTitle className="text-xl font-bold mb-2">{sub.name}</CardTitle>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-5xl font-extrabold tracking-tight text-zinc-900">
+              <CardHeader className="pt-8 pb-5 text-left">
+                <CardTitle className="text-lg font-semibold mb-1 text-zinc-900">{sub.name}</CardTitle>
+                <div className="flex items-baseline gap-1 mt-2">
+                  <span className="text-4xl font-bold tracking-tight text-zinc-900">
                     {new Intl.NumberFormat('vi-VN').format(sub.price)}đ
                   </span>
                   <span className="text-sm font-medium text-zinc-500">
                     /{sub.durationDays} ngày
                   </span>
                 </div>
-                <CardDescription className="mt-4 text-zinc-500">
+                <CardDescription className="mt-3 text-sm text-zinc-500">
                   {isPremium 
                     ? 'Mọi thứ bạn cần để nhanh chóng có được công việc mơ ước.' 
                     : 'Bắt đầu với các tính năng cơ bản. Trải nghiệm hệ thống.'}
@@ -83,26 +83,26 @@ export default function CandidatePricingPage() {
               </CardHeader>
               
               <CardContent className="flex-1 pb-8">
-                <ul className="space-y-4">
+                <ul className="space-y-3.5">
                   {sub.featuresConfig.cvMatchLimit !== null && (
-                    <li className="flex gap-3 items-center">
-                      <Check className="w-5 h-5 shrink-0 text-zinc-900" />
+                    <li className="flex gap-3 items-start">
+                      <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                       <span className="text-zinc-600 text-sm">
                         {sub.featuresConfig.cvMatchLimit} lượt Matching CV-JD
                       </span>
                     </li>
                   )}
                   {sub.featuresConfig.cvOptimizeLimit !== null && (
-                    <li className="flex gap-3 items-center">
-                      <Check className="w-5 h-5 shrink-0 text-zinc-900" />
+                    <li className="flex gap-3 items-start">
+                      <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                       <span className="text-zinc-600 text-sm">
                         {sub.featuresConfig.cvOptimizeLimit} lượt Tối ưu CV AI
                       </span>
                     </li>
                   )}
                   {sub.featuresConfig.mockInterviewLimit !== null && (
-                    <li className="flex gap-3 items-center">
-                      <Check className="w-5 h-5 shrink-0 text-zinc-900" />
+                    <li className="flex gap-3 items-start">
+                      <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                       <span className="text-zinc-600 text-sm">
                         {sub.featuresConfig.mockInterviewLimit} lượt Phỏng vấn Mock AI
                       </span>
@@ -111,9 +111,13 @@ export default function CandidatePricingPage() {
                 </ul>
               </CardContent>
               
-              <CardFooter className="pb-10 pt-0">
+              <CardFooter className="pb-8 pt-0">
                 <Button 
-                  className="w-full h-12 text-sm font-semibold"
+                  className={`w-full h-11 text-sm font-semibold transition-all ${
+                    isPremium 
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm' 
+                      : 'bg-white hover:bg-zinc-50 text-zinc-900 border-zinc-200'
+                  }`}
                   variant={isPremium ? 'default' : 'outline'}
                   onClick={() => handleBuy(sub)}
                   disabled={isPending}
