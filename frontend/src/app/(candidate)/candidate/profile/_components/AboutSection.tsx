@@ -67,40 +67,43 @@ export function AboutSection() {
             <h3 className="text-sm font-bold">About Me</h3>
           </div>
         </div>
-        {!isEditing && (
-          <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)} className="text-muted-foreground hover:text-primary h-8 px-2 text-xs">
-            <Edit2 className="w-3.5 h-3.5 mr-1.5" />
-            Edit
-          </Button>
-        )}
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => setIsEditing(true)} 
+          className={`text-muted-foreground hover:text-primary h-8 px-2 text-xs ${isEditing ? 'invisible' : ''}`}
+        >
+          <Edit2 className="w-3.5 h-3.5 mr-1.5" />
+          Edit
+        </Button>
       </div>
       
       {isEditing ? (
-        <form onSubmit={handleSave} className="mt-2 border rounded-xl overflow-hidden bg-background/50">
-          <div className="p-4 space-y-2">
-            <div className="flex justify-between items-center">
-              <Label htmlFor="aboutMe" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">Bio</Label>
-              <span className={`text-[10px] font-semibold ${aboutMe.length > 500 ? 'text-destructive font-bold' : 'text-muted-foreground/80'}`}>
-                {aboutMe.length}/500
-              </span>
-            </div>
+        <form onSubmit={handleSave} className="-mt-[9px] -mx-3">
+          <div className="relative border border-border/40 rounded-xl overflow-hidden bg-muted/10 focus-within:bg-muted/20 focus-within:border-primary/40 transition-colors">
             <Textarea
               id="aboutMe"
               placeholder="Write a brief introduction about your career background, skills, and goals..."
               value={aboutMe}
               onChange={(e) => setAboutMe(e.target.value.slice(0, 500))}
-              rows={4}
-              className="bg-transparent border-none focus-visible:ring-0 resize-y p-0 text-sm shadow-none"
+              rows={Math.max(3, aboutMe.split('\n').length)}
+              autoFocus
+              className="bg-transparent border-none focus-visible:ring-0 resize-none p-3 text-sm shadow-none font-medium leading-relaxed min-h-[80px]"
             />
-          </div>
-          <div className="px-4 py-3 flex justify-end gap-2 bg-muted/20 border-t border-border/10">
-            <Button type="button" variant="outline" size="sm" onClick={handleCancel} disabled={isPending} className="h-8 text-xs">
-              <X className="w-3.5 h-3.5 mr-1.5" /> Cancel
-            </Button>
-            <Button type="submit" size="sm" disabled={isPending || aboutMe === (info?.aboutMe || '')} className="h-8 text-xs">
-              {isPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Check className="w-3.5 h-3.5 mr-1.5" />} 
-              {isPending ? 'Saving...' : 'Save'}
-            </Button>
+            <div className="flex justify-between items-center p-2 pt-0 bg-transparent">
+              <span className={`text-[10px] font-medium px-1 ${aboutMe.length > 500 ? 'text-destructive font-bold' : 'text-muted-foreground/60'}`}>
+                {aboutMe.length}/500
+              </span>
+              <div className="flex gap-1.5">
+                <Button type="button" variant="ghost" size="sm" onClick={handleCancel} disabled={isPending} className="h-7 text-xs hover:bg-muted font-medium">
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" disabled={isPending || aboutMe === (info?.aboutMe || '')} className="h-7 text-xs font-medium px-3">
+                  {isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
+                  Save
+                </Button>
+              </div>
+            </div>
           </div>
         </form>
       ) : (

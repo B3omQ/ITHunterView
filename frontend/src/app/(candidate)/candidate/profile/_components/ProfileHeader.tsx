@@ -56,6 +56,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
   const { mutate: updateSocialLinks, isPending: isPendingPresence } = useUpdateSocialLinks();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   // Form states
   const [firstName, setFirstName] = useState('');
@@ -68,6 +69,10 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
   const [githubUrl, setGithubUrl] = useState('');
 
   const isPending = isPendingBasic || isPendingPresence;
+
+  useEffect(() => {
+    setImageError(false);
+  }, [summary.avatarUrl]);
 
   useEffect(() => {
     if (info && isEditModalOpen) {
@@ -189,7 +194,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
   return (
     <Card className="p-6 md:p-8 flex flex-col gap-6 relative shadow-md overflow-hidden bg-card/60 backdrop-blur-md">
       {/* Top Actions: Visibility Toggle & Edit */}
-      <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-3">
+      <div className="absolute top-4 right-4 z-20 flex flex-row items-center gap-2">
         <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(true)} className="flex items-center gap-1.5 bg-background/80 backdrop-blur shadow-sm hover:bg-muted text-xs h-8">
           <Edit2 className="w-3.5 h-3.5" /> Edit Profile
         </Button>
@@ -211,14 +216,15 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
 
       <div className="flex flex-col items-center mt-6">
         {/* Avatar Area */}
-        <div className="relative group cursor-pointer shrink-0 mb-4" onClick={handleAvatarClick}>
-          <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-border relative bg-muted shadow-sm">
-            {summary.avatarUrl ? (
+        <div className="relative group cursor-pointer shrink-0 mb-4 z-10" onClick={handleAvatarClick}>
+          <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-border relative bg-muted shadow-sm flex items-center justify-center">
+            {summary.avatarUrl && !imageError ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={summary.avatarUrl}
                 alt={summary.fullName}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                onError={() => setImageError(true)}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 text-transparent"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-muted-foreground text-4xl font-bold uppercase">
@@ -227,7 +233,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
             )}
 
             <div
-              className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
+              className={`absolute inset-0 z-20 flex items-center justify-center transition-opacity duration-300 ${
                 isUploadingAvatar ? 'opacity-100 bg-black/60' : 'opacity-0 group-hover:opacity-100 bg-black/40'
               }`}
             >
