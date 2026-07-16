@@ -190,9 +190,11 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
             var allSkills = await _context.SfiaSkills.ToListAsync();
             var allSkillsJson = JsonSerializer.Serialize(allSkills.Select(s => new { s.SkillCode, s.SkillName }));
 
+            var genericLevelsJson = JsonSerializer.Serialize(ITHunterview.Service.Constant.SfiaGenericLevels.Matrix.Select(x => new { Level = x.Key, Description = x.Value.Essence }));
+
             string systemPrompt = @"You are an expert IT career coach and data extractor.
 Analyze the candidate's skill gaps identified from their " + sourceName + @" context.
-You will be provided a list of available Target Role Templates and their Required Skills, AND a list of all 147 SFIA skills.
+You will be provided a list of available Target Role Templates and their Required Skills, a list of all 147 SFIA skills, AND a guide on SFIA Generic Levels (1-7).
 Your job is to:
 1. Select the BEST matching targetRoleTemplateId from the provided list that fits the candidate's context.
 2. If AND ONLY IF absolutely no role from the list matches the candidate's context (e.g., highly specialized), leave targetRoleTemplateId null and generate a `newRole` by defining its name, description, and required skills from the SFIA list.
@@ -217,6 +219,9 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
             userPromptBuilder.AppendLine();
             userPromptBuilder.AppendLine("=== ALL SFIA SKILLS ===");
             userPromptBuilder.AppendLine(allSkillsJson);
+            userPromptBuilder.AppendLine();
+            userPromptBuilder.AppendLine("=== SFIA GENERIC LEVELS GUIDE ===");
+            userPromptBuilder.AppendLine(genericLevelsJson);
             userPromptBuilder.AppendLine();
             userPromptBuilder.AppendLine("=== CANDIDATE CONTEXT ===");
             userPromptBuilder.AppendLine(contextText);
@@ -357,42 +362,92 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
 
                 if (root.TryGetProperty("jdFit", out var jdFit))
                 {
-                    // Pool A - Technical skills
-                    if (jdFit.TryGetProperty("poolA", out var poolA))
+                    // Pool A & Pool B
+                    if (jdFit.TryGetProperty("poolA", out var poolA) && poolA.TryGetProperty("score", out var poolAScore))
+                        sb.AppendLine($"Technical Skills Score: {poolAScore}/70");
+                    if (jdFit.TryGetProperty("poolB", out var poolB) && poolB.TryGetProperty("score", out var poolBScore))
+                        sb.AppendLine($"Experience/Soft Skill Score: {poolBScore}/30");
+
+                    // Requirement Scores (Weak & Missing)
+                    if (jdFit.TryGetProperty("requirementScores", out var reqScores) && reqScores.ValueKind == JsonValueKind.Array)
                     {
-                        if (poolA.TryGetProperty("missingSkills", out var missingSkills))
-                            sb.AppendLine($"Missing Technical Skills: {missingSkills}");
+                        var weakReqs = reqScores.EnumerateArray()
+                            .Where(r => r.TryGetProperty("handlerScore", out var hs) && hs.GetDouble() < 0.8)
+                            .Select(r => 
+                            {
+                                var text = r.TryGetProperty("normalizedText", out var t) ? t.GetString() : "Unknown Skill";
+                                var score = r.TryGetProperty("handlerScore", out var s) ? s.GetDouble() : 0.0;
+                                var reason = r.TryGetProperty("reasoning", out var rs) ? rs.GetString() : "";
+                                return $"- {text} (Score: {score}): {reason}";
+                            })
+                            .ToList();
 
-                        if (poolA.TryGetProperty("weakSkills", out var weakSkills))
-                            sb.AppendLine($"Weak Technical Skills: {weakSkills}");
+                        if (weakReqs.Any())
+                        {
+                            sb.AppendLine("Identified Skill Gaps & Weaknesses:");
+                            sb.AppendLine(string.Join("\n", weakReqs));
+                        }
 
-                        if (poolA.TryGetProperty("score", out var poolAScore))
-                            sb.AppendLine($"Technical Skills Score: {poolAScore}/40");
+                        var strongReqs = reqScores.EnumerateArray()
+                            .Where(r => r.TryGetProperty("handlerScore", out var hs) && hs.GetDouble() >= 0.8)
+                            .Select(r => 
+                            {
+                                var text = r.TryGetProperty("normalizedText", out var t) ? t.GetString() : "Unknown Skill";
+                                var score = r.TryGetProperty("handlerScore", out var s) ? s.GetDouble() : 0.0;
+                                var reason = r.TryGetProperty("reasoning", out var rs) ? rs.GetString() : "";
+                                return $"- {text} (Score: {score}): {reason}";
+                            })
+                            .ToList();
+
+                        if (strongReqs.Any())
+                        {
+                            sb.AppendLine("Identified Strengths & Mastered Skills:");
+                            sb.AppendLine(string.Join("\n", strongReqs));
+                        }
                     }
 
-                    // Pool B - Soft skills / experience
-                    if (jdFit.TryGetProperty("poolB", out var poolB))
+                    // Narrative
+                    if (jdFit.TryGetProperty("narrative", out var narrative))
                     {
-                        if (poolB.TryGetProperty("gaps", out var gaps))
-                            sb.AppendLine($"Experience/Soft Skill Gaps: {gaps}");
+                        var narrativeStr = narrative.GetString();
+                        if (!string.IsNullOrWhiteSpace(narrativeStr))
+                            sb.AppendLine($"AI Narrative Assessment: {narrativeStr}");
+                    }
 
-                        if (poolB.TryGetProperty("score", out var poolBScore))
-                            sb.AppendLine($"Experience/Soft Skill Score: {poolBScore}/60");
+                    // Critical Gaps
+                    if (jdFit.TryGetProperty("criticalGaps", out var criticalGaps) && criticalGaps.ValueKind == JsonValueKind.Array)
+                    {
+                        var gaps = criticalGaps.EnumerateArray()
+                            .Select(g => g.TryGetProperty("gapDescription", out var desc) ? desc.GetString() : null)
+                            .Where(d => !string.IsNullOrWhiteSpace(d))
+                            .ToList();
+                        if (gaps.Any())
+                            sb.AppendLine($"Critical Gaps: {string.Join("; ", gaps)}");
                     }
 
                     // Penalties
-                    if (jdFit.TryGetProperty("penalties", out var penalties) &&
-                        penalties.ValueKind == JsonValueKind.Array)
+                    if (jdFit.TryGetProperty("penalties", out var penalties) && penalties.ValueKind == JsonValueKind.Array)
                     {
                         var triggeredPenalties = penalties.EnumerateArray()
                             .Where(p => p.TryGetProperty("triggered", out var t) && t.GetBoolean())
-                            .Select(p => p.TryGetProperty("reason", out var r) ? r.GetString() : null)
-                            .Where(r => r != null)
+                            .Select(p => p.TryGetProperty("evidence", out var e) ? e.GetString() : null)
+                            .Where(e => !string.IsNullOrWhiteSpace(e))
                             .ToList();
 
                         if (triggeredPenalties.Any())
-                            sb.AppendLine($"Penalty Reasons: {string.Join("; ", triggeredPenalties)}");
+                            sb.AppendLine($"Penalty Evidence: {string.Join("; ", triggeredPenalties)}");
                     }
+                }
+
+                // Improvements (Root level)
+                if (root.TryGetProperty("improvements", out var improvements) && improvements.ValueKind == JsonValueKind.Array)
+                {
+                    var issues = improvements.EnumerateArray()
+                        .Select(i => i.TryGetProperty("issue", out var issue) ? issue.GetString() : null)
+                        .Where(i => !string.IsNullOrWhiteSpace(i))
+                        .ToList();
+                    if (issues.Any())
+                        sb.AppendLine($"Areas for Improvement: {string.Join("; ", issues)}");
                 }
                 else if (root.TryGetProperty("Method", out var methodProp) && methodProp.GetString() == "Hardcode")
                 {
