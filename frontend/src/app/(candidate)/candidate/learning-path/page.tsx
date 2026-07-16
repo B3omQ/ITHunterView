@@ -152,7 +152,7 @@ export default function LearningPathDashboard() {
             <div className="sticky top-8 flex flex-col items-center justify-center p-8">
               <div className="relative w-full max-w-md aspect-square flex items-center justify-center">
                 <DotLottieReact
-                  src="/images/ai-animation.json"
+                  src="/images/roadmap.json"
                   loop
                   autoplay
                   speed={0.25}
