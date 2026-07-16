@@ -209,6 +209,14 @@ namespace ITHunterview.Service.UseCase
 
             foreach (var job in jobs)
             {
+                var existingScore = await _context.CvJobMatchScores
+                    .FirstOrDefaultAsync(s => s.CvId == cvId && s.JobId == job.Id && s.UserId == userId);
+
+                if (existingScore != null && existingScore.Status != "Pending")
+                {
+                    continue;
+                }
+
                 var titleScore = CalculateComponentScore(cv.TitleEmbedding, job.TitleEmbedding);
                 var skillsScore = CalculateComponentScore(cv.SkillsEmbedding, job.SkillsEmbedding);
                 var expScore = CalculateComponentScore(cv.ExperienceEmbedding, job.ExperienceEmbedding);
@@ -229,14 +237,12 @@ namespace ITHunterview.Service.UseCase
                     Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m }
                 });
 
-                var existingScore = await _context.CvJobMatchScores
-                    .FirstOrDefaultAsync(s => s.CvId == cvId && s.JobId == job.Id && s.UserId == userId);
-
                 if (existingScore != null)
                 {
                     existingScore.MatchScore = finalScore;
                     existingScore.UpdatedAt = DateTime.UtcNow;
                     existingScore.MatchDetails = details;
+                    existingScore.Status = "Completed";
                 }
                 else
                 {
@@ -249,6 +255,7 @@ namespace ITHunterview.Service.UseCase
                         RawJdText = job.Title,
                         MatchScore = finalScore,
                         MatchDetails = details,
+                        Status = "Completed",
                         UpdatedAt = DateTime.UtcNow
                     });
                 }
@@ -270,6 +277,14 @@ namespace ITHunterview.Service.UseCase
 
             foreach (var cv in cvs)
             {
+                var existingScore = await _context.CvJobMatchScores
+                    .FirstOrDefaultAsync(s => s.CvId == cv.Id && s.JobId == jobId && s.UserId == userId);
+
+                if (existingScore != null && existingScore.Status != "Pending")
+                {
+                    continue;
+                }
+
                 var titleScore = CalculateComponentScore(cv.TitleEmbedding, job.TitleEmbedding);
                 var skillsScore = CalculateComponentScore(cv.SkillsEmbedding, job.SkillsEmbedding);
                 var expScore = CalculateComponentScore(cv.ExperienceEmbedding, job.ExperienceEmbedding);
@@ -290,14 +305,12 @@ namespace ITHunterview.Service.UseCase
                     Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m }
                 });
 
-                var existingScore = await _context.CvJobMatchScores
-                    .FirstOrDefaultAsync(s => s.CvId == cv.Id && s.JobId == jobId && s.UserId == userId);
-
                 if (existingScore != null)
                 {
                     existingScore.MatchScore = finalScore;
                     existingScore.UpdatedAt = DateTime.UtcNow;
                     existingScore.MatchDetails = details;
+                    existingScore.Status = "Completed";
                 }
                 else
                 {
@@ -310,6 +323,7 @@ namespace ITHunterview.Service.UseCase
                         RawJdText = job.Title,
                         MatchScore = finalScore,
                         MatchDetails = details,
+                        Status = "Completed",
                         UpdatedAt = DateTime.UtcNow
                     });
                 }
@@ -697,8 +711,10 @@ namespace ITHunterview.Service.UseCase
             var query = from s in _context.CvJobMatchScores
                         join c in _context.Cvs on s.CvId equals c.Id into cvs
                         from c in cvs.DefaultIfEmpty()
-                        where s.UserId == userId
-                        select new { Score = s, Cv = c };
+                        join j in _context.JobPostings on s.JobId equals j.Id into jobs
+                        from j in jobs.DefaultIfEmpty()
+                        where s.UserId == userId && j != null
+                        select new { Score = s, Cv = c, Job = j };
 
             if (cvId.HasValue)
             {
