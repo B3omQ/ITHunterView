@@ -52,7 +52,6 @@ const CANDIDATE_NAV: NavItem[] = [
   { label: "Matching History", href: APP_ROUTES.CANDIDATE.CV_MATCHING, icon: "History" },
   { label: "Learning Path", href: APP_ROUTES.CANDIDATE.LEARNING_PATH, icon: "Map" },
   { label: "Applications", href: APP_ROUTES.CANDIDATE.APPLICATIONS, icon: "ClipboardList" },
-  { label: "Notifications", href: APP_ROUTES.CANDIDATE.NOTIFICATIONS, icon: "Bell" },
   { label: "Change Password", href: APP_ROUTES.CANDIDATE.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
@@ -61,7 +60,6 @@ const RECRUITER_NAV: NavItem[] = [
   { label: "Company", href: APP_ROUTES.RECRUITER.COMPANY, icon: "Building2" },
   { label: "Job Postings", href: APP_ROUTES.RECRUITER.JOBS, icon: "Briefcase" },
   { label: "Analytics", href: APP_ROUTES.RECRUITER.ANALYTICS, icon: "BarChart3" },
-  { label: "Notifications", href: APP_ROUTES.RECRUITER.NOTIFICATIONS, icon: "Bell" },
   { label: "Change Password", href: APP_ROUTES.RECRUITER.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
@@ -72,7 +70,6 @@ const STAFF_NAV: NavItem[] = [
   { label: "Prompts", href: APP_ROUTES.STAFF.PROMPTS, icon: "MessageSquare" },
   { label: "Question Bank", href: APP_ROUTES.STAFF.QUESTION_BANK, icon: "FileText" },
   { label: "Audit Logs", href: APP_ROUTES.STAFF.AUDIT_LOGS, icon: "ClipboardList" },
-  { label: "Notifications", href: APP_ROUTES.STAFF.NOTIFICATIONS, icon: "Bell" },
   { label: "Change Password", href: APP_ROUTES.STAFF.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
@@ -94,7 +91,6 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Subscriptions", href: APP_ROUTES.ADMIN.SUBSCRIPTIONS, icon: "CreditCard" },
   { label: "Finance", href: APP_ROUTES.ADMIN.FINANCE, icon: "BarChart3" },
   { label: "Platform Safety", href: APP_ROUTES.ADMIN.AUDIT_LOGS, icon: "Shield" },
-  { label: "Notifications", href: APP_ROUTES.ADMIN.NOTIFICATIONS, icon: "Bell" },
   { label: "Change Password", href: APP_ROUTES.ADMIN.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
@@ -167,9 +163,7 @@ export function Sidebar() {
             <div key={item.label} className="space-y-0.5">
               <div
                 onClick={() => {
-                  if (item.label === "Notifications" && (user?.role?.name === "candidate" || user?.role?.name === "recruiter")) {
-                    setIsNotificationOpen(true)
-                  } else if (item.children) {
+                  if (item.children) {
                     toggleExpand(item.label)
                   } else {
                     router.push(item.href)
@@ -231,9 +225,17 @@ export function Sidebar() {
       </nav>
 
       {/* 3. Bottom Actions & User Profile Footer */}
-      <div className="p-3 flex flex-col gap-2">
-        {/* Secondary Links */}
-
+      <div className="p-3 flex flex-col gap-2 border-t border-border/40">
+        {/* Global Actions (e.g., Notifications) */}
+        <div
+          onClick={() => setIsNotificationOpen(true)}
+          className="sidebar-item cursor-pointer flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium transition-all group text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+        >
+          <span className="text-muted-foreground group-hover:text-sidebar-foreground transition-colors">
+            <Bell size={18} strokeWidth={2.5} className="drop-shadow-sm" />
+          </span>
+          <span className="flex-1 truncate">Notifications</span>
+        </div>
 
         {/* User Card (Replaces top block & standalone logout) */}
         {user && (
