@@ -30,42 +30,42 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect, onMatchJo
       className={cn(
         "flex flex-col gap-4 rounded-xl border p-5 shadow-sm transition-all cursor-pointer",
         isActive 
-          ? "border-blue-500 bg-blue-50/20 shadow-md ring-1 ring-blue-500" 
-          : "border-slate-200 bg-white hover:shadow-md hover:border-slate-300"
+          ? "border-primary bg-primary/5 shadow-md ring-1 ring-primary" 
+          : "border-border bg-card hover:shadow-md hover:border-primary/50"
       )}
     >
       <div className="flex items-start gap-4">
         <div className={cn(
-          "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-blue-600 transition-colors",
-          isActive ? "bg-blue-100" : "bg-blue-50"
+          "flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-primary transition-colors",
+          isActive ? "bg-primary/20" : "bg-primary/10"
         )}>
-          <FileText className="h-5 w-5" />
+          <FileText className="h-6 w-6" />
         </div>
-        <div className="flex flex-col overflow-hidden">
-          <h4 className="truncate text-sm font-semibold text-slate-900" title={cv.fileName}>
+        <div className="flex flex-col overflow-hidden justify-center py-1">
+          <h4 className="truncate text-base font-semibold text-foreground group-hover:text-primary transition-colors" title={cv.fileName}>
             {cv.fileName}
           </h4>
-          <p className="text-xs text-slate-500">
+          <p className="text-sm text-muted-foreground mt-0.5">
             {formattedDate} • {formattedSize}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t border-slate-100 pt-3">
-        <span className="text-xs text-slate-400">
+      <div className="flex items-center justify-between border-t border-border pt-4 mt-2">
+        <span className="text-sm text-muted-foreground">
           {isActive ? 'Viewing' : 'Click to view'}
         </span>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           {onMatchJobs && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onMatchJobs(cv);
               }}
-              className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-700 transition-colors"
+              className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
             >
-              <Eye className="h-3.5 w-3.5" />
+              <Eye className="h-4 w-4" />
               Find Matches
             </button>
           )}
@@ -77,11 +77,11 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect, onMatchJo
             }}
             disabled={isDeleting}
             className={cn(
-              "flex items-center gap-1.5 text-xs font-medium text-red-500 transition-colors hover:text-red-600",
+              "flex items-center gap-1.5 text-sm font-medium text-destructive transition-colors hover:text-destructive/80",
               isDeleting && "opacity-50 cursor-not-allowed"
             )}
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-4 w-4" />
             {isDeleting ? 'Deleting...' : 'Delete'}
           </button>
         </div>
