@@ -127,7 +127,7 @@ export default function CandidateDashboard() {
   }
 
   return (
-    <div className="pb-10 max-w-7xl mx-auto pt-6 px-4 md:px-8">
+    <div className="w-full pb-10 space-y-6">
       
       {/* Header Greeting */}
       <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">

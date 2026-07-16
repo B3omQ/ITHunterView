@@ -111,7 +111,7 @@ export default function JobPostingsPage() {
 
   return (
     <div className="min-h-screen bg-background transition-colors duration-200">
-      <div className="max-w-7xl mx-auto pt-6 pb-10 px-4 md:px-8 space-y-4">
+      <div className="w-full pb-8 space-y-4">
         
         {/* Top Header Card */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-2">

@@ -18,7 +18,7 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto pt-6 pb-10 px-4 md:px-8">
+    <div className="w-full pb-8 space-y-8">
         <PageLoader message="Loading profile..." />
       </div>
     );
@@ -26,7 +26,7 @@ export default function ProfilePage() {
 
   if (isError || !summary) {
     return (
-      <div className="max-w-7xl mx-auto pt-6 pb-10 px-4 md:px-8">
+    <div className="w-full pb-8 space-y-8">
         <EmptyState
           title="Could not load profile"
           description="Please check your connection and try again."
@@ -36,7 +36,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto pt-6 pb-10 px-4 md:px-8 space-y-8">
+    <div className="w-full pb-8 space-y-8">
       {/* Profile Header */}
       <ProfileHeader summary={summary} />
 

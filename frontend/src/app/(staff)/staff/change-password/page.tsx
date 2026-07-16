@@ -50,7 +50,7 @@ export default function SecuritySettingsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto pt-6 pb-10 px-4 md:px-8 space-y-6">
+    <div className="w-full pb-8 space-y-6">
       <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
       <div className="mb-6">
         <h2 className="text-xl font-bold text-foreground">Password &amp; Security</h2>

@@ -35,7 +35,7 @@ export default function CompanyOverviewPage() {
 
   // Company exists: Show overview
   return (
-    <div className="max-w-7xl mx-auto pt-6 pb-10 px-4 md:px-8 space-y-6">
+    <div className="w-full pb-8 space-y-6">
       <Card className="border-l-4 border-l-primary shadow-md">
         <CardHeader className="pb-4">
           <div className="flex justify-between items-start">

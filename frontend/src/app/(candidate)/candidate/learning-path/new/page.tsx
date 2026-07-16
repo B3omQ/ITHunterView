@@ -184,7 +184,7 @@ export default function NewLearningPathPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto pt-6 pb-10 px-4 md:px-8 space-y-8">
+    <div className="w-full pb-8 space-y-8">
       <div className="flex items-center space-x-4">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />

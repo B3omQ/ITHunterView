@@ -14,7 +14,7 @@ export default function PromptsPage() {
   const { data, isLoading, isError } = usePrompts(1, 20);
 
   return (
-    <div className="max-w-7xl mx-auto pt-6 pb-10 px-4 md:px-8 space-y-6">
+    <div className="w-full pb-8 space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Prompt Management</h1>
         <p className="text-muted-foreground mt-2">

@@ -266,7 +266,7 @@ export default function CompanyProfilePage() {
   const currentImages = form.watch('companyImages') || [];
 
   return (
-    <div className="max-w-7xl mx-auto pt-6 pb-10 px-4 md:px-8 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8 w-full">
+    <div className="w-full pb-8 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
       <div className="bg-card rounded-xl border p-6 shadow-sm">
         <h2 className="text-xl font-semibold mb-6">Company Profile Details</h2>
         

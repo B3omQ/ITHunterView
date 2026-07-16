@@ -109,7 +109,7 @@ export default function ResumesPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="w-full pb-8 flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">My Resumes</h1>
         <p className="text-sm text-slate-500">

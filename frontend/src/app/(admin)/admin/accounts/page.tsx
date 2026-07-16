@@ -151,7 +151,7 @@ export default function AdminAccountsPage() {
   const accountsTotal = accountsData?.data?.total || 0;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="w-full pb-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
         <div>

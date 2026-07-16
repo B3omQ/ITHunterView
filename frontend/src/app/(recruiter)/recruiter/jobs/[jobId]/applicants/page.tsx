@@ -201,7 +201,7 @@ export default function JobApplicantsPage() {
 
   return (
     <div className="min-h-screen bg-background transition-colors duration-200">
-      <div className="max-w-7xl mx-auto pt-6 pb-10 px-4 md:px-8 space-y-6">
+      <div className="w-full pb-8 space-y-6">
         
         {/* Header Breadcrumb & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">

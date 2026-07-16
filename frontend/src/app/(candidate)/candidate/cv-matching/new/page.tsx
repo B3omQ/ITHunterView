@@ -24,7 +24,7 @@ function CvMatchingContent() {
   const { state, queries, setters, handlers } = useCvMatchingForm();
 
   return (
-    <div className="max-w-7xl mx-auto w-full pt-6 pb-10 px-4 md:px-8">
+    <div className="w-full pb-8">
       {/* 1. Tiêu đề chính */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
         <div className="flex flex-col space-y-2 text-center md:text-left">

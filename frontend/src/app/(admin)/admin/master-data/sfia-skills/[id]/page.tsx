@@ -58,8 +58,8 @@ export default function SfiaSkillDetailPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
-      <div className="p-6 overflow-y-auto flex-1">
-        <div className="max-w-5xl mx-auto space-y-6">
+      <div className="overflow-y-auto flex-1">
+        <div className="w-full pb-8 space-y-6">
 
           {/* General Information */}
           <div className="grid gap-6 md:grid-cols-3">

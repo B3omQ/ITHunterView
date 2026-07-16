@@ -72,7 +72,7 @@ function CandidateJobsContent() {
     <div className="flex flex-col min-h-[calc(100vh-64px)] bg-white">
       {/* Top Filter */}
       <div className="bg-white w-full">
-        <div className="mx-auto px-4 md:px-8 pt-6 pb-10 lg:px-6 lg:pb-10 max-w-7xl">
+        <div className="w-full pb-8">
           <JobSearchFilter />
         </div>
       </div>
