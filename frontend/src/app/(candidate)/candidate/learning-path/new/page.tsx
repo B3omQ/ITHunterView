@@ -411,7 +411,7 @@ export default function NewLearningPathPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">Filter by Seniority</Label>
-                    <Select value={roleLevelFilter} onValueChange={setRoleLevelFilter}>
+                    <Select value={roleLevelFilter} onValueChange={(val) => setRoleLevelFilter(val || '')}>
                       <SelectTrigger className="bg-background">
                         <SelectValue placeholder="All Levels" />
                       </SelectTrigger>

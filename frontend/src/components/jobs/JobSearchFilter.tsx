@@ -406,7 +406,7 @@ export function JobSearchFilter() {
           {isCandidate && (
             <Button 
               variant="default" 
-              className="h-9 flex items-center gap-2 text-sm bg-purple-600 hover:bg-purple-700"
+              className="h-9 flex items-center gap-2 text-sm bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all"
               onClick={() => setIsMatchModalOpen(true)}
             >
               <Sparkles className="h-4 w-4" />

@@ -60,10 +60,23 @@ export default function ResumesPage() {
         throw new Error(uploadRes?.message || 'Upload failed');
       }
 
+      // Handle duplicate file names
+      let finalFileName = file.name;
+      let counter = 1;
+      
+      const lastDotIndex = file.name.lastIndexOf('.');
+      const baseName = lastDotIndex === -1 ? file.name : file.name.substring(0, lastDotIndex);
+      const extension = lastDotIndex === -1 ? '' : file.name.substring(lastDotIndex);
+
+      while (cvs.some(cv => cv.fileName === finalFileName)) {
+        finalFileName = `${baseName} (${counter})${extension}`;
+        counter++;
+      }
+
       // 2. Create CV record
       await createCv({
         fileUrl: uploadRes.data,
-        fileName: file.name,
+        fileName: finalFileName,
         fileSize: file.size,
         fileType: file.type || 'application/pdf',
         isPrimary: cvs.length === 0, // First CV is primary by default

@@ -69,7 +69,7 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
       } else {
         await cvService.matchJobsHardcode(selectedCvId);
       }
-      
+
       await fetchMatches();
     } catch (err: any) {
       setError(err.message || 'Failed to scan for matches.');
@@ -102,9 +102,11 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
                 You haven't uploaded any resumes yet.
               </div>
             ) : (
-              <Select value={selectedCvId} onValueChange={setSelectedCvId}>
+              <Select value={selectedCvId} onValueChange={(val) => setSelectedCvId(val || '')}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a resume..." />
+                  <span className="flex-1 text-left truncate">
+                    {selectedCv ? selectedCv.fileName : "Select a resume..."}
+                  </span>
                 </SelectTrigger>
                 <SelectContent>
                   {cvs.map(c => (
@@ -130,7 +132,7 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
                 {useAI ? 'Semantic Vector AI' : 'Rule-based Keyword Extraction'}
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3">
               <span className={cn("text-xs font-medium", !useAI ? "text-slate-900" : "text-slate-400")}>Hardcode</span>
               <Switch disabled checked={useAI} onCheckedChange={setUseAI} className={useAI ? "data-[state=checked]:bg-purple-600" : ""} />
@@ -140,8 +142,8 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
 
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold text-slate-900">Matches Found ({matches.length})</h4>
-            <Button 
-              onClick={handleScan} 
+            <Button
+              onClick={handleScan}
               disabled={isScanning}
               size="sm"
               className={cn(
@@ -199,8 +201,8 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
                     <div className="flex flex-col items-end">
                       <span className={cn(
                         "text-lg font-bold",
-                        (match.matchScore || 0) >= 0.7 ? "text-green-600" : 
-                        (match.matchScore || 0) >= 0.5 ? "text-amber-600" : "text-slate-600"
+                        (match.matchScore || 0) >= 0.7 ? "text-green-600" :
+                          (match.matchScore || 0) >= 0.5 ? "text-amber-600" : "text-slate-600"
                       )}>
                         {Math.round((match.matchScore || 0) * 100)}%
                       </span>

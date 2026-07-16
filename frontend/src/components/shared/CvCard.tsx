@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { FileText, Eye, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Cv } from '@/types/cv.types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface CvCardProps {
   cv: Cv;
@@ -11,6 +14,8 @@ interface CvCardProps {
 }
 
 export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardProps) {
+  const [showConfirm, setShowConfirm] = useState(false);
+
   // Format date: "Jun 10, 2026"
   const formattedDate = new Date(cv.createdAt).toLocaleDateString('en-US', {
     month: 'short',
@@ -60,7 +65,7 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onDelete(cv.id);
+              setShowConfirm(true);
             }}
             disabled={isDeleting}
             className={cn(
@@ -71,6 +76,32 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
             <Trash2 className="h-4 w-4" />
             {isDeleting ? 'Deleting...' : 'Delete'}
           </button>
+
+          <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+            <DialogContent onClick={(e) => e.stopPropagation()}>
+              <DialogHeader>
+                <DialogTitle>Delete Resume</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete <strong>{cv.fileName}</strong>? This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="mt-4 flex sm:justify-end gap-2">
+                <Button variant="outline" onClick={(e) => {
+                  e.stopPropagation();
+                  setShowConfirm(false);
+                }}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(cv.id);
+                  setShowConfirm(false);
+                }} disabled={isDeleting}>
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>
