@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cvService } from '@/services/cv.service';
 import type { MatchJdRequest, MatchingResultDto } from '@/types/cv.types';
 import type { ApiResponse } from '@/types/api.types';
@@ -27,5 +27,15 @@ export const useGetMatchHistory = (page: number = 1, pageSize: number = 10) => {
   return useQuery({
     queryKey: ['match-history', page, pageSize],
     queryFn: () => cvService.getMatchHistory(page, pageSize),
+  });
+};
+
+export const useDeleteMatchHistory = () => {
+  const queryClient = useQueryClient();
+  return useMutation<ApiResponse<string>, Error, string>({
+    mutationFn: (jobId: string) => cvService.deleteMatchHistory(jobId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['match-history'] });
+    },
   });
 };
