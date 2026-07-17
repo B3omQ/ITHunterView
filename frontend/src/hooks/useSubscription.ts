@@ -15,6 +15,13 @@ export function useSubscriptions(params: {
   });
 }
 
+export function usePublicSubscriptions(params?: { role?: string }) {
+  return useQuery({
+    queryKey: ['public-subscriptions', params],
+    queryFn: ({ signal }) => subscriptionService.getPublicSubscriptions(params, signal),
+  });
+}
+
 export function useSubscriptionDetail(id: number, enabled = true) {
   return useQuery({
     queryKey: ['admin-subscription-detail', id],

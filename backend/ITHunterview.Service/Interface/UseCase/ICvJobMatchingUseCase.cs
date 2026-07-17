@@ -18,5 +18,6 @@ namespace ITHunterview.Service.Interface.UseCase
         Task<ITHunterview.Service.DTOs.Cv.Matching.MatchingResultDto?> GetMatchingResultAsync(Guid jobId, Guid userId);
         Task<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>> GetMatchHistoryAsync(Guid userId, int page, int pageSize, Guid? cvId = null);
         Task<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>> GetJobMatchHistoryAsync(Guid jobId, Guid userId, int page, int pageSize);
+        Task DeleteMatchHistoryAsync(Guid jobId, Guid userId);
     }
 }

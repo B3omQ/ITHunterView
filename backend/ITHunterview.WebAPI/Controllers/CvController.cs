@@ -185,6 +185,30 @@ namespace ITHunterview.WebAPI.Controllers
             var result = await _cvJobMatchingUseCase.GetMatchHistoryAsync(userId, page, pageSize, cvId);
             return Ok(new ResponseBase<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>(result, "Match history retrieved"));
         }
+
+        [HttpDelete("match-history/{jobId:guid}")]
+        public async Task<ActionResult<ResponseBase<string>>> DeleteMatchHistory(Guid jobId)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+                await _cvJobMatchingUseCase.DeleteMatchHistoryAsync(jobId, userId);
+                return Ok(new ResponseBase<string>("Match history deleted successfully", "Match history deleted successfully"));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new ResponseBase<string>("Match history not found"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ResponseBase<string>(null, ex.Message));
+            }
+        }
         [HttpPost("{id:guid}/match-jobs-hardcode")]
         public async Task<ActionResult<ResponseBase<string>>> MatchJobsHardcode(Guid id)
         {

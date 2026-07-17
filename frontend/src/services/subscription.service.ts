@@ -20,6 +20,11 @@ export const subscriptionService = {
       .get<ApiResponse<PagedResult<SubscriptionDto>>>('/api/admin/subscriptions', { params, signal })
       .then((res) => res.data),
 
+  getPublicSubscriptions: (params?: { role?: string }, signal?: AbortSignal) =>
+    api
+      .get<ApiResponse<SubscriptionDto[]>>('/api/v1/subscriptions', { params, signal })
+      .then((res) => res.data),
+
   getSubscriptionById: (id: number) =>
     api
       .get<ApiResponse<SubscriptionDto>>(`/api/admin/subscriptions/${id}`)

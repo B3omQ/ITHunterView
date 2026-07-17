@@ -221,7 +221,7 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
   const user = detailData.data;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="w-full pb-8 space-y-6">
       {/* Back Link */}
       <Link
         href="/admin/accounts"

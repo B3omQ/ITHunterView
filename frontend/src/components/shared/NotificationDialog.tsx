@@ -3,7 +3,9 @@
 import * as React from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { notificationService, type NotificationDto } from "@/services/notification.service"
+import { useSignalR } from "@/hooks/useSignalR"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2, Circle, Bell } from "lucide-react"
@@ -15,6 +17,16 @@ interface NotificationDialogProps {
 
 export function NotificationDialog({ open, onOpenChange }: NotificationDialogProps) {
   const queryClient = useQueryClient()
+  const connection = useSignalR('/hubs/notification')
+
+  React.useEffect(() => {
+    if (connection) {
+      connection.on("ReceiveNotification", () => {
+        // Refetch notifications when a real-time event is received
+        queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      })
+    }
+  }, [connection, queryClient])
   
   const getTimeAgo = (dateStr: string) => {
     const date = new Date(dateStr)
@@ -45,19 +57,19 @@ export function NotificationDialog({ open, onOpenChange }: NotificationDialogPro
   const notifications = data?.data || []
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-0 overflow-hidden" showCloseButton={true}>
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
-          <DialogTitle className="flex items-center gap-2">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full sm:max-w-md p-0 flex flex-col gap-0 border-l border-border/50">
+        <SheetHeader className="px-6 pt-6 pb-4 border-b border-border/50 shrink-0 text-left">
+          <SheetTitle className="flex items-center gap-2">
             <Bell size={20} className="text-primary" />
             Your Notifications
-          </DialogTitle>
-          <DialogDescription>
+          </SheetTitle>
+          <SheetDescription>
             Stay updated with the latest alerts and activities.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
-        <ScrollArea className="h-[400px]">
+        <ScrollArea className="flex-1 w-full h-full">
           {isLoading ? (
             <div className="flex items-center justify-center h-full text-muted-foreground">
               Loading...
@@ -114,7 +126,7 @@ export function NotificationDialog({ open, onOpenChange }: NotificationDialogPro
             </div>
           )}
         </ScrollArea>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }

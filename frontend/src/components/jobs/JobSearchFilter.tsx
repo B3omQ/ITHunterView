@@ -9,7 +9,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { Search, MapPin, ChevronDown, Filter, X } from 'lucide-react';
+import { Search, MapPin, ChevronDown, Filter, X, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -21,6 +21,8 @@ import {
   COMPANY_TYPES
 } from '@/lib/job-constants';
 import { useJobMetadata } from '@/hooks/useJobs';
+import { MatchJobsModal } from '@/components/candidate/MatchJobsModal';
+import { useAuthStore } from '@/store/auth.store';
 
 // Constants
 const LOCATIONS = [
@@ -139,6 +141,10 @@ export function JobSearchFilter() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
+  const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
+
+  const { user } = useAuthStore();
+  const isCandidate = user?.role?.name?.toLowerCase() === 'candidate';
 
   // Sync state when URL changes (e.g. from Clear All or browser back button)
   useEffect(() => {
@@ -396,6 +402,18 @@ export function JobSearchFilter() {
               Clear Filters
             </Button>
           )}
+
+          {isCandidate && (
+            <Button 
+              variant="default" 
+              className="h-9 flex items-center gap-2 text-sm bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all"
+              onClick={() => setIsMatchModalOpen(true)}
+            >
+              <Sparkles className="h-4 w-4" />
+              Smart Match
+            </Button>
+          )}
+
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogTrigger
               render={
@@ -611,6 +629,12 @@ export function JobSearchFilter() {
         </div>
       </div>
 
+      {isCandidate && (
+        <MatchJobsModal 
+          isOpen={isMatchModalOpen} 
+          onClose={() => setIsMatchModalOpen(false)} 
+        />
+      )}
     </div>
   );
 }

@@ -30,5 +30,8 @@ namespace ITHunterview.Domain.Entities
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }
 
+        [Column("is_hidden")]
+        public bool IsHidden { get; set; } = false;
+
     }
 }

@@ -6,13 +6,15 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, User, Briefcase, Bookmark, Bell, Settings, HelpCircle, LogOut,
   ChevronRight, Users, FileText, Building2, Shield, BarChart3, BrainCircuit,
-  ClipboardList, Database, CreditCard, MessageSquare, KeyRound, AlertCircle, Sparkles, History,Map
+  ClipboardList, Database, CreditCard, MessageSquare, KeyRound, AlertCircle, Sparkles, History, Map, Coins, FileSearch
 } from "lucide-react"
 import { useAuthStore } from "@/store/auth.store"
 import { Logo } from "@/components/layout/Logo"
 import { APP_ROUTES } from "@/lib/constants"
 import { useGetMyCompany } from "@/hooks/useCompany"
 import { NotificationDialog } from "@/components/shared/NotificationDialog"
+import { useQuery } from "@tanstack/react-query"
+import { notificationService } from "@/services/notification.service"
 
 // ---- Lucide icon map ----
 const iconProps = { size: 18, strokeWidth: 2.5, className: "drop-shadow-sm" };
@@ -37,6 +39,8 @@ const ICONS: Record<string, React.ReactNode> = {
   Sparkles: <Sparkles {...iconProps} />,
   History: <History {...iconProps} />,
   Map: <Map {...iconProps} />,
+  FileSearch: <FileSearch {...iconProps} />,
+  Coins: <Coins {...iconProps} />,
 }
 
 // ---- Nav definitions per role ----
@@ -47,14 +51,21 @@ const CANDIDATE_NAV: NavItem[] = [
   { label: "My Profile", href: APP_ROUTES.CANDIDATE.PROFILE, icon: "User" },
   { label: "Job Listings", href: APP_ROUTES.CANDIDATE.JOBS, icon: "Briefcase" },
   { label: "Saved Jobs", href: APP_ROUTES.CANDIDATE.SAVED_JOBS, icon: "Bookmark" },
-  { label: "My Resume", href: APP_ROUTES.CANDIDATE.RESUME, icon: "FileText" },
-  { label: "CV Optimizer", href: APP_ROUTES.CANDIDATE.CV_OPTIMIZER, icon: "BrainCircuit" },
-  { label: "Mock Interview", href: APP_ROUTES.CANDIDATE.INTERVIEW, icon: "MessageSquare" },
-  { label: "CV-JD Matching", href: APP_ROUTES.CANDIDATE.CV_MATCHING, icon: "Sparkles" },
-  { label: "Matching History", href: APP_ROUTES.CANDIDATE.CV_MATCHING_HISTORY, icon: "History" },
-  { label: "Learning Path", href: APP_ROUTES.CANDIDATE.LEARNING_PATH, icon: "Map" },
   { label: "Applications", href: APP_ROUTES.CANDIDATE.APPLICATIONS, icon: "ClipboardList" },
-  { label: "Notifications", href: APP_ROUTES.CANDIDATE.NOTIFICATIONS, icon: "Bell", badge: 3 },
+  { label: "My Resume", href: APP_ROUTES.CANDIDATE.RESUME, icon: "FileText" },
+  { label: "Mock Interview", href: APP_ROUTES.CANDIDATE.INTERVIEW, icon: "MessageSquare" },
+  { label: "CV-JD Matching", href: APP_ROUTES.CANDIDATE.CV_MATCHING, icon: "FileSearch" },
+  { label: "Learning Path", href: APP_ROUTES.CANDIDATE.LEARNING_PATH, icon: "Map" },
+  { 
+    label: "Billing & Plans", 
+    href: "", 
+    icon: "CreditCard",
+    children: [
+      { label: "Subscriptions", href: APP_ROUTES.CANDIDATE.PRICING },
+      { label: "Top Up Coins", href: APP_ROUTES.CANDIDATE.TOP_UP },
+      { label: "Transaction History", href: APP_ROUTES.CANDIDATE.BILLING_HISTORY }
+    ]
+  },
   { label: "Change Password", href: APP_ROUTES.CANDIDATE.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
@@ -63,7 +74,15 @@ const RECRUITER_NAV: NavItem[] = [
   { label: "Company", href: APP_ROUTES.RECRUITER.COMPANY, icon: "Building2" },
   { label: "Job Postings", href: APP_ROUTES.RECRUITER.JOBS, icon: "Briefcase" },
   { label: "Analytics", href: APP_ROUTES.RECRUITER.ANALYTICS, icon: "BarChart3" },
-  { label: "Notifications", href: APP_ROUTES.RECRUITER.NOTIFICATIONS, icon: "Bell", badge: 2 },
+  { 
+    label: "Billing & Plans", 
+    href: "", 
+    icon: "CreditCard",
+    children: [
+      { label: "Subscriptions", href: "/recruiter/billing" },
+      { label: "Transaction History", href: APP_ROUTES.RECRUITER.BILLING_HISTORY }
+    ]
+  },
   { label: "Change Password", href: APP_ROUTES.RECRUITER.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
@@ -74,7 +93,6 @@ const STAFF_NAV: NavItem[] = [
   { label: "Prompts", href: APP_ROUTES.STAFF.PROMPTS, icon: "MessageSquare" },
   { label: "Question Bank", href: APP_ROUTES.STAFF.QUESTION_BANK, icon: "FileText" },
   { label: "Audit Logs", href: APP_ROUTES.STAFF.AUDIT_LOGS, icon: "ClipboardList" },
-  { label: "Notifications", href: APP_ROUTES.STAFF.NOTIFICATIONS, icon: "Bell" },
   { label: "Change Password", href: APP_ROUTES.STAFF.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
@@ -96,7 +114,6 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Subscriptions", href: APP_ROUTES.ADMIN.SUBSCRIPTIONS, icon: "CreditCard" },
   { label: "Finance", href: APP_ROUTES.ADMIN.FINANCE, icon: "BarChart3" },
   { label: "Platform Safety", href: APP_ROUTES.ADMIN.AUDIT_LOGS, icon: "Shield" },
-  { label: "Notifications", href: APP_ROUTES.ADMIN.NOTIFICATIONS, icon: "Bell" },
   { label: "Change Password", href: APP_ROUTES.ADMIN.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
@@ -120,6 +137,15 @@ export function Sidebar() {
   const { data: company, isLoading: companyLoading } = useGetMyCompany({
     enabled: isRecruiter
   })
+
+  // Poll for notifications to update badge
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => notificationService.getUserNotifications(1, 50),
+    enabled: !!user,
+    refetchInterval: 30000 // Poll every 30 seconds
+  })
+  const unreadCount = notificationsData?.data?.filter(n => !n.isRead)?.length || 0;
 
   const navItems = getNavItems(user?.role?.name ?? "candidate")
 
@@ -169,21 +195,19 @@ export function Sidebar() {
             <div key={item.label} className="space-y-0.5">
               <div
                 onClick={() => {
-                  if (item.label === "Notifications" && (user?.role?.name === "candidate" || user?.role?.name === "recruiter")) {
-                    setIsNotificationOpen(true)
-                  } else if (item.children) {
+                  if (item.children) {
                     toggleExpand(item.label)
                   } else {
                     router.push(item.href)
                   }
                 }}
                 className={`sidebar-item cursor-pointer flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium transition-all group ${
-                  active && !item.children
+                  (active || (item.children && item.children.some(c => isActive(c.href)))) && !item.children
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
                     : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
                 }`}
               >
-                <span className={active ? "text-primary" : "text-muted-foreground group-hover:text-sidebar-foreground transition-colors"}>
+                <span className={(active || (item.children && item.children.some(c => isActive(c.href)))) ? "text-primary" : "text-muted-foreground group-hover:text-sidebar-foreground transition-colors"}>
                   {ICONS[item.icon]}
                 </span>
                 <span className="flex-1 truncate">{item.label}</span>
@@ -210,7 +234,7 @@ export function Sidebar() {
                 <div className="pl-9 pr-2 py-1 space-y-1">
                   {item.children.map(child => {
                     // Check strict match for children, support searchParams
-                    const childActive = pathname === child.href || pathname.startsWith(child.href + '/');
+                    const childActive = isActive(child.href)
                     return (
                       <Link
                         key={child.label}
@@ -233,9 +257,22 @@ export function Sidebar() {
       </nav>
 
       {/* 3. Bottom Actions & User Profile Footer */}
-      <div className="p-3 flex flex-col gap-2">
-        {/* Secondary Links */}
-
+      <div className="p-3 flex flex-col gap-2 border-t border-border/40">
+        {/* Global Actions (e.g., Notifications) */}
+        <div
+          onClick={() => setIsNotificationOpen(true)}
+          className="sidebar-item cursor-pointer flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium transition-all group text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+        >
+          <span className="text-muted-foreground group-hover:text-sidebar-foreground transition-colors relative">
+            <Bell size={18} strokeWidth={2.5} className="drop-shadow-sm" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </span>
+          <span className="flex-1 truncate">Notifications</span>
+        </div>
 
         {/* User Card (Replaces top block & standalone logout) */}
         {user && (

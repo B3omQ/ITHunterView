@@ -6,6 +6,7 @@ import {
   useUpdateCertification,
 } from '@/hooks/useCandidateProfile';
 import type { CandidateCertification, CertificationUpsertRequest } from '@/types/candidate.types';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -150,20 +151,13 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
   };
 
   return (
-    <Card className="border border-primary/20 bg-primary/5 rounded-xl overflow-hidden shadow-sm animate-in slide-in-from-top-4 duration-300">
-      <CardContent className="p-5 sm:p-6">
+    <div className="w-full mt-2">
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-          <div className="mb-4">
-            <h3 className="text-lg font-bold text-foreground">
-              {initialData ? 'Edit Certification' : 'Add Certification'}
-            </h3>
-            <p className="text-xs text-muted-foreground">Fill in the details of your certification below</p>
-          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="name" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Certification Name *</Label>
-              <Input
+            <div className={cn("sm:col-span-2 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm", errors.name && "border-destructive focus-within:border-destructive focus-within:ring-destructive/30")}>
+              <Label htmlFor="name" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Certification Name <span className="text-destructive">*</span></Label>
+              <input
                 id="name"
                 placeholder="e.g. AWS Certified Solutions Architect"
                 value={name}
@@ -172,14 +166,14 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
                   setName(e.target.value);
                   if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
                 }}
-                className={`bg-background/80 focus-visible:ring-primary/30 ${errors.name ? 'border-destructive focus-visible:ring-destructive' : 'border-border/60'}`}
+                className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50"
               />
-              {errors.name && <p className="text-xs text-destructive mt-1 font-medium">{errors.name}</p>}
+              {errors.name && <p className="text-[10px] text-destructive mt-1 font-medium">{errors.name}</p>}
             </div>
 
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="issuingOrganization" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Issuing Organization *</Label>
-              <Input
+            <div className={cn("sm:col-span-2 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm", errors.issuingOrganization && "border-destructive focus-within:border-destructive focus-within:ring-destructive/30")}>
+              <Label htmlFor="issuingOrganization" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Issuing Organization <span className="text-destructive">*</span></Label>
+              <input
                 id="issuingOrganization"
                 placeholder="e.g. Amazon Web Services (AWS)"
                 value={issuingOrganization}
@@ -187,20 +181,20 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
                   setIssuingOrganization(e.target.value);
                   if (errors.issuingOrganization) setErrors((prev) => ({ ...prev, issuingOrganization: undefined }));
                 }}
-                className={`bg-background/80 focus-visible:ring-primary/30 ${errors.issuingOrganization ? 'border-destructive focus-visible:ring-destructive' : 'border-border/60'}`}
+                className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50"
               />
-              {errors.issuingOrganization && <p className="text-xs text-destructive mt-1 font-medium">{errors.issuingOrganization}</p>}
+              {errors.issuingOrganization && <p className="text-[10px] text-destructive mt-1 font-medium">{errors.issuingOrganization}</p>}
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Issue Date</Label>
+            <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+              <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Issue Date</Label>
               <div className="flex gap-2">
-                <div className="w-1/2">
+                <div className="w-1/2 border-r border-border/50 pr-2">
                   <Select
                     value={parseDateString(issueDate).month}
                     onValueChange={(val) => setIssueDate(buildDateString(parseDateString(issueDate).year || '', val || ''))}
                   >
-                    <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
+                    <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
                       <SelectValue placeholder="Month" />
                     </SelectTrigger>
                     <SelectContent>
@@ -213,7 +207,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
                     value={parseDateString(issueDate).year}
                     onValueChange={(val) => setIssueDate(buildDateString(val || '', parseDateString(issueDate).month || ''))}
                   >
-                    <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
+                    <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
                       <SelectValue placeholder="Year" />
                     </SelectTrigger>
                     <SelectContent>
@@ -224,15 +218,15 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Expiration Date (Optional)</Label>
+            <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+              <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Expiration Date (Optional)</Label>
               <div className="flex gap-2">
-                <div className="w-1/2">
+                <div className="w-1/2 border-r border-border/50 pr-2">
                   <Select
                     value={parseDateString(expirationDate).month}
                     onValueChange={(val) => setExpirationDate(buildDateString(parseDateString(expirationDate).year || '', val || ''))}
                   >
-                    <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
+                    <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
                       <SelectValue placeholder="Month" />
                     </SelectTrigger>
                     <SelectContent>
@@ -245,7 +239,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
                     value={parseDateString(expirationDate).year}
                     onValueChange={(val) => setExpirationDate(buildDateString(val || '', parseDateString(expirationDate).month || ''))}
                   >
-                    <SelectTrigger className="w-full bg-background/80 border-border/60 focus:ring-primary/30">
+                    <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
                       <SelectValue placeholder="Year" />
                     </SelectTrigger>
                     <SelectContent>
@@ -256,15 +250,15 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
               </div>
             </div>
 
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="credentialUrl" className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Credential URL</Label>
-              <Input
+            <div className="sm:col-span-2 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
+              <Label htmlFor="credentialUrl" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Credential URL</Label>
+              <input
                 id="credentialUrl"
                 type="url"
                 placeholder="e.g. https://www.credly.com/badges/..."
                 value={credentialUrl}
                 onChange={(e) => setCredentialUrl(e.target.value)}
-                className="bg-background/80 border-border/60 focus-visible:ring-primary/30"
+                className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50"
               />
             </div>
           </div>
@@ -289,7 +283,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
             </Button>
           </div>
         </form>
-      </CardContent>
+
 
       {/* Cancel Confirmation Dialog */}
       <Dialog open={showConfirmCancel} onOpenChange={setShowConfirmCancel}>
@@ -323,6 +317,6 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   );
 }

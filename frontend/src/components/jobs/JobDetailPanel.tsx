@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useJobDetail } from '@/hooks/useJobDetail';
 import { PageLoader } from '@/components/shared/PageLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -18,6 +19,7 @@ interface JobDetailPanelProps {
 
 export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPanelProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data, isLoading, isError } = useJobDetail(jobId, isCandidateMode);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const { saveJob, unsaveJob, isSaving, isUnsaving } = useJobActions();
@@ -90,9 +92,15 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
 
         {/* Action Section */}
         <div className="flex items-center gap-3 mb-6">
-          <Button onClick={handleApplyClick} className="flex-1 text-base font-bold h-12" size="lg">
-            Apply now
-          </Button>
+          {job.isApplied ? (
+            <Button disabled variant="outline" className="flex-1 text-base font-bold h-12 bg-emerald-50 text-emerald-700 border-emerald-200">
+              Applied
+            </Button>
+          ) : (
+            <Button onClick={handleApplyClick} className="flex-1 text-base font-bold h-12" size="lg">
+              Apply now
+            </Button>
+          )}
           <Button variant="outline" onClick={handleSaveClick} disabled={isSaving || isUnsaving} className="w-12 h-12 shrink-0 p-0 border-slate-200" title={job.isSaved ? "Unsave Job" : "Save Job"}>
             {job.isSaved ? (
               <Heart className="w-6 h-6 text-primary fill-primary" />
@@ -207,6 +215,8 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
         jobTitle={job.title}
         onSuccess={() => {
           setIsApplyModalOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['job-detail', job.id] });
+          queryClient.invalidateQueries({ queryKey: ['candidate-jobs'] });
         }}
       />
     </div>

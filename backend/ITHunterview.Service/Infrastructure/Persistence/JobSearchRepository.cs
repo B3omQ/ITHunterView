@@ -162,11 +162,20 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     .Select(usj => usj.JobId)
                     .ToListAsync();
 
+                var appliedJobIds = await (from cp in _context.CandidateProfiles
+                                           join ja in _context.JobApplications on cp.Id equals ja.CandidateId
+                                           where cp.UserId == userId.Value && pagedJobIds.Contains(ja.JobId)
+                                           select ja.JobId).ToListAsync();
+
                 foreach (var job in jobCards)
                 {
                     if (savedJobIds.Contains(job.Id))
                     {
                         job.IsSaved = true;
+                    }
+                    if (appliedJobIds.Contains(job.Id))
+                    {
+                        job.IsApplied = true;
                     }
                 }
             }
@@ -209,10 +218,16 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 .ToListAsync();
 
             bool isSaved = false;
+            bool isApplied = false;
             if (userId.HasValue)
             {
                 isSaved = await _context.UserSavedJobs
                     .AnyAsync(usj => usj.UserId == userId.Value && usj.JobId == jobId);
+                
+                isApplied = await (from cp in _context.CandidateProfiles
+                                   join ja in _context.JobApplications on cp.Id equals ja.CandidateId
+                                   where cp.UserId == userId.Value && ja.JobId == jobId
+                                   select ja.Id).AnyAsync();
             }
 
             return new JobDetailViewDto
@@ -236,6 +251,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 JobDomain = jobWithCompany.job.JobDomain,
                 PublishedAt = jobWithCompany.job.PublishedAt,
                 IsSaved = isSaved,
+                IsApplied = isApplied,
                 Skills = skills
             };
         }

@@ -20,11 +20,16 @@ export function useJobActions() {
 
   const unsaveJobMutation = useMutation({
     mutationFn: (jobId: string) => jobService.unsaveJob(jobId),
-    onSuccess: () => {
+    onSuccess: (_, jobId) => {
       queryClient.invalidateQueries({ queryKey: ['candidate-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['saved-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['job-detail'] });
-      toast.success('Job removed from saved list');
+      toast.success('Job removed from saved list', {
+        action: {
+          label: 'Undo',
+          onClick: () => saveJobMutation.mutateAsync(jobId)
+        }
+      });
     },
     onError: () => {
       toast.error('Failed to unsave job');

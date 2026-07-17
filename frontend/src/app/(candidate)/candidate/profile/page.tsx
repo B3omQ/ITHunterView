@@ -1,24 +1,20 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useProfileSummary } from '@/hooks/useCandidateProfile';
 import { PageLoader } from '@/components/shared/PageLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ProfileHeader } from './_components/ProfileHeader';
-import { PersonalInfoTab } from './_components/PersonalInfoTab';
 import { SkillsTab } from './_components/SkillsTab';
 import { ExperienceTab } from './_components/ExperienceTab';
 import { EducationTab } from './_components/EducationTab';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, Briefcase, GraduationCap, Award } from 'lucide-react';
 
 export default function ProfilePage() {
   const { data: summary, isLoading, isError } = useProfileSummary();
-  const [activeTab, setActiveTab] = useState('personal-info');
 
   if (isLoading) {
     return (
-      <div className="container max-w-5xl mx-auto py-12 px-4">
+      <div className="w-full pb-8 space-y-8">
         <PageLoader message="Loading profile..." />
       </div>
     );
@@ -26,7 +22,7 @@ export default function ProfilePage() {
 
   if (isError || !summary) {
     return (
-      <div className="container max-w-5xl mx-auto py-12 px-4">
+      <div className="w-full pb-8 space-y-8">
         <EmptyState
           title="Could not load profile"
           description="Please check your connection and try again."
@@ -36,50 +32,30 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container max-w-5xl mx-auto py-8 px-4 space-y-8">
-      {/* Profile Header */}
-      <ProfileHeader summary={summary} />
-
-      {/* Profile Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <div className="border-b border-border/40 pb-2">
-          <TabsList className="bg-muted p-1 rounded-xl flex w-full md:w-max">
-            <TabsTrigger value="personal-info" className="flex items-center gap-2 flex-1 md:flex-initial py-2.5 px-4 rounded-lg text-sm font-semibold transition-all">
-              <User className="w-4 h-4" />
-              Personal Info
-            </TabsTrigger>
-            <TabsTrigger value="skills" className="flex items-center gap-2 flex-1 md:flex-initial py-2.5 px-4 rounded-lg text-sm font-semibold transition-all">
-              <Award className="w-4 h-4" />
-              Skills
-            </TabsTrigger>
-            <TabsTrigger value="experience" className="flex items-center gap-2 flex-1 md:flex-initial py-2.5 px-4 rounded-lg text-sm font-semibold transition-all">
-              <Briefcase className="w-4 h-4" />
-              Experience
-            </TabsTrigger>
-            <TabsTrigger value="education" className="flex items-center gap-2 flex-1 md:flex-initial py-2.5 px-4 rounded-lg text-sm font-semibold transition-all">
-              <GraduationCap className="w-4 h-4" />
-              Education
-            </TabsTrigger>
-          </TabsList>
+    <div className="w-full pb-16">
+      <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] xl:grid-cols-[400px_1fr] gap-8 items-start max-w-7xl mx-auto">
+        {/* Left Column */}
+        <div className="space-y-6">
+          <div id="header">
+            <ProfileHeader summary={summary} />
+          </div>
         </div>
 
-        {/* Tab Content Placeholders */}
-        <TabsContent value="personal-info" className="outline-none">
-          <PersonalInfoTab />
-        </TabsContent>
+        {/* Right Column */}
+        <div className="space-y-6 min-w-0">
+          <div id="skills">
+            <SkillsTab />
+          </div>
 
-        <TabsContent value="skills" className="outline-none">
-          <SkillsTab />
-        </TabsContent>
+          <div id="experience">
+            <ExperienceTab />
+          </div>
 
-        <TabsContent value="experience" className="outline-none">
-          <ExperienceTab />
-        </TabsContent>
-
-        <TabsContent value="education" className="outline-none">
-          <EducationTab />
-        </TabsContent>
-      </Tabs>
+          <div id="education">
+            <EducationTab />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

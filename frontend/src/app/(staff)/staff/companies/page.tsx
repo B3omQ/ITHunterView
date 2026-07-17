@@ -170,7 +170,7 @@ export default function StaffCompaniesPage() {
   const totalItems = companyData?.total || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="w-full pb-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
         <div>

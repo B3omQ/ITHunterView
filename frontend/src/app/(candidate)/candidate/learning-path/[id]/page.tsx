@@ -59,7 +59,7 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
   const progressPercentage = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
   return (
-    <div className="container mx-auto py-8 space-y-8 max-w-6xl">
+    <div className="w-full pb-8 space-y-8">
       <div className="flex items-center gap-4">
         <Link href="/candidate/learning-path" className={buttonVariants({ variant: 'ghost', size: 'icon' })}>
           <ArrowLeft className="h-5 w-5" />

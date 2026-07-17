@@ -19,6 +19,7 @@ namespace ITHunterview.Service.DTOs.JobSearch
         public List<string>? JobDomain { get; set; }
         public DateTime? PublishedAt { get; set; }
         public bool? IsSaved { get; set; }
+        public bool? IsApplied { get; set; }
         public List<string> Skills { get; set; } = new();
     }
 }

@@ -733,7 +733,7 @@ namespace ITHunterview.Service.UseCase
                 CvFileName = x.Cv?.FileName ?? x.Score.CvFileName ?? "Unknown CV",
                 FileUrl = x.Cv?.FileUrl,
                 SourceJobId = x.Score.JobId,
-                JdTitle = x.Score.JdTitle,
+                JdTitle = x.Job?.Title ?? x.Score.JdTitle ?? x.Score.RawJdText,
                 MatchScore = x.Score.MatchScore,
                 Status = x.Score.Status,
                 ErrorMessage = x.Score.ErrorMessage,
@@ -784,6 +784,20 @@ namespace ITHunterview.Service.UseCase
                 Page = page,
                 PageSize = pageSize
             };
+        }
+
+        public async Task DeleteMatchHistoryAsync(Guid jobId, Guid userId)
+        {
+            var matchRecord = await _context.CvJobMatchScores
+                .FirstOrDefaultAsync(m => m.Id == jobId && m.UserId == userId);
+
+            if (matchRecord == null)
+            {
+                throw new KeyNotFoundException("Match history not found or you do not have permission to delete it.");
+            }
+
+            _context.CvJobMatchScores.Remove(matchRecord);
+            await _context.SaveChangesAsync();
         }
     }
 }

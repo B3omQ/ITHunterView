@@ -50,7 +50,8 @@ export default function SecuritySettingsPage() {
   }
 
   return (
-    <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+    <div className="w-full pb-8 space-y-6">
+      <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
       <div className="mb-6">
         <h2 className="text-xl font-bold text-foreground">Password &amp; Security</h2>
         <p className="text-sm text-muted-foreground mt-1">Manage your password and account security settings.</p>
@@ -162,6 +163,7 @@ export default function SecuritySettingsPage() {
           </button>
         </div>
       </form>
+    </div>
     </div>
   )
 }
