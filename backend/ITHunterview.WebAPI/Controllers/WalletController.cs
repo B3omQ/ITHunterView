@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PayOS;
 using PayOS.Models;
+using Microsoft.Extensions.Logging;
 
 namespace ITHunterview.WebAPI.Controllers
 {
@@ -18,11 +19,13 @@ namespace ITHunterview.WebAPI.Controllers
     {
         private readonly IWalletUseCase _walletUseCase;
         private readonly PayOSClient _payOS;
+        private readonly ILogger<WalletController> _logger;
 
-        public WalletController(IWalletUseCase walletUseCase, PayOSClient payOS)
+        public WalletController(IWalletUseCase walletUseCase, PayOSClient payOS, ILogger<WalletController> logger)
         {
             _walletUseCase = walletUseCase;
             _payOS = payOS;
+            _logger = logger;
         }
 
         private Guid? GetCurrentUserId()
@@ -149,23 +152,31 @@ namespace ITHunterview.WebAPI.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> HandlePayOsWebhook([FromBody] PayOS.Models.Webhooks.Webhook webhookBody)
         {
+            PayOS.Models.Webhooks.WebhookData data;
             try
             {
-                PayOS.Models.Webhooks.WebhookData data = await _payOS.Webhooks.VerifyAsync(webhookBody);
+                data = await _payOS.Webhooks.VerifyAsync(webhookBody);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("SECURITY: Webhook signature invalid. Possible attack. {msg}", ex.Message);
+                return Ok(new { success = false, message = "Invalid signature" });
+            }
 
-                if (data.Description == "Ma test" || data.Description == "VQRIO123")
-                {
-                    return Ok(new { success = true, message = "Test webhook ignored" });
-                }
+            if (data.OrderCode == 123)
+            {
+                return Ok(new { success = true, message = "Test webhook ignored" });
+            }
 
+            try
+            {
                 await _walletUseCase.ProcessWebhookAsync(data.OrderCode, data.TransactionDateTime);
-
                 return Ok(new { success = true, message = "Webhook processed" });
             }
             catch (Exception ex)
             {
-                // PayOS yêu cầu trả về 200 kể cả khi xử lý lỗi nội bộ để tránh retry-loop
-                return Ok(new { success = false, message = ex.Message });
+                _logger.LogError(ex, "Internal error processing webhook for OrderCode {code}", data.OrderCode);
+                return StatusCode(500, new { success = false, message = "Internal processing error" });
             }
         }
     }

@@ -30,109 +30,121 @@ namespace ITHunterview.Service.UseCase
             if (string.IsNullOrEmpty(featureKey))
                 throw new ArgumentException("Feature key không được để trống", nameof(featureKey));
 
-            // 1. Kiểm tra Subscription đang hoạt động (ACTIVE) của người dùng
-            var activeSub = await _context.UserSubscriptions
-                .Where(us => us.UserId == userId && us.Status == UserSubscriptionStatus.ACTIVE && us.EndDate >= DateTime.UtcNow)
-                .OrderByDescending(us => us.EndDate)
-                .FirstOrDefaultAsync();
-
-            if (activeSub != null)
-            {
-                // Lấy Subscription details bằng cách join thủ công tránh lỗi thiếu navigation property
-                var subscription = await _context.Subscriptions
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(s => s.Id == activeSub.SubId && s.Status == SubscriptionStatus.ACTIVE);
-
-                if (subscription != null && !string.IsNullOrEmpty(subscription.FeaturesConfig))
-                {
-                    FeaturesConfigDto? features = null;
-                    try
-                    {
-                        features = JsonSerializer.Deserialize<FeaturesConfigDto>(subscription.FeaturesConfig, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    }
-                    catch
-                    {
-                        // JSON lỗi, bỏ qua để đi tiếp luồng trừ Coin
-                    }
-
-                    if (features != null)
-                    {
-                        int limit = featureKey switch
-                        {
-                            "CvJdMatching" => features.CvMatchLimit ?? 0,
-                            "MockInterview" => features.MockInterviewLimit ?? 0,
-                            "CvOptimize" => features.CvOptimizeLimit ?? 0,
-                            _ => 0
-                        };
-
-                        if (limit == -1) // Không giới hạn
-                        {
-                            return true;
-                        }
-
-                        if (limit > 0)
-                        {
-                            int usedCount = await GetUsedCountInPeriodAsync(userId, featureKey, activeSub.StartDate, activeSub.EndDate);
-                            if (usedCount < limit)
-                            {
-                                return true; // Hạn mức Subscription còn, cho phép thực hiện
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 2. Không có Subscription hoặc đã hết hạn mức -> Tiêu tốn Coin từ ví Pay-as-you-go
-            // Truy vấn từ bảng chuyên biệt CoinFeatures
-            var dbFeature = await _context.CoinFeatures
-                .AsNoTracking()
-                .FirstOrDefaultAsync(cf => cf.FeatureKey == featureKey);
-
-            int coinCost;
-            if (dbFeature != null)
-            {
-                coinCost = dbFeature.CoinCost;
-            }
-            else
-            {
-                // Fallback default
-                var defaultCosts = GetDefaultCosts();
-                coinCost = featureKey switch
-                {
-                    "CvJdMatching" => defaultCosts.CvJdMatching,
-                    "MockInterview" => defaultCosts.MockInterview,
-                    "CvOptimize" => defaultCosts.CvOptimize,
-                    _ => 0
-                };
-            }
-
-            if (coinCost == 0)
-            {
-                return true; // Tính năng miễn phí theo cấu hình
-            }
-
-            // Thực hiện trừ ví bằng Database Transaction kết hợp Row-Level Lock để tránh Race Condition (Spam click)
             using (var transaction = await _context.Database.BeginTransactionAsync())
             {
                 try
                 {
-                    // Áp dụng Pessimistic Lock (SELECT FOR UPDATE) trên PostgreSQL để khóa dòng ví của người dùng
+                    // 1. Áp dụng Pessimistic Lock (SELECT FOR UPDATE) trên PostgreSQL để khóa dòng ví của người dùng ngay từ đầu
+                    // Điều này đóng vai trò như một mutex per-user cho toàn bộ luồng check subscription & trừ coin
                     var wallet = await _context.UserWallets
                         .FromSqlRaw("SELECT * FROM user_wallets WHERE user_id = {0} LIMIT 1 FOR UPDATE", userId)
                         .FirstOrDefaultAsync();
 
                     if (wallet == null)
                     {
-                        // Nếu chưa có ví, tạo mới với balance = 0
-                        wallet = new UserWallets
+                        try
                         {
-                            Id = Guid.NewGuid(),
-                            UserId = userId,
-                            Balance = 0,
-                            UpdatedAt = DateTime.UtcNow
+                            wallet = new UserWallets
+                            {
+                                Id = Guid.NewGuid(),
+                                UserId = userId,
+                                Balance = 0,
+                                UpdatedAt = DateTime.UtcNow
+                            };
+                            _context.UserWallets.Add(wallet);
+                            await _context.SaveChangesAsync();
+                        }
+                        catch (DbUpdateException)
+                        {
+                            _context.ChangeTracker.Clear();
+                            wallet = await _context.UserWallets
+                                .FromSqlRaw("SELECT * FROM user_wallets WHERE user_id = {0} LIMIT 1 FOR UPDATE", userId)
+                                .FirstOrDefaultAsync();
+                        }
+                    }
+
+                    // 2. Kiểm tra Subscription đang hoạt động (ACTIVE) của người dùng
+                    var activeSub = await _context.UserSubscriptions
+                        .Where(us => us.UserId == userId && us.Status == UserSubscriptionStatus.ACTIVE && us.EndDate >= DateTime.UtcNow)
+                        .OrderByDescending(us => us.EndDate)
+                        .FirstOrDefaultAsync();
+
+                    if (activeSub != null)
+                    {
+                        // Lấy Subscription details bằng cách join thủ công tránh lỗi thiếu navigation property
+                        var subscription = await _context.Subscriptions
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(s => s.Id == activeSub.SubId && s.Status == SubscriptionStatus.ACTIVE);
+
+                        if (subscription != null && !string.IsNullOrEmpty(subscription.FeaturesConfig))
+                        {
+                            FeaturesConfigDto? features = null;
+                            try
+                            {
+                                features = JsonSerializer.Deserialize<FeaturesConfigDto>(subscription.FeaturesConfig, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                            }
+                            catch
+                            {
+                                // JSON lỗi, bỏ qua để đi tiếp luồng trừ Coin
+                            }
+
+                            if (features != null)
+                            {
+                                int limit = featureKey switch
+                                {
+                                    "CvJdMatching" => features.CvMatchLimit ?? 0,
+                                    "MockInterview" => features.MockInterviewLimit ?? 0,
+                                    "CvOptimize" => features.CvOptimizeLimit ?? 0,
+                                    _ => 0
+                                };
+
+                                if (limit == -1) // Không giới hạn
+                                {
+                                    await transaction.CommitAsync();
+                                    return true;
+                                }
+
+                                if (limit > 0)
+                                {
+                                    int usedCount = await GetUsedCountInPeriodAsync(userId, featureKey, activeSub.StartDate, activeSub.EndDate);
+                                    if (usedCount < limit)
+                                    {
+                                        await transaction.CommitAsync();
+                                        return true; // Hạn mức Subscription còn, cho phép thực hiện
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 3. Không có Subscription hoặc đã hết hạn mức -> Tiêu tốn Coin từ ví Pay-as-you-go
+                    // Truy vấn từ bảng chuyên biệt CoinFeatures
+                    var dbFeature = await _context.CoinFeatures
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(cf => cf.FeatureKey == featureKey);
+
+                    int coinCost;
+                    if (dbFeature != null)
+                    {
+                        coinCost = dbFeature.CoinCost;
+                    }
+                    else
+                    {
+                        // Fallback default
+                        var defaultCosts = GetDefaultCosts();
+                        coinCost = featureKey switch
+                        {
+                            "CvJdMatching" => defaultCosts.CvJdMatching,
+                            "MockInterview" => defaultCosts.MockInterview,
+                            "CvOptimize" => defaultCosts.CvOptimize,
+                            _ => 0
                         };
-                        _context.UserWallets.Add(wallet);
-                        await _context.SaveChangesAsync();
+                    }
+
+                    if (coinCost == 0)
+                    {
+                        await transaction.CommitAsync();
+                        return true; // Tính năng miễn phí theo cấu hình
                     }
 
                     if (wallet.Balance < coinCost)
@@ -196,10 +208,13 @@ namespace ITHunterview.Service.UseCase
                         .CountAsync();
 
                 case "CvOptimize":
-                    // Đếm số lần tối ưu CV (Dựa trên số lượng log trong ai_api_usage_logs liên quan đến CV của user)
-                    // Hoặc đơn giản là đếm số CV được cập nhật trong chu kỳ
-                    return await _context.Cvs
-                        .Where(x => x.UserId == userId && x.UpdatedAt >= start && x.UpdatedAt <= end)
+                    // Đếm số lần tối ưu CV (Dựa trên số lượng OptimizeSession của user thông qua CvJobMatchScores)
+                    return await _context.OptimizeSessions
+                        .Join(_context.CvJobMatchScores, 
+                              os => os.MatchSessionId, 
+                              ms => ms.Id, 
+                              (os, ms) => new { os, ms })
+                        .Where(x => x.ms.UserId == userId && x.os.CreatedAt >= start && x.os.CreatedAt <= end)
                         .CountAsync();
 
                 default:
