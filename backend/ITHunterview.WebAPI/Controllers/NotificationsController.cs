@@ -67,9 +67,9 @@ namespace ITHunterview.WebAPI.Controllers
 
         [HttpGet("system-wide")]
         [Authorize(Policy = "StaffOrAdmin")]
-        public async Task<ActionResult<PaginatedDataResponse<SystemNotificationDto>>> GetSystemWideNotifications([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10)
+        public async Task<ActionResult<PaginatedDataResponse<SystemNotificationDto>>> GetSystemWideNotifications([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 10, [FromQuery] string? searchTerm = null)
         {
-            var result = await _notificationUseCase.GetSystemNotificationsForStaffAsync(pageIndex, pageSize);
+            var result = await _notificationUseCase.GetSystemNotificationsForStaffAsync(pageIndex, pageSize, searchTerm);
             return Ok(result);
         }
 

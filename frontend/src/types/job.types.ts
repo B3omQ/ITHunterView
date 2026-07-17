@@ -35,6 +35,7 @@ export interface JobCardDto {
   jobDomain?: string[];
   publishedAt?: string;
   isSaved?: boolean;
+  isApplied?: boolean;
   skills?: string[];
 }
 
@@ -70,5 +71,6 @@ export interface JobDetailViewDto {
   status: string;
   publishedAt?: string;
   isSaved?: boolean;
+  isApplied?: boolean;
   skills: string[];
 }
