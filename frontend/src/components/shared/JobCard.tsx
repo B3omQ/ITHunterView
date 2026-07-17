@@ -24,7 +24,7 @@ const getDaysAgo = (dateStr?: string) => {
 };
 
 export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoadingAction, isActive, onClick }: JobCardProps) {
-  const jobLink = isCandidateMode ? `/candidate/jobs/${job.id}` : `/jobs/${job.id}`;
+  const jobLink = isCandidateMode ? `/jobs/${job.id}` : `/jobs/${job.id}`;
 
   return (
     <Link href={jobLink} onClick={onClick} className="block h-full">

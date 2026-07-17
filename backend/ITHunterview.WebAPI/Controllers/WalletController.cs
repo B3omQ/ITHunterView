@@ -6,6 +6,9 @@ using ITHunterview.Service.DTOs.Wallet;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PayOS;
+using PayOS.Models;
+using Microsoft.Extensions.Logging;
 
 namespace ITHunterview.WebAPI.Controllers
 {
@@ -15,10 +18,14 @@ namespace ITHunterview.WebAPI.Controllers
     public class WalletController : ControllerBase
     {
         private readonly IWalletUseCase _walletUseCase;
+        private readonly PayOSClient _payOS;
+        private readonly ILogger<WalletController> _logger;
 
-        public WalletController(IWalletUseCase walletUseCase)
+        public WalletController(IWalletUseCase walletUseCase, PayOSClient payOS, ILogger<WalletController> logger)
         {
             _walletUseCase = walletUseCase;
+            _payOS = payOS;
+            _logger = logger;
         }
 
         private Guid? GetCurrentUserId()
@@ -69,7 +76,7 @@ namespace ITHunterview.WebAPI.Controllers
         /// Candidate tạo yêu cầu thanh toán mua coin hoặc mua subscription
         /// </summary>
         [HttpPost("pay")]
-        [Authorize(Policy = "CandidateOnly")]
+        [Authorize(Policy = "CandidateOrRecruiter")]
         public async Task<IActionResult> CreatePaymentRequest([FromBody] CreatePaymentDto dto)
         {
             var userId = GetCurrentUserId();
@@ -99,6 +106,28 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         /// <summary>
+        /// Xem lịch sử thanh toán cá nhân của Candidate hoặc Recruiter
+        /// </summary>
+        [HttpGet("my-payments")]
+        [Authorize(Policy = "CandidateOrRecruiter")]
+        public async Task<IActionResult> GetMyPayments(
+            [FromQuery] int page = 1, 
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? status = null,
+            [FromQuery] string? targetType = null)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            var result = await _walletUseCase.GetMyPaymentsAsync(userId.Value, page, pageSize, status, targetType);
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+            return Ok(result);
+        }
+
+        /// <summary>
         /// Admin giả lập kết quả callback từ cổng thanh toán Momo/VNPay để cập nhật ví/subscription
         /// </summary>
         [HttpPost("admin/payments/simulate")]
@@ -114,6 +143,41 @@ namespace ITHunterview.WebAPI.Controllers
                 return BadRequest(result);
             }
             return Ok(result);
+        }
+
+        /// <summary>
+        /// Webhook URL cung cấp cho PayOS
+        /// </summary>
+        [HttpPost("payos-webhook")]
+        [AllowAnonymous]
+        public async Task<IActionResult> HandlePayOsWebhook([FromBody] PayOS.Models.Webhooks.Webhook webhookBody)
+        {
+            PayOS.Models.Webhooks.WebhookData data;
+            try
+            {
+                data = await _payOS.Webhooks.VerifyAsync(webhookBody);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("SECURITY: Webhook signature invalid. Possible attack. {msg}", ex.Message);
+                return Ok(new { success = false, message = "Invalid signature" });
+            }
+
+            if (data.OrderCode == 123)
+            {
+                return Ok(new { success = true, message = "Test webhook ignored" });
+            }
+
+            try
+            {
+                await _walletUseCase.ProcessWebhookAsync(data.OrderCode, data.TransactionDateTime);
+                return Ok(new { success = true, message = "Webhook processed" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Internal error processing webhook for OrderCode {code}", data.OrderCode);
+                return StatusCode(500, new { success = false, message = "Internal processing error" });
+            }
         }
     }
 }

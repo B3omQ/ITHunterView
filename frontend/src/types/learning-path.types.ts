@@ -3,19 +3,42 @@ export interface CandidateSfiaSkillDto {
   currentLevel: number;
 }
 
+export interface CustomSfiaSkillDto {
+  skillCode: string;
+  targetLevel: number;
+  currentLevel: number;
+}
+
 export interface GeneratePathRequest {
-  targetRoleTemplateId: string;
+  targetRoleTemplateId?: string;
+  customTargetRoleName?: string;
+  customTargetSkills?: CustomSfiaSkillDto[];
   currentSkills: CandidateSfiaSkillDto[];
+  personalContext?: string;
+}
+
+export interface ExtractedSkillProfileDto {
+  skillCode: string;
+  targetLevel: number;
+  currentLevel: number;
+  justification: string;
 }
 
 export interface ExtractSfiaProfileResponse {
-  targetRoleTemplateId: string;
-  currentSkills: CandidateSfiaSkillDto[];
+  customRoleName: string;
+  customRoleDescription: string;
+  skills: ExtractedSkillProfileDto[];
+}
+
+export interface HistoryContextPreviewDto {
+  contextPreview: string;
 }
 
 export interface TargetRoleSkillDto {
   skillCode: string;
   skillName: string;
+  description?: string;
+  availableLevels?: string;
   targetLevel: number;
 }
 

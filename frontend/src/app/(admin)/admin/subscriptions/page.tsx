@@ -103,7 +103,7 @@ export default function SubscriptionsAdminPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="w-full pb-8 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Subscription &amp; Coin Configuration</h1>

@@ -7,7 +7,6 @@ import { CvCard } from '@/components/shared/CvCard';
 import { CloudUpload, ExternalLink, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Cv } from '@/types/cv.types';
-import { MatchJobsModal } from '@/components/candidate/MatchJobsModal';
 
 export default function ResumesPage() {
   const { data: cvsResponse, isLoading: isLoadingCvs } = useGetMyCvs();
@@ -20,8 +19,6 @@ export default function ResumesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [selectedCv, setSelectedCv] = useState<Cv | null>(null);
-  const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
-  const [cvToMatch, setCvToMatch] = useState<Cv | null>(null);
 
   const cvs = cvsResponse?.data || [];
 
@@ -63,10 +60,23 @@ export default function ResumesPage() {
         throw new Error(uploadRes?.message || 'Upload failed');
       }
 
+      // Handle duplicate file names
+      let finalFileName = file.name;
+      let counter = 1;
+      
+      const lastDotIndex = file.name.lastIndexOf('.');
+      const baseName = lastDotIndex === -1 ? file.name : file.name.substring(0, lastDotIndex);
+      const extension = lastDotIndex === -1 ? '' : file.name.substring(lastDotIndex);
+
+      while (cvs.some(cv => cv.fileName === finalFileName)) {
+        finalFileName = `${baseName} (${counter})${extension}`;
+        counter++;
+      }
+
       // 2. Create CV record
       await createCv({
         fileUrl: uploadRes.data,
-        fileName: file.name,
+        fileName: finalFileName,
         fileSize: file.size,
         fileType: file.type || 'application/pdf',
         isPrimary: cvs.length === 0, // First CV is primary by default
@@ -109,10 +119,10 @@ export default function ResumesPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="w-full pb-8 flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">My Resumes</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">My Resumes</h1>
+        <p className="text-base text-muted-foreground">
           Manage and optimize your resumes for ATS compatibility
         </p>
       </div>
@@ -127,8 +137,8 @@ export default function ResumesPage() {
             onDrop={onDrop}
             onClick={() => fileInputRef.current?.click()}
             className={cn(
-              "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed bg-slate-50/50 p-6 text-center transition-colors hover:bg-slate-50",
-              isDragging ? "border-blue-400 bg-blue-50" : "border-slate-200",
+              "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed bg-muted/30 p-8 text-center transition-colors hover:bg-muted/50",
+              isDragging ? "border-primary bg-primary/5" : "border-border",
               isUploading && "pointer-events-none opacity-60"
             )}
           >
@@ -139,24 +149,24 @@ export default function ResumesPage() {
               ref={fileInputRef}
               onChange={handleFileInput}
             />
-            <div className="mb-3 rounded-full bg-blue-50 p-2.5 text-blue-600">
-              <CloudUpload className="h-5 w-5" />
+            <div className="mb-4 rounded-full bg-primary/10 p-3 text-primary">
+              <CloudUpload className="h-6 w-6" />
             </div>
-            <p className="mb-1 text-xs font-semibold text-slate-900">
+            <p className="mb-1 text-sm font-semibold text-foreground">
               {isUploading ? 'Uploading...' : 'Drag & drop your resume here'}
             </p>
-            <p className="text-[10px] text-slate-500">
+            <p className="text-xs text-muted-foreground">
               or click to browse · PDF, DOC, DOCX · Max 5 MB
             </p>
           </div>
 
           {/* Resumes List */}
           <div className="flex flex-col gap-4">
-            <h3 className="text-sm font-semibold text-slate-900">Uploaded CVs ({cvs.length})</h3>
+            <h3 className="text-base font-semibold text-foreground">Uploaded CVs ({cvs.length})</h3>
             {isLoadingCvs ? (
-              <div className="text-center text-sm text-slate-500 py-10">Loading resumes...</div>
+              <div className="text-center text-sm text-muted-foreground py-10">Loading resumes...</div>
             ) : cvs.length === 0 ? (
-              <div className="text-center text-sm text-slate-500 py-10 border border-dashed rounded-xl">
+              <div className="text-center text-sm text-muted-foreground py-10 border border-dashed border-border rounded-xl">
                 No resumes uploaded yet.
               </div>
             ) : (
@@ -169,10 +179,6 @@ export default function ResumesPage() {
                     onSelect={(c) => setSelectedCv(c)}
                     onDelete={(id) => deleteCv(id)} 
                     isDeleting={isDeleting}
-                    onMatchJobs={(cv) => {
-                      setCvToMatch(cv);
-                      setIsMatchModalOpen(true);
-                    }}
                   />
                 ))}
               </div>
@@ -183,13 +189,13 @@ export default function ResumesPage() {
         {/* Right Side: Live Viewer (7 cols on lg) */}
         <div className="lg:col-span-7 w-full">
           {selectedCv ? (
-            <div className="flex flex-col h-[650px] border border-slate-200 rounded-xl bg-slate-50 overflow-hidden shadow-xs">
-              <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
+            <div className="flex flex-col h-[650px] border border-border rounded-xl bg-card overflow-hidden shadow-sm">
+              <div className="flex items-center justify-between border-b border-border bg-muted/20 px-5 py-4">
                 <div className="flex flex-col min-w-0">
-                  <span className="text-sm font-semibold text-slate-900 truncate" title={selectedCv.fileName}>
+                  <span className="text-base font-semibold text-foreground truncate" title={selectedCv.fileName}>
                     {selectedCv.fileName}
                   </span>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-sm text-muted-foreground mt-0.5">
                     Live Preview
                   </span>
                 </div>
@@ -197,13 +203,13 @@ export default function ResumesPage() {
                   href={selectedCv.fileUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted/50 transition-colors"
                 >
-                  <ExternalLink className="h-3.5 w-3.5" />
+                  <ExternalLink className="h-4 w-4" />
                   <span>Open in new tab</span>
                 </a>
               </div>
-              <div className="flex-1 w-full h-full min-h-0 bg-slate-100">
+              <div className="flex-1 w-full h-full min-h-0 bg-muted/10">
                 <iframe
                   src={getEmbedUrl(selectedCv.fileUrl)}
                   className="w-full h-full border-0"
@@ -212,22 +218,13 @@ export default function ResumesPage() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-[650px] border border-dashed border-slate-200 rounded-xl bg-slate-50 text-slate-400 gap-2">
-              <FileText className="h-10 w-10 text-slate-300 animate-pulse" />
-              <p className="text-sm font-medium">Select a resume from the list to view its preview</p>
+            <div className="flex flex-col items-center justify-center h-[650px] border border-dashed border-border rounded-xl bg-muted/10 text-muted-foreground gap-3">
+              <FileText className="h-12 w-12 opacity-50 animate-pulse" />
+              <p className="text-base font-medium">Select a resume from the list to view its preview</p>
             </div>
           )}
         </div>
       </div>
-      
-      <MatchJobsModal 
-        cv={cvToMatch} 
-        isOpen={isMatchModalOpen} 
-        onClose={() => {
-          setIsMatchModalOpen(false);
-          setCvToMatch(null);
-        }} 
-      />
     </div>
   );
 }

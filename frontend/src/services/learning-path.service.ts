@@ -15,6 +15,9 @@ export const learningPathService = {
   extractFromInterview: (sessionId: string) =>
     api.get<ApiResponse<ExtractSfiaProfileResponse>>(`/api/learning-paths/extract-interview/${sessionId}`, { timeout: 120000 }).then(r => r.data),
 
+  getPreviewContext: (type: string, sourceId?: string) =>
+    api.get<ApiResponse<HistoryContextPreviewDto>>(`/api/learning-paths/preview-context?type=${type}${sourceId ? `&sourceId=${sourceId}` : ''}`).then(r => r.data),
+
   getMyPaths: () =>
     api.get<ApiResponse<LearningPath[]>>('/api/learning-paths').then(r => r.data),
 

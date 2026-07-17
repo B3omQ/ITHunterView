@@ -117,10 +117,39 @@ export interface UpdateTargetRoleTemplateDto {
   requiredSkills: CreateTargetRoleSkillDto[];
 }
 
+export interface SfiaSkillLevelDto {
+  id?: string;
+  level: number;
+  description: string;
+}
+
 export interface SfiaSkillDto {
   id: string;
   skillCode: string;
   skillName: string;
   category: string;
+  subcategory: string;
+  description: string;
+  availableLevels: string;
+  levels: SfiaSkillLevelDto[];
 }
 
+export interface CreateSfiaSkillDto {
+  skillCode: string;
+  skillName: string;
+  category: string;
+  subcategory: string;
+  description: string;
+  availableLevels: string;
+  levels: SfiaSkillLevelDto[];
+}
+
+export interface UpdateSfiaSkillDto {
+  skillCode: string;
+  skillName: string;
+  category: string;
+  subcategory: string;
+  description: string;
+  availableLevels: string;
+  levels: SfiaSkillLevelDto[];
+}

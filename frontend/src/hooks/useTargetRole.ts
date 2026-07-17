@@ -69,3 +69,14 @@ export const useDeleteTargetRole = () => {
     },
   });
 };
+
+export const useImportTargetRoles = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (file: File) => targetRoleService.importTargetRoles(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TARGET_ROLE_KEYS.all });
+    },
+  });
+};

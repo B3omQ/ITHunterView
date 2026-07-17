@@ -55,6 +55,14 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(response);
         }
         
+        [HttpPost("import")]
+        public async Task<IActionResult> ImportTargetRoles(Microsoft.AspNetCore.Http.IFormFile file)
+        {
+            var response = await _targetRoleUseCase.ImportTargetRolesAsync(file);
+            if (!response.Success) return BadRequest(response);
+            return Ok(response);
+        }
+        
         [HttpGet("sfia-skills")]
         public async Task<IActionResult> GetAllSfiaSkills()
         {

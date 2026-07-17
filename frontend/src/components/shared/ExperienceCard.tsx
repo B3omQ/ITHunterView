@@ -36,7 +36,7 @@ export function ExperienceCard({ experience, onEdit, onDelete }: ExperienceCardP
   };
 
   return (
-    <div className="flex gap-4 py-6 border-b border-border/40 last:border-0 items-start justify-between group">
+    <div className="flex gap-4 py-4 first:pt-0 last:pb-0 border-b border-border/40 last:border-0 items-start justify-between group">
       <div className="flex gap-4 items-start flex-1">
         {/* Company Logo Placeholder */}
         <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0">
@@ -45,22 +45,22 @@ export function ExperienceCard({ experience, onEdit, onDelete }: ExperienceCardP
 
         {/* Job Details */}
         <div className="space-y-1.5 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-base sm:text-lg font-bold text-foreground tracking-tight leading-snug">
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="text-base sm:text-lg font-bold text-foreground tracking-tight leading-none capitalize">
               {experience.title}
             </h3>
             {experience.employmentType && (
-              <Badge variant="secondary" className="text-[10px] font-bold uppercase">
+              <Badge variant="secondary" className="text-[10px] font-bold uppercase shrink-0">
                 {getEmploymentTypeLabel(experience.employmentType)}
               </Badge>
             )}
           </div>
 
-          <p className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
+          <p className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5 capitalize mt-1.5">
             {experience.companyName}
           </p>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground font-medium">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground font-medium mt-1.5">
             <span className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" />
               {formatPeriod(experience.startDate, experience.endDate, experience.isCurrent)}
@@ -74,7 +74,7 @@ export function ExperienceCard({ experience, onEdit, onDelete }: ExperienceCardP
           </div>
 
           {experience.description && (
-            <p className="text-sm text-muted-foreground leading-relaxed pt-2.5 whitespace-pre-wrap max-w-2xl border-t border-border/40 mt-2">
+            <p className="text-sm text-muted-foreground leading-relaxed pt-1.5 whitespace-pre-wrap max-w-2xl">
               {experience.description}
             </p>
           )}

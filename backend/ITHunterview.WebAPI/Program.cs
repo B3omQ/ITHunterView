@@ -78,6 +78,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.LogCleanupBackgroundService>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.AuditLogProcessor>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.NotificationCleanupBackgroundService>();
+builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.PaymentCleanupBackgroundService>();
 
 // ─── JWT Authentication ───────────────────────────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -123,6 +124,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("CandidateOnly",    p => p.RequireRole("candidate"));
     options.AddPolicy("StaffOrAdmin",     p => p.RequireRole("admin", "staff"));
     options.AddPolicy("RecruiterOrAdmin", p => p.RequireRole("admin", "staff", "recruiter"));
+    options.AddPolicy("CandidateOrRecruiter", p => p.RequireRole("candidate", "recruiter"));
     options.AddPolicy("AllRoles",         p => p.RequireRole("admin", "staff", "recruiter", "candidate"));
 });
 
