@@ -41,7 +41,7 @@ export default function CandidateDashboard() {
   // 2. Calculate KPIs
   // Average Match Score
   const avgMatchScore = matchHistory.length > 0 
-    ? Math.round(matchHistory.reduce((acc, m) => acc + (m.matchScore || 0), 0) / matchHistory.length) 
+    ? Math.round(matchHistory.reduce((acc, m) => acc + (m.matchScore || 0) * 100, 0) / matchHistory.length) 
     : 0;
 
   // Interviews Completed Count
@@ -292,8 +292,8 @@ export default function CandidateDashboard() {
                         <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${item.status === 'Optimized' ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-100 text-gray-600'}`}>
                           {item.status || 'Matched'}
                         </div>
-                        <span className={`text-base font-extrabold w-10 text-right ${item.matchScore && item.matchScore >= 70 ? 'text-emerald-500' : 'text-amber-500'}`}>
-                          {item.matchScore ? `${item.matchScore}%` : 'N/A'}
+                        <span className={`text-base font-extrabold w-10 text-right ${item.matchScore && item.matchScore * 100 >= 70 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                          {item.matchScore ? `${Math.round(item.matchScore * 100)}%` : 'N/A'}
                         </span>
                       </div>
                     </div>

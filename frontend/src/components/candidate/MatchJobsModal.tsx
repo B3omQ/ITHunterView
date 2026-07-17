@@ -164,13 +164,14 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
           )}
 
           {/* Results */}
-          <div className="flex flex-col gap-3 min-h-[250px] max-h-[400px] overflow-y-auto pr-1">
-            {isLoadingHistory ? (
-              <div className="flex items-center justify-center h-full text-sm text-slate-500">
-                Loading history...
+          <div className={cn("flex flex-col gap-3 min-h-[300px] max-h-[400px] overflow-y-auto pr-1 transition-opacity duration-200", isLoadingHistory && matches.length > 0 && "opacity-50 pointer-events-none")}>
+            {isLoadingHistory && matches.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-sm text-slate-500">
+                <RefreshCcw className="h-6 w-6 animate-spin mb-3 text-slate-400" />
+                <p>Loading history...</p>
               </div>
             ) : matches.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center p-6 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
+              <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center p-6 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
                 <Briefcase className="h-8 w-8 text-slate-300 mb-2" />
                 <p className="text-sm font-medium text-slate-900">No matches found yet.</p>
                 <p className="text-xs text-slate-500 mt-1 max-w-[250px]">

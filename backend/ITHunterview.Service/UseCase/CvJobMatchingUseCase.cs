@@ -733,7 +733,7 @@ namespace ITHunterview.Service.UseCase
                 CvFileName = x.Cv?.FileName ?? x.Score.CvFileName ?? "Unknown CV",
                 FileUrl = x.Cv?.FileUrl,
                 SourceJobId = x.Score.JobId,
-                JdTitle = x.Score.JdTitle,
+                JdTitle = x.Job?.Title ?? x.Score.JdTitle ?? x.Score.RawJdText,
                 MatchScore = x.Score.MatchScore,
                 Status = x.Score.Status,
                 ErrorMessage = x.Score.ErrorMessage,

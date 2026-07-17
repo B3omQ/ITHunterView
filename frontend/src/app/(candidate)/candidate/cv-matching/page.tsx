@@ -128,8 +128,8 @@ export default function CvMatchingHistoryPage() {
                 
                 <div className="flex flex-col items-end gap-2 shrink-0">
                   {item.status === 'Completed' && item.matchScore !== undefined ? (
-                    <div className={`flex flex-col items-center justify-center font-bold w-14 h-14 rounded-full border ${getScoreColor(item.matchScore)}`} title="Match Score">
-                      <span className="text-lg leading-none">{item.matchScore.toFixed(0)}</span>
+                    <div className={`flex flex-col items-center justify-center font-bold w-14 h-14 rounded-full border ${getScoreColor(item.matchScore * 100)}`} title="Match Score">
+                      <span className="text-lg leading-none">{(item.matchScore * 100).toFixed(0)}</span>
                       <span className="text-[10px] font-normal leading-none mt-1 opacity-80">Score</span>
                     </div>
                   ) : (
