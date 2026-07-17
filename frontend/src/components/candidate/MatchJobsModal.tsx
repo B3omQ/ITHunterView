@@ -164,7 +164,7 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
           )}
 
           {/* Results */}
-          <div className={cn("flex flex-col gap-3 min-h-[300px] max-h-[400px] overflow-y-auto pr-1 transition-opacity duration-200", isLoadingHistory && matches.length > 0 && "opacity-50 pointer-events-none")}>
+          <div className="flex flex-col gap-3 min-h-[300px] max-h-[400px] overflow-y-auto pr-1">
             {isLoadingHistory && matches.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-sm text-slate-500">
                 <RefreshCcw className="h-6 w-6 animate-spin mb-3 text-slate-400" />

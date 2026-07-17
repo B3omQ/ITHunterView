@@ -13,6 +13,8 @@ import { Logo } from "@/components/layout/Logo"
 import { APP_ROUTES } from "@/lib/constants"
 import { useGetMyCompany } from "@/hooks/useCompany"
 import { NotificationDialog } from "@/components/shared/NotificationDialog"
+import { useQuery } from "@tanstack/react-query"
+import { notificationService } from "@/services/notification.service"
 
 // ---- Lucide icon map ----
 const iconProps = { size: 18, strokeWidth: 2.5, className: "drop-shadow-sm" };
@@ -64,7 +66,6 @@ const CANDIDATE_NAV: NavItem[] = [
       { label: "Transaction History", href: APP_ROUTES.CANDIDATE.BILLING_HISTORY }
     ]
   },
-  { label: "Notifications", href: APP_ROUTES.CANDIDATE.NOTIFICATIONS, icon: "Bell" },
   { label: "Change Password", href: APP_ROUTES.CANDIDATE.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
@@ -82,7 +83,6 @@ const RECRUITER_NAV: NavItem[] = [
       { label: "Transaction History", href: APP_ROUTES.RECRUITER.BILLING_HISTORY }
     ]
   },
-  { label: "Notifications", href: APP_ROUTES.RECRUITER.NOTIFICATIONS, icon: "Bell" },
   { label: "Change Password", href: APP_ROUTES.RECRUITER.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
@@ -137,6 +137,15 @@ export function Sidebar() {
   const { data: company, isLoading: companyLoading } = useGetMyCompany({
     enabled: isRecruiter
   })
+
+  // Poll for notifications to update badge
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => notificationService.getUserNotifications(1, 50),
+    enabled: !!user,
+    refetchInterval: 30000 // Poll every 30 seconds
+  })
+  const unreadCount = notificationsData?.data?.filter(n => !n.isRead)?.length || 0;
 
   const navItems = getNavItems(user?.role?.name ?? "candidate")
 
@@ -254,8 +263,13 @@ export function Sidebar() {
           onClick={() => setIsNotificationOpen(true)}
           className="sidebar-item cursor-pointer flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium transition-all group text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
         >
-          <span className="text-muted-foreground group-hover:text-sidebar-foreground transition-colors">
+          <span className="text-muted-foreground group-hover:text-sidebar-foreground transition-colors relative">
             <Bell size={18} strokeWidth={2.5} className="drop-shadow-sm" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </span>
           <span className="flex-1 truncate">Notifications</span>
         </div>

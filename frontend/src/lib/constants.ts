@@ -84,7 +84,6 @@ export const ROLE_MENUS: Record<string, Array<{ label: string; href: string; ico
     { label: 'Applications', href: APP_ROUTES.CANDIDATE.APPLICATIONS, icon: 'ClipboardList' },
     { label: 'Top Up Coin', href: APP_ROUTES.CANDIDATE.TOP_UP, icon: 'Coins' },
     { label: 'Billing History', href: APP_ROUTES.CANDIDATE.BILLING_HISTORY, icon: 'Receipt' },
-    { label: 'Notifications', href: APP_ROUTES.CANDIDATE.NOTIFICATIONS, icon: 'Bell' },
     { label: 'Change Password', href: APP_ROUTES.CANDIDATE.CHANGE_PASSWORD, icon: 'KeyRound' },
   ],
   recruiter: [
@@ -92,7 +91,6 @@ export const ROLE_MENUS: Record<string, Array<{ label: string; href: string; ico
     { label: 'Company', href: APP_ROUTES.RECRUITER.COMPANY, icon: 'Building2' },
     { label: 'Job Postings', href: APP_ROUTES.RECRUITER.JOBS, icon: 'Briefcase' },
     { label: 'Analytics', href: APP_ROUTES.RECRUITER.ANALYTICS, icon: 'BarChart3' },
-    { label: 'Notifications', href: APP_ROUTES.RECRUITER.NOTIFICATIONS, icon: 'Bell' },
     { label: 'Change Password', href: APP_ROUTES.RECRUITER.CHANGE_PASSWORD, icon: 'KeyRound' },
   ],
   staff: [
@@ -102,7 +100,6 @@ export const ROLE_MENUS: Record<string, Array<{ label: string; href: string; ico
     { label: 'Prompts', href: APP_ROUTES.STAFF.PROMPTS, icon: 'MessageSquare' },
     { label: 'Question Bank', href: APP_ROUTES.STAFF.QUESTION_BANK, icon: 'FileText' },
     { label: 'Audit Logs', href: APP_ROUTES.STAFF.AUDIT_LOGS, icon: 'ClipboardList' },
-    { label: 'Notifications', href: APP_ROUTES.STAFF.NOTIFICATIONS, icon: 'Bell' },
     { label: 'Change Password', href: APP_ROUTES.STAFF.CHANGE_PASSWORD, icon: 'KeyRound' },
   ],
   admin: [
@@ -113,7 +110,6 @@ export const ROLE_MENUS: Record<string, Array<{ label: string; href: string; ico
     { label: 'Subscriptions', href: APP_ROUTES.ADMIN.SUBSCRIPTIONS, icon: 'CreditCard' },
     { label: 'Finance', href: APP_ROUTES.ADMIN.FINANCE, icon: 'BarChart3' },
     { label: 'Platform Safety', href: APP_ROUTES.ADMIN.AUDIT_LOGS, icon: 'Shield' },
-    { label: 'Notifications', href: APP_ROUTES.ADMIN.NOTIFICATIONS, icon: 'Bell' },
     { label: 'Change Password', href: APP_ROUTES.ADMIN.CHANGE_PASSWORD, icon: 'KeyRound' },
   ],
 };
