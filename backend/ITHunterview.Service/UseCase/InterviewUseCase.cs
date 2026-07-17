@@ -197,7 +197,11 @@ namespace ITHunterview.Service.UseCase
                 if (cv != null)
                 {
                     cvFileName = cv.FileName ?? "";
-                    if (!string.IsNullOrWhiteSpace(cv.ParsedData))
+                    if (!string.IsNullOrWhiteSpace(cv.RawText))
+                    {
+                        cvContext = cv.RawText;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(cv.ParsedData))
                     {
                         cvContext = cv.ParsedData;
                     }
@@ -205,11 +209,11 @@ namespace ITHunterview.Service.UseCase
                     {
                         try
                         {
-                            Console.WriteLine($"[INFO] CV ParsedData is empty. Extracting text from URL: {cv.FileUrl}");
+                            Console.WriteLine($"[INFO] CV RawText is empty. Extracting text from URL: {cv.FileUrl}");
                             var extractedText = await _cvTextExtractorService.ExtractTextFromUrlAsync(cv.FileUrl);
                             if (!string.IsNullOrWhiteSpace(extractedText))
                             {
-                                cv.ParsedData = extractedText;
+                                cv.RawText = extractedText;
                                 await _cvRepository.UpdateAsync(cv);
                                 cvContext = extractedText;
                             }
@@ -342,7 +346,11 @@ namespace ITHunterview.Service.UseCase
                 if (cv != null)
                 {
                     cvFileName = cv.FileName ?? "";
-                    if (!string.IsNullOrWhiteSpace(cv.ParsedData))
+                    if (!string.IsNullOrWhiteSpace(cv.RawText))
+                    {
+                        cvContext = cv.RawText;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(cv.ParsedData))
                     {
                         cvContext = cv.ParsedData;
                     }
@@ -350,11 +358,11 @@ namespace ITHunterview.Service.UseCase
                     {
                         try
                         {
-                            Console.WriteLine($"[INFO] CV ParsedData is empty. Extracting text from URL: {cv.FileUrl}");
+                            Console.WriteLine($"[INFO] CV RawText is empty. Extracting text from URL: {cv.FileUrl}");
                             var extractedText = await _cvTextExtractorService.ExtractTextFromUrlAsync(cv.FileUrl);
                             if (!string.IsNullOrWhiteSpace(extractedText))
                             {
-                                cv.ParsedData = extractedText;
+                                cv.RawText = extractedText;
                                 await _cvRepository.UpdateAsync(cv);
                                 cvContext = extractedText;
                             }
