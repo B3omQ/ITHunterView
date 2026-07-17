@@ -76,6 +76,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.LogCleanupBackgroundService>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.AuditLogProcessor>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.NotificationCleanupBackgroundService>();
+builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.PaymentCleanupBackgroundService>();
 
 // ─── JWT Authentication ───────────────────────────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");

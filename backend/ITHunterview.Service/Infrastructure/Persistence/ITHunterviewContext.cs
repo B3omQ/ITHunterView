@@ -370,6 +370,18 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             {
                 entity.HasKey(e => e.Id);
             });
+
+            // UserWallets
+            modelBuilder.Entity<UserWallets>(entity =>
+            {
+                entity.HasIndex(e => e.UserId).IsUnique();
+            });
+
+            // Payments
+            modelBuilder.Entity<Payments>(entity =>
+            {
+                entity.HasIndex(e => e.OrderCode).IsUnique();
+            });
         }
     }
 }

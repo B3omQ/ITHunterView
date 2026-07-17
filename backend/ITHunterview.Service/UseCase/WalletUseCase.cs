@@ -40,15 +40,34 @@ namespace ITHunterview.Service.UseCase
             var wallet = await _context.UserWallets.FirstOrDefaultAsync(w => w.UserId == userId);
             if (wallet == null)
             {
-                wallet = new UserWallets
+                using (var transaction = await _context.Database.BeginTransactionAsync())
                 {
-                    Id = Guid.NewGuid(),
-                    UserId = userId,
-                    Balance = 0,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                _context.UserWallets.Add(wallet);
-                await _context.SaveChangesAsync();
+                    try
+                    {
+                        wallet = await _context.UserWallets
+                            .FromSqlRaw("SELECT * FROM user_wallets WHERE user_id = {0} LIMIT 1 FOR UPDATE", userId)
+                            .FirstOrDefaultAsync();
+
+                        if (wallet == null)
+                        {
+                            wallet = new UserWallets
+                            {
+                                Id = Guid.NewGuid(),
+                                UserId = userId,
+                                Balance = 0,
+                                UpdatedAt = DateTime.UtcNow
+                            };
+                            _context.UserWallets.Add(wallet);
+                            await _context.SaveChangesAsync();
+                        }
+                        await transaction.CommitAsync();
+                    }
+                    catch (Exception)
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                }
             }
 
             var dto = new WalletBalanceDto
@@ -64,6 +83,7 @@ namespace ITHunterview.Service.UseCase
         {
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
+            if (pageSize > 100) pageSize = 100;
 
             var wallet = await _context.UserWallets.FirstOrDefaultAsync(w => w.UserId == userId);
             if (wallet == null)
@@ -157,34 +177,22 @@ namespace ITHunterview.Service.UseCase
                 return new ResponseBase<CreatePaymentResponseDto>("Loại thanh toán không được hỗ trợ");
             }
 
-            // Sinh OrderCode duy nhất (Unix ms)
-            long orderCode = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            // Sinh OrderCode duy nhất ngẫu nhiên
+            long orderCode;
+            int retryCount = 0;
+            do
+            {
+                orderCode = Random.Shared.NextInt64(1_000_000_000L, 9_999_999_999L);
+                retryCount++;
+                if (retryCount > 3)
+                    throw new InvalidOperationException("Không thể tạo OrderCode duy nhất sau 3 lần thử");
+            } while (await _context.Payments.AnyAsync(p => p.OrderCode == orderCode));
             
             // Giới hạn description tối đa 25 ký tự theo quy định PayOS
             if (descriptionText.Length > 25)
             {
                 descriptionText = descriptionText.Substring(0, 25);
             }
-
-            var payment = new Payments
-            {
-                Id = Guid.NewGuid(),
-                OrderCode = orderCode,
-                UserId = userId,
-                Amount = amount,
-                Currency = "VND",
-                CreditsGranted = creditsGranted,
-                PaymentGateway = dto.PaymentGateway,
-                GatewayTransactionId = "",
-                TargetType = dto.TargetType,
-                TargetId = targetIdGuid,
-                Status = PaymentStatus.PENDING,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            _context.Payments.Add(payment);
-            await _context.SaveChangesAsync();
 
             var frontendUrl = _configuration["FrontendUrl"] ?? "http://localhost:3000";
             var successUrl = $"{frontendUrl}/payment/success"; // Cần xử lý kết quả ở frontend nếu cần
@@ -227,6 +235,26 @@ namespace ITHunterview.Service.UseCase
                 }
             }
 
+            var payment = new Payments
+            {
+                Id = Guid.NewGuid(),
+                OrderCode = orderCode,
+                UserId = userId,
+                Amount = amount,
+                Currency = "VND",
+                CreditsGranted = creditsGranted,
+                PaymentGateway = dto.PaymentGateway,
+                GatewayTransactionId = "",
+                TargetType = dto.TargetType,
+                TargetId = targetIdGuid,
+                Status = PaymentStatus.PENDING,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.Payments.Add(payment);
+            await _context.SaveChangesAsync();
+
             var responseDto = new CreatePaymentResponseDto
             {
                 PaymentId = payment.Id,
@@ -244,7 +272,9 @@ namespace ITHunterview.Service.UseCase
             {
                 try
                 {
-                    var payment = await _context.Payments.FirstOrDefaultAsync(p => p.Id == simulationDto.PaymentId);
+                    var payment = await _context.Payments
+                        .FromSqlRaw("SELECT * FROM payments WHERE id = {0} LIMIT 1 FOR UPDATE", simulationDto.PaymentId)
+                        .FirstOrDefaultAsync();
                     if (payment == null)
                     {
                         return new ResponseBase<PaymentDto>("Giao dịch thanh toán không tồn tại");
@@ -287,16 +317,18 @@ namespace ITHunterview.Service.UseCase
             {
                 try
                 {
-                    var payment = await _context.Payments.FirstOrDefaultAsync(p => p.OrderCode == orderCode);
+                    var payment = await _context.Payments
+                        .FromSqlRaw("SELECT * FROM payments WHERE order_code = {0} LIMIT 1 FOR UPDATE", orderCode)
+                        .FirstOrDefaultAsync();
                     if (payment == null)
                     {
-                        _logger.LogWarning($"Webhook received for unknown OrderCode: {orderCode}");
+                        _logger.LogWarning("Webhook received for unknown OrderCode: {OrderCode}", orderCode);
                         return;
                     }
 
                     if (payment.Status != PaymentStatus.PENDING)
                     {
-                        _logger.LogInformation($"Webhook ignored - Payment {payment.Id} is already {payment.Status}");
+                        _logger.LogInformation("Webhook ignored - Payment {PaymentId} is already {Status}", payment.Id, payment.Status);
                         return;
                     }
 
@@ -308,7 +340,7 @@ namespace ITHunterview.Service.UseCase
                 catch (Exception ex)
                 {
                     await transaction.RollbackAsync();
-                    _logger.LogError(ex, $"Lỗi khi xử lý webhook OrderCode {orderCode}");
+                    _logger.LogError(ex, "Lỗi khi xử lý webhook OrderCode {OrderCode}", orderCode);
                     throw; // Ném ra ngoài để Controller bắt
                 }
             }
@@ -337,7 +369,6 @@ namespace ITHunterview.Service.UseCase
                         UpdatedAt = DateTime.UtcNow
                     };
                     _context.UserWallets.Add(wallet);
-                    await _context.SaveChangesAsync();
                 }
 
                 wallet.Balance += payment.CreditsGranted ?? 0;
@@ -360,7 +391,9 @@ namespace ITHunterview.Service.UseCase
             {
                 // Lấy lại int ID từ target_id dạng Guid
                 var targetIdHex = payment.TargetId.HasValue ? payment.TargetId.Value.ToString("N") : "";
-                if (int.TryParse(targetIdHex.TrimStart('0'), out var subId))
+                var trimmed = targetIdHex.TrimStart('0');
+                if (string.IsNullOrEmpty(trimmed)) trimmed = "0"; // guard: Guid.Empty → subId = 0
+                if (int.TryParse(trimmed, out var subId))
                 {
                     var sub = await _context.Subscriptions.FirstOrDefaultAsync(s => s.Id == subId);
                     if (sub != null)
@@ -396,6 +429,7 @@ namespace ITHunterview.Service.UseCase
         {
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
+            if (pageSize > 100) pageSize = 100;
 
             var query = _context.Payments.OrderByDescending(p => p.CreatedAt);
             var total = await query.CountAsync();
@@ -422,6 +456,7 @@ namespace ITHunterview.Service.UseCase
         {
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
+            if (pageSize > 100) pageSize = 100;
 
             var query = _context.Payments.Where(p => p.UserId == userId);
             
