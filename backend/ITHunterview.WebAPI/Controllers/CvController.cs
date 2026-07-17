@@ -20,17 +20,20 @@ namespace ITHunterview.WebAPI.Controllers
         private readonly ICvJobMatchingUseCase _cvJobMatchingUseCase;
         private readonly IHardcodeCvJobMatchingUseCase _hardcodeCvJobMatchingUseCase;
         private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService _cvTextExtractorService;
 
         public CvController(
             ICvUseCase cvUseCase, 
             ICvJobMatchingUseCase cvJobMatchingUseCase,
             IHardcodeCvJobMatchingUseCase hardcodeCvJobMatchingUseCase,
-            IServiceScopeFactory serviceScopeFactory)
+            IServiceScopeFactory serviceScopeFactory,
+            ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService cvTextExtractorService)
         {
             _cvUseCase = cvUseCase;
             _cvJobMatchingUseCase = cvJobMatchingUseCase;
             _hardcodeCvJobMatchingUseCase = hardcodeCvJobMatchingUseCase;
             _serviceScopeFactory = serviceScopeFactory;
+            _cvTextExtractorService = cvTextExtractorService;
         }
 
         [HttpPost]
@@ -126,6 +129,24 @@ namespace ITHunterview.WebAPI.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new ResponseBase<Guid>(Guid.Empty, ex.Message));
+            }
+        }
+
+        [HttpPost("extract-text")]
+        public async Task<ActionResult<ResponseBase<string>>> ExtractText(Microsoft.AspNetCore.Http.IFormFile file)
+        {
+            if (file == null || file.Length == 0) return BadRequest(new ResponseBase<string>("", "No file provided"));
+            try
+            {
+                using var ms = new System.IO.MemoryStream();
+                await file.CopyToAsync(ms);
+                var jsonParsedData = await _cvTextExtractorService.ExtractParsedDataFromBytesAsync(ms.ToArray(), file.ContentType, file.FileName);
+                return Ok(new ResponseBase<string>(jsonParsedData, "CV parsed successfully"));
+            }
+            catch (Exception ex)
+
+            {
+                return BadRequest(new ResponseBase<string>("", ex.Message));
             }
         }
 

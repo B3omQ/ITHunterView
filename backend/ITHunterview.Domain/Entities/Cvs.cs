@@ -46,6 +46,9 @@ namespace ITHunterview.Domain.Entities
         [Column("parsed_data")]
         public string ParsedData { get; set; }
 
+        [Column("raw_text")]
+        public string? RawText { get; set; }
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }
 

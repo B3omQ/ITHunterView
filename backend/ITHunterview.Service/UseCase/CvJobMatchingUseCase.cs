@@ -379,9 +379,22 @@ namespace ITHunterview.Service.UseCase
                         if (cv != null)
                         {
                             if (!string.IsNullOrWhiteSpace(cv.ParsedData))
+                            {
                                 cvText = cv.ParsedData;
+                            }
+                            else if (!string.IsNullOrWhiteSpace(cv.RawText))
+                            {
+                                cvText = cv.RawText;
+                            }
                             else if (!string.IsNullOrWhiteSpace(cv.FileUrl))
+                            {
+                                _logger.LogInformation("[INFO] CV RawText is empty in Matching. Extracting from URL: {Url}", cv.FileUrl);
                                 cvText = await _cvTextExtractorService.ExtractTextFromUrlAsync(cv.FileUrl);
+                                
+                                cv.RawText = cvText;
+                                _context.Cvs.Update(cv);
+                                await _context.SaveChangesAsync();
+                            }
                         }
                     }
                 }
