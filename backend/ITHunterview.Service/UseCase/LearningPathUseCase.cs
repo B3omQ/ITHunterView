@@ -738,31 +738,6 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
             else if (totalCompletedTasks == totalTasks) path.Status = "Completed";
             else path.Status = "In Progress";
 
-            // Recalculate global status based on ALL tasks across ALL modules
-            // Parse from the serialized string to ensure consistent JsonElement types
-            var updatedDoc = JsonDocument.Parse(path.PathData);
-            
-            int totalTasks = 0;
-            int totalCompletedTasks = 0;
-
-            foreach (var mod in updatedDoc.RootElement.EnumerateArray())
-            {
-                if (mod.TryGetProperty("tasks", out var tElem) && tElem.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var t in tElem.EnumerateArray())
-                    {
-                        totalTasks++;
-                        if (t.TryGetProperty("completed", out var cProp) && cProp.ValueKind == JsonValueKind.True)
-                        {
-                            totalCompletedTasks++;
-                        }
-                    }
-                }
-            }
-
-            if (totalTasks == 0 || totalCompletedTasks == 0) path.Status = "Not Started";
-            else if (totalCompletedTasks == totalTasks) path.Status = "Completed";
-            else path.Status = "In Progress";
 
             await _learningPathRepository.UpdateAsync(path);
 

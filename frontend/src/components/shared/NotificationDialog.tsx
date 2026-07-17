@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { notificationService, type NotificationDto } from "@/services/notification.service"
+import { useSignalR } from "@/hooks/useSignalR"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,16 @@ interface NotificationDialogProps {
 
 export function NotificationDialog({ open, onOpenChange }: NotificationDialogProps) {
   const queryClient = useQueryClient()
+  const connection = useSignalR('/hubs/notification')
+
+  React.useEffect(() => {
+    if (connection) {
+      connection.on("ReceiveNotification", () => {
+        // Refetch notifications when a real-time event is received
+        queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      })
+    }
+  }, [connection, queryClient])
   
   const getTimeAgo = (dateStr: string) => {
     const date = new Date(dateStr)

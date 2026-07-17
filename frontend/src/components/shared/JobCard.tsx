@@ -42,12 +42,19 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
         <CardContent className={`px-4 py-2 flex-1 flex flex-col relative ${isActive ? 'pl-5' : ''}`}>
 
           <div className="flex flex-col gap-2">
-            {/* Posted time */}
-            {job.publishedAt && (
-              <span className="text-sm text-slate-400 font-medium">
-                {getDaysAgo(job.publishedAt)}
-              </span>
-            )}
+            {/* Posted time & Status */}
+            <div className="flex items-center justify-between">
+              {job.publishedAt && (
+                <span className="text-sm text-slate-400 font-medium">
+                  {getDaysAgo(job.publishedAt)}
+                </span>
+              )}
+              {job.isApplied && (
+                <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none px-2 py-0.5 text-xs font-semibold">
+                  Applied
+                </Badge>
+              )}
+            </div>
 
             {/* Title */}
             <h3 className="font-bold text-lg text-slate-900 group-hover:text-primary transition-colors line-clamp-2 pr-8 leading-tight">

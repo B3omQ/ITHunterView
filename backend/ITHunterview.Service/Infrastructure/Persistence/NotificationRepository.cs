@@ -38,7 +38,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
         public async Task<(IEnumerable<Notifications> items, int total)> GetUserNotificationsAsync(Guid userId, int pageIndex, int pageSize)
         {
-            var query = _context.Notifications.Where(n => n.UserId == userId);
+            var query = _context.Notifications.Where(n => n.UserId == userId && !n.IsHidden);
             var total = await query.CountAsync();
             var items = await query
                 .OrderByDescending(n => n.CreatedAt)
@@ -60,21 +60,29 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             await _context.SaveChangesAsync();
         }
 
-        public async Task<(IEnumerable<(string Title, string Message, DateTime CreatedAt)> items, int total)> GetSystemNotificationsGroupedAsync(int pageIndex, int pageSize)
+        public async Task<(IEnumerable<(string Title, string Message, DateTime CreatedAt, bool IsHidden)> items, int total)> GetSystemNotificationsGroupedAsync(int pageIndex, int pageSize, string? searchTerm = null)
         {
             var query = _context.Notifications
-                .Where(n => n.Type == ITHunterview.Domain.Enums.NotificationType.SYSTEM)
-                .GroupBy(n => new { n.Title, n.Message, n.CreatedAt })
-                .Select(g => new { g.Key.Title, g.Key.Message, g.Key.CreatedAt });
+                .Where(n => n.Type == ITHunterview.Domain.Enums.NotificationType.SYSTEM);
 
-            var total = await query.CountAsync();
-            var groupedItems = await query
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var searchLower = searchTerm.ToLower();
+                query = query.Where(n => n.Title.ToLower().Contains(searchLower));
+            }
+
+            var groupedQuery = query
+                .GroupBy(n => new { n.Title, n.Message, n.CreatedAt, n.IsHidden })
+                .Select(g => new { g.Key.Title, g.Key.Message, g.Key.CreatedAt, g.Key.IsHidden });
+
+            var total = await groupedQuery.CountAsync();
+            var groupedItems = await groupedQuery
                 .OrderByDescending(g => g.CreatedAt)
                 .Skip((pageIndex - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
 
-            var items = groupedItems.Select(g => (g.Title, g.Message, g.CreatedAt)).ToList();
+            var items = groupedItems.Select(g => (g.Title, g.Message, g.CreatedAt, g.IsHidden)).ToList();
 
             return (items, total);
         }
@@ -83,7 +91,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         {
             return await _context.Notifications
                 .Where(n => n.Type == ITHunterview.Domain.Enums.NotificationType.SYSTEM && n.Title == title && n.Message == message)
-                .ExecuteDeleteAsync();
+                .ExecuteUpdateAsync(s => s.SetProperty(n => n.IsHidden, true));
         }
     }
 }

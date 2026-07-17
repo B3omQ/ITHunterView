@@ -3,12 +3,15 @@
 import React, { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
-import { Plus, Trash2, Bell } from "lucide-react"
+import { Plus, Trash2, Bell, Search, ChevronLeft, ChevronRight } from "lucide-react"
+import { useDebounce } from "@/hooks/use-debounce"
 
 import { notificationService, type SystemNotificationDto } from "@/services/notification.service"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog"
 
@@ -16,15 +19,18 @@ export default function StaffNotificationsPage() {
   const queryClient = useQueryClient()
   const [pageIndex, setPageIndex] = useState(1)
   const pageSize = 10
-  
+
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean, item: SystemNotificationDto | null }>({
     open: false,
     item: null
   })
 
+  const [searchTerm, setSearchTerm] = useState("")
+  const debouncedSearchTerm = useDebounce(searchTerm, 500)
+
   const { data, isLoading } = useQuery({
-    queryKey: ['system-notifications', pageIndex, pageSize],
-    queryFn: () => notificationService.getSystemNotifications(pageIndex, pageSize)
+    queryKey: ['system-notifications', pageIndex, pageSize, debouncedSearchTerm],
+    queryFn: () => notificationService.getSystemNotifications(pageIndex, pageSize, debouncedSearchTerm)
   })
 
   const deleteMutation = useMutation({
@@ -40,6 +46,9 @@ export default function StaffNotificationsPage() {
   })
 
   const notifications = data?.data || []
+  const meta = data?.meta
+
+  const totalPages = meta?.totalPages || 1
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr)
@@ -63,6 +72,21 @@ export default function StaffNotificationsPage() {
         </Link>
       </div>
 
+      <div className="flex items-center gap-2 max-w-sm">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by title..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              setPageIndex(1) // reset to first page on search
+            }}
+          />
+        </div>
+      </div>
+
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2">
@@ -80,6 +104,7 @@ export default function StaffNotificationsPage() {
                 <TableRow className="bg-muted/50">
                   <TableHead className="w-[200px]">Title</TableHead>
                   <TableHead>Message</TableHead>
+                  <TableHead className="w-[120px]">Status</TableHead>
                   <TableHead className="w-[150px]">Sent Date</TableHead>
                   <TableHead className="w-[80px] text-right">Actions</TableHead>
                 </TableRow>
@@ -106,15 +131,23 @@ export default function StaffNotificationsPage() {
                       <TableCell className="truncate max-w-[400px]" title={notification.message}>
                         {notification.message}
                       </TableCell>
+                      <TableCell>
+                        {notification.isHidden ? (
+                          <Badge variant="secondary" className="text-muted-foreground">Hidden</Badge>
+                        ) : (
+                          <Badge variant="default" className="bg-green-500 hover:bg-green-600">Active</Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-muted-foreground whitespace-nowrap">
                         {formatDate(notification.createdAt)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="icon-sm" 
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
                           onClick={() => setDeleteDialog({ open: true, item: notification })}
+                          disabled={notification.isHidden}
                         >
                           <Trash2 size={16} />
                         </Button>
@@ -125,6 +158,35 @@ export default function StaffNotificationsPage() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination Controls */}
+          {meta && meta.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-muted-foreground">
+                Showing page {meta.currentPage} of {meta.totalPages} ({meta.totalItems} total)
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPageIndex((p) => Math.max(1, p - 1))}
+                  disabled={pageIndex === 1 || isLoading}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPageIndex((p) => Math.min(meta.totalPages, p + 1))}
+                  disabled={pageIndex >= meta.totalPages || isLoading}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -136,7 +198,7 @@ export default function StaffNotificationsPage() {
               Are you sure you want to delete this notification? It will be removed from all users' inboxes immediately. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="bg-muted/50 p-4 rounded-md my-2 border border-border">
             <h4 className="font-medium text-sm mb-1">{deleteDialog.item?.title}</h4>
             <p className="text-sm text-muted-foreground line-clamp-3">{deleteDialog.item?.message}</p>
@@ -146,8 +208,8 @@ export default function StaffNotificationsPage() {
             <DialogClose render={<Button variant="outline" />}>
               Cancel
             </DialogClose>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={() => deleteDialog.item && deleteMutation.mutate(deleteDialog.item)}
               disabled={deleteMutation.isPending}
             >

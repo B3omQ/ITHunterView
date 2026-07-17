@@ -1,5 +1,5 @@
 import api from './api-client';
-import type { ApiResponse } from '@/types/api.types';
+import type { ApiResponse, PaginatedDataResponse } from '@/types/api.types';
 
 export interface CreateSystemNotificationDto {
   title: string;
@@ -20,14 +20,9 @@ export interface SystemNotificationDto {
   title: string;
   message: string;
   createdAt: string;
+  isHidden: boolean;
 }
 
-export interface PaginatedDataResponse<T> {
-  data: T[];
-  total: number;
-  pageIndex: number;
-  pageSize: number;
-}
 
 export const notificationService = {
   createSystemWideNotification: (data: CreateSystemNotificationDto) =>
@@ -45,9 +40,11 @@ export const notificationService = {
       .put<ApiResponse<boolean>>(`/api/notifications/${id}/read`)
       .then((res) => res.data),
 
-  getSystemNotifications: (pageIndex = 1, pageSize = 10) =>
+  getSystemNotifications: (pageIndex = 1, pageSize = 10, searchTerm?: string) =>
     api
-      .get<PaginatedDataResponse<SystemNotificationDto>>(`/api/notifications/system-wide?pageIndex=${pageIndex}&pageSize=${pageSize}`)
+      .get<PaginatedDataResponse<SystemNotificationDto>>(`/api/notifications/system-wide`, {
+        params: { pageIndex, pageSize, searchTerm }
+      })
       .then((res) => res.data),
 
   deleteSystemNotification: (title: string, message: string) =>
