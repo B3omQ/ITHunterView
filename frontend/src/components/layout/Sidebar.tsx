@@ -53,6 +53,7 @@ const CANDIDATE_NAV: NavItem[] = [
   { label: "Saved Jobs", href: APP_ROUTES.CANDIDATE.SAVED_JOBS, icon: "Bookmark" },
   { label: "Applications", href: APP_ROUTES.CANDIDATE.APPLICATIONS, icon: "ClipboardList" },
   { label: "My Resume", href: APP_ROUTES.CANDIDATE.RESUME, icon: "FileText" },
+  { label: "CV Optimizer", href: APP_ROUTES.CANDIDATE.CV_OPTIMIZER, icon: "BrainCircuit" },
   { label: "Mock Interview", href: APP_ROUTES.CANDIDATE.INTERVIEW, icon: "MessageSquare" },
   { label: "CV-JD Matching", href: APP_ROUTES.CANDIDATE.CV_MATCHING, icon: "FileSearch" },
   { label: "Learning Path", href: APP_ROUTES.CANDIDATE.LEARNING_PATH, icon: "Map" },
@@ -93,6 +94,7 @@ const STAFF_NAV: NavItem[] = [
   { label: "Prompts", href: APP_ROUTES.STAFF.PROMPTS, icon: "MessageSquare" },
   { label: "Question Bank", href: APP_ROUTES.STAFF.QUESTION_BANK, icon: "FileText" },
   { label: "Audit Logs", href: APP_ROUTES.STAFF.AUDIT_LOGS, icon: "ClipboardList" },
+  { label: "Notifications", href: APP_ROUTES.STAFF.NOTIFICATIONS, icon: "Bell" },
   { label: "Change Password", href: APP_ROUTES.STAFF.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
@@ -114,6 +116,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Subscriptions", href: APP_ROUTES.ADMIN.SUBSCRIPTIONS, icon: "CreditCard" },
   { label: "Finance", href: APP_ROUTES.ADMIN.FINANCE, icon: "BarChart3" },
   { label: "Platform Safety", href: APP_ROUTES.ADMIN.AUDIT_LOGS, icon: "Shield" },
+  { label: "Notifications", href: APP_ROUTES.ADMIN.NOTIFICATIONS, icon: "Bell" },
   { label: "Change Password", href: APP_ROUTES.ADMIN.CHANGE_PASSWORD, icon: "KeyRound" },
 ]
 
@@ -127,11 +130,12 @@ function getNavItems(role: string): NavItem[] {
 }
 
 export function Sidebar() {
+  const pathname = usePathname()
+  const router = useRouter()
   const { user, logout } = useAuthStore()
   const router = useRouter()
   const pathname = usePathname()
   const [expandedGroups, setExpandedGroups] = React.useState<string[]>([])
-  const [isNotificationOpen, setIsNotificationOpen] = React.useState(false)
 
   const isRecruiter = user?.role?.name?.toLowerCase() === "recruiter"
   const { data: company, isLoading: companyLoading } = useGetMyCompany({
@@ -179,14 +183,14 @@ export function Sidebar() {
   }, [pathname, navItems])
 
   return (
-    <aside className="flex flex-col w-[240px] min-h-screen bg-sidebar border-r border-transparent hover:border-sidebar-border transition-colors duration-300 flex-shrink-0">
+    <aside className="flex flex-col w-[240px] min-h-screen bg-sidebar border-r border-sidebar-border flex-shrink-0">
       {/* 1. Logo (Kept clean at the top) */}
-      <div className="px-5 h-[68px] flex items-center">
+      <div className="px-5 h-[68px] flex items-center border-b border-sidebar-border">
         <Logo size="sm" href="/" />
       </div>
 
       {/* 2. Navigation (Moved up, immediately visible) */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {navItems.map((item) => {
           const active = isActive(item.href)
           const isExpanded = expandedGroups.includes(item.label)
@@ -202,12 +206,12 @@ export function Sidebar() {
                   }
                 }}
                 className={`sidebar-item cursor-pointer flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium transition-all group ${
-                  (active || (item.children && item.children.some(c => isActive(c.href)))) && !item.children
+                  active && !item.children
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
                     : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
                 }`}
               >
-                <span className={(active || (item.children && item.children.some(c => isActive(c.href)))) ? "text-primary" : "text-muted-foreground group-hover:text-sidebar-foreground transition-colors"}>
+                <span className={active ? "text-primary" : "text-muted-foreground group-hover:text-sidebar-foreground transition-colors"}>
                   {ICONS[item.icon]}
                 </span>
                 <span className="flex-1 truncate">{item.label}</span>
@@ -234,7 +238,7 @@ export function Sidebar() {
                 <div className="pl-9 pr-2 py-1 space-y-1">
                   {item.children.map(child => {
                     // Check strict match for children, support searchParams
-                    const childActive = isActive(child.href)
+                    const childActive = typeof window !== 'undefined' && window.location.href.includes(child.href)
                     return (
                       <Link
                         key={child.label}
@@ -257,22 +261,9 @@ export function Sidebar() {
       </nav>
 
       {/* 3. Bottom Actions & User Profile Footer */}
-      <div className="p-3 flex flex-col gap-2 border-t border-border/40">
-        {/* Global Actions (e.g., Notifications) */}
-        <div
-          onClick={() => setIsNotificationOpen(true)}
-          className="sidebar-item cursor-pointer flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium transition-all group text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-        >
-          <span className="text-muted-foreground group-hover:text-sidebar-foreground transition-colors relative">
-            <Bell size={18} strokeWidth={2.5} className="drop-shadow-sm" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-          </span>
-          <span className="flex-1 truncate">Notifications</span>
-        </div>
+      <div className="p-3 border-t border-sidebar-border flex flex-col gap-2">
+        {/* Secondary Links */}
+
 
         {/* User Card (Replaces top block & standalone logout) */}
         {user && (
@@ -306,8 +297,6 @@ export function Sidebar() {
           </div>
         )}
       </div>
-
-      <NotificationDialog open={isNotificationOpen} onOpenChange={setIsNotificationOpen} />
     </aside>
   )
 }
