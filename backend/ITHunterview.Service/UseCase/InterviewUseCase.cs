@@ -401,38 +401,36 @@ namespace ITHunterview.Service.UseCase
                 $"AI Question: {h.QuestionText}\nCandidate Answer: {h.CandidateTranscript ?? "(Chưa trả lời)"}"));
 
             // Định nghĩa hướng dẫn động cho từng câu hỏi tiếp theo
-            string questionInstruction = "";
+            string questionInstruction = "QUY TẮC QUAN TRỌNG: Mọi câu hỏi bạn đặt ra BẮT BUỘC phải dựa trên bối cảnh thực tế từ CV của ứng viên hoặc yêu cầu của JD. TUYỆT ĐỐI KHÔNG hỏi các câu lý thuyết chung chung như trong sách giáo khoa nếu không liên kết với một kỹ năng/dự án trong CV.\n\n";
             if (questionIndex == 1) // Cần sinh Q2
             {
-                questionInstruction = "ĐÂY LÀ LƯỢT HỎI SỐ 2/6 (Chủ đề: Kỹ năng chuyên môn / Soft skills).\n" +
-                                      "- Bạn hãy nhận xét ngắn gọn câu trả lời vừa rồi của ứng viên (2-3 câu).\n" +
-                                      "- Đặt câu hỏi tiếp theo (Q2) về Kỹ năng chuyên môn hoặc Kỹ năng mềm khác phù hợp.";
+                questionInstruction += "ĐÂY LÀ LƯỢT HỎI SỐ 2/6 (Chủ đề: Kỹ năng chuyên môn / Soft skills).\n" +
+                                       "- Bạn hãy nhận xét ngắn gọn câu trả lời vừa rồi của ứng viên (2-3 câu).\n" +
+                                       "- Dựa vào một kỹ năng hoặc công cụ cụ thể được liệt kê trong CV, hãy đặt câu hỏi tiếp theo (Q2) để kiểm tra độ sâu chuyên môn của họ.";
             }
             else if (questionIndex == 2) // Cần sinh Q3
             {
-                questionInstruction = "ĐÂY LÀ LƯỢT HỎI SỐ 3/6 (Chủ đề: Kinh nghiệm thực tế / Dự án).\n" +
-                                      "- Bạn hãy nhận xét ngắn gọn câu trả lời vừa rồi của ứng viên (2-3 câu).\n" +
-                                      "- Đặt câu hỏi tiếp theo (Q3) khai thác sâu hơn về dự án thực tế trong CV của họ hoặc cách họ xử lý khó khăn kỹ thuật.";
+                questionInstruction += "ĐÂY LÀ LƯỢT HỎI SỐ 3/6 (Chủ đề: Kinh nghiệm thực tế / Dự án).\n" +
+                                       "- Bạn hãy nhận xét ngắn gọn câu trả lời vừa rồi của ứng viên (2-3 câu).\n" +
+                                       "- Hãy chọn một DỰ ÁN cụ thể trong CV của ứng viên và đặt câu hỏi (Q3) khai thác sâu về vai trò của họ, thách thức kỹ thuật lớn nhất họ gặp phải hoặc cách họ giải quyết vấn đề.";
             }
             else if (questionIndex == 3) // Cần sinh Q4
             {
-                questionInstruction = "ĐÂY LÀ LƯỢT HỎI SỐ 4/6 (Chủ đề: Kinh nghiệm thực tế / Dự án).\n" +
-                                      "- Bạn hãy nhận xét ngắn gọn câu trả lời vừa rồi của ứng viên (2-3 câu).\n" +
-                                      "- Đặt câu hỏi tiếp theo (Q4) hỏi thêm một khía cạnh về quy trình làm việc, tối ưu hiệu năng, clean code hoặc thiết kế hệ thống.";
+                questionInstruction += "ĐÂY LÀ LƯỢT HỎI SỐ 4/6 (Chủ đề: Kinh nghiệm thực tế / System / Quy trình).\n" +
+                                       "- Bạn hãy nhận xét ngắn gọn câu trả lời vừa rồi của ứng viên (2-3 câu).\n" +
+                                       "- Dựa vào các framework/hệ thống mà ứng viên đã làm, đặt câu hỏi (Q4) về cách họ tối ưu hiệu năng, clean code hoặc thiết kế hệ thống.";
             }
             else if (questionIndex == 4) // Cần sinh Q5
             {
-                questionInstruction = "ĐÂY LÀ LƯỢT HỎI SỐ 5/6 (Chủ đề: Tình huống / Mức độ phù hợp với JD).\n" +
-                                      "- Hãy đối chiếu CV của ứng viên với các yêu cầu của JD. " +
-                                      "Nếu có sự lệch công nghệ lớn (ví dụ: JD yêu cầu .NET nhưng CV chỉ có Java), bạn hãy đưa ra câu hỏi tình huống: \"Mặc dù CV của bạn chủ yếu là Java, nhưng vị trí này yêu cầu .NET, bạn sẽ tiếp cận/tự học như thế nào?\" hoặc tương tự. " +
-                                      "Nếu không có lệch công nghệ lớn, hãy đặt câu hỏi tình huống thực tế khó để kiểm tra sự phù hợp của họ với các yêu cầu khác trong JD.\n" +
-                                      "- Đặt câu hỏi tiếp theo (Q5) theo hướng dẫn trên.";
+                questionInstruction += "ĐÂY LÀ LƯỢT HỎI SỐ 5/6 (Chủ đề: Tình huống / Mức độ phù hợp với JD).\n" +
+                                       "- Bạn hãy nhận xét ngắn gọn câu trả lời vừa rồi của ứng viên (2-3 câu).\n" +
+                                       "- Hãy đối chiếu CV của ứng viên với các yêu cầu của JD. Đặt câu hỏi tình huống thực tế (Q5) để kiểm tra xem họ có thể đáp ứng được một yêu cầu khó/đặc thù trong JD hay không.";
             }
             else if (questionIndex == 5) // Cần sinh Q6
             {
-                questionInstruction = "ĐÂY LÀ LƯỢT HỎI SỐ 6/6 (Chủ đề: Tình huống / Mức độ phù hợp với JD).\n" +
-                                      "- Bạn hãy nhận xét ngắn gọn câu trả lời vừa rồi của ứng viên (2-3 câu).\n" +
-                                      "- Đặt câu hỏi tình huống cuối cùng (Q6) để hoàn tất buổi phỏng vấn.";
+                questionInstruction += "ĐÂY LÀ LƯỢT HỎI SỐ 6/6 (Chủ đề: Câu hỏi kết thúc / Giao tiếp).\n" +
+                                       "- Bạn hãy nhận xét ngắn gọn câu trả lời vừa rồi của ứng viên (2-3 câu).\n" +
+                                       "- Đặt câu hỏi tình huống hoặc kỹ năng mềm cuối cùng (Q6) liên quan mật thiết đến vị trí ứng tuyển để hoàn tất buổi phỏng vấn.";
             }
             else // questionIndex >= 6, đã trả lời xong câu số 6
             {
@@ -482,7 +480,6 @@ namespace ITHunterview.Service.UseCase
                                $"   - S6: Khả năng xử lý áp lực/tình huống bất ngờ (Calmness / asking clarifying questions)\n\n" +
                                "Bạn BẮT BUỘC phải trả về kết quả theo định dạng JSON duy nhất như sau:\n" +
                                "{\n" +
-                               "  \"score_logic\": 80,\n" +
                                "  \"score_tech\": 85,\n" +
                                "  \"score_communication\": 90,\n" +
                                "  \"next_question\": \"Câu hỏi tiếp theo (hoặc lời tạm biệt kết thúc phỏng vấn)...\",\n" +
@@ -832,20 +829,81 @@ namespace ITHunterview.Service.UseCase
                 return null;
             }
 
+            var validAnswers = answers.Where(a => a.CandidateTranscript != null).ToList();
+
+            // Calculate Metrics using C#
+            List<double> techScores = new List<double>();
+            List<double> softScores = new List<double>();
+
+            foreach (var a in validAnswers)
+            {
+                if (!string.IsNullOrWhiteSpace(a.AiFeedback))
+                {
+                    try
+                    {
+                        var jsonNode = JsonNode.Parse(a.AiFeedback);
+                        if (jsonNode != null)
+                        {
+                            var techAvg = jsonNode["technical_score"]?["average"]?.GetValue<double>();
+                            if (techAvg.HasValue) techScores.Add(techAvg.Value);
+
+                            var softAvg = jsonNode["soft_skill_score"]?["average"]?.GetValue<double>();
+                            if (softAvg.HasValue) softScores.Add(softAvg.Value);
+                        }
+                    }
+                    catch { }
+                }
+            }
+
+            double techAvgFinal = techScores.Any() ? Math.Round(techScores.Average(), 2) : 0;
+            double softAvgFinal = softScores.Any() ? Math.Round(softScores.Average(), 2) : 0;
+
+            double techStdDev = 0;
+            if (techScores.Count > 1)
+            {
+                double sumOfSquares = techScores.Select(val => (val - techAvgFinal) * (val - techAvgFinal)).Sum();
+                techStdDev = Math.Round(Math.Sqrt(sumOfSquares / techScores.Count), 2);
+            }
+
+            double softStdDev = 0;
+            if (softScores.Count > 1)
+            {
+                double sumOfSquares = softScores.Select(val => (val - softAvgFinal) * (val - softAvgFinal)).Sum();
+                softStdDev = Math.Round(Math.Sqrt(sumOfSquares / softScores.Count), 2);
+            }
+
+            int questionsTouched = validAnswers.Count;
+
+            // Compute totalScore equivalent (for DB field)
+            decimal totalScore = (decimal)Math.Round(((techAvgFinal + softAvgFinal) / 2.0) * 20.0);
+            if (totalScore == 0 && validAnswers.Any())
+            {
+                var fallbackAvg = validAnswers.Average(a => ((a.ScoreLogic ?? 0) + (a.ScoreTech ?? 0) + (a.ScoreCommunication ?? 0)) / 3.0);
+                totalScore = (decimal)Math.Round(fallbackAvg);
+            }
+
             // Construct prompt for overall evaluation
-            var systemPrompt = "Bạn là một chuyên gia đánh giá nhân sự cao cấp. Nhiệm vụ của bạn là tổng hợp và đưa ra báo cáo đánh giá tổng quan cho buổi phỏng vấn thử (mock interview) của ứng viên.\n" +
+            var systemPrompt = $"Bạn là một chuyên gia đánh giá nhân sự cao cấp. Nhiệm vụ của bạn là tổng hợp và đưa ra báo cáo đánh giá tổng quan cho buổi phỏng vấn thử (mock interview) của ứng viên.\n" +
                                "Bạn sẽ nhận được danh sách các câu hỏi của AI và câu trả lời của ứng viên, kèm theo điểm số và nhận xét từng câu.\n\n" +
-                               "Hãy đưa ra đánh giá tổng thể gồm:\n" +
-                               "1. Tổng điểm (thang điểm 100) - tính toán khách quan dựa trên điểm trung bình chất lượng các câu trả lời.\n" +
-                               "2. Đánh giá tổng quan (overall_feedback): Tóm tắt ngắn gọn và chuyên nghiệp về năng lực của ứng viên (2-3 đoạn văn).\n" +
-                               "3. Các điểm mạnh chính (strengths): danh sách các thế mạnh nổi bật nhất của ứng viên.\n" +
-                               "4. Các điểm cần cải thiện (improvements): danh sách các khía cạnh cần bổ sung kiến thức hoặc kỹ năng giao tiếp.\n\n" +
+                               $"Hệ thống đã tự động tính toán các chỉ số trung bình (thang điểm 1-5):\n" +
+                               $"- Điểm Technical trung bình: {techAvgFinal}/5 (Độ lệch chuẩn: {techStdDev})\n" +
+                               $"- Điểm Soft Skills trung bình: {softAvgFinal}/5 (Độ lệch chuẩn: {softStdDev})\n" +
+                               $"- Số câu đã trả lời: {questionsTouched}\n\n" +
+                               "Dựa vào dữ liệu trên và chi tiết lịch sử phỏng vấn, hãy đưa ra đánh giá tổng thể gồm:\n" +
+                               "1. Mức độ sẵn sàng (readiness_level): Phân loại ứng viên vào 1 trong các mức (Chưa sẵn sàng, Cần luyện thêm, Sẵn sàng ở mức junior, Sẵn sàng ở mức mid, Sẵn sàng phỏng vấn thật).\n" +
+                               "2. Mô hình lỗi lặp lại (pattern): Phát hiện thói quen hoặc lỗi ứng viên lặp lại nhiều lần (nếu có).\n" +
+                               "3. Gợi ý hành động (action_items): 2-3 việc cụ thể cần làm tiếp theo.\n" +
+                               "4. Đánh giá tổng quan (overall_feedback): Tóm tắt ngắn gọn và chuyên nghiệp về năng lực của ứng viên.\n" +
+                               "5. Điểm mạnh nổi bật (strengths): Top 3 điểm mạnh nhất.\n" +
+                               "6. Điểm cần cải thiện (improvements): Top 3 điểm cần cải thiện ưu tiên.\n\n" +
                                "Bạn BẮT BUỘC phải trả về kết quả theo định dạng JSON duy nhất như sau:\n" +
                                "{\n" +
-                               "  \"total_score\": 85,\n" +
-                               "  \"overall_feedback\": \"Đánh giá tổng quan...\",\n" +
-                               "  \"strengths\": [\"Điểm mạnh 1\", \"Điểm mạnh 2\"],\n" +
-                               "  \"improvements\": [\"Điểm cần cải thiện 1\", \"Điểm cần cải thiện 2\"]\n" +
+                               "  \"readiness_level\": \"Sẵn sàng ở mức mid\",\n" +
+                               "  \"pattern\": \"Ứng viên hay trả lời thiếu ví dụ thực tế trong các câu hỏi System Design...\",\n" +
+                               "  \"strengths\": [\"Điểm mạnh 1\", \"Điểm mạnh 2\", \"Điểm mạnh 3\"],\n" +
+                               "  \"improvements\": [\"Điểm cải thiện 1\", \"Điểm cải thiện 2\", \"Điểm cải thiện 3\"],\n" +
+                               "  \"action_items\": [\"Hành động 1\", \"Hành động 2\"],\n" +
+                               "  \"overall_feedback\": \"Đánh giá tổng quan...\"\n" +
                                "}\n\n" +
                                "Lưu ý: Chỉ trả về JSON thuần túy, không bao bọc trong khối code markdown hay bất kỳ văn bản nào ngoài JSON.";
 
@@ -864,51 +922,46 @@ namespace ITHunterview.Service.UseCase
 
             // Clean & Parse response
             var (cleanJson, _) = ExtractJsonAndPreamble(responseText);
-            
-            decimal totalScore = 0;
             string overallFeedbackJson = string.Empty;
 
             try
             {
-                using var doc = JsonDocument.Parse(cleanJson);
-                var root = doc.RootElement;
-
-                if (root.TryGetProperty("total_score", out var tsProp))
+                var jsonNode = JsonNode.Parse(cleanJson);
+                if (jsonNode != null)
                 {
-                    totalScore = tsProp.GetDecimal();
-                }
-                else
-                {
-                    // Fallback to average score
-                    var validAnswers = answers.Where(a => a.CandidateTranscript != null).ToList();
-                    if (validAnswers.Any())
+                    var metricsNode = new JsonObject
                     {
-                        var avg = validAnswers.Average(a => ((a.ScoreLogic ?? 0) + (a.ScoreTech ?? 0) + (a.ScoreCommunication ?? 0)) / 3.0);
-                        totalScore = (decimal)Math.Round(avg);
-                    }
+                        ["technical_avg"] = techAvgFinal,
+                        ["soft_skills_avg"] = softAvgFinal,
+                        ["technical_stddev"] = techStdDev,
+                        ["soft_skills_stddev"] = softStdDev,
+                        ["questions_touched"] = questionsTouched
+                    };
+                    jsonNode["metrics"] = metricsNode;
+                    overallFeedbackJson = jsonNode.ToJsonString();
                 }
-
-                overallFeedbackJson = cleanJson;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[ERROR] Failed to parse AI overall report JSON: {ex.Message}");
 
-                // Fallback score computation
-                var validAnswers = answers.Where(a => a.CandidateTranscript != null).ToList();
-                if (validAnswers.Any())
-                {
-                    var avg = validAnswers.Average(a => ((a.ScoreLogic ?? 0) + (a.ScoreTech ?? 0) + (a.ScoreCommunication ?? 0)) / 3.0);
-                    totalScore = (decimal)Math.Round(avg);
-                }
-
                 // Construct fallback overall feedback JSON
                 var fallbackFeedback = new
                 {
-                    total_score = totalScore,
-                    overall_feedback = responseText ?? "Đã hoàn thành buổi phỏng vấn thử.",
+                    metrics = new
+                    {
+                        technical_avg = techAvgFinal,
+                        soft_skills_avg = softAvgFinal,
+                        technical_stddev = techStdDev,
+                        soft_skills_stddev = softStdDev,
+                        questions_touched = questionsTouched
+                    },
+                    readiness_level = "Chưa đánh giá được",
+                    pattern = "",
                     strengths = new string[0],
-                    improvements = new string[0]
+                    improvements = new string[0],
+                    action_items = new string[0],
+                    overall_feedback = responseText ?? "Đã hoàn thành buổi phỏng vấn thử."
                 };
                 overallFeedbackJson = JsonSerializer.Serialize(fallbackFeedback);
             }

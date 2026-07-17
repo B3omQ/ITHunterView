@@ -29,6 +29,10 @@ import {
   Check,
   Mic,
   Loader2,
+  Target,
+  Activity,
+  ShieldCheck,
+  Crosshair,
 } from 'lucide-react';
 
 export default function CandidateInterviewActivePage() {
@@ -517,16 +521,7 @@ export default function CandidateInterviewActivePage() {
                       <div className="pl-13 max-w-3xl space-y-3">
                         <Card className="border border-border bg-card overflow-hidden rounded-2xl shadow-sm">
                           {/* Top averages */}
-                          <div className="grid grid-cols-3 border-b border-border bg-muted/20 p-4 gap-4">
-                            <div className="space-y-1.5">
-                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                                Logic & Thuật toán
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-extrabold text-primary">{msg.scoreLogic}%</span>
-                                <Progress value={msg.scoreLogic ?? null} className="h-1.5 bg-muted" />
-                              </div>
-                            </div>
+                          <div className="grid grid-cols-2 border-b border-border bg-muted/20 p-4 gap-4">
                             <div className="space-y-1.5">
                               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
                                 Technical Depth (T1-T6)
@@ -775,10 +770,22 @@ export default function CandidateInterviewActivePage() {
         const overallFeedback = parsedReport?.overall_feedback ?? report.overallFeedback;
         const strengths = parsedReport?.strengths ?? [];
         const improvements = parsedReport?.improvements ?? [];
+        const readinessLevel = parsedReport?.readiness_level ?? "Chưa đánh giá được";
+        const pattern = parsedReport?.pattern ?? "Không có lỗi lặp lại đáng kể.";
+        const actionItems = parsedReport?.action_items ?? [];
+        const metrics = parsedReport?.metrics ?? {};
+
+        const getReadinessColor = (level: string) => {
+          if (level.includes("Sẵn sàng phỏng vấn thật")) return "bg-emerald-100 text-emerald-700 border-emerald-300";
+          if (level.includes("Sẵn sàng ở mức mid")) return "bg-teal-100 text-teal-700 border-teal-300";
+          if (level.includes("Sẵn sàng ở mức junior")) return "bg-cyan-100 text-cyan-700 border-cyan-300";
+          if (level.includes("Cần luyện thêm")) return "bg-amber-100 text-amber-700 border-amber-300";
+          return "bg-rose-100 text-rose-700 border-rose-300";
+        };
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="relative w-full max-w-3xl bg-card border border-border shadow-2xl rounded-3xl overflow-hidden max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
+            <div className="relative w-full max-w-4xl bg-card border border-border shadow-2xl rounded-3xl overflow-hidden max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
               
               {/* Close Button */}
               <button 
@@ -801,15 +808,38 @@ export default function CandidateInterviewActivePage() {
                       Tổng hợp kết quả phỏng vấn thử từ AI Interviewer
                     </p>
                   </div>
-                  {/* Score Badge */}
-                  <div className="flex items-center gap-3 bg-card px-4 py-2.5 rounded-xl border border-border shadow-sm shrink-0">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                      Tổng điểm năng lực
-                    </span>
-                    <div className="flex items-baseline gap-0.5">
-                      <span className="text-2xl font-black text-primary">{overallScore}</span>
-                      <span className="text-xs text-muted-foreground">/100</span>
+                  {/* Score & Readiness */}
+                  <div className="flex items-center gap-3">
+                    <div className={`px-3 py-1.5 rounded-lg border text-xs font-bold ${getReadinessColor(readinessLevel)}`}>
+                      {readinessLevel}
                     </div>
+                    <div className="flex items-center gap-3 bg-card px-4 py-2.5 rounded-xl border border-border shadow-sm shrink-0">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                        Tổng điểm
+                      </span>
+                      <div className="flex items-baseline gap-0.5">
+                        <span className="text-2xl font-black text-primary">{overallScore}</span>
+                        <span className="text-xs text-muted-foreground">/100</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Metrics Grid */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 text-center space-y-1">
+                    <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Technical (Trung bình)</div>
+                    <div className="text-2xl font-black text-indigo-700">{metrics.technical_avg ?? 0}<span className="text-sm font-normal text-indigo-500">/5</span></div>
+                    <div className="text-[10px] text-indigo-500">Độ lệch chuẩn: {metrics.technical_stddev ?? 0}</div>
+                  </div>
+                  <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4 text-center space-y-1">
+                    <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Soft Skills (Trung bình)</div>
+                    <div className="text-2xl font-black text-emerald-700">{metrics.soft_skills_avg ?? 0}<span className="text-sm font-normal text-emerald-500">/5</span></div>
+                    <div className="text-[10px] text-emerald-500">Độ lệch chuẩn: {metrics.soft_skills_stddev ?? 0}</div>
+                  </div>
+                  <div className="bg-sky-50/50 border border-sky-100 rounded-2xl p-4 text-center space-y-1">
+                    <div className="text-[10px] font-bold text-sky-600 uppercase tracking-wider">Số câu hỏi đã chạm</div>
+                    <div className="text-2xl font-black text-sky-700 mt-1">{metrics.questions_touched ?? 0}</div>
                   </div>
                 </div>
 
@@ -823,12 +853,41 @@ export default function CandidateInterviewActivePage() {
                   </p>
                 </div>
 
+                {/* Pattern & Action Items */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-violet-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <Activity className="h-4 w-4" /> Mô hình lỗi lặp lại (Pattern)
+                    </h4>
+                    <div className="bg-violet-50/30 border border-violet-500/20 rounded-2xl p-4 text-sm text-muted-foreground leading-relaxed">
+                      {pattern}
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <Target className="h-4 w-4" /> Gợi ý hành động (Action Items)
+                    </h4>
+                    {actionItems.length > 0 ? (
+                      <ul className="space-y-2 bg-blue-50/30 border border-blue-500/20 rounded-2xl p-4">
+                        {actionItems.map((item: string, idx: number) => (
+                          <li key={idx} className="flex items-start gap-2 text-xs md:text-sm text-muted-foreground">
+                            <Crosshair className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                            <span className="leading-relaxed">{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">Không có gợi ý cụ thể.</p>
+                    )}
+                  </div>
+                </div>
+
                 {/* Strengths & Improvements */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Strengths */}
                   <div className="space-y-3">
                     <h4 className="text-xs font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1.5">
-                      <CheckCircle className="h-4 w-4" /> Điểm mạnh nổi bật
+                      <CheckCircle className="h-4 w-4" /> Điểm mạnh nổi bật (Top 3)
                     </h4>
                     {strengths.length > 0 ? (
                       <ul className="space-y-2 bg-emerald-50/10 border border-emerald-500/10 rounded-2xl p-4">
@@ -847,7 +906,7 @@ export default function CandidateInterviewActivePage() {
                   {/* Improvements */}
                   <div className="space-y-3">
                     <h4 className="text-xs font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1.5">
-                      <AlertCircle className="h-4 w-4" /> Khía cạnh cần cải thiện
+                      <AlertCircle className="h-4 w-4" /> Cần cải thiện (Top 3)
                     </h4>
                     {improvements.length > 0 ? (
                       <ul className="space-y-2 bg-amber-50/10 border border-amber-500/10 rounded-2xl p-4">
