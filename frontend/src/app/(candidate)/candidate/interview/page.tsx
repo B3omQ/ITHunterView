@@ -534,7 +534,23 @@ function CandidateInterviewContent() {
                   </label>
                   <Select value={selectedCv} onValueChange={(val) => setSelectedCv(val ?? 'none')}>
                     <SelectTrigger className="w-full h-11 px-3 bg-card border-border hover:border-primary/50 focus:ring-primary/20 hover:bg-muted/10 transition-all rounded-xl shadow-sm text-sm font-medium">
-                      <SelectValue placeholder="Select CV" />
+                      <SelectValue placeholder="Select CV">
+                        {selectedCv === 'none' 
+                          ? (
+                              <div className="flex items-center gap-2 text-muted-foreground font-medium">
+                                <X className="h-4 w-4 shrink-0" />
+                                <span>No CV (General Knowledge)</span>
+                              </div>
+                            )
+                          : (
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-primary shrink-0" />
+                                <span className="truncate max-w-[240px]">
+                                  {cvs.find((c) => c.id === selectedCv)?.fileName || 'Selected CV'}
+                                </span>
+                              </div>
+                            )}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent alignItemWithTrigger={false} className="bg-popover border-border text-popover-foreground max-h-60 overflow-y-auto">
                       <SelectItem value="none">
