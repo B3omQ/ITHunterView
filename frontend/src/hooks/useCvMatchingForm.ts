@@ -6,6 +6,7 @@ import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { useMatchCvJd, useGetMatchResult } from '@/hooks/useCvMatch';
 import type { MatchJdRequest, MatchingOutput } from '@/types/cv.types';
 import { toast } from 'sonner';
+import api from '@/services/api-client';
 
 export type MatchingStep = 'select' | 'loading' | 'result';
 
@@ -38,7 +39,7 @@ export function useCvMatchingForm() {
   const [selectedJobId, setSelectedJobId] = useState<string>('');
 
   // Queries & Mutations
-  const uploadMutation = useUploadFile();
+  const [isExtracting, setIsExtracting] = useState(false);
   const { data: myCvsData, isLoading: isLoadingCvs } = useGetMyCvs();
   const { data: savedJobsData, isLoading: isLoadingJobs } = useSavedJobs(1, 100);
   const matchMutation = useMatchCvJd();
@@ -128,17 +129,29 @@ export function useCvMatchingForm() {
     }
     setCvFile(file);
     setCvFileName(file.name);
+    setIsExtracting(true);
 
     try {
-      const res = await uploadMutation.mutateAsync({ file, folderName: 'resumes' });
-      if (res.success && res.data) {
-        setCvUrl(res.data);
-        toast.success('Resume uploaded successfully');
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await api.post('/api/cvs/extract-text', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (res.data?.success && res.data?.data) {
+        setCvText(res.data.data);
+        // Không tự động nhảy sang tab Paste nữa (Phương án B) vì data giờ là JSON
+        toast.success('Resume parsed successfully');
       } else {
-        toast.error(res.message || 'Failed to upload resume');
+        toast.error(res.data?.message || 'Failed to parse resume');
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error uploading file');
+      toast.error(err.response?.data?.message || 'Error extracting file text');
+    } finally {
+      setIsExtracting(false);
     }
   };
 
@@ -166,7 +179,8 @@ export function useCvMatchingForm() {
   };
 
   const handleStartAnalysis = async () => {
-    const hasCV = (cvTab === 'upload' && cvUrl) || (cvTab === 'paste' && cvText.trim()) || (cvTab === 'saved' && selectedCvId);
+    // Nếu upload thành công (JSON được lưu trong cvText), cho phép qua vòng gửi xe
+    const hasCV = (cvTab === 'upload' && cvText.trim()) || (cvTab === 'paste' && cvText.trim()) || (cvTab === 'saved' && selectedCvId);
     const hasJD = (jdTab === 'paste' && jdText.trim()) || (jdTab === 'saved' && selectedJobId);
 
     if (!hasCV) {
@@ -178,8 +192,8 @@ export function useCvMatchingForm() {
       return;
     }
     
-    if (cvTab === 'paste' && cvText.trim().length < 100) {
-      toast.error('Resume text is too short. Please provide at least 100 characters.');
+    if ((cvTab === 'paste' || cvTab === 'upload') && cvText.trim().length < 100) {
+      toast.error('Resume text is too short. Please provide at least 100 characters or upload a valid CV.');
       return;
     }
     
@@ -190,8 +204,7 @@ export function useCvMatchingForm() {
 
     const payload: MatchJdRequest = {};
     
-    if (cvTab === 'upload') payload.cvUrl = cvUrl;
-    else if (cvTab === 'paste') payload.cvText = cvText;
+    if (cvTab === 'upload' || cvTab === 'paste') payload.cvText = cvText;
     else if (cvTab === 'saved') payload.cvId = selectedCvId;
     
     if (jdTab === 'paste') payload.rawJdText = jdText;
@@ -212,9 +225,9 @@ export function useCvMatchingForm() {
   };
 
   const isSubmitDisabled = () => {
-    const hasCV = (cvTab === 'upload' && cvUrl) || (cvTab === 'paste' && cvText.trim()) || (cvTab === 'saved' && selectedCvId);
+    const hasCV = (cvTab === 'upload' && cvText.trim()) || (cvTab === 'paste' && cvText.trim()) || (cvTab === 'saved' && selectedCvId);
     const hasJD = (jdTab === 'paste' && jdText.trim()) || (jdTab === 'saved' && selectedJobId);
-    return !hasCV || !hasJD || uploadMutation.isPending;
+    return !hasCV || !hasJD || isExtracting;
   };
 
   return {
@@ -234,7 +247,7 @@ export function useCvMatchingForm() {
       loadingStep,
       matchOutput,
       matchedCvId,
-      isUploading: uploadMutation.isPending,
+      isUploading: isExtracting,
       isSubmitDisabled: isSubmitDisabled()
     },
     queries: {

@@ -16,15 +16,18 @@ namespace ITHunterview.Service.UseCase
         private readonly ICvRepository _cvRepository;
         private readonly Microsoft.Extensions.DependencyInjection.IServiceScopeFactory _scopeFactory;
         private readonly Microsoft.Extensions.Logging.ILogger<CvUseCase> _logger;
+        private readonly ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService _textExtractorService;
 
         public CvUseCase(
             ICvRepository cvRepository,
             Microsoft.Extensions.DependencyInjection.IServiceScopeFactory scopeFactory,
-            Microsoft.Extensions.Logging.ILogger<CvUseCase> logger)
+            Microsoft.Extensions.Logging.ILogger<CvUseCase> logger,
+            ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService textExtractorService)
         {
             _cvRepository = cvRepository;
             _scopeFactory = scopeFactory;
             _logger = logger;
+            _textExtractorService = textExtractorService;
         }
 
         public async Task<CvResponseDto> CreateCvAsync(Guid userId, CreateCvRequestDto request)
@@ -42,6 +45,16 @@ namespace ITHunterview.Service.UseCase
                 }
             }
 
+            string extractedRawText = string.Empty;
+            try 
+            {
+                extractedRawText = await _textExtractorService.ExtractTextFromUrlAsync(request.FileUrl);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to extract raw text immediately for CV upload.");
+            }
+
             var cv = new Cvs
             {
                 Id = Guid.NewGuid(),
@@ -52,6 +65,7 @@ namespace ITHunterview.Service.UseCase
                 FileType = request.FileType,
                 IsPrimary = request.IsPrimary,
                 ParsedData = request.ParsedData ?? string.Empty,
+                RawText = extractedRawText,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -60,65 +74,49 @@ namespace ITHunterview.Service.UseCase
 
             if (string.IsNullOrWhiteSpace(createdCv.ParsedData))
             {
-                _ = ParseCvBackgroundAsync(createdCv.Id, createdCv.FileUrl);
+                _ = ParseCvBackgroundAsync(createdCv.Id, createdCv.RawText, createdCv.FileUrl);
             }
 
             return MapToDto(createdCv);
         }
 
-        private async Task ParseCvBackgroundAsync(Guid cvId, string fileUrl)
+        private async Task ParseCvBackgroundAsync(Guid cvId, string rawTextFallback, string fileUrl)
         {
             try
             {
                 using var scope = _scopeFactory.CreateScope();
                 var textExtractor = scope.ServiceProvider.GetRequiredService<ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService>();
-                var aiService = scope.ServiceProvider.GetRequiredService<ITHunterview.Service.Interface.Service.IAiService>();
                 var cvRepo = scope.ServiceProvider.GetRequiredService<ICvRepository>();
 
                 _logger.LogInformation("Starting background parsing for CV {CvId}", cvId);
 
-                var rawText = await textExtractor.ExtractTextFromUrlAsync(fileUrl);
-                if (string.IsNullOrWhiteSpace(rawText))
+                var parsedJson = await textExtractor.ExtractParsedDataFromUrlAsync(fileUrl, rawTextFallback);
+
+                if (!string.IsNullOrWhiteSpace(parsedJson))
                 {
-                    _logger.LogWarning("Extraction returned empty text for CV {CvId}", cvId);
-                    return;
-                }
-
-                if (rawText.Length > 20000) rawText = rawText.Substring(0, 20000);
-
-                var prompt = ITHunterview.Service.Constant.Prompts.CvParsingPrompt.GetPrompt(rawText);
-                var systemPrompt = ITHunterview.Service.Constant.Prompts.CvParsingPrompt.SystemPrompt;
-
-                var aiResponse = await aiService.GenerateTextAsync(prompt, systemPrompt);
-
-                // Try to extract JSON if it was wrapped in markdown
-                string jsonString = aiResponse;
-                if (jsonString.Contains("```json"))
-                {
-                    int start = jsonString.IndexOf("```json") + 7;
-                    int end = jsonString.LastIndexOf("```");
-                    if (end > start) jsonString = jsonString.Substring(start, end - start);
-                }
-                else if (jsonString.Contains("```"))
-                {
-                    int start = jsonString.IndexOf("```") + 3;
-                    int end = jsonString.LastIndexOf("```");
-                    if (end > start) jsonString = jsonString.Substring(start, end - start);
-                }
-
-                jsonString = jsonString.Trim();
-
-                // Validate JSON
-                using (System.Text.Json.JsonDocument.Parse(jsonString))
-                {
-                    var cvToUpdate = await cvRepo.GetByIdAsync(cvId);
-                    if (cvToUpdate != null)
+                    // Basic validation to ensure it's JSON
+                    try 
                     {
-                        cvToUpdate.ParsedData = jsonString;
-                        cvToUpdate.UpdatedAt = DateTime.UtcNow;
-                        await cvRepo.UpdateAsync(cvToUpdate);
-                        _logger.LogInformation("Successfully parsed and updated CV {CvId}", cvId);
+                        using (System.Text.Json.JsonDocument.Parse(parsedJson))
+                        {
+                            var cvToUpdate = await cvRepo.GetByIdAsync(cvId);
+                            if (cvToUpdate != null)
+                            {
+                                cvToUpdate.ParsedData = parsedJson;
+                                cvToUpdate.UpdatedAt = DateTime.UtcNow;
+                                await cvRepo.UpdateAsync(cvToUpdate);
+                                _logger.LogInformation("Successfully parsed and updated CV {CvId}", cvId);
+                            }
+                        }
                     }
+                    catch (System.Text.Json.JsonException ex)
+                    {
+                        _logger.LogError(ex, "Failed to validate parsed JSON for CV {CvId}", cvId);
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("Background parsing resulted in empty JSON for CV {CvId}", cvId);
                 }
             }
             catch (Exception ex)
@@ -126,6 +124,7 @@ namespace ITHunterview.Service.UseCase
                 _logger.LogError(ex, "Failed to parse CV {CvId} in background", cvId);
             }
         }
+
 
         public async Task<IEnumerable<CvResponseDto>> GetMyCvsAsync(Guid userId)
         {

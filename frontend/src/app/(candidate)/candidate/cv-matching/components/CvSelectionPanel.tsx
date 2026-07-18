@@ -83,7 +83,7 @@ export function CvSelectionPanel({
                   {isUploading ? (
                     <span className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
                       <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                      Uploading to Cloudinary...
+                      Extracting text from resume...
                     </span>
                   ) : (
                     <span className="text-xs text-emerald-600 font-medium flex items-center gap-1.5 mt-1">
@@ -131,7 +131,14 @@ export function CvSelectionPanel({
             ) : (
               <Select value={selectedCvId} onValueChange={(val) => setSelectedCvId(val || '')}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a resume" />
+                  <SelectValue placeholder="Select a resume">
+                    {selectedCvId 
+                      ? (myCvs.find((c) => c.id === selectedCvId)?.fileName || 
+                         (myCvs.find((c) => c.id === selectedCvId) 
+                           ? `Resume - ${new Date(myCvs.find((c) => c.id === selectedCvId).createdAt).toLocaleDateString()}` 
+                           : undefined))
+                      : undefined}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {myCvs.map((cv) => (
