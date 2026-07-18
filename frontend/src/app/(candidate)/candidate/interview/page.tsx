@@ -407,9 +407,6 @@ function CandidateInterviewContent() {
                         >
                           {session.status === 'IN_PROGRESS' ? 'In Progress' : 'Completed'}
                         </Badge>
-                        <Badge variant="outline" className="border-border text-muted-foreground">
-                          {session.difficultyLevel}
-                        </Badge>
                       </div>
 
                       <Button
@@ -648,38 +645,8 @@ function CandidateInterviewContent() {
                   </Popover>
                 </div>
 
-                {/* Difficulty Level & AI Model */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold flex items-center gap-2 text-foreground">
-                      <Layers className="h-4 w-4 text-emerald-500" /> Difficulty Level
-                    </label>
-                    <Select value={difficulty} onValueChange={(val) => setDifficulty((val ?? 'MEDIUM') as DifficultyLevel)}>
-                      <SelectTrigger className="w-full h-11 px-3 bg-card border-border hover:border-primary/50 focus:ring-primary/20 hover:bg-muted/10 transition-all rounded-xl shadow-sm text-sm font-medium">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent alignItemWithTrigger={false} className="bg-popover border-border text-popover-foreground">
-                        <SelectItem value="EASY">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-200 py-0.5 px-2 text-[10px] font-semibold">EASY</Badge>
-                            <span>Easy</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="MEDIUM">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200 py-0.5 px-2 text-[10px] font-semibold">MEDIUM</Badge>
-                            <span>Medium</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="HARD">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-200 py-0.5 px-2 text-[10px] font-semibold">HARD</Badge>
-                            <span>Hard</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                {/* AI Model */}
+                <div className="grid grid-cols-1 gap-4">
 
                   <div className="space-y-2">
                     <label className="text-sm font-semibold flex items-center gap-2 text-foreground">
@@ -763,7 +730,6 @@ function CandidateInterviewContent() {
                   <ul className="list-disc pl-4 space-y-1">
                     <li>Use your CV to let AI dive deep into your experience.</li>
                     <li>Use a Job Description to align with your target role.</li>
-                    <li>Higher difficulty increases the challenge of algorithmic and system questions.</li>
                   </ul>
                 </div>
               </div>
