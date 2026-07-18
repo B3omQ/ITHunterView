@@ -64,9 +64,9 @@ export function JdSelectionPanel({
                     {selectedJobId 
                       ? (() => {
                           const matched = savedJobs.find(j => j.jobId === selectedJobId);
-                          return matched ? `${matched.title} - ${matched.companyName}` : "Loading...";
+                          return matched ? `${matched.title} - ${matched.companyName}` : undefined;
                         })()
-                      : "Select a job"}
+                      : undefined}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>

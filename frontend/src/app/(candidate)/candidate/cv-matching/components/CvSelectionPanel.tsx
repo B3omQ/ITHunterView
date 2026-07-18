@@ -131,7 +131,14 @@ export function CvSelectionPanel({
             ) : (
               <Select value={selectedCvId} onValueChange={(val) => setSelectedCvId(val || '')}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a resume" />
+                  <SelectValue placeholder="Select a resume">
+                    {selectedCvId 
+                      ? (myCvs.find((c) => c.id === selectedCvId)?.fileName || 
+                         (myCvs.find((c) => c.id === selectedCvId) 
+                           ? `Resume - ${new Date(myCvs.find((c) => c.id === selectedCvId).createdAt).toLocaleDateString()}` 
+                           : undefined))
+                      : undefined}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {myCvs.map((cv) => (
