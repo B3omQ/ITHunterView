@@ -726,7 +726,7 @@ namespace ITHunterview.Service.UseCase
                         from c in cvs.DefaultIfEmpty()
                         join j in _context.JobPostings on s.JobId equals j.Id into jobs
                         from j in jobs.DefaultIfEmpty()
-                        where s.UserId == userId && j != null
+                        where s.UserId == userId
                         select new { Score = s, Cv = c, Job = j };
 
             if (cvId.HasValue)
