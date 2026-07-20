@@ -117,11 +117,11 @@ function CandidateInterviewContent() {
     if (!url) return '';
     const cleanUrl = url.split('?')[0].toLowerCase();
     const isDoc = cleanUrl.endsWith('.doc') || cleanUrl.endsWith('.docx');
-    
+
     if (isDoc) {
       return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
     }
-    
+
     return url;
   };
 
@@ -190,7 +190,7 @@ function CandidateInterviewContent() {
             <span>Open in new tab</span>
           </a>
         </div>
-        
+
         {/* CV PDF viewer */}
         <div className="flex-1 bg-muted/30">
           <iframe
@@ -254,7 +254,7 @@ function CandidateInterviewContent() {
               <p className="text-xs text-muted-foreground truncate">{jobDetail.companyName}</p>
             </div>
           </div>
-          
+
           {/* Info Grid */}
           <div className="grid grid-cols-2 gap-2 mt-3 text-[11px] text-muted-foreground">
             <div className="flex items-center gap-1.5">
@@ -352,145 +352,144 @@ function CandidateInterviewContent() {
 
           {sessionsLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[1, 2, 3].map((n) => (
-              <Card key={n} className="bg-card border-border">
-                <CardHeader className="space-y-2">
-                  <Skeleton className="h-4 w-1/3" />
-                  <Skeleton className="h-6 w-3/4" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-4 w-1/2" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : sessions.length === 0 ? (
-          <Card className="border border-dashed border-border bg-muted/20 py-16 text-center rounded-2xl">
-            <CardContent className="space-y-6 max-w-sm mx-auto">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-card border border-border text-muted-foreground">
-                <MessageSquare className="h-8 w-8" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold text-foreground">No mock interview sessions yet</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Start your first session to level up your interview skills and get detailed AI feedback.
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => setIsOpen(true)}
-                className="w-full border-border text-foreground hover:bg-muted"
-              >
-                Click here to start
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {paginatedSessions.map((session) => (
-                <Card
-                  key={session.id}
-                  onClick={() => router.push(`/candidate/interview/${session.id}`)}
-                  className="group cursor-pointer bg-card hover:bg-muted/10 border border-border hover:border-primary/30 shadow-sm hover:shadow-md rounded-2xl transition-all duration-300 flex flex-col justify-between overflow-hidden relative"
-                >
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-1.5">
-                        <Badge
-                          variant="secondary"
-                          className={
-                            session.status === 'IN_PROGRESS'
-                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                              : 'bg-slate-100 text-slate-600 border border-slate-200'
-                          }
-                        >
-                          {session.status === 'IN_PROGRESS' ? 'In Progress' : 'Completed'}
-                        </Badge>
-                      </div>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={deleteSessionMutation.isPending}
-                        onClick={(e) => handleDeleteSession(e, session.id)}
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors shrink-0"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <CardTitle className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                      {session.jobTitle || 'Free Mock Interview'}
-                    </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
-                      <Calendar className="h-3.5 w-3.5" />
-                      {session.startedAt ? new Date(session.startedAt).toLocaleDateString('vi-VN') : 'N/A'}
-                    </CardDescription>
+              {[1, 2, 3].map((n) => (
+                <Card key={n} className="bg-card border-border">
+                  <CardHeader className="space-y-2">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-6 w-3/4" />
                   </CardHeader>
-                  <CardContent className="pb-4 space-y-2">
-                    {session.cvFileName && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <span className="truncate">{session.cvFileName}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Cpu className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
-                      <span>Model: {session.aiProvider || 'Gemini'}</span>
-                    </div>
+                  <CardContent>
+                    <Skeleton className="h-4 w-1/2" />
                   </CardContent>
-                  <CardFooter className="pt-2 border-t border-border bg-muted/10 flex justify-between items-center text-xs font-semibold text-primary group-hover:text-primary/80">
-                    <span>View Details</span>
-                    <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
-                  </CardFooter>
                 </Card>
               ))}
             </div>
-
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 pt-6">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="h-9 w-9 rounded-lg border border-border hover:bg-muted"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <Button
-                      key={page}
-                      variant={currentPage === page ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPage(page)}
-                      className={`h-9 w-9 rounded-lg transition-colors ${
-                        currentPage === page 
-                          ? "bg-primary text-primary-foreground hover:bg-primary/90 font-bold" 
-                          : "border-border hover:bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {page}
-                    </Button>
-                  ))}
+          ) : sessions.length === 0 ? (
+            <Card className="border border-dashed border-border bg-muted/20 py-16 text-center rounded-2xl">
+              <CardContent className="space-y-6 max-w-sm mx-auto">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-card border border-border text-muted-foreground">
+                  <MessageSquare className="h-8 w-8" />
                 </div>
-
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-foreground">No mock interview sessions yet</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Start your first session to level up your interview skills and get detailed AI feedback.
+                  </p>
+                </div>
                 <Button
                   variant="outline"
-                  size="icon"
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="h-9 w-9 rounded-lg border border-border hover:bg-muted"
+                  onClick={() => setIsOpen(true)}
+                  className="w-full border-border text-foreground hover:bg-muted"
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  Click here to start
                 </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {paginatedSessions.map((session) => (
+                  <Card
+                    key={session.id}
+                    onClick={() => router.push(`/candidate/interview/${session.id}`)}
+                    className="group cursor-pointer bg-card hover:bg-muted/10 border border-border hover:border-primary/30 shadow-sm hover:shadow-md rounded-2xl transition-all duration-300 flex flex-col justify-between overflow-hidden relative"
+                  >
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-1.5">
+                          <Badge
+                            variant="secondary"
+                            className={
+                              session.status === 'IN_PROGRESS'
+                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                                : 'bg-slate-100 text-slate-600 border border-slate-200'
+                            }
+                          >
+                            {session.status === 'IN_PROGRESS' ? 'In Progress' : 'Completed'}
+                          </Badge>
+                        </div>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={deleteSessionMutation.isPending}
+                          onClick={(e) => handleDeleteSession(e, session.id)}
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors shrink-0"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <CardTitle className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                        {session.jobTitle || 'Free Mock Interview'}
+                      </CardTitle>
+                      <CardDescription className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {session.startedAt ? new Date(session.startedAt).toLocaleDateString('vi-VN') : 'N/A'}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pb-4 space-y-2">
+                      {session.cvFileName && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+                          <span className="truncate">{session.cvFileName}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Cpu className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                        <span>Model: {session.aiProvider || 'Gemini'}</span>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="pt-2 border-t border-border bg-muted/10 flex justify-between items-center text-xs font-semibold text-primary group-hover:text-primary/80">
+                      <span>View Details</span>
+                      <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
+                    </CardFooter>
+                  </Card>
+                ))}
               </div>
-            )}
-          </>
-        )}
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 pt-6">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="h-9 w-9 rounded-lg border border-border hover:bg-muted"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                        className={`h-9 w-9 rounded-lg transition-colors ${currentPage === page
+                            ? "bg-primary text-primary-foreground hover:bg-primary/90 font-bold"
+                            : "border-border hover:bg-muted text-muted-foreground"
+                          }`}
+                      >
+                        {page}
+                      </Button>
+                    ))}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="h-9 w-9 rounded-lg border border-border hover:bg-muted"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         <div className="hidden lg:block col-span-1 lg:col-span-4">
@@ -532,21 +531,21 @@ function CandidateInterviewContent() {
                   <Select value={selectedCv} onValueChange={(val) => setSelectedCv(val ?? 'none')}>
                     <SelectTrigger className="w-full h-11 px-3 bg-card border-border hover:border-primary/50 focus:ring-primary/20 hover:bg-muted/10 transition-all rounded-xl shadow-sm text-sm font-medium">
                       <SelectValue placeholder="Select CV">
-                        {selectedCv === 'none' 
+                        {selectedCv === 'none'
                           ? (
-                              <div className="flex items-center gap-2 text-muted-foreground font-medium">
-                                <X className="h-4 w-4 shrink-0" />
-                                <span>No CV (General Knowledge)</span>
-                              </div>
-                            )
+                            <div className="flex items-center gap-2 text-muted-foreground font-medium">
+                              <X className="h-4 w-4 shrink-0" />
+                              <span>No CV (General Knowledge)</span>
+                            </div>
+                          )
                           : (
-                              <div className="flex items-center gap-2">
-                                <FileText className="h-4 w-4 text-primary shrink-0" />
-                                <span className="truncate max-w-[240px]">
-                                  {cvs.find((c) => c.id === selectedCv)?.fileName || 'Selected CV'}
-                                </span>
-                              </div>
-                            )}
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-primary shrink-0" />
+                              <span className="truncate max-w-[240px]">
+                                {cvs.find((c) => c.id === selectedCv)?.fileName || 'Selected CV'}
+                              </span>
+                            </div>
+                          )}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent alignItemWithTrigger={false} className="bg-popover border-border text-popover-foreground max-h-60 overflow-y-auto">
@@ -645,8 +644,25 @@ function CandidateInterviewContent() {
                   </Popover>
                 </div>
 
-                {/* AI Model */}
+                {/* AI Model & Difficulty Level */}
                 <div className="grid grid-cols-1 gap-4">
+                  {selectedJob === 'none' && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                        <Layers className="h-4 w-4 text-indigo-500" /> Select Level
+                      </label>
+                      <Select value={difficulty} onValueChange={(val) => setDifficulty(val as DifficultyLevel)}>
+                        <SelectTrigger className="w-full h-11 px-3 bg-card border-border hover:border-primary/50 focus:ring-primary/20 hover:bg-muted/10 transition-all rounded-xl shadow-sm text-sm font-medium">
+                          <SelectValue placeholder="Select Level" />
+                        </SelectTrigger>
+                        <SelectContent alignItemWithTrigger={false} className="bg-popover border-border text-popover-foreground">
+                          <SelectItem value="EASY">Intern / Fresher</SelectItem>
+                          <SelectItem value="MEDIUM">Middle / Junior</SelectItem>
+                          <SelectItem value="HARD">Senior</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <label className="text-sm font-semibold flex items-center gap-2 text-foreground">
@@ -658,12 +674,15 @@ function CandidateInterviewContent() {
                       </SelectTrigger>
                       <SelectContent alignItemWithTrigger={false} className="bg-popover border-border text-popover-foreground">
                         <SelectItem value="Gemini">
-                          <div className="flex items-center gap-2">
-                            <Sparkles className="h-3.5 w-3.5 text-cyan-500 shrink-0" />
-                            <span>Gemini 2.5 Flash</span>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <Sparkles className="h-3.5 w-3.5 text-cyan-500 shrink-0" />
+                              <span>Gemini 2.5 Flash</span>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground ml-5">High context and good thinking</span>
                           </div>
                         </SelectItem>
-                        <SelectItem value="OpenAI">
+                        {/* <SelectItem value="OpenAI">
                           <div className="flex items-center gap-2">
                             <BrainCircuit className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                             <span>GPT-4o (OpenAI)</span>
@@ -674,11 +693,14 @@ function CandidateInterviewContent() {
                             <Cpu className="h-3.5 w-3.5 text-orange-500 shrink-0" />
                             <span>Claude 3.5 Sonnet</span>
                           </div>
-                        </SelectItem>
+                        </SelectItem> */}
                         <SelectItem value="Groq">
-                          <div className="flex items-center gap-2">
-                            <Cpu className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                            <span>Groq (Llama 3.3)</span>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <Cpu className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                              <span>Groq (Llama 3.3)</span>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground ml-5">Use if Gemini 2.5 Flash doesn't work properly</span>
                           </div>
                         </SelectItem>
                       </SelectContent>

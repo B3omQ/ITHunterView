@@ -45,8 +45,6 @@ namespace ITHunterview.Service.Service.AiProviders
                 
             var endpoint = $"{baseEndpoint}/{model}:generateContent?key={_config.ApiKey}";
 
-            var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint);
-
             // Construct Gemini request payload
             // Setup contents: user prompt
             var contents = new[]
@@ -84,13 +82,51 @@ namespace ITHunterview.Service.Service.AiProviders
             }
 
             var jsonPayload = JsonSerializer.Serialize(payload);
-            requestMessage.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.SendAsync(requestMessage);
-            if (!response.IsSuccessStatusCode)
+            HttpResponseMessage response = null;
+            string errorContent = string.Empty;
+            int maxRetries = 3;
+
+            for (int i = 0; i < maxRetries; i++)
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                throw new HttpRequestException($"Gemini API call failed with status code {response.StatusCode}: {errorContent}");
+                var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint);
+                requestMessage.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+                
+                try
+                {
+                    response = await _httpClient.SendAsync(requestMessage);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        break;
+                    }
+                    
+                    errorContent = await response.Content.ReadAsStringAsync();
+                    
+                    // If it is NOT a transient error, do not retry
+                    if (response.StatusCode != System.Net.HttpStatusCode.ServiceUnavailable && // 503
+                        response.StatusCode != System.Net.HttpStatusCode.TooManyRequests && // 429
+                        (int)response.StatusCode != 500 &&
+                        (int)response.StatusCode != 502 &&
+                        (int)response.StatusCode != 504)
+                    {
+                        break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    errorContent = ex.Message;
+                }
+
+                if (i < maxRetries - 1)
+                {
+                    Console.WriteLine($"[WARNING] Gemini API call returned transient status {response?.StatusCode} or threw exception. Retrying in 2 seconds... (Attempt {i + 1} of {maxRetries})");
+                    await Task.Delay(2000);
+                }
+            }
+
+            if (response == null || !response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException($"Gemini API call failed after {maxRetries} attempts. Status: {response?.StatusCode}, Error: {errorContent}");
             }
 
             var responseContent = await response.Content.ReadAsStringAsync();

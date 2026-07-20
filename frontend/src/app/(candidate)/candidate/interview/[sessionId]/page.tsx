@@ -319,10 +319,20 @@ export default function CandidateInterviewActivePage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent alignItemWithTrigger={false} className="bg-popover border-border text-popover-foreground">
-                <SelectItem value="Gemini">Gemini 2.5 Flash</SelectItem>
-                <SelectItem value="OpenAI">GPT-4o (OpenAI)</SelectItem>
-                <SelectItem value="Claude">Claude 3.5 Sonnet</SelectItem>
-                <SelectItem value="Groq">Groq (Llama 3.3)</SelectItem>
+                <SelectItem value="Gemini">
+                  <div className="flex flex-col text-left">
+                    <span>Gemini 2.5 Flash</span>
+                    <span className="text-[10px] text-muted-foreground">High context và thinking tốt</span>
+                  </div>
+                </SelectItem>
+                {/* <SelectItem value="OpenAI">GPT-4o (OpenAI)</SelectItem>
+                <SelectItem value="Claude">Claude 3.5 Sonnet</SelectItem> */}
+                <SelectItem value="Groq">
+                  <div className="flex flex-col text-left">
+                    <span>Groq (Llama 3.3)</span>
+                    <span className="text-[10px] text-muted-foreground">Đặt câu hỏi và đánh giá khá ít</span>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
             {session.status === 'IN_PROGRESS' && (

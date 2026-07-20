@@ -43,9 +43,6 @@ namespace ITHunterview.Service.Service.AiProviders
 
             var model = string.IsNullOrEmpty(_config.Model) ? "llama-3.3-70b-versatile" : _config.Model;
 
-            var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint);
-            requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _config.ApiKey);
-
             var messages = new System.Collections.Generic.List<object>();
             if (!string.IsNullOrEmpty(systemPrompt))
             {
@@ -61,13 +58,52 @@ namespace ITHunterview.Service.Service.AiProviders
             };
 
             var jsonPayload = JsonSerializer.Serialize(payload);
-            requestMessage.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.SendAsync(requestMessage);
-            if (!response.IsSuccessStatusCode)
+            HttpResponseMessage response = null;
+            string errorContent = string.Empty;
+            int maxRetries = 3;
+
+            for (int i = 0; i < maxRetries; i++)
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                throw new HttpRequestException($"Groq API call failed with status code {response.StatusCode}: {errorContent}");
+                var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint);
+                requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _config.ApiKey);
+                requestMessage.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+                
+                try
+                {
+                    response = await _httpClient.SendAsync(requestMessage);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        break;
+                    }
+                    
+                    errorContent = await response.Content.ReadAsStringAsync();
+                    
+                    // If it is NOT a transient error, do not retry
+                    if (response.StatusCode != System.Net.HttpStatusCode.ServiceUnavailable && // 503
+                        response.StatusCode != System.Net.HttpStatusCode.TooManyRequests && // 429
+                        (int)response.StatusCode != 500 &&
+                        (int)response.StatusCode != 502 &&
+                        (int)response.StatusCode != 504)
+                    {
+                        break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    errorContent = ex.Message;
+                }
+
+                if (i < maxRetries - 1)
+                {
+                    Console.WriteLine($"[WARNING] Groq API call returned transient status {response?.StatusCode} or threw exception. Retrying in 2 seconds... (Attempt {i + 1} of {maxRetries})");
+                    await Task.Delay(2000);
+                }
+            }
+
+            if (response == null || !response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException($"Groq API call failed after {maxRetries} attempts. Status: {response?.StatusCode}, Error: {errorContent}");
             }
 
             var responseContent = await response.Content.ReadAsStringAsync();
