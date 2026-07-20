@@ -12,7 +12,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "ITHunterView – AI-Powered Tech Recruitment",
+  title: "ITHunterView",
   description:
     "Connect top tech talent with leading companies using AI-powered matching and interview assistance.",
   keywords: "IT recruitment, tech jobs, AI interview, software developer jobs",
