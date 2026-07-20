@@ -284,15 +284,7 @@ export default function CandidateInterviewActivePage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
-                Difficulty
-              </span>
-              <div className="flex items-center gap-1.5 text-foreground">
-                <Layers className="h-4 w-4 text-emerald-500" />
-                <span className="text-sm font-semibold">{session.difficultyLevel}</span>
-              </div>
-            </div>
+
             <div>
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
                 Status
@@ -327,10 +319,20 @@ export default function CandidateInterviewActivePage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent alignItemWithTrigger={false} className="bg-popover border-border text-popover-foreground">
-                <SelectItem value="Gemini">Gemini 2.5 Flash</SelectItem>
-                <SelectItem value="OpenAI">GPT-4o (OpenAI)</SelectItem>
-                <SelectItem value="Claude">Claude 3.5 Sonnet</SelectItem>
-                <SelectItem value="Groq">Groq (Llama 3.3)</SelectItem>
+                <SelectItem value="Gemini">
+                  <div className="flex flex-col text-left">
+                    <span>Gemini 2.5 Flash</span>
+                    <span className="text-[10px] text-muted-foreground">High context và thinking tốt</span>
+                  </div>
+                </SelectItem>
+                {/* <SelectItem value="OpenAI">GPT-4o (OpenAI)</SelectItem>
+                <SelectItem value="Claude">Claude 3.5 Sonnet</SelectItem> */}
+                <SelectItem value="Groq">
+                  <div className="flex flex-col text-left">
+                    <span>Groq (Llama 3.3)</span>
+                    <span className="text-[10px] text-muted-foreground">Đặt câu hỏi và đánh giá khá ít</span>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
             {session.status === 'IN_PROGRESS' && (
@@ -472,36 +474,7 @@ export default function CandidateInterviewActivePage() {
                       return (
                         <div className="pl-13 max-w-3xl">
                           <Card className="border border-border bg-card overflow-hidden rounded-2xl shadow-sm">
-                            {/* Metric Scores */}
-                            <div className="grid grid-cols-3 border-b border-border bg-muted/20 p-4 gap-4">
-                              <div className="space-y-1.5">
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                                  Logic & Thuật toán
-                                </span>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-extrabold text-primary">{msg.scoreLogic}%</span>
-                                  <Progress value={msg.scoreLogic ?? null} className="h-1.5 bg-muted" />
-                                </div>
-                              </div>
-                              <div className="space-y-1.5">
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                                  Technical Depth
-                                </span>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-extrabold text-indigo-600">{msg.scoreTech}%</span>
-                                  <Progress value={msg.scoreTech ?? null} className="h-1.5 bg-muted" />
-                                </div>
-                              </div>
-                              <div className="space-y-1.5">
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                                  Communication (Comm)
-                                </span>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-extrabold text-emerald-600">{msg.scoreCommunication}%</span>
-                                  <Progress value={msg.scoreCommunication ?? null} className="h-1.5 bg-muted" />
-                                </div>
-                              </div>
-                            </div>
+
                             {/* Feedback Text */}
                             <CardContent className="p-4 space-y-2">
                               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
@@ -520,77 +493,7 @@ export default function CandidateInterviewActivePage() {
                     return (
                       <div className="pl-13 max-w-3xl space-y-3">
                         <Card className="border border-border bg-card overflow-hidden rounded-2xl shadow-sm">
-                          {/* Top averages */}
-                          <div className="grid grid-cols-2 border-b border-border bg-muted/20 p-4 gap-4">
-                            <div className="space-y-1.5">
-                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                                Technical Depth (T1-T6)
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-extrabold text-indigo-600">{msg.scoreTech}%</span>
-                                <Progress value={msg.scoreTech ?? null} className="h-1.5 bg-muted" />
-                              </div>
-                            </div>
-                            <div className="space-y-1.5">
-                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                                Soft Skills (S1-S6)
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-extrabold text-emerald-600">{msg.scoreCommunication}%</span>
-                                <Progress value={msg.scoreCommunication ?? null} className="h-1.5 bg-muted" />
-                              </div>
-                            </div>
-                          </div>
-
                           <CardContent className="p-5 space-y-5">
-                            {/* Rubric metrics grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {/* Technical Rubric */}
-                              {rubric.technical_score && (
-                                <div className="space-y-2">
-                                  <div className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
-                                    Technical Criteria
-                                  </div>
-                                  <div className="flex flex-col gap-1.5">
-                                    {["T1", "T2", "T3", "T4", "T5", "T6"].map((tKey) => {
-                                      const score = rubric.technical_score?.[tKey];
-                                      return (
-                                        <div
-                                          key={tKey}
-                                          className={`px-3 py-1.5 text-xs font-semibold rounded-lg border flex items-center justify-between transition-all duration-200 hover:scale-[1.01] ${getBadgeColor(score)}`}
-                                        >
-                                          <span>{rubricDefinitions[tKey]}</span>
-                                          <span>{score !== null && score !== undefined ? `${score}/5` : 'N/A'}</span>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Soft Skill Rubric */}
-                              {rubric.soft_skill_score && (
-                                <div className="space-y-2">
-                                  <div className="text-xs font-bold text-emerald-600 uppercase tracking-wider">
-                                    Soft Skills Criteria
-                                  </div>
-                                  <div className="flex flex-col gap-1.5">
-                                    {["S1", "S2", "S3", "S4", "S5", "S6"].map((sKey) => {
-                                      const score = rubric.soft_skill_score?.[sKey];
-                                      return (
-                                        <div
-                                          key={sKey}
-                                          className={`px-3 py-1.5 text-xs font-semibold rounded-lg border flex items-center justify-between transition-all duration-200 hover:scale-[1.01] ${getBadgeColor(score)}`}
-                                        >
-                                          <span>{rubricDefinitions[sKey]}</span>
-                                          <span>{score !== null && score !== undefined ? `${score}/5` : 'N/A'}</span>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
 
                             {/* General Feedback Block */}
                             {(rubric.general_feedback || rubric.evidence) && (
@@ -808,40 +711,8 @@ export default function CandidateInterviewActivePage() {
                       Summary of mock interview results from AI Interviewer
                     </p>
                   </div>
-                  {/* Score & Readiness */}
-                  <div className="flex items-center gap-3">
-                    <div className={`px-3 py-1.5 rounded-lg border text-xs font-bold ${getReadinessColor(readinessLevel)}`}>
-                      {readinessLevel}
-                    </div>
-                    <div className="flex items-center gap-3 bg-card px-4 py-2.5 rounded-xl border border-border shadow-sm shrink-0">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                        Total Score
-                      </span>
-                      <div className="flex items-baseline gap-0.5">
-                        <span className="text-2xl font-black text-primary">{overallScore}</span>
-                        <span className="text-xs text-muted-foreground">/100</span>
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
-                {/* Metrics Grid */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 text-center space-y-1">
-                    <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Technical (Average)</div>
-                    <div className="text-2xl font-black text-indigo-700">{metrics.technical_avg ?? 0}<span className="text-sm font-normal text-indigo-500">/5</span></div>
-                    <div className="text-[10px] text-indigo-500">Standard Deviation: {metrics.technical_stddev ?? 0}</div>
-                  </div>
-                  <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4 text-center space-y-1">
-                    <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Soft Skills (Average)</div>
-                    <div className="text-2xl font-black text-emerald-700">{metrics.soft_skills_avg ?? 0}<span className="text-sm font-normal text-emerald-500">/5</span></div>
-                    <div className="text-[10px] text-emerald-500">Standard Deviation: {metrics.soft_skills_stddev ?? 0}</div>
-                  </div>
-                  <div className="bg-sky-50/50 border border-sky-100 rounded-2xl p-4 text-center space-y-1">
-                    <div className="text-[10px] font-bold text-sky-600 uppercase tracking-wider">Questions Touched</div>
-                    <div className="text-2xl font-black text-sky-700 mt-1">{metrics.questions_touched ?? 0}</div>
-                  </div>
-                </div>
 
                 {/* General overview text */}
                 <div className="space-y-2">
