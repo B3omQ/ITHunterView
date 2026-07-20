@@ -7,9 +7,6 @@ COPY ITHunterview_V1.slnx ./
 COPY ITHunterview.Domain/ITHunterview.Domain.csproj             ITHunterview.Domain/
 COPY ITHunterview.Service/ITHunterview.Service.csproj           ITHunterview.Service/
 COPY ITHunterview.WebAPI/ITHunterview.WebAPI.csproj             ITHunterview.WebAPI/
-COPY ITHunterview.Domain.Tests/ITHunterview.Domain.Tests.csproj ITHunterview.Domain.Tests/
-COPY ITHunterview.Service.Tests/ITHunterview.Service.Tests.csproj ITHunterview.Service.Tests/
-COPY ITHunterview.WebAPI.Tests/ITHunterview.WebAPI.Tests.csproj   ITHunterview.WebAPI.Tests/
 
 RUN dotnet restore ITHunterview.WebAPI/ITHunterview.WebAPI.csproj
 
