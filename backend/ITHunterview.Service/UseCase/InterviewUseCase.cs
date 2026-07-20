@@ -352,10 +352,6 @@ namespace ITHunterview.Service.UseCase
                 throw new InvalidOperationException("No active question waiting for response.");
             }
 
-            // Update candidate reply
-            activeTurn.CandidateTranscript = dto.Message;
-            await _answerRepository.UpdateAsync(activeTurn);
-
             // Fetch context CV / Job details to inject in prompt
             string cvContext = "Chưa có thông tin CV.";
             string cvFileName = "";
@@ -423,9 +419,20 @@ namespace ITHunterview.Service.UseCase
             var history = await _answerRepository.GetBySessionIdAsync(sessionId);
             int questionIndex = history.Count; // Số câu hỏi đã được hỏi & trả lời (tính cả câu vừa trả lời)
 
-            // Build conversation history
-            var historyText = string.Join("\n\n", history.Select(h => 
-                $"AI Question: {h.QuestionText}\nCandidate Answer: {h.CandidateTranscript ?? "(Chưa trả lời)"}"));
+            // Build conversation history in-memory (using the unsaved dto.Message for the active turn)
+            var historyLines = new System.Collections.Generic.List<string>();
+            foreach (var h in history)
+            {
+                if (h.Id == activeTurn.Id)
+                {
+                    historyLines.Add($"AI Question: {h.QuestionText}\nCandidate Answer: {dto.Message}");
+                }
+                else
+                {
+                    historyLines.Add($"AI Question: {h.QuestionText}\nCandidate Answer: {h.CandidateTranscript ?? "(Chưa trả lời)"}");
+                }
+            }
+            var historyText = string.Join("\n\n", historyLines);
 
             string levelString = session.DifficultyLevel switch
             {
@@ -543,31 +550,7 @@ namespace ITHunterview.Service.UseCase
             {
                 var (cleanJson, preamble) = ExtractJsonAndPreamble(responseText);
 
-                // Attempt to mutate the JSON and prepend the preamble to general_feedback
-                if (!string.IsNullOrWhiteSpace(cleanJson))
-                {
-                    try
-                    {
-                        var jsonNode = JsonNode.Parse(cleanJson);
-                        if (jsonNode != null && !string.IsNullOrWhiteSpace(preamble))
-                        {
-                            var rubricNode = jsonNode["rubric_evaluation"];
-                            if (rubricNode != null)
-                            {
-                                var generalFeedback = rubricNode["general_feedback"]?.GetValue<string>();
-                                string combinedFeedback = string.IsNullOrWhiteSpace(generalFeedback)
-                                    ? preamble
-                                    : $"{preamble}\n\n{generalFeedback}";
-                                rubricNode["general_feedback"] = combinedFeedback;
-                                cleanJson = jsonNode.ToJsonString();
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[WARNING] Failed to parse or mutate JSON nodes in SubmitReplyAsync: {ex.Message}");
-                    }
-                }
+
 
                 using var doc = JsonDocument.Parse(cleanJson);
                 var root = doc.RootElement;
@@ -640,6 +623,7 @@ namespace ITHunterview.Service.UseCase
             }
 
             // Save evaluation into active turn
+            activeTurn.CandidateTranscript = dto.Message;
             activeTurn.AiFeedback = string.IsNullOrWhiteSpace(rubricJsonStr) ? feedback : rubricJsonStr;
             activeTurn.ScoreLogic = scoreLogic;
             activeTurn.ScoreTech = scoreTech;
@@ -935,20 +919,14 @@ namespace ITHunterview.Service.UseCase
             // Construct prompt for overall evaluation
             var systemPrompt = $"Bạn là một chuyên gia đánh giá nhân sự cao cấp. Nhiệm vụ của bạn là tổng hợp và đưa ra báo cáo đánh giá tổng quan cho buổi phỏng vấn thử (mock interview) của ứng viên.\n" +
                                "Bạn sẽ nhận được danh sách các câu hỏi của AI và câu trả lời của ứng viên, kèm theo điểm số và nhận xét từng câu.\n\n" +
-                               $"Hệ thống đã tự động tính toán các chỉ số trung bình (thang điểm 1-5):\n" +
-                               $"- Điểm Technical trung bình: {techAvgFinal}/5 (Độ lệch chuẩn: {techStdDev})\n" +
-                               $"- Điểm Soft Skills trung bình: {softAvgFinal}/5 (Độ lệch chuẩn: {softStdDev})\n" +
-                               $"- Số câu đã trả lời: {questionsTouched}\n\n" +
-                               "Dựa vào dữ liệu trên và chi tiết lịch sử phỏng vấn, hãy đưa ra đánh giá tổng thể gồm:\n" +
-                               "1. Mức độ sẵn sàng (readiness_level): Phân loại ứng viên vào 1 trong các mức (Chưa sẵn sàng, Cần luyện thêm, Sẵn sàng ở mức junior, Sẵn sàng ở mức mid, Sẵn sàng phỏng vấn thật).\n" +
-                               "2. Mô hình lỗi lặp lại (pattern): Phát hiện thói quen hoặc lỗi ứng viên lặp lại nhiều lần (nếu có).\n" +
-                               "3. Gợi ý hành động (action_items): 2-3 việc cụ thể cần làm tiếp theo.\n" +
-                               "4. Đánh giá tổng quan (overall_feedback): Tóm tắt ngắn gọn và chuyên nghiệp về năng lực của ứng viên.\n" +
-                               "5. Điểm mạnh nổi bật (strengths): Top 3 điểm mạnh nhất.\n" +
-                               "6. Điểm cần cải thiện (improvements): Top 3 điểm cần cải thiện ưu tiên.\n\n" +
+                               "Dựa vào chi tiết lịch sử phỏng vấn, hãy đưa ra đánh giá tổng thể gồm:\n" +
+                               "1. Mô hình lỗi lặp lại (pattern): Phát hiện thói quen hoặc lỗi ứng viên lặp lại nhiều lần (nếu có).\n" +
+                               "2. Gợi ý hành động (action_items): 2-3 việc cụ thể cần làm tiếp theo.\n" +
+                               "3. Đánh giá tổng quan (overall_feedback): Tóm tắt ngắn gọn và chuyên nghiệp về năng lực của ứng viên.\n" +
+                               "4. Điểm mạnh nổi bật (strengths): Top 3 điểm mạnh nhất.\n" +
+                               "5. Điểm cần cải thiện (improvements): Top 3 điểm cần cải thiện ưu tiên.\n\n" +
                                "Bạn BẮT BUỘC phải trả về kết quả theo định dạng JSON duy nhất như sau:\n" +
                                "{\n" +
-                               "  \"readiness_level\": \"Sẵn sàng ở mức mid\",\n" +
                                "  \"pattern\": \"Ứng viên hay trả lời thiếu ví dụ thực tế trong các câu hỏi System Design...\",\n" +
                                "  \"strengths\": [\"Điểm mạnh 1\", \"Điểm mạnh 2\", \"Điểm mạnh 3\"],\n" +
                                "  \"improvements\": [\"Điểm cải thiện 1\", \"Điểm cải thiện 2\", \"Điểm cải thiện 3\"],\n" +
@@ -979,15 +957,6 @@ namespace ITHunterview.Service.UseCase
                 var jsonNode = JsonNode.Parse(cleanJson);
                 if (jsonNode != null)
                 {
-                    var metricsNode = new JsonObject
-                    {
-                        ["technical_avg"] = techAvgFinal,
-                        ["soft_skills_avg"] = softAvgFinal,
-                        ["technical_stddev"] = techStdDev,
-                        ["soft_skills_stddev"] = softStdDev,
-                        ["questions_touched"] = questionsTouched
-                    };
-                    jsonNode["metrics"] = metricsNode;
                     overallFeedbackJson = jsonNode.ToJsonString();
                 }
             }
@@ -998,15 +967,6 @@ namespace ITHunterview.Service.UseCase
                 // Construct fallback overall feedback JSON
                 var fallbackFeedback = new
                 {
-                    metrics = new
-                    {
-                        technical_avg = techAvgFinal,
-                        soft_skills_avg = softAvgFinal,
-                        technical_stddev = techStdDev,
-                        soft_skills_stddev = softStdDev,
-                        questions_touched = questionsTouched
-                    },
-                    readiness_level = "Chưa đánh giá được",
                     pattern = "",
                     strengths = new string[0],
                     improvements = new string[0],
