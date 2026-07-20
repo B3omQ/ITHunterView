@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +13,7 @@ import { toast } from 'sonner';
 
 export default function CreateSystemNotificationPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState<CreateSystemNotificationDto>({
     title: "",
@@ -33,6 +35,10 @@ export default function CreateSystemNotificationPage() {
     try {
       await notificationService.createSystemWideNotification(formData);
       toast.success("Đã gửi thông báo hệ thống thành công.");
+      
+      // Invalidate the list so it fetches fresh data when redirected
+      queryClient.invalidateQueries({ queryKey: ['system-notifications'] });
+      
       router.push("/staff/notifications"); // Navigate back to dashboard or notifications list
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Đã xảy ra lỗi khi gửi thông báo.");

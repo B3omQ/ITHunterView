@@ -7,6 +7,8 @@ using ITHunterview.Service.DTOs.Notification;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
+using ITHunterview.Service.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -14,11 +16,13 @@ namespace ITHunterview.Service.UseCase
     {
         private readonly INotificationRepository _notificationRepository;
         private readonly ITHunterviewContext _context;
+        private readonly IHubContext<NotificationHub> _hubContext;
 
-        public NotificationUseCase(INotificationRepository notificationRepository, ITHunterviewContext context)
+        public NotificationUseCase(INotificationRepository notificationRepository, ITHunterviewContext context, IHubContext<NotificationHub> hubContext)
         {
             _notificationRepository = notificationRepository;
             _context = context;
+            _hubContext = hubContext;
         }
 
         public async Task<bool> CreateSystemWideNotificationAsync(CreateSystemNotificationDto request)
@@ -49,6 +53,10 @@ namespace ITHunterview.Service.UseCase
             if (notifications.Any())
             {
                 await _notificationRepository.AddNotificationsAsync(notifications);
+
+                // Broadcast to all connected clients in candidate/recruiter groups
+                var groupNames = targetUsers.Select(u => u.ToString()).ToList();
+                await _hubContext.Clients.Groups(groupNames).SendAsync("ReceiveNotification");
             }
 
             return true;
@@ -111,15 +119,16 @@ namespace ITHunterview.Service.UseCase
             return true;
         }
 
-        public async Task<ITHunterview.Service.DTOs.Common.PaginatedDataResponse<SystemNotificationDto>> GetSystemNotificationsForStaffAsync(int pageIndex, int pageSize)
+        public async Task<ITHunterview.Service.DTOs.Common.PaginatedDataResponse<SystemNotificationDto>> GetSystemNotificationsForStaffAsync(int pageIndex, int pageSize, string? searchTerm = null)
         {
-            var (items, total) = await _notificationRepository.GetSystemNotificationsGroupedAsync(pageIndex, pageSize);
+            var (items, total) = await _notificationRepository.GetSystemNotificationsGroupedAsync(pageIndex, pageSize, searchTerm);
 
             var dtos = items.Select(i => new SystemNotificationDto
             {
                 Title = i.Title,
                 Message = i.Message,
-                CreatedAt = i.CreatedAt
+                CreatedAt = i.CreatedAt,
+                IsHidden = i.IsHidden
             }).ToList();
 
             return new ITHunterview.Service.DTOs.Common.PaginatedDataResponse<SystemNotificationDto>

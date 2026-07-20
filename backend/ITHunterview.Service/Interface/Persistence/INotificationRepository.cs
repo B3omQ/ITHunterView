@@ -15,7 +15,7 @@ namespace ITHunterview.Service.Interface.Persistence
         Task<Notifications?> GetNotificationByIdAsync(Guid id);
         Task UpdateNotificationAsync(Notifications notification);
         
-        Task<(IEnumerable<(string Title, string Message, DateTime CreatedAt)> items, int total)> GetSystemNotificationsGroupedAsync(int pageIndex, int pageSize);
+        Task<(IEnumerable<(string Title, string Message, DateTime CreatedAt, bool IsHidden)> items, int total)> GetSystemNotificationsGroupedAsync(int pageIndex, int pageSize, string? searchTerm = null);
         Task<int> DeleteSystemNotificationsAsync(string title, string message);
     }
 }

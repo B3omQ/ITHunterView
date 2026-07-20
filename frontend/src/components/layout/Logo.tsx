@@ -1,3 +1,4 @@
+import Image from "next/image"
 import Link from "next/link"
 
 interface LogoProps {
@@ -6,36 +7,39 @@ interface LogoProps {
   href?: string
 }
 
-const sizes = {
-  sm: { icon: 28, text: "text-base" },
-  md: { icon: 36, text: "text-xl" },
-  lg: { icon: 44, text: "text-2xl" },
+// Logo03.png là mascot vuông (chỉ icon, không có text)
+// → luôn kết hợp icon + text thủ công
+
+const iconSizes = {
+  sm: 36,
+  md: 36,
+  lg: 56,
+}
+
+const textSizes = {
+  sm: "text-base",
+  md: "text-xl",
+  lg: "text-2xl",
 }
 
 export function Logo({ size = "md", showText = true, href = "/" }: LogoProps) {
-  const s = sizes[size]
+  const iconPx = iconSizes[size]
 
   const content = (
-    <div className="flex items-center gap-2.5 select-none">
-      {/* Icon */}
-      <div
-        className="rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-indigo-500/25 flex-shrink-0"
-        style={{ width: s.icon, height: s.icon }}
-      >
-        <svg
-          width={s.icon * 0.58}
-          height={s.icon * 0.58}
-          viewBox="0 0 20 20"
-          fill="none"
-        >
-          <rect x="2" y="3" width="16" height="11" rx="2" stroke="white" strokeWidth="1.6" />
-          <path d="M6 17h8" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
-          <path d="M10 14v3" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
-          <path d="M7 8l2 2 4-4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </div>
+    <div className="flex items-center gap-2 select-none flex-shrink-0">
+      {/* Mascot icon */}
+      <Image
+        src="/images/Logo03.png"
+        alt="IT HunterView icon"
+        width={iconPx}
+        height={iconPx}
+        className="rounded-xl flex-shrink-0"
+        priority
+      />
+
+      {/* Brand text */}
       {showText && (
-        <span className={`font-bold ${s.text} text-foreground tracking-tight`}>
+        <span className={`font-bold ${textSizes[size]} tracking-tight text-foreground leading-none`}>
           IT<span className="text-primary">Hunter</span>View
         </span>
       )}
@@ -43,7 +47,8 @@ export function Logo({ size = "md", showText = true, href = "/" }: LogoProps) {
   )
 
   if (href) {
-    return <Link href={href} className="inline-flex">{content}</Link>
+    return <Link href={href} className="inline-flex items-center">{content}</Link>
   }
   return content
 }
+
