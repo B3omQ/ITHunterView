@@ -43,6 +43,7 @@ namespace ITHunterview.WebAPI.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[ERROR] GetSessions failed: {ex.Message}\n{ex.StackTrace}");
                 return StatusCode(500, new ResponseBase<List<InterviewSessionDto>>($"Error: {ex.Message}"));
             }
         }
@@ -67,6 +68,7 @@ namespace ITHunterview.WebAPI.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[ERROR] GetSessionDetail failed: {ex.Message}\n{ex.StackTrace}");
                 return StatusCode(500, new ResponseBase<InterviewSessionDetailDto>($"Error: {ex.Message}"));
             }
         }
@@ -92,6 +94,7 @@ namespace ITHunterview.WebAPI.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[ERROR] CreateSession failed: {ex.Message}\n{ex.StackTrace}");
                 return StatusCode(500, new ResponseBase<InterviewSessionDto>($"Error starting interview: {ex.Message}"));
             }
         }
@@ -125,6 +128,7 @@ namespace ITHunterview.WebAPI.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[ERROR] SubmitReply failed: {ex.Message}\n{ex.StackTrace}");
                 return StatusCode(500, new ResponseBase<InterviewAnswerDto>($"Error submitting reply: {ex.Message}"));
             }
         }
