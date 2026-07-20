@@ -33,6 +33,7 @@ import {
   Activity,
   ShieldCheck,
   Crosshair,
+  RotateCw,
 } from 'lucide-react';
 
 export default function CandidateInterviewActivePage() {
@@ -219,6 +220,15 @@ export default function CandidateInterviewActivePage() {
     }
   };
 
+  const handleRetrySend = async (message: string) => {
+    if (submitReplyMutation.isPending) return;
+    try {
+      await submitReplyMutation.mutateAsync({ message });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -369,7 +379,7 @@ export default function CandidateInterviewActivePage() {
         {/* Scrollable messages history using standard div for native scrolling */}
         <div ref={chatScrollContainerRef} className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-8 pb-12">
           <div className="max-w-3xl mx-auto space-y-8">
-            {localMessages.map((msg) => (
+            {localMessages.map((msg, idx) => (
               <div key={msg.id} className="space-y-6 animate-in fade-in duration-300">
                 {/* AI Question */}
                 <div className="flex items-start gap-4">
@@ -393,27 +403,42 @@ export default function CandidateInterviewActivePage() {
                 </div>
 
                 {/* User Answer (if transcript is filled) */}
-                {msg.candidateTranscript && (
-                  <div className="flex items-start justify-end gap-4">
-                    <div className="flex-1 flex flex-col items-end space-y-1.5 max-w-[85%]">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-muted-foreground">
-                          {new Date(msg.createdAt).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                        <span className="text-xs font-bold text-primary">You</span>
+                {msg.candidateTranscript && (() => {
+                  const isLastMessage = idx === localMessages.length - 1;
+                  const showRetry = isLastMessage && !msg.aiFeedback && !submitReplyMutation.isPending;
+                  return (
+                    <div className="flex items-start justify-end gap-4">
+                      <div className="flex-1 flex flex-col items-end space-y-1.5 max-w-[85%]">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(msg.createdAt).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                          <span className="text-xs font-bold text-primary">You</span>
+                        </div>
+                        <div className="relative group flex items-center">
+                          {showRetry && (
+                            <button
+                              onClick={() => handleRetrySend(msg.candidateTranscript)}
+                              title="Resend Answer"
+                              className="mr-2 p-1.5 rounded-lg bg-background border border-border text-muted-foreground hover:text-primary hover:border-primary shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer flex items-center justify-center shrink-0"
+                            >
+                              <RotateCw className="h-3.5 w-3.5 animate-none hover:animate-spin" />
+                            </button>
+                          )}
+                          <div className="text-sm leading-relaxed text-white bg-primary p-4 rounded-2xl rounded-tr-none text-left">
+                            {msg.candidateTranscript}
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-sm leading-relaxed text-white bg-primary p-4 rounded-2xl rounded-tr-none text-left">
-                        {msg.candidateTranscript}
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-sm">
+                        <User className="h-5 w-5" />
                       </div>
                     </div>
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-sm">
-                      <User className="h-5 w-5" />
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Evaluation Feedback & Scores (if present) */}
                 {msg.aiFeedback && (
