@@ -11,7 +11,7 @@ import { useGetMyCvs } from '@/hooks/useCv';
 import { usePublicJobs } from '@/hooks/usePublicJobs';
 import { useJobDetail } from '@/hooks/useJobDetail';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -630,69 +630,24 @@ function CandidateInterviewContent() {
                   </Popover>
                 </div>
 
-                {/* AI Model & Difficulty Level */}
-                <div className="grid grid-cols-1 gap-4">
-                  {selectedJob === 'none' && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold flex items-center gap-2 text-foreground">
-                        <Layers className="h-4 w-4 text-indigo-500" /> Select Level
-                      </label>
-                      <Select value={difficulty} onValueChange={(val) => setDifficulty(val as DifficultyLevel)}>
-                        <SelectTrigger className="w-full h-11 px-3 bg-card border-border hover:border-primary/50 focus:ring-primary/20 hover:bg-muted/10 transition-all rounded-xl shadow-sm text-sm font-medium">
-                          <SelectValue placeholder="Select Level" />
-                        </SelectTrigger>
-                        <SelectContent alignItemWithTrigger={false} className="bg-popover border-border text-popover-foreground">
-                          <SelectItem value="EASY">Intern / Fresher</SelectItem>
-                          <SelectItem value="MEDIUM">Middle / Junior</SelectItem>
-                          <SelectItem value="HARD">Senior</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
+                {/* Difficulty Level */}
+                {selectedJob === 'none' && (
                   <div className="space-y-2">
                     <label className="text-sm font-semibold flex items-center gap-2 text-foreground">
-                      <Cpu className="h-4 w-4 text-cyan-500" /> Select AI Model
+                      <Layers className="h-4 w-4 text-indigo-500" /> Select Level
                     </label>
-                    <Select value={selectedModel} onValueChange={(val) => setSelectedModel(val ?? 'Gemini')}>
+                    <Select value={difficulty} onValueChange={(val) => setDifficulty(val as DifficultyLevel)}>
                       <SelectTrigger className="w-full h-11 px-3 bg-card border-border hover:border-primary/50 focus:ring-primary/20 hover:bg-muted/10 transition-all rounded-xl shadow-sm text-sm font-medium">
-                        <SelectValue />
+                        <SelectValue placeholder="Select Level" />
                       </SelectTrigger>
                       <SelectContent alignItemWithTrigger={false} className="bg-popover border-border text-popover-foreground">
-                        <SelectItem value="Gemini">
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-2">
-                              <Sparkles className="h-3.5 w-3.5 text-cyan-500 shrink-0" />
-                              <span>Gemini 2.5 Flash</span>
-                            </div>
-                            <span className="text-[10px] text-muted-foreground ml-5">High context and good thinking</span>
-                          </div>
-                        </SelectItem>
-                        {/* <SelectItem value="OpenAI">
-                          <div className="flex items-center gap-2">
-                            <BrainCircuit className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                            <span>GPT-4o (OpenAI)</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="Claude">
-                          <div className="flex items-center gap-2">
-                            <Cpu className="h-3.5 w-3.5 text-orange-500 shrink-0" />
-                            <span>Claude 3.5 Sonnet</span>
-                          </div>
-                        </SelectItem> */}
-                        <SelectItem value="Groq">
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-2">
-                              <Cpu className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                              <span>Groq (Llama 3.3)</span>
-                            </div>
-                            <span className="text-[10px] text-muted-foreground ml-5">Use if Gemini 2.5 Flash doesn't work properly</span>
-                          </div>
-                        </SelectItem>
+                        <SelectItem value="EASY">Intern / Fresher</SelectItem>
+                        <SelectItem value="MEDIUM">Middle / Junior</SelectItem>
+                        <SelectItem value="HARD">Senior</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 

@@ -177,6 +177,13 @@ namespace ITHunterview.Service.UseCase
             string jobContext = "Chưa có thông tin công việc (JD).";
             string jobTitle = "";
             var resolvedDifficulty = dto.DifficultyLevel;
+            string exactLevel = resolvedDifficulty switch
+            {
+                DifficultyLevel.EASY => "Intern / Fresher",
+                DifficultyLevel.MEDIUM => "Middle",
+                DifficultyLevel.HARD => "Senior",
+                _ => "Junior"
+            };
 
             if (dto.JobId.HasValue)
             {
@@ -192,19 +199,28 @@ namespace ITHunterview.Service.UseCase
                         if (lvl.Contains("intern") || lvl.Contains("fresher"))
                         {
                             resolvedDifficulty = DifficultyLevel.EASY;
+                            exactLevel = "Intern / Fresher";
+                        }
+                        else if (lvl.Contains("junior"))
+                        {
+                            resolvedDifficulty = DifficultyLevel.EASY;
+                            exactLevel = "Junior";
                         }
                         else if (lvl.Contains("senior") || lvl.Contains("lead") || lvl.Contains("architect") || lvl.Contains("principal"))
                         {
                             resolvedDifficulty = DifficultyLevel.HARD;
+                            exactLevel = "Senior";
                         }
                         else
                         {
                             resolvedDifficulty = DifficultyLevel.MEDIUM;
+                            exactLevel = "Middle";
                         }
                     }
                     else
                     {
                         resolvedDifficulty = DifficultyLevel.MEDIUM; // Default if level is empty in JD
+                        exactLevel = "Middle";
                     }
                 }
             }
@@ -227,9 +243,10 @@ namespace ITHunterview.Service.UseCase
             // Fetch context CV details to inject in prompt
             string cvContext = "Chưa có thông tin CV.";
             string cvFileName = "";
+            Cvs? cv = null;
             if (dto.CvId.HasValue)
             {
-                var cv = await _cvRepository.GetByIdAsync(dto.CvId.Value);
+                cv = await _cvRepository.GetByIdAsync(dto.CvId.Value);
                 if (cv != null)
                 {
                     cvFileName = cv.FileName ?? "";
@@ -270,21 +287,14 @@ namespace ITHunterview.Service.UseCase
 
             // Phân loại Role & Seniority và trích xuất câu hỏi mẫu từ Rubric
             string role = DetermineRole(jobTitle, cvFileName, cvContext);
-            var sampleQuestions = GetSampleQuestions(role, resolvedDifficulty);
+            var sampleQuestions = await GetSampleQuestionsAsync(role, exactLevel);
             string rubricContext = sampleQuestions.Count > 0
                 ? "Dưới đây là một số câu hỏi mẫu từ bộ quy chuẩn đánh giá của ITHunterView để bạn tham khảo phong cách, độ khó và nội dung:\n- " + string.Join("\n- ", sampleQuestions)
                 : "";
 
-            string levelString = resolvedDifficulty switch
-            {
-                DifficultyLevel.EASY => "Intern / Fresher",
-                DifficultyLevel.MEDIUM => "Middle",
-                DifficultyLevel.HARD => "Senior",
-                _ => "Junior"
-            };
-            int totalQuestions = 7;
-
-             var systemPrompt = $"Bạn là một người phỏng vấn IT tuyển dụng chuyên nghiệp. Nhiệm vụ của bạn là thực hiện một buổi phỏng vấn thử (mock interview) gồm đúng {totalQuestions} câu hỏi cho cấp độ ứng viên: {levelString} (Role: {role}).\n\n" +
+            int totalQuestions = resolvedDifficulty == DifficultyLevel.HARD ? 8 : 7;
+ 
+            var systemPrompt = $"Bạn là một người phỏng vấn IT tuyển dụng chuyên nghiệp. Nhiệm vụ của bạn là thực hiện một buổi phỏng vấn thử (mock interview) gồm đúng {totalQuestions} câu hỏi cho cấp độ ứng viên: {exactLevel} (Role: {role}).\n\n" +
                                $"LỘ TRÌNH PHỎNG VẤN:\n" +
                                $"Phần 1: Giới thiệu bản thân (Câu 1)\n" +
                                $"Phần 2: Câu hỏi kiến thức\n" +
@@ -295,25 +305,66 @@ namespace ITHunterview.Service.UseCase
                                $"--- START CV ---\n{cvContext}\n--- END CV ---\n\n" +
                                $"--- START JD ---\n{jobContext}\n--- END JD ---\n\n" +
                                $"{rubricContext}\n\n" +
+                               $"QUY TẮC PHÂN LOẠI DẠNG CÂU HỎI THEO LEVEL:\n" +
+                               $"Bạn phải đặt câu hỏi tuân thủ nghiêm ngặt theo dạng câu hỏi (đóng/mở/outside-the-box) dựa trên Cấp độ phỏng vấn hiện tại:\n" +
+                               $"1. Đối với Intern/Fresher và Junior:\n" +
+                               $"   - Phần 2 (Kiến thức): Sử dụng câu hỏi đóng (closed-ended) để kiểm tra nhanh lý thuyết nền tảng cơ bản.\n" +
+                               $"   - Phần 3 & 4 (Kinh nghiệm & Kỹ năng): Sử dụng câu hỏi mở (open-ended).\n" +
+                               $"   - Tuyệt đối KHÔNG sử dụng câu hỏi \"Outside-the-box\" hay câu hỏi tình huống quá phức tạp.\n" +
+                               $"2. Đối với Middle:\n" +
+                               $"   - Phần 2 (Kiến thức): Sử dụng câu hỏi mở (open-ended) để khai thác sâu tư duy áp dụng thực tế.\n" +
+                               $"   - Phần 3 & 4: Sử dụng câu hỏi mở (open-ended).\n" +
+                               $"   - KHÔNG sử dụng câu hỏi \"Outside-the-box\".\n" +
+                               $"3. Đối với Senior:\n" +
+                               $"   - Phần 2 (Kiến thức): Sử dụng câu hỏi mở (open-ended) tập trung vào so sánh công nghệ và trade-off thiết kế (system design).\n" +
+                               $"   - Phần 3: Đào sâu dự án phức tạp, vai trò lãnh đạo/mentor.\n" +
+                               $"   - Phần 4 (Kỹ năng/Tình huống): Kết hợp câu hỏi mở và câu hỏi \"Outside-the-box\" (tư duy sáng tạo, tình huống phi truyền thống hoàn toàn mới).\n\n" +
+                               $"NGUYÊN TẮC KHÔNG LEO THANG ĐỘ KHÓ TỰ ĐỘNG:\n" +
+                               $"- Độ khó và dạng câu hỏi phải cố định theo level đã xác định từ đầu ({exactLevel}).\n" +
+                               $"- Tuyệt đối không tự ý đổi dạng câu hỏi sang Outside-the-box hoặc tăng độ khó vượt quá kỳ vọng năng lực của level hiện tại chỉ vì ứng viên trả lời tốt các câu hỏi trước đó.\n\n" +
                                $"LƯU Ý QUAN TRỌNG VỀ TÌNH HUỐNG LỆCH CÔNG NGHỆ:\n" +
                                $"- Hãy đối chiếu kỹ CV và JD. Nếu có sự lệch công nghệ lớn (ví dụ: JD yêu cầu .NET nhưng CV chỉ có Java), bạn PHẢI nhận biết được điều này và chuẩn bị các câu hỏi tình huống thích ứng công nghệ mới ở các câu tiếp theo.\n\n" +
                                $"YÊU CẦU CHO CÂU HỎI 1:\n" +
                                $"- Đây là câu hỏi số 1/{totalQuestions} (Chủ đề: Phần 1 - Giới thiệu bản thân).\n" +
-                               $"- Hãy bắt đầu bằng lời chào mừng ứng viên ứng tuyển vào vị trí (dựa vào tiêu đề JD) từ hệ thống ITHunterView, sau đó mời ứng viên giới thiệu tổng quan về bản thân.\n" +
+                               $"- Hãy bắt đầu bằng lời chào mừng ứng viên ứng tuyển vào vị trí (được ghi trong JD) từ hệ thống ITHunterView, sau đó mời ứng viên giới thiệu bản thân.\n" +
                                $"- Chỉ hỏi DUY NHẤT một câu hỏi chính trong mỗi lượt chat.\n" +
                                $"- Trả lời ngắn gọn bằng tiếng Việt.";
 
-            var firstQuestion = await _aiService.GenerateTextAsync(
-                prompt: "Bắt đầu buổi phỏng vấn thử.",
-                systemPrompt: systemPrompt,
-                providerName: provider
-            );
+            string candidateName = "";
+            if (cv != null && !string.IsNullOrWhiteSpace(cv.ParsedData))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(cv.ParsedData);
+                    if (doc.RootElement.TryGetProperty("personal_info", out var personalInfo) &&
+                        personalInfo.TryGetProperty("name", out var nameProp))
+                    {
+                        candidateName = nameProp.GetString() ?? "";
+                    }
+                }
+                catch { }
+            }
+
+            string greetingPart = !string.IsNullOrWhiteSpace(candidateName)
+                ? $"Chào bạn {candidateName.Trim()}"
+                : "Chào bạn";
+
+            string positionName = !string.IsNullOrWhiteSpace(jobTitle) ? jobTitle : (role + " Developer");
+
+            string firstQuestion = $"{greetingPart}, cảm ơn bạn đã tham gia buổi phỏng vấn cho vị trí {positionName} ngày hôm nay.\n\n" +
+                                   $"Lộ trình phỏng vấn của chúng ta sẽ gồm {totalQuestions} câu hỏi đi qua các phần:\n" +
+                                   $"- Phần 1: Giới thiệu bản thân (Câu 1)\n" +
+                                   $"- Phần 2: Câu hỏi kiến thức\n" +
+                                   $"- Phần 3: Câu hỏi kinh nghiệm & dự án\n" +
+                                   $"- Phần 4: Kỹ năng mềm / Xử lý tình huống\n" +
+                                   $"- Phần 5: Hiểu biết về công ty (Câu {totalQuestions})\n\n" +
+                                   $"Để bắt đầu, bạn hãy giới thiệu đôi chút về bản thân và những kinh nghiệm làm việc/học tập nổi bật của mình nhé.";
 
             var firstTurn = new InterviewAnswers
             {
                 Id = Guid.NewGuid(),
                 SessionId = session.Id,
-                QuestionText = firstQuestion ?? "Xin chào! Chúng ta hãy bắt đầu buổi phỏng vấn. Bạn hãy giới thiệu bản thân nhé.",
+                QuestionText = firstQuestion,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -398,19 +449,41 @@ namespace ITHunterview.Service.UseCase
 
             string jobContext = "Chưa có thông tin công việc (JD).";
             string jobTitle = "";
+            string jobLevel = "";
             if (session.JobId.HasValue)
             {
                 var job = await _jobPostingRepository.GetByIdAsync(session.JobId.Value);
                 if (job != null)
                 {
                     jobTitle = job.Title ?? "";
+                    jobLevel = job.Level ?? "";
                     jobContext = $"Title: {job.Title}\nDescription: {job.Description}\nRequirements: {job.Requirements}";
                 }
             }
 
+            string exactLevel = "Junior";
+            if (session.DifficultyLevel == DifficultyLevel.EASY)
+            {
+                exactLevel = "Intern / Fresher";
+                if (!string.IsNullOrWhiteSpace(jobLevel) && jobLevel.ToLower().Contains("junior"))
+                {
+                    exactLevel = "Junior";
+                }
+            }
+            else if (session.DifficultyLevel == DifficultyLevel.MEDIUM)
+            {
+                exactLevel = "Middle";
+            }
+            else if (session.DifficultyLevel == DifficultyLevel.HARD)
+            {
+                exactLevel = "Senior";
+            }
+
+            int totalQuestions = session.DifficultyLevel == DifficultyLevel.HARD ? 8 : 7;
+
             // Phân loại Role & Seniority và trích xuất câu hỏi mẫu từ Rubric
             string role = DetermineRole(jobTitle, cvFileName, cvContext);
-            var sampleQuestions = GetSampleQuestions(role, session.DifficultyLevel);
+            var sampleQuestions = await GetSampleQuestionsAsync(role, exactLevel);
             string rubricContext = sampleQuestions.Count > 0
                 ? "Dưới đây là một số câu hỏi mẫu từ bộ quy chuẩn đánh giá của ITHunterView để bạn tham khảo phong cách, độ khó và nội dung:\n- " + string.Join("\n- ", sampleQuestions)
                 : "";
@@ -434,14 +507,7 @@ namespace ITHunterview.Service.UseCase
             }
             var historyText = string.Join("\n\n", historyLines);
 
-            string levelString = session.DifficultyLevel switch
-            {
-                DifficultyLevel.EASY => "Intern / Fresher",
-                DifficultyLevel.MEDIUM => "Middle",
-                DifficultyLevel.HARD => "Senior",
-                _ => "Junior"
-            };
-            int totalQuestions = 7;
+            // exactLevel and totalQuestions are declared above sampleQuestions loading
 
             // Định nghĩa hướng dẫn động cho từng câu hỏi tiếp theo
             string questionInstruction = "QUY TẮC QUAN TRỌNG: Mọi câu hỏi bạn đặt ra BẮT BUỘC phải dựa trên bối cảnh thực tế từ CV của ứng viên hoặc yêu cầu của JD. TUYỆT ĐỐI KHÔNG hỏi các câu lý thuyết chung chung như trong sách giáo khoa nếu không liên kết với một kỹ năng/dự án trong CV. Bạn có thể hỏi follow-up 1 câu với câu trước nếu ứng viên trả lời chưa rõ.\n\n";
@@ -495,13 +561,13 @@ namespace ITHunterview.Service.UseCase
                     if (questionIndex == 1) {
                         currentSection = "Phần 2 - Câu hỏi kiến thức";
                         sectionInstruction = "Bỏ qua kiến thức cơ bản, hỏi kiến thức chuyên sâu (ví dụ: system design, trade-off kỹ thuật) hoặc lồng vào kinh nghiệm.";
-                    } else if (questionIndex >= 2 && questionIndex <= 4) {
+                    } else if (questionIndex >= 2 && questionIndex <= 5) {
                         currentSection = "Phần 3 - Câu hỏi kinh nghiệm & dự án";
                         sectionInstruction = "Hỏi trọng tâm vào độ phức tạp của dự án đã xử lý, vai trò lãnh đạo/mentor, khả năng ra quyết định chiến lược.";
-                    } else if (questionIndex == 5) {
-                        currentSection = "Phần 4 - Kỹ năng mềm / Xử lý tình huống";
-                        sectionInstruction = "Đánh giá kỹ năng mềm ở mức độ Senior: quản lý rủi ro, giải quyết xung đột, tư duy chiến lược.";
                     } else if (questionIndex == 6) {
+                        currentSection = "Phần 4 - Kỹ năng mềm / Xử lý tình huống";
+                        sectionInstruction = "Đánh giá kỹ năng mềm ở mức độ Senior: quản lý rủi ro, giải quyết xung đột, tư duy chiến lược và lồng ghép câu hỏi Outside-the-box (sáng tạo).";
+                    } else if (questionIndex == 7) {
                         currentSection = "Phần 5 - Hiểu biết về công ty";
                         sectionInstruction = "Hỏi về định hướng phát triển trong môi trường công ty, khả năng đóng góp vào tầm nhìn chung.";
                     }
@@ -512,11 +578,28 @@ namespace ITHunterview.Service.UseCase
                                        $"- {sectionInstruction}";
             }
 
-            var systemPrompt = $"Bạn là một người phỏng vấn IT tuyển dụng chuyên nghiệp. Bạn đang thực hiện một buổi phỏng vấn thử với ứng viên (Cấp độ: {levelString}, Role: {role}).\n\n" +
+            var systemPrompt = $"Bạn là một người phỏng vấn IT tuyển dụng chuyên nghiệp. Bạn đang thực hiện một buổi phỏng vấn thử với ứng viên (Cấp độ: {exactLevel}, Role: {role}).\n\n" +
                                $"THÔNG TIN BỐ CẢNH:\n" +
                                $"--- START CV ---\n{cvContext}\n--- END CV ---\n\n" +
                                $"--- START JD ---\n{jobContext}\n--- END JD ---\n\n" +
                                $"{rubricContext}\n\n" +
+                               $"QUY TẮC PHÂN LOẠI DẠNG CÂU HỎI THEO LEVEL:\n" +
+                               $"Bạn phải đặt câu hỏi tuân thủ nghiêm ngặt theo dạng câu hỏi (đóng/mở/outside-the-box) dựa trên Cấp độ phỏng vấn hiện tại:\n" +
+                               $"1. Đối với Intern/Fresher và Junior:\n" +
+                               $"   - Phần 2 (Kiến thức): Sử dụng câu hỏi đóng (closed-ended) để kiểm tra nhanh lý thuyết nền tảng cơ bản.\n" +
+                               $"   - Phần 3 & 4 (Kinh nghiệm & Kỹ năng): Sử dụng câu hỏi mở (open-ended).\n" +
+                               $"   - Tuyệt đối KHÔNG sử dụng câu hỏi \"Outside-the-box\" hay câu hỏi tình huống quá phức tạp.\n" +
+                               $"2. Đối với Middle:\n" +
+                               $"   - Phần 2 (Kiến thức): Sử dụng câu hỏi mở (open-ended) để khai thác sâu tư duy áp dụng thực tế.\n" +
+                               $"   - Phần 3 & 4: Sử dụng câu hỏi mở (open-ended).\n" +
+                               $"   - KHÔNG sử dụng câu hỏi \"Outside-the-box\".\n" +
+                               $"3. Đối với Senior:\n" +
+                               $"   - Phần 2 (Kiến thức): Sử dụng câu hỏi mở (open-ended) tập trung vào so sánh công nghệ và trade-off thiết kế (system design).\n" +
+                               $"   - Phần 3: Đào sâu dự án phức tạp, vai trò lãnh đạo/mentor.\n" +
+                               $"   - Phần 4 (Kỹ năng/Tình huống): Kết hợp câu hỏi mở và câu hỏi \"Outside-the-box\" (tư duy sáng tạo, tình huống phi truyền thống hoàn toàn mới).\n\n" +
+                               $"NGUYÊN TẮC KHÔNG LEO THANG ĐỘ KHÓ TỰ ĐỘNG:\n" +
+                               $"- Độ khó và dạng câu hỏi phải cố định theo level đã xác định từ đầu ({exactLevel}).\n" +
+                               $"- Tuyệt đối không tự ý đổi dạng câu hỏi sang Outside-the-box hoặc tăng độ khó vượt quá kỳ vọng năng lực của level hiện tại chỉ vì ứng viên trả lời tốt các câu hỏi trước đó.\n\n" +
                                $"HƯỚNG DẪN LƯỢT NÀY:\n" +
                                $"{questionInstruction}\n\n" +
                                "Bạn BẮT BUỘC phải trả về kết quả theo định dạng JSON duy nhất như sau:\n" +
@@ -779,26 +862,51 @@ namespace ITHunterview.Service.UseCase
             return "Dev"; // Default
         }
 
-        private List<string> GetSampleQuestions(string role, DifficultyLevel difficulty)
+        private async Task<List<string>> GetSampleQuestionsAsync(string role, string exactLevel)
         {
-            var sampleQuestions = new List<string>();
-            if (InterviewRubricHelper.RubricQuestions.TryGetValue(role, out var levelDict))
+            // Map exact level string to DB strings
+            string dbLevel = exactLevel.ToLower() switch
             {
-                if (difficulty == DifficultyLevel.EASY && levelDict.TryGetValue("Intern/Fresher", out var qList1))
+                var s when s.Contains("intern") || s.Contains("fresher") => "INTERN_FRESHER",
+                var s when s.Contains("junior") => "JUNIOR",
+                var s when s.Contains("middle") => "MIDDLE",
+                var s when s.Contains("senior") => "SENIOR",
+                _ => "JUNIOR"
+            };
+
+            // Query database for matching questions
+            var questions = await _context.InterviewQuestionBank
+                .Where(x => x.Industry.ToLower() == role.ToLower() && x.Level.ToUpper() == dbLevel)
+                .Select(x => x.QuestionText)
+                .ToListAsync();
+
+            // If we don't have enough questions or no questions, fall back to InterviewRubricHelper static questions as backup
+            if (questions.Count == 0)
+            {
+                var sampleQuestions = new List<string>();
+                if (InterviewRubricHelper.RubricQuestions.TryGetValue(role, out var levelDict))
                 {
-                    sampleQuestions.AddRange(qList1);
+                    if (dbLevel == "INTERN_FRESHER" && levelDict.TryGetValue("Intern/Fresher", out var qList1))
+                    {
+                        sampleQuestions.AddRange(qList1);
+                    }
+                    else if (dbLevel == "JUNIOR" && levelDict.TryGetValue("Junior", out var qList2))
+                    {
+                        sampleQuestions.AddRange(qList2);
+                    }
+                    else if (dbLevel == "MIDDLE" && levelDict.TryGetValue("Middle", out var qList3))
+                    {
+                        sampleQuestions.AddRange(qList3);
+                    }
+                    else if (dbLevel == "SENIOR" && levelDict.TryGetValue("Senior", out var qList4))
+                    {
+                        sampleQuestions.AddRange(qList4);
+                    }
                 }
-                else if (difficulty == DifficultyLevel.MEDIUM)
-                {
-                    if (levelDict.TryGetValue("Junior", out var qList2)) sampleQuestions.AddRange(qList2);
-                    if (levelDict.TryGetValue("Middle", out var qList3)) sampleQuestions.AddRange(qList3);
-                }
-                else if (difficulty == DifficultyLevel.HARD && levelDict.TryGetValue("Senior", out var qList4))
-                {
-                    sampleQuestions.AddRange(qList4);
-                }
+                return sampleQuestions;
             }
-            return sampleQuestions;
+
+            return questions;
         }
 
         private (string cleanJson, string preamble) ExtractJsonAndPreamble(string text)

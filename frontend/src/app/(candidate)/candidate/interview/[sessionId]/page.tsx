@@ -5,13 +5,11 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   useGetInterviewSessionDetail,
   useSubmitInterviewReply,
-  useSwitchInterviewModel,
   useCompleteInterviewSession,
   useTranscribeAudio,
 } from '@/hooks/useInterview';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
@@ -43,7 +41,6 @@ export default function CandidateInterviewActivePage() {
 
   const { data: detailRes, isLoading, isError } = useGetInterviewSessionDetail(sessionId);
   const submitReplyMutation = useSubmitReplyWithAutoScroll();
-  const switchModelMutation = useSwitchInterviewModel(sessionId);
   const completeSessionMutation = useCompleteInterviewSession(sessionId);
 
   const [inputMessage, setInputMessage] = useState('');
@@ -236,14 +233,6 @@ export default function CandidateInterviewActivePage() {
     }
   };
 
-  const handleSwitchModel = async (model: string | null) => {
-    if (!model) return;
-    try {
-      await switchModelMutation.mutateAsync({ aiProvider: model });
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const handleCompleteInterview = async () => {
     if (window.confirm('Are you sure you want to end this mock interview session?')) {
@@ -314,43 +303,7 @@ export default function CandidateInterviewActivePage() {
             </div>
           </div>
 
-          {/* Model AI selection */}
-          <div className="space-y-2">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
-              Interview AI Model
-            </span>
-            <Select
-              value={session.aiProvider || 'Gemini'}
-              onValueChange={handleSwitchModel}
-              disabled={session.status === 'COMPLETED' || switchModelMutation.isPending}
-            >
-              <SelectTrigger className="w-full bg-card border-input focus:ring-primary text-foreground rounded-xl h-10">
-                <Cpu className="h-4 w-4 text-primary mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent alignItemWithTrigger={false} className="bg-popover border-border text-popover-foreground">
-                <SelectItem value="Gemini">
-                  <div className="flex flex-col text-left">
-                    <span>Gemini 2.5 Flash</span>
-                    <span className="text-[10px] text-muted-foreground">High context và thinking tốt</span>
-                  </div>
-                </SelectItem>
-                {/* <SelectItem value="OpenAI">GPT-4o (OpenAI)</SelectItem>
-                <SelectItem value="Claude">Claude 3.5 Sonnet</SelectItem> */}
-                <SelectItem value="Groq">
-                  <div className="flex flex-col text-left">
-                    <span>Groq (Llama 3.3)</span>
-                    <span className="text-[10px] text-muted-foreground">Đặt câu hỏi và đánh giá khá ít</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            {session.status === 'IN_PROGRESS' && (
-              <span className="text-[10px] text-muted-foreground block leading-tight">
-                *You can change the model at any time during the conversation.
-              </span>
-            )}
-          </div>
+
         </div>
 
         <div className="mt-auto pt-6 border-t border-border">
@@ -672,7 +625,7 @@ export default function CandidateInterviewActivePage() {
               </span>
               <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                 <Cpu className="h-3 w-3 text-primary" />
-                Active Model: {session.aiProvider || 'Gemini'}
+                Active Model: Gemini
               </span>
             </div>
           </div>
