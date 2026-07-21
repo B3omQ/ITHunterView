@@ -99,7 +99,6 @@ export default function AppliedJobsPage() {
         <EmptyState 
           title="No applications yet" 
           description="You haven't applied to any jobs. Start searching and applying to land your dream job!"
-          icon={<Briefcase className="w-12 h-12 text-slate-300" />}
         >
           <Link href="/jobs">
             <Button className="mt-4">Browse Jobs</Button>

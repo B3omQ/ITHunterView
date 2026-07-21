@@ -89,7 +89,7 @@ function CandidateJobsContent() {
                 ))}
               </div>
             ) : isError ? (
-              <EmptyState title="Failed to load jobs" description="Please try again later." icon={<SearchX className="w-12 h-12 text-slate-300" />} />
+              <EmptyState title="Failed to load jobs" description="Please try again later." />
             ) : data?.data?.length ? (
               <>
                 <div className="flex flex-col gap-4">
@@ -130,7 +130,7 @@ function CandidateJobsContent() {
                 )}
               </>
             ) : (
-              <EmptyState title="No jobs found" description="Try adjusting your search filters to find more jobs." icon={<SearchX className="w-12 h-12 text-slate-300" />} />
+              <EmptyState title="No jobs found" description="Try adjusting your search filters to find more jobs." />
             )}
           </div>
         </div>
