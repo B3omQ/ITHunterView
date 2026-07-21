@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import {
   useGetInterviewSessions,
   useCreateInterviewSession,
@@ -12,14 +11,7 @@ import { useGetMyCvs } from '@/hooks/useCv';
 import { usePublicJobs } from '@/hooks/usePublicJobs';
 import { useJobDetail } from '@/hooks/useJobDetail';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -344,8 +336,7 @@ function CandidateInterviewContent() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-10 gap-8 lg:gap-12 w-full">
-        <div className="col-span-1 lg:col-span-6 flex flex-col gap-6">
+      <div className="flex flex-col gap-6">
           <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" /> Mock Interview History ({sessions.length})
           </h2>
@@ -387,62 +378,72 @@ function CandidateInterviewContent() {
             </Card>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex flex-col gap-4">
                 {paginatedSessions.map((session) => (
                   <Card
                     key={session.id}
                     onClick={() => router.push(`/candidate/interview/${session.id}`)}
-                    className="group cursor-pointer bg-card hover:bg-muted/10 border border-border hover:border-primary/30 shadow-sm hover:shadow-md rounded-2xl transition-all duration-300 flex flex-col justify-between overflow-hidden relative"
+                    className="group cursor-pointer hover:border-primary/50 transition-colors"
                   >
-                    <CardHeader className="pb-4">
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-1.5">
+                    <CardContent className="p-4 flex items-center gap-4">
+                      {/* Left: Status Icon */}
+                      <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                        session.status === 'IN_PROGRESS'
+                          ? 'bg-emerald-50 text-emerald-500'
+                          : 'bg-slate-100 text-slate-400'
+                      }`}>
+                        <MessageSquare className="w-5 h-5" />
+                      </div>
+
+                      {/* Center: Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="font-semibold text-base text-foreground group-hover:text-primary transition-colors truncate">
+                            {session.jobTitle || 'Free Mock Interview'}
+                          </span>
                           <Badge
                             variant="secondary"
-                            className={
+                            className={`shrink-0 text-[10px] px-1.5 py-0 ${
                               session.status === 'IN_PROGRESS'
                                 ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
                                 : 'bg-slate-100 text-slate-600 border border-slate-200'
-                            }
+                            }`}
                           >
                             {session.status === 'IN_PROGRESS' ? 'In Progress' : 'Completed'}
                           </Badge>
                         </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {session.startedAt ? new Date(session.startedAt).toLocaleDateString('vi-VN') : 'N/A'}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Cpu className="h-3 w-3 text-indigo-400" />
+                            {session.aiProvider || 'Gemini'}
+                          </span>
+                          {session.cvFileName && (
+                            <span className="flex items-center gap-1 truncate max-w-[180px]">
+                              <FileText className="h-3 w-3 text-primary shrink-0" />
+                              {session.cvFileName}
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
+                      {/* Right: Actions */}
+                      <div className="flex items-center gap-1 shrink-0">
                         <Button
                           variant="ghost"
                           size="icon"
                           disabled={deleteSessionMutation.isPending}
                           onClick={(e) => handleDeleteSession(e, session.id)}
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors shrink-0"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                      </div>
-                      <CardTitle className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                        {session.jobTitle || 'Free Mock Interview'}
-                      </CardTitle>
-                      <CardDescription className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
-                        <Calendar className="h-3.5 w-3.5" />
-                        {session.startedAt ? new Date(session.startedAt).toLocaleDateString('vi-VN') : 'N/A'}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pb-4 space-y-2">
-                      {session.cvFileName && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
-                          <span className="truncate">{session.cvFileName}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Cpu className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
-                        <span>Model: {session.aiProvider || 'Gemini'}</span>
+                        <ArrowRight className="h-4 w-4 text-primary transform group-hover:translate-x-1 transition-transform" />
                       </div>
                     </CardContent>
-                    <CardFooter className="pt-2 border-t border-border bg-muted/10 flex justify-between items-center text-xs font-semibold text-primary group-hover:text-primary/80">
-                      <span>View Details</span>
-                      <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
-                    </CardFooter>
                   </Card>
                 ))}
               </div>
@@ -491,21 +492,6 @@ function CandidateInterviewContent() {
             </>
           )}
         </div>
-
-        <div className="hidden lg:block col-span-1 lg:col-span-4">
-          <div className="sticky top-8 flex flex-col items-center justify-center p-8">
-            <div className="relative w-full max-w-md aspect-square flex items-center justify-center">
-              <DotLottieReact
-                src="/images/Live chatbot.json"
-                loop
-                autoplay
-                speed={0.5}
-                className="w-full h-full drop-shadow-2xl hover:scale-105 transition-transform duration-500"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Startup Session Modal */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
