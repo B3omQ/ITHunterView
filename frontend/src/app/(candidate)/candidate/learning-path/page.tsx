@@ -100,15 +100,13 @@ export default function LearningPathDashboard() {
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       {/* Left: Status Icon */}
-                      <div className={`shrink-0 w-11 h-11 rounded-lg flex items-center justify-center border border-border ${
+                      <img src="/images/mascotAvatarLearning.png" alt="Mascot" className={`w-11 h-11 rounded-lg shrink-0 object-cover border bg-white dark:bg-slate-900 ${
                         path.status === 'Completed'
-                          ? 'bg-emerald-500/10 text-emerald-600'
+                          ? 'border-emerald-200 dark:border-emerald-800 ring-1 ring-emerald-500/20'
                           : path.status === 'In Progress'
-                            ? 'bg-blue-500/10 text-blue-600'
-                            : 'bg-slate-200/70 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                      }`}>
-                        <Map className="w-5 h-5" />
-                      </div>
+                            ? 'border-blue-200 dark:border-blue-800 ring-1 ring-blue-500/20'
+                            : 'border-slate-200 dark:border-slate-800'
+                      }`} />
 
                       {/* Center: Info */}
                       <div className="flex-1 min-w-0">

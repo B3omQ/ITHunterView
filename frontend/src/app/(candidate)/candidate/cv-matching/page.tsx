@@ -132,9 +132,13 @@ export default function CvMatchingHistoryPage() {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 {/* Main Row */}
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="w-11 h-11 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0">
-                    <Activity className="w-5 h-5 text-indigo-500" />
-                  </div>
+                  <img src="/images/mascotAvatarMatching.png" alt="Mascot" className={`w-11 h-11 rounded-lg shrink-0 object-cover border bg-white dark:bg-slate-900 ${
+                    item.status === 'Completed'
+                      ? 'border-emerald-200 dark:border-emerald-800 ring-1 ring-emerald-500/20'
+                      : item.status === 'Failed'
+                        ? 'border-rose-200 dark:border-rose-800 ring-1 ring-rose-500/20'
+                        : 'border-amber-200 dark:border-amber-800 ring-1 ring-amber-500/20'
+                  }`} />
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
