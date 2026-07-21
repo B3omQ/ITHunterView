@@ -2,6 +2,7 @@
 
 import React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, User, Briefcase, Bookmark, Bell, Settings, HelpCircle, LogOut,
@@ -132,6 +133,8 @@ export function Sidebar() {
   const pathname = usePathname()
   const [expandedGroups, setExpandedGroups] = React.useState<string[]>([])
   const [isNotificationOpen, setIsNotificationOpen] = React.useState(false)
+  const [avatarError, setAvatarError] = React.useState(false)
+  const [isAvatarLoaded, setIsAvatarLoaded] = React.useState(false)
 
   const isRecruiter = user?.role?.name?.toLowerCase() === "recruiter"
   const { data: company, isLoading: companyLoading } = useGetMyCompany({
@@ -279,8 +282,28 @@ export function Sidebar() {
           <div className="mt-1">
             <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-sidebar-accent/50 transition-all group">
               {/* Avatar */}
-              <div className="w-9 h-9 rounded-full font-semibold text-sm flex-shrink-0 flex items-center justify-center bg-primary/10 text-primary">
-                {user.fullName?.charAt(0)?.toUpperCase() || user.email.charAt(0).toUpperCase()}
+              <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 border border-border/50 bg-white dark:bg-slate-900 flex items-center justify-center relative">
+                {/* Fallback Image - Always rendered beneath */}
+                <Image 
+                  src={`/images/avatar_${user.role?.name?.toLowerCase() || 'candidate'}.png`}
+                  alt={user.fullName || user.email}
+                  fill
+                  sizes="36px"
+                  className="object-cover" 
+                />
+                
+                {/* Real Avatar - Fades in on load */}
+                {user.avatarUrl && user.avatarUrl !== 'null' && user.avatarUrl !== 'undefined' && !avatarError && (
+                  <Image 
+                    src={user.avatarUrl} 
+                    alt={user.fullName || user.email}
+                    fill
+                    sizes="36px"
+                    className={`object-cover transition-opacity duration-300 ${isAvatarLoaded ? 'opacity-100' : 'opacity-0'}`} 
+                    onLoad={() => setIsAvatarLoaded(true)}
+                    onError={() => setAvatarError(true)}
+                  />
+                )}
               </div>
 
               {/* Name & Role */}

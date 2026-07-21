@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Camera, MapPin, Loader2, AlertCircle, Edit2, Mail, Phone, Globe, Check, X } from 'lucide-react';
 import { useUpdateVisibility, useUploadAvatar, usePersonalInfo, useUpdateBasicInfo, useUpdateSocialLinks } from '@/hooks/useCandidateProfile';
 import type { ProfileSummary } from '@/types/candidate.types';
@@ -57,6 +58,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   // Form states
   const [firstName, setFirstName] = useState('');
@@ -222,18 +224,26 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
         {/* Avatar Area */}
         <div className="relative shrink-0 mb-4 z-10">
           <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-border relative bg-muted shadow-sm flex items-center justify-center">
-            {summary.avatarUrl && !imageError ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+            {/* Fallback Image - Always rendered beneath */}
+            <Image
+              src="/images/avatar_candidate.png"
+              alt="Default Avatar"
+              fill
+              sizes="128px"
+              className="object-cover bg-white dark:bg-slate-900"
+            />
+            
+            {/* Real Avatar - Fades in on load */}
+            {summary.avatarUrl && summary.avatarUrl !== 'null' && summary.avatarUrl !== 'undefined' && !imageError && (
+              <Image
                 src={summary.avatarUrl}
                 alt={summary.fullName}
+                fill
+                sizes="128px"
+                onLoad={() => setIsImageLoaded(true)}
                 onError={() => setImageError(true)}
-                className="w-full h-full object-cover text-transparent"
+                className={`object-cover text-transparent transition-opacity duration-300 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
               />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground text-4xl font-bold uppercase">
-                {(summary?.fullName || 'NA').slice(0, 2).toUpperCase()}
-              </div>
             )}
 
             {isUploadingAvatar && (
@@ -349,18 +359,26 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
               <div className="flex flex-col items-center gap-4">
                 <div className="relative">
                   <div className="w-36 h-36 rounded-full overflow-hidden border border-border/50 relative bg-primary/5 flex items-center justify-center shadow-sm">
-                    {summary.avatarUrl && !imageError ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                    {/* Fallback Image - Always rendered beneath */}
+                    <Image
+                      src="/images/avatar_candidate.png"
+                      alt="Default Avatar"
+                      fill
+                      sizes="144px"
+                      className="object-cover bg-white dark:bg-slate-900"
+                    />
+                    
+                    {/* Real Avatar - Fades in on load */}
+                    {summary.avatarUrl && summary.avatarUrl !== 'null' && summary.avatarUrl !== 'undefined' && !imageError && (
+                      <Image
                         src={summary.avatarUrl}
                         alt={summary.fullName}
+                        fill
+                        sizes="144px"
+                        onLoad={() => setIsImageLoaded(true)}
                         onError={() => setImageError(true)}
-                        className="w-full h-full object-cover"
+                        className={`object-cover transition-opacity duration-300 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
                       />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-primary/40 text-5xl font-bold uppercase">
-                        {(summary?.fullName || 'NA').slice(0, 2).toUpperCase()}
-                      </div>
                     )}
                     
                     {isUploadingAvatar && (

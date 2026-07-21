@@ -2,12 +2,14 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useMyLearningPaths, useDeleteLearningPath } from '@/hooks/useLearningPath';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { CardSkeleton } from '@/components/shared/CardSkeleton';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { Loader2, Plus, Trash2, Map, Sparkles, ArrowRight, BookOpen, CheckCircle2, MoreHorizontal, Eye, Play } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -99,15 +101,13 @@ export default function LearningPathDashboard() {
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       {/* Left: Status Icon */}
-                      <div className={`shrink-0 w-11 h-11 rounded-lg flex items-center justify-center border border-border ${
+                      <Image src="/images/mascotAvatarLearning.png" alt="Mascot" width={44} height={44} className={`w-11 h-11 rounded-lg shrink-0 object-cover border bg-white dark:bg-slate-900 ${
                         path.status === 'Completed'
-                          ? 'bg-emerald-500/10 text-emerald-600'
+                          ? 'border-emerald-200 dark:border-emerald-800 ring-1 ring-emerald-500/20'
                           : path.status === 'In Progress'
-                            ? 'bg-blue-500/10 text-blue-600'
-                            : 'bg-slate-200/70 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                      }`}>
-                        <Map className="w-5 h-5" />
-                      </div>
+                            ? 'border-blue-200 dark:border-blue-800 ring-1 ring-blue-500/20'
+                            : 'border-slate-200 dark:border-slate-800'
+                      }`} />
 
                       {/* Center: Info */}
                       <div className="flex-1 min-w-0">
@@ -196,20 +196,19 @@ export default function LearningPathDashboard() {
           })}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed rounded-xl bg-muted/10">
-          <div className="bg-primary/10 p-4 rounded-full mb-4">
-            <Map className="h-12 w-12 text-primary" />
-          </div>
-          <h3 className="text-2xl font-semibold tracking-tight mb-2">No learning paths yet</h3>
-          <p className="text-muted-foreground max-w-md mb-8">
-            Let our AI analyze your CV, mock interviews, or manual goals to generate a personalized step-by-step career path.
-          </p>
-          <Link href="/candidate/learning-path/new" className={buttonVariants({ size: 'lg', className: "h-12 px-8 bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all" })}>
-            <Plus className="mr-1 h-5 w-5" />
-            <Sparkles className="mr-2 h-5 w-5" />
-            Create Your First Path
+        <EmptyState 
+          title="No learning paths yet" 
+          description="Let our AI analyze your CV, mock interviews, or manual goals to generate a personalized step-by-step career path."
+          imageUrl="/images/emptyLearningPath.png"
+        >
+          <Link href="/candidate/learning-path/new">
+            <Button className="mt-4 bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">
+              <Plus className="mr-1 h-4 w-4" />
+              Create Your First Path
+              <Sparkles className="mr-2 h-4 w-4 ml-1" />
+            </Button>
           </Link>
-        </div>
+        </EmptyState>
       )}
 
       {/* Delete Confirmation Dialog */}

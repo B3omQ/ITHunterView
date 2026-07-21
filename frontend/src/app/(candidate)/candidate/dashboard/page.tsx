@@ -2,6 +2,7 @@
 
 import { useAuthStore } from "@/store/auth.store"
 import Link from "next/link"
+import Image from "next/image"
 import { 
   Sparkles, FileSearch, 
   MessageCircleQuestion, 
@@ -132,8 +133,9 @@ export default function CandidateDashboard() {
       {/* Header Greeting */}
       <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-foreground tracking-tight mb-1">
-            Hi {user?.fullName?.split(" ")[0] || "there"}! 👋
+          <h1 className="text-3xl font-extrabold text-foreground tracking-tight mb-1 flex items-center gap-2">
+            Hi {user?.fullName?.split(" ")[0] || "there"}!
+            <Image src="/images/mascotAvatarGreeting.png" alt="Waving Mascot" width={36} height={36} className="w-9 h-9 object-contain mix-blend-multiply dark:mix-blend-normal transform hover:scale-110 hover:rotate-12 transition-transform cursor-pointer" />
           </h1>
           <p className="text-muted-foreground text-sm">
             Here is a comprehensive overview of your career development progress.

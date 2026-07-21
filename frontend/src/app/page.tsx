@@ -202,7 +202,7 @@ export default function Home() {
               <p className="text-sm text-muted-foreground mt-1">Smart ranking & fit scoring for every job</p>
             </div>
           </div>
-          
+
           {/* Card 2 */}
           <div className="glass-panel p-5 rounded-2xl flex flex-col gap-3 hover:-translate-y-1 transition-transform duration-300 group cursor-default">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -213,7 +213,7 @@ export default function Home() {
               <p className="text-sm text-muted-foreground mt-1">Real-world technical interview prep</p>
             </div>
           </div>
-          
+
           {/* Card 3 */}
           <div className="glass-panel p-5 rounded-2xl flex flex-col gap-3 hover:-translate-y-1 transition-transform duration-300 group cursor-default">
             <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">

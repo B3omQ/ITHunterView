@@ -19,7 +19,7 @@ export default function SavedJobsPage() {
   const { unsaveJob, isUnsaving } = useJobActions();
 
   if (isLoading) return (
-    <div className="w-full pb-8 space-y-8">
+    <div className="w-full pb-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Saved Jobs</h1>
@@ -38,7 +38,7 @@ export default function SavedJobsPage() {
 
   if (jobs.length === 0) {
     return (
-    <div className="w-full pb-8 space-y-8">
+    <div className="w-full pb-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Saved Jobs</h1>
@@ -50,7 +50,6 @@ export default function SavedJobsPage() {
         <EmptyState 
           title="No saved jobs yet" 
           description="Keep track of jobs you're interested in by clicking the save icon."
-          icon={<Bookmark className="w-12 h-12 text-slate-300" />}
         >
           <Link href="/candidate/jobs">
             <Button className="mt-4">Browse Jobs</Button>

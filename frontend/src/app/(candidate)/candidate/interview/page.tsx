@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import {
   useGetInterviewSessions,
   useCreateInterviewSession,
@@ -14,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ListPagination } from '@/components/shared/ListPagination';
 import { CardSkeleton } from '@/components/shared/CardSkeleton';
+import { EmptyState } from '@/components/shared/EmptyState';
 import {
   Dialog,
   DialogContent,
@@ -338,11 +340,13 @@ function CandidateInterviewContent() {
             Master your interview skills with personalized AI sessions.
           </p>
         </div>
-        <Button onClick={() => setIsOpen(true)} className="bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">
-          <Plus className="mr-1 h-4 w-4" />
-          Start Mock Interview
-          <Sparkles className="mr-2 h-4 w-4 ml-1" />
-        </Button>
+        {sessions.length > 0 && (
+          <Button onClick={() => setIsOpen(true)} className="bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">
+            <Plus className="mr-1 h-4 w-4" />
+            Start Mock Interview
+            <Sparkles className="mr-2 h-4 w-4 ml-1" />
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-col gap-4">
@@ -352,26 +356,17 @@ function CandidateInterviewContent() {
               {[1, 2, 3].map((n) => <CardSkeleton key={n} />)}
             </div>
           ) : sessions.length === 0 ? (
-            <Card className="border border-dashed border-border bg-muted/20 py-16 text-center rounded-2xl">
-              <CardContent className="space-y-6 max-w-sm mx-auto">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-card border border-border text-muted-foreground">
-                  <MessageSquare className="h-8 w-8" />
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-foreground">No mock interview sessions yet</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Start your first session to level up your interview skills and get detailed AI feedback.
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsOpen(true)}
-                  className="w-full border-border text-foreground hover:bg-muted"
-                >
-                  Click here to start
-                </Button>
-              </CardContent>
-            </Card>
+            <EmptyState 
+              title="No mock interview sessions yet" 
+              description="Start your first session to level up your interview skills and get detailed AI feedback."
+              imageUrl="/images/emptyInterview.png"
+            >
+              <Button onClick={() => setIsOpen(true)} className="mt-4 bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">
+                <Plus className="mr-1 h-4 w-4" />
+                Start Mock Interview
+                <Sparkles className="mr-2 h-4 w-4 ml-1" />
+              </Button>
+            </EmptyState>
           ) : (
             <>
               <div className="flex flex-col gap-4">
@@ -385,13 +380,11 @@ function CandidateInterviewContent() {
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           {/* Left: Status Icon */}
-                          <div className={`shrink-0 w-11 h-11 rounded-lg flex items-center justify-center border border-border ${
+                          <Image src="/images/mascotAvatar.png" alt="Mascot" width={44} height={44} className={`w-11 h-11 rounded-lg shrink-0 object-cover border bg-white dark:bg-slate-900 ${
                             session.status === 'IN_PROGRESS'
-                              ? 'bg-blue-500/10 text-blue-600'
-                              : 'bg-emerald-500/10 text-emerald-600'
-                          }`}>
-                            <MessageSquare className="w-5 h-5" />
-                          </div>
+                              ? 'border-blue-200 dark:border-blue-800 ring-1 ring-blue-500/20'
+                              : 'border-emerald-200 dark:border-emerald-800 ring-1 ring-emerald-500/20'
+                          }`} />
 
                           {/* Center: Info */}
                           <div className="flex-1 min-w-0">
