@@ -18,15 +18,18 @@ namespace ITHunterview.Service.UseCase
     public class JobPostingsUseCase : IJobPostingsUseCase
     {
         private readonly IJobPostingRepository _jobPostingRepository;
+        private readonly ICompanyRepository _companyRepository;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<JobPostingsUseCase> _logger;
 
         public JobPostingsUseCase(
             IJobPostingRepository jobPostingRepository,
+            ICompanyRepository companyRepository,
             IServiceScopeFactory scopeFactory,
             ILogger<JobPostingsUseCase> logger)
         {
             _jobPostingRepository = jobPostingRepository;
+            _companyRepository = companyRepository;
             _scopeFactory = scopeFactory;
             _logger = logger;
         }
@@ -99,6 +102,20 @@ namespace ITHunterview.Service.UseCase
                 return new ResponseBase<JobPostingDetailDto>("Recruiter company not found. Please link recruiter to a company first.");
             }
 
+            if (dto.ExpiresAt.HasValue && dto.ExpiresAt.Value > DateTime.UtcNow.AddDays(30))
+            {
+                return new ResponseBase<JobPostingDetailDto>("Thời gian xuất bản tin không được vượt quá 30 ngày.");
+            }
+
+            if (dto.Status == JobStatus.PUBLISHED)
+            {
+                var company = await _companyRepository.GetByIdAsync(companyId.Value);
+                if (company == null || company.Status != CompanyStatus.VERIFIED)
+                {
+                    return new ResponseBase<JobPostingDetailDto>("Your company must be verified before you can publish a job posting.");
+                }
+            }
+
             var job = new JobPostings
             {
                 Id = Guid.NewGuid(),
@@ -153,9 +170,14 @@ namespace ITHunterview.Service.UseCase
                 return new ResponseBase<JobPostingDetailDto>("Job posting not found.");
             }
 
+            if (dto.ExpiresAt.HasValue && dto.ExpiresAt.Value > job.CreatedAt.AddDays(30))
+            {
+                return new ResponseBase<JobPostingDetailDto>("Thời gian xuất bản tin không được vượt quá 30 ngày kể từ lúc tạo.");
+            }
+
             job.JobCode = dto.JobCode;
 
-            job.Title = dto.Title;
+            // Title is intentionally omitted from update to prevent changing the job title
             job.Description = dto.Description;
             job.Responsibilities = dto.Responsibilities;
             job.Requirements = dto.Requirements;
@@ -175,11 +197,19 @@ namespace ITHunterview.Service.UseCase
 
             if (job.Status != dto.Status)
             {
-                job.Status = dto.Status;
-                if (dto.Status == JobStatus.PUBLISHED && job.PublishedAt == null)
+                if (dto.Status == JobStatus.PUBLISHED)
                 {
-                    job.PublishedAt = DateTime.UtcNow;
+                    var company = await _companyRepository.GetByIdAsync(job.CompanyId);
+                    if (company == null || company.Status != CompanyStatus.VERIFIED)
+                    {
+                        return new ResponseBase<JobPostingDetailDto>("Your company must be verified before you can publish a job posting.");
+                    }
+                    if (job.PublishedAt == null)
+                    {
+                        job.PublishedAt = DateTime.UtcNow;
+                    }
                 }
+                job.Status = dto.Status;
             }
 
             await _jobPostingRepository.UpdateAsync(job);

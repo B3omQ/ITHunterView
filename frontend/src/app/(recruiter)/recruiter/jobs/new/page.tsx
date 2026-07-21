@@ -51,6 +51,11 @@ export default function CreateJobPage() {
   const loading = metadataLoading || saving || companyLoading
   const error = metadataError || saveError
 
+  const todayStr = new Date().toISOString().split('T')[0];
+  const maxDateObj = new Date();
+  maxDateObj.setDate(maxDateObj.getDate() + 30);
+  const maxDateStr = maxDateObj.toISOString().split('T')[0];
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -123,6 +128,12 @@ export default function CreateJobPage() {
     const expDate = new Date(formData.expiresAt)
     if (expDate <= today) {
       return "Expiration Date must be in the future (after today)"
+    }
+
+    const maxExpDate = new Date(today)
+    maxExpDate.setDate(maxExpDate.getDate() + 30)
+    if (expDate > maxExpDate) {
+      return "Expiration Date cannot exceed 30 days from today"
     }
     
     return null
@@ -375,6 +386,8 @@ export default function CreateJobPage() {
                   id="expiresAt"
                   name="expiresAt"
                   type="date"
+                  min={todayStr}
+                  max={maxDateStr}
                   value={formData.expiresAt}
                   onChange={handleChange}
                   className="focus-visible:ring-blue-500"
@@ -586,7 +599,7 @@ export default function CreateJobPage() {
             disabled={loading}
             className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/10"
           >
-            {loading ? "Publishing..." : "Publish & Submit Review"}
+            {loading ? "Publishing..." : "Publish Job"}
           </Button>
         </div>
       </div>

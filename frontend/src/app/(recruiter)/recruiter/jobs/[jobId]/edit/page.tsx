@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useJobMetadata, useJobDetails } from "@/hooks/useJobs"
+import { useGetMyCompany } from "@/hooks/useCompany"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -40,6 +41,7 @@ export default function EditJobPage() {
 
   const { categories, availableSkills, majors, loading: metadataLoading, error: metadataError } = useJobMetadata()
   const { job, loading: detailLoading, saving, error: detailError, setError, updateJob } = useJobDetails(id)
+  const { data: company, isLoading: companyLoading } = useGetMyCompany()
 
   const [selectedSkills, setSelectedSkills] = useState<Array<{ skillId: number; name: string; isMandatory: boolean }>>([])
   const [searchSkill, setSearchSkill] = useState("")
@@ -47,8 +49,13 @@ export default function EditJobPage() {
 
   const [searchDomain, setSearchDomain] = useState("")
 
-  const loading = metadataLoading || detailLoading
+  const loading = metadataLoading || detailLoading || companyLoading
   const error = metadataError || detailError
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const maxDateObj = new Date(job?.createdAt || new Date());
+  maxDateObj.setDate(maxDateObj.getDate() + 30);
+  const maxDateStr = maxDateObj.toISOString().split('T')[0];
 
   // Load existing job details into form fields
   useEffect(() => {
@@ -158,6 +165,12 @@ export default function EditJobPage() {
       return "Expiration Date must be in the future (after today)"
     }
 
+    const maxExpDate = new Date(job?.createdAt || today)
+    maxExpDate.setDate(maxExpDate.getDate() + 30)
+    if (expDate > maxExpDate) {
+      return "Expiration Date cannot exceed 30 days from the original creation date"
+    }
+
     return null
   }
 
@@ -208,6 +221,31 @@ export default function EditJobPage() {
     )
   }
 
+  if (!company || company.status !== 'VERIFIED') {
+    return (
+      <div className="max-w-2xl mx-auto mt-12 p-8 border rounded-xl bg-card text-center space-y-4">
+        <div className="mx-auto w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold">Verification Required</h2>
+        <p className="text-muted-foreground">
+          Your company needs to be verified before you can edit and publish jobs. 
+          Please complete your Legal Verification and wait for admin approval.
+        </p>
+        <div className="pt-4 flex justify-center gap-4">
+          <Button variant="outline" onClick={() => router.push('/recruiter/dashboard')}>
+            Return to Dashboard
+          </Button>
+          <Button onClick={() => router.push('/recruiter/company/legal')}>
+            Complete Verification
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background py-10 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -249,9 +287,10 @@ export default function EditJobPage() {
                   name="title"
                   placeholder="e.g. Senior Frontend Developer"
                   required
+                  disabled
                   value={formData.title}
                   onChange={handleChange}
-                  className="focus-visible:ring-blue-500"
+                  className="focus-visible:ring-blue-500 bg-zinc-100 dark:bg-zinc-800 cursor-not-allowed"
                 />
               </div>
 
@@ -375,6 +414,8 @@ export default function EditJobPage() {
                   id="expiresAt"
                   name="expiresAt"
                   type="date"
+                  min={todayStr}
+                  max={maxDateStr}
                   value={formData.expiresAt}
                   onChange={handleChange}
                   className="focus-visible:ring-blue-500"

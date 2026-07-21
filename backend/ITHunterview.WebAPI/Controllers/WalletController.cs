@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using ITHunterview.Service.DTOs.Common;
@@ -15,10 +16,17 @@ namespace ITHunterview.WebAPI.Controllers
     public class WalletController : ControllerBase
     {
         private readonly IWalletUseCase _walletUseCase;
+        private readonly ICoinConfigUseCase _coinConfigUseCase;
+        private readonly ISubscriptionAdminUseCase _subscriptionUseCase;
 
-        public WalletController(IWalletUseCase walletUseCase)
+        public WalletController(
+            IWalletUseCase walletUseCase,
+            ICoinConfigUseCase coinConfigUseCase,
+            ISubscriptionAdminUseCase subscriptionUseCase)
         {
             _walletUseCase = walletUseCase;
+            _coinConfigUseCase = coinConfigUseCase;
+            _subscriptionUseCase = subscriptionUseCase;
         }
 
         private Guid? GetCurrentUserId()
@@ -66,10 +74,47 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Candidate tạo yêu cầu thanh toán mua coin hoặc mua subscription
+        /// Xem danh sách gói Coin đang hoạt động (dành cho Candidate)
+        /// </summary>
+        [HttpGet("coin-packages")]
+        [Authorize(Policy = "CandidateOnly")]
+        public async Task<IActionResult> GetActiveCoinPackages()
+        {
+            var result = await _coinConfigUseCase.GetCoinConfigAsync();
+            if (!result.Success) return BadRequest(result);
+            
+            // Chỉ trả về các gói đang Active
+            if (result.Data?.Packages != null)
+            {
+                result.Data.Packages = result.Data.Packages.Where(p => p.IsActive).ToList();
+            }
+            
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Xem danh sách gói Dịch vụ đang hoạt động (dành cho Candidate & Recruiter)
+        /// </summary>
+        [HttpGet("active-subscriptions")]
+        public async Task<IActionResult> GetActiveSubscriptions()
+        {
+            var roleClaim = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (roleClaim != "CANDIDATE" && roleClaim != "RECRUITER")
+            {
+                return Forbid();
+            }
+
+            var result = await _subscriptionUseCase.GetPagedSubscriptionsAsync(roleClaim, ITHunterview.Domain.Enums.SubscriptionStatus.ACTIVE, 1, 100);
+            if (!result.Success) return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Candidate hoặc Recruiter tạo yêu cầu thanh toán mua coin hoặc mua subscription
         /// </summary>
         [HttpPost("pay")]
-        [Authorize(Policy = "CandidateOnly")]
+        // Xóa Policy = "CandidateOnly" vì Recruiter cũng gọi API này để mua subscription
         public async Task<IActionResult> CreatePaymentRequest([FromBody] CreatePaymentDto dto)
         {
             var userId = GetCurrentUserId();

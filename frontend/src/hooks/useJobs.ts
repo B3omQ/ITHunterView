@@ -151,7 +151,7 @@ export function useJobDetails(jobId?: string) {
 export function useJobMetadata() {
   const [categories, setCategories] = useState<JobCategory[]>([]);
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
-  const [majors, setMajors] = useState<{ id: number; name: string }[]>([]);
+  const [majors, setMajors] = useState<{ id: number; name: string; parentId?: number; parentName?: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
