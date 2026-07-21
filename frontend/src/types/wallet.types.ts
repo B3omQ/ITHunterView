@@ -28,3 +28,23 @@ export interface PaymentDto {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface CreatePaymentDto {
+  targetType: 'WALLET_TOPUP' | 'SUBSCRIPTION';
+  targetId: string;
+  paymentGateway: 'PAYOS' | 'MOMO' | 'VNPAY';
+}
+
+export interface CreatePaymentResponseDto {
+  paymentId: string;
+  orderCode: number;
+  checkoutUrl: string;
+  qrCode?: string;
+}
+
+export interface PaymentSimulationDto {
+  paymentId: string;
+  gatewayTransactionId: string;
+  success: boolean;
+}
+
