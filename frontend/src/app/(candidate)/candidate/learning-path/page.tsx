@@ -200,6 +200,7 @@ export default function LearningPathDashboard() {
         <EmptyState 
           title="No learning paths yet" 
           description="Let our AI analyze your CV, mock interviews, or manual goals to generate a personalized step-by-step career path."
+          imageUrl="/images/emptyLearningPath.png"
         >
           <Link href="/candidate/learning-path/new">
             <Button className="mt-4 bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">

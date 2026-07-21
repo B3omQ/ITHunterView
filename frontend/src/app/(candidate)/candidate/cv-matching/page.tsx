@@ -95,6 +95,7 @@ export default function CvMatchingHistoryPage() {
         <EmptyState 
           title="No matches found" 
           description="You haven't run any CV-JD matches yet. Start by creating a new match to see how well your resume fits job descriptions."
+          imageUrl="/images/emptyMatching.png"
         >
           <Link href={`${APP_ROUTES.CANDIDATE.CV_MATCHING}/new`}>
             <Button className="mt-4 bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">

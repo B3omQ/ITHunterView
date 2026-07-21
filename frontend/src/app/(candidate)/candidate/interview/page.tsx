@@ -358,6 +358,7 @@ function CandidateInterviewContent() {
             <EmptyState 
               title="No mock interview sessions yet" 
               description="Start your first session to level up your interview skills and get detailed AI feedback."
+              imageUrl="/images/emptyInterview.png"
             >
               <Button onClick={() => setIsOpen(true)} className="mt-4 bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">
                 <Plus className="mr-1 h-4 w-4" />
