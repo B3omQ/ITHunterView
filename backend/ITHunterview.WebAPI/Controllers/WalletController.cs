@@ -7,6 +7,9 @@ using ITHunterview.Service.DTOs.Wallet;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PayOS;
+using PayOS.Models;
+using Microsoft.Extensions.Logging;
 
 namespace ITHunterview.WebAPI.Controllers
 {
@@ -16,17 +19,14 @@ namespace ITHunterview.WebAPI.Controllers
     public class WalletController : ControllerBase
     {
         private readonly IWalletUseCase _walletUseCase;
-        private readonly ICoinConfigUseCase _coinConfigUseCase;
-        private readonly ISubscriptionAdminUseCase _subscriptionUseCase;
+        private readonly PayOSClient _payOS;
+        private readonly ILogger<WalletController> _logger;
 
-        public WalletController(
-            IWalletUseCase walletUseCase,
-            ICoinConfigUseCase coinConfigUseCase,
-            ISubscriptionAdminUseCase subscriptionUseCase)
+        public WalletController(IWalletUseCase walletUseCase, PayOSClient payOS, ILogger<WalletController> logger)
         {
             _walletUseCase = walletUseCase;
-            _coinConfigUseCase = coinConfigUseCase;
-            _subscriptionUseCase = subscriptionUseCase;
+            _payOS = payOS;
+            _logger = logger;
         }
 
         private Guid? GetCurrentUserId()
@@ -76,45 +76,8 @@ namespace ITHunterview.WebAPI.Controllers
         /// <summary>
         /// Xem danh sách gói Coin đang hoạt động (dành cho Candidate)
         /// </summary>
-        [HttpGet("coin-packages")]
-        [Authorize(Policy = "CandidateOnly")]
-        public async Task<IActionResult> GetActiveCoinPackages()
-        {
-            var result = await _coinConfigUseCase.GetCoinConfigAsync();
-            if (!result.Success) return BadRequest(result);
-            
-            // Chỉ trả về các gói đang Active
-            if (result.Data?.Packages != null)
-            {
-                result.Data.Packages = result.Data.Packages.Where(p => p.IsActive).ToList();
-            }
-            
-            return Ok(result);
-        }
-
-        /// <summary>
-        /// Xem danh sách gói Dịch vụ đang hoạt động (dành cho Candidate & Recruiter)
-        /// </summary>
-        [HttpGet("active-subscriptions")]
-        public async Task<IActionResult> GetActiveSubscriptions()
-        {
-            var roleClaim = User.FindFirst(ClaimTypes.Role)?.Value;
-            if (roleClaim != "CANDIDATE" && roleClaim != "RECRUITER")
-            {
-                return Forbid();
-            }
-
-            var result = await _subscriptionUseCase.GetPagedSubscriptionsAsync(roleClaim, ITHunterview.Domain.Enums.SubscriptionStatus.ACTIVE, 1, 100);
-            if (!result.Success) return BadRequest(result);
-
-            return Ok(result);
-        }
-
-        /// <summary>
-        /// Candidate hoặc Recruiter tạo yêu cầu thanh toán mua coin hoặc mua subscription
-        /// </summary>
         [HttpPost("pay")]
-        // Xóa Policy = "CandidateOnly" vì Recruiter cũng gọi API này để mua subscription
+        [Authorize(Policy = "CandidateOrRecruiter")]
         public async Task<IActionResult> CreatePaymentRequest([FromBody] CreatePaymentDto dto)
         {
             var userId = GetCurrentUserId();
@@ -144,6 +107,28 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         /// <summary>
+        /// Xem lịch sử thanh toán cá nhân của Candidate hoặc Recruiter
+        /// </summary>
+        [HttpGet("my-payments")]
+        [Authorize(Policy = "CandidateOrRecruiter")]
+        public async Task<IActionResult> GetMyPayments(
+            [FromQuery] int page = 1, 
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? status = null,
+            [FromQuery] string? targetType = null)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            var result = await _walletUseCase.GetMyPaymentsAsync(userId.Value, page, pageSize, status, targetType);
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+            return Ok(result);
+        }
+
+        /// <summary>
         /// Admin giả lập kết quả callback từ cổng thanh toán Momo/VNPay để cập nhật ví/subscription
         /// </summary>
         [HttpPost("admin/payments/simulate")]
@@ -159,6 +144,41 @@ namespace ITHunterview.WebAPI.Controllers
                 return BadRequest(result);
             }
             return Ok(result);
+        }
+
+        /// <summary>
+        /// Webhook URL cung cấp cho PayOS
+        /// </summary>
+        [HttpPost("payos-webhook")]
+        [AllowAnonymous]
+        public async Task<IActionResult> HandlePayOsWebhook([FromBody] PayOS.Models.Webhooks.Webhook webhookBody)
+        {
+            PayOS.Models.Webhooks.WebhookData data;
+            try
+            {
+                data = await _payOS.Webhooks.VerifyAsync(webhookBody);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("SECURITY: Webhook signature invalid. Possible attack. {msg}", ex.Message);
+                return Ok(new { success = false, message = "Invalid signature" });
+            }
+
+            if (data.OrderCode == 123)
+            {
+                return Ok(new { success = true, message = "Test webhook ignored" });
+            }
+
+            try
+            {
+                await _walletUseCase.ProcessWebhookAsync(data.OrderCode, data.TransactionDateTime);
+                return Ok(new { success = true, message = "Webhook processed" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Internal error processing webhook for OrderCode {code}", data.OrderCode);
+                return StatusCode(500, new { success = false, message = "Internal processing error" });
+            }
         }
     }
 }

@@ -7,5 +7,6 @@ namespace ITHunterview.Domain.Enums
         STRIPE,
         PAYPAL,
         BANK_TRANSFER,
+        PAYOS
     }
 }

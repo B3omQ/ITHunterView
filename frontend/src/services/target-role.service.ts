@@ -38,5 +38,17 @@ export const targetRoleService = {
   getAllSfiaSkills: () =>
     api
       .get<ApiResponse<SfiaSkillDto[]>>('/api/master-data/target-roles/sfia-skills')
-      .then((res) => res.data)
+      .then((res) => res.data),
+
+  importTargetRoles: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api
+      .post<ApiResponse<any>>('/api/master-data/target-roles/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+      .then((res) => res.data);
+  }
 };

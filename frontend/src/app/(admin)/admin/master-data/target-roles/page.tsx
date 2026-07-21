@@ -7,6 +7,8 @@ import type { TargetRoleTemplateDto } from "@/types/master-data.types";
 import { TargetRoleModal } from "../components/TargetRoleModal";
 import { TargetRoleDeleteDialog } from "../components/TargetRoleDeleteDialog";
 import { TargetRolesTable } from "../components/TargetRolesTable";
+import { ImportTargetRoleModal } from "../components/ImportTargetRoleModal";
+import { UploadCloud } from "lucide-react";
 
 export default function TargetRolesPage() {
   const [roleSearch, setRoleSearch] = useState("");
@@ -61,6 +63,7 @@ export default function TargetRolesPage() {
   const [selectedRole, setSelectedRole] = useState<TargetRoleTemplateDto | null>(null);
   const [isRoleDeleteOpen, setIsRoleDeleteOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<TargetRoleTemplateDto | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const handleOpenRoleCreate = useCallback(() => {
     setRoleModalMode("create");
@@ -80,19 +83,28 @@ export default function TargetRolesPage() {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="w-full pb-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Target Roles (Templates)</h1>
           <p className="text-sm text-muted-foreground mt-1">Manage standard target role templates.</p>
         </div>
-        <button
-          onClick={handleOpenRoleCreate}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/95 text-primary-foreground font-medium text-sm rounded-xl shadow-xs transition-colors"
-        >
-          <Plus size={16} />
-          <span>Add new target role</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-background border border-border hover:bg-muted text-foreground font-medium text-sm rounded-xl transition-colors"
+          >
+            <UploadCloud size={16} />
+            <span className="hidden sm:inline">Import CSV</span>
+          </button>
+          <button
+            onClick={handleOpenRoleCreate}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/95 text-primary-foreground font-medium text-sm rounded-xl shadow-xs transition-colors"
+          >
+            <Plus size={16} />
+            <span>Add new</span>
+          </button>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -144,6 +156,11 @@ export default function TargetRolesPage() {
         roleToDelete={roleToDelete}
         onSuccess={(msg) => { showToast(msg, "success"); refetchRoles(); }}
         onError={(msg) => showToast(msg, "error")}
+      />
+      <ImportTargetRoleModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={(msg) => { showToast(msg, "success"); refetchRoles(); }}
       />
 
       {toast && (

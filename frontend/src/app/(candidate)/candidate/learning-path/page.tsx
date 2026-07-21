@@ -1,13 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { useMyLearningPaths, useDeleteLearningPath } from '@/hooks/useLearningPath';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Plus, Trash2, Map, CheckCircle2, Clock, Circle, Sparkles } from 'lucide-react';
+import { Loader2, Plus, Trash2, Map, Sparkles, ArrowRight, BookOpen, CheckCircle2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -31,7 +30,7 @@ export default function LearningPathDashboard() {
   const paths = myPathsData?.data || [];
 
   return (
-    <div className="container mx-auto py-8 space-y-8 max-w-6xl">
+    <div className="w-full pb-8 space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Learning Paths</h1>
@@ -70,39 +69,87 @@ export default function LearningPathDashboard() {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : paths.length > 0 ? (
-        <div className="grid grid-cols-1 lg:grid-cols-10 gap-8 lg:gap-12 w-full">
-          <div className="col-span-1 lg:col-span-6 flex flex-col gap-4">
-            {paths.map((path) => {
-              let totalTasks = 0;
-              let completedTasks = 0;
-              const modules = path.pathData?.modules || [];
-              modules.forEach((m: any) => {
-                if (m.tasks && m.tasks.length > 0) {
-                  totalTasks += m.tasks.length;
-                  completedTasks += m.tasks.filter((t: any) => t.completed).length;
-                }
-              });
-              const progressPercentage = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+        <div className="flex flex-col gap-4">
+          {paths.map((path) => {
+            let totalTasks = 0;
+            let completedTasks = 0;
+            const modules = path.pathData?.modules || [];
+            modules.forEach((m: any) => {
+              if (m.tasks && m.tasks.length > 0) {
+                totalTasks += m.tasks.length;
+                completedTasks += m.tasks.filter((t: any) => t.completed).length;
+              }
+            });
+            const progressPercentage = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
-              return (
-                <Card key={path.id} className="flex flex-col relative overflow-hidden group rounded-[20px] border-none shadow-[0_10px_40px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_50px_rgba(0,0,0,0.06)] transition-all duration-300 bg-card p-1">
+            return (
+              <Card key={path.id} className="group hover:border-primary/50 transition-colors">
+                <CardContent className="p-4 flex items-center gap-4">
+                  {/* Left: Status Icon */}
+                  <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                    path.status === 'Completed'
+                      ? 'bg-emerald-50 text-emerald-500'
+                      : path.status === 'In Progress'
+                        ? 'bg-blue-50 text-blue-500'
+                        : 'bg-slate-100 text-slate-400'
+                  }`}>
+                    <Map className="w-5 h-5" />
+                  </div>
 
-                  <CardHeader className="flex flex-col items-start justify-between space-y-0 pb-1 pt-3 px-4 relative">
+                  {/* Center: Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <Link href={`/candidate/learning-path/${path.id}`} passHref>
+                        <span
+                          className="font-semibold text-base text-foreground group-hover:text-primary transition-colors truncate cursor-pointer"
+                          title={path.title}
+                        >
+                          {path.title}
+                        </span>
+                      </Link>
+                      <Badge className={`shrink-0 text-[10px] px-1.5 py-0 border-none font-semibold ${
+                        path.status === 'Completed'
+                          ? 'bg-[#E6F4EA] text-[#137333]'
+                          : path.status === 'In Progress'
+                            ? 'bg-[#E6F0FF] text-[#0052CC]'
+                            : 'bg-[#F3F4F6] text-gray-700'
+                      }`}>
+                        {path.status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
+                      <span className="flex items-center gap-1">
+                        <BookOpen className="h-3 w-3" />
+                        {modules.length} module{modules.length !== 1 ? 's' : ''}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                        {completedTasks}/{totalTasks} tasks
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Progress value={progressPercentage} className="flex-1 [&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-track]]:bg-muted/60" />
+                      <span className="font-semibold text-primary text-xs w-8 text-right">{progressPercentage}%</span>
+                    </div>
+                  </div>
+
+                  {/* Right: Actions */}
+                  <div className="flex items-center gap-1 shrink-0">
                     <Dialog>
                       <DialogTrigger
                         render={
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="absolute top-2 right-2 text-muted-foreground hover:text-destructive shrink-0 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                             disabled={deleteMutation.isPending && deleteMutation.variables === path.id}
                           />
                         }
                       >
                         {deleteMutation.isPending && deleteMutation.variables === path.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
+                          <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-4 w-4" />
                         )}
                       </DialogTrigger>
                       <DialogContent>
@@ -118,49 +165,12 @@ export default function LearningPathDashboard() {
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
-
-                    <div className="w-full pr-8">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="bg-primary/10 p-1.5 rounded-lg flex-shrink-0">
-                          <Map className="w-3.5 h-3.5 text-primary" />
-                        </div>
-                        <Badge className={`font-semibold px-2 py-0.5 border-none shadow-none text-[10px] rounded-md ${path.status === 'Completed' ? 'bg-[#E6F4EA] text-[#137333] hover:bg-[#CEEAD6]' :
-                          path.status === 'In Progress' ? 'bg-[#E6F0FF] text-[#0052CC] hover:bg-[#CCE0FF]' :
-                            'bg-[#F3F4F6] text-gray-700 hover:bg-gray-200'
-                          }`}>
-                          {path.status}
-                        </Badge>
-                      </div>
-                      <Link href={`/candidate/learning-path/${path.id}`} passHref>
-                        <CardTitle className="text-base font-extrabold tracking-tight line-clamp-2 leading-snug hover:text-primary transition-colors cursor-pointer" title={path.title}>
-                          {path.title}
-                        </CardTitle>
-                      </Link>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col justify-end pt-3 pb-3 px-4">
-                    <div className="flex items-center gap-3 mt-auto">
-                      <Progress value={progressPercentage} className="flex-1 [&_[data-slot=progress-track]]:h-4 [&_[data-slot=progress-track]]:bg-muted/60" />
-                      <span className="font-bold text-primary text-sm w-8 text-right">{progressPercentage}%</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-          <div className="hidden lg:block col-span-1 lg:col-span-4">
-            <div className="sticky top-8 flex flex-col items-center justify-center p-8">
-              <div className="relative w-full max-w-md aspect-square flex items-center justify-center">
-                <DotLottieReact
-                  src="/images/ai-animation.json"
-                  loop
-                  autoplay
-                  speed={0.25}
-                  className="w-full h-full drop-shadow-2xl"
-                />
-              </div>
-            </div>
-          </div>
+                    <ArrowRight className="h-4 w-4 text-primary transform group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed rounded-xl bg-muted/10">

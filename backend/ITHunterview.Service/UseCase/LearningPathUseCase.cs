@@ -57,6 +57,8 @@ namespace ITHunterview.Service.UseCase
                 {
                     SkillCode = rs.SfiaSkill.SkillCode,
                     SkillName = rs.SfiaSkill.SkillName,
+                    Description = rs.SfiaSkill.Description ?? "",
+                    AvailableLevels = rs.SfiaSkill.AvailableLevels ?? "",
                     TargetLevel = rs.TargetLevel
                 }).ToList()
             }).ToList();
@@ -69,35 +71,65 @@ namespace ITHunterview.Service.UseCase
         {
             await EnforceMaxPathsAsync(candidateId);
 
-            var template = await _context.TargetRoleTemplates
-                .Include(t => t.RequiredSkills)
-                .ThenInclude(rs => rs.SfiaSkill)
-                .FirstOrDefaultAsync(t => t.Id == request.TargetRoleTemplateId);
-
-            if (template == null)
-            {
-                throw new ArgumentException("Target role template not found.");
-            }
-
-            // 1. Gap Calculation
+            string roleName = string.Empty;
             var gaps = new List<object>();
-            var userSkillsDict = request.CurrentSkills.ToDictionary(s => s.SkillCode, s => s.CurrentLevel);
 
-            foreach (var requiredSkill in template.RequiredSkills)
+            if (request.TargetRoleTemplateId != null && request.TargetRoleTemplateId != Guid.Empty)
             {
-                int currentLevel = userSkillsDict.ContainsKey(requiredSkill.SfiaSkill.SkillCode) ? userSkillsDict[requiredSkill.SfiaSkill.SkillCode] : 0;
-                int gap = requiredSkill.TargetLevel - currentLevel;
+                var template = await _context.TargetRoleTemplates
+                    .Include(t => t.RequiredSkills)
+                    .ThenInclude(rs => rs.SfiaSkill)
+                    .FirstOrDefaultAsync(t => t.Id == request.TargetRoleTemplateId);
 
-                if (gap > 0)
+                if (template == null)
+                    throw new ArgumentException("Target role template not found.");
+
+                roleName = template.RoleName;
+                var userSkillsDict = request.CurrentSkills.ToDictionary(s => s.SkillCode, s => s.CurrentLevel);
+
+                foreach (var requiredSkill in template.RequiredSkills)
                 {
-                    gaps.Add(new
+                    int currentLevel = userSkillsDict.ContainsKey(requiredSkill.SfiaSkill.SkillCode) ? userSkillsDict[requiredSkill.SfiaSkill.SkillCode] : 0;
+                    int gap = requiredSkill.TargetLevel - currentLevel;
+
+                    if (gap > 0)
                     {
-                        skill_code = requiredSkill.SfiaSkill.SkillCode,
-                        skill_name = requiredSkill.SfiaSkill.SkillName,
-                        current_level = currentLevel,
-                        target_level = requiredSkill.TargetLevel,
-                        gap_delta = gap
-                    });
+                        gaps.Add(new
+                        {
+                            skill_code = requiredSkill.SfiaSkill.SkillCode,
+                            skill_name = requiredSkill.SfiaSkill.SkillName,
+                            current_level = currentLevel,
+                            target_level = requiredSkill.TargetLevel,
+                            gap_delta = gap
+                        });
+                    }
+                }
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(request.CustomTargetRoleName) || request.CustomTargetSkills == null || !request.CustomTargetSkills.Any())
+                {
+                    throw new ArgumentException("Custom target role name and skills are required when TargetRoleTemplateId is not provided.");
+                }
+
+                roleName = request.CustomTargetRoleName;
+                var allSkills = await _context.SfiaSkills.ToDictionaryAsync(s => s.SkillCode, s => s.SkillName);
+
+                foreach (var customSkill in request.CustomTargetSkills)
+                {
+                    int gap = customSkill.TargetLevel - customSkill.CurrentLevel;
+                    if (gap > 0)
+                    {
+                        string skillName = allSkills.ContainsKey(customSkill.SkillCode) ? allSkills[customSkill.SkillCode] : customSkill.SkillCode;
+                        gaps.Add(new
+                        {
+                            skill_code = customSkill.SkillCode,
+                            skill_name = skillName,
+                            current_level = customSkill.CurrentLevel,
+                            target_level = customSkill.TargetLevel,
+                            gap_delta = gap
+                        });
+                    }
                 }
             }
 
@@ -128,12 +160,20 @@ Rule: Create one module per 1 level jump per skill. If gap is 2 levels, create 2
 Do NOT include any markdown blocks like ```json, just return the raw JSON object.";
 
             var userPromptBuilder = new StringBuilder();
-            userPromptBuilder.AppendLine($"Target Role: {template.RoleName}");
+            userPromptBuilder.AppendLine($"Target Role: {roleName}");
             userPromptBuilder.AppendLine();
             
             userPromptBuilder.AppendLine("=== SFIA SKILL GAPS ===");
             userPromptBuilder.AppendLine(JsonSerializer.Serialize(gaps));
             userPromptBuilder.AppendLine();
+
+            if (!string.IsNullOrWhiteSpace(request.PersonalContext))
+            {
+                userPromptBuilder.AppendLine("=== CANDIDATE'S PERSONAL CONTEXT & PRIOR KNOWLEDGE ===");
+                userPromptBuilder.AppendLine(request.PersonalContext);
+                userPromptBuilder.AppendLine("Rule: Use this context to skip basic topics the candidate already knows, even if their current formal SFIA level is low. Tailor the learning tasks specifically to their actual starting point and context.");
+                userPromptBuilder.AppendLine();
+            }
             
             userPromptBuilder.AppendLine("Please generate a structured, highly personalized self-paced learning path following the SFIA progression rules.");
 
@@ -147,54 +187,95 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
         // ─────────────────────────────────────────────────────────────
         public async Task<ExtractSfiaProfileResponseDto> ExtractFromCvJdAsync(Guid candidateId, Guid matchScoreId)
         {
+            var matchScore = await _context.CvJobMatchScores.FirstOrDefaultAsync(m => m.Id == matchScoreId);
+            if (matchScore != null && !string.IsNullOrWhiteSpace(matchScore.SfiaExtractResult))
+            {
+                try
+                {
+                    var cached = JsonSerializer.Deserialize<ExtractSfiaProfileResponseDto>(matchScore.SfiaExtractResult, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (cached != null) return cached;
+                }
+                catch { /* Ignore and re-extract if parse fails */ }
+            }
+
             var matchContext = await BuildMatchContextAsync(candidateId, matchScoreId);
             if (string.IsNullOrWhiteSpace(matchContext))
                 throw new InvalidOperationException("Chưa có dữ liệu matching CV-JD.");
 
-            return await PerformExtractionAsync(matchContext, "CV-JD Matching");
+            var result = await PerformExtractionAsync(matchContext, "CV-JD Matching");
+
+            if (matchScore != null)
+            {
+                matchScore.SfiaExtractResult = JsonSerializer.Serialize(result);
+                await _context.SaveChangesAsync();
+            }
+
+            return result;
         }
 
         public async Task<ExtractSfiaProfileResponseDto> ExtractFromInterviewAsync(Guid candidateId, Guid sessionId)
         {
+            var session = await _context.InterviewSessions.FirstOrDefaultAsync(s => s.Id == sessionId);
+            if (session != null && !string.IsNullOrWhiteSpace(session.SfiaExtractResult))
+            {
+                try
+                {
+                    var cached = JsonSerializer.Deserialize<ExtractSfiaProfileResponseDto>(session.SfiaExtractResult, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (cached != null) return cached;
+                }
+                catch { /* Ignore and re-extract if parse fails */ }
+            }
+
             var interviewContext = await BuildInterviewContextAsync(candidateId, sessionId);
             if (string.IsNullOrWhiteSpace(interviewContext))
                 throw new InvalidOperationException("Chưa có dữ liệu phỏng vấn thử.");
 
-            return await PerformExtractionAsync(interviewContext, "Mock Interview");
+            var result = await PerformExtractionAsync(interviewContext, "Mock Interview");
+
+            if (session != null)
+            {
+                session.SfiaExtractResult = JsonSerializer.Serialize(result);
+                await _context.SaveChangesAsync();
+            }
+
+            return result;
         }
 
         private async Task<ExtractSfiaProfileResponseDto> PerformExtractionAsync(string contextText, string sourceName)
         {
-            var templates = await _context.TargetRoleTemplates
-                .Include(t => t.RequiredSkills)
-                .ThenInclude(rs => rs.SfiaSkill)
-                .ToListAsync();
+            var allSkills = await _context.SfiaSkills.ToListAsync();
+            var allSkillsJson = JsonSerializer.Serialize(allSkills.Select(s => new { s.SkillCode, s.SkillName }));
 
-            var templateListJson = JsonSerializer.Serialize(templates.Select(t => new
-            {
-                t.Id,
-                t.RoleName,
-                RequiredSkills = t.RequiredSkills.Select(rs => new { rs.SfiaSkill.SkillCode, rs.SfiaSkill.SkillName })
-            }));
+            var genericLevelsJson = JsonSerializer.Serialize(ITHunterview.Service.Constant.SfiaGenericLevels.Matrix.Select(x => new { Level = x.Key, Description = x.Value.Essence }));
 
             string systemPrompt = @"You are an expert IT career coach and data extractor.
 Analyze the candidate's skill gaps identified from their " + sourceName + @" context.
-You will be provided a list of available Target Role Templates and their Required Skills.
+You will be provided a list of all 147 SFIA skills AND a guide on SFIA Generic Levels (1-7).
 Your job is to:
-1. Select the BEST matching targetRoleTemplateId from the provided list that fits the candidate's context.
-2. For EACH required skill of the selected Target Role, estimate the candidate's CURRENT proficiency level (from 0 to 7, where 0 is no experience, 1-7 are SFIA levels). Use the context to make an educated guess.
+1. Define a highly relevant `customRoleName` based on the candidate's target job and context.
+2. Provide a short `customRoleDescription`.
+3. Identify the EXACT SFIA skills the candidate needs to develop or demonstrate to bridge the gaps identified in the context. DO NOT snap to predefined templates. Tailor this specifically to the context.
+4. For EACH identified skill, provide:
+   - `skillCode`: the SFIA skill code.
+   - `targetLevel`: the expected proficiency level for the role (1-7).
+   - `currentLevel`: estimate the candidate's CURRENT proficiency level (0-7).
+   - `justification`: brief reasoning for the gap and levels assigned.
 The result MUST be a valid JSON object strictly following this schema:
 {
-  ""targetRoleTemplateId"": ""GUID_HERE"",
-  ""currentSkills"": [
-    { ""skillCode"": ""..."", ""currentLevel"": 3 }
+  ""customRoleName"": ""..."",
+  ""customRoleDescription"": ""..."",
+  ""skills"": [
+    { ""skillCode"": ""..."", ""targetLevel"": 4, ""currentLevel"": 2, ""justification"": ""..."" }
   ]
 }
 Do NOT include any markdown blocks like ```json, just return the raw JSON object.";
 
             var userPromptBuilder = new StringBuilder();
-            userPromptBuilder.AppendLine("=== AVAILABLE TARGET ROLE TEMPLATES ===");
-            userPromptBuilder.AppendLine(templateListJson);
+            userPromptBuilder.AppendLine("=== ALL SFIA SKILLS ===");
+            userPromptBuilder.AppendLine(allSkillsJson);
+            userPromptBuilder.AppendLine();
+            userPromptBuilder.AppendLine("=== SFIA GENERIC LEVELS GUIDE ===");
+            userPromptBuilder.AppendLine(genericLevelsJson);
             userPromptBuilder.AppendLine();
             userPromptBuilder.AppendLine("=== CANDIDATE CONTEXT ===");
             userPromptBuilder.AppendLine(contextText);
@@ -209,8 +290,10 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
 
             try
             {
-                return JsonSerializer.Deserialize<ExtractSfiaProfileResponseDto>(aiResponseText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                var dto = JsonSerializer.Deserialize<ExtractSfiaProfileResponseDto>(aiResponseText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                        ?? throw new Exception("AI returned null object.");
+
+                return dto;
             }
             catch (Exception ex)
             {
@@ -296,42 +379,92 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
 
                 if (root.TryGetProperty("jdFit", out var jdFit))
                 {
-                    // Pool A - Technical skills
-                    if (jdFit.TryGetProperty("poolA", out var poolA))
+                    // Pool A & Pool B
+                    if (jdFit.TryGetProperty("poolA", out var poolA) && poolA.TryGetProperty("score", out var poolAScore))
+                        sb.AppendLine($"Technical Skills Score: {poolAScore}/70");
+                    if (jdFit.TryGetProperty("poolB", out var poolB) && poolB.TryGetProperty("score", out var poolBScore))
+                        sb.AppendLine($"Experience/Soft Skill Score: {poolBScore}/30");
+
+                    // Requirement Scores (Weak & Missing)
+                    if (jdFit.TryGetProperty("requirementScores", out var reqScores) && reqScores.ValueKind == JsonValueKind.Array)
                     {
-                        if (poolA.TryGetProperty("missingSkills", out var missingSkills))
-                            sb.AppendLine($"Missing Technical Skills: {missingSkills}");
+                        var weakReqs = reqScores.EnumerateArray()
+                            .Where(r => r.TryGetProperty("handlerScore", out var hs) && hs.GetDouble() < 0.8)
+                            .Select(r => 
+                            {
+                                var text = r.TryGetProperty("normalizedText", out var t) ? t.GetString() : "Unknown Skill";
+                                var score = r.TryGetProperty("handlerScore", out var s) ? s.GetDouble() : 0.0;
+                                var reason = r.TryGetProperty("reasoning", out var rs) ? rs.GetString() : "";
+                                return $"- {text} (Score: {score}): {reason}";
+                            })
+                            .ToList();
 
-                        if (poolA.TryGetProperty("weakSkills", out var weakSkills))
-                            sb.AppendLine($"Weak Technical Skills: {weakSkills}");
+                        if (weakReqs.Any())
+                        {
+                            sb.AppendLine("Identified Skill Gaps & Weaknesses:");
+                            sb.AppendLine(string.Join("\n", weakReqs));
+                        }
 
-                        if (poolA.TryGetProperty("score", out var poolAScore))
-                            sb.AppendLine($"Technical Skills Score: {poolAScore}/40");
+                        var strongReqs = reqScores.EnumerateArray()
+                            .Where(r => r.TryGetProperty("handlerScore", out var hs) && hs.GetDouble() >= 0.8)
+                            .Select(r => 
+                            {
+                                var text = r.TryGetProperty("normalizedText", out var t) ? t.GetString() : "Unknown Skill";
+                                var score = r.TryGetProperty("handlerScore", out var s) ? s.GetDouble() : 0.0;
+                                var reason = r.TryGetProperty("reasoning", out var rs) ? rs.GetString() : "";
+                                return $"- {text} (Score: {score}): {reason}";
+                            })
+                            .ToList();
+
+                        if (strongReqs.Any())
+                        {
+                            sb.AppendLine("Identified Strengths & Mastered Skills:");
+                            sb.AppendLine(string.Join("\n", strongReqs));
+                        }
                     }
 
-                    // Pool B - Soft skills / experience
-                    if (jdFit.TryGetProperty("poolB", out var poolB))
+                    // Narrative
+                    if (jdFit.TryGetProperty("narrative", out var narrative))
                     {
-                        if (poolB.TryGetProperty("gaps", out var gaps))
-                            sb.AppendLine($"Experience/Soft Skill Gaps: {gaps}");
+                        var narrativeStr = narrative.GetString();
+                        if (!string.IsNullOrWhiteSpace(narrativeStr))
+                            sb.AppendLine($"AI Narrative Assessment: {narrativeStr}");
+                    }
 
-                        if (poolB.TryGetProperty("score", out var poolBScore))
-                            sb.AppendLine($"Experience/Soft Skill Score: {poolBScore}/60");
+                    // Critical Gaps
+                    if (jdFit.TryGetProperty("criticalGaps", out var criticalGaps) && criticalGaps.ValueKind == JsonValueKind.Array)
+                    {
+                        var gaps = criticalGaps.EnumerateArray()
+                            .Select(g => g.TryGetProperty("gapDescription", out var desc) ? desc.GetString() : null)
+                            .Where(d => !string.IsNullOrWhiteSpace(d))
+                            .ToList();
+                        if (gaps.Any())
+                            sb.AppendLine($"Critical Gaps: {string.Join("; ", gaps)}");
                     }
 
                     // Penalties
-                    if (jdFit.TryGetProperty("penalties", out var penalties) &&
-                        penalties.ValueKind == JsonValueKind.Array)
+                    if (jdFit.TryGetProperty("penalties", out var penalties) && penalties.ValueKind == JsonValueKind.Array)
                     {
                         var triggeredPenalties = penalties.EnumerateArray()
                             .Where(p => p.TryGetProperty("triggered", out var t) && t.GetBoolean())
-                            .Select(p => p.TryGetProperty("reason", out var r) ? r.GetString() : null)
-                            .Where(r => r != null)
+                            .Select(p => p.TryGetProperty("evidence", out var e) ? e.GetString() : null)
+                            .Where(e => !string.IsNullOrWhiteSpace(e))
                             .ToList();
 
                         if (triggeredPenalties.Any())
-                            sb.AppendLine($"Penalty Reasons: {string.Join("; ", triggeredPenalties)}");
+                            sb.AppendLine($"Penalty Evidence: {string.Join("; ", triggeredPenalties)}");
                     }
+                }
+
+                // Improvements (Root level)
+                if (root.TryGetProperty("improvements", out var improvements) && improvements.ValueKind == JsonValueKind.Array)
+                {
+                    var issues = improvements.EnumerateArray()
+                        .Select(i => i.TryGetProperty("issue", out var issue) ? issue.GetString() : null)
+                        .Where(i => !string.IsNullOrWhiteSpace(i))
+                        .ToList();
+                    if (issues.Any())
+                        sb.AppendLine($"Areas for Improvement: {string.Join("; ", issues)}");
                 }
                 else if (root.TryGetProperty("Method", out var methodProp) && methodProp.GetString() == "Hardcode")
                 {

@@ -31,7 +31,11 @@ namespace ITHunterview.Domain.Entities
         [Column("description")]
         public string Description { get; set; } = string.Empty;
 
+        [Column("available_levels")]
+        public string AvailableLevels { get; set; } = string.Empty;
+
         // Relation
+        public virtual ICollection<SfiaSkillLevel> Levels { get; set; } = new List<SfiaSkillLevel>();
         public virtual ICollection<TargetRoleSkill> TargetRoleSkills { get; set; } = new List<TargetRoleSkill>();
     }
 }

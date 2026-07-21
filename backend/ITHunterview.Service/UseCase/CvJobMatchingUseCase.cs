@@ -209,6 +209,14 @@ namespace ITHunterview.Service.UseCase
 
             foreach (var job in jobs)
             {
+                var existingScore = await _context.CvJobMatchScores
+                    .FirstOrDefaultAsync(s => s.CvId == cvId && s.JobId == job.Id && s.UserId == userId);
+
+                if (existingScore != null && existingScore.Status != "Pending")
+                {
+                    continue;
+                }
+
                 var titleScore = CalculateComponentScore(cv.TitleEmbedding, job.TitleEmbedding);
                 var skillsScore = CalculateComponentScore(cv.SkillsEmbedding, job.SkillsEmbedding);
                 var expScore = CalculateComponentScore(cv.ExperienceEmbedding, job.ExperienceEmbedding);
@@ -229,14 +237,12 @@ namespace ITHunterview.Service.UseCase
                     Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m }
                 });
 
-                var existingScore = await _context.CvJobMatchScores
-                    .FirstOrDefaultAsync(s => s.CvId == cvId && s.JobId == job.Id && s.UserId == userId);
-
                 if (existingScore != null)
                 {
                     existingScore.MatchScore = finalScore;
                     existingScore.UpdatedAt = DateTime.UtcNow;
                     existingScore.MatchDetails = details;
+                    existingScore.Status = "Completed";
                 }
                 else
                 {
@@ -249,6 +255,7 @@ namespace ITHunterview.Service.UseCase
                         RawJdText = job.Title,
                         MatchScore = finalScore,
                         MatchDetails = details,
+                        Status = "Completed",
                         UpdatedAt = DateTime.UtcNow
                     });
                 }
@@ -270,6 +277,14 @@ namespace ITHunterview.Service.UseCase
 
             foreach (var cv in cvs)
             {
+                var existingScore = await _context.CvJobMatchScores
+                    .FirstOrDefaultAsync(s => s.CvId == cv.Id && s.JobId == jobId && s.UserId == userId);
+
+                if (existingScore != null && existingScore.Status != "Pending")
+                {
+                    continue;
+                }
+
                 var titleScore = CalculateComponentScore(cv.TitleEmbedding, job.TitleEmbedding);
                 var skillsScore = CalculateComponentScore(cv.SkillsEmbedding, job.SkillsEmbedding);
                 var expScore = CalculateComponentScore(cv.ExperienceEmbedding, job.ExperienceEmbedding);
@@ -290,14 +305,12 @@ namespace ITHunterview.Service.UseCase
                     Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m }
                 });
 
-                var existingScore = await _context.CvJobMatchScores
-                    .FirstOrDefaultAsync(s => s.CvId == cv.Id && s.JobId == jobId && s.UserId == userId);
-
                 if (existingScore != null)
                 {
                     existingScore.MatchScore = finalScore;
                     existingScore.UpdatedAt = DateTime.UtcNow;
                     existingScore.MatchDetails = details;
+                    existingScore.Status = "Completed";
                 }
                 else
                 {
@@ -310,6 +323,7 @@ namespace ITHunterview.Service.UseCase
                         RawJdText = job.Title,
                         MatchScore = finalScore,
                         MatchDetails = details,
+                        Status = "Completed",
                         UpdatedAt = DateTime.UtcNow
                     });
                 }
@@ -365,9 +379,22 @@ namespace ITHunterview.Service.UseCase
                         if (cv != null)
                         {
                             if (!string.IsNullOrWhiteSpace(cv.ParsedData))
+                            {
                                 cvText = cv.ParsedData;
+                            }
+                            else if (!string.IsNullOrWhiteSpace(cv.RawText))
+                            {
+                                cvText = cv.RawText;
+                            }
                             else if (!string.IsNullOrWhiteSpace(cv.FileUrl))
+                            {
+                                _logger.LogInformation("[INFO] CV RawText is empty in Matching. Extracting from URL: {Url}", cv.FileUrl);
                                 cvText = await _cvTextExtractorService.ExtractTextFromUrlAsync(cv.FileUrl);
+                                
+                                cv.RawText = cvText;
+                                _context.Cvs.Update(cv);
+                                await _context.SaveChangesAsync();
+                            }
                         }
                     }
                 }
@@ -697,8 +724,10 @@ namespace ITHunterview.Service.UseCase
             var query = from s in _context.CvJobMatchScores
                         join c in _context.Cvs on s.CvId equals c.Id into cvs
                         from c in cvs.DefaultIfEmpty()
+                        join j in _context.JobPostings on s.JobId equals j.Id into jobs
+                        from j in jobs.DefaultIfEmpty()
                         where s.UserId == userId
-                        select new { Score = s, Cv = c };
+                        select new { Score = s, Cv = c, Job = j };
 
             if (cvId.HasValue)
             {
@@ -717,7 +746,7 @@ namespace ITHunterview.Service.UseCase
                 CvFileName = x.Cv?.FileName ?? x.Score.CvFileName ?? "Unknown CV",
                 FileUrl = x.Cv?.FileUrl,
                 SourceJobId = x.Score.JobId,
-                JdTitle = x.Score.JdTitle,
+                JdTitle = x.Job?.Title ?? x.Score.JdTitle ?? x.Score.RawJdText,
                 MatchScore = x.Score.MatchScore,
                 Status = x.Score.Status,
                 ErrorMessage = x.Score.ErrorMessage,
@@ -768,6 +797,20 @@ namespace ITHunterview.Service.UseCase
                 Page = page,
                 PageSize = pageSize
             };
+        }
+
+        public async Task DeleteMatchHistoryAsync(Guid jobId, Guid userId)
+        {
+            var matchRecord = await _context.CvJobMatchScores
+                .FirstOrDefaultAsync(m => m.Id == jobId && m.UserId == userId);
+
+            if (matchRecord == null)
+            {
+                throw new KeyNotFoundException("Match history not found or you do not have permission to delete it.");
+            }
+
+            _context.CvJobMatchScores.Remove(matchRecord);
+            await _context.SaveChangesAsync();
         }
     }
 }

@@ -20,17 +20,20 @@ namespace ITHunterview.WebAPI.Controllers
         private readonly ICvJobMatchingUseCase _cvJobMatchingUseCase;
         private readonly IHardcodeCvJobMatchingUseCase _hardcodeCvJobMatchingUseCase;
         private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService _cvTextExtractorService;
 
         public CvController(
             ICvUseCase cvUseCase, 
             ICvJobMatchingUseCase cvJobMatchingUseCase,
             IHardcodeCvJobMatchingUseCase hardcodeCvJobMatchingUseCase,
-            IServiceScopeFactory serviceScopeFactory)
+            IServiceScopeFactory serviceScopeFactory,
+            ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService cvTextExtractorService)
         {
             _cvUseCase = cvUseCase;
             _cvJobMatchingUseCase = cvJobMatchingUseCase;
             _hardcodeCvJobMatchingUseCase = hardcodeCvJobMatchingUseCase;
             _serviceScopeFactory = serviceScopeFactory;
+            _cvTextExtractorService = cvTextExtractorService;
         }
 
         [HttpPost]
@@ -129,6 +132,24 @@ namespace ITHunterview.WebAPI.Controllers
             }
         }
 
+        [HttpPost("extract-text")]
+        public async Task<ActionResult<ResponseBase<string>>> ExtractText(Microsoft.AspNetCore.Http.IFormFile file)
+        {
+            if (file == null || file.Length == 0) return BadRequest(new ResponseBase<string>("", "No file provided"));
+            try
+            {
+                using var ms = new System.IO.MemoryStream();
+                await file.CopyToAsync(ms);
+                var jsonParsedData = await _cvTextExtractorService.ExtractParsedDataFromBytesAsync(ms.ToArray(), file.ContentType, file.FileName);
+                return Ok(new ResponseBase<string>(jsonParsedData, "CV parsed successfully"));
+            }
+            catch (Exception ex)
+
+            {
+                return BadRequest(new ResponseBase<string>("", ex.Message));
+            }
+        }
+
         [HttpGet("match-results/{jobId:guid}")]
         public async Task<ActionResult<ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.MatchingResultDto>>> GetMatchResult(Guid jobId)
         {
@@ -184,6 +205,30 @@ namespace ITHunterview.WebAPI.Controllers
 
             var result = await _cvJobMatchingUseCase.GetMatchHistoryAsync(userId, page, pageSize, cvId);
             return Ok(new ResponseBase<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>(result, "Match history retrieved"));
+        }
+
+        [HttpDelete("match-history/{jobId:guid}")]
+        public async Task<ActionResult<ResponseBase<string>>> DeleteMatchHistory(Guid jobId)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+                await _cvJobMatchingUseCase.DeleteMatchHistoryAsync(jobId, userId);
+                return Ok(new ResponseBase<string>("Match history deleted successfully", "Match history deleted successfully"));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new ResponseBase<string>("Match history not found"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ResponseBase<string>(null, ex.Message));
+            }
         }
         [HttpPost("{id:guid}/match-jobs-hardcode")]
         public async Task<ActionResult<ResponseBase<string>>> MatchJobsHardcode(Guid id)

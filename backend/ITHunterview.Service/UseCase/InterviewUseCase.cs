@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Interview;
@@ -11,6 +13,7 @@ using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Utils;
+using ITHunterview.Service.Infrastructure.Persistence;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -23,6 +26,7 @@ namespace ITHunterview.Service.UseCase
         private readonly IAiService _aiService;
         private readonly ICvTextExtractorService _cvTextExtractorService;
         private readonly IPromptManagementService _promptManagementService;
+        private readonly ITHunterviewContext _context;
 
         public InterviewUseCase(
             IInterviewSessionRepository sessionRepository,
@@ -31,7 +35,8 @@ namespace ITHunterview.Service.UseCase
             IJobPostingRepository jobPostingRepository,
             IAiService aiService,
             ICvTextExtractorService cvTextExtractorService,
-            IPromptManagementService promptManagementService)
+            IPromptManagementService promptManagementService,
+            ITHunterviewContext context)
         {
             _sessionRepository = sessionRepository;
             _answerRepository = answerRepository;
@@ -40,6 +45,7 @@ namespace ITHunterview.Service.UseCase
             _aiService = aiService;
             _cvTextExtractorService = cvTextExtractorService;
             _promptManagementService = promptManagementService;
+            _context = context;
         }
 
         public async Task<List<InterviewSessionDto>> GetCandidateSessionsAsync(Guid candidateId)
@@ -136,10 +142,27 @@ namespace ITHunterview.Service.UseCase
                 CreatedAt = a.CreatedAt
             }).ToList();
 
+            InterviewReportDto? reportDto = null;
+            if (session.Status == InterviewSessionStatus.COMPLETED)
+            {
+                var report = await GenerateSessionReportAsync(sessionId, candidateId);
+                if (report != null)
+                {
+                    reportDto = new InterviewReportDto
+                    {
+                        Id = report.Id,
+                        SessionId = report.SessionId,
+                        TotalScore = report.TotalScore,
+                        OverallFeedback = report.OverallFeedback
+                    };
+                }
+            }
+
             return new InterviewSessionDetailDto
             {
                 Session = sessionDto,
-                Messages = messages
+                Messages = messages,
+                Report = reportDto
             };
         }
 
@@ -150,13 +173,49 @@ namespace ITHunterview.Service.UseCase
                 ? await _aiService.GetActiveProviderNameAsync()
                 : dto.AiProvider;
 
+            // Fetch Job details first if JobId is provided to determine DifficultyLevel
+            string jobContext = "Chưa có thông tin công việc (JD).";
+            string jobTitle = "";
+            var resolvedDifficulty = dto.DifficultyLevel;
+
+            if (dto.JobId.HasValue)
+            {
+                var job = await _jobPostingRepository.GetByIdAsync(dto.JobId.Value);
+                if (job != null)
+                {
+                    jobTitle = job.Title ?? "";
+                    jobContext = $"Title: {job.Title}\nDescription: {job.Description}\nRequirements: {job.Requirements}";
+                    
+                    if (!string.IsNullOrWhiteSpace(job.Level))
+                    {
+                        string lvl = job.Level.ToLower();
+                        if (lvl.Contains("intern") || lvl.Contains("fresher"))
+                        {
+                            resolvedDifficulty = DifficultyLevel.EASY;
+                        }
+                        else if (lvl.Contains("senior") || lvl.Contains("lead") || lvl.Contains("architect") || lvl.Contains("principal"))
+                        {
+                            resolvedDifficulty = DifficultyLevel.HARD;
+                        }
+                        else
+                        {
+                            resolvedDifficulty = DifficultyLevel.MEDIUM;
+                        }
+                    }
+                    else
+                    {
+                        resolvedDifficulty = DifficultyLevel.MEDIUM; // Default if level is empty in JD
+                    }
+                }
+            }
+
             var session = new InterviewSessions
             {
                 Id = Guid.NewGuid(),
                 CandidateId = candidateId,
                 JobId = dto.JobId,
                 CvId = dto.CvId,
-                DifficultyLevel = dto.DifficultyLevel,
+                DifficultyLevel = resolvedDifficulty,
                 Status = InterviewSessionStatus.IN_PROGRESS,
                 StartedAt = DateTime.UtcNow,
                 AiProvider = provider
@@ -165,7 +224,7 @@ namespace ITHunterview.Service.UseCase
             await _sessionRepository.AddAsync(session);
             await _sessionRepository.SaveChangesAsync();
 
-            // Fetch context CV / Job details to inject in prompt
+            // Fetch context CV details to inject in prompt
             string cvContext = "Chưa có thông tin CV.";
             string cvFileName = "";
             if (dto.CvId.HasValue)
@@ -174,7 +233,11 @@ namespace ITHunterview.Service.UseCase
                 if (cv != null)
                 {
                     cvFileName = cv.FileName ?? "";
-                    if (!string.IsNullOrWhiteSpace(cv.ParsedData))
+                    if (!string.IsNullOrWhiteSpace(cv.RawText))
+                    {
+                        cvContext = cv.RawText;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(cv.ParsedData))
                     {
                         cvContext = cv.ParsedData;
                     }
@@ -182,11 +245,11 @@ namespace ITHunterview.Service.UseCase
                     {
                         try
                         {
-                            Console.WriteLine($"[INFO] CV ParsedData is empty. Extracting text from URL: {cv.FileUrl}");
+                            Console.WriteLine($"[INFO] CV RawText is empty. Extracting text from URL: {cv.FileUrl}");
                             var extractedText = await _cvTextExtractorService.ExtractTextFromUrlAsync(cv.FileUrl);
                             if (!string.IsNullOrWhiteSpace(extractedText))
                             {
-                                cv.ParsedData = extractedText;
+                                cv.RawText = extractedText;
                                 await _cvRepository.UpdateAsync(cv);
                                 cvContext = extractedText;
                             }
@@ -205,46 +268,29 @@ namespace ITHunterview.Service.UseCase
             Console.WriteLine(cvContext.Length > 1000 ? cvContext.Substring(0, 1000) + "\n...[TRUNCATED FOR LOG]..." : cvContext);
             Console.WriteLine("=========================================================================");
 
-            string jobContext = "Chưa có thông tin công việc (JD).";
-            string jobTitle = "";
-            if (dto.JobId.HasValue)
-            {
-                var job = await _jobPostingRepository.GetByIdAsync(dto.JobId.Value);
-                if (job != null)
-                {
-                    jobTitle = job.Title ?? "";
-                    jobContext = $"Title: {job.Title}\nDescription: {job.Description}\nRequirements: {job.Requirements}";
-                }
-            }
-
             // Phân loại Role & Seniority và trích xuất câu hỏi mẫu từ Rubric
             string role = DetermineRole(jobTitle, cvFileName, cvContext);
-            var sampleQuestions = GetSampleQuestions(role, dto.DifficultyLevel);
+            var sampleQuestions = GetSampleQuestions(role, resolvedDifficulty);
             string rubricContext = sampleQuestions.Count > 0
                 ? "Dưới đây là một số câu hỏi mẫu từ bộ quy chuẩn đánh giá của ITHunterView để bạn tham khảo phong cách, độ khó và nội dung:\n- " + string.Join("\n- ", sampleQuestions)
                 : "";
 
-            // Prompt chào hỏi và câu hỏi đầu tiên (Skills #1)
-            // var variables = new Dictionary<string, string>
-            // {
-            //     { "DIFFICULTY_LEVEL", dto.DifficultyLevel.ToString() },
-            //     { "ROLE", role },
-            //     { "CV_TEXT", cvContext },
-            //     { "JD_TEXT", jobContext },
-            //     { "RUBRIC_CONTEXT", rubricContext }
-            // };
+            string levelString = resolvedDifficulty switch
+            {
+                DifficultyLevel.EASY => "Intern / Fresher",
+                DifficultyLevel.MEDIUM => "Middle",
+                DifficultyLevel.HARD => "Senior",
+                _ => "Junior"
+            };
+            int totalQuestions = 7;
 
-            // var systemPrompt = await _promptManagementService.GetActivePromptContentWithVariablesAsync("MOCK_INTERVIEW_START", variables);
-            
-            // if (string.IsNullOrWhiteSpace(systemPrompt))
-            // {
-            //     throw new Exception("Active Prompt for MOCK_INTERVIEW_START not found.");
-            // }
-             var systemPrompt = $"Bạn là một người phỏng vấn IT tuyển dụng chuyên nghiệp. Nhiệm vụ của bạn là thực hiện một buổi phỏng vấn thử (mock interview) gồm đúng 6 câu hỏi ở cấp độ {dto.DifficultyLevel} (Role: {role}).\n\n" +
+             var systemPrompt = $"Bạn là một người phỏng vấn IT tuyển dụng chuyên nghiệp. Nhiệm vụ của bạn là thực hiện một buổi phỏng vấn thử (mock interview) gồm đúng {totalQuestions} câu hỏi cho cấp độ ứng viên: {levelString} (Role: {role}).\n\n" +
                                $"LỘ TRÌNH PHỎNG VẤN:\n" +
-                               $"1. Câu 1 & 2: Kỹ năng chuyên môn / Soft skills (Skills)\n" +
-                               $"2. Câu 3 & 4: Kinh nghiệm thực tế / Dự án (Experience)\n" +
-                               $"3. Câu 5 & 6: Tình huống thực tế / Mức độ phù hợp với JD (JD & CV Match)\n\n" +
+                               $"Phần 1: Giới thiệu bản thân (Câu 1)\n" +
+                               $"Phần 2: Câu hỏi kiến thức\n" +
+                               $"Phần 3: Câu hỏi kinh nghiệm & dự án\n" +
+                               $"Phần 4: Kỹ năng mềm / Xử lý tình huống\n" +
+                               $"Phần 5: Hiểu biết về công ty (Câu {totalQuestions})\n\n" +
                                $"THÔNG TIN BỐ CẢNH:\n" +
                                $"--- START CV ---\n{cvContext}\n--- END CV ---\n\n" +
                                $"--- START JD ---\n{jobContext}\n--- END JD ---\n\n" +
@@ -252,8 +298,8 @@ namespace ITHunterview.Service.UseCase
                                $"LƯU Ý QUAN TRỌNG VỀ TÌNH HUỐNG LỆCH CÔNG NGHỆ:\n" +
                                $"- Hãy đối chiếu kỹ CV và JD. Nếu có sự lệch công nghệ lớn (ví dụ: JD yêu cầu .NET nhưng CV chỉ có Java), bạn PHẢI nhận biết được điều này và chuẩn bị các câu hỏi tình huống thích ứng công nghệ mới ở các câu tiếp theo.\n\n" +
                                $"YÊU CẦU CHO CÂU HỎI 1:\n" +
-                               $"- Đây là câu hỏi số 1/6 (Chủ đề: Kỹ năng chuyên môn / Soft skills).\n" +
-                               $"- Hãy đưa ra lời chào đón ứng viên thân thiện từ hệ thống ITHunterView, sau đó đặt câu hỏi đầu tiên về Kỹ năng chuyên môn hoặc Kỹ năng mềm phù hợp.\n" +
+                               $"- Đây là câu hỏi số 1/{totalQuestions} (Chủ đề: Phần 1 - Giới thiệu bản thân).\n" +
+                               $"- Hãy bắt đầu bằng lời chào mừng ứng viên ứng tuyển vào vị trí (dựa vào tiêu đề JD) từ hệ thống ITHunterView, sau đó mời ứng viên giới thiệu tổng quan về bản thân.\n" +
                                $"- Chỉ hỏi DUY NHẤT một câu hỏi chính trong mỗi lượt chat.\n" +
                                $"- Trả lời ngắn gọn bằng tiếng Việt.";
 
@@ -306,10 +352,6 @@ namespace ITHunterview.Service.UseCase
                 throw new InvalidOperationException("No active question waiting for response.");
             }
 
-            // Update candidate reply
-            activeTurn.CandidateTranscript = dto.Message;
-            await _answerRepository.UpdateAsync(activeTurn);
-
             // Fetch context CV / Job details to inject in prompt
             string cvContext = "Chưa có thông tin CV.";
             string cvFileName = "";
@@ -319,7 +361,11 @@ namespace ITHunterview.Service.UseCase
                 if (cv != null)
                 {
                     cvFileName = cv.FileName ?? "";
-                    if (!string.IsNullOrWhiteSpace(cv.ParsedData))
+                    if (!string.IsNullOrWhiteSpace(cv.RawText))
+                    {
+                        cvContext = cv.RawText;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(cv.ParsedData))
                     {
                         cvContext = cv.ParsedData;
                     }
@@ -327,11 +373,11 @@ namespace ITHunterview.Service.UseCase
                     {
                         try
                         {
-                            Console.WriteLine($"[INFO] CV ParsedData is empty. Extracting text from URL: {cv.FileUrl}");
+                            Console.WriteLine($"[INFO] CV RawText is empty. Extracting text from URL: {cv.FileUrl}");
                             var extractedText = await _cvTextExtractorService.ExtractTextFromUrlAsync(cv.FileUrl);
                             if (!string.IsNullOrWhiteSpace(extractedText))
                             {
-                                cv.ParsedData = extractedText;
+                                cv.RawText = extractedText;
                                 await _cvRepository.UpdateAsync(cv);
                                 cvContext = extractedText;
                             }
@@ -373,106 +419,111 @@ namespace ITHunterview.Service.UseCase
             var history = await _answerRepository.GetBySessionIdAsync(sessionId);
             int questionIndex = history.Count; // Số câu hỏi đã được hỏi & trả lời (tính cả câu vừa trả lời)
 
-            // Build conversation history
-            var historyText = string.Join("\n\n", history.Select(h => 
-                $"AI Question: {h.QuestionText}\nCandidate Answer: {h.CandidateTranscript ?? "(Chưa trả lời)"}"));
+            // Build conversation history in-memory (using the unsaved dto.Message for the active turn)
+            var historyLines = new System.Collections.Generic.List<string>();
+            foreach (var h in history)
+            {
+                if (h.Id == activeTurn.Id)
+                {
+                    historyLines.Add($"AI Question: {h.QuestionText}\nCandidate Answer: {dto.Message}");
+                }
+                else
+                {
+                    historyLines.Add($"AI Question: {h.QuestionText}\nCandidate Answer: {h.CandidateTranscript ?? "(Chưa trả lời)"}");
+                }
+            }
+            var historyText = string.Join("\n\n", historyLines);
+
+            string levelString = session.DifficultyLevel switch
+            {
+                DifficultyLevel.EASY => "Intern / Fresher",
+                DifficultyLevel.MEDIUM => "Middle",
+                DifficultyLevel.HARD => "Senior",
+                _ => "Junior"
+            };
+            int totalQuestions = 7;
 
             // Định nghĩa hướng dẫn động cho từng câu hỏi tiếp theo
-            string questionInstruction = "";
-            if (questionIndex == 1) // Cần sinh Q2
-            {
-                questionInstruction = "ĐÂY LÀ LƯỢT HỎI SỐ 2/6 (Chủ đề: Kỹ năng chuyên môn / Soft skills).\n" +
-                                      "- Bạn hãy nhận xét ngắn gọn câu trả lời vừa rồi của ứng viên (2-3 câu).\n" +
-                                      "- Đặt câu hỏi tiếp theo (Q2) về Kỹ năng chuyên môn hoặc Kỹ năng mềm khác phù hợp.";
-            }
-            else if (questionIndex == 2) // Cần sinh Q3
-            {
-                questionInstruction = "ĐÂY LÀ LƯỢT HỎI SỐ 3/6 (Chủ đề: Kinh nghiệm thực tế / Dự án).\n" +
-                                      "- Bạn hãy nhận xét ngắn gọn câu trả lời vừa rồi của ứng viên (2-3 câu).\n" +
-                                      "- Đặt câu hỏi tiếp theo (Q3) khai thác sâu hơn về dự án thực tế trong CV của họ hoặc cách họ xử lý khó khăn kỹ thuật.";
-            }
-            else if (questionIndex == 3) // Cần sinh Q4
-            {
-                questionInstruction = "ĐÂY LÀ LƯỢT HỎI SỐ 4/6 (Chủ đề: Kinh nghiệm thực tế / Dự án).\n" +
-                                      "- Bạn hãy nhận xét ngắn gọn câu trả lời vừa rồi của ứng viên (2-3 câu).\n" +
-                                      "- Đặt câu hỏi tiếp theo (Q4) hỏi thêm một khía cạnh về quy trình làm việc, tối ưu hiệu năng, clean code hoặc thiết kế hệ thống.";
-            }
-            else if (questionIndex == 4) // Cần sinh Q5
-            {
-                questionInstruction = "ĐÂY LÀ LƯỢT HỎI SỐ 5/6 (Chủ đề: Tình huống / Mức độ phù hợp với JD).\n" +
-                                      "- Hãy đối chiếu CV của ứng viên với các yêu cầu của JD. " +
-                                      "Nếu có sự lệch công nghệ lớn (ví dụ: JD yêu cầu .NET nhưng CV chỉ có Java), bạn hãy đưa ra câu hỏi tình huống: \"Mặc dù CV của bạn chủ yếu là Java, nhưng vị trí này yêu cầu .NET, bạn sẽ tiếp cận/tự học như thế nào?\" hoặc tương tự. " +
-                                      "Nếu không có lệch công nghệ lớn, hãy đặt câu hỏi tình huống thực tế khó để kiểm tra sự phù hợp của họ với các yêu cầu khác trong JD.\n" +
-                                      "- Đặt câu hỏi tiếp theo (Q5) theo hướng dẫn trên.";
-            }
-            else if (questionIndex == 5) // Cần sinh Q6
-            {
-                questionInstruction = "ĐÂY LÀ LƯỢT HỎI SỐ 6/6 (Chủ đề: Tình huống / Mức độ phù hợp với JD).\n" +
-                                      "- Bạn hãy nhận xét ngắn gọn câu trả lời vừa rồi của ứng viên (2-3 câu).\n" +
-                                      "- Đặt câu hỏi tình huống cuối cùng (Q6) để hoàn tất buổi phỏng vấn.";
-            }
-            else // questionIndex >= 6, đã trả lời xong câu số 6
+            string questionInstruction = "QUY TẮC QUAN TRỌNG: Mọi câu hỏi bạn đặt ra BẮT BUỘC phải dựa trên bối cảnh thực tế từ CV của ứng viên hoặc yêu cầu của JD. TUYỆT ĐỐI KHÔNG hỏi các câu lý thuyết chung chung như trong sách giáo khoa nếu không liên kết với một kỹ năng/dự án trong CV. Bạn có thể hỏi follow-up 1 câu với câu trước nếu ứng viên trả lời chưa rõ.\n\n";
+            
+            if (questionIndex >= totalQuestions)
             {
                 questionInstruction = "ĐÂY LÀ LƯỢT ĐÁNH GIÁ CUỐI CÙNG (Buổi phỏng vấn kết thúc).\n" +
-                                      "- Ứng viên đã hoàn thành toàn bộ 6 câu hỏi.\n" +
-                                      "- Nhận xét chi tiết và mang tính xây dựng tổng quát cho toàn bộ buổi phỏng vấn (ở trường 'feedback').\n" +
-                                      "- Ở trường 'next_question', hãy trả về câu chào tạm biệt lịch sự từ ITHunterView và thông báo rằng buổi phỏng vấn thử đã kết thúc thành công.";
+                                      $"- Ứng viên đã hoàn thành toàn bộ {totalQuestions} câu hỏi.\n" +
+                                      "- Nhận xét chi tiết và mang tính xây dựng tổng quát cho toàn bộ buổi phỏng vấn (ở trường 'general_feedback').\n" +
+                                      "- Ở trường 'next_question', hãy trả về câu chào tạm biệt lịch sự từ hệ thống ITHunterView và thông báo rằng buổi phỏng vấn thử đã kết thúc thành công.";
+            }
+            else
+            {
+                string currentSection = "";
+                string sectionInstruction = "";
+
+                if (session.DifficultyLevel == DifficultyLevel.EASY)
+                {
+                    if (questionIndex >= 1 && questionIndex <= 3) {
+                        currentSection = "Phần 2 - Câu hỏi kiến thức";
+                        sectionInstruction = "Hãy đặt một câu kiểm tra kiến thức chuyên môn, ưu tiên nền tảng lý thuyết cơ bản.";
+                    } else if (questionIndex == 4) {
+                        currentSection = "Phần 3 - Câu hỏi kinh nghiệm & dự án";
+                        sectionInstruction = "Hãy hỏi về đồ án, bài tập lớn, quá trình tự học hoặc dự án thực tế trong CV.";
+                    } else if (questionIndex == 5) {
+                        currentSection = "Phần 4 - Kỹ năng mềm / Xử lý tình huống";
+                        sectionInstruction = "Đánh giá khả năng làm việc nhóm, xử lý vấn đề cơ bản trong công việc/đồ án.";
+                    } else if (questionIndex == 6) {
+                        currentSection = "Phần 5 - Hiểu biết về công ty";
+                        sectionInstruction = "Đánh giá mức độ tìm hiểu và sự phù hợp của ứng viên với công ty.";
+                    }
+                }
+                else if (session.DifficultyLevel == DifficultyLevel.MEDIUM)
+                {
+                    if (questionIndex == 1 || questionIndex == 2) {
+                        currentSection = "Phần 2 - Câu hỏi kiến thức";
+                        sectionInstruction = "Kiểm tra kiến thức chuyên môn, đòi hỏi ứng viên biết cách áp dụng vào thực tế công việc.";
+                    } else if (questionIndex == 3 || questionIndex == 4) {
+                        currentSection = "Phần 3 - Câu hỏi kinh nghiệm & dự án";
+                        sectionInstruction = "Đào sâu vào kinh nghiệm thực tế, đánh giá khả năng giải quyết vấn đề và ra quyết định kỹ thuật.";
+                    } else if (questionIndex == 5) {
+                        currentSection = "Phần 4 - Kỹ năng mềm / Xử lý tình huống";
+                        sectionInstruction = "Đánh giá kỹ năng mềm, khả năng ra quyết định và xử lý vấn đề trong môi trường làm việc.";
+                    } else if (questionIndex == 6) {
+                        currentSection = "Phần 5 - Hiểu biết về công ty";
+                        sectionInstruction = "Đánh giá mức độ tìm hiểu, sự phù hợp với sản phẩm và văn hóa công ty.";
+                    }
+                }
+                else // HARD -> Senior
+                {
+                    if (questionIndex == 1) {
+                        currentSection = "Phần 2 - Câu hỏi kiến thức";
+                        sectionInstruction = "Bỏ qua kiến thức cơ bản, hỏi kiến thức chuyên sâu (ví dụ: system design, trade-off kỹ thuật) hoặc lồng vào kinh nghiệm.";
+                    } else if (questionIndex >= 2 && questionIndex <= 4) {
+                        currentSection = "Phần 3 - Câu hỏi kinh nghiệm & dự án";
+                        sectionInstruction = "Hỏi trọng tâm vào độ phức tạp của dự án đã xử lý, vai trò lãnh đạo/mentor, khả năng ra quyết định chiến lược.";
+                    } else if (questionIndex == 5) {
+                        currentSection = "Phần 4 - Kỹ năng mềm / Xử lý tình huống";
+                        sectionInstruction = "Đánh giá kỹ năng mềm ở mức độ Senior: quản lý rủi ro, giải quyết xung đột, tư duy chiến lược.";
+                    } else if (questionIndex == 6) {
+                        currentSection = "Phần 5 - Hiểu biết về công ty";
+                        sectionInstruction = "Hỏi về định hướng phát triển trong môi trường công ty, khả năng đóng góp vào tầm nhìn chung.";
+                    }
+                }
+
+                questionInstruction += $"ĐÂY LÀ LƯỢT HỎI SỐ {questionIndex + 1}/{totalQuestions} ({currentSection}).\n" +
+                                       "- Bạn hãy nhận xét ngắn gọn câu trả lời vừa rồi của ứng viên (2-3 câu).\n" +
+                                       $"- {sectionInstruction}";
             }
 
-            // var variables = new Dictionary<string, string>
-            // {
-            //     { "DIFFICULTY_LEVEL", session.DifficultyLevel.ToString() },
-            //     { "ROLE", role },
-            //     { "CV_TEXT", cvContext },
-            //     { "JD_TEXT", jobContext },
-            //     { "RUBRIC_CONTEXT", rubricContext },
-            //     { "QUESTION_INSTRUCTION", questionInstruction }
-            // };
-
-            // var systemPrompt = await _promptManagementService.GetActivePromptContentWithVariablesAsync("MOCK_INTERVIEW_NEXT", variables);
-
-            // if (string.IsNullOrWhiteSpace(systemPrompt))
-            // {
-            //     throw new Exception("Active Prompt for MOCK_INTERVIEW_NEXT not found.");
-            // }
-            var systemPrompt = $"Bạn là một người phỏng vấn IT tuyển dụng chuyên nghiệp. Bạn đang thực hiện một buổi phỏng vấn thử với ứng viên ở cấp độ {session.DifficultyLevel} (Role: {role}).\n\n" +
+            var systemPrompt = $"Bạn là một người phỏng vấn IT tuyển dụng chuyên nghiệp. Bạn đang thực hiện một buổi phỏng vấn thử với ứng viên (Cấp độ: {levelString}, Role: {role}).\n\n" +
                                $"THÔNG TIN BỐ CẢNH:\n" +
                                $"--- START CV ---\n{cvContext}\n--- END CV ---\n\n" +
                                $"--- START JD ---\n{jobContext}\n--- END JD ---\n\n" +
                                $"{rubricContext}\n\n" +
                                $"HƯỚNG DẪN LƯỢT NÀY:\n" +
                                $"{questionInstruction}\n\n" +
-                               $"BỘ TIÊU CHÍ ĐÁNH GIÁ (Thang điểm 1-5, điền số từ 1-5 hoặc null nếu không áp dụng):\n" +
-                               $"1. Kỹ thuật (Technical):\n" +
-                               $"   - T1: Độ chính xác kiến thức (Knowledge accuracy)\n" +
-                               $"   - T2: Độ sâu / hiểu bản chất (Depth / trade-offs / principle)\n" +
-                               $"   - T3: Khả năng giải quyết vấn đề (Approach / edge cases / reasoning)\n" +
-                               $"   - T4: Chất lượng giải pháp/code (Complexity / cleanliness / test - chỉ cho coding)\n" +
-                               $"   - T5: Ứng dụng thực tế (Real-world examples / project connection)\n" +
-                               $"   - T6: Nhận biết giới hạn bản thân (Honest admitting / logical deduction when not knowing)\n" +
-                               $"2. Kỹ năng mềm (Soft Skills):\n" +
-                               $"   - S1: Cấu trúc trình bày (STAR structure for behavioral questions)\n" +
-                               $"   - S2: Sự rõ ràng & súc tích (No repeating / direct to the point)\n" +
-                               $"   - S3: Sự tự tin & thái độ (Confidence / proactive / professional)\n" +
-                               $"   - S4: Khả năng giao tiếp kỹ thuật (Explaining hard concepts clearly with analogies)\n" +
-                               $"   - S5: Tư duy phản biện/tự nhận thức (Self-reflection / learning from failures)\n" +
-                               $"   - S6: Khả năng xử lý áp lực/tình huống bất ngờ (Calmness / asking clarifying questions)\n\n" +
                                "Bạn BẮT BUỘC phải trả về kết quả theo định dạng JSON duy nhất như sau:\n" +
                                "{\n" +
-                               "  \"score_logic\": 80,\n" +
-                               "  \"score_tech\": 85,\n" +
-                               "  \"score_communication\": 90,\n" +
                                "  \"next_question\": \"Câu hỏi tiếp theo (hoặc lời tạm biệt kết thúc phỏng vấn)...\",\n" +
                                "  \"rubric_evaluation\": {\n" +
                                "    \"question_type\": \"technical | behavioral | coding | system_design\",\n" +
-                               "    \"technical_score\": {\n" +
-                               "      \"T1\": 4, \"T2\": 3, \"T3\": 4, \"T4\": null, \"T5\": 3, \"T6\": 5,\n" +
-                               "      \"average\": 3.8\n" +
-                               "    },\n" +
-                               "    \"soft_skill_score\": {\n" +
-                               "      \"S1\": 4, \"S2\": 3, \"S3\": 4, \"S4\": 3, \"S5\": null, \"S6\": null,\n" +
-                               "      \"average\": 3.5\n" +
-                               "    },\n" +
                                "    \"general_feedback\": \"Nhận xét chung về điểm mạnh, điểm yếu trong câu trả lời của ứng viên...\",\n" +
                                "    \"strengths\": [\"Điểm mạnh 1\", \"Điểm mạnh 2\"],\n" +
                                "    \"improvements\": [\"Điểm cần cải thiện 1\", \"Điểm cần cải thiện 2\"]\n" +
@@ -497,24 +548,9 @@ namespace ITHunterview.Service.UseCase
 
             try
             {
-                var cleanJson = responseText ?? "";
-                if (cleanJson.Contains("```json"))
-                {
-                    cleanJson = cleanJson.Substring(cleanJson.IndexOf("```json") + 7);
-                    if (cleanJson.Contains("```"))
-                    {
-                        cleanJson = cleanJson.Substring(0, cleanJson.IndexOf("```"));
-                    }
-                }
-                else if (cleanJson.Contains("```"))
-                {
-                    cleanJson = cleanJson.Substring(cleanJson.IndexOf("```") + 3);
-                    if (cleanJson.Contains("```"))
-                    {
-                        cleanJson = cleanJson.Substring(0, cleanJson.IndexOf("```"));
-                    }
-                }
-                cleanJson = cleanJson.Trim();
+                var (cleanJson, preamble) = ExtractJsonAndPreamble(responseText);
+
+
 
                 using var doc = JsonDocument.Parse(cleanJson);
                 var root = doc.RootElement;
@@ -551,27 +587,66 @@ namespace ITHunterview.Service.UseCase
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Fallback if parsing fails
-                feedback = responseText ?? feedback;
+                Console.WriteLine($"[ERROR] Failed to parse AI response JSON in SubmitReplyAsync: {ex.Message}");
+                
+                // Extract preamble as human-readable feedback
+                var (_, preamble) = ExtractJsonAndPreamble(responseText);
+                var cleanFeedback = !string.IsNullOrWhiteSpace(preamble) ? preamble : (responseText ?? "Cảm ơn câu trả lời của bạn.");
+                
+                // Remove raw JSON substring from the feedback if it got included
+                if (cleanFeedback.Contains("{") && cleanFeedback.Contains("}"))
+                {
+                    int braceIndex = cleanFeedback.IndexOf("{");
+                    if (braceIndex >= 0)
+                    {
+                        cleanFeedback = cleanFeedback.Substring(0, braceIndex).Trim();
+                    }
+                }
+                if (string.IsNullOrWhiteSpace(cleanFeedback))
+                {
+                    cleanFeedback = "Cảm ơn câu trả lời của bạn.";
+                }
+
+                // Construct a valid JSON string for rubricJsonStr so the frontend parser succeeds
+                var fallbackRubric = new
+                {
+                    question_type = "technical",
+                    general_feedback = cleanFeedback,
+                    strengths = new string[0],
+                    improvements = new string[0]
+                };
+                
+                rubricJsonStr = JsonSerializer.Serialize(fallbackRubric);
                 nextQuestion = "Bạn vui lòng chia sẻ thêm hoặc chúng ta đi tiếp nhé.";
             }
 
             // Save evaluation into active turn
+            activeTurn.CandidateTranscript = dto.Message;
             activeTurn.AiFeedback = string.IsNullOrWhiteSpace(rubricJsonStr) ? feedback : rubricJsonStr;
             activeTurn.ScoreLogic = scoreLogic;
             activeTurn.ScoreTech = scoreTech;
             activeTurn.ScoreCommunication = scoreCommunication;
             await _answerRepository.UpdateAsync(activeTurn);
 
-            if (questionIndex >= 6)
+            if (questionIndex >= totalQuestions)
             {
                 // Tự động kết thúc session phỏng vấn
                 session.Status = InterviewSessionStatus.COMPLETED;
                 session.EndedAt = DateTime.UtcNow;
                 await _sessionRepository.UpdateAsync(session);
                 await _sessionRepository.SaveChangesAsync();
+
+                // Warm-up cache: generate report on completion
+                try
+                {
+                    await GenerateSessionReportAsync(sessionId, candidateId);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[WARNING] Failed to pre-generate report in SubmitReplyAsync: {ex.Message}");
+                }
 
                 return new InterviewAnswerDto
                 {
@@ -628,6 +703,16 @@ namespace ITHunterview.Service.UseCase
             session.EndedAt = DateTime.UtcNow;
             await _sessionRepository.UpdateAsync(session);
             await _sessionRepository.SaveChangesAsync();
+
+            // Warm-up cache: generate report on completion
+            try
+            {
+                await GenerateSessionReportAsync(sessionId, candidateId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[WARNING] Failed to pre-generate report in CompleteSessionAsync: {ex.Message}");
+            }
         }
 
         public async Task DeleteSessionAsync(Guid sessionId, Guid candidateId)
@@ -650,17 +735,43 @@ namespace ITHunterview.Service.UseCase
 
         private string DetermineRole(string jobTitle, string cvFileName, string cvText)
         {
-            string textToSearch = $"{jobTitle} {cvFileName} {cvText}".ToLower();
+            // 1. Prioritize Job Title from JD
+            if (!string.IsNullOrWhiteSpace(jobTitle))
+            {
+                string jt = jobTitle.ToLower();
+                if (jt.Contains("tester") || jt.Contains("test") || 
+                    jt.Contains("qa") || jt.Contains("qc") || 
+                    jt.Contains("automation"))
+                {
+                    return "Test";
+                }
+                if (jt.Contains("business analyst") || jt.Contains("product owner") || 
+                    jt.Contains("scrum") || jt.Contains("analyst") ||
+                    System.Text.RegularExpressions.Regex.IsMatch(jt, @"\bba\b"))
+                {
+                    return "BA";
+                }
+                return "Dev"; // Default if job title is specified but doesn't match Test/BA (e.g., "Developer", "Lập trình viên")
+            }
 
-            if (textToSearch.Contains("tester") || textToSearch.Contains("test") || 
-                textToSearch.Contains("qa") || textToSearch.Contains("qc") || 
-                textToSearch.Contains("automation"))
+            // 2. Fallback to CV if Job Title is not available
+            string textToSearch = $"{cvFileName} {cvText}".ToLower();
+            
+            // To classify as Test, look for tester-specific terms first.
+            // Avoid matching general "test" if it is just "unit test", "api test" etc.
+            if (textToSearch.Contains("tester") || textToSearch.Contains("qa ") || 
+                textToSearch.Contains("qc ") || textToSearch.Contains("automation test") || 
+                textToSearch.Contains("manual test") || textToSearch.Contains("software testing"))
             {
                 return "Test";
             }
-            else if (textToSearch.Contains("ba ") || textToSearch.Contains("business analyst") || 
-                     textToSearch.Contains("product owner") || textToSearch.Contains(" scm ") || 
-                     textToSearch.Contains("scrum") || textToSearch.Contains(" product analyst "))
+
+            // To classify as BA, avoid matching Vietnamese "ba " (three)
+            if (textToSearch.Contains("business analyst") || 
+                textToSearch.Contains("product owner") || 
+                textToSearch.Contains("product analyst") ||
+                textToSearch.Contains("ba (business analyst)") ||
+                textToSearch.Contains("system analyst"))
             {
                 return "BA";
             }
@@ -688,6 +799,195 @@ namespace ITHunterview.Service.UseCase
                 }
             }
             return sampleQuestions;
+        }
+
+        private (string cleanJson, string preamble) ExtractJsonAndPreamble(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return (string.Empty, string.Empty);
+
+            string cleanJson = text;
+            string preamble = string.Empty;
+
+            var match = System.Text.RegularExpressions.Regex.Match(text, @"```(?:json)?\s*([\s\S]*?)```");
+            if (match.Success)
+            {
+                cleanJson = match.Groups[1].Value;
+                int mdIndex = text.IndexOf("```");
+                if (mdIndex > 0)
+                {
+                    preamble = text.Substring(0, mdIndex).Trim();
+                }
+            }
+
+            var startIndex = cleanJson.IndexOf('{');
+            var endIndex = cleanJson.LastIndexOf('}');
+            if (startIndex >= 0 && endIndex >= startIndex)
+            {
+                if (startIndex > 0)
+                {
+                    string extraPreamble = cleanJson.Substring(0, startIndex).Trim();
+                    preamble = string.IsNullOrWhiteSpace(preamble)
+                        ? extraPreamble
+                        : $"{preamble}\n\n{extraPreamble}";
+                }
+                cleanJson = cleanJson.Substring(startIndex, endIndex - startIndex + 1).Trim();
+            }
+            else
+            {
+                cleanJson = cleanJson.Trim();
+            }
+
+            return (cleanJson, preamble.Trim());
+        }
+
+        private async Task<InterviewReports?> GenerateSessionReportAsync(Guid sessionId, Guid candidateId)
+        {
+            // Check if report already exists
+            var existingReport = await _context.InterviewReports
+                .FirstOrDefaultAsync(r => r.SessionId == sessionId);
+            if (existingReport != null)
+            {
+                return existingReport;
+            }
+
+            var session = await _sessionRepository.GetByIdAsync(sessionId);
+            if (session == null || session.CandidateId != candidateId)
+            {
+                return null;
+            }
+
+            // Retrieve all answers for the session
+            var answers = await _answerRepository.GetBySessionIdAsync(sessionId);
+            if (answers == null || !answers.Any())
+            {
+                return null;
+            }
+
+            var validAnswers = answers.Where(a => a.CandidateTranscript != null).ToList();
+
+            // Calculate Metrics using C#
+            List<double> techScores = new List<double>();
+            List<double> softScores = new List<double>();
+
+            foreach (var a in validAnswers)
+            {
+                if (!string.IsNullOrWhiteSpace(a.AiFeedback))
+                {
+                    try
+                    {
+                        var jsonNode = JsonNode.Parse(a.AiFeedback);
+                        if (jsonNode != null)
+                        {
+                            var techAvg = jsonNode["technical_score"]?["average"]?.GetValue<double>();
+                            if (techAvg.HasValue) techScores.Add(techAvg.Value);
+
+                            var softAvg = jsonNode["soft_skill_score"]?["average"]?.GetValue<double>();
+                            if (softAvg.HasValue) softScores.Add(softAvg.Value);
+                        }
+                    }
+                    catch { }
+                }
+            }
+
+            double techAvgFinal = techScores.Any() ? Math.Round(techScores.Average(), 2) : 0;
+            double softAvgFinal = softScores.Any() ? Math.Round(softScores.Average(), 2) : 0;
+
+            double techStdDev = 0;
+            if (techScores.Count > 1)
+            {
+                double sumOfSquares = techScores.Select(val => (val - techAvgFinal) * (val - techAvgFinal)).Sum();
+                techStdDev = Math.Round(Math.Sqrt(sumOfSquares / techScores.Count), 2);
+            }
+
+            double softStdDev = 0;
+            if (softScores.Count > 1)
+            {
+                double sumOfSquares = softScores.Select(val => (val - softAvgFinal) * (val - softAvgFinal)).Sum();
+                softStdDev = Math.Round(Math.Sqrt(sumOfSquares / softScores.Count), 2);
+            }
+
+            int questionsTouched = validAnswers.Count;
+
+            // Compute totalScore equivalent (for DB field)
+            decimal totalScore = (decimal)Math.Round(((techAvgFinal + softAvgFinal) / 2.0) * 20.0);
+            if (totalScore == 0 && validAnswers.Any())
+            {
+                var fallbackAvg = validAnswers.Average(a => ((a.ScoreLogic ?? 0) + (a.ScoreTech ?? 0) + (a.ScoreCommunication ?? 0)) / 3.0);
+                totalScore = (decimal)Math.Round(fallbackAvg);
+            }
+
+            // Construct prompt for overall evaluation
+            var systemPrompt = $"Bạn là một chuyên gia đánh giá nhân sự cao cấp. Nhiệm vụ của bạn là tổng hợp và đưa ra báo cáo đánh giá tổng quan cho buổi phỏng vấn thử (mock interview) của ứng viên.\n" +
+                               "Bạn sẽ nhận được danh sách các câu hỏi của AI và câu trả lời của ứng viên, kèm theo điểm số và nhận xét từng câu.\n\n" +
+                               "Dựa vào chi tiết lịch sử phỏng vấn, hãy đưa ra đánh giá tổng thể gồm:\n" +
+                               "1. Mô hình lỗi lặp lại (pattern): Phát hiện thói quen hoặc lỗi ứng viên lặp lại nhiều lần (nếu có).\n" +
+                               "2. Gợi ý hành động (action_items): 2-3 việc cụ thể cần làm tiếp theo.\n" +
+                               "3. Đánh giá tổng quan (overall_feedback): Tóm tắt ngắn gọn và chuyên nghiệp về năng lực của ứng viên.\n" +
+                               "4. Điểm mạnh nổi bật (strengths): Top 3 điểm mạnh nhất.\n" +
+                               "5. Điểm cần cải thiện (improvements): Top 3 điểm cần cải thiện ưu tiên.\n\n" +
+                               "Bạn BẮT BUỘC phải trả về kết quả theo định dạng JSON duy nhất như sau:\n" +
+                               "{\n" +
+                               "  \"pattern\": \"Ứng viên hay trả lời thiếu ví dụ thực tế trong các câu hỏi System Design...\",\n" +
+                               "  \"strengths\": [\"Điểm mạnh 1\", \"Điểm mạnh 2\", \"Điểm mạnh 3\"],\n" +
+                               "  \"improvements\": [\"Điểm cải thiện 1\", \"Điểm cải thiện 2\", \"Điểm cải thiện 3\"],\n" +
+                               "  \"action_items\": [\"Hành động 1\", \"Hành động 2\"],\n" +
+                               "  \"overall_feedback\": \"Đánh giá tổng quan...\"\n" +
+                               "}\n\n" +
+                               "Lưu ý: Chỉ trả về JSON thuần túy, không bao bọc trong khối code markdown hay bất kỳ văn bản nào ngoài JSON.";
+
+            var turnsDescription = string.Join("\n\n", answers.Select((a, idx) => 
+                $"LƯỢT HỎI {idx + 1}:\n" +
+                $"AI Question: {a.QuestionText}\n" +
+                $"Candidate Answer: {a.CandidateTranscript ?? "(Không trả lời)"}\n" +
+                $"Scores: Logic={a.ScoreLogic}%, Tech={a.ScoreTech}%, Comm={a.ScoreCommunication}%\n" +
+                $"Feedback: {a.AiFeedback}"));
+
+            var responseText = await _aiService.GenerateTextAsync(
+                prompt: $"Dưới đây là chi tiết buổi phỏng vấn:\n\n{turnsDescription}",
+                systemPrompt: systemPrompt,
+                providerName: session.AiProvider
+            );
+
+            // Clean & Parse response
+            var (cleanJson, _) = ExtractJsonAndPreamble(responseText);
+            string overallFeedbackJson = string.Empty;
+
+            try
+            {
+                var jsonNode = JsonNode.Parse(cleanJson);
+                if (jsonNode != null)
+                {
+                    overallFeedbackJson = jsonNode.ToJsonString();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Failed to parse AI overall report JSON: {ex.Message}");
+
+                // Construct fallback overall feedback JSON
+                var fallbackFeedback = new
+                {
+                    pattern = "",
+                    strengths = new string[0],
+                    improvements = new string[0],
+                    action_items = new string[0],
+                    overall_feedback = responseText ?? "Đã hoàn thành buổi phỏng vấn thử."
+                };
+                overallFeedbackJson = JsonSerializer.Serialize(fallbackFeedback);
+            }
+
+            var report = new InterviewReports
+            {
+                Id = Guid.NewGuid(),
+                SessionId = sessionId,
+                TotalScore = totalScore,
+                OverallFeedback = overallFeedbackJson
+            };
+
+            _context.InterviewReports.Add(report);
+            await _context.SaveChangesAsync();
+
+            return report;
         }
     }
 }

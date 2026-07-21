@@ -7,36 +7,24 @@ export interface WalletTransactionDto {
   id: string;
   amount: number;
   transactionType: string;
-  referenceId: string;
+  referenceId: string | null;
   description: string;
   createdAt: string;
-}
-
-export type PaymentGatewayType = 'VNPAY' | 'MOMO' | 'STRIPE' | 'PAYPAL' | 'BANK_TRANSFER';
-
-export interface CreatePaymentDto {
-  paymentGateway: PaymentGatewayType;
-  targetType: 'WALLET_TOPUP' | 'SUBSCRIPTION';
-  targetId: string;
 }
 
 export interface PaymentDto {
   id: string;
   userId: string;
+  orderCode: number | null;
   amount: number;
   currency: string;
-  creditsGranted?: number | null;
+  creditsGranted: number | null;
   paymentGateway: string;
-  gatewayTransactionId?: string | null;
+  gatewayTransactionId: string;
   targetType: string;
-  targetId?: string | null;
-  status: 'PENDING' | 'SUCCESS' | 'FAILED';
+  targetId: string | null;
+  subscriptionName: string | null;
+  status: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface PaymentSimulationDto {
-  paymentId: string;
-  success: boolean;
-  gatewayTransactionId: string;
 }

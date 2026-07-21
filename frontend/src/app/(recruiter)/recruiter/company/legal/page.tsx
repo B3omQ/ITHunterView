@@ -144,7 +144,7 @@ export default function LegalVerificationPage() {
   const currentDoc = form.watch('verificationDocumentUrl');
 
   return (
-    <div>
+    <div className="w-full pb-8 space-y-6">
       <div className="mb-6">
         <h2 className="text-xl font-bold">Legal Verification</h2>
         <p className="text-muted-foreground">Please complete your company details and upload matching corporate documents for verification.</p>

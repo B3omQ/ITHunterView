@@ -25,7 +25,7 @@ export default function SavedJobsPage() {
 
   if (jobs.length === 0) {
     return (
-      <div className="py-6 max-w-4xl mx-auto space-y-6">
+    <div className="w-full pb-8 space-y-6">
         <h1 className="text-2xl font-bold tracking-tight">Your Saved Jobs</h1>
         <EmptyState 
           title="No saved jobs yet" 
@@ -41,7 +41,7 @@ export default function SavedJobsPage() {
   }
 
   return (
-    <div className="py-6 max-w-4xl mx-auto space-y-6">
+    <div className="w-full pb-8 space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Your Saved Jobs</h1>
         <p className="text-muted-foreground mt-1">

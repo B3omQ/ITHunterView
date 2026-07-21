@@ -127,6 +127,14 @@ namespace ITHunterview.Service.UseCase
 
         private async Task ProcessMatching(Cvs cv, JobPostings job, Guid userId)
         {
+            var existingScore = await _context.CvJobMatchScores
+                .FirstOrDefaultAsync(s => s.CvId == cv.Id && s.JobId == job.Id && s.UserId == userId);
+
+            if (existingScore != null && existingScore.Status != "Pending")
+            {
+                return; // Do not rescan or overwrite
+            }
+
             var cvTitle = ExtractJsonField(cv.ParsedData, "job_title");
             var cvSkills = ExtractJsonField(cv.ParsedData, "skills");
             var cvExp = ExtractJsonField(cv.ParsedData, "experience");
@@ -162,7 +170,7 @@ namespace ITHunterview.Service.UseCase
                 Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m }
             });
 
-            var existingScore = await _context.CvJobMatchScores
+            existingScore = await _context.CvJobMatchScores
                 .FirstOrDefaultAsync(s => s.CvId == cv.Id && s.JobId == job.Id && s.UserId == userId);
 
             if (existingScore != null)
@@ -170,6 +178,7 @@ namespace ITHunterview.Service.UseCase
                 existingScore.MatchScore = finalScore;
                 existingScore.UpdatedAt = DateTime.UtcNow;
                 existingScore.MatchDetails = details;
+                existingScore.Status = "Completed";
                 existingScore.MatchType = "Hardcode";
             }
             else
@@ -184,6 +193,7 @@ namespace ITHunterview.Service.UseCase
                     MatchScore = finalScore,
                     MatchDetails = details,
                     MatchType = "Hardcode",
+                    Status = "Completed",
                     UpdatedAt = DateTime.UtcNow
                 });
             }

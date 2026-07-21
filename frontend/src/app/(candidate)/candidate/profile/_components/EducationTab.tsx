@@ -81,18 +81,15 @@ export function EducationTab() {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Education Block */}
       <Card className="border border-border/40 bg-card/60 backdrop-blur-md rounded-xl shadow-md overflow-hidden">
-        <CardHeader className="border-b border-border/10 pb-4 flex flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
-              <GraduationCap className="w-5 h-5" />
-            </div>
-            <div>
-              <CardTitle className="text-lg font-bold">Education</CardTitle>
-              <CardDescription className="text-xs">Your academic background and credentials</CardDescription>
-            </div>
+        <CardHeader className="border-b pb-4 flex flex-row items-start justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <CardTitle className="text-xl font-bold mt-1">Education</CardTitle>
+            {mappedEducations.length === 0 && (
+              <CardDescription className="text-sm">Your academic background and credentials</CardDescription>
+            )}
           </div>
           <Button
             onClick={() => {
@@ -100,46 +97,26 @@ export function EducationTab() {
               setIsAddingEdu(true);
             }}
             disabled={isAddingEdu || editingEduId !== null}
-            className="bg-primary hover:bg-primary/95 transition-all text-primary-foreground font-semibold px-4 rounded-lg flex items-center gap-1.5 shadow-md shadow-primary/10"
+            variant="outline"
+            size="icon"
+            className="rounded-full border-primary text-primary hover:bg-primary/10 w-8 h-8 shrink-0 transition-colors mt-0"
           >
-            <Plus className="w-4 h-4" />
-            Add Education
+            <Plus className="w-5 h-5" />
           </Button>
         </CardHeader>
-        <CardContent className="p-6">
-          {mappedEducations.length === 0 && !isAddingEdu ? (
-            <div className="text-center py-12 border border-dashed border-border/30 rounded-xl bg-muted/10">
-              <p className="text-sm text-muted-foreground italic mb-3">No education history added yet.</p>
-              <Button onClick={() => setIsAddingEdu(true)} variant="outline" className="text-xs font-semibold rounded-lg">
-                Add your education details
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {isAddingEdu && (
-                <EducationForm
-                  onCancel={() => setIsAddingEdu(false)}
-                  onSuccess={() => setIsAddingEdu(false)}
-                />
-              )}
+        <CardContent className={mappedEducations.length === 0 ? "p-0" : "px-6 py-2"}>
+          {mappedEducations.length > 0 && (
+            <div className="flex flex-col">
               {mappedEducations.map((edu) => (
                 <React.Fragment key={edu.id}>
-                  {editingEduId === edu.id ? (
-                    <EducationForm
-                      initialData={edu}
-                      onCancel={() => setEditingEduId(null)}
-                      onSuccess={() => setEditingEduId(null)}
-                    />
-                  ) : (
-                    <EducationCard
-                      education={edu}
-                      onEdit={() => {
-                        setIsAddingEdu(false);
-                        setEditingEduId(edu.id);
-                      }}
-                      onDelete={setEduDeleteId}
-                    />
-                  )}
+                  <EducationCard
+                    education={edu}
+                    onEdit={() => {
+                      setIsAddingEdu(false);
+                      setEditingEduId(edu.id);
+                    }}
+                    onDelete={setEduDeleteId}
+                  />
                 </React.Fragment>
               ))}
             </div>
@@ -147,17 +124,49 @@ export function EducationTab() {
         </CardContent>
       </Card>
 
+      <Dialog 
+        disablePointerDismissal
+        open={isAddingEdu || !!editingEduId} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsAddingEdu(false);
+            setEditingEduId(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">
+              {isAddingEdu ? 'Add Education' : 'Edit Education'}
+            </DialogTitle>
+            <DialogDescription>
+              Fill in the details of your academic background below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="pt-2">
+            <EducationForm
+              initialData={editingEduId ? mappedEducations.find(e => e.id === editingEduId) || null : null}
+              onCancel={() => {
+                setIsAddingEdu(false);
+                setEditingEduId(null);
+              }}
+              onSuccess={() => {
+                setIsAddingEdu(false);
+                setEditingEduId(null);
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Certifications Block */}
       <Card className="border border-border/40 bg-card/60 backdrop-blur-md rounded-xl shadow-md overflow-hidden">
-        <CardHeader className="border-b border-border/10 pb-4 flex flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
-              <Award className="w-5 h-5" />
-            </div>
-            <div>
-              <CardTitle className="text-lg font-bold">Certifications</CardTitle>
-              <CardDescription className="text-xs">Professional certifications and licenses</CardDescription>
-            </div>
+        <CardHeader className="border-b pb-4 flex flex-row items-start justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <CardTitle className="text-xl font-bold mt-1">Certifications</CardTitle>
+            {certifications.length === 0 && (
+              <CardDescription className="text-sm">Professional certifications and licenses</CardDescription>
+            )}
           </div>
           <Button
             onClick={() => {
@@ -165,52 +174,67 @@ export function EducationTab() {
               setIsAddingCert(true);
             }}
             disabled={isAddingCert || editingCertId !== null}
-            className="bg-primary hover:bg-primary/95 transition-all text-primary-foreground font-semibold px-4 rounded-lg flex items-center gap-1.5 shadow-md shadow-primary/10"
+            variant="outline"
+            size="icon"
+            className="rounded-full border-primary text-primary hover:bg-primary/10 w-8 h-8 shrink-0 transition-colors mt-0"
           >
-            <Plus className="w-4 h-4" />
-            Add Certification
+            <Plus className="w-5 h-5" />
           </Button>
         </CardHeader>
-        <CardContent className="p-6">
-          {certifications.length === 0 && !isAddingCert ? (
-            <div className="text-center py-12 border border-dashed border-border/30 rounded-xl bg-muted/10">
-              <p className="text-sm text-muted-foreground italic mb-3">No certifications added yet.</p>
-              <Button onClick={() => setIsAddingCert(true)} variant="outline" className="text-xs font-semibold rounded-lg">
-                Add your certifications
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {isAddingCert && (
-                <CertificationForm
-                  onCancel={() => setIsAddingCert(false)}
-                  onSuccess={() => setIsAddingCert(false)}
-                />
-              )}
+        <CardContent className={certifications.length === 0 ? "p-0" : "px-6 py-2"}>
+          {certifications.length > 0 && (
+            <div className="flex flex-col">
               {certifications.map((cert) => (
                 <React.Fragment key={cert.id}>
-                  {editingCertId === cert.id ? (
-                    <CertificationForm
-                      initialData={cert}
-                      onCancel={() => setEditingCertId(null)}
-                      onSuccess={() => setEditingCertId(null)}
-                    />
-                  ) : (
-                    <CertificationCard
-                      certification={cert}
-                      onEdit={() => {
-                        setIsAddingCert(false);
-                        setEditingCertId(cert.id);
-                      }}
-                      onDelete={setCertDeleteId}
-                    />
-                  )}
+                  <CertificationCard
+                    certification={cert}
+                    onEdit={() => {
+                      setIsAddingCert(false);
+                      setEditingCertId(cert.id);
+                    }}
+                    onDelete={setCertDeleteId}
+                  />
                 </React.Fragment>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      <Dialog 
+        disablePointerDismissal
+        open={isAddingCert || !!editingCertId} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsAddingCert(false);
+            setEditingCertId(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">
+              {isAddingCert ? 'Add Certification' : 'Edit Certification'}
+            </DialogTitle>
+            <DialogDescription>
+              Fill in the details of your certification below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="pt-2">
+            <CertificationForm
+              initialData={editingCertId ? certifications.find(c => c.id === editingCertId) || null : null}
+              onCancel={() => {
+                setIsAddingCert(false);
+                setEditingCertId(null);
+              }}
+              onSuccess={() => {
+                setIsAddingCert(false);
+                setEditingCertId(null);
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog for Education */}
       <Dialog open={!!eduDeleteId} onOpenChange={(open) => {
