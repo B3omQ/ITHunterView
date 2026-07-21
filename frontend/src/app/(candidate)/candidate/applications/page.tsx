@@ -11,6 +11,7 @@ import { CardSkeleton } from '@/components/shared/CardSkeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { CompanyLogo } from '@/components/shared/CompanyLogo';
 import { ChevronLeft, ChevronRight, Briefcase, Building2, Calendar, CheckCircle, Clock, Eye, XCircle, ArrowRight } from 'lucide-react';
 
 export default function AppliedJobsPage() {
@@ -46,13 +47,13 @@ export default function AppliedJobsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'APPLIED':
-        return <Badge className="shrink-0 text-[10px] px-1.5 py-0 border-none font-semibold bg-emerald-500/10 text-emerald-700">Applied</Badge>;
+        return <Badge className="shrink-0 text-xs px-2 py-0.5 border-none font-medium bg-emerald-500/10 text-emerald-700">Applied</Badge>;
       case 'VIEWED':
-        return <Badge className="shrink-0 text-[10px] px-1.5 py-0 border-none font-semibold bg-blue-500/10 text-blue-700">Viewed by Employer</Badge>;
+        return <Badge className="shrink-0 text-xs px-2 py-0.5 border-none font-medium bg-blue-500/10 text-blue-700">Viewed by Recruiter</Badge>;
       case 'REJECTED':
-        return <Badge className="shrink-0 text-[10px] px-1.5 py-0 border-none font-semibold bg-rose-500/10 text-rose-700">Rejected</Badge>;
+        return <Badge className="shrink-0 text-xs px-2 py-0.5 border-none font-medium bg-rose-500/10 text-rose-700">Rejected</Badge>;
       default:
-        return <Badge className="shrink-0 text-[10px] px-1.5 py-0 border-none font-semibold bg-muted text-muted-foreground">{status}</Badge>;
+        return <Badge className="shrink-0 text-xs px-2 py-0.5 border-none font-medium bg-muted text-muted-foreground">{status}</Badge>;
     }
   };
 
@@ -71,9 +72,11 @@ export default function AppliedJobsPage() {
 
   if (isLoading && page === 1) return (
     <div className="w-full pb-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Applied Jobs</h1>
-        <p className="text-muted-foreground mt-1">Loading applications...</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Applied Jobs</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">Loading your applications...</p>
+        </div>
       </div>
       <div className="flex flex-col gap-3">
         {[1, 2, 3, 4].map((n) => <CardSkeleton key={n} />)}
@@ -85,14 +88,21 @@ export default function AppliedJobsPage() {
   if (jobs.length === 0) {
     return (
     <div className="w-full pb-8 space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight">Applied Jobs</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Applied Jobs</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">
+            Track the status of your job applications and stay on top of your career journey.
+          </p>
+        </div>
+      </div>
         <EmptyState 
           title="No applications yet" 
           description="You haven't applied to any jobs. Start searching and applying to land your dream job!"
           icon={<Briefcase className="w-12 h-12 text-slate-300" />}
         >
-          <Link href="/candidate/jobs">
-            <Button className="mt-4 bg-slate-900 hover:bg-slate-800 text-white">Browse Jobs</Button>
+          <Link href="/jobs">
+            <Button className="mt-4">Browse Jobs</Button>
           </Link>
         </EmptyState>
       </div>
@@ -101,59 +111,62 @@ export default function AppliedJobsPage() {
 
   return (
     <div className="w-full pb-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Applied Jobs</h1>
-        <p className="text-muted-foreground mt-1">
-          You have applied to {totalCount} {totalCount === 1 ? 'job' : 'jobs'}
-        </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Applied Jobs</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">
+            Track the status of your job applications and stay on top of your career journey.
+          </p>
+        </div>
       </div>
 
       <div className="flex flex-col gap-4">
-        {jobs.map((job) => (
-          <Card key={job.id} className="group hover:border-primary/50 transition-colors">
-            <CardContent className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                {job.companyLogoUrl ? (
-                  <div className="w-11 h-11 rounded-lg overflow-hidden bg-muted flex items-center justify-center border border-border shrink-0">
-                    <img src={job.companyLogoUrl} alt={job.companyName} className="w-full h-full object-contain" />
-                  </div>
-                ) : (
-                  <div className="w-11 h-11 rounded-lg bg-muted flex items-center justify-center border border-border shrink-0 text-slate-400">
-                    <Building2 className="w-5 h-5" />
-                  </div>
-                )}
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Link href={`/jobs/${job.jobId}`} className="font-semibold text-base text-foreground group-hover:text-primary transition-colors truncate">
-                      {job.jobTitle}
+          {jobs.map((job) => (
+            <Card key={job.id} className="group hover:border-primary/50 transition-colors">
+              <CardContent className="flex flex-col gap-3">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <Link href={`/jobs/${job.jobId}`} className="shrink-0">
+                      <div className="w-11 h-11 rounded-lg overflow-hidden bg-muted flex items-center justify-center border border-border">
+                        <CompanyLogo src={job.companyLogoUrl} alt={job.companyName} fallbackType="building" fallbackIconClassName="text-slate-400 w-5 h-5" />
+                      </div>
                     </Link>
-                    {getStatusBadge(job.status)}
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Link href={`/jobs/${job.jobId}`} className="font-medium text-base text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug">
+                          {job.jobTitle}
+                        </Link>
+                      </div>
+                      <p className="text-slate-600 text-sm font-medium line-clamp-1 mt-0.5">{job.companyName}</p>
+                      <div className="flex items-center gap-4 flex-wrap mt-1 text-sm text-slate-600">
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="h-4 w-4 shrink-0 text-slate-400" />
+                          Applied {getRelativeTime(job.applyDate)}
+                        </span>
+                        <div className="flex items-center">
+                          {getStatusBadge(job.status)}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground truncate">{job.companyName}</p>
-                  <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground mt-0.5">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3 shrink-0" />
-                      Applied {getRelativeTime(job.applyDate)}
-                    </span>
+
+                  {/* Action Zone (Right side) */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Link href={`/jobs/${job.jobId}`}>
+                      <Button size="sm" variant="outline" className="gap-1.5 h-9">
+                        <Eye className="w-4 h-4" /> View Job
+                      </Button>
+                    </Link>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-                <div className="flex items-center gap-1 shrink-0">
-                  <Link href={`/jobs/${job.jobId}`} className="flex items-center justify-center">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:text-primary/80 hover:bg-primary/10 transition-colors shrink-0">
-                      <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Pagination */}
-      <ListPagination page={page} totalPages={totalPages} setPage={setPage} />
+        {/* Pagination */}
+        <ListPagination page={page} totalPages={totalPages} setPage={setPage} />
     </div>
   );
 }
