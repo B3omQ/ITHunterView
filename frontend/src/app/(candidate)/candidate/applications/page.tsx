@@ -6,9 +6,13 @@ import { JobApplicationService } from '@/services/job-application.service';
 import { CandidateAppliedJobDto } from '@/types/job-application.types';
 import { PageLoader } from '@/components/shared/PageLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ListPagination } from '@/components/shared/ListPagination';
+import { CardSkeleton } from '@/components/shared/CardSkeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ChevronLeft, ChevronRight, Briefcase, Building2, Calendar, CheckCircle, Clock, Eye, XCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { CompanyLogo } from '@/components/shared/CompanyLogo';
+import { ChevronLeft, ChevronRight, Briefcase, Building2, Calendar, CheckCircle, Clock, Eye, XCircle, ArrowRight } from 'lucide-react';
 
 export default function AppliedJobsPage() {
   const [page, setPage] = useState(1);
@@ -43,13 +47,13 @@ export default function AppliedJobsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'APPLIED':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700"><CheckCircle className="w-3.5 h-3.5" /> Applied</span>;
+        return <Badge className="shrink-0 text-xs px-2 py-0.5 border-none font-medium bg-emerald-500/10 text-emerald-700">Applied</Badge>;
       case 'VIEWED':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700"><Eye className="w-3.5 h-3.5" /> Viewed by Employer</span>;
+        return <Badge className="shrink-0 text-xs px-2 py-0.5 border-none font-medium bg-blue-500/10 text-blue-700">Viewed by Recruiter</Badge>;
       case 'REJECTED':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-rose-50 text-rose-700"><XCircle className="w-3.5 h-3.5" /> Rejected</span>;
+        return <Badge className="shrink-0 text-xs px-2 py-0.5 border-none font-medium bg-rose-500/10 text-rose-700">Rejected</Badge>;
       default:
-        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-zinc-100 text-zinc-700"><Clock className="w-3.5 h-3.5" /> {status}</span>;
+        return <Badge className="shrink-0 text-xs px-2 py-0.5 border-none font-medium bg-muted text-muted-foreground">{status}</Badge>;
     }
   };
 
@@ -66,20 +70,39 @@ export default function AppliedJobsPage() {
     return rtf.format(minutes, 'minute');
   };
 
-  if (isLoading && page === 1) return <PageLoader />;
+  if (isLoading && page === 1) return (
+    <div className="w-full pb-8 space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Applied Jobs</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">Loading your applications...</p>
+        </div>
+      </div>
+      <div className="flex flex-col gap-3">
+        {[1, 2, 3, 4].map((n) => <CardSkeleton key={n} />)}
+      </div>
+    </div>
+  );
   if (isError && jobs.length === 0) return <EmptyState title="Failed to load applied jobs" description="Please try again later." />;
 
   if (jobs.length === 0) {
     return (
     <div className="w-full pb-8 space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight">Applied Jobs</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Applied Jobs</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">
+            Track the status of your job applications and stay on top of your career journey.
+          </p>
+        </div>
+      </div>
         <EmptyState 
           title="No applications yet" 
           description="You haven't applied to any jobs. Start searching and applying to land your dream job!"
           icon={<Briefcase className="w-12 h-12 text-slate-300" />}
         >
-          <Link href="/candidate/jobs">
-            <Button className="mt-4 bg-slate-900 hover:bg-slate-800 text-white">Browse Jobs</Button>
+          <Link href="/jobs">
+            <Button className="mt-4">Browse Jobs</Button>
           </Link>
         </EmptyState>
       </div>
@@ -88,80 +111,62 @@ export default function AppliedJobsPage() {
 
   return (
     <div className="w-full pb-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Applied Jobs</h1>
-        <p className="text-muted-foreground mt-1">
-          You have applied to {totalCount} {totalCount === 1 ? 'job' : 'jobs'}
-        </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Applied Jobs</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">
+            Track the status of your job applications and stay on top of your career journey.
+          </p>
+        </div>
       </div>
 
       <div className="flex flex-col gap-4">
-        {jobs.map((job) => (
-          <Card key={job.id} className="overflow-hidden hover:shadow-md transition-shadow">
-            <CardContent className="p-0">
-              <div className="flex flex-col sm:flex-row p-6 gap-6 items-start sm:items-center">
-                {job.companyLogoUrl ? (
-                  <div className="w-16 h-16 rounded-md bg-white border border-zinc-100 flex items-center justify-center shrink-0 overflow-hidden">
-                    <img src={job.companyLogoUrl} alt={job.companyName} className="max-w-full max-h-full object-contain" />
-                  </div>
-                ) : (
-                  <div className="w-16 h-16 rounded-md bg-zinc-100 flex items-center justify-center shrink-0 text-zinc-400">
-                    <Building2 className="w-8 h-8" />
-                  </div>
-                )}
-                
-                <div className="flex-grow space-y-1">
-                  <Link href={`/jobs/${job.jobId}`} className="text-lg font-bold text-zinc-900 hover:text-blue-600 transition-colors line-clamp-1">
-                    {job.jobTitle}
-                  </Link>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-zinc-500">
-                    <div className="flex items-center gap-1.5 font-medium">
-                      <Building2 className="w-4 h-4" />
-                      {job.companyName}
+          {jobs.map((job) => (
+            <Card key={job.id} className="group hover:border-primary/50 transition-colors">
+              <CardContent className="flex flex-col gap-3">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <Link href={`/jobs/${job.jobId}`} className="shrink-0">
+                      <div className="w-11 h-11 rounded-lg overflow-hidden bg-muted flex items-center justify-center border border-border">
+                        <CompanyLogo src={job.companyLogoUrl} alt={job.companyName} fallbackType="building" fallbackIconClassName="text-slate-400 w-5 h-5" />
+                      </div>
+                    </Link>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Link href={`/jobs/${job.jobId}`} className="font-medium text-base text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug">
+                          {job.jobTitle}
+                        </Link>
+                      </div>
+                      <p className="text-slate-600 text-sm font-medium line-clamp-1 mt-0.5">{job.companyName}</p>
+                      <div className="flex items-center gap-4 flex-wrap mt-1 text-sm text-slate-600">
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="h-4 w-4 shrink-0 text-slate-400" />
+                          Applied {getRelativeTime(job.applyDate)}
+                        </span>
+                        <div className="flex items-center">
+                          {getStatusBadge(job.status)}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4" />
-                      Applied {getRelativeTime(job.applyDate)}
-                    </div>
+                  </div>
+
+                  {/* Action Zone (Right side) */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Link href={`/jobs/${job.jobId}`}>
+                      <Button size="sm" variant="outline" className="gap-1.5 h-9">
+                        <Eye className="w-4 h-4" /> View Job
+                      </Button>
+                    </Link>
                   </div>
                 </div>
-
-                <div className="shrink-0 flex flex-col sm:items-end gap-3 mt-2 sm:mt-0 w-full sm:w-auto">
-                  {getStatusBadge(job.status)}
-                  <Link href={`/jobs/${job.jobId}`} className="w-full sm:w-auto">
-                    <Button variant="outline" size="sm" className="w-full sm:w-auto">View Job</Button>
-                  </Link>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-4 pt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            <ChevronLeft className="w-4 h-4 mr-2" /> Previous
-          </Button>
-          <span className="text-sm font-medium">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(p => p + 1)}
-            disabled={page === totalPages}
-          >
-            Next <ChevronRight className="w-4 h-4 ml-2" />
-          </Button>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      )}
+
+        {/* Pagination */}
+        <ListPagination page={page} totalPages={totalPages} setPage={setPage} />
     </div>
   );
 }

@@ -24,12 +24,7 @@ export function useJobActions() {
       queryClient.invalidateQueries({ queryKey: ['candidate-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['saved-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['job-detail'] });
-      toast.success('Job removed from saved list', {
-        action: {
-          label: 'Undo',
-          onClick: () => saveJobMutation.mutateAsync(jobId)
-        }
-      });
+      toast.success('Job removed from saved list');
     },
     onError: () => {
       toast.error('Failed to unsave job');
