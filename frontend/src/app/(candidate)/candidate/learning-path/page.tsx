@@ -6,6 +6,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { CardSkeleton } from '@/components/shared/CardSkeleton';
 import { Loader2, Plus, Trash2, Map, Sparkles, ArrowRight, BookOpen, CheckCircle2 } from 'lucide-react';
 import {
   Dialog,
@@ -65,8 +66,8 @@ export default function LearningPathDashboard() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center items-center py-24">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="flex flex-col gap-3">
+          {[1, 2, 3].map((n) => <CardSkeleton key={n} />)}
         </div>
       ) : paths.length > 0 ? (
         <div className="flex flex-col gap-4">
@@ -84,21 +85,21 @@ export default function LearningPathDashboard() {
 
             return (
               <Card key={path.id} className="group hover:border-primary/50 transition-colors">
-                <CardContent className="p-4 flex items-center gap-4">
+                <CardContent className="p-4 flex items-center gap-3">
                   {/* Left: Status Icon */}
-                  <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                  <div className={`shrink-0 w-11 h-11 rounded-lg flex items-center justify-center ${
                     path.status === 'Completed'
-                      ? 'bg-emerald-50 text-emerald-500'
+                      ? 'bg-emerald-500/10 text-emerald-500'
                       : path.status === 'In Progress'
-                        ? 'bg-blue-50 text-blue-500'
-                        : 'bg-slate-100 text-slate-400'
+                        ? 'bg-blue-500/10 text-blue-500'
+                        : 'bg-muted text-slate-400'
                   }`}>
                     <Map className="w-5 h-5" />
                   </div>
 
                   {/* Center: Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
+                    <div className="flex items-center gap-2 min-w-0 mb-0.5">
                       <Link href={`/candidate/learning-path/${path.id}`} passHref>
                         <span
                           className="font-semibold text-base text-foreground group-hover:text-primary transition-colors truncate cursor-pointer"
@@ -109,10 +110,10 @@ export default function LearningPathDashboard() {
                       </Link>
                       <Badge className={`shrink-0 text-[10px] px-1.5 py-0 border-none font-semibold ${
                         path.status === 'Completed'
-                          ? 'bg-[#E6F4EA] text-[#137333]'
+                          ? 'bg-emerald-500/10 text-emerald-700'
                           : path.status === 'In Progress'
-                            ? 'bg-[#E6F0FF] text-[#0052CC]'
-                            : 'bg-[#F3F4F6] text-gray-700'
+                            ? 'bg-blue-500/10 text-blue-700'
+                            : 'bg-muted text-muted-foreground'
                       }`}>
                         {path.status}
                       </Badge>

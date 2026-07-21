@@ -6,9 +6,12 @@ import { JobApplicationService } from '@/services/job-application.service';
 import { CandidateAppliedJobDto } from '@/types/job-application.types';
 import { PageLoader } from '@/components/shared/PageLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ListPagination } from '@/components/shared/ListPagination';
+import { CardSkeleton } from '@/components/shared/CardSkeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ChevronLeft, ChevronRight, Briefcase, Building2, Calendar, CheckCircle, Clock, Eye, XCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ChevronLeft, ChevronRight, Briefcase, Building2, Calendar, CheckCircle, Clock, Eye, XCircle, ArrowRight } from 'lucide-react';
 
 export default function AppliedJobsPage() {
   const [page, setPage] = useState(1);
@@ -43,13 +46,13 @@ export default function AppliedJobsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'APPLIED':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700"><CheckCircle className="w-3.5 h-3.5" /> Applied</span>;
+        return <Badge className="shrink-0 text-[10px] px-1.5 py-0 border-none font-semibold bg-emerald-500/10 text-emerald-700">Applied</Badge>;
       case 'VIEWED':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700"><Eye className="w-3.5 h-3.5" /> Viewed by Employer</span>;
+        return <Badge className="shrink-0 text-[10px] px-1.5 py-0 border-none font-semibold bg-blue-500/10 text-blue-700">Viewed by Employer</Badge>;
       case 'REJECTED':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-rose-50 text-rose-700"><XCircle className="w-3.5 h-3.5" /> Rejected</span>;
+        return <Badge className="shrink-0 text-[10px] px-1.5 py-0 border-none font-semibold bg-rose-500/10 text-rose-700">Rejected</Badge>;
       default:
-        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-zinc-100 text-zinc-700"><Clock className="w-3.5 h-3.5" /> {status}</span>;
+        return <Badge className="shrink-0 text-[10px] px-1.5 py-0 border-none font-semibold bg-muted text-muted-foreground">{status}</Badge>;
     }
   };
 
@@ -66,7 +69,17 @@ export default function AppliedJobsPage() {
     return rtf.format(minutes, 'minute');
   };
 
-  if (isLoading && page === 1) return <PageLoader />;
+  if (isLoading && page === 1) return (
+    <div className="w-full pb-8 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Applied Jobs</h1>
+        <p className="text-muted-foreground mt-1">Loading applications...</p>
+      </div>
+      <div className="flex flex-col gap-3">
+        {[1, 2, 3, 4].map((n) => <CardSkeleton key={n} />)}
+      </div>
+    </div>
+  );
   if (isError && jobs.length === 0) return <EmptyState title="Failed to load applied jobs" description="Please try again later." />;
 
   if (jobs.length === 0) {
@@ -97,39 +110,40 @@ export default function AppliedJobsPage() {
 
       <div className="flex flex-col gap-4">
         {jobs.map((job) => (
-          <Card key={job.id} className="overflow-hidden hover:shadow-md transition-shadow">
-            <CardContent className="p-0">
-              <div className="flex flex-col sm:flex-row p-6 gap-6 items-start sm:items-center">
+          <Card key={job.id} className="group hover:border-primary/50 transition-colors">
+            <CardContent className="p-4 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
                 {job.companyLogoUrl ? (
-                  <div className="w-16 h-16 rounded-md bg-white border border-zinc-100 flex items-center justify-center shrink-0 overflow-hidden">
-                    <img src={job.companyLogoUrl} alt={job.companyName} className="max-w-full max-h-full object-contain" />
+                  <div className="w-11 h-11 rounded-lg overflow-hidden bg-muted flex items-center justify-center border border-border shrink-0">
+                    <img src={job.companyLogoUrl} alt={job.companyName} className="w-full h-full object-contain" />
                   </div>
                 ) : (
-                  <div className="w-16 h-16 rounded-md bg-zinc-100 flex items-center justify-center shrink-0 text-zinc-400">
-                    <Building2 className="w-8 h-8" />
+                  <div className="w-11 h-11 rounded-lg bg-muted flex items-center justify-center border border-border shrink-0 text-slate-400">
+                    <Building2 className="w-5 h-5" />
                   </div>
                 )}
                 
-                <div className="flex-grow space-y-1">
-                  <Link href={`/jobs/${job.jobId}`} className="text-lg font-bold text-zinc-900 hover:text-blue-600 transition-colors line-clamp-1">
-                    {job.jobTitle}
-                  </Link>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-zinc-500">
-                    <div className="flex items-center gap-1.5 font-medium">
-                      <Building2 className="w-4 h-4" />
-                      {job.companyName}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Link href={`/jobs/${job.jobId}`} className="font-semibold text-base text-foreground group-hover:text-primary transition-colors truncate">
+                      {job.jobTitle}
+                    </Link>
+                    {getStatusBadge(job.status)}
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate">{job.companyName}</p>
+                  <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground mt-0.5">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3 shrink-0" />
                       Applied {getRelativeTime(job.applyDate)}
-                    </div>
+                    </span>
                   </div>
                 </div>
 
-                <div className="shrink-0 flex flex-col sm:items-end gap-3 mt-2 sm:mt-0 w-full sm:w-auto">
-                  {getStatusBadge(job.status)}
-                  <Link href={`/jobs/${job.jobId}`} className="w-full sm:w-auto">
-                    <Button variant="outline" size="sm" className="w-full sm:w-auto">View Job</Button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Link href={`/jobs/${job.jobId}`} className="flex items-center justify-center">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:text-primary/80 hover:bg-primary/10 transition-colors shrink-0">
+                      <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
+                    </Button>
                   </Link>
                 </div>
               </div>
@@ -139,29 +153,7 @@ export default function AppliedJobsPage() {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-4 pt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            <ChevronLeft className="w-4 h-4 mr-2" /> Previous
-          </Button>
-          <span className="text-sm font-medium">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(p => p + 1)}
-            disabled={page === totalPages}
-          >
-            Next <ChevronRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
-      )}
+      <ListPagination page={page} totalPages={totalPages} setPage={setPage} />
     </div>
   );
 }

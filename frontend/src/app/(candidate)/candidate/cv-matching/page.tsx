@@ -8,7 +8,8 @@ import { APP_ROUTES } from '@/lib/constants';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PageLoader } from '@/components/shared/PageLoader';
+import { ListPagination } from '@/components/shared/ListPagination';
+import { CardSkeleton } from '@/components/shared/CardSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Loader2, FileText, Briefcase, Eye, Plus, Trash2, Activity, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
@@ -47,21 +48,35 @@ export default function CvMatchingHistoryPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'Completed':
-        return <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/20 shadow-none">Completed</Badge>;
+        return <Badge className="shrink-0 text-[10px] px-1.5 py-0 border-none font-semibold bg-emerald-500/10 text-emerald-700">Completed</Badge>;
       case 'Failed':
-        return <Badge variant="destructive" className="bg-red-500/10 text-red-600 hover:bg-red-500/20 border-red-500/20 shadow-none">Failed</Badge>;
+        return <Badge className="shrink-0 text-[10px] px-1.5 py-0 border-none font-semibold bg-rose-500/10 text-rose-700">Failed</Badge>;
       default:
-        return <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/20 shadow-none">{status}</Badge>;
+        return <Badge className="shrink-0 text-[10px] px-1.5 py-0 border-none font-semibold bg-amber-500/10 text-amber-700">{status}</Badge>;
     }
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 70) return 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20';
-    if (score >= 40) return 'text-amber-600 bg-amber-500/10 border-amber-500/20';
-    return 'text-red-600 bg-red-500/10 border-red-500/20';
+    if (score >= 70) return 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20';
+    if (score >= 40) return 'text-amber-700 bg-amber-500/10 border-amber-500/20';
+    return 'text-rose-700 bg-rose-500/10 border-rose-500/20';
   };
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+    <div className="w-full pb-8 space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">CV Matching History</h1>
+          <p className="text-muted-foreground mt-1 max-w-2xl">
+            Loading your match history...
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-col gap-3">
+        {[1, 2, 3, 4].map(n => <CardSkeleton key={n} />)}
+      </div>
+    </div>
+  );
 
   if (items.length === 0) {
     return (
@@ -99,69 +114,68 @@ export default function CvMatchingHistoryPage() {
 
       <div className="flex flex-col gap-3">
         {items.map((item) => (
-          <Card key={item.jobId} className="hover:border-primary/50 transition-colors group">
-            <CardContent className="p-3 sm:p-4 flex flex-col gap-3">
-              {/* Top Row */}
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4 flex-1">
-                  <div className="w-12 h-12 rounded overflow-hidden bg-primary/10 flex items-center justify-center border shrink-0">
-                    <Activity className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-primary line-clamp-1 text-base">
+          <Card key={item.jobId} className="group hover:border-primary/50 transition-colors">
+            <CardContent className="p-4 flex flex-col gap-3">
+              {/* Main Row */}
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0">
+                  <Activity className="w-5 h-5 text-indigo-500" />
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-semibold text-base text-foreground group-hover:text-primary transition-colors truncate">
                       {item.jdTitle || 'Bypass JD'}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <p className="text-sm text-muted-foreground truncate max-w-[300px]" title={item.cvFileName || 'Bypass CV'}>
-                        {item.cvFileName || 'Bypass CV'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" /> {new Date(item.updatedAt).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      {getStatusBadge(item.status)}
-                    </div>
+                    </span>
+                    {getStatusBadge(item.status)}
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate" title={item.cvFileName || 'Bypass CV'}>
+                    {item.cvFileName || 'Bypass CV'}
+                  </p>
+                  <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground mt-0.5">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3 shrink-0" />
+                      {new Date(item.updatedAt).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
                 </div>
                 
-                <div className="flex flex-col items-end gap-2 shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
                   {item.status === 'Completed' && item.matchScore !== undefined ? (
-                    <div className={`flex flex-col items-center justify-center font-bold w-14 h-14 rounded-full border ${getScoreColor(item.matchScore * 100)}`} title="Match Score">
-                      <span className="text-lg leading-none">{(item.matchScore * 100).toFixed(0)}</span>
-                      <span className="text-[10px] font-normal leading-none mt-1 opacity-80">Score</span>
+                    <div className={`flex flex-col items-center justify-center font-bold w-12 h-12 rounded-full border ${getScoreColor(item.matchScore * 100)}`} title="Match Score">
+                      <span className="text-base leading-none">{(item.matchScore * 100).toFixed(0)}</span>
+                      <span className="text-[9px] font-normal leading-none mt-0.5 opacity-80">Score</span>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center font-bold w-14 h-14 rounded-full border bg-muted text-muted-foreground" title="Score Unavailable">
-                      <span className="text-lg leading-none">-</span>
+                    <div className="flex flex-col items-center justify-center font-bold w-12 h-12 rounded-full border bg-muted text-muted-foreground" title="Score Unavailable">
+                      <span className="text-base leading-none">-</span>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Action Row */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 sm:pt-3 border-t border-border/50">
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-border/50">
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="flex-1 sm:flex-none gap-2"
+                  className="flex-1 sm:flex-none gap-1.5"
                   onClick={() => navigateToDetail(item.jobId)}
                   disabled={item.status !== 'Completed'}
                 >
-                  <Eye className="w-4 h-4" /> View Full Report
+                  <Eye className="w-3.5 h-3.5" /> View Full Report
                 </Button>
 
                 <Dialog>
-                  <DialogTrigger render={
+                  <DialogTrigger asChild>
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1.5"
                       title="Delete History"
-                    />
-                  }>
-                    <Trash2 className="h-4 w-4" /> Delete
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
@@ -171,18 +185,20 @@ export default function CvMatchingHistoryPage() {
                       </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="mt-4">
-                      <DialogClose render={<Button variant="outline" />}>
-                        Cancel
+                      <DialogClose asChild>
+                        <Button variant="outline">
+                          Cancel
+                        </Button>
                       </DialogClose>
-                      <DialogClose render={
+                      <DialogClose asChild>
                         <Button 
                           variant="destructive"
                           onClick={() => deleteMutation.mutate(item.jobId)}
                           disabled={deleteMutation.isPending}
-                        />
-                      }>
-                        {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Delete
+                        >
+                          {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Delete
+                        </Button>
                       </DialogClose>
                     </DialogFooter>
                   </DialogContent>
@@ -194,29 +210,7 @@ export default function CvMatchingHistoryPage() {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-4 pt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(page - 1)}
-            disabled={page <= 1}
-          >
-            <ChevronLeft className="w-4 h-4 mr-2" /> Previous
-          </Button>
-          <span className="text-sm font-medium">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(page + 1)}
-            disabled={page >= totalPages}
-          >
-            Next <ChevronRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
-      )}
+      <ListPagination page={page} totalPages={totalPages} setPage={handlePageChange} />
     </div>
   );
 }

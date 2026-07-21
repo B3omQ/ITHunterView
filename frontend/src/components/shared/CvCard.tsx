@@ -32,18 +32,18 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
     <div
       onClick={() => onSelect?.(cv)}
       className={cn(
-        "flex flex-col gap-4 rounded-xl border p-5 shadow-sm transition-all cursor-pointer",
+        "flex flex-col gap-3 rounded-xl border p-4 shadow-sm transition-all cursor-pointer group",
         isActive 
           ? "border-primary bg-primary/5 shadow-md ring-1 ring-primary" 
-          : "border-border bg-card hover:shadow-md hover:border-primary/50"
+          : "border-border bg-card hover:border-primary/50"
       )}
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-center gap-3">
         <div className={cn(
-          "flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-primary transition-colors",
+          "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-primary transition-colors border border-border",
           isActive ? "bg-primary/20" : "bg-primary/10"
         )}>
-          <FileText className="h-6 w-6" />
+          <FileText className="h-5 w-5" />
         </div>
         <div className="flex flex-col overflow-hidden justify-center py-1">
           <h4 className="truncate text-base font-semibold text-foreground group-hover:text-primary transition-colors" title={cv.fileName}>
@@ -55,27 +55,29 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t border-border pt-4 mt-2">
+      <div className="flex flex-wrap items-center justify-between border-t border-border/50 pt-2.5 mt-1">
         <span className="text-sm text-muted-foreground">
           {isActive ? 'Viewing' : 'Click to view'}
         </span>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
 
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={(e) => {
               e.stopPropagation();
               setShowConfirm(true);
             }}
             disabled={isDeleting}
             className={cn(
-              "flex items-center gap-1.5 text-sm font-medium text-destructive transition-colors hover:text-destructive/80",
+              "text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1.5 h-8",
               isDeleting && "opacity-50 cursor-not-allowed"
             )}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-3.5 w-3.5" />
             {isDeleting ? 'Deleting...' : 'Delete'}
-          </button>
+          </Button>
 
           <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
             <DialogContent onClick={(e) => e.stopPropagation()}>

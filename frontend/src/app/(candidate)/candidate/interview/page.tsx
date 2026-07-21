@@ -12,6 +12,8 @@ import { usePublicJobs } from '@/hooks/usePublicJobs';
 import { useJobDetail } from '@/hooks/useJobDetail';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { ListPagination } from '@/components/shared/ListPagination';
+import { CardSkeleton } from '@/components/shared/CardSkeleton';
 import {
   Dialog,
   DialogContent,
@@ -342,18 +344,8 @@ function CandidateInterviewContent() {
           </h2>
 
           {sessionsLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[1, 2, 3].map((n) => (
-                <Card key={n} className="bg-card border-border">
-                  <CardHeader className="space-y-2">
-                    <Skeleton className="h-4 w-1/3" />
-                    <Skeleton className="h-6 w-3/4" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-4 w-1/2" />
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="flex flex-col gap-3">
+              {[1, 2, 3].map((n) => <CardSkeleton key={n} />)}
             </div>
           ) : sessions.length === 0 ? (
             <Card className="border border-dashed border-border bg-muted/20 py-16 text-center rounded-2xl">
@@ -385,34 +377,33 @@ function CandidateInterviewContent() {
                     onClick={() => router.push(`/candidate/interview/${session.id}`)}
                     className="group cursor-pointer hover:border-primary/50 transition-colors"
                   >
-                    <CardContent className="p-4 flex items-center gap-4">
+                    <CardContent className="p-4 flex items-center gap-3">
                       {/* Left: Status Icon */}
-                      <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                      <div className={`shrink-0 w-11 h-11 rounded-lg flex items-center justify-center ${
                         session.status === 'IN_PROGRESS'
-                          ? 'bg-emerald-50 text-emerald-500'
-                          : 'bg-slate-100 text-slate-400'
+                          ? 'bg-blue-500/10 text-blue-500'
+                          : 'bg-emerald-500/10 text-emerald-500'
                       }`}>
                         <MessageSquare className="w-5 h-5" />
                       </div>
 
                       {/* Center: Info */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
+                        <div className="flex items-center gap-2 min-w-0 mb-0.5">
                           <span className="font-semibold text-base text-foreground group-hover:text-primary transition-colors truncate">
                             {session.jobTitle || 'Free Mock Interview'}
                           </span>
                           <Badge
-                            variant="secondary"
-                            className={`shrink-0 text-[10px] px-1.5 py-0 ${
+                            className={`shrink-0 text-[10px] px-1.5 py-0 border-none font-semibold ${
                               session.status === 'IN_PROGRESS'
-                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                                : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                ? 'bg-blue-500/10 text-blue-700'
+                                : 'bg-emerald-500/10 text-emerald-700'
                             }`}
                           >
                             {session.status === 'IN_PROGRESS' ? 'In Progress' : 'Completed'}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                        <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground mt-0.5">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
                             {session.startedAt ? new Date(session.startedAt).toLocaleDateString('vi-VN') : 'N/A'}
@@ -449,46 +440,7 @@ function CandidateInterviewContent() {
               </div>
 
               {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 pt-6">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="h-9 w-9 rounded-lg border border-border hover:bg-muted"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCurrentPage(page)}
-                        className={`h-9 w-9 rounded-lg transition-colors ${currentPage === page
-                            ? "bg-primary text-primary-foreground hover:bg-primary/90 font-bold"
-                            : "border-border hover:bg-muted text-muted-foreground"
-                          }`}
-                      >
-                        {page}
-                      </Button>
-                    ))}
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="h-9 w-9 rounded-lg border border-border hover:bg-muted"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
+              <ListPagination page={currentPage} totalPages={totalPages} setPage={setCurrentPage} />
             </>
           )}
         </div>
