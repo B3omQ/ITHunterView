@@ -51,6 +51,8 @@ import {
   ChevronsUpDown,
   ChevronLeft,
   ChevronRight,
+  MoreHorizontal,
+  Eye,
 } from 'lucide-react';
 import type { DifficultyLevel } from '@/types/interview.types';
 
@@ -67,6 +69,7 @@ function CandidateInterviewContent() {
   const [selectedModel, setSelectedModel] = useState<string>('Gemini');
   const [isJdPopoverOpen, setIsJdPopoverOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
 
   const { data: sessionsRes, isLoading: sessionsLoading } = useGetInterviewSessions();
   const { data: cvsRes } = useGetMyCvs();
@@ -137,14 +140,18 @@ function CandidateInterviewContent() {
     }
   };
 
-  const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
+  const handleDeleteSession = (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();
-    if (confirm('Are you sure you want to delete this mock interview session?')) {
-      try {
-        await deleteSessionMutation.mutateAsync(sessionId);
-      } catch (err) {
-        console.error(err);
-      }
+    setSessionToDelete(sessionId);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!sessionToDelete) return;
+    try {
+      await deleteSessionMutation.mutateAsync(sessionToDelete);
+      setSessionToDelete(null);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -323,7 +330,7 @@ function CandidateInterviewContent() {
   };
 
   return (
-    <div className="w-full pb-8 space-y-8">
+    <div className="w-full pb-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">AI Mock Interview</h1>
@@ -338,10 +345,7 @@ function CandidateInterviewContent() {
         </Button>
       </div>
 
-      <div className="flex flex-col gap-6">
-          <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-primary" /> Mock Interview History ({sessions.length})
-          </h2>
+      <div className="flex flex-col gap-4">
 
           {sessionsLoading ? (
             <div className="flex flex-col gap-3">
@@ -377,62 +381,79 @@ function CandidateInterviewContent() {
                     onClick={() => router.push(`/candidate/interview/${session.id}`)}
                     className="group cursor-pointer hover:border-primary/50 transition-colors"
                   >
-                    <CardContent className="flex items-center gap-3">
-                      {/* Left: Status Icon */}
-                      <div className={`shrink-0 w-11 h-11 rounded-lg flex items-center justify-center ${
-                        session.status === 'IN_PROGRESS'
-                          ? 'bg-blue-500/10 text-blue-500'
-                          : 'bg-emerald-500/10 text-emerald-500'
-                      }`}>
-                        <MessageSquare className="w-5 h-5" />
-                      </div>
+                    <CardContent className="flex flex-col gap-3">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          {/* Left: Status Icon */}
+                          <div className={`shrink-0 w-11 h-11 rounded-lg flex items-center justify-center border border-border ${
+                            session.status === 'IN_PROGRESS'
+                              ? 'bg-blue-500/10 text-blue-600'
+                              : 'bg-emerald-500/10 text-emerald-600'
+                          }`}>
+                            <MessageSquare className="w-5 h-5" />
+                          </div>
 
-                      {/* Center: Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 min-w-0 mb-0.5">
-                          <span className="font-semibold text-base text-foreground group-hover:text-primary transition-colors truncate">
-                            {session.jobTitle || 'Free Mock Interview'}
-                          </span>
-                          <Badge
-                            className={`shrink-0 text-[10px] px-1.5 py-0 border-none font-semibold ${
-                              session.status === 'IN_PROGRESS'
-                                ? 'bg-blue-500/10 text-blue-700'
-                                : 'bg-emerald-500/10 text-emerald-700'
-                            }`}
-                          >
-                            {session.status === 'IN_PROGRESS' ? 'In Progress' : 'Completed'}
-                          </Badge>
+                          {/* Center: Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-medium text-base text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug">
+                                {session.jobTitle || 'Free Mock Interview'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-4 flex-wrap mt-1 text-sm text-slate-600">
+                              <div className="flex items-center">
+                                <Badge
+                                  className={`shrink-0 text-xs px-2 py-0.5 border-none font-medium ${
+                                    session.status === 'IN_PROGRESS'
+                                      ? 'bg-blue-500/10 text-blue-700'
+                                      : 'bg-emerald-500/10 text-emerald-700'
+                                  }`}
+                                >
+                                  {session.status === 'IN_PROGRESS' ? 'In Progress' : 'Completed'}
+                                </Badge>
+                              </div>
+                              <span className="flex items-center gap-1.5">
+                                <Calendar className="h-4 w-4 shrink-0 text-slate-400" />
+                                {session.startedAt ? new Date(session.startedAt).toLocaleDateString('vi-VN') : 'N/A'}
+                              </span>
+                              {session.cvFileName && (
+                                <span className="flex items-center gap-1.5 truncate max-w-[180px]">
+                                  <FileText className="h-4 w-4 shrink-0 text-slate-400" />
+                                  {session.cvFileName}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground mt-0.5">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {session.startedAt ? new Date(session.startedAt).toLocaleDateString('vi-VN') : 'N/A'}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Cpu className="h-3 w-3 text-indigo-400" />
-                            {session.aiProvider || 'Gemini'}
-                          </span>
-                          {session.cvFileName && (
-                            <span className="flex items-center gap-1 truncate max-w-[180px]">
-                              <FileText className="h-3 w-3 text-primary shrink-0" />
-                              {session.cvFileName}
-                            </span>
-                          )}
-                        </div>
-                      </div>
 
-                      {/* Right: Actions */}
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={deleteSessionMutation.isPending}
-                          onClick={(e) => handleDeleteSession(e, session.id)}
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                        <ArrowRight className="h-4 w-4 text-primary transform group-hover:translate-x-1 transition-transform" />
+                        {/* Action Zone (Right side) */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={(e) => { e.stopPropagation(); router.push(`/candidate/interview/${session.id}`); }}>
+                            {session.status === 'IN_PROGRESS' ? (
+                              <><Play className="w-4 h-4 fill-current" /> Resume</>
+                            ) : (
+                              <><Eye className="w-4 h-4" /> Review</>
+                            )}
+                          </Button>
+
+                          <Popover>
+                            <PopoverTrigger className="inline-flex items-center justify-center h-9 w-9 text-slate-500 hover:text-foreground shrink-0 border border-transparent hover:border-border hover:bg-muted/50 rounded-lg transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring" onClick={(e) => e.stopPropagation()}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </PopoverTrigger>
+                            <PopoverContent align="end" className="w-48 p-1">
+                              <div className="flex flex-col">
+                                <Button 
+                                  variant="ghost" 
+                                  className="w-full justify-start gap-2 h-9 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                                  onClick={(e) => handleDeleteSession(e, session.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span>Delete Session</span>
+                                </Button>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -749,6 +770,26 @@ function CandidateInterviewContent() {
               </>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!sessionToDelete} onOpenChange={(open) => !open && setSessionToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Mock Interview Session?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this mock interview session? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 flex flex-col sm:flex-row gap-2 justify-end">
+            <Button variant="outline" onClick={() => setSessionToDelete(null)} disabled={deleteSessionMutation.isPending}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete} disabled={deleteSessionMutation.isPending}>
+              {deleteSessionMutation.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

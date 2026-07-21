@@ -167,7 +167,7 @@ export default function CvMatchingHistoryPage() {
                 </Button>
 
                 <Dialog>
-                  <DialogTrigger asChild>
+                  <DialogTrigger render={
                     <Button 
                       variant="ghost" 
                       size="sm" 
@@ -176,7 +176,7 @@ export default function CvMatchingHistoryPage() {
                     >
                       <Trash2 className="h-3.5 w-3.5" /> Delete
                     </Button>
-                  </DialogTrigger>
+                  } />
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Delete Matching History</DialogTitle>
@@ -185,12 +185,12 @@ export default function CvMatchingHistoryPage() {
                       </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="mt-4">
-                      <DialogClose asChild>
+                      <DialogClose render={
                         <Button variant="outline">
                           Cancel
                         </Button>
-                      </DialogClose>
-                      <DialogClose asChild>
+                      } />
+                      <DialogClose render={
                         <Button 
                           variant="destructive"
                           onClick={() => deleteMutation.mutate(item.jobId)}
@@ -199,7 +199,7 @@ export default function CvMatchingHistoryPage() {
                           {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                           Delete
                         </Button>
-                      </DialogClose>
+                      } />
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
