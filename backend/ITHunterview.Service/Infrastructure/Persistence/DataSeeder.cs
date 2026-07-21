@@ -21,6 +21,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             await SeedCoinConfigAsync(context);
             await SeedJobPostingsAsync(context);
             await SeedSfiaSkillsAsync(context);
+            await SeedRealisticSpecificJDsAsync(context);
         }
 
         private static async Task SeedRolesAndPermissionsAsync(ITHunterviewContext context)
@@ -704,6 +705,30 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         var jobId = System.Guid.NewGuid();
                         var publishedAt = System.DateTime.UtcNow.AddDays(-random.Next(1, 60));
 
+                        string[] descTemplates = {
+                            $"Are you ready to take your career to the next level? We are looking for a highly skilled and passionate {prefix} {category.Name} to join our innovative team at {company.Name}. In this role, you will be at the forefront of technology, building robust solutions that impact millions of users. You will collaborate with cross-functional teams in a fast-paced agile environment, driving technical excellence and product innovation.",
+                            $"Join {company.Name} as a {prefix} {category.Name} and become part of a dynamic, forward-thinking organization. We are seeking a talented professional who thrives on solving complex problems and delivering high-quality results. You will have the opportunity to work with cutting-edge tech stacks, shape the technical direction of our projects, and contribute to a culture of continuous learning and growth.",
+                            $"{company.Name} is urgently hiring a {prefix} {category.Name} to expand our core engineering team. This is a unique opportunity to work on highly scalable systems and enterprise-level architecture. If you are deeply passionate about technology, enjoy mentoring peers, and want to make a significant impact on our business growth, we want to hear from you!"
+                        };
+
+                        string[] respTemplates = {
+                            "- Architect, design, and develop scalable software solutions from scratch.\n- Collaborate closely with Product Managers, Designers, and other Engineers to define feature specifications.\n- Write clean, maintainable, and highly efficient code following best practices.\n- Conduct thorough code reviews and provide constructive feedback to peers.\n- Troubleshoot, debug, and optimize application performance in production environments.\n- Participate in daily stand-ups, sprint planning, and retrospective meetings.",
+                            "- Lead the technical implementation of key product features and infrastructure improvements.\n- Integrate third-party APIs and services to enhance product functionality.\n- Develop and maintain comprehensive technical documentation.\n- Ensure high code coverage through unit, integration, and end-to-end testing.\n- Monitor system health, investigate bottlenecks, and resolve complex technical debt.\n- Actively contribute to technical architectural decisions and team knowledge sharing.",
+                            "- Gather and analyze requirements to translate business needs into technical designs.\n- Build robust and secure APIs to support scalable frontend and mobile applications.\n- Continuously research and implement new technologies to improve development efficiency.\n- Work closely with QA to automate testing and ensure zero-defect releases.\n- Manage cloud deployments and optimize CI/CD pipelines.\n- Mentor junior team members and foster a collaborative engineering culture."
+                        };
+
+                        string[] reqTemplates = {
+                            $"- 3+ years of proven professional experience as a {category.Name} or similar role.\n- Strong expertise in software engineering principles, design patterns, and data structures.\n- Hands-on experience with modern frameworks, databases (SQL/NoSQL), and RESTful API design.\n- Familiarity with version control systems (Git) and CI/CD workflows.\n- Excellent problem-solving skills and a strong attention to detail.\n- Good communication skills in English, both written and verbal.",
+                            $"- Solid academic background in Computer Science, IT, or related fields.\n- Deep understanding of system architecture, microservices, and cloud platforms (AWS/Azure/GCP).\n- Proven track record of delivering high-quality products in an Agile/Scrum environment.\n- Ability to work independently and manage multiple priorities effectively.\n- Experience with performance tuning and security best practices.\n- Strong team player with a proactive, \"can-do\" attitude.",
+                            $"- Demonstrated experience in full software development lifecycle (SDLC).\n- Proficiency in writing clean, scalable, and testable code.\n- Experience working with containerization tools like Docker and Kubernetes.\n- Familiarity with monitoring and logging tools (Grafana, ELK stack).\n- Strong analytical mindset to identify and solve complex architectural issues.\n- Willingness to learn new technologies and adapt to a fast-changing startup environment."
+                        };
+
+                        string[] benTemplates = {
+                            "- Highly competitive base salary with 13th-month bonus and annual performance review.\n- Premium PVI health insurance for you and your family members.\n- 15-18 days of paid annual leave plus additional sick leave.\n- Flexible working hours and hybrid work-from-home policy.\n- State-of-the-art equipment (MacBook Pro/Dell XPS) and ergonomic workspace.\n- Free lunch, snacks, coffee, and weekly happy hours in the office.",
+                            "- Attractive compensation package including ESOP (stock options) for key members.\n- Generous budget for professional development, certifications, and tech conferences.\n- Comprehensive healthcare package and regular health check-ups at top hospitals.\n- Dynamic, open, and international working culture with English speaking environment.\n- Regular team-building activities, company trips (domestic and international).\n- Dedicated fitness/gym allowance and employee wellness programs.",
+                            "- Sign-on bonus up to $2000 for successful candidates.\n- Full 100% salary during the probation period.\n- Unlimited paid time off (PTO) policy focusing on results over hours.\n- Modern office in the city center with a breathtaking view and relaxation zones.\n- Opportunities for internal mobility and fast-track career progression.\n- Mentorship programs led by industry experts and senior leaders."
+                        };
+
                         jobs.Add(new JobPostings
                         {
                             Id = jobId,
@@ -711,10 +736,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                             RecruiterId = recruiter.Id,
                             CompanyId = company.Id,
                             Title = $"{prefix} {category.Name}",
-                            Description = $"We are looking for a talented {prefix} {category.Name} to join our dynamic team at {company.Name}. You will be responsible for developing high-quality solutions and working in an agile environment.",
-                            Responsibilities = "- Develop high-quality software design and architecture\n- Identify, prioritize and execute tasks in the software development life cycle\n- Review, test and debug code",
-                            Requirements = $"- Proven experience as a {category.Name}\n- Experience with software design and development\n- Excellent communication skills",
-                            Benefits = "- Competitive salary\n- Health insurance\n- Paid time off\n- Flexible working hours",
+                            Description = descTemplates[random.Next(descTemplates.Length)],
+                            Responsibilities = respTemplates[random.Next(respTemplates.Length)],
+                            Requirements = reqTemplates[random.Next(reqTemplates.Length)],
+                            Benefits = benTemplates[random.Next(benTemplates.Length)],
                             MinSalary = minSalary,
                             MaxSalary = maxSalary,
                             Currency = "USD",
@@ -750,6 +775,154 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     context.JobSkillRequirements.AddRange(jobSkills);
                     await context.SaveChangesAsync();
                 }
+            }
+        }
+
+        private static async Task SeedRealisticSpecificJDsAsync(ITHunterviewContext context)
+        {
+            var oldJobs = context.JobPostings.Where(j => j.Title.Contains("RealisticSeed"));
+            if (oldJobs.Any())
+            {
+                context.JobPostings.RemoveRange(oldJobs);
+                await context.SaveChangesAsync();
+            }
+
+            var recruiterRole = context.Roles.FirstOrDefault(r => r.Name == "recruiter");
+            var recruiters = recruiterRole != null ? context.Users.Where(u => u.RoleId == recruiterRole.Id).ToList() : new List<User>();
+            var company = context.Companies.FirstOrDefault();
+            var allSkills = context.Skills.ToList();
+            
+            if (recruiters.Any() && company != null)
+            {
+                var recruiter = recruiters.First();
+                var jobs = new List<JobPostings>();
+                var jobSkills = new List<JobSkillRequirements>();
+                
+                var jobData = new[]
+                {
+                    new { 
+                        Title = "Junior QA/Tester (RealisticSeedV2)", Level = "Junior", Cat = "QA/Testing", Exp = "Software Engineering", Min = 500m, Max = 800m, 
+                        Desc = "Are you a detail-oriented fresher or junior tester looking for a great start? Join our dynamic team to perform manual and basic automated testing on web and mobile applications. You will work closely with developers to ensure the highest quality of our products before release.", 
+                        Resp = "- Review and analyze system specifications to understand testing requirements.\n- Execute test cases (manual or automated) and analyze results.\n- Report bugs and errors to development teams using Jira.\n- Help troubleshoot issues and conduct post-release testing.\n- Work with cross-functional teams to ensure quality throughout the software development lifecycle.",
+                        Req = "- Basic knowledge of software QA methodologies, tools, and processes.\n- Familiarity with Agile frameworks and regression testing.\n- Hands-on experience with bug tracking tools like Jira.\n- Good attention to detail and strong analytical skills.\n- Eagerness to learn automation testing in the future.",
+                        Ben = "- 13th month salary and performance bonus.\n- Comprehensive health insurance package.\n- Training opportunities and career path development.\n- Regular team building activities and company trips.",
+                        SkillNames = new[] { "Teamwork", "Communication", "Python", "JavaScript" }
+                    },
+                    new { 
+                        Title = "Middle Automation Tester (RealisticSeedV2)", Level = "Middle", Cat = "QA/Testing", Exp = "Software Engineering", Min = 1000m, Max = 1500m, 
+                        Desc = "We are seeking a Middle Automation Tester with proven experience in Selenium/Cypress to build, maintain, and scale our automation frameworks. You will play a crucial role in reducing manual testing efforts and ensuring continuous delivery of our enterprise solutions.", 
+                        Resp = "- Design, develop, and execute automated test scripts using Selenium or Cypress.\n- Integrate automated tests into CI/CD pipelines (Jenkins/GitLab).\n- Perform API testing using Postman or RestAssured.\n- Collaborate with developers to identify system requirements and test coverage.\n- Analyze test results and provide detailed test reports.",
+                        Req = "- 2-4 years of experience in software testing with a strong focus on automation.\n- Proficiency in test automation tools such as Selenium, Cypress, or Appium.\n- Strong knowledge of Java, Python, or JavaScript for scripting.\n- Experience with CI/CD tools and API testing.\n- Solid understanding of Agile/Scrum methodologies.",
+                        Ben = "- Highly competitive salary and sign-on bonus.\n- Premium healthcare for employees and family members.\n- Flexible hybrid working model (3 days at office, 2 days remote).\n- MacBook Pro provided for work.",
+                        SkillNames = new[] { "Python", "JavaScript", "Java", "CI/CD" }
+                    },
+                    new { 
+                        Title = "Senior QA Engineer (RealisticSeedV2)", Level = "Senior", Cat = "QA/Testing", Exp = "Software Engineering", Min = 1800m, Max = 2500m, 
+                        Desc = "As a Senior QA Engineer, you will define the testing strategy, lead the QA process, and mentor junior members. You will be responsible for building robust automation frameworks from scratch and ensuring the highest standards of software quality.", 
+                        Resp = "- Architect and build scalable test automation frameworks from scratch.\n- Define and implement overall QA strategies and testing processes.\n- Lead performance and security testing initiatives.\n- Mentor and guide junior and mid-level QA team members.\n- Work closely with DevOps to optimize the CI/CD pipeline for automated testing.",
+                        Req = "- 5+ years of experience in Software Quality Assurance and Test Automation.\n- Extensive experience in building automation frameworks (Selenium, Playwright, Cypress).\n- Strong leadership and team management skills.\n- Deep understanding of performance testing tools (JMeter, Gatling).\n- Excellent problem-solving skills and ability to work under pressure.",
+                        Ben = "- Top-tier salary package with stock options.\n- 15 days of annual leave plus extra sick leave days.\n- Premium health insurance (Bao Viet/PVI) covering family.\n- Generous budget for personal development and certifications.",
+                        SkillNames = new[] { "Python", "Java", "CI/CD", "Docker", "Kubernetes", "AWS" }
+                    },
+                    new { 
+                        Title = "Junior Fullstack Developer (React/NodeJS) (RealisticSeedV2)", Level = "Junior", Cat = "Software Development", Exp = "Computer Science", Min = 600m, Max = 1000m, 
+                        Desc = "Exciting opportunity for a Junior Fullstack Developer to work on cutting-edge enterprise products. You will have the chance to work with modern technologies like React, Node.js, and MongoDB in a highly collaborative environment.", 
+                        Resp = "- Develop user-facing features using React.js.\n- Build and maintain RESTful APIs using Node.js and Express.\n- Collaborate with designers to implement UI/UX designs.\n- Write clean, maintainable, and well-documented code.\n- Participate in code reviews and team meetings.",
+                        Req = "- 6 months to 1.5 years of practical experience with JavaScript/TypeScript.\n- Solid understanding of React.js and its core principles.\n- Familiarity with Node.js and basic backend development.\n- Basic knowledge of Git version control.\n- Passion for coding and willingness to learn new technologies.",
+                        Ben = "- Mentorship from Senior Developers.\n- 13th month salary and project bonuses.\n- Weekly tech talks and free courses.\n- Free lunch and snacks in the office.",
+                        SkillNames = new[] { "JavaScript", "TypeScript", "React", "Node.js", "MongoDB" }
+                    },
+                    new { 
+                        Title = "Middle Backend Developer (NodeJS/NestJS) (RealisticSeedV2)", Level = "Middle", Cat = "Software Development", Exp = "Computer Science", Min = 1200m, Max = 1800m, 
+                        Desc = "Looking for an experienced Middle Backend Developer. You will design, build, and maintain scalable APIs using NestJS and PostgreSQL to support our fast-growing user base. You will deal with complex system architectures and microservices.", 
+                        Resp = "- Architect and develop scalable backend services using Node.js and NestJS.\n- Design and optimize database schemas in PostgreSQL.\n- Integrate third-party services and APIs.\n- Identify and resolve performance bottlenecks.\n- Write unit and integration tests to ensure code quality.",
+                        Req = "- 3+ years of experience in backend development.\n- Strong proficiency in JavaScript/TypeScript and Node.js.\n- Hands-on experience with NestJS framework and PostgreSQL.\n- Solid understanding of RESTful APIs and microservices architecture.\n- Familiarity with Docker and basic CI/CD processes.",
+                        Ben = "- Competitive salary reviewed twice a year.\n- Hybrid working environment (Work from home 2 days/week).\n- Premium healthcare insurance.\n- Gym/Fitness allowance.",
+                        SkillNames = new[] { "JavaScript", "TypeScript", "Node.js", "NestJS", "PostgreSQL", "Docker" }
+                    },
+                    new { 
+                        Title = "Senior Frontend Developer (ReactJS) (RealisticSeedV2)", Level = "Senior", Cat = "Software Development", Exp = "Computer Science", Min = 2000m, Max = 3000m, 
+                        Desc = "Join us as a Senior Frontend Developer. You will architect frontend solutions, optimize performance, and collaborate with UX/UI teams to deliver world-class web applications. You will also lead frontend initiatives and mentor other developers.", 
+                        Resp = "- Architect and develop complex frontend applications using React.js and Next.js.\n- Optimize application performance for maximum speed and scalability.\n- Define frontend coding standards and best practices.\n- Mentor mid-level and junior developers in the team.\n- Collaborate closely with product managers and backend engineers.",
+                        Req = "- 5+ years of experience in frontend development.\n- Expert-level knowledge of React.js, Next.js, and TypeScript.\n- Deep understanding of web performance optimization and browser rendering behavior.\n- Experience with modern state management tools (Redux Toolkit, Zustand).\n- Excellent communication and leadership skills.",
+                        Ben = "- Attractive salary package with sign-on bonus up to $2000.\n- Stock options for senior positions.\n- Full 100% salary during probation.\n- Unlimited paid time off policy.",
+                        SkillNames = new[] { "JavaScript", "TypeScript", "React", "CI/CD", "Communication", "Teamwork" }
+                    },
+                    new { 
+                        Title = "Junior Business Analyst (RealisticSeedV2)", Level = "Junior", Cat = "Data & AI", Exp = "Information Systems", Min = 500m, Max = 900m, 
+                        Desc = "Great opportunity for a Junior BA. You will act as the bridge between stakeholders and the development team. You will gather requirements, write user stories, and ensure the delivered product meets business needs.", 
+                        Resp = "- Assist in gathering and analyzing business requirements from clients.\n- Write user stories and acceptance criteria.\n- Create basic wireframes and process flow diagrams.\n- Support the testing team in UAT (User Acceptance Testing).\n- Maintain project documentation on Confluence.",
+                        Req = "- Degree in Information Systems, IT, or Business Administration.\n- Basic understanding of software development lifecycle (SDLC) and Agile/Scrum.\n- Excellent written and verbal communication skills (English & Vietnamese).\n- Strong analytical and problem-solving mindset.\n- Familiarity with tools like Jira, Trello, or Figma is a plus.",
+                        Ben = "- Comprehensive training program for freshers/juniors.\n- 13th month salary + performance review every 6 months.\n- Friendly, dynamic, and supportive environment.\n- Company trips and team-building events.",
+                        SkillNames = new[] { "Communication", "Teamwork" }
+                    },
+                    new { 
+                        Title = "Middle IT Business Analyst (RealisticSeedV2)", Level = "Middle", Cat = "Data & AI", Exp = "Information Systems", Min = 1200m, Max = 1800m, 
+                        Desc = "We need a Middle IT BA to work on complex enterprise software solutions. You will be responsible for defining system requirements, managing product backlogs, and ensuring smooth communication between business and IT.", 
+                        Resp = "- Elicit, analyze, and document complex business requirements.\n- Translate business needs into technical specifications and user stories.\n- Model business processes using BPMN or UML.\n- Manage and prioritize the product backlog in Jira.\n- Facilitate Scrum ceremonies and stakeholder meetings.",
+                        Req = "- 2-4 years of experience as an IT Business Analyst.\n- Solid experience working in Agile/Scrum environments.\n- Proficiency in drawing flowcharts, wireframes, and sequence diagrams.\n- Strong English communication skills (IELTS 6.0+ or equivalent).\n- Experience with API documentation and SQL is a strong plus.",
+                        Ben = "- High market-rate salary and project success bonuses.\n- Flexible working hours and hybrid remote options.\n- Premium Bao Viet Health Insurance.\n- Annual health check-up at premium hospitals.",
+                        SkillNames = new[] { "Communication", "Teamwork", "PostgreSQL", "MySQL" }
+                    },
+                    new { 
+                        Title = "Senior Business Analyst (RealisticSeedV2)", Level = "Senior", Cat = "Data & AI", Exp = "Information Systems", Min = 2000m, Max = 3000m, 
+                        Desc = "As a Senior BA, you will lead requirement analysis for large-scale digital transformation projects, consult enterprise clients, and drive the overall product roadmap. You will act as a key advisor to both clients and internal tech teams.", 
+                        Resp = "- Lead the business analysis phase for large-scale, enterprise-level projects.\n- Consult clients on digital transformation strategies and optimal system solutions.\n- Define product vision, roadmap, and MVP scope.\n- Mentor and manage a team of junior and mid-level BAs.\n- Resolve complex functional issues and conflicts between stakeholders.",
+                        Req = "- 5+ years of experience as a Business Analyst or Product Owner.\n- Experience working directly with enterprise clients (B2B) or international clients.\n- Deep domain knowledge in Finance, Banking, or E-commerce.\n- Exceptional negotiation, presentation, and leadership skills.\n- Advanced SQL skills and understanding of system architecture.",
+                        Ben = "- Executive salary package and performance-based equity.\n- Dedicated budget for global conferences and training.\n- Fully sponsored health insurance for family.\n- 20 days of paid annual leave.",
+                        SkillNames = new[] { "Communication", "Teamwork", "PostgreSQL", "AWS" }
+                    }
+                };
+
+                foreach (var data in jobData)
+                {
+                    var jobId = System.Guid.NewGuid();
+                    jobs.Add(new JobPostings
+                    {
+                        Id = jobId,
+                        JobCode = $"JB-REAL-{System.Guid.NewGuid().ToString().Substring(0, 4).ToUpper()}",
+                        RecruiterId = recruiter.Id,
+                        CompanyId = company.Id,
+                        Title = data.Title,
+                        Description = data.Desc,
+                        Responsibilities = data.Resp,
+                        Requirements = data.Req,
+                        Benefits = data.Ben,
+                        MinSalary = data.Min,
+                        MaxSalary = data.Max,
+                        Currency = "USD",
+                        Location = "Ho Chi Minh",
+                        Status = JobStatus.PUBLISHED,
+                        Level = data.Level,
+                        WorkingModel = "Hybrid",
+                        JobExpertise = data.Exp,
+                        JobDomain = new List<string> { "IT Services" },
+                        ApplicationCount = 0,
+                        ViewCount = 10,
+                        PublishedAt = System.DateTime.UtcNow,
+                        CreatedAt = System.DateTime.UtcNow,
+                        UpdatedAt = System.DateTime.UtcNow
+                    });
+
+                    // Match specific skills
+                    foreach (var skillName in data.SkillNames)
+                    {
+                        var matchedSkill = allSkills.FirstOrDefault(s => s.Name.Equals(skillName, System.StringComparison.OrdinalIgnoreCase));
+                        if (matchedSkill != null)
+                        {
+                            jobSkills.Add(new JobSkillRequirements
+                            {
+                                JobId = jobId,
+                                SkillId = matchedSkill.Id,
+                                IsMandatory = true
+                            });
+                        }
+                    }
+                }
+                
+                context.JobPostings.AddRange(jobs);
+                context.JobSkillRequirements.AddRange(jobSkills);
+                await context.SaveChangesAsync();
             }
         }
 
