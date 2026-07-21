@@ -159,18 +159,16 @@ export default function LearningPathDashboard() {
 
                       {/* Actions */}
                       <div className="flex items-center gap-2 shrink-0">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="gap-1.5 h-9"
-                        render={<Link href={`/candidate/learning-path/${path.id}`} />}
+                      <Link 
+                        href={`/candidate/learning-path/${path.id}`}
+                        className={buttonVariants({ variant: 'outline', size: 'sm', className: 'gap-1.5 h-9' })}
                       >
                         {path.status === 'In Progress' ? (
                           <><Play className="w-4 h-4 fill-current" /> Continue</>
                         ) : (
                           <><Eye className="w-4 h-4" /> View Path</>
                         )}
-                      </Button>
+                      </Link>
 
                       <Popover>
                         <PopoverTrigger className="inline-flex items-center justify-center h-9 w-9 text-slate-500 hover:text-foreground shrink-0 border border-transparent hover:border-border hover:bg-muted/50 rounded-lg transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring">
