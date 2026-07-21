@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useGetMatchHistory, useDeleteMatchHistory } from '@/hooks/useCvMatch';
 import { APP_ROUTES } from '@/lib/constants';
 import { Card, CardContent } from '@/components/ui/card';
@@ -132,7 +133,7 @@ export default function CvMatchingHistoryPage() {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 {/* Main Row */}
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <img src="/images/mascotAvatarMatching.png" alt="Mascot" className={`w-11 h-11 rounded-lg shrink-0 object-cover border bg-white dark:bg-slate-900 ${
+                  <Image src="/images/mascotAvatarMatching.png" alt="Mascot" width={44} height={44} className={`w-11 h-11 rounded-lg shrink-0 object-cover border bg-white dark:bg-slate-900 ${
                     item.status === 'Completed'
                       ? 'border-emerald-200 dark:border-emerald-800 ring-1 ring-emerald-500/20'
                       : item.status === 'Failed'

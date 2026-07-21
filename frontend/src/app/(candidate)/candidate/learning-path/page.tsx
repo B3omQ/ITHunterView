@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useMyLearningPaths, useDeleteLearningPath } from '@/hooks/useLearningPath';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -100,7 +101,7 @@ export default function LearningPathDashboard() {
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       {/* Left: Status Icon */}
-                      <img src="/images/mascotAvatarLearning.png" alt="Mascot" className={`w-11 h-11 rounded-lg shrink-0 object-cover border bg-white dark:bg-slate-900 ${
+                      <Image src="/images/mascotAvatarLearning.png" alt="Mascot" width={44} height={44} className={`w-11 h-11 rounded-lg shrink-0 object-cover border bg-white dark:bg-slate-900 ${
                         path.status === 'Completed'
                           ? 'border-emerald-200 dark:border-emerald-800 ring-1 ring-emerald-500/20'
                           : path.status === 'In Progress'

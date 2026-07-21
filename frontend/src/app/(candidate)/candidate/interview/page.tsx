@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import {
   useGetInterviewSessions,
   useCreateInterviewSession,
@@ -379,7 +380,7 @@ function CandidateInterviewContent() {
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           {/* Left: Status Icon */}
-                          <img src="/images/mascotAvatar.png" alt="Mascot" className={`w-11 h-11 rounded-lg shrink-0 object-cover border bg-white dark:bg-slate-900 ${
+                          <Image src="/images/mascotAvatar.png" alt="Mascot" width={44} height={44} className={`w-11 h-11 rounded-lg shrink-0 object-cover border bg-white dark:bg-slate-900 ${
                             session.status === 'IN_PROGRESS'
                               ? 'border-blue-200 dark:border-blue-800 ring-1 ring-blue-500/20'
                               : 'border-emerald-200 dark:border-emerald-800 ring-1 ring-emerald-500/20'
