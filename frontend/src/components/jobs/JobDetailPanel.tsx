@@ -11,6 +11,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { ApplyJobModal } from '@/components/jobs/ApplyJobModal';
 import { useJobActions } from '@/hooks/useJobActions';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 interface JobDetailPanelProps {
   jobId: string;
@@ -22,6 +23,7 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useJobDetail(jobId, isCandidateMode);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [showUnsaveDialog, setShowUnsaveDialog] = useState(false);
   const { saveJob, unsaveJob, isSaving, isUnsaving } = useJobActions();
 
   if (isLoading) return <div className="h-full flex items-center justify-center"><PageLoader /></div>;
@@ -54,10 +56,15 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
     }
     
     if (job.isSaved) {
-      await unsaveJob(job.id);
+      setShowUnsaveDialog(true);
     } else {
       await saveJob(job.id);
     }
+  };
+
+  const handleConfirmUnsave = async () => {
+    await unsaveJob(job.id);
+    setShowUnsaveDialog(false);
   };
 
   return (
@@ -219,6 +226,25 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
           queryClient.invalidateQueries({ queryKey: ['candidate-jobs'] });
         }}
       />
+
+      <Dialog open={showUnsaveDialog} onOpenChange={setShowUnsaveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unsave Job?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove "{job.title}" from your saved jobs?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUnsaveDialog(false)} disabled={isUnsaving}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmUnsave} disabled={isUnsaving}>
+              {isUnsaving ? 'Unsaving...' : 'Unsave'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -377,7 +377,7 @@ function CandidateInterviewContent() {
                     onClick={() => router.push(`/candidate/interview/${session.id}`)}
                     className="group cursor-pointer hover:border-primary/50 transition-colors"
                   >
-                    <CardContent className="p-4 flex items-center gap-3">
+                    <CardContent className="flex items-center gap-3">
                       {/* Left: Status Icon */}
                       <div className={`shrink-0 w-11 h-11 rounded-lg flex items-center justify-center ${
                         session.status === 'IN_PROGRESS'

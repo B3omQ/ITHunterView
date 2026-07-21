@@ -111,7 +111,7 @@ export default function AppliedJobsPage() {
       <div className="flex flex-col gap-4">
         {jobs.map((job) => (
           <Card key={job.id} className="group hover:border-primary/50 transition-colors">
-            <CardContent className="p-4 flex flex-col gap-3">
+            <CardContent className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
                 {job.companyLogoUrl ? (
                   <div className="w-11 h-11 rounded-lg overflow-hidden bg-muted flex items-center justify-center border border-border shrink-0">

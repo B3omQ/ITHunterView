@@ -115,7 +115,7 @@ export default function CvMatchingHistoryPage() {
       <div className="flex flex-col gap-3">
         {items.map((item) => (
           <Card key={item.jobId} className="group hover:border-primary/50 transition-colors">
-            <CardContent className="p-4 flex flex-col gap-3">
+            <CardContent className="flex flex-col gap-3">
               {/* Main Row */}
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0">

@@ -9,7 +9,7 @@ import { ListPagination } from '@/components/shared/ListPagination';
 import { CardSkeleton } from '@/components/shared/CardSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Bookmark } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Bookmark, Sparkles } from 'lucide-react';
 
 export default function SavedJobsPage() {
   const [page, setPage] = useState(1);
@@ -19,10 +19,12 @@ export default function SavedJobsPage() {
   const { unsaveJob, isUnsaving } = useJobActions();
 
   if (isLoading) return (
-    <div className="w-full pb-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Your Saved Jobs</h1>
-        <p className="text-muted-foreground mt-1">Loading saved jobs...</p>
+    <div className="w-full pb-8 space-y-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Saved Jobs</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">Loading saved jobs...</p>
+        </div>
       </div>
       <div className="flex flex-col gap-3">
         {[1, 2, 3].map(n => <CardSkeleton key={n} />)}
@@ -36,8 +38,15 @@ export default function SavedJobsPage() {
 
   if (jobs.length === 0) {
     return (
-    <div className="w-full pb-8 space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight">Your Saved Jobs</h1>
+    <div className="w-full pb-8 space-y-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Saved Jobs</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">
+            Keep track of your favorite job opportunities and easily access them to apply later.
+          </p>
+        </div>
+      </div>
         <EmptyState 
           title="No saved jobs yet" 
           description="Keep track of jobs you're interested in by clicking the save icon."
@@ -53,11 +62,13 @@ export default function SavedJobsPage() {
 
   return (
     <div className="w-full pb-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Your Saved Jobs</h1>
-        <p className="text-muted-foreground mt-1">
-          You have saved {meta?.totalItems || 0} jobs
-        </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Saved Jobs</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">
+            Keep track of your favorite job opportunities and easily access them to apply later.
+          </p>
+        </div>
       </div>
 
       <div className="flex flex-col gap-4">
