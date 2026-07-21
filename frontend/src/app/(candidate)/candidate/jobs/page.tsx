@@ -19,11 +19,11 @@ function CandidateJobsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  
+
   const parseArray = (param: string | null) => param ? param.split(',').filter(Boolean) : undefined;
 
-  const query: JobSearchQuery = { 
-    page: parseInt(searchParams.get('page') || '1', 10), 
+  const query: JobSearchQuery = {
+    page: parseInt(searchParams.get('page') || '1', 10),
     pageSize: 10,
     keyword: searchParams.get('query') || undefined,
     location: searchParams.get('location') || undefined,
@@ -72,13 +72,13 @@ function CandidateJobsContent() {
     <div className="flex flex-col min-h-[calc(100vh-64px)] bg-white">
       {/* Top Filter */}
       <div className="bg-white w-full">
-        <div className="w-full pb-8">
+        <div className="w-full pb-2">
           <JobSearchFilter />
         </div>
       </div>
 
       {/* Main Split Content */}
-      <div className="flex flex-1 mx-auto px-4 md:px-8 items-start gap-4 lg:gap-5">
+      <div className="flex flex-1 w-full items-start gap-4 lg:gap-5">
         {/* Left Column: Job List */}
         <div className="w-full lg:w-[40%] xl:w-[35%] flex flex-col bg-white">
           <div className="pb-4 pt-2 lg:pb-6 lg:pt-2 flex-1">
@@ -94,10 +94,10 @@ function CandidateJobsContent() {
               <>
                 <div className="flex flex-col gap-4">
                   {data.data.map((job) => (
-                    <JobCard 
-                      key={job.id} 
-                      job={job} 
-                      isCandidateMode={true} 
+                    <JobCard
+                      key={job.id}
+                      job={job}
+                      isCandidateMode={true}
                       isActive={selectedJobId === job.id}
                       onClick={(e) => handleJobClick(e, job.id)}
                     />
@@ -140,15 +140,15 @@ function CandidateJobsContent() {
           <Card className="w-full h-full overflow-hidden flex flex-col shadow-none">
             {selectedJobId ? (
               <div className="h-full overflow-y-auto overscroll-contain">
-                 <JobDetailPanel jobId={selectedJobId} isCandidateMode={true} />
+                <JobDetailPanel jobId={selectedJobId} isCandidateMode={true} />
               </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white h-full">
-                 <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6">
-                   <MousePointerClick className="w-10 h-10 text-slate-500" />
-                 </div>
-                 <h3 className="text-xl font-semibold text-slate-900 mb-2">Select a job to view details</h3>
-                 <p className="text-slate-500 max-w-sm">Click on any job card from the list on the left to see the full job description and apply.</p>
+                <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6">
+                  <MousePointerClick className="w-10 h-10 text-slate-500" />
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">Select a job to view details</h3>
+                <p className="text-slate-500 max-w-sm">Click on any job card from the list on the left to see the full job description and apply.</p>
               </div>
             )}
           </Card>
@@ -156,11 +156,11 @@ function CandidateJobsContent() {
       </div>
 
       {/* Mobile Job Detail Modal */}
-      <JobDetailModal 
-        isOpen={isMobileModalOpen} 
-        onClose={() => setIsMobileModalOpen(false)} 
-        jobId={selectedJobId || undefined} 
-        isCandidateMode={true} 
+      <JobDetailModal
+        isOpen={isMobileModalOpen}
+        onClose={() => setIsMobileModalOpen(false)}
+        jobId={selectedJobId || undefined}
+        isCandidateMode={true}
       />
     </div>
   );
