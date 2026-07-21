@@ -19,12 +19,14 @@ namespace ITHunterview.WebAPI.Controllers
     public class WalletController : ControllerBase
     {
         private readonly IWalletUseCase _walletUseCase;
+        private readonly ICoinConfigUseCase _coinConfigUseCase;
         private readonly PayOSClient _payOS;
         private readonly ILogger<WalletController> _logger;
 
-        public WalletController(IWalletUseCase walletUseCase, PayOSClient payOS, ILogger<WalletController> logger)
+        public WalletController(IWalletUseCase walletUseCase, ICoinConfigUseCase coinConfigUseCase, PayOSClient payOS, ILogger<WalletController> logger)
         {
             _walletUseCase = walletUseCase;
+            _coinConfigUseCase = coinConfigUseCase;
             _payOS = payOS;
             _logger = logger;
         }
@@ -75,6 +77,24 @@ namespace ITHunterview.WebAPI.Controllers
 
         /// <summary>
         /// Xem danh sách gói Coin đang hoạt động (dành cho Candidate)
+        /// </summary>
+        [HttpGet("coin-packages")]
+        [Authorize(Policy = "CandidateOnly")]
+        public async Task<IActionResult> GetActiveCoinPackages()
+        {
+            var result = await _coinConfigUseCase.GetCoinConfigAsync();
+            if (!result.Success || result.Data == null)
+            {
+                return BadRequest(result);
+            }
+            
+            // Lọc ra các gói đang hoạt động
+            var activePackages = result.Data.Packages.Where(p => p.IsActive).ToList();
+            return Ok(new ResponseBase<object>(activePackages, "Lấy danh sách gói nạp Coin thành công"));
+        }
+
+        /// <summary>
+        /// Tạo yêu cầu thanh toán mua coin hoặc mua subscription
         /// </summary>
         [HttpPost("pay")]
         [Authorize(Policy = "CandidateOrRecruiter")]

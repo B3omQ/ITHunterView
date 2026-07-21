@@ -1,17 +1,23 @@
 import api from './api-client';
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types';
 import type {
-  CreatePaymentRequest,
-  CreatePaymentResponse,
+  CreatePaymentDto,
+  CreatePaymentResponseDto,
   WalletBalanceDto,
   WalletTransactionDto,
   PaymentDto,
 } from '@/types/wallet.types';
+import type { CoinPackageDto } from '@/types/subscription.types';
 
 export const walletService = {
-  createPayment: (data: CreatePaymentRequest) =>
+  getActiveCoinPackages: () =>
     api
-      .post<ApiResponse<CreatePaymentResponse>>('/api/v1/wallet/pay', data)
+      .get<ApiResponse<CoinPackageDto[]>>('/api/v1/wallet/coin-packages')
+      .then((res) => res.data),
+
+  createPayment: (data: CreatePaymentDto) =>
+    api
+      .post<ApiResponse<CreatePaymentResponseDto>>('/api/v1/wallet/pay', data)
       .then((res) => res.data),
 
   getBalance: () =>
