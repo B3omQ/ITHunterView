@@ -335,7 +335,7 @@ function CandidateInterviewContent() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">AI Mock Interview</h1>
           <p className="text-muted-foreground mt-2 max-w-2xl">
-            Improve your interview skills. The AI Interviewer will ask technical and soft skill questions tailored to your CV and the job you are applying for.
+            Master your interview skills with personalized AI sessions.
           </p>
         </div>
         <Button onClick={() => setIsOpen(true)} className="bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">
