@@ -35,6 +35,7 @@ export interface MatchJdResponse {
 export interface MatchHistoryDto {
   jobId: string;
   cvId?: string;
+  candidateId?: string;
   cvFileName?: string;
   sourceJobId?: string;
   jdTitle?: string;

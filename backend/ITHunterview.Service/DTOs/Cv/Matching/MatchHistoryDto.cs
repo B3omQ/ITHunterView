@@ -6,6 +6,7 @@ namespace ITHunterview.Service.DTOs.Cv.Matching
     {
         public Guid JobId { get; set; }
         public Guid? CvId { get; set; }
+        public Guid? CandidateId { get; set; }
         public string? CvFileName { get; set; }
         public Guid? SourceJobId { get; set; }
         public string? JdTitle { get; set; }

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Brain, FileCode, Users, RefreshCcw, AlertCircle, FileText, Download } from 'lucide-react';
+import { Brain, FileCode, Users, RefreshCcw, AlertCircle, FileText, Download, Eye } from 'lucide-react';
 import { recruiterService } from '@/services/recruiter.service';
 import type { MatchHistoryDto } from '@/types/cv.types';
 import { cn } from '@/lib/utils';
@@ -159,12 +159,22 @@ export function MatchCvsSection({ jobId, jobStatus }: MatchCvsSectionProps) {
                       <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Match Score</span>
                     </div>
                     
-                    <a href={match.fileUrl || '#'} target="_blank" rel="noreferrer">
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <Download className="h-4 w-4" />
-                        View CV
-                      </Button>
-                    </a>
+                    <div className="flex gap-2">
+                      {match.candidateId && (
+                        <a href={`/recruiter/candidates/${match.candidateId}`} target="_blank" rel="noreferrer">
+                          <Button variant="default" size="sm" className="gap-2 bg-slate-900 hover:bg-slate-800 text-white">
+                            <Eye className="h-4 w-4" />
+                            View Profile
+                          </Button>
+                        </a>
+                      )}
+                      <a href={match.fileUrl || '#'} target="_blank" rel="noreferrer">
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <Download className="h-4 w-4" />
+                          View CV
+                        </Button>
+                      </a>
+                    </div>
                   </div>
                 </div>
               ))}

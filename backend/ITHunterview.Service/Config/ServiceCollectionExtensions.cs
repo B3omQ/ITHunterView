@@ -132,6 +132,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICandidateExperienceUseCase, CandidateExperienceUseCase>();
             services.AddScoped<ICandidateEducationUseCase, CandidateEducationUseCase>();
             services.AddScoped<ICandidateCertificationUseCase, CandidateCertificationUseCase>();
+            services.AddScoped<ICandidatePublicProfileUseCase, CandidatePublicProfileUseCase>();
             services.AddScoped<IInterviewUseCase, InterviewUseCase>();
             services.AddScoped<ILearningPathUseCase, LearningPathUseCase>();
             services.AddScoped<ITargetRoleUseCase, TargetRoleUseCase>();
