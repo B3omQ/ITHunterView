@@ -1,12 +1,15 @@
 'use client';
 
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useMyLearningPaths, useDeleteLearningPath } from '@/hooks/useLearningPath';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Plus, Trash2, Map, Sparkles, ArrowRight, BookOpen, CheckCircle2 } from 'lucide-react';
+import { CardSkeleton } from '@/components/shared/CardSkeleton';
+import { Loader2, Plus, Trash2, Map, Sparkles, ArrowRight, BookOpen, CheckCircle2, MoreHorizontal, Eye, Play } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Dialog,
   DialogContent,
@@ -26,11 +29,19 @@ import {
 export default function LearningPathDashboard() {
   const { data: myPathsData, isLoading } = useMyLearningPaths();
   const deleteMutation = useDeleteLearningPath();
+  const [pathToDelete, setPathToDelete] = useState<string | null>(null);
+
+  const handleConfirmDelete = () => {
+    if (pathToDelete) {
+      deleteMutation.mutate(pathToDelete);
+      setPathToDelete(null);
+    }
+  };
 
   const paths = myPathsData?.data || [];
 
   return (
-    <div className="w-full pb-8 space-y-8">
+    <div className="w-full pb-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Learning Paths</h1>
@@ -65,8 +76,8 @@ export default function LearningPathDashboard() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center items-center py-24">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="flex flex-col gap-3">
+          {[1, 2, 3].map((n) => <CardSkeleton key={n} />)}
         </div>
       ) : paths.length > 0 ? (
         <div className="flex flex-col gap-4">
@@ -84,91 +95,103 @@ export default function LearningPathDashboard() {
 
             return (
               <Card key={path.id} className="group hover:border-primary/50 transition-colors">
-                <CardContent className="p-4 flex items-center gap-4">
-                  {/* Left: Status Icon */}
-                  <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                    path.status === 'Completed'
-                      ? 'bg-emerald-50 text-emerald-500'
-                      : path.status === 'In Progress'
-                        ? 'bg-blue-50 text-blue-500'
-                        : 'bg-slate-100 text-slate-400'
-                  }`}>
-                    <Map className="w-5 h-5" />
-                  </div>
-
-                  {/* Center: Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <Link href={`/candidate/learning-path/${path.id}`} passHref>
-                        <span
-                          className="font-semibold text-base text-foreground group-hover:text-primary transition-colors truncate cursor-pointer"
-                          title={path.title}
-                        >
-                          {path.title}
-                        </span>
-                      </Link>
-                      <Badge className={`shrink-0 text-[10px] px-1.5 py-0 border-none font-semibold ${
+                <CardContent className="flex flex-col gap-3">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {/* Left: Status Icon */}
+                      <div className={`shrink-0 w-11 h-11 rounded-lg flex items-center justify-center border border-border ${
                         path.status === 'Completed'
-                          ? 'bg-[#E6F4EA] text-[#137333]'
+                          ? 'bg-emerald-500/10 text-emerald-600'
                           : path.status === 'In Progress'
-                            ? 'bg-[#E6F0FF] text-[#0052CC]'
-                            : 'bg-[#F3F4F6] text-gray-700'
+                            ? 'bg-blue-500/10 text-blue-600'
+                            : 'bg-slate-200/70 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                       }`}>
-                        {path.status}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
-                      <span className="flex items-center gap-1">
-                        <BookOpen className="h-3 w-3" />
-                        {modules.length} module{modules.length !== 1 ? 's' : ''}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                        {completedTasks}/{totalTasks} tasks
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Progress value={progressPercentage} className="flex-1 [&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-track]]:bg-muted/60" />
-                      <span className="font-semibold text-primary text-xs w-8 text-right">{progressPercentage}%</span>
-                    </div>
-                  </div>
+                        <Map className="w-5 h-5" />
+                      </div>
 
-                  {/* Right: Actions */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Dialog>
-                      <DialogTrigger
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                            disabled={deleteMutation.isPending && deleteMutation.variables === path.id}
-                          />
-                        }
+                      {/* Center: Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Link href={`/candidate/learning-path/${path.id}`} passHref>
+                            <span
+                              className="font-medium text-base text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug cursor-pointer"
+                              title={path.title}
+                            >
+                              {path.title}
+                            </span>
+                          </Link>
+                        </div>
+                        <div className="flex items-center gap-4 flex-wrap mt-1 text-sm text-slate-600">
+                          <div className="flex items-center">
+                            <Badge className={`shrink-0 text-xs px-2 py-0.5 border-none font-medium ${
+                              path.status === 'Completed'
+                                ? 'bg-emerald-500/10 text-emerald-700'
+                                : path.status === 'In Progress'
+                                  ? 'bg-blue-500/10 text-blue-700'
+                                  : 'bg-slate-200/70 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
+                            }`}>
+                              {path.status}
+                            </Badge>
+                          </div>
+                          <span className="flex items-center gap-1.5">
+                            <BookOpen className="h-4 w-4 shrink-0 text-slate-400" />
+                            {modules.length} module{modules.length !== 1 ? 's' : ''}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                            {completedTasks}/{totalTasks} tasks
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Progress & Actions */}
+                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4 sm:gap-8 shrink-0 mt-2 md:mt-0">
+                      
+                      {/* Progress Bar */}
+                      <div className="flex items-center gap-2 w-full sm:w-40">
+                        <Progress 
+                          value={progressPercentage} 
+                          className="flex-1 [&_[data-slot=progress-track]]:h-2.5 [&_[data-slot=progress-track]]:bg-slate-200 dark:[&_[data-slot=progress-track]]:bg-slate-800" 
+                        />
+                        <span className="font-semibold text-slate-700 text-sm w-9 text-right">{progressPercentage}%</span>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 shrink-0">
+                      <Link 
+                        href={`/candidate/learning-path/${path.id}`}
+                        className={buttonVariants({ variant: 'outline', size: 'sm', className: 'gap-1.5 h-9' })}
                       >
-                        {deleteMutation.isPending && deleteMutation.variables === path.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                        {path.status === 'In Progress' ? (
+                          <><Play className="w-4 h-4 fill-current" /> Continue</>
                         ) : (
-                          <Trash2 className="h-4 w-4" />
+                          <><Eye className="w-4 h-4" /> View Path</>
                         )}
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Delete Learning Path</DialogTitle>
-                          <DialogDescription>
-                            Are you sure you want to delete this learning path? This action cannot be undone.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter>
-                          <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-                          <DialogClose render={<Button variant="destructive" onClick={() => deleteMutation.mutate(path.id)} />}>Delete</DialogClose>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                    <ArrowRight className="h-4 w-4 text-primary transform group-hover:translate-x-1 transition-transform" />
+                      </Link>
+
+                      <Popover>
+                        <PopoverTrigger className="inline-flex items-center justify-center h-9 w-9 text-slate-500 hover:text-foreground shrink-0 border border-transparent hover:border-border hover:bg-muted/50 rounded-lg transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-48 p-1">
+                          <div className="flex flex-col">
+                            <Button 
+                              variant="ghost" 
+                              className="w-full justify-start gap-2 h-9 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                              onClick={() => setPathToDelete(path.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span>Delete Path</span>
+                            </Button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </CardContent>
+            </Card>
             );
           })}
         </div>
@@ -188,6 +211,26 @@ export default function LearningPathDashboard() {
           </Link>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!pathToDelete} onOpenChange={(open) => !open && setPathToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Learning Path?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this learning path? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 flex flex-col sm:flex-row gap-2 justify-end">
+            <Button variant="outline" onClick={() => setPathToDelete(null)} disabled={deleteMutation.isPending}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -743,6 +743,7 @@ namespace ITHunterview.Service.UseCase
             {
                 JobId = x.Score.Id,
                 CvId = x.Score.CvId,
+                CandidateId = x.Cv?.UserId,
                 CvFileName = x.Cv?.FileName ?? x.Score.CvFileName ?? "Unknown CV",
                 FileUrl = x.Cv?.FileUrl,
                 SourceJobId = x.Score.JobId,
@@ -779,6 +780,7 @@ namespace ITHunterview.Service.UseCase
             {
                 JobId = x.Score.JobId ?? Guid.Empty,
                 CvId = x.Score.CvId,
+                CandidateId = x.Cv?.UserId,
                 CvFileName = x.Cv?.FileName ?? "Unknown CV",
                 FileUrl = x.Cv?.FileUrl,
                 SourceJobId = x.Score.Id, // using this for primary key mapping if needed

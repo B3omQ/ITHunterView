@@ -247,5 +247,17 @@ export const recruiterService = {
         message: error.response?.data?.message || error.message || 'Failed to fetch matches',
       };
     }
+  },
+
+  getCandidateProfile: async (candidateId: string) => {
+    try {
+      const response = await api.get<ApiResponse<any>>(`/api/v1/recruiter/candidates/${candidateId}/profile`);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Failed to fetch candidate profile',
+      };
+    }
   }
 };

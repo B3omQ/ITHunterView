@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { useJobActions } from '@/hooks/useJobActions';
 import { SavedJobCard } from '@/components/shared/SavedJobCard';
-import { PageLoader } from '@/components/shared/PageLoader';
+import { ListPagination } from '@/components/shared/ListPagination';
+import { CardSkeleton } from '@/components/shared/CardSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Bookmark } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Bookmark, Sparkles } from 'lucide-react';
 
 export default function SavedJobsPage() {
   const [page, setPage] = useState(1);
@@ -17,7 +18,19 @@ export default function SavedJobsPage() {
   const { data, isLoading, isError } = useSavedJobs(page, pageSize);
   const { unsaveJob, isUnsaving } = useJobActions();
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+    <div className="w-full pb-8 space-y-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Saved Jobs</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">Loading saved jobs...</p>
+        </div>
+      </div>
+      <div className="flex flex-col gap-3">
+        {[1, 2, 3].map(n => <CardSkeleton key={n} />)}
+      </div>
+    </div>
+  );
   if (isError) return <EmptyState title="Failed to load saved jobs" description="Please try again later." />;
 
   const jobs = data?.data || [];
@@ -25,8 +38,15 @@ export default function SavedJobsPage() {
 
   if (jobs.length === 0) {
     return (
-    <div className="w-full pb-8 space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight">Your Saved Jobs</h1>
+    <div className="w-full pb-8 space-y-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Saved Jobs</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">
+            Keep track of your favorite job opportunities and easily access them to apply later.
+          </p>
+        </div>
+      </div>
         <EmptyState 
           title="No saved jobs yet" 
           description="Keep track of jobs you're interested in by clicking the save icon."
@@ -42,11 +62,13 @@ export default function SavedJobsPage() {
 
   return (
     <div className="w-full pb-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Your Saved Jobs</h1>
-        <p className="text-muted-foreground mt-1">
-          You have saved {meta?.totalItems || 0} jobs
-        </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Saved Jobs</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">
+            Keep track of your favorite job opportunities and easily access them to apply later.
+          </p>
+        </div>
       </div>
 
       <div className="flex flex-col gap-4">
@@ -61,28 +83,8 @@ export default function SavedJobsPage() {
       </div>
 
       {/* Pagination */}
-      {meta && meta.totalPages > 1 && (
-        <div className="flex justify-center items-center gap-4 pt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            <ChevronLeft className="w-4 h-4 mr-2" /> Previous
-          </Button>
-          <span className="text-sm font-medium">
-            Page {page} of {meta.totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(p => p + 1)}
-            disabled={page === meta.totalPages}
-          >
-            Next <ChevronRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
+      {meta && (
+        <ListPagination page={page} totalPages={meta.totalPages} setPage={setPage} />
       )}
     </div>
   );
