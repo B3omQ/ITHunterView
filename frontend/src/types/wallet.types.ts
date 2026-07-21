@@ -1,20 +1,3 @@
-export type PaymentTargetType = 'SUBSCRIPTION' | 'WALLET_TOPUP';
-export type PaymentGateway = 'PAYOS';
-export type PaymentStatus = 'PENDING' | 'PAID' | 'CANCELLED' | 'FAILED';
-
-export interface CreatePaymentRequest {
-  targetId: string;
-  targetType: PaymentTargetType;
-  paymentGateway: PaymentGateway;
-}
-
-export interface CreatePaymentResponse {
-  paymentId: string;
-  orderCode: number;
-  checkoutUrl: string;
-  qrCode: string;
-}
-
 export interface WalletBalanceDto {
   userId: string;
   balance: number;

@@ -203,7 +203,7 @@ export const recruiterService = {
 
   getMajors: async () => {
     try {
-      const response = await api.get<ApiResponse<PaginatedResult<{ id: number; name: string }>>>('/api/majors?pageSize=1000');
+      const response = await api.get<ApiResponse<PaginatedResult<{ id: number; name: string; parentId?: number; parentName?: string }>>>('/api/majors?pageSize=1000');
       return { success: true, data: response.data };
     } catch (error: any) {
       return {

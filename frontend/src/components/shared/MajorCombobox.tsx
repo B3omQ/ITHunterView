@@ -22,6 +22,8 @@ import {
 interface Major {
   id: number;
   name: string;
+  parentId?: number;
+  parentName?: string;
 }
 
 interface MajorComboboxProps {
@@ -34,6 +36,16 @@ interface MajorComboboxProps {
 
 export function MajorCombobox({ majors, value, onChange, className, placeholder = "Select expertise..." }: MajorComboboxProps) {
   const [open, setOpen] = React.useState(false)
+
+  const roots = majors.filter(m => !m.parentId);
+  const getChildren = (parentId: number) => majors.filter(m => m.parentId === parentId);
+  const orphans = majors.filter(m => m.parentId && !roots.some(r => r.id === m.parentId));
+
+  const handleSelect = (currentValue: string) => {
+    const selected = majors.find(m => m.name.toLowerCase() === currentValue.toLowerCase())?.name || currentValue;
+    onChange(selected === value ? "" : selected)
+    setOpen(false)
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -54,30 +66,61 @@ export function MajorCombobox({ majors, value, onChange, className, placeholder 
           </Button>
         }
       />
-      <PopoverContent className="w-[300px] p-0" align="start">
+      <PopoverContent className="w-full min-w-[300px] p-0" align="start">
         <Command>
           <CommandInput placeholder="Search expertise..." />
-          <CommandList>
+          <CommandList className="max-h-[300px] overflow-y-auto">
             <CommandEmpty>No expertise found.</CommandEmpty>
             <CommandGroup>
-              {majors.map((major) => (
-                <CommandItem
-                  key={major.id}
-                  value={major.name}
-                  onSelect={(currentValue) => {
-                    const selected = majors.find(m => m.name.toLowerCase() === currentValue)?.name || currentValue;
-                    onChange(selected === value ? "" : selected)
-                    setOpen(false)
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === major.name ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {major.name}
-                </CommandItem>
+              {roots.map((root) => (
+                <React.Fragment key={root.id}>
+                  <CommandItem
+                    value={root.name}
+                    onSelect={handleSelect}
+                    className="font-semibold bg-zinc-50 dark:bg-zinc-900/50"
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === root.name ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {root.name}
+                  </CommandItem>
+                  
+                  {getChildren(root.id).map(child => (
+                    <CommandItem
+                      key={child.id}
+                      value={child.name}
+                      onSelect={handleSelect}
+                      className="pl-8"
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === child.name ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {child.name}
+                    </CommandItem>
+                  ))}
+                </React.Fragment>
+              ))}
+
+              {orphans.map(orphan => (
+                  <CommandItem
+                    key={orphan.id}
+                    value={orphan.name}
+                    onSelect={handleSelect}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === orphan.name ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {orphan.name}
+                  </CommandItem>
               ))}
             </CommandGroup>
           </CommandList>

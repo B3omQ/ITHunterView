@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using ITHunterview.Service.DTOs.Common;
@@ -73,7 +74,7 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Candidate tạo yêu cầu thanh toán mua coin hoặc mua subscription
+        /// Xem danh sách gói Coin đang hoạt động (dành cho Candidate)
         /// </summary>
         [HttpPost("pay")]
         [Authorize(Policy = "CandidateOrRecruiter")]
