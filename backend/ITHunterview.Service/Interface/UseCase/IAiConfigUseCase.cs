@@ -7,7 +7,7 @@ namespace ITHunterview.Service.Interface.UseCase
     public interface IAiConfigUseCase
     {
         Task<AiConfigResponseDto> GetAiConfigAsync();
-        Task UpdateActiveProviderAsync(Guid userId, string providerName);
+        Task UpdateAiConfigAsync(Guid userId, UpdateAiConfigRequestDto dto);
         Task<TestConnectionResponseDto> TestConnectionAsync(string providerName, string prompt);
     }
 }

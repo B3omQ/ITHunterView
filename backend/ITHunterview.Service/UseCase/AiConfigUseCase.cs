@@ -33,33 +33,53 @@ namespace ITHunterview.Service.UseCase
             var activeConfig = await _systemConfigRepository.GetByKeyAsync("ActiveAiProvider");
             var activeProvider = activeConfig?.ConfigValue ?? _settings.DefaultProvider ?? "Gemini";
 
+            var rateLimitConfig = await _systemConfigRepository.GetByKeyAsync("AiRateLimit");
+            int rpm = 60; // Default
+            if (rateLimitConfig != null && int.TryParse(rateLimitConfig.ConfigValue, out var parsed))
+            {
+                rpm = parsed;
+            }
+
             var response = new AiConfigResponseDto
             {
-                ActiveProvider = activeProvider
+                ActiveProvider = activeProvider,
+                RequestsPerMinute = rpm
             };
 
             foreach (var kvp in _settings.Providers)
             {
-                var isConfigured = !string.IsNullOrEmpty(kvp.Value.ApiKey) && 
-                                   !kvp.Value.ApiKey.StartsWith("YOUR_") && 
-                                   !kvp.Value.ApiKey.Contains("your-api-key");
+                // Check if API key is in DB first
+                var dbKeyConfig = await _systemConfigRepository.GetByKeyAsync($"AiApiKey_{kvp.Key}");
+                var apiKey = dbKeyConfig?.ConfigValue ?? kvp.Value.ApiKey;
+
+                var isConfigured = !string.IsNullOrEmpty(apiKey) && 
+                                   !apiKey.StartsWith("YOUR_") && 
+                                   !apiKey.Contains("your-api-key");
+
+                string preview = "";
+                if (isConfigured && apiKey.Length > 8)
+                {
+                    preview = apiKey.Substring(0, 3) + "***" + apiKey.Substring(apiKey.Length - 4);
+                }
 
                 response.AvailableProviders.Add(new AiProviderConfigDto
                 {
                     ProviderName = kvp.Key,
                     Model = kvp.Value.Model,
-                    IsConfigured = isConfigured
+                    IsConfigured = isConfigured,
+                    ApiKeyPreview = preview
                 });
             }
 
             return response;
         }
 
-        public async Task UpdateActiveProviderAsync(Guid userId, string providerName)
+        public async Task UpdateAiConfigAsync(Guid userId, UpdateAiConfigRequestDto dto)
         {
             // Validate the provider name exists/is supported
-            var provider = _providerFactory.GetProvider(providerName);
+            var provider = _providerFactory.GetProvider(dto.ProviderName);
 
+            // Update Active Provider
             var config = new SystemConfigs
             {
                 ConfigKey = "ActiveAiProvider",
@@ -67,8 +87,33 @@ namespace ITHunterview.Service.UseCase
                 Description = "Currently active AI model provider for the system (Gemini, OpenAI, Claude).",
                 UpdatedBy = userId
             };
-
             await _systemConfigRepository.SaveAsync(config);
+
+            // Update Rate Limit
+            if (dto.RequestsPerMinute > 0)
+            {
+                var rateLimitConfig = new SystemConfigs
+                {
+                    ConfigKey = "AiRateLimit",
+                    ConfigValue = dto.RequestsPerMinute.ToString(),
+                    Description = "Number of AI requests allowed per minute per user/IP.",
+                    UpdatedBy = userId
+                };
+                await _systemConfigRepository.SaveAsync(rateLimitConfig);
+            }
+
+            // Update API Key if provided
+            if (!string.IsNullOrWhiteSpace(dto.ApiKey) && !dto.ApiKey.Contains("***"))
+            {
+                var apiKeyConfig = new SystemConfigs
+                {
+                    ConfigKey = $"AiApiKey_{provider.ProviderName}",
+                    ConfigValue = dto.ApiKey,
+                    Description = $"API Key for {provider.ProviderName}",
+                    UpdatedBy = userId
+                };
+                await _systemConfigRepository.SaveAsync(apiKeyConfig);
+            }
         }
 
         public async Task<TestConnectionResponseDto> TestConnectionAsync(string providerName, string prompt)

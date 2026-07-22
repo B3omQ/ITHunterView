@@ -7,6 +7,7 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Infrastructure.Persistence;
+using ITHunterview.Service.Interface.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Pgvector.EntityFrameworkCore;
 using Pgvector;
@@ -30,6 +31,7 @@ namespace ITHunterview.Service.UseCase
         private readonly IConfiguration _configuration;
         private readonly ILogger<CvJobMatchingUseCase> _logger;
         private readonly IPromptManagementService _promptManagementService;
+        private readonly ISystemConfigRepository _systemConfigRepository;
 
         public CvJobMatchingUseCase(
             ITHunterviewContext context, 
@@ -38,7 +40,8 @@ namespace ITHunterview.Service.UseCase
             IHttpClientFactory httpClientFactory,
             IConfiguration configuration,
             ILogger<CvJobMatchingUseCase> logger,
-            IPromptManagementService promptManagementService)
+            IPromptManagementService promptManagementService,
+            ISystemConfigRepository systemConfigRepository)
         {
             _context = context;
             _aiService = aiService;
@@ -47,6 +50,7 @@ namespace ITHunterview.Service.UseCase
             _configuration = configuration;
             _logger = logger;
             _promptManagementService = promptManagementService;
+            _systemConfigRepository = systemConfigRepository;
         }
 
         public string ExtractJsonField(string? jsonString, string fieldName)
@@ -559,8 +563,14 @@ namespace ITHunterview.Service.UseCase
             var apiKey = _configuration["AiBypassConfig:ApiKey"];
             
             if (string.IsNullOrWhiteSpace(modelName)) modelName = _configuration["AiSettings:Providers:Gemini:Model"] ?? "gemini-1.5-flash-latest";
-            if (string.IsNullOrWhiteSpace(apiKey)) apiKey = _configuration["AiSettings:Providers:Gemini:ApiKey"];
-            if (string.IsNullOrWhiteSpace(apiKey)) throw new Exception("API Key is missing for Bypass Flow in appsettings.");
+            
+            if (string.IsNullOrWhiteSpace(apiKey)) 
+            {
+                var dbKeyConfig = await _systemConfigRepository.GetByKeyAsync("AiApiKey_Gemini");
+                apiKey = dbKeyConfig?.ConfigValue ?? _configuration["AiSettings:Providers:Gemini:ApiKey"];
+            }
+
+            if (string.IsNullOrWhiteSpace(apiKey)) throw new Exception("API Key is missing for Bypass Flow in appsettings and DB.");
 
             using var client = _httpClientFactory.CreateClient();
             client.Timeout = TimeSpan.FromMinutes(2); // ThÃªm timeout dÃ i cho LLM

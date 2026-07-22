@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using ITHunterview.Service.Config;
 using ITHunterview.Service.Interface.Service;
+using ITHunterview.Service.Interface.Persistence;
 using Microsoft.Extensions.Options;
 
 namespace ITHunterview.Service.Service.AiProviders
@@ -13,12 +14,14 @@ namespace ITHunterview.Service.Service.AiProviders
     {
         private readonly HttpClient _httpClient;
         private readonly ProviderConfig _config;
+        private readonly ISystemConfigRepository _systemConfigRepository;
 
         public string ProviderName => "Gemini";
 
-        public GeminiProvider(HttpClient httpClient, IOptions<AiSettings> settings)
+        public GeminiProvider(HttpClient httpClient, IOptions<AiSettings> settings, ISystemConfigRepository systemConfigRepository)
         {
             _httpClient = httpClient;
+            _systemConfigRepository = systemConfigRepository;
             if (settings.Value.Providers.TryGetValue("Gemini", out var config))
             {
                 _config = config;
@@ -31,9 +34,12 @@ namespace ITHunterview.Service.Service.AiProviders
 
         public async Task<string> GenerateTextAsync(string prompt, string systemPrompt = null)
         {
-            if (string.IsNullOrEmpty(_config.ApiKey) || _config.ApiKey == "YOUR_GEMINI_API_KEY")
+            var dbKeyConfig = await _systemConfigRepository.GetByKeyAsync("AiApiKey_Gemini");
+            var apiKey = dbKeyConfig?.ConfigValue ?? _config.ApiKey;
+
+            if (string.IsNullOrEmpty(apiKey) || apiKey == "YOUR_GEMINI_API_KEY")
             {
-                throw new InvalidOperationException("Gemini API Key is not configured.");
+                throw new InvalidOperationException("Gemini API Key is not configured in DB or appsettings.");
             }
 
             var model = string.IsNullOrEmpty(_config.Model) ? "gemini-flash-latest" : _config.Model;
@@ -43,7 +49,7 @@ namespace ITHunterview.Service.Service.AiProviders
                 ? "https://generativelanguage.googleapis.com/v1beta/models"
                 : _config.Endpoint.TrimEnd('/');
                 
-            var endpoint = $"{baseEndpoint}/{model}:generateContent?key={_config.ApiKey}";
+            var endpoint = $"{baseEndpoint}/{model}:generateContent?key={apiKey}";
 
             // Construct Gemini request payload
             // Setup contents: user prompt

@@ -73,6 +73,7 @@ builder.Services.AddDbContext<ITHunterviewContext>((sp, options) =>
 
 // ─── Application Services ─────────────────────────────────────────────────────
 builder.Services.Configure<ITHunterview.Service.Config.CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+builder.Services.Configure<ITHunterview.Service.Config.AiSettings>(builder.Configuration.GetSection("AiSettings"));
 builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddMemoryCache();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.LogCleanupBackgroundService>();
@@ -179,6 +180,7 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseAuthentication();
 app.UseMiddleware<ITHunterview.WebAPI.Middlewares.UserStatusCheckMiddleware>();
+app.UseMiddleware<ITHunterview.WebAPI.Middlewares.AiRateLimitMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notification");

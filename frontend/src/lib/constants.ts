@@ -43,11 +43,12 @@ export const APP_ROUTES = {
     CHANGE_PASSWORD: '/staff/change-password',
     NOTIFICATIONS: '/staff/notifications',
   },
-  ADMIN: {
+    ADMIN: {
     DASHBOARD: '/admin/dashboard',
     ACCOUNTS: '/admin/accounts',
     COMPANIES: '/admin/companies',
     MASTER_DATA: '/admin/master-data',
+    AI_CONFIG: '/admin/ai-config',
     SUBSCRIPTIONS: '/admin/subscriptions',
     FINANCE: '/admin/finance',
     AUDIT_LOGS: '/admin/audit-logs',
@@ -107,6 +108,7 @@ export const ROLE_MENUS: Record<string, Array<{ label: string; href: string; ico
     { label: 'Accounts', href: APP_ROUTES.ADMIN.ACCOUNTS, icon: 'Users' },
     { label: 'Companies', href: APP_ROUTES.ADMIN.COMPANIES, icon: 'Building2' },
     { label: 'Master Data', href: APP_ROUTES.ADMIN.MASTER_DATA, icon: 'Database' },
+    { label: 'AI Config', href: APP_ROUTES.ADMIN.AI_CONFIG, icon: 'BrainCircuit' },
     { label: 'Subscriptions', href: APP_ROUTES.ADMIN.SUBSCRIPTIONS, icon: 'CreditCard' },
     { label: 'Finance', href: APP_ROUTES.ADMIN.FINANCE, icon: 'BarChart3' },
     { label: 'Platform Safety', href: APP_ROUTES.ADMIN.AUDIT_LOGS, icon: 'Shield' },

@@ -10,13 +10,15 @@ export function useSignalR(hubUrl: string) {
     
     if (!token) return;
 
-    const fullUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}${hubUrl}`;
+    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/+$/, '');
+    const safeHubUrl = hubUrl.startsWith('/') ? hubUrl : `/${hubUrl}`;
+    const fullUrl = `${baseUrl}${safeHubUrl}`;
+    
+    console.log(`[SignalR] Attempting to connect to: ${fullUrl}`);
 
     const newConnection = new HubConnectionBuilder()
       .withUrl(fullUrl, {
-        accessTokenFactory: () => token,
-        skipNegotiation: true,
-        transport: HttpTransportType.WebSockets
+        accessTokenFactory: () => token
       })
       .configureLogging(LogLevel.Information)
       .withAutomaticReconnect()

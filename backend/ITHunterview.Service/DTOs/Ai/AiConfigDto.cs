@@ -5,6 +5,7 @@ namespace ITHunterview.Service.DTOs.Ai
     public class AiConfigResponseDto
     {
         public string ActiveProvider { get; set; }
+        public int RequestsPerMinute { get; set; }
         public List<AiProviderConfigDto> AvailableProviders { get; set; } = new();
     }
 
@@ -13,11 +14,14 @@ namespace ITHunterview.Service.DTOs.Ai
         public string ProviderName { get; set; }
         public string Model { get; set; }
         public bool IsConfigured { get; set; }
+        public string ApiKeyPreview { get; set; } // Example: "sk-***"
     }
 
-    public class UpdateActiveProviderRequestDto
+    public class UpdateAiConfigRequestDto
     {
         public string ProviderName { get; set; }
+        public int RequestsPerMinute { get; set; }
+        public string ApiKey { get; set; } // Optional, only set when updating
     }
 
     public class TestConnectionRequestDto

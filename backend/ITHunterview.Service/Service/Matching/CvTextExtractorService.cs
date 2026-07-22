@@ -13,6 +13,7 @@ using ITHunterview.Service.Constant.Prompts;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.Service.Matching;
+using ITHunterview.Service.Interface.Persistence;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using UglyToad.PdfPig;
@@ -25,17 +26,20 @@ namespace ITHunterview.Service.Service.Matching
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IOptions<AiSettings> _settings;
         private readonly IAiService _aiService;
+        private readonly ISystemConfigRepository _systemConfigRepository;
 
         public CvTextExtractorService(
             ILogger<CvTextExtractorService> logger, 
             IHttpClientFactory httpClientFactory,
             IOptions<AiSettings> settings,
-            IAiService aiService)
+            IAiService aiService,
+            ISystemConfigRepository systemConfigRepository)
         {
             _logger = logger;
             _httpClientFactory = httpClientFactory;
             _settings = settings;
             _aiService = aiService;
+            _systemConfigRepository = systemConfigRepository;
         }
 
         private bool IsTextGarbage(string text)
@@ -324,9 +328,12 @@ namespace ITHunterview.Service.Service.Matching
             try
             {
                 var config = _settings.Value.Providers.TryGetValue("Gemini", out var c) ? c : new ProviderConfig();
-                if (string.IsNullOrEmpty(config.ApiKey) || config.ApiKey == "YOUR_GEMINI_API_KEY")
+                var dbKeyConfig = await _systemConfigRepository.GetByKeyAsync("AiApiKey_Gemini");
+                var apiKey = dbKeyConfig?.ConfigValue ?? config.ApiKey;
+
+                if (string.IsNullOrEmpty(apiKey) || apiKey == "YOUR_GEMINI_API_KEY")
                 {
-                    _logger.LogWarning("Gemini API Key is not configured. Cannot perform OCR.");
+                    _logger.LogWarning("Gemini API Key is not configured in DB or settings. Cannot perform OCR.");
                     return string.Empty;
                 }
 
@@ -335,7 +342,7 @@ namespace ITHunterview.Service.Service.Matching
                     ? "https://generativelanguage.googleapis.com/v1beta/models"
                     : config.Endpoint.TrimEnd('/');
                     
-                var endpoint = $"{baseEndpoint}/{model}:generateContent?key={config.ApiKey}";
+                var endpoint = $"{baseEndpoint}/{model}:generateContent?key={apiKey}";
 
                 using var client = _httpClientFactory.CreateClient();
                 client.Timeout = TimeSpan.FromSeconds(45);

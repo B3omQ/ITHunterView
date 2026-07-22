@@ -39,9 +39,9 @@ namespace ITHunterview.WebAPI.Controllers
             }
         }
 
-        [HttpPost("configs/active")]
+        [HttpPost("configs/update")]
         [Authorize(Policy = "StaffOrAdmin")]
-        public async Task<ActionResult<ResponseBase<string>>> UpdateActiveProvider([FromBody] UpdateActiveProviderRequestDto dto)
+        public async Task<ActionResult<ResponseBase<string>>> UpdateAiConfig([FromBody] UpdateAiConfigRequestDto dto)
         {
             if (dto == null || string.IsNullOrWhiteSpace(dto.ProviderName))
             {
@@ -56,8 +56,8 @@ namespace ITHunterview.WebAPI.Controllers
 
             try
             {
-                await _aiConfigUseCase.UpdateActiveProviderAsync(userId, dto.ProviderName);
-                return Ok(new ResponseBase<string>(dto.ProviderName, $"Active AI provider successfully updated to {dto.ProviderName}."));
+                await _aiConfigUseCase.UpdateAiConfigAsync(userId, dto);
+                return Ok(new ResponseBase<string>(dto.ProviderName, $"AI configurations successfully updated."));
             }
             catch (KeyNotFoundException ex)
             {
@@ -65,7 +65,7 @@ namespace ITHunterview.WebAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new ResponseBase<string>($"Error updating active provider: {ex.Message}"));
+                return StatusCode(500, new ResponseBase<string>($"Error updating AI config: {ex.Message}"));
             }
         }
 

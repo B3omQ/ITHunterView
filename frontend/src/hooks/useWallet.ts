@@ -1,10 +1,10 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { walletService } from '@/services/wallet.service';
-import type { CreatePaymentRequest } from '@/types/wallet.types';
+import type { CreatePaymentDto } from '@/types/wallet.types';
 
 export function useBuySubscription() {
   return useMutation({
-    mutationFn: (data: CreatePaymentRequest) => walletService.createPayment(data),
+    mutationFn: (data: CreatePaymentDto) => walletService.createPayment(data),
     onSuccess: (res) => {
       if (res.success && res.data?.checkoutUrl) {
         window.location.href = res.data.checkoutUrl; // Chuyển hướng sang cổng thanh toán

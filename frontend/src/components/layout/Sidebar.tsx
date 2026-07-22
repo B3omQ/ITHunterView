@@ -112,6 +112,7 @@ const ADMIN_NAV: NavItem[] = [
       { label: "Target Roles", href: `${APP_ROUTES.ADMIN.MASTER_DATA}/target-roles` }
     ]
   },
+  { label: "AI Config", href: APP_ROUTES.ADMIN.AI_CONFIG, icon: "BrainCircuit" },
   { label: "Subscriptions", href: APP_ROUTES.ADMIN.SUBSCRIPTIONS, icon: "CreditCard" },
   { label: "Finance", href: APP_ROUTES.ADMIN.FINANCE, icon: "BarChart3" },
   { label: "Platform Safety", href: APP_ROUTES.ADMIN.AUDIT_LOGS, icon: "Shield" },

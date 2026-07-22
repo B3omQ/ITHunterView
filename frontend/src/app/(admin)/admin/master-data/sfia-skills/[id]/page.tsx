@@ -106,7 +106,7 @@ export default function SfiaSkillDetailPage({ params }: { params: Promise<{ id: 
 
             {skill.levels && skill.levels.length > 0 ? (
               <div className="grid gap-4">
-                {skill.levels.map((levelObj) => (
+                {skill.levels.map((levelObj: any) => (
                   <div key={levelObj.id || levelObj.level} className="flex gap-4 p-5 rounded-2xl bg-card border border-border/50 shadow-sm hover:border-primary/30 transition-colors">
                     <div className="shrink-0 flex flex-col items-center">
                       <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 text-primary font-bold text-lg">
