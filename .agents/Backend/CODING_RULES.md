@@ -22,7 +22,8 @@ Use these rules when adding or changing backend features. They are based on the 
 2. Database mapping
    ITHunterview.Service/Infrastructure/Persistence/ITHunterviewContext.cs
 
-3. Migration
+3. Migration (CRITICAL: DO NOT FORGET)
+   **Any time you add, modify, or delete properties in an entity or modify DbContext, you MUST generate a migration.**
    dotnet ef migrations add {MigrationName} \
      --project ITHunterview.Service \
      --startup-project ITHunterview.WebAPI \

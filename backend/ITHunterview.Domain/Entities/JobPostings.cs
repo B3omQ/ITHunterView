@@ -31,6 +31,12 @@ namespace ITHunterview.Domain.Entities
         [Column("parsed_data", TypeName = "jsonb")]
         public string? ParsedData { get; set; }
 
+        [Column("parse_status")]
+        public string ParseStatus { get; set; } = "PENDING";
+
+        [Column("parse_error")]
+        public string? ParseError { get; set; }
+
         [Column("recruiter_id")]
         public Guid RecruiterId { get; set; }
 

@@ -14,9 +14,10 @@ import Link from 'next/link';
 interface MatchCvsSectionProps {
   jobId: string;
   jobStatus?: string;
+  jobParseStatus?: string;
 }
 
-export function MatchCvsSection({ jobId, jobStatus }: MatchCvsSectionProps) {
+export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSectionProps) {
   const [useAI, setUseAI] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [matches, setMatches] = useState<MatchHistoryDto[]>([]);
@@ -61,6 +62,17 @@ export function MatchCvsSection({ jobId, jobStatus }: MatchCvsSectionProps) {
     }
   };
 
+  const isParsePending = jobParseStatus && jobParseStatus !== 'SUCCESS' && jobParseStatus !== 'FAILED';
+  const isParseFailed = jobParseStatus === 'FAILED';
+  const isScanDisabled = isScanning || jobStatus?.toUpperCase() !== 'PUBLISHED' || jobParseStatus !== 'SUCCESS';
+  
+  const getButtonTitle = () => {
+    if (jobStatus?.toUpperCase() !== 'PUBLISHED') return "Job must be published to scan CVs";
+    if (isParsePending) return "Hệ thống đang phân tích yêu cầu công việc để tìm kiếm ứng viên chuẩn xác nhất. Vui lòng thử lại sau vài giây...";
+    if (isParseFailed) return "Lỗi phân tích dữ liệu, không thể matching.";
+    return "Scan CVs";
+  };
+
   return (
     <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs mt-6 border-t-4 border-t-purple-600">
       <CardHeader className="pb-4 border-b border-zinc-100">
@@ -82,16 +94,16 @@ export function MatchCvsSection({ jobId, jobStatus }: MatchCvsSectionProps) {
 
             <Button 
               onClick={handleScan} 
-              disabled={isScanning || jobStatus?.toUpperCase() !== 'PUBLISHED'}
+              disabled={isScanDisabled}
               size="sm"
               className={cn(
                 "gap-2",
                 useAI ? "bg-purple-600 hover:bg-purple-700" : "bg-blue-600 hover:bg-blue-700"
               )}
-              title={jobStatus?.toUpperCase() !== 'PUBLISHED' ? "Job must be published to scan CVs" : "Scan CVs"}
+              title={getButtonTitle()}
             >
               <RefreshCcw className={cn("h-4 w-4", isScanning && "animate-spin")} />
-              {isScanning ? 'Scanning...' : 'Scan DB'}
+              {isScanning ? 'Scanning...' : (isParsePending ? 'Preparing Data...' : 'Scan DB')}
             </Button>
           </div>
         </div>

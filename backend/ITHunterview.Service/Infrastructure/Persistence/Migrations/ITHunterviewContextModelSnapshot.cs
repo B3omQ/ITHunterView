@@ -800,6 +800,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_primary");
 
+                    b.Property<string>("ParseError")
+                        .HasColumnType("text")
+                        .HasColumnName("parse_error");
+
+                    b.Property<string>("ParseStatus")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("parse_status");
+
                     b.Property<string>("ParsedData")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1190,6 +1199,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Property<decimal?>("MinSalary")
                         .HasColumnType("numeric")
                         .HasColumnName("min_salary");
+
+                    b.Property<string>("ParseError")
+                        .HasColumnType("text")
+                        .HasColumnName("parse_error");
+
+                    b.Property<string>("ParseStatus")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("parse_status");
 
                     b.Property<string>("ParsedData")
                         .HasColumnType("jsonb")

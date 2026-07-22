@@ -61,16 +61,12 @@ namespace ITHunterview.Service.UseCase
                 using var document = JsonDocument.Parse(jsonString);
                 var root = document.RootElement;
                 
-                if (root.TryGetProperty(fieldName, out var element))
-                {
-                    return element.ToString() ?? string.Empty;
-                }
+                JsonElement current = root;
                 
-                // For deep nested properties like "position.title"
+                // For deep nested properties like "matching_metrics.skills"
                 if (fieldName.Contains("."))
                 {
                     var parts = fieldName.Split('.');
-                    var current = root;
                     foreach (var part in parts)
                     {
                         if (current.ValueKind == JsonValueKind.Object && current.TryGetProperty(part, out var nextElement))
@@ -82,8 +78,27 @@ namespace ITHunterview.Service.UseCase
                             return string.Empty;
                         }
                     }
-                    return current.ToString() ?? string.Empty;
                 }
+                else
+                {
+                    if (!root.TryGetProperty(fieldName, out current))
+                    {
+                        return string.Empty;
+                    }
+                }
+
+                if (current.ValueKind == JsonValueKind.Array)
+                {
+                    var items = new List<string>();
+                    foreach (var item in current.EnumerateArray())
+                    {
+                        var str = item.GetString();
+                        if (!string.IsNullOrWhiteSpace(str)) items.Add(str);
+                    }
+                    return string.Join(", ", items);
+                }
+
+                return current.ToString() ?? string.Empty;
             }
             catch
             {
@@ -98,30 +113,31 @@ namespace ITHunterview.Service.UseCase
             
             if (cv.TitleEmbedding == null)
             {
-                var titleText = ExtractJsonField(cv.ParsedData, "job_title");
+                var titleText = ExtractJsonField(cv.ParsedData, "matching_metrics.job_titles_normalized");
                 if (string.IsNullOrEmpty(titleText)) titleText = "Unknown Title";
                 cv.TitleEmbedding = new Vector(await _aiService.GenerateEmbeddingAsync(titleText));
                 updated = true;
             }
             if (cv.SkillsEmbedding == null)
             {
-                var skillsText = ExtractJsonField(cv.ParsedData, "skills");
+                var skillsText = ExtractJsonField(cv.ParsedData, "matching_metrics.skills_normalized");
                 if (string.IsNullOrEmpty(skillsText)) skillsText = "No skills provided";
                 cv.SkillsEmbedding = new Vector(await _aiService.GenerateEmbeddingAsync(skillsText));
                 updated = true;
             }
             if (cv.ExperienceEmbedding == null)
             {
-                var expText = ExtractJsonField(cv.ParsedData, "experience");
+                var expText = ExtractJsonField(cv.ParsedData, "matching_metrics.total_years_exp");
                 if (string.IsNullOrEmpty(expText)) expText = "No experience provided";
+                else expText += " years";
                 cv.ExperienceEmbedding = new Vector(await _aiService.GenerateEmbeddingAsync(expText));
                 updated = true;
             }
             if (cv.DomainEmbedding == null)
             {
                 // Fallback to experience if domain is missing
-                var domainText = ExtractJsonField(cv.ParsedData, "domain");
-                if (string.IsNullOrEmpty(domainText)) domainText = ExtractJsonField(cv.ParsedData, "experience");
+                var domainText = ExtractJsonField(cv.ParsedData, "matching_metrics.domains");
+                if (string.IsNullOrEmpty(domainText)) domainText = ExtractJsonField(cv.ParsedData, "matching_metrics.total_years_exp");
                 if (string.IsNullOrEmpty(domainText)) domainText = "Unknown domain";
                 cv.DomainEmbedding = new Vector(await _aiService.GenerateEmbeddingAsync(domainText));
                 updated = true;
@@ -140,28 +156,29 @@ namespace ITHunterview.Service.UseCase
             
             if (job.TitleEmbedding == null)
             {
-                var titleText = ExtractJsonField(job.ParsedData, "position.title");
+                var titleText = ExtractJsonField(job.ParsedData, "matching_metrics.job_titles_normalized");
                 if (string.IsNullOrEmpty(titleText)) titleText = job.Title ?? "Unknown Title";
                 job.TitleEmbedding = new Vector(await _aiService.GenerateEmbeddingAsync(titleText));
                 updated = true;
             }
             if (job.SkillsEmbedding == null)
             {
-                var skillsText = ExtractJsonField(job.ParsedData, "tech_requirements");
+                var skillsText = ExtractJsonField(job.ParsedData, "matching_metrics.skills_normalized");
                 if (string.IsNullOrEmpty(skillsText)) skillsText = job.Requirements ?? "No requirements provided";
                 job.SkillsEmbedding = new Vector(await _aiService.GenerateEmbeddingAsync(skillsText));
                 updated = true;
             }
             if (job.ExperienceEmbedding == null)
             {
-                var expText = ExtractJsonField(job.ParsedData, "seniority_signals") + " " + ExtractJsonField(job.ParsedData, "engineering_expectations");
+                var expText = ExtractJsonField(job.ParsedData, "matching_metrics.total_years_exp");
                 if (string.IsNullOrWhiteSpace(expText)) expText = job.Responsibilities ?? "No responsibilities provided";
+                else expText += " years";
                 job.ExperienceEmbedding = new Vector(await _aiService.GenerateEmbeddingAsync(expText));
                 updated = true;
             }
             if (job.DomainEmbedding == null)
             {
-                var domainText = ExtractJsonField(job.ParsedData, "domain");
+                var domainText = ExtractJsonField(job.ParsedData, "matching_metrics.domains");
                 if (string.IsNullOrEmpty(domainText)) domainText = job.Description ?? "Unknown domain";
                 job.DomainEmbedding = new Vector(await _aiService.GenerateEmbeddingAsync(domainText));
                 updated = true;
@@ -201,20 +218,24 @@ namespace ITHunterview.Service.UseCase
         {
             var cv = await _context.Cvs.FindAsync(cvId);
             if (cv == null) throw new Exception("CV not found");
+            if (cv.ParseStatus != "SUCCESS") throw new Exception($"CV is currently in status '{cv.ParseStatus ?? "PENDING"}'. AI parsing must complete before matching.");
 
             await GenerateEmbeddingsForCvAsync(cv);
 
-            // Fetch all jobs that have embeddings
-            var jobs = await _context.JobPostings
-                .Where(j => j.Status == ITHunterview.Domain.Enums.JobStatus.PUBLISHED && j.TitleEmbedding != null && j.SkillsEmbedding != null && j.ExperienceEmbedding != null && j.DomainEmbedding != null)
+            var existingScores = await _context.CvJobMatchScores
+                .Where(s => s.CvId == cvId && s.UserId == userId)
+                .ToDictionaryAsync(s => s.JobId);
+
+            // Fetch all jobs that have embeddings and are successfully parsed
+            var jobs = await _context.JobPostings.AsNoTracking()
+                .Where(j => j.Status == ITHunterview.Domain.Enums.JobStatus.PUBLISHED && j.ParseStatus == "SUCCESS" && j.TitleEmbedding != null && j.SkillsEmbedding != null && j.ExperienceEmbedding != null && j.DomainEmbedding != null)
                 .ToListAsync();
 
             var matchScores = new List<CvJobMatchScores>();
 
             foreach (var job in jobs)
             {
-                var existingScore = await _context.CvJobMatchScores
-                    .FirstOrDefaultAsync(s => s.CvId == cvId && s.JobId == job.Id && s.UserId == userId);
+                existingScores.TryGetValue(job.Id, out var existingScore);
 
                 if (existingScore != null && existingScore.Status != "Pending")
                 {
@@ -252,7 +273,6 @@ namespace ITHunterview.Service.UseCase
                 {
                     _context.CvJobMatchScores.Add(new CvJobMatchScores
                     {
-                        Id = Guid.NewGuid(),
                         UserId = userId,
                         CvId = cvId,
                         JobId = job.Id,
@@ -272,17 +292,21 @@ namespace ITHunterview.Service.UseCase
         {
             var job = await _context.JobPostings.FindAsync(jobId);
             if (job == null) throw new Exception("Job not found");
+            if (job.ParseStatus != "SUCCESS") throw new Exception($"Job posting is currently in status '{job.ParseStatus ?? "PENDING"}'. AI analysis must complete before matching.");
 
             await GenerateEmbeddingsForJobAsync(job);
 
-            var cvs = await _context.Cvs
-                .Where(c => c.IsPrimary && c.TitleEmbedding != null && c.SkillsEmbedding != null && c.ExperienceEmbedding != null && c.DomainEmbedding != null)
+            var existingScores = await _context.CvJobMatchScores
+                .Where(s => s.JobId == jobId && s.UserId == userId)
+                .ToDictionaryAsync(s => s.CvId);
+
+            var cvs = await _context.Cvs.AsNoTracking()
+                .Where(c => c.IsPrimary && c.ParseStatus == "SUCCESS" && c.TitleEmbedding != null && c.SkillsEmbedding != null && c.ExperienceEmbedding != null && c.DomainEmbedding != null)
                 .ToListAsync();
 
             foreach (var cv in cvs)
             {
-                var existingScore = await _context.CvJobMatchScores
-                    .FirstOrDefaultAsync(s => s.CvId == cv.Id && s.JobId == jobId && s.UserId == userId);
+                existingScores.TryGetValue(cv.Id, out var existingScore);
 
                 if (existingScore != null && existingScore.Status != "Pending")
                 {
@@ -320,7 +344,6 @@ namespace ITHunterview.Service.UseCase
                 {
                     _context.CvJobMatchScores.Add(new CvJobMatchScores
                     {
-                        Id = Guid.NewGuid(),
                         UserId = userId,
                         CvId = cv.Id,
                         JobId = jobId,
@@ -340,7 +363,6 @@ namespace ITHunterview.Service.UseCase
         {
             var matchScore = new CvJobMatchScores
             {
-                Id = Guid.NewGuid(),
                 UserId = userId,
                 CvId = request.CvId,
                 CvFileName = request.CvFileName ?? (string.IsNullOrEmpty(request.CvText) && string.IsNullOrEmpty(request.CvUrl) ? null : "Bypass CV"),
@@ -559,25 +581,26 @@ namespace ITHunterview.Service.UseCase
 
         private async Task<string> CallLlmBypassAsync(string prompt)
         {
-            var modelName = _configuration["AiBypassConfig:ModelName"];
-            var apiKey = _configuration["AiBypassConfig:ApiKey"];
-            
-            if (string.IsNullOrWhiteSpace(modelName)) modelName = _configuration["AiSettings:Providers:Gemini:Model"] ?? "gemini-1.5-flash-latest";
+            var provider = _configuration["AiSettings:DefaultProvider"] ?? "Gemini";
+            var modelName = _configuration[$"AiSettings:Providers:{provider}:Model"] ?? "gemini-1.5-flash-latest";
+            var apiKey = _configuration[$"AiSettings:Providers:{provider}:ApiKey"];
+            var endpoint = _configuration[$"AiSettings:Providers:{provider}:Endpoint"] ?? "https://generativelanguage.googleapis.com/v1beta/models";
             
             if (string.IsNullOrWhiteSpace(apiKey)) 
             {
-                var dbKeyConfig = await _systemConfigRepository.GetByKeyAsync("AiApiKey_Gemini");
-                apiKey = dbKeyConfig?.ConfigValue ?? _configuration["AiSettings:Providers:Gemini:ApiKey"];
+                var dbKeyConfig = await _systemConfigRepository.GetByKeyAsync($"AiApiKey_{provider}");
+                apiKey = dbKeyConfig?.ConfigValue;
             }
 
-            if (string.IsNullOrWhiteSpace(apiKey)) throw new Exception("API Key is missing for Bypass Flow in appsettings and DB.");
+            if (string.IsNullOrWhiteSpace(apiKey)) throw new Exception($"API Key is missing for Bypass Flow ({provider}).");
 
             using var client = _httpClientFactory.CreateClient();
-            client.Timeout = TimeSpan.FromMinutes(2); // ThÃªm timeout dÃ i cho LLM
+            client.Timeout = TimeSpan.FromMinutes(2); // Thêm timeout dài cho LLM
 
-            if (modelName.Contains("gemini"))
+            if (provider == "Gemini" || modelName.Contains("gemini", StringComparison.OrdinalIgnoreCase))
             {
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/{modelName}:generateContent?key={apiKey}";
+                if (endpoint.EndsWith("/")) endpoint = endpoint.TrimEnd('/');
+                var url = $"{endpoint}/{modelName}:generateContent?key={apiKey}";
                 var payload = new
                 {
                     contents = new[]
@@ -598,62 +621,87 @@ namespace ITHunterview.Service.UseCase
                     }
                 };
 
-                // Simple Retry Policy (3 attempts)
                 int maxRetries = 3;
                 for (int attempt = 1; attempt <= maxRetries; attempt++)
                 {
-                    var response = await client.PostAsJsonAsync(url, payload);
-                    var responseContent = await response.Content.ReadAsStringAsync();
-                    
-                    if (response.IsSuccessStatusCode)
+                    string responseContent = "";
+                    try
                     {
-                        var jsonDoc = JsonDocument.Parse(responseContent);
-                        var candidate = jsonDoc.RootElement.GetProperty("candidates")[0];
+                        var response = await client.PostAsJsonAsync(url, payload);
+                        responseContent = await response.Content.ReadAsStringAsync();
                         
-                        if (candidate.TryGetProperty("finishReason", out var frProp))
+                        if (response.IsSuccessStatusCode)
                         {
-                            var finishReason = frProp.GetString();
-                            if (finishReason != "STOP")
+                            using var jsonDoc = JsonDocument.Parse(responseContent);
+                            if (jsonDoc.RootElement.TryGetProperty("candidates", out var candidates) && 
+                                candidates.ValueKind == JsonValueKind.Array && 
+                                candidates.GetArrayLength() > 0)
                             {
-                                _logger.LogWarning("Gemini stopped unexpectedly with finishReason: {FinishReason}", finishReason);
+                                var candidate = candidates[0];
+                                
+                                if (candidate.TryGetProperty("finishReason", out var frProp))
+                                {
+                                    var finishReason = frProp.GetString();
+                                    if (finishReason != "STOP")
+                                    {
+                                        _logger.LogWarning("Gemini stopped unexpectedly with finishReason: {FinishReason}", finishReason);
+                                    }
+                                }
+
+                                if (candidate.TryGetProperty("content", out var content) &&
+                                    content.TryGetProperty("parts", out var parts) &&
+                                    parts.ValueKind == JsonValueKind.Array &&
+                                    parts.GetArrayLength() > 0 &&
+                                    parts[0].TryGetProperty("text", out var textElement))
+                                {
+                                    var text = textElement.GetString() ?? string.Empty;
+                                    
+                                    _logger.LogInformation("Gemini raw text (first 500 chars): {Text}", text.Length > 500 ? text.Substring(0, 500) : text);
+
+                                    text = ExtractJsonFromText(text);
+
+                                    try 
+                                    {
+                                        using (var testParse = JsonDocument.Parse(text)) { } 
+                                        return text; 
+                                    }
+                                    catch (JsonException ex)
+                                    {
+                                        if (attempt == maxRetries)
+                                            throw new Exception($"Gemini trả về JSON lỗi sau {maxRetries} lần thử. Lỗi: {ex.Message}");
+                                        
+                                        _logger.LogWarning("Gemini sinh JSON lỗi ở lần thử thứ {Attempt}. Sẽ retry. Text 500 chars: {Text}", attempt, text.Length > 500 ? text.Substring(0, 500) : text);
+                                    }
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("Gemini response missing content or parts. Attempt {Attempt}.", attempt);
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Gemini response missing candidates (might be blocked). Attempt {Attempt}.", attempt);
                             }
                         }
-
-                        var text = candidate
-                            .GetProperty("content")
-                            .GetProperty("parts")[0]
-                            .GetProperty("text")
-                            .GetString() ?? string.Empty;
-                        
-                        // Log 500 kÃ½ tá»± Ä‘áº§u Ä‘á»ƒ debug
-                        _logger.LogInformation("Gemini raw text (first 500 chars): {Text}", text.Length > 500 ? text.Substring(0, 500) : text);
-
-                        // Fallback: DÃ¹ng Regex bÃ³c JSON ra khá»i markdown ```json ... ``` hoáº·c láº¥y tháº³ng náº¿u lÃ  JSON thuáº§n
-                        text = ExtractJsonFromText(text);
-
-                        // THÃŠM: Validate JSON ngay táº¡i Ä‘Ã¢y, náº¿u Ä‘á»©t Ä‘uÃ´i/há»ng thÃ¬ nÃ©m lá»—i Ä‘á»ƒ Retry
-                        try 
+                        else
                         {
-                            using (var testParse = JsonDocument.Parse(text)) { } // Chá»‰ Ä‘á»ƒ test
-                            return text; // Há»£p lá»‡, tráº£ vá»
+                            _logger.LogWarning("Gemini API Error Status: {StatusCode}, Content: {Content}", response.StatusCode, responseContent);
                         }
-                        catch (JsonException ex)
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Exception during Gemini API call on attempt {Attempt}", attempt);
+                        if (attempt == maxRetries)
                         {
-                            if (attempt == maxRetries)
-                            {
-                                throw new Exception($"Gemini tráº£ vá» JSON lá»—i sau {maxRetries} láº§n thá»­. Lá»—i: {ex.Message}");
-                            }
-                            _logger.LogWarning("Gemini sinh JSON lá»—i á»Ÿ láº§n thá»­ {Attempt}. Sáº½ retry. Text 500 chars: {Text}", attempt, text.Length > 500 ? text.Substring(0, 500) : text);
+                            throw new Exception($"Gemini API Call failed after {maxRetries} attempts. Last error: {ex.Message}");
                         }
                     }
 
-                    // Náº¿u lá»—i 503 hoáº·c cÃ¡c lá»—i API khÃ¡c, thá»­ láº¡i
                     if (attempt == maxRetries)
                     {
-                        throw new Exception($"Gemini API Error after {maxRetries} attempts: {responseContent}");
+                        throw new Exception($"Gemini API Error after {maxRetries} attempts. Last response: {responseContent}");
                     }
                     
-                    // Äá»£i 2 giÃ¢y trÆ°á»›c khi thá»­ láº¡i
                     await Task.Delay(2000);
                 }
             }

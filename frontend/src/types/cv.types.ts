@@ -7,6 +7,8 @@ export interface Cv {
   fileType: string;
   isPrimary: boolean;
   parsedData: string;
+  parseStatus?: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED';
+  parseError?: string | null;
   createdAt: string;
   updatedAt: string;
 }

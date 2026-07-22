@@ -291,7 +291,7 @@ export default function JobDetailPage() {
         </Card>
 
         {/* Suggested Candidates Match Section */}
-        <MatchCvsSection jobId={job.id} jobStatus={job.status} />
+        <MatchCvsSection jobId={job.id} jobStatus={job.status} jobParseStatus={job.parseStatus} />
 
       </div>
     </div>

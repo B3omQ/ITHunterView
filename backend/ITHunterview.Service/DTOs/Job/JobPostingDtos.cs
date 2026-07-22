@@ -22,6 +22,8 @@ namespace ITHunterview.Service.DTOs.Job
         public string? JobExpertise { get; set; }
         public System.Collections.Generic.List<string>? JobDomain { get; set; }
         public System.Collections.Generic.List<string> Skills { get; set; } = new();
+        public string ParseStatus { get; set; } = "PENDING";
+        public string? ParseError { get; set; }
     }
 
     public class JobPostingDetailDto
@@ -53,6 +55,8 @@ namespace ITHunterview.Service.DTOs.Job
         public string? JobExpertise { get; set; }
         public System.Collections.Generic.List<string>? JobDomain { get; set; }
         public System.Collections.Generic.List<JobSkillRequirementDto> Skills { get; set; } = new();
+        public string ParseStatus { get; set; } = "PENDING";
+        public string? ParseError { get; set; }
     }
 
     public class CreateJobPostingDto

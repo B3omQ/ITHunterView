@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using ITHunterview.Domain.Entities;
@@ -20,9 +19,9 @@ namespace ITHunterview.Service.UseCase
             _context = context;
         }
 
-        private string ExtractJsonField(string? jsonString, string fieldName)
+        private JsonElement? GetJsonElement(string? jsonString, string fieldName)
         {
-            if (string.IsNullOrWhiteSpace(jsonString)) return string.Empty;
+            if (string.IsNullOrWhiteSpace(jsonString)) return null;
             try
             {
                 using var document = JsonDocument.Parse(jsonString);
@@ -30,7 +29,7 @@ namespace ITHunterview.Service.UseCase
                 
                 if (root.TryGetProperty(fieldName, out var element))
                 {
-                    return element.ToString() ?? string.Empty;
+                    return element.Clone();
                 }
                 
                 if (fieldName.Contains("."))
@@ -45,114 +44,124 @@ namespace ITHunterview.Service.UseCase
                         }
                         else
                         {
-                            return string.Empty;
+                            return null;
                         }
                     }
-                    return current.ToString() ?? string.Empty;
+                    return current.Clone();
                 }
             }
             catch { }
-            return string.Empty;
+            return null;
         }
 
-        private decimal CalculateSkillsScore(string cvSkillsStr, string jobSkillsStr)
+        private List<string> ExtractJsonArray(string? jsonString, string fieldName)
         {
-            if (string.IsNullOrWhiteSpace(jobSkillsStr)) return 0.5m; // Neutral score if JD has no skills
-            if (string.IsNullOrWhiteSpace(cvSkillsStr)) return 0m;
-
-            var cvSkills = cvSkillsStr.ToLower().Split(new[] { ',', ';', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(s => s.Trim()).Where(s => s.Length > 0).ToHashSet();
-            var jobSkills = jobSkillsStr.ToLower().Split(new[] { ',', ';', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(s => s.Trim()).Where(s => s.Length > 0).ToHashSet();
-
-            if (jobSkills.Count == 0) return 0.5m;
-
-            int matchCount = jobSkills.Count(j => cvSkills.Any(c => c.Contains(j) || j.Contains(c)));
-            return (decimal)matchCount / jobSkills.Count;
-        }
-
-        private decimal CalculateTitleScore(string cvTitle, string jobTitle)
-        {
-            if (string.IsNullOrWhiteSpace(jobTitle)) return 0.5m;
-            if (string.IsNullOrWhiteSpace(cvTitle)) return 0m;
-
-            cvTitle = cvTitle.ToLower();
-            jobTitle = jobTitle.ToLower();
-
-            if (cvTitle.Contains(jobTitle) || jobTitle.Contains(cvTitle)) return 1.0m;
-
-            var jobTokens = jobTitle.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            int matchCount = jobTokens.Count(t => cvTitle.Contains(t));
-            
-            return jobTokens.Length > 0 ? (decimal)matchCount / jobTokens.Length : 0m;
-        }
-
-        private decimal CalculateExperienceScore(string cvExp, string jobExp)
-        {
-            if (string.IsNullOrWhiteSpace(jobExp)) return 0.5m;
-            if (string.IsNullOrWhiteSpace(cvExp)) return 0m;
-
-            var numRegex = new Regex(@"\d+");
-            var cvMatch = numRegex.Match(cvExp);
-            var jobMatch = numRegex.Match(jobExp);
-
-            if (cvMatch.Success && jobMatch.Success)
+            var element = GetJsonElement(jsonString, fieldName);
+            var result = new List<string>();
+            if (element.HasValue && element.Value.ValueKind == JsonValueKind.Array)
             {
-                int cvYears = int.Parse(cvMatch.Value);
-                int jobYears = int.Parse(jobMatch.Value);
-                if (cvYears >= jobYears) return 1.0m;
-                return (decimal)cvYears / jobYears; // e.g. 2 years vs 3 years = 0.66
+                foreach (var item in element.Value.EnumerateArray())
+                {
+                    var val = item.GetString();
+                    if (!string.IsNullOrWhiteSpace(val))
+                    {
+                        result.Add(val.Trim());
+                    }
+                }
             }
-
-            // Fallback to keyword matching
-            cvExp = cvExp.ToLower();
-            jobExp = jobExp.ToLower();
-            if (jobExp.Contains("senior") && !cvExp.Contains("senior")) return 0.2m;
-            if (jobExp.Contains("junior") && cvExp.Contains("senior")) return 1.0m;
-            
-            return 0.5m;
+            return result;
         }
 
-        private decimal CalculateDomainScore(string cvDomain, string jobDomain)
+        private int ExtractJsonInt(string? jsonString, string fieldName)
         {
-            if (string.IsNullOrWhiteSpace(jobDomain)) return 0.5m;
-            if (string.IsNullOrWhiteSpace(cvDomain)) return 0m;
+            var element = GetJsonElement(jsonString, fieldName);
+            if (element.HasValue && element.Value.ValueKind == JsonValueKind.Number)
+            {
+                if (element.Value.TryGetInt32(out int val))
+                    return val;
+            }
+            return 0;
+        }
 
-            cvDomain = cvDomain.ToLower();
-            jobDomain = jobDomain.ToLower();
+        private decimal CalculateSkillsScore(List<string> cvSkills, List<string> jobSkills)
+        {
+            if (jobSkills == null || jobSkills.Count == 0) return 0.5m;
+            if (cvSkills == null || cvSkills.Count == 0) return 0m;
 
-            if (cvDomain.Contains(jobDomain) || jobDomain.Contains(cvDomain)) return 1.0m;
+            var cvSet = cvSkills.Select(s => s.ToLower()).ToHashSet();
+            var jobSet = jobSkills.Select(s => s.ToLower()).ToHashSet();
+
+            int matchCount = jobSet.Count(j => cvSet.Contains(j));
+            return (decimal)matchCount / jobSet.Count;
+        }
+
+        private decimal CalculateTitleScore(List<string> cvTitles, List<string> jobTitles)
+        {
+            if (jobTitles == null || jobTitles.Count == 0) return 0.5m;
+            if (cvTitles == null || cvTitles.Count == 0) return 0m;
+
+            var cvSet = cvTitles.Select(s => s.ToLower()).ToHashSet();
+            var jobSet = jobTitles.Select(s => s.ToLower()).ToHashSet();
+
+            if (jobSet.Any(j => cvSet.Contains(j))) return 1.0m;
+            return 0m;
+        }
+
+        private decimal CalculateExperienceScore(int cvYears, int jobYears)
+        {
+            if (jobYears <= 0) return 0.5m;
+            if (cvYears >= jobYears) return 1.0m;
+            return (decimal)cvYears / jobYears;
+        }
+
+        private decimal CalculateDomainScore(List<string> cvDomains, List<string> jobDomains)
+        {
+            if (jobDomains == null || jobDomains.Count == 0) return 0.5m;
+            if (cvDomains == null || cvDomains.Count == 0) return 0m;
+
+            var cvSet = cvDomains.Select(s => s.ToLower()).ToHashSet();
+            var jobSet = jobDomains.Select(s => s.ToLower()).ToHashSet();
+
+            int matchCount = jobSet.Count(j => cvSet.Contains(j));
+            if (matchCount > 0) return 1.0m;
             return 0.3m;
         }
 
-        private async Task ProcessMatching(Cvs cv, JobPostings job, Guid userId)
+        private class ParsedMetrics
         {
-            var existingScore = await _context.CvJobMatchScores
-                .FirstOrDefaultAsync(s => s.CvId == cv.Id && s.JobId == job.Id && s.UserId == userId);
+            public List<string> Titles { get; set; } = new();
+            public List<string> Skills { get; set; } = new();
+            public int Exp { get; set; }
+            public List<string> Domains { get; set; } = new();
+        }
+
+        private ParsedMetrics ExtractMetrics(string? parsedData)
+        {
+            return new ParsedMetrics
+            {
+                Titles = ExtractJsonArray(parsedData, "matching_metrics.job_titles_normalized"),
+                Skills = ExtractJsonArray(parsedData, "matching_metrics.skills_normalized"),
+                Exp = ExtractJsonInt(parsedData, "matching_metrics.total_years_exp"),
+                Domains = ExtractJsonArray(parsedData, "matching_metrics.domains")
+            };
+        }
+
+        private void ProcessMatching(Cvs cv, ParsedMetrics cvMetrics, JobPostings job, ParsedMetrics jobMetrics, Guid userId, CvJobMatchScores? existingScore)
+        {
+            if (existingScore != null && existingScore.Status != "Pending")
+            {
+                return; // Do not rescan or overwrite
+            }
 
             if (existingScore != null && existingScore.Status != "Pending")
             {
                 return; // Do not rescan or overwrite
             }
 
-            var cvTitle = ExtractJsonField(cv.ParsedData, "job_title");
-            var cvSkills = ExtractJsonField(cv.ParsedData, "skills");
-            var cvExp = ExtractJsonField(cv.ParsedData, "experience");
-            var cvDomain = ExtractJsonField(cv.ParsedData, "domain");
-            if (string.IsNullOrEmpty(cvDomain)) cvDomain = ExtractJsonField(cv.ParsedData, "experience");
-
-            var jobTitle = ExtractJsonField(job.ParsedData, "position.title");
-            if (string.IsNullOrEmpty(jobTitle)) jobTitle = job.Title;
-            var jobSkills = ExtractJsonField(job.ParsedData, "tech_requirements");
-            if (string.IsNullOrEmpty(jobSkills)) jobSkills = job.Requirements;
-            var jobExp = ExtractJsonField(job.ParsedData, "seniority_signals") + " " + ExtractJsonField(job.ParsedData, "engineering_expectations");
-            var jobDomain = ExtractJsonField(job.ParsedData, "domain");
-            if (string.IsNullOrEmpty(jobDomain)) jobDomain = job.Description;
-
-            var titleScore = CalculateTitleScore(cvTitle, jobTitle);
-            var skillsScore = CalculateSkillsScore(cvSkills, jobSkills);
-            var expScore = CalculateExperienceScore(cvExp, jobExp);
-            var domainScore = CalculateDomainScore(cvDomain, jobDomain);
+            var titleScore = CalculateTitleScore(cvMetrics.Titles, jobMetrics.Titles);
+            var skillsScore = CalculateSkillsScore(cvMetrics.Skills, jobMetrics.Skills);
+            var expScore = CalculateExperienceScore(cvMetrics.Exp, jobMetrics.Exp);
+            var domainScore = CalculateDomainScore(cvMetrics.Domains, jobMetrics.Domains);
 
             var finalScore = (titleScore * 0.15m) +
                              (skillsScore * 0.45m) +
@@ -170,9 +179,6 @@ namespace ITHunterview.Service.UseCase
                 Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m }
             });
 
-            existingScore = await _context.CvJobMatchScores
-                .FirstOrDefaultAsync(s => s.CvId == cv.Id && s.JobId == job.Id && s.UserId == userId);
-
             if (existingScore != null)
             {
                 existingScore.MatchScore = finalScore;
@@ -185,7 +191,6 @@ namespace ITHunterview.Service.UseCase
             {
                 _context.CvJobMatchScores.Add(new CvJobMatchScores
                 {
-                    Id = Guid.NewGuid(),
                     UserId = userId,
                     CvId = cv.Id,
                     JobId = job.Id,
@@ -203,11 +208,23 @@ namespace ITHunterview.Service.UseCase
         {
             var cv = await _context.Cvs.FindAsync(cvId);
             if (cv == null) throw new Exception("CV not found");
+            if (cv.ParseStatus != "SUCCESS") throw new Exception($"CV is currently in status '{cv.ParseStatus ?? "PENDING"}'. AI parsing must complete before matching.");
 
-            var jobs = await _context.JobPostings.Where(j => j.Status == ITHunterview.Domain.Enums.JobStatus.PUBLISHED).ToListAsync();
+            var cvMetrics = ExtractMetrics(cv.ParsedData);
+
+            var existingScores = await _context.CvJobMatchScores
+                .Where(s => s.CvId == cvId && s.UserId == userId)
+                .ToDictionaryAsync(s => s.JobId);
+
+            var jobs = await _context.JobPostings.AsNoTracking().Where(j => j.Status == ITHunterview.Domain.Enums.JobStatus.PUBLISHED).ToListAsync();
+            
             foreach (var job in jobs)
             {
-                await ProcessMatching(cv, job, userId);
+                if (job.ParseStatus != "SUCCESS") continue; // Skip unparsed jobs to avoid inaccurate 0% matches
+
+                existingScores.TryGetValue(job.Id, out var existingScore);
+                var jobMetrics = ExtractMetrics(job.ParsedData);
+                ProcessMatching(cv, cvMetrics, job, jobMetrics, userId, existingScore);
             }
 
             await _context.SaveChangesAsync();
@@ -217,11 +234,23 @@ namespace ITHunterview.Service.UseCase
         {
             var job = await _context.JobPostings.FindAsync(jobId);
             if (job == null) throw new Exception("Job not found");
+            if (job.ParseStatus != "SUCCESS") throw new Exception($"Job posting is currently in status '{job.ParseStatus ?? "PENDING"}'. AI analysis must complete before matching.");
 
-            var cvs = await _context.Cvs.Where(c => c.IsPrimary).ToListAsync();
+            var jobMetrics = ExtractMetrics(job.ParsedData);
+
+            var existingScores = await _context.CvJobMatchScores
+                .Where(s => s.JobId == jobId && s.UserId == userId)
+                .ToDictionaryAsync(s => s.CvId);
+
+            var cvs = await _context.Cvs.AsNoTracking().Where(c => c.IsPrimary).ToListAsync();
+            
             foreach (var cv in cvs)
             {
-                await ProcessMatching(cv, job, userId);
+                if (cv.ParseStatus != "SUCCESS") continue; // Skip unparsed CVs to avoid inaccurate 0% matches
+
+                existingScores.TryGetValue(cv.Id, out var existingScore);
+                var cvMetrics = ExtractMetrics(cv.ParsedData);
+                ProcessMatching(cv, cvMetrics, job, jobMetrics, userId, existingScore);
             }
 
             await _context.SaveChangesAsync();

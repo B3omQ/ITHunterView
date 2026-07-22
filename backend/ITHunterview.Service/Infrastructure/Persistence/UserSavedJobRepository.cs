@@ -42,6 +42,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 LogoUrl = x.company.LogoUrl,
                 Location = x.job.Location,
                 SalaryText = $"{x.job.MinSalary} - {x.job.MaxSalary} {x.job.Currency}",
+                ParseStatus = x.job.ParseStatus,
                 SavedAt = x.usj.CreatedAt
             }).ToList();
 

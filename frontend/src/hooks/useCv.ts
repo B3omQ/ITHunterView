@@ -5,6 +5,13 @@ export function useGetMyCvs() {
   return useQuery({
     queryKey: ['cvs'],
     queryFn: () => cvService.getMyCvs(),
+    refetchInterval: (query) => {
+      const cvs = query.state.data?.data || [];
+      const hasPendingOrProcessing = cvs.some(
+        (cv) => !cv.parseStatus || cv.parseStatus === 'PENDING' || cv.parseStatus === 'PROCESSING'
+      );
+      return hasPendingOrProcessing ? 3000 : false;
+    },
   });
 }
 

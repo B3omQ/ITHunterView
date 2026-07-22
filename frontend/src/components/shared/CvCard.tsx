@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FileText, Eye, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Cv } from '@/types/cv.types';
+import { AiParseStatusBadge } from '@/components/shared/AiParseStatusBadge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
@@ -45,10 +46,13 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
         )}>
           <FileText className="h-5 w-5" />
         </div>
-        <div className="flex flex-col overflow-hidden justify-center py-1">
-          <h4 className="truncate text-base font-semibold text-foreground group-hover:text-primary transition-colors" title={cv.fileName}>
-            {cv.fileName}
-          </h4>
+        <div className="flex flex-col overflow-hidden justify-center py-1 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="truncate text-base font-semibold text-foreground group-hover:text-primary transition-colors" title={cv.fileName}>
+              {cv.fileName}
+            </h4>
+            <AiParseStatusBadge status={cv.parseStatus} error={cv.parseError} forCandidate={true} />
+          </div>
           <p className="text-sm text-muted-foreground mt-0.5">
             {formattedDate} • {formattedSize}
           </p>

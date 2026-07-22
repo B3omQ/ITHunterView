@@ -101,6 +101,18 @@ namespace ITHunterview.Service.Service.Matching
             
             if (fileType == "pdf")
             {
+                // Ưu tiên trích xuất Raw Text bằng PdfPig trước
+                var rawText = SafeExtractPdf(fileBytes, fileName);
+                
+                if (!string.IsNullOrWhiteSpace(rawText) && !IsTextGarbage(rawText))
+                {
+                    _logger.LogInformation("Successfully extracted clean text from PDF using PdfPig. Calling Gemini Text API.");
+                    var textPrompt = CvParsingPrompt.GetPrompt(rawText);
+                    return await ExtractJsonWithGeminiTextAsync(textPrompt);
+                }
+
+                _logger.LogWarning("PdfPig extracted garbage or empty text. PDF is likely a scanned image. Falling back to Gemini Vision OCR.");
+                
                 // Mặc định ném PDF vào Gemini Vision để lấy thẳng JSON (ParsedData)
                 var prompt = CvParsingPrompt.SystemPrompt + "\n\nExtract the CV into the required JSON format directly from the provided document.";
                 var json = await ExtractWithGeminiVisionAsync(fileBytes, "application/pdf", prompt);
@@ -117,19 +129,8 @@ namespace ITHunterview.Service.Service.Matching
                 }
                 catch { }
 
-                _logger.LogWarning("Gemini Vision failed to return valid JSON for PDF. Falling back to RawText + Gemini Text.");
-                
-                // Fallback: Lấy Raw Text bằng PdfPig
-                var rawText = SafeExtractPdf(fileBytes, fileName);
-                if (IsTextGarbage(rawText))
-                {
-                    _logger.LogWarning("Fallback PdfPig extracted garbage text. Cannot parse CV accurately.");
-                    return string.Empty;
-                }
-                
-                // Gọi Gemini Text
-                var textPrompt = CvParsingPrompt.GetPrompt(rawText);
-                return await ExtractJsonWithGeminiTextAsync(textPrompt);
+                _logger.LogWarning("Gemini Vision failed to return valid JSON for Scanned PDF.");
+                return string.Empty;
             }
             else // docx, image, unknown
             {
@@ -146,6 +147,14 @@ namespace ITHunterview.Service.Service.Matching
         {
             if (string.IsNullOrWhiteSpace(fileUrl)) return string.Empty;
 
+            // FAST PATH: Nếu đã có Text sạch từ quá trình Upload, gọi Gemini Text ngay lập tức!
+            if (!string.IsNullOrWhiteSpace(rawTextFallback) && !IsTextGarbage(rawTextFallback))
+            {
+                _logger.LogInformation("Fast path: Using provided RawTextFallback for {Url}. Skipping download and Vision OCR.", fileUrl);
+                var textPrompt = CvParsingPrompt.GetPrompt(rawTextFallback);
+                return await ExtractJsonWithGeminiTextAsync(textPrompt);
+            }
+
             try
             {
                 using var client = _httpClientFactory.CreateClient();
@@ -157,11 +166,7 @@ namespace ITHunterview.Service.Service.Matching
                     var contentType = response.Content.Headers.ContentType?.MediaType?.ToLowerInvariant() ?? "";
                     var fileBytes = await response.Content.ReadAsByteArrayAsync();
                     
-                    var fileType = DetermineFileType(contentType, fileUrl);
-                    if (fileType == "pdf")
-                    {
-                        return await ExtractParsedDataFromBytesAsync(fileBytes, contentType, fileUrl);
-                    }
+                    return await ExtractParsedDataFromBytesAsync(fileBytes, contentType, fileUrl);
                 }
                 else
                 {
@@ -173,7 +178,7 @@ namespace ITHunterview.Service.Service.Matching
                 _logger.LogWarning(ex, "Error downloading file from URL. Falling back to RawText.");
             }
 
-            // Fallback cho DOCX hoặc khi không tải được File: Dùng RawText gọi Gemini Text
+            // Fallback cuối cùng nếu không tải được File: Dùng RawText gọi Gemini Text
             if (!string.IsNullOrWhiteSpace(rawTextFallback))
             {
                 var textPrompt = CvParsingPrompt.GetPrompt(rawTextFallback);

@@ -30,6 +30,8 @@ export interface JobPosting {
   publishedAt?: string;
   expiresAt?: string;
   applicationCount?: number;
+  parseStatus?: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED';
+  parseError?: string | null;
 }
 
 export interface JobPostingSummary {
@@ -48,8 +50,9 @@ export interface JobPostingSummary {
   level?: string;
   workingModel?: string;
   jobExpertise?: string;
-  jobDomain?: string[];
   skills: string[];
+  parseStatus?: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED';
+  parseError?: string | null;
 }
 
 export interface JobCategory {

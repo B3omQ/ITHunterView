@@ -57,7 +57,6 @@ namespace ITHunterview.Service.UseCase
 
             var cv = new Cvs
             {
-                Id = Guid.NewGuid(),
                 UserId = userId,
                 FileUrl = request.FileUrl,
                 FileName = request.FileName,
@@ -65,6 +64,7 @@ namespace ITHunterview.Service.UseCase
                 FileType = request.FileType,
                 IsPrimary = request.IsPrimary,
                 ParsedData = request.ParsedData ?? string.Empty,
+                ParseStatus = string.IsNullOrWhiteSpace(request.ParsedData) ? "PENDING" : "SUCCESS",
                 RawText = extractedRawText,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -72,7 +72,7 @@ namespace ITHunterview.Service.UseCase
 
             var createdCv = await _cvRepository.CreateAsync(cv);
 
-            if (string.IsNullOrWhiteSpace(createdCv.ParsedData))
+            if (createdCv.ParseStatus == "PENDING")
             {
                 _ = ParseCvBackgroundAsync(createdCv.Id, createdCv.RawText, createdCv.FileUrl);
             }
@@ -82,46 +82,57 @@ namespace ITHunterview.Service.UseCase
 
         private async Task ParseCvBackgroundAsync(Guid cvId, string rawTextFallback, string fileUrl)
         {
+            using var scope = _scopeFactory.CreateScope();
+            var textExtractor = scope.ServiceProvider.GetRequiredService<ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService>();
+            var cvRepo = scope.ServiceProvider.GetRequiredService<ICvRepository>();
+
+            var cvToUpdate = await cvRepo.GetByIdAsync(cvId);
+            if (cvToUpdate == null) return;
+
             try
             {
-                using var scope = _scopeFactory.CreateScope();
-                var textExtractor = scope.ServiceProvider.GetRequiredService<ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService>();
-                var cvRepo = scope.ServiceProvider.GetRequiredService<ICvRepository>();
-
                 _logger.LogInformation("Starting background parsing for CV {CvId}", cvId);
+                cvToUpdate.ParseStatus = "PROCESSING";
+                cvToUpdate.UpdatedAt = DateTime.UtcNow;
+                await cvRepo.UpdateAsync(cvToUpdate);
 
                 var parsedJson = await textExtractor.ExtractParsedDataFromUrlAsync(fileUrl, rawTextFallback);
 
+                var freshCv = await cvRepo.GetByIdAsync(cvId);
+                if (freshCv == null) return;
+
                 if (!string.IsNullOrWhiteSpace(parsedJson))
                 {
-                    // Basic validation to ensure it's JSON
-                    try 
+                    using (System.Text.Json.JsonDocument.Parse(parsedJson))
                     {
-                        using (System.Text.Json.JsonDocument.Parse(parsedJson))
-                        {
-                            var cvToUpdate = await cvRepo.GetByIdAsync(cvId);
-                            if (cvToUpdate != null)
-                            {
-                                cvToUpdate.ParsedData = parsedJson;
-                                cvToUpdate.UpdatedAt = DateTime.UtcNow;
-                                await cvRepo.UpdateAsync(cvToUpdate);
-                                _logger.LogInformation("Successfully parsed and updated CV {CvId}", cvId);
-                            }
-                        }
-                    }
-                    catch (System.Text.Json.JsonException ex)
-                    {
-                        _logger.LogError(ex, "Failed to validate parsed JSON for CV {CvId}", cvId);
+                        freshCv.ParsedData = parsedJson;
+                        freshCv.ParseStatus = "SUCCESS";
+                        freshCv.ParseError = null;
+                        freshCv.UpdatedAt = DateTime.UtcNow;
+                        await cvRepo.UpdateAsync(freshCv);
+                        _logger.LogInformation("Successfully parsed and updated CV {CvId}", cvId);
                     }
                 }
                 else
                 {
+                    freshCv.ParseStatus = "FAILED";
+                    freshCv.ParseError = "AI returned empty JSON content";
+                    freshCv.UpdatedAt = DateTime.UtcNow;
+                    await cvRepo.UpdateAsync(freshCv);
                     _logger.LogWarning("Background parsing resulted in empty JSON for CV {CvId}", cvId);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to parse CV {CvId} in background", cvId);
+                var freshCv = await cvRepo.GetByIdAsync(cvId);
+                if (freshCv != null)
+                {
+                    freshCv.ParseStatus = "FAILED";
+                    freshCv.ParseError = ex.Message;
+                    freshCv.UpdatedAt = DateTime.UtcNow;
+                    await cvRepo.UpdateAsync(freshCv);
+                }
             }
         }
 
@@ -178,6 +189,8 @@ namespace ITHunterview.Service.UseCase
                 FileType = cv.FileType,
                 IsPrimary = cv.IsPrimary,
                 ParsedData = cv.ParsedData,
+                ParseStatus = cv.ParseStatus ?? "PENDING",
+                ParseError = cv.ParseError,
                 CreatedAt = cv.CreatedAt,
                 UpdatedAt = cv.UpdatedAt
             };
