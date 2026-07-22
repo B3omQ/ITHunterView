@@ -19,6 +19,7 @@ namespace ITHunterview.WebAPI.Controllers
     public class WalletController : ControllerBase
     {
         private readonly IWalletUseCase _walletUseCase;
+
         private readonly ICoinConfigUseCase _coinConfigUseCase;
         private readonly PayOSClient _payOS;
         private readonly ILogger<WalletController> _logger;
@@ -30,6 +31,8 @@ namespace ITHunterview.WebAPI.Controllers
             _payOS = payOS;
             _logger = logger;
         }
+
+      
 
         private Guid? GetCurrentUserId()
         {
@@ -76,6 +79,7 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         /// <summary>
+
         /// Xem danh sách gói Coin đang hoạt động (dành cho Candidate)
         /// </summary>
         [HttpGet("coin-packages")]
@@ -98,6 +102,11 @@ namespace ITHunterview.WebAPI.Controllers
         /// </summary>
         [HttpPost("pay")]
         [Authorize(Policy = "CandidateOrRecruiter")]
+
+        /// Candidate tạo yêu cầu thanh toán mua coin hoặc mua subscription
+        /// </summary>
+        [HttpPost("pay")]
+        [Authorize(Policy = "CandidateOnly")]
         public async Task<IActionResult> CreatePaymentRequest([FromBody] CreatePaymentDto dto)
         {
             var userId = GetCurrentUserId();
