@@ -55,6 +55,7 @@ import {
   ChevronRight,
   MoreHorizontal,
   Eye,
+  Globe,
 } from 'lucide-react';
 import type { DifficultyLevel } from '@/types/interview.types';
 
@@ -66,6 +67,7 @@ function CandidateInterviewContent() {
   const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('MEDIUM');
+  const [language, setLanguage] = useState<'vi' | 'en'>('vi');
   const [selectedCv, setSelectedCv] = useState<string>('none');
   const [selectedJob, setSelectedJob] = useState<string>('none');
   const [selectedModel, setSelectedModel] = useState<string>('Gemini');
@@ -131,6 +133,7 @@ function CandidateInterviewContent() {
         cvId: selectedCv === 'none' ? undefined : selectedCv,
         jobId: selectedJob === 'none' ? undefined : selectedJob,
         aiProvider: selectedModel,
+        language: language,
       });
 
       if (res.success && res.data) {
@@ -614,6 +617,30 @@ function CandidateInterviewContent() {
                     </Select>
                   </div>
                 )}
+
+                {/* Interview Language */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                    <Globe className="h-4 w-4 text-emerald-500" /> Interview Language / Ngôn ngữ phỏng vấn
+                  </label>
+                  <Select value={language} onValueChange={(val) => setLanguage((val ?? 'vi') as 'vi' | 'en')}>
+                    <SelectTrigger className="w-full h-11 px-3 bg-card border-border hover:border-primary/50 focus:ring-primary/20 hover:bg-muted/10 transition-all rounded-xl shadow-sm text-sm font-medium">
+                      <SelectValue placeholder="Select Language" />
+                    </SelectTrigger>
+                    <SelectContent alignItemWithTrigger={false} className="bg-popover border-border text-popover-foreground">
+                      <SelectItem value="vi">
+                        <div className="flex items-center gap-2 font-medium">
+                          <span>🇻🇳 Tiếng Việt (Vietnamese)</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="en">
+                        <div className="flex items-center gap-2 font-medium">
+                          <span>🇬🇧 Tiếng Anh (English)</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 

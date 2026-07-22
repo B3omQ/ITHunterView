@@ -36,6 +36,9 @@ namespace ITHunterview.Domain.Entities
         [Column("ai_provider")]
         public string? AiProvider { get; set; }
 
+        [Column("language")]
+        public string? Language { get; set; } = "vi";
+
         [Column("sfia_extract_result")]
         public string? SfiaExtractResult { get; set; }
     }
