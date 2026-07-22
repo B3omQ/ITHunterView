@@ -118,8 +118,9 @@ namespace ITHunterview.Service.UseCase
 
             var job = new JobPostings
             {
-                Id = Guid.NewGuid(),
-                JobCode = string.IsNullOrWhiteSpace(dto.JobCode) ? $"JB-{new Random().Next(1000, 9999)}" : dto.JobCode,
+                JobCode = string.IsNullOrWhiteSpace(dto.JobCode) 
+                    ? $"JB-{DateTime.UtcNow:yyyyMMddHHmmss}-{Random.Shared.Next(100, 999)}" 
+                    : dto.JobCode,
                 RecruiterId = recruiterId,
                 CompanyId = companyId.Value,
 
