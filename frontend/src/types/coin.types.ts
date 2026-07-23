@@ -11,7 +11,11 @@ export interface CoinPackageDto {
 export interface CoinFeatureCostsDto {
   cvJdMatching: number;
   mockInterview: number;
-  cvOptimize: number;
+  learningPath: number;
+  unlockCv: number;
+  postJob: number;
+  extendJob: number;
+  pushTop: number;
 }
 
 export interface CoinConfigResponseDto {

@@ -5,12 +5,16 @@ export interface FeaturesConfigDto {
   // Quota cho Candidate
   cvMatchLimit?: number | null;
   mockInterviewLimit?: number | null;
-  cvOptimizeLimit?: number | null;
+  learningPathSlotLimit?: number | null;
+  aiRefreshUnlimited?: boolean | null;
+  premiumBadge?: boolean | null;
   // Quota cho Recruiter
-  activeJobPostings?: number | null;
-  activeSourcingLimit?: number | null;
-  highlightedJobs?: number | null;
-  analytics?: boolean | null;
+  jobSlots?: number | null;
+  jobExtendLimit?: number | null;
+  unlockCvLimit?: number | null;
+  pushTopLimit?: number | null;
+  // Dùng chung
+  coinCredit?: number | null;
 }
 
 export interface SubscriptionDto {
@@ -52,7 +56,11 @@ export interface PagedResult<T> {
 export interface CoinFeatureCostsDto {
   cvJdMatching: number;
   mockInterview: number;
-  cvOptimize: number;
+  learningPath: number;
+  unlockCv: number;
+  postJob: number;
+  extendJob: number;
+  pushTop: number;
 }
 
 export interface CoinPackageDto {

@@ -95,7 +95,7 @@ export default function Home() {
         </h1>
 
         <p className="mt-5 text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-          Smart job matching, AI-powered CV optimization, and real mock interviews to get you hired at top tech companies.
+          Smart job matching, AI-powered Learning Path generation, and real mock interviews to get you hired at top tech companies.
         </p>
 
         {/* Search Bar */}
@@ -361,7 +361,7 @@ export default function Home() {
                 <ul className="space-y-3.5">
                   {[
                     "Unlimited job browsing",
-                    "AI CV optimization",
+                    "AI Learning Path",
                     "10 mock interviews/month",
                     "Interview feedback reports",
                     "Priority job alerts",

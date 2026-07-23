@@ -92,11 +92,35 @@ export default function CandidatePricingPage() {
                       </span>
                     </li>
                   )}
-                  {sub.featuresConfig.cvOptimizeLimit !== null && (
+                  {sub.featuresConfig.learningPathSlotLimit !== null && sub.featuresConfig.learningPathSlotLimit !== undefined && (
                     <li className="flex gap-3 items-start">
                       <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                       <span className="text-zinc-600 text-sm">
-                        {sub.featuresConfig.cvOptimizeLimit} lượt Tối ưu CV AI
+                        {sub.featuresConfig.learningPathSlotLimit} lượt tạo Learning Path
+                      </span>
+                    </li>
+                  )}
+                  {sub.featuresConfig.aiRefreshUnlimited === true && (
+                    <li className="flex gap-3 items-start">
+                      <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
+                      <span className="text-zinc-600 text-sm">
+                        Lượt AI Refresh không giới hạn
+                      </span>
+                    </li>
+                  )}
+                  {sub.featuresConfig.premiumBadge === true && (
+                    <li className="flex gap-3 items-start">
+                      <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
+                      <span className="text-zinc-600 text-sm">
+                        Huy hiệu Premium nổi bật
+                      </span>
+                    </li>
+                  )}
+                  {sub.featuresConfig.coinCredit !== null && sub.featuresConfig.coinCredit !== undefined && sub.featuresConfig.coinCredit > 0 && (
+                    <li className="flex gap-3 items-start">
+                      <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
+                      <span className="text-zinc-600 text-sm">
+                        Tặng {new Intl.NumberFormat('vi-VN').format(sub.featuresConfig.coinCredit)} Coin
                       </span>
                     </li>
                   )}

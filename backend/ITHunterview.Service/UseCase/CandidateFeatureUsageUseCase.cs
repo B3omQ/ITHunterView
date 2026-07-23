@@ -94,7 +94,7 @@ namespace ITHunterview.Service.UseCase
                                 {
                                     "CvJdMatching" => features.CvMatchLimit ?? 0,
                                     "MockInterview" => features.MockInterviewLimit ?? 0,
-                                    "CvOptimize" => features.CvOptimizeLimit ?? 0,
+                                    "LearningPath" => features.LearningPathSlotLimit ?? 0,
                                     _ => 0
                                 };
 
@@ -136,7 +136,7 @@ namespace ITHunterview.Service.UseCase
                         {
                             "CvJdMatching" => defaultCosts.CvJdMatching,
                             "MockInterview" => defaultCosts.MockInterview,
-                            "CvOptimize" => defaultCosts.CvOptimize,
+                            "LearningPath" => defaultCosts.LearningPath,
                             _ => 0
                         };
                     }
@@ -207,15 +207,9 @@ namespace ITHunterview.Service.UseCase
                         .Where(x => x.CandidateId == userId && x.StartedAt >= start && x.StartedAt <= end)
                         .CountAsync();
 
-                case "CvOptimize":
-                    // Đếm số lần tối ưu CV (Dựa trên số lượng OptimizeSession của user thông qua CvJobMatchScores)
-                    return await _context.OptimizeSessions
-                        .Join(_context.CvJobMatchScores, 
-                              os => os.MatchSessionId, 
-                              ms => ms.Id, 
-                              (os, ms) => new { os, ms })
-                        .Where(x => x.ms.UserId == userId && x.os.CreatedAt >= start && x.os.CreatedAt <= end)
-                        .CountAsync();
+                case "LearningPath":
+                    // TODO: Đếm số lượng slot Learning Path đã dùng của Candidate
+                    return 0; // Tạm thời trả về 0 cho đến khi entity LearningPath được thêm vào DB
 
                 default:
                     return 0;
@@ -226,9 +220,13 @@ namespace ITHunterview.Service.UseCase
         {
             return new CoinFeatureCostsDto
             {
-                CvJdMatching = 2,
-                MockInterview = 10,
-                CvOptimize = 3
+                CvJdMatching = 1000,
+                MockInterview = 2000,
+                LearningPath = 500,
+                UnlockCv = 3000,
+                PostJob = 20000,
+                ExtendJob = 10000,
+                PushTop = 5000
             };
         }
 
@@ -238,7 +236,11 @@ namespace ITHunterview.Service.UseCase
             {
                 "CvJdMatching" => "So khớp CV-JD AI",
                 "MockInterview" => "Phỏng vấn thử AI Mock Interview",
-                "CvOptimize" => "Tối ưu hóa CV AI",
+                "LearningPath" => "Tạo Learning Path",
+                "UnlockCv" => "Mở khóa CV",
+                "PostJob" => "Đăng tin",
+                "ExtendJob" => "Gia hạn tin",
+                "PushTop" => "Đẩy lên Top",
                 _ => featureKey
             };
         }

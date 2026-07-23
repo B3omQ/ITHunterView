@@ -28,9 +28,13 @@ namespace ITHunterview.Service.UseCase
             var dbFeatures = await _context.CoinFeatures.AsNoTracking().ToListAsync();
             result.FeatureCosts = new CoinFeatureCostsDto
             {
-                CvJdMatching = dbFeatures.FirstOrDefault(f => f.FeatureKey == "CvJdMatching")?.CoinCost ?? 2,
-                MockInterview = dbFeatures.FirstOrDefault(f => f.FeatureKey == "MockInterview")?.CoinCost ?? 10,
-                CvOptimize = dbFeatures.FirstOrDefault(f => f.FeatureKey == "CvOptimize")?.CoinCost ?? 3
+                CvJdMatching = dbFeatures.FirstOrDefault(f => f.FeatureKey == "CvJdMatching")?.CoinCost ?? 1000,
+                MockInterview = dbFeatures.FirstOrDefault(f => f.FeatureKey == "MockInterview")?.CoinCost ?? 2000,
+                LearningPath = dbFeatures.FirstOrDefault(f => f.FeatureKey == "LearningPath")?.CoinCost ?? 500,
+                UnlockCv = dbFeatures.FirstOrDefault(f => f.FeatureKey == "UnlockCv")?.CoinCost ?? 3000,
+                PostJob = dbFeatures.FirstOrDefault(f => f.FeatureKey == "PostJob")?.CoinCost ?? 20000,
+                ExtendJob = dbFeatures.FirstOrDefault(f => f.FeatureKey == "ExtendJob")?.CoinCost ?? 10000,
+                PushTop = dbFeatures.FirstOrDefault(f => f.FeatureKey == "PushTop")?.CoinCost ?? 5000
             };
 
             // 2. Lấy danh sách gói nạp coin từ bảng coin_packages
@@ -67,9 +71,13 @@ namespace ITHunterview.Service.UseCase
             var dbFeatures = await _context.CoinFeatures.AsNoTracking().ToListAsync();
             result.FeatureCosts = new CoinFeatureCostsDto
             {
-                CvJdMatching = dbFeatures.FirstOrDefault(f => f.FeatureKey == "CvJdMatching")?.CoinCost ?? 2,
-                MockInterview = dbFeatures.FirstOrDefault(f => f.FeatureKey == "MockInterview")?.CoinCost ?? 10,
-                CvOptimize = dbFeatures.FirstOrDefault(f => f.FeatureKey == "CvOptimize")?.CoinCost ?? 3
+                CvJdMatching = dbFeatures.FirstOrDefault(f => f.FeatureKey == "CvJdMatching")?.CoinCost ?? 1000,
+                MockInterview = dbFeatures.FirstOrDefault(f => f.FeatureKey == "MockInterview")?.CoinCost ?? 2000,
+                LearningPath = dbFeatures.FirstOrDefault(f => f.FeatureKey == "LearningPath")?.CoinCost ?? 500,
+                UnlockCv = dbFeatures.FirstOrDefault(f => f.FeatureKey == "UnlockCv")?.CoinCost ?? 3000,
+                PostJob = dbFeatures.FirstOrDefault(f => f.FeatureKey == "PostJob")?.CoinCost ?? 20000,
+                ExtendJob = dbFeatures.FirstOrDefault(f => f.FeatureKey == "ExtendJob")?.CoinCost ?? 10000,
+                PushTop = dbFeatures.FirstOrDefault(f => f.FeatureKey == "PushTop")?.CoinCost ?? 5000
             };
 
             // 2. Lấy danh sách gói nạp coin (chỉ lấy IsActive = true)
@@ -105,7 +113,7 @@ namespace ITHunterview.Service.UseCase
             if (dto.FeatureCosts == null)
                 return new ResponseBase<UpdateCoinConfigDto>("Cấu hình chi phí tính năng không được để trống");
             
-            if (dto.FeatureCosts.CvJdMatching < 0 || dto.FeatureCosts.MockInterview < 0 || dto.FeatureCosts.CvOptimize < 0)
+            if (dto.FeatureCosts.CvJdMatching < 0 || dto.FeatureCosts.MockInterview < 0 || dto.FeatureCosts.LearningPath < 0 || dto.FeatureCosts.UnlockCv < 0 || dto.FeatureCosts.PostJob < 0 || dto.FeatureCosts.ExtendJob < 0 || dto.FeatureCosts.PushTop < 0)
                 return new ResponseBase<UpdateCoinConfigDto>("Chi phí Coin của các tính năng không được nhỏ hơn 0");
 
             if (dto.Packages == null || dto.Packages.Count == 0)
@@ -133,7 +141,11 @@ namespace ITHunterview.Service.UseCase
                     {
                         ("CvJdMatching", dto.FeatureCosts.CvJdMatching, "So khớp CV-JD AI"),
                         ("MockInterview", dto.FeatureCosts.MockInterview, "Phỏng vấn thử AI Mock Interview"),
-                        ("CvOptimize", dto.FeatureCosts.CvOptimize, "Tối ưu hóa CV AI")
+                        ("LearningPath", dto.FeatureCosts.LearningPath, "Tạo Learning Path"),
+                        ("UnlockCv", dto.FeatureCosts.UnlockCv, "Mở khóa thông tin CV"),
+                        ("PostJob", dto.FeatureCosts.PostJob, "Đăng Job (30 ngày)"),
+                        ("ExtendJob", dto.FeatureCosts.ExtendJob, "Gia hạn Job (15 ngày)"),
+                        ("PushTop", dto.FeatureCosts.PushTop, "Đẩy Job lên Top (1 ngày)")
                     };
 
                     foreach (var f in featuresToUpdate)
@@ -220,9 +232,9 @@ namespace ITHunterview.Service.UseCase
         {
             return new List<CoinPackageDto>
             {
-                new() { Id = "00000000-0000-0000-0000-000000000020", Name = "Gói nạp 20 Coin", Coins = 20, Price = 39000, IsActive = true },
-                new() { Id = "00000000-0000-0000-0000-000000000050", Name = "Gói nạp 50 Coin", Coins = 50, Price = 89000, IsActive = true },
-                new() { Id = "00000000-0000-0000-0000-000000000120", Name = "Gói nạp 120 Coin", Coins = 120, Price = 199000, IsActive = true }
+                new() { Id = "00000000-0000-0000-0000-000000000100", Name = "Starter Package", Coins = 10500, Price = 100000, IsActive = true },
+                new() { Id = "00000000-0000-0000-0000-000000000500", Name = "Value Package", Coins = 60000, Price = 500000, IsActive = true },
+                new() { Id = "00000000-0000-0000-0000-000000002000", Name = "Pro Funder Package", Coins = 300000, Price = 2000000, IsActive = true }
             };
         }
     }

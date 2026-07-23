@@ -80,14 +80,14 @@ export default function TopUpPage() {
                   <Badge variant="secondary" className="mt-1">{featureCosts?.cvJdMatching ?? 0} Coins</Badge>
                 </div>
                 <div className="flex flex-col items-center p-3 bg-muted/50 rounded-lg border">
-                  <Zap className="h-5 w-5 text-amber-500 mb-2" />
-                  <span className="text-sm font-medium text-center">CV Optimizer</span>
-                  <Badge variant="secondary" className="mt-1">{featureCosts?.cvOptimize ?? 0} Coins</Badge>
-                </div>
-                <div className="flex flex-col items-center p-3 bg-muted/50 rounded-lg border">
                   <BrainCircuit className="h-5 w-5 text-purple-500 mb-2" />
                   <span className="text-sm font-medium text-center">Mock Interview</span>
                   <Badge variant="secondary" className="mt-1">{featureCosts?.mockInterview ?? 0} Coins</Badge>
+                </div>
+                <div className="flex flex-col items-center p-3 bg-muted/50 rounded-lg border">
+                  <Zap className="h-5 w-5 text-amber-500 mb-2" />
+                  <span className="text-sm font-medium text-center">Learning Path</span>
+                  <Badge variant="secondary" className="mt-1">{featureCosts?.learningPath ?? 0} Coins</Badge>
                 </div>
               </div>
             )}
