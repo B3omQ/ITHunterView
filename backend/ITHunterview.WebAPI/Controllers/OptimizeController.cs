@@ -11,10 +11,12 @@ namespace ITHunterview.WebAPI.Controllers;
 public class OptimizeController : ControllerBase
 {
     private readonly IOptimizeUseCase _optimizeUseCase;
+    private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
 
-    public OptimizeController(IOptimizeUseCase optimizeUseCase)
+    public OptimizeController(IOptimizeUseCase optimizeUseCase, ICandidateFeatureUsageUseCase featureUsageUseCase)
     {
         _optimizeUseCase = optimizeUseCase;
+        _featureUsageUseCase = featureUsageUseCase;
     }
 
     public class CreateOptimizeSessionRequest
@@ -26,11 +28,29 @@ public class OptimizeController : ControllerBase
     [HttpPost("match-sessions/{matchId}")]
     public async Task<ActionResult<ResponseBase<Guid>>> CreateSession(Guid matchId, [FromBody] CreateOptimizeSessionRequest request)
     {
+        var userIdStr = User.FindFirst("userId")?.Value;
+        if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+        {
+            return Unauthorized();
+        }
+
         if (string.IsNullOrWhiteSpace(request.CvUrl) && !request.CvId.HasValue) 
-            return BadRequest("CvUrl or CvId is required.");
+            return BadRequest(new ResponseBase<Guid>(Guid.Empty, "CvUrl or CvId is required."));
         
-        var sessionId = await _optimizeUseCase.CreateSessionAsync(matchId, request.CvUrl, request.CvId);
-        return new ResponseBase<Guid>(sessionId);
+        try
+        {
+            await _featureUsageUseCase.TryConsumeFeatureAsync(userId, "CvOptimize");
+            var sessionId = await _optimizeUseCase.CreateSessionAsync(matchId, request.CvUrl, request.CvId);
+            return new ResponseBase<Guid>(sessionId);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Ok(new ResponseBase<Guid>(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new ResponseBase<Guid>(Guid.Empty, ex.Message));
+        }
     }
 
     [HttpGet("{id}/suggestions")]
