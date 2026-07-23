@@ -286,6 +286,73 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 await context.SaveChangesAsync();
             }
 
+            // Seed MB Bank Company & Recruiter Profile if missing
+            var mbCompany = context.Companies.FirstOrDefault(c => c.TaxCode == "0100283873" || c.Name.Contains("MB Bank") || c.Name.Contains("Quân đội"));
+            if (mbCompany == null)
+            {
+                mbCompany = new Companies
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Ngân hàng TMCP Quân đội (MB Bank)",
+                    TaxCode = "0100283873",
+                    HeadquartersAddress = "Số 18 Lê Văn Lương, Phường Trung Hòa, Quận Cầu Giấy, Hà Nội",
+                    Industry = "Banking & Financial Technology (Fintech)",
+                    CompanySize = "1000+",
+                    Description = "Ngân hàng Thương mại Cổ phần Quân đội (MB) là một doanh nghiệp trực thuộc Bộ Quốc phòng, tiên phong trong chuyển đổi số và cung cấp các dịch vụ tài chính, ngân hàng số hiện đại hàng đầu Việt Nam.",
+                    Website = "https://www.mbbank.com.vn",
+                    LogoUrl = "https://upload.wikimedia.org/wikipedia/commons/2/25/Logo_MB_new.png",
+                    CompanyType = "IT Product / Banking",
+                    VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION,
+                    VerificationDocumentUrl = "https://www.mbbank.com.vn/license.pdf",
+                    Status = CompanyStatus.VERIFIED,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                context.Companies.Add(mbCompany);
+                await context.SaveChangesAsync();
+            }
+
+            if (recruiterRole != null)
+            {
+                string mbRecruiterEmail = "recruiter.mbbank@ithunterview.com";
+                var mbUser = context.Users.FirstOrDefault(u => u.Email == mbRecruiterEmail);
+                if (mbUser == null)
+                {
+                    mbUser = new User
+                    {
+                        Id = Guid.NewGuid(),
+                        Email = mbRecruiterEmail,
+                        PasswordHash = PasswordHasher.HashPassword("123456"),
+                        Status = UserStatus.ACTIVE,
+                        RoleId = recruiterRole.Id
+                    };
+                    context.Users.Add(mbUser);
+                    await context.SaveChangesAsync();
+                }
+
+                var mbProfile = context.RecruiterProfiles.FirstOrDefault(rp => rp.UserId == mbUser.Id);
+                if (mbProfile == null)
+                {
+                    context.RecruiterProfiles.Add(new RecruiterProfiles
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = mbUser.Id,
+                        CompanyId = mbCompany.Id,
+                        FullName = "Tuyển dụng MB Bank",
+                        PositionTitle = "Head of Talent Acquisition",
+                        Phone = "02437674050",
+                        AvatarUrl = "https://avatar.iran.liara.run/public/34"
+                    });
+                    await context.SaveChangesAsync();
+                }
+                else if (mbProfile.CompanyId != mbCompany.Id)
+                {
+                    mbProfile.CompanyId = mbCompany.Id;
+                    context.RecruiterProfiles.Update(mbProfile);
+                    await context.SaveChangesAsync();
+                }
+            }
+
             // Seed profiles for candidate users if missing
             if (candidateRole != null)
             {
