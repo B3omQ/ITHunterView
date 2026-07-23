@@ -184,7 +184,10 @@ export function Sidebar() {
   // Auto-expand active group
   React.useEffect(() => {
     navItems.forEach(item => {
-      if (item.children && isActive(item.href) && !expandedGroups.includes(item.label)) {
+      const isParentActive = item.href ? isActive(item.href) : false;
+      const isChildActive = item.children ? item.children.some(c => isActive(c.href)) : false;
+      
+      if (item.children && (isParentActive || isChildActive) && !expandedGroups.includes(item.label)) {
         setExpandedGroups(prev => [...prev, item.label])
       }
     })
