@@ -32,6 +32,7 @@ namespace ITHunterview.Service.UseCase
         private readonly ILogger<CvJobMatchingUseCase> _logger;
         private readonly IPromptManagementService _promptManagementService;
         private readonly ISystemConfigRepository _systemConfigRepository;
+        private readonly IAiService _textAiService;
 
         public CvJobMatchingUseCase(
             ITHunterviewContext context, 
@@ -41,7 +42,8 @@ namespace ITHunterview.Service.UseCase
             IConfiguration configuration,
             ILogger<CvJobMatchingUseCase> logger,
             IPromptManagementService promptManagementService,
-            ISystemConfigRepository systemConfigRepository)
+            ISystemConfigRepository systemConfigRepository,
+            IAiService textAiService)
         {
             _context = context;
             _aiService = aiService;
@@ -51,6 +53,7 @@ namespace ITHunterview.Service.UseCase
             _logger = logger;
             _promptManagementService = promptManagementService;
             _systemConfigRepository = systemConfigRepository;
+            _textAiService = textAiService;
         }
 
         public string ExtractJsonField(string? jsonString, string fieldName)
@@ -394,7 +397,6 @@ namespace ITHunterview.Service.UseCase
                 string cvText = request.CvText ?? string.Empty;
                 if (string.IsNullOrWhiteSpace(cvText))
                 {
-                    // KHáº®C PHá»¤C KHUYáº¾T ÄIá»‚M: Xá»­ lÃ½ file Upload tá»« Frontend
                     if (!string.IsNullOrWhiteSpace(request.CvUrl))
                     {
                         cvText = await _cvTextExtractorService.ExtractTextFromUrlAsync(request.CvUrl);
@@ -405,18 +407,13 @@ namespace ITHunterview.Service.UseCase
                         if (cv != null)
                         {
                             if (!string.IsNullOrWhiteSpace(cv.ParsedData))
-                            {
                                 cvText = cv.ParsedData;
-                            }
                             else if (!string.IsNullOrWhiteSpace(cv.RawText))
-                            {
                                 cvText = cv.RawText;
-                            }
                             else if (!string.IsNullOrWhiteSpace(cv.FileUrl))
                             {
                                 _logger.LogInformation("[INFO] CV RawText is empty in Matching. Extracting from URL: {Url}", cv.FileUrl);
                                 cvText = await _cvTextExtractorService.ExtractTextFromUrlAsync(cv.FileUrl);
-                                
                                 cv.RawText = cvText;
                                 _context.Cvs.Update(cv);
                                 await _context.SaveChangesAsync();
@@ -425,19 +422,7 @@ namespace ITHunterview.Service.UseCase
                     }
                 }
 
-                // 2. Get JD Text
-                string jdText = request.RawJdText ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(jdText) && request.JobId.HasValue)
-                {
-                    var job = await _context.JobPostings.FindAsync(request.JobId.Value);
-                    if (job != null)
-                    {
-                        jdText = $"{job.Title}\n\nDescription:\n{job.Description}\n\nResponsibilities:\n{job.Responsibilities}\n\nRequirements:\n{job.Requirements}\n\nBenefits & Perks:\n{job.Benefits}";
-                        if (string.IsNullOrEmpty(matchRecord.JdTitle)) matchRecord.JdTitle = job.Title;
-                    }
-                }
-                
-                // Cáº­p nháº­t tÃªn CV náº¿u lÃ  CV tá»« há»‡ thá»‘ng
+                // Cập nhật tên CV nếu là CV từ hệ thống
                 if (matchRecord.CvId.HasValue && string.IsNullOrEmpty(matchRecord.CvFileName))
                 {
                     var cv = await _context.Cvs.FindAsync(matchRecord.CvId.Value);
@@ -448,63 +433,136 @@ namespace ITHunterview.Service.UseCase
                 {
                     var cvSource = request.CvId.HasValue ? $"CV ID={request.CvId}" : "uploaded file";
                     var urlDebug = !string.IsNullOrWhiteSpace(request.CvUrl) ? $"[URL: {request.CvUrl}] " : "";
-                    throw new Exception($"Cannot extract text from CV ({cvSource}). {urlDebug}The file URL may be an invalid PDF/DOCX or blocked by Cloudinary. Please try using 'Paste Text' tab instead.");
+                    throw new Exception($"Cannot extract text from CV ({cvSource}). {urlDebug}The file URL may be an invalid PDF/DOCX or blocked by Cloudinary.");
                 }
 
-                if (string.IsNullOrWhiteSpace(jdText))
+                // 2. Get JD Requirements (STAGE 1)
+                string jdRequirementsJson = "";
+                List<ScoringRequirement> requirementsList = new List<ScoringRequirement>();
+
+                if (request.JobId.HasValue)
                 {
-                    var jdSource = request.JobId.HasValue ? $"Job ID={request.JobId}" : "provided JD";
-                    throw new Exception($"Cannot extract Job Description text ({jdSource}). The job posting may have no description. Please try using 'Paste JD Text' tab instead.");
+                    var job = await _context.JobPostings.FindAsync(request.JobId.Value);
+                    if (job != null)
+                    {
+                        if (string.IsNullOrEmpty(matchRecord.JdTitle)) matchRecord.JdTitle = job.Title;
+                        
+                        if (job.ParseStatus == "SUCCESS" && !string.IsNullOrWhiteSpace(job.ParsedData))
+                        {
+                            _logger.LogInformation("[INFO] Stage 1 skipped. Using ParsedData from Job {JobId}", request.JobId);
+                            jdRequirementsJson = job.ParsedData;
+                        }
+                        else
+                        {
+                            _logger.LogInformation("[INFO] Stage 1 Fallback. Parsing JD text for Job {JobId}", request.JobId);
+                            string rawJdText = $"Title: {job.Title}\nDescription: {job.Description}\nRequirements: {job.Requirements}\nBenefits: {job.Benefits}";
+                            var promptStage1 = ITHunterview.Service.Constant.Prompts.JdExtractionPrompt.BuildUser(rawJdText);
+                            var aiResponse = await _textAiService.GenerateTextAsync(promptStage1, ITHunterview.Service.Constant.Prompts.JdExtractionPrompt.System);
+                            jdRequirementsJson = ExtractJsonFromText(aiResponse);
+                        }
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(request.RawJdText))
+                {
+                    _logger.LogInformation("[INFO] Stage 1 Execution for Paste Text mode.");
+                    var promptStage1 = ITHunterview.Service.Constant.Prompts.JdExtractionPrompt.BuildUser(request.RawJdText);
+                    var aiResponse = await _textAiService.GenerateTextAsync(promptStage1, ITHunterview.Service.Constant.Prompts.JdExtractionPrompt.System);
+                    jdRequirementsJson = ExtractJsonFromText(aiResponse);
                 }
 
-                // Giá»›i háº¡n input Ä‘á»ƒ trÃ¡nh ná»• token
-                if (cvText.Length > 20000) cvText = cvText.Substring(0, 20000);
-                if (jdText.Length > 15000) jdText = jdText.Substring(0, 15000);
+                if (string.IsNullOrWhiteSpace(jdRequirementsJson))
+                {
+                    throw new Exception("Cannot extract or retrieve JD requirements.");
+                }
 
-                // 3. Prompt
+                // Parse Stage 1 output & Pre-process
+                try 
+                {
+                    var stage1Doc = JsonDocument.Parse(jdRequirementsJson);
+                    if (stage1Doc.RootElement.TryGetProperty("matching_metrics", out var metrics))
+                    {
+                        if (metrics.TryGetProperty("requirements_list", out var reqs) && reqs.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var r in reqs.EnumerateArray())
+                            {
+                                string category = r.TryGetProperty("category", out var cat) ? cat.GetString() : "tech_skill";
+                                if (category == "seniority_fit") continue; // remove explicitly if any
+
+                                requirementsList.Add(new ScoringRequirement
+                                {
+                                    ReqId = Guid.NewGuid().ToString("N").Substring(0, 8),
+                                    NormalizedText = r.TryGetProperty("skill_name", out var sn) ? sn.GetString() : "",
+                                    Category = category,
+                                    Importance = r.TryGetProperty("importance", out var imp) ? imp.GetString() : "nice_to_have",
+                                    DetailVerbatim = r.TryGetProperty("detail_verbatim", out var dv) ? dv.GetString() : "",
+                                    CategoryWeight = GetCategoryWeight(category)
+                                });
+                            }
+                        }
+
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception("Failed to parse Stage 1 JD Requirements: " + ex.Message);
+                }
+
+                if (!requirementsList.Any())
+                {
+                    throw new Exception("No requirements extracted from JD.");
+                }
+
+                // Serialize for Stage 2
+                var parsedJdJson = JsonSerializer.Serialize(requirementsList.Select(r => new {
+                    r.ReqId, r.NormalizedText, r.Category, r.Importance, r.DetailVerbatim
+                }), new JsonSerializerOptions { WriteIndented = true });
+
+                // Limit CV text
+                if (cvText.Length > 8000) cvText = cvText.Substring(0, 8000);
+
+                // 3. Prompt Stage 2
                 var variables = new Dictionary<string, string>
                 {
                     { "CV_TEXT", cvText },
-                    { "JD_TEXT", jdText }
+                    { "PARSED_JD_REQUIREMENTS", parsedJdJson }
                 };
                 var prompt = await _promptManagementService.GetActivePromptContentWithVariablesAsync(
                     ITHunterview.Service.Constant.Prompts.BypassMatchingPrompt.Key, variables);
+
+                // Add instruction to minify JSON and be concise due to proxy token limits
+                prompt += "\n\n[SYSTEM CRITICAL]: Your output token limit is strictly capped. You MUST minify the JSON output (NO line breaks, NO indentation). Keep 'reasoning' under 20 words. Omit 'confidence' entirely.";
 
                 _logger.LogInformation("\n========== START LLM PROMPT FOR CV-JD MATCHING ==========\n{Prompt}\n========== END LLM PROMPT ==========\n", prompt);
 
                 if (string.IsNullOrWhiteSpace(prompt))
                 {
-                    throw new Exception("Active Prompt for JD_MATCHING_PROMPT not found. Please contact Administrator.");
+                    throw new Exception("Active Prompt for JD_MATCHING_PROMPT not found.");
                 }
 
-                // 4. Call LLM
+                // 4. Call LLM (Stage 2)
                 string llmResponseText = await CallLlmBypassAsync(prompt);
 
-                // Deserialize to extract final score and validate JSON
-                decimal finalScore = 0m;
                 try 
                 {
-                    var jsonDoc = JsonDocument.Parse(llmResponseText);
-                    finalScore = EnforceScoreRules(jsonDoc);
-                }
-                catch (JsonException ex)
-                {
-                    _logger.LogError(ex, "JSON Parse Error.");
+                    string cleanLlmResp = ExtractJsonFromText(llmResponseText);
+                    var jsonDoc = JsonDocument.Parse(cleanLlmResp);
+                    var finalResult = CalculateFinalMatchResult(requirementsList, jsonDoc);
                     
-                    // Ghi Ä‘Ã¨ tráº¡ng thÃ¡i Failed nhÆ°ng váº«n giá»¯ chuá»—i rÃ¡c trong MatchDetails Ä‘á»ƒ debug
+                    matchRecord.Status = "Completed";
+                    matchRecord.MatchScore = finalResult.FinalScore;
+                    matchRecord.MatchDetails = finalResult.JsonString;
+                    matchRecord.UpdatedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "JSON Parse Error in Stage 2 Output.");
                     matchRecord.Status = "Failed";
                     matchRecord.ErrorMessage = "LLM returned invalid JSON format. Backend failed to parse.";
                     matchRecord.MatchDetails = llmResponseText;
                     matchRecord.UpdatedAt = DateTime.UtcNow;
                     await _context.SaveChangesAsync();
-                    return; // ThoÃ¡t hÃ m sá»›m, khÃ´ng gÃ¡n Completed ná»¯a
                 }
-
-                matchRecord.Status = "Completed";
-                matchRecord.MatchScore = finalScore;
-                matchRecord.MatchDetails = llmResponseText;
-                matchRecord.UpdatedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
             }
             catch (Exception ex)
             {
@@ -515,69 +573,189 @@ namespace ITHunterview.Service.UseCase
             }
         }
 
-        private decimal EnforceScoreRules(JsonDocument jsonDoc)
+        private static decimal GetCategoryWeight(string category) => category switch
         {
-            if (!jsonDoc.RootElement.TryGetProperty("jdFit", out var jdFit))
-                return 0m;
+            "tech_skill" => 1.0m,
+            "experience" => 0.9m,
+            "seniority_fit" => 0.9m,
+            "domain_knowledge" => 0.7m,
+            "language" => 0.6m,
+            "education" => 0.5m,
+            "soft_skill" => 0.4m,
+            _ => 0.5m
+        };
 
-            // 1. Kill-Switch check
-            if (jdFit.TryGetProperty("killSwitchTriggered", out var ksw) && ksw.GetBoolean())
-            {
-                _logger.LogInformation("KSW_01 triggered â€” score frozen at 15");
-                return 15m;
-            }
-
-            // 2. Láº¥y raw score
-            decimal rawScore = 0m;
-            if (jdFit.TryGetProperty("score", out var scoreEl))
-                rawScore = scoreEl.GetDecimal();
-
-            // 3. Pool A cap check
-            decimal poolAScore = 0m;
-            if (jdFit.TryGetProperty("poolA", out var poolA) && 
-                poolA.TryGetProperty("score", out var paScore))
-            {
-                poolAScore = paScore.GetDecimal();
-            }
+        private FinalMatchResult CalculateFinalMatchResult(List<ScoringRequirement> requirements, JsonDocument stage2Response)
+        {
+            var root = stage2Response.RootElement;
             
-            bool poolACapped = false;
-            if (jdFit.TryGetProperty("poolACapped", out var capped))
-                poolACapped = capped.GetBoolean();
+            // 1. Process scores
+            var scoreElements = root.TryGetProperty("scores", out var scoresProp) && scoresProp.ValueKind == JsonValueKind.Array
+                ? scoresProp.EnumerateArray().ToList()
+                : new List<JsonElement>();
 
-            if (poolACapped && poolAScore > 28m)
+            var finalScores = new List<object>();
+            decimal poolA_Actual = 0m;
+            decimal poolA_Max = 0m;
+            decimal poolB_Actual = 0m;
+            decimal poolB_Max = 0m;
+            int criticalGapsCount = 0;
+            bool ksw01Triggered = false;
+
+            foreach (var req in requirements)
             {
-                // Recalculate: clamp Pool A táº¡i 28 vÃ  recompute total
-                decimal poolBScore = 0m;
-                if (jdFit.TryGetProperty("poolB", out var poolB) &&
-                    poolB.TryGetProperty("score", out var pbScore))
-                    poolBScore = pbScore.GetDecimal();
-                rawScore = 28m + poolBScore;
-                _logger.LogInformation("RULE_TC1_02: Pool A capped. Recalculated score = {Score}", rawScore);
+                // Find matching score from LLM
+                var llmScore = scoreElements.FirstOrDefault(s => s.TryGetProperty("reqId", out var id) && id.GetString() == req.ReqId);
+                
+                string handlerCode = "UNKNOWN";
+                decimal handlerScore = 0m;
+                string reasoning = "";
+                string flag = null;
+
+                if (llmScore.ValueKind != JsonValueKind.Undefined)
+                {
+                    if (llmScore.TryGetProperty("handlerCode", out var hc)) handlerCode = hc.GetString();
+                    if (llmScore.TryGetProperty("handlerScore", out var hs)) handlerScore = hs.GetDecimal();
+                    if (llmScore.TryGetProperty("reasoning", out var rs)) reasoning = rs.GetString();
+                    if (llmScore.TryGetProperty("flag", out var fl) && fl.ValueKind == JsonValueKind.String) flag = fl.GetString();
+                }
+
+                // Apply KSW_01 (Freeze if Must-have tech_skill is 0)
+                if (req.Importance == "must_have" && req.Category == "tech_skill" && handlerScore == 0.0m)
+                {
+                    ksw01Triggered = true;
+                }
+
+                // Ensure flag = CRITICAL_GAP if must_have and score = 0
+                if (req.Importance == "must_have" && handlerScore == 0.0m)
+                {
+                    flag = "CRITICAL_GAP";
+                    criticalGapsCount++;
+                }
+
+                // Math calculation
+                decimal weightedScore = handlerScore * req.CategoryWeight;
+                
+                if (req.Importance == "must_have")
+                {
+                    poolA_Actual += weightedScore;
+                    poolA_Max += 1.0m * req.CategoryWeight;
+                }
+                else
+                {
+                    poolB_Actual += weightedScore;
+                    poolB_Max += 1.0m * req.CategoryWeight;
+                }
+
+                // Reconstruct full JSON object for this requirement
+                finalScores.Add(new
+                {
+                    reqId = req.ReqId,
+                    normalizedText = req.NormalizedText,
+                    importance = req.Importance,
+                    category = req.Category,
+                    categoryWeight = req.CategoryWeight,
+                    entities = new { }, // empty
+                    handlerUsed = req.Category, // map category to handlerUsed
+                    handlerCode = handlerCode,
+                    handlerScore = handlerScore,
+                    reasoning = reasoning,
+                    confidence = "high", // Default
+                    flag = flag
+                });
             }
 
-            // 4. TÃ­nh láº¡i penalty deductions
-            decimal totalDeduction = 0m;
-            if (jdFit.TryGetProperty("penalties", out var penalties) &&
-                penalties.ValueKind == JsonValueKind.Array)
+            // Math: Calculate Pool Percentages
+            decimal poolAPercentage = poolA_Max > 0 ? (poolA_Actual / poolA_Max) * 70m : 70m; // Max 70 points
+            decimal poolBPercentage = poolB_Max > 0 ? (poolB_Actual / poolB_Max) * 30m : 30m; // Max 30 points
+
+            // Apply RULE_TC1_02: Pool A capped
+            bool poolACapped = false;
+            if (criticalGapsCount >= 2)
             {
-                foreach (var penalty in penalties.EnumerateArray())
+                poolACapped = true;
+                if (poolAPercentage > 28m) poolAPercentage = 28m;
+            }
+
+            // Process Penalties
+            var penaltiesOutput = new List<object>();
+            decimal totalDeduction = 0m;
+
+            // Add auto-detected penalties
+            if (poolACapped)
+            {
+                penaltiesOutput.Add(new { code = "RULE_TC1_02", triggered = true, deduction = 0, evidence = ">= 2 CRITICAL GAPs found. Pool A capped at 28 points." });
+            }
+
+            // LLM Penalties
+            if (root.TryGetProperty("penalties", out var llmPenalties) && llmPenalties.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var p in llmPenalties.EnumerateArray())
                 {
-                    if (penalty.TryGetProperty("triggered", out var triggered) && triggered.GetBoolean())
+                    if (p.TryGetProperty("triggered", out var triggered) && triggered.GetBoolean())
                     {
-                        if (penalty.TryGetProperty("deduction", out var ded))
-                        {
-                            var dedVal = ded.GetDecimal();
-                            // Deduction cÃ³ thá»ƒ lÃ  sá»‘ Ã¢m hoáº·c dÆ°Æ¡ng â†’ normalize thÃ nh dÆ°Æ¡ng
-                            totalDeduction += Math.Abs(dedVal);
-                            _logger.LogInformation("Penalty triggered. Deduction = {Deduction}", dedVal);
-                        }
+                        decimal deduction = 15m; // Default for PNL_TC1_01
+                        totalDeduction += deduction;
+                        string code = p.TryGetProperty("code", out var cd) ? cd.GetString() : "UNKNOWN";
+                        string evidence = p.TryGetProperty("evidence", out var ev) ? ev.GetString() : "";
+                        penaltiesOutput.Add(new { code = code, triggered = true, deduction = deduction, evidence = evidence });
                     }
                 }
             }
 
-            decimal finalScore = rawScore - totalDeduction;
-            return Math.Max(0m, Math.Min(100m, finalScore)); // Clamp [0, 100]
+            // Add KSW_01 Penalty output
+            if (ksw01Triggered)
+            {
+                penaltiesOutput.Add(new { code = "KSW_01", triggered = true, deduction = 0, evidence = "100% core tech skill is completely missing." });
+            }
+
+            // Final score
+            decimal rawScore = poolAPercentage + poolBPercentage - totalDeduction;
+            decimal finalScore = Math.Max(0m, Math.Min(100m, rawScore));
+            if (ksw01Triggered) finalScore = 15m; // Force kill switch
+
+            // Determine Result
+            string resultText = finalScore >= 80 ? "Highly Suitable" : finalScore >= 60 ? "Suitable" : finalScore >= 40 ? "Partially Suitable" : "Not Suitable";
+
+            // Extract other sections from LLM
+            object criticalGaps = new object[] { };
+            if (root.TryGetProperty("criticalGaps", out var cg)) criticalGaps = JsonSerializer.Deserialize<object>(cg.GetRawText());
+            
+            object improvements = new object[] { };
+            if (root.TryGetProperty("improvements", out var imp)) improvements = JsonSerializer.Deserialize<object>(imp.GetRawText());
+
+            string narrative = root.TryGetProperty("narrative", out var n) ? n.GetString() : "N/A";
+
+            // Reconstruct the giant JSON structure for the frontend
+            var finalJsonObj = new
+            {
+                mode = "jd_fit",
+                jdFit = new
+                {
+                    score = Math.Round(finalScore, 1),
+                    result = resultText,
+                    killSwitchTriggered = ksw01Triggered,
+                    poolACapped = poolACapped,
+                    poolA = new { score = Math.Round(poolAPercentage, 1), max = 70 },
+                    poolB = new { score = Math.Round(poolBPercentage, 1), max = 30 },
+                    requirementScores = finalScores,
+                    criticalGaps = criticalGaps,
+                    penalties = penaltiesOutput,
+                    narrative = narrative
+                },
+                improvements = improvements,
+                processingTime = 1000 // Fixed or measured
+            };
+
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            return new FinalMatchResult
+            {
+                FinalScore = finalScore,
+                JsonString = JsonSerializer.Serialize(finalJsonObj, options)
+            };
         }
+
+
 
         private async Task<string> CallLlmBypassAsync(string prompt)
         {
@@ -609,8 +787,9 @@ namespace ITHunterview.Service.UseCase
                     },
                     generationConfig = new 
                     { 
-                        maxOutputTokens = 8192, // TrÃ¡nh JSON bá»‹ cáº¯t cá»¥t giá»¯a chá»«ng
-                        temperature = 0.2 // Cáº§n sá»± chÃ­nh xÃ¡c cao
+                        maxOutputTokens = 8192,
+                        temperature = 0.2,
+                        responseMimeType = "application/json"
                     },
                     safetySettings = new[]
                     {
@@ -667,8 +846,22 @@ namespace ITHunterview.Service.UseCase
                                     }
                                     catch (JsonException ex)
                                     {
-                                        if (attempt == maxRetries)
-                                            throw new Exception($"Gemini trả về JSON lỗi sau {maxRetries} lần thử. Lỗi: {ex.Message}");
+                                        // Attempt to auto-repair truncated JSON
+                                        string repaired = RepairTruncatedJson(text);
+                                        try 
+                                        {
+                                            using (var testParse = JsonDocument.Parse(repaired)) { }
+                                            _logger.LogWarning("Auto-repaired truncated JSON from Gemini. Original length: {OriginalLength}, Repaired length: {RepairedLength}", text.Length, repaired.Length);
+                                            return repaired;
+                                        }
+                                        catch
+                                        {
+                                            // Fallback to retry if repair also fails
+                                            if (attempt == maxRetries)
+                                            {
+                                                throw new Exception($"Gemini trả về JSON lỗi sau {maxRetries} lần thử. Lỗi gốc: {ex.Message}");
+                                            }
+                                        }
                                         
                                         _logger.LogWarning("Gemini sinh JSON lỗi ở lần thử thứ {Attempt}. Sẽ retry. Text 500 chars: {Text}", attempt, text.Length > 500 ? text.Substring(0, 500) : text);
                                     }
@@ -767,16 +960,83 @@ namespace ITHunterview.Service.UseCase
                 return match.Groups[1].Value.Trim();
             }
 
-            // PhÃ²ng trÆ°á»ng há»£p nÃ³ tráº£ vá» {...} khÃ´ng cÃ³ markdown nhÆ°ng thá»«a chá»¯
+            // Phòng trường hợp nó trả về {...} không có markdown nhưng thừa chữ
             var startIndex = text.IndexOf('{');
             var endIndex = text.LastIndexOf('}');
             if (startIndex >= 0 && endIndex >= startIndex)
             {
                 return text.Substring(startIndex, endIndex - startIndex + 1).Trim();
             }
+            
+            // Nếu không có } ở cuối (bị truncate), lấy từ { đến cuối
+            if (startIndex >= 0)
+            {
+                return text.Substring(startIndex).Trim();
+            }
 
             return text.Trim();
         }
+
+        private string RepairTruncatedJson(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return "{}";
+            json = json.Trim();
+
+            // 1. Remove trailing comma or unfinished key/value
+            if (json.EndsWith(",")) 
+            {
+                json = json.Substring(0, json.Length - 1);
+            }
+            else if (!json.EndsWith("}") && !json.EndsWith("]") && !json.EndsWith("\""))
+            {
+                // Unfinished token like "reasoning": "some te...
+                int lastQuote = json.LastIndexOf('"');
+                if (lastQuote > 0 && lastQuote == json.Length - 1)
+                {
+                    // Ends with quote, ok
+                }
+                else if (lastQuote > 0)
+                {
+                    // Append quote to close string
+                    json += "\"";
+                }
+            }
+
+            // 2. Count braces and brackets to balance them
+            int openBraces = 0;
+            int openBrackets = 0;
+            bool inString = false;
+            
+            for (int i = 0; i < json.Length; i++)
+            {
+                if (json[i] == '"' && (i == 0 || json[i - 1] != '\\'))
+                {
+                    inString = !inString;
+                }
+
+                if (!inString)
+                {
+                    if (json[i] == '{') openBraces++;
+                    if (json[i] == '}') openBraces--;
+                    if (json[i] == '[') openBrackets++;
+                    if (json[i] == ']') openBrackets--;
+                }
+            }
+
+            // Close open string
+            if (inString) json += "\"";
+
+            // If we ended up with trailing comma after closing string (unlikely but safe check)
+            if (json.EndsWith(",")) json = json.Substring(0, json.Length - 1);
+            else if (json.EndsWith(":")) json += "null";
+
+            // Append closing brackets and braces
+            for (int i = 0; i < openBrackets; i++) json += "]";
+            for (int i = 0; i < openBraces; i++) json += "}";
+
+            return json;
+        }
+
         public async Task<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>> GetMatchHistoryAsync(Guid userId, int page, int pageSize, Guid? cvId = null)
         {
             var query = from s in _context.CvJobMatchScores
@@ -871,6 +1131,22 @@ namespace ITHunterview.Service.UseCase
 
             _context.CvJobMatchScores.Remove(matchRecord);
             await _context.SaveChangesAsync();
+        }
+
+        private class ScoringRequirement
+        {
+            public string ReqId { get; set; }
+            public string NormalizedText { get; set; }
+            public string Category { get; set; }
+            public string Importance { get; set; }
+            public string DetailVerbatim { get; set; }
+            public decimal CategoryWeight { get; set; }
+        }
+
+        private class FinalMatchResult
+        {
+            public decimal FinalScore { get; set; }
+            public string JsonString { get; set; }
         }
     }
 }

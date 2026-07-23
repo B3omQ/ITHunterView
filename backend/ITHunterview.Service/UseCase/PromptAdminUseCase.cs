@@ -130,7 +130,7 @@ namespace ITHunterview.Service.UseCase
         {
             var requiredPlaceholders = promptKey switch
             {
-                "JD_MATCHING_PROMPT" => new[] { "[CV_TEXT]", "[JD_TEXT]" },
+                "JD_MATCHING_PROMPT" => new[] { "[CV_TEXT]", "[PARSED_JD_REQUIREMENTS]" },
                 "MOCK_INTERVIEW_START" => new[] { "[CV_TEXT]", "[JD_TEXT]" },
                 "MOCK_INTERVIEW_NEXT" => new[] { "[CV_TEXT]", "[JD_TEXT]", "[INTERVIEW_CONTEXT]" },
                 _ => Array.Empty<string>()
