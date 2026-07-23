@@ -13,6 +13,7 @@ import { useAuthStore } from "@/store/auth.store"
 import { Logo } from "@/components/layout/Logo"
 import { APP_ROUTES } from "@/lib/constants"
 import { useGetMyCompany } from "@/hooks/useCompany"
+import { useWalletBalance } from "@/hooks/useWallet"
 import { NotificationDialog } from "@/components/shared/NotificationDialog"
 import { useQuery } from "@tanstack/react-query"
 import { notificationService } from "@/services/notification.service"
@@ -81,6 +82,7 @@ const RECRUITER_NAV: NavItem[] = [
     icon: "CreditCard",
     children: [
       { label: "Subscriptions", href: "/recruiter/billing" },
+      { label: "Top Up Coins", href: APP_ROUTES.RECRUITER.TOP_UP },
       { label: "Transaction History", href: APP_ROUTES.RECRUITER.BILLING_HISTORY }
     ]
   },
@@ -141,6 +143,12 @@ export function Sidebar() {
   const { data: company, isLoading: companyLoading } = useGetMyCompany({
     enabled: isRecruiter
   })
+
+  // Get Wallet Balance & Subscription
+  const { data: walletData, isLoading: walletLoading } = useWalletBalance()
+  const balance = walletData?.data?.balance ?? 0
+  const activeSubName = walletData?.data?.activeSubscriptionName
+  const subEndDate = walletData?.data?.subscriptionEndDate ? new Date(walletData.data.subscriptionEndDate).toLocaleDateString('vi-VN') : null
 
   // Poll for notifications to update badge
   const { data: notificationsData } = useQuery({
@@ -277,6 +285,25 @@ export function Sidebar() {
           </span>
           <span className="flex-1 truncate">Notifications</span>
         </div>
+
+        {/* Wallet Info */}
+        {(user?.role?.name?.toLowerCase() === "candidate" || isRecruiter) && (
+          <div className="flex flex-col gap-1 p-3 rounded-xl bg-sidebar-accent/30 border border-sidebar-border/50">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground flex items-center gap-1.5"><Coins size={14} className="text-amber-500"/> Coins</span>
+              <span className="text-sm font-bold text-foreground">{walletLoading ? "..." : balance.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-xs text-muted-foreground flex items-center gap-1.5"><CreditCard size={14} className="text-indigo-500"/> Plan</span>
+              <span className={`text-xs font-semibold ${activeSubName ? 'text-indigo-500' : 'text-muted-foreground'}`}>
+                {walletLoading ? "..." : (activeSubName || "Free")}
+              </span>
+            </div>
+            {activeSubName && subEndDate && (
+              <div className="text-[10px] text-muted-foreground text-right mt-0.5">Exp: {subEndDate}</div>
+            )}
+          </div>
+        )}
 
         {/* User Card (Replaces top block & standalone logout) */}
         {user && (

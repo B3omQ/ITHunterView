@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { PageLoader } from '@/components/shared/PageLoader';
+import { CheatMenu } from '@/components/shared/CheatMenu';
 
 /**
  * AppShell — layout shell cho mọi authenticated route group.
@@ -51,6 +52,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar />
       <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
+      <CheatMenu />
     </div>
   );
 }
