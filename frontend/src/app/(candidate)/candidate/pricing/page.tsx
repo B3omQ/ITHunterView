@@ -30,21 +30,20 @@ export default function CandidatePricingPage() {
   }
 
   return (
-    <div className="container mx-auto py-16 px-4 max-w-5xl">
-      <div className="text-center mb-12 space-y-4">
-        <div className="inline-block bg-zinc-100 text-zinc-600 text-xs font-semibold tracking-wider uppercase px-3 py-1 rounded-full mb-2 ring-1 ring-inset ring-zinc-200">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-2">
+        <div className="inline-block bg-zinc-100 text-zinc-600 text-xs font-semibold tracking-wider uppercase px-3 py-1 rounded-full ring-1 ring-inset ring-zinc-200 self-start">
           Bảng giá minh bạch
         </div>
-        <h1 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
+        <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
           Nâng Cấp Trải Nghiệm Ứng Tuyển
         </h1>
-        <p className="text-base text-zinc-500 max-w-2xl mx-auto">
+        <p className="text-muted-foreground">
           Mở khóa các tính năng AI mạnh mẽ để tối ưu hóa CV, luyện phỏng vấn và tìm được công việc mơ ước nhanh hơn. Bắt đầu miễn phí, nâng cấp khi bạn sẵn sàng.
         </p>
       </div>
 
-      {/* Grid container: canh giữa nếu ít gói, dùng flex thay vì grid tĩnh để dễ cân đối */}
-      <div className="flex flex-col md:flex-row justify-center gap-8 items-stretch max-w-4xl mx-auto">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-stretch">
         {subscriptions.map((sub, idx) => {
           const isPremium = idx === 1; // Giả sử gói thứ 2 là gói Premium
           

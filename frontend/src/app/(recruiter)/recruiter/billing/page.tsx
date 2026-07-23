@@ -30,20 +30,20 @@ export default function RecruiterPricingPage() {
   }
 
   return (
-    <div className="container mx-auto py-16 px-4 max-w-5xl">
-      <div className="text-center mb-16 space-y-4">
-        <div className="inline-block bg-zinc-100 text-zinc-800 text-xs font-semibold tracking-wider uppercase px-3 py-1 rounded-full mb-4">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-2">
+        <div className="inline-block bg-zinc-100 text-zinc-800 text-xs font-semibold tracking-wider uppercase px-3 py-1 rounded-full ring-1 ring-inset ring-zinc-200 self-start">
           Bảng giá doanh nghiệp
         </div>
-        <h1 className="text-4xl font-extrabold tracking-tight text-zinc-900 sm:text-5xl">
+        <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
           Giải Pháp Tuyển Dụng Thông Minh
         </h1>
-        <p className="text-lg text-zinc-500 max-w-2xl mx-auto">
+        <p className="text-muted-foreground">
           Tiếp cận ứng viên tiềm năng nhanh chóng hơn với các gói dịch vụ được thiết kế riêng cho nhà tuyển dụng. Quản lý linh hoạt, hiệu quả tối đa.
         </p>
       </div>
 
-      <div className="flex flex-col md:flex-row justify-center gap-8 items-stretch max-w-4xl mx-auto">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 items-stretch">
         {subscriptions.map((sub, idx) => {
           const isPremium = idx === 1;
           
