@@ -28,6 +28,8 @@ export interface MatchJdRequest {
   cvText?: string;
   jobId?: string;
   rawJdText?: string;
+  cvFileName?: string;
+  jdTitle?: string;
 }
 
 export interface MatchJdResponse {
@@ -91,13 +93,13 @@ export interface MatchingOutput {
   processingTime: number;
 }
 
-export type RequirementCategory = 
-  | "tech_skill" 
-  | "experience" 
-  | "seniority_fit" 
-  | "domain_knowledge" 
-  | "language" 
-  | "education" 
+export type RequirementCategory =
+  | "tech_skill"
+  | "experience"
+  | "seniority_fit"
+  | "domain_knowledge"
+  | "language"
+  | "education"
   | "soft_skill";
 
 export interface RequirementScore {

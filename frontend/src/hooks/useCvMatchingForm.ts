@@ -24,7 +24,7 @@ export function useCvMatchingForm() {
   const searchParams = useSearchParams();
 
   const [step, setStep] = useState<MatchingStep>('select');
-  
+
   // State CV
   const [cvTab, setCvTab] = useState<string>('upload');
   const [cvText, setCvText] = useState<string>('');
@@ -43,12 +43,12 @@ export function useCvMatchingForm() {
   const { data: myCvsData, isLoading: isLoadingCvs } = useGetMyCvs();
   const { data: savedJobsData, isLoading: isLoadingJobs } = useSavedJobs(1, 100);
   const matchMutation = useMatchCvJd();
-  
+
   const [pollingJobId, setPollingJobId] = useState<string | null>(null);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [matchOutput, setMatchOutput] = useState<MatchingOutput | null>(null);
   const [matchedCvId, setMatchedCvId] = useState<string | null>(null);
-  
+
   const pollQuery = useGetMatchResult(pollingJobId);
 
   // States cho loading progress
@@ -62,7 +62,7 @@ export function useCvMatchingForm() {
       setCurrentJobId(urlJobId);
       setStep('loading');
     }
-    
+
     const prefill = searchParams.get('prefillJobId');
     if (prefill && step === 'select') {
       setJdTab('saved');
@@ -102,7 +102,7 @@ export function useCvMatchingForm() {
     if (step === 'loading') {
       setProgressPercent(0);
       setLoadingStep(0);
-      
+
       interval = setInterval(() => {
         setProgressPercent((prev) => {
           if (prev >= 98) {
@@ -134,7 +134,7 @@ export function useCvMatchingForm() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       const res = await api.post('/api/cvs/extract-text', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -191,27 +191,33 @@ export function useCvMatchingForm() {
       toast.error('Please paste a job description or select a saved job first');
       return;
     }
-    
+
     if ((cvTab === 'paste' || cvTab === 'upload') && cvText.trim().length < 100) {
       toast.error('Resume text is too short. Please provide at least 100 characters or upload a valid CV.');
       return;
     }
-    
+
     if (jdTab === 'paste' && jdText.trim().length < 100) {
       toast.error('Job description is too short. Please provide at least 100 characters.');
       return;
     }
 
     const payload: MatchJdRequest = {};
-    
-    if (cvTab === 'upload' || cvTab === 'paste') payload.cvText = cvText;
-    else if (cvTab === 'saved') payload.cvId = selectedCvId;
-    
+
+    if (cvTab === 'upload' || cvTab === 'paste') {
+      payload.cvText = cvText;
+      if (cvTab === 'upload' && cvFileName) {
+        payload.cvFileName = cvFileName;
+      }
+    } else if (cvTab === 'saved') {
+      payload.cvId = selectedCvId;
+    }
+
     if (jdTab === 'paste') payload.rawJdText = jdText;
     else if (jdTab === 'saved') payload.jobId = selectedJobId;
 
     setStep('loading');
-    
+
     try {
       const res = await matchMutation.mutateAsync(payload);
       if (res.data) {
@@ -227,7 +233,7 @@ export function useCvMatchingForm() {
   const isSubmitDisabled = () => {
     const hasCV = (cvTab === 'upload' && cvText.trim()) || (cvTab === 'paste' && cvText.trim()) || (cvTab === 'saved' && selectedCvId);
     const hasJD = (jdTab === 'paste' && jdText.trim()) || (jdTab === 'saved' && selectedJobId);
-    
+
     let isCvReady = true;
     if (cvTab === 'saved' && selectedCvId && myCvsData?.data) {
       const selectedCv = myCvsData.data.find((c: any) => c.id === selectedCvId);
