@@ -41,11 +41,11 @@ export default function CreateJobPage() {
 
   const { categories, availableSkills, majors, loading: metadataLoading, error: metadataError } = useJobMetadata()
   const { createJob, saving, error: saveError } = useJobDetails()
-  
+
   const [selectedSkills, setSelectedSkills] = useState<Array<{ skillId: number; name: string; isMandatory: boolean }>>([])
   const [searchSkill, setSearchSkill] = useState("")
   const [creatingSkill, setCreatingSkill] = useState(false)
-  
+
   const [searchDomain, setSearchDomain] = useState("")
 
   const loading = metadataLoading || saving || companyLoading
@@ -112,17 +112,17 @@ export default function CreateJobPage() {
     if (!formData.level) return "Level is required"
     if (!formData.workingModel) return "Working Model is required"
     if (!formData.jobExpertise) return "Specialization (Expertise) is required"
-    
+
     if (mustHaveSkills.length === 0) return "At least one Must-have Skill is required"
     if (niceToHaveSkills.length === 0) return "At least one Nice-to-have Skill is required"
-    
+
     if (!formData.description.trim()) return "Job Description is required"
     if (!formData.responsibilities.trim()) return "Key Responsibilities is required"
     if (!formData.requirements.trim()) return "Detailed Requirements is required"
     if (!formData.benefits.trim()) return "Perks & Benefits is required"
-    
+
     if (!formData.expiresAt) return "Expiration Date is required"
-    
+
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const expDate = new Date(formData.expiresAt)
@@ -135,7 +135,7 @@ export default function CreateJobPage() {
     if (expDate > maxExpDate) {
       return "Expiration Date cannot exceed 30 days from today"
     }
-    
+
     return null
   }
 
@@ -171,7 +171,7 @@ export default function CreateJobPage() {
 
   const mustHaveSkills = selectedSkills.filter(s => s.isMandatory)
   const niceToHaveSkills = selectedSkills.filter(s => !s.isMandatory)
-  
+
   const filteredDomains = JOB_DOMAINS.filter(domain => domain.toLowerCase().includes(searchDomain.toLowerCase()))
 
   if (companyLoading) {
@@ -192,7 +192,7 @@ export default function CreateJobPage() {
         </div>
         <h2 className="text-2xl font-bold">Verification Required</h2>
         <p className="text-muted-foreground">
-          Your company needs to be verified before you can post new jobs. 
+          Your company needs to be verified before you can post new jobs.
           Please complete your Legal Verification and wait for admin approval.
         </p>
         <div className="pt-4 flex justify-center gap-4">
@@ -253,14 +253,29 @@ export default function CreateJobPage() {
                   className="focus-visible:ring-blue-500"
                 />
               </div>
-              <div className="space-y-2 col-span-1 md:col-span-2">
-                <Label htmlFor="location" className="font-semibold text-zinc-700 dark:text-zinc-300">Location *</Label>
-                <Input
+              <div className="space-y-2 col-span-1 md:col-span-1">
+                <Label htmlFor="location" className="font-semibold text-zinc-700 dark:text-zinc-300">City / Province *</Label>
+                <select
                   id="location"
                   name="location"
-                  placeholder="e.g. 123 Nguyen Van Cu, District 5, HCMC"
                   required
+                  className="w-full h-9 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-1 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
                   value={formData.location}
+                  onChange={handleChange}
+                >
+                  <option value="">Select City/Province</option>
+                  {VIETNAM_PROVINCES.map((loc) => (
+                    <option key={loc} value={loc}>{loc}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2 col-span-1 md:col-span-1">
+                <Label htmlFor="detailedLocation" className="font-semibold text-zinc-700 dark:text-zinc-300">Detailed Location</Label>
+                <Input
+                  id="detailedLocation"
+                  name="detailedLocation"
+                  placeholder="e.g. 123 Nguyen Van Cu, District 5"
+                  value={formData.detailedLocation}
                   onChange={handleChange}
                   className="w-full focus-visible:ring-blue-500"
                 />
@@ -314,9 +329,9 @@ export default function CreateJobPage() {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Job Domains</Label>
-                <Input 
-                  placeholder="Search domains..." 
-                  className="w-48 h-8 text-xs" 
+                <Input
+                  placeholder="Search domains..."
+                  className="w-48 h-8 text-xs"
                   value={searchDomain}
                   onChange={(e) => setSearchDomain(e.target.value)}
                 />
@@ -324,9 +339,9 @@ export default function CreateJobPage() {
               <div className="flex flex-wrap gap-2 p-3 border rounded-md border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 max-h-48 overflow-y-auto">
                 {filteredDomains.map(domain => (
                   <label key={domain} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 p-1.5 rounded pr-3 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 transition-colors">
-                    <input 
-                      type="checkbox" 
-                      checked={formData.jobDomain.includes(domain)} 
+                    <input
+                      type="checkbox"
+                      checked={formData.jobDomain.includes(domain)}
                       onChange={() => handleDomainChange(domain)}
                       className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500 bg-white dark:bg-zinc-900"
                     />

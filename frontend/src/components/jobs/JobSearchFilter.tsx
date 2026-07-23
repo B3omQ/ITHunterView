@@ -18,18 +18,12 @@ import {
   WORKING_MODELS,
   JOB_DOMAINS,
   COMPANY_INDUSTRIES,
-  COMPANY_TYPES
+  COMPANY_TYPES,
+  VIETNAM_PROVINCES
 } from '@/lib/job-constants';
 import { useJobMetadata } from '@/hooks/useJobs';
 import { MatchJobsModal } from '@/components/candidate/MatchJobsModal';
 import { useAuthStore } from '@/store/auth.store';
-
-// Constants
-const LOCATIONS = [
-  "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Cần Thơ", "Hải Phòng",
-  "An Giang", "Bà Rịa - Vũng Tàu", "Bắc Giang", "Bắc Kạn", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cao Bằng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Tĩnh", "Hải Dương", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái",
-  "International", "Others"
-];
 
 // Helper to parse array params safely
 const parseArrayParam = (param: string | null) => param ? param.split(',').filter(Boolean) : [];
@@ -286,7 +280,7 @@ export function JobSearchFilter() {
                       }}>
                         All Cities
                       </CommandItem>
-                      {LOCATIONS.map((loc) => (
+                      {VIETNAM_PROVINCES.map((loc) => (
                         <CommandItem key={loc} onSelect={() => {
                           setLocation(loc);
                           applyFilters({ location: loc });
