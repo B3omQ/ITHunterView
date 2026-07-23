@@ -204,5 +204,91 @@ namespace ITHunterview.WebAPI.Controllers
                 return StatusCode(500, new { success = false, message = "Internal processing error" });
             }
         }
+
+        /// <summary>
+        /// Cheat: Add coins directly for testing purposes
+        /// </summary>
+        [HttpPost("cheat/add-coin")]
+        [Authorize]
+        public async Task<IActionResult> CheatAddCoin(
+            [FromServices] ITHunterview.Service.Infrastructure.Persistence.ITHunterviewContext dbContext, 
+            [FromQuery] int amount)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            var wallet = dbContext.UserWallets.FirstOrDefault(w => w.UserId == userId);
+            if (wallet == null)
+            {
+                wallet = new ITHunterview.Domain.Entities.UserWallets
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId.Value,
+                    Balance = amount,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                dbContext.UserWallets.Add(wallet);
+            }
+            else
+            {
+                wallet.Balance += amount;
+                wallet.UpdatedAt = DateTime.UtcNow;
+            }
+
+            var transaction = new ITHunterview.Domain.Entities.CreditTransactions
+            {
+                Id = Guid.NewGuid(),
+                WalletId = wallet.Id,
+                Amount = amount,
+                TransactionType = ITHunterview.Domain.Enums.CreditTransactionType.BONUS,
+                Description = "Cheat Add Coin",
+                CreatedAt = DateTime.UtcNow
+            };
+            dbContext.CreditTransactions.Add(transaction);
+
+            await dbContext.SaveChangesAsync();
+            return Ok(new { success = true, balance = wallet.Balance, message = "Coins added successfully via cheat!" });
+        }
+
+        /// <summary>
+        /// Cheat: Activate subscription directly for testing purposes
+        /// </summary>
+        [HttpPost("cheat/subscribe")]
+        [Authorize]
+        public async Task<IActionResult> CheatSubscribe(
+            [FromServices] ITHunterview.Service.Infrastructure.Persistence.ITHunterviewContext dbContext, 
+            [FromQuery] int subscriptionId)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            var subscription = dbContext.Subscriptions.FirstOrDefault(s => s.Id == subscriptionId);
+            if (subscription == null) return BadRequest(new { success = false, message = "Subscription not found" });
+
+            var userSub = dbContext.UserSubscriptions.FirstOrDefault(us => us.UserId == userId);
+            if (userSub == null)
+            {
+                userSub = new ITHunterview.Domain.Entities.UserSubscriptions
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId.Value,
+                    SubId = subscription.Id,
+                    StartDate = DateTime.UtcNow,
+                    EndDate = DateTime.UtcNow.AddMonths(1),
+                    Status = ITHunterview.Domain.Enums.UserSubscriptionStatus.ACTIVE
+                };
+                dbContext.UserSubscriptions.Add(userSub);
+            }
+            else
+            {
+                userSub.SubId = subscriptionId;
+                userSub.StartDate = DateTime.UtcNow;
+                userSub.EndDate = DateTime.UtcNow.AddMonths(1);
+                userSub.Status = ITHunterview.Domain.Enums.UserSubscriptionStatus.ACTIVE;
+            }
+
+            await dbContext.SaveChangesAsync();
+            return Ok(new { success = true, message = "Subscription activated successfully via cheat!" });
+        }
     }
 }
