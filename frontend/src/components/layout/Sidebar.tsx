@@ -81,6 +81,7 @@ const RECRUITER_NAV: NavItem[] = [
     icon: "CreditCard",
     children: [
       { label: "Subscriptions", href: "/recruiter/billing" },
+      { label: "Top Up Coins", href: APP_ROUTES.RECRUITER.TOP_UP },
       { label: "Transaction History", href: APP_ROUTES.RECRUITER.BILLING_HISTORY }
     ]
   },

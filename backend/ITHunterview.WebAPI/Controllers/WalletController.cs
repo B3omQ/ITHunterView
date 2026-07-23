@@ -46,7 +46,7 @@ namespace ITHunterview.WebAPI.Controllers
         /// Xem số dư ví hiện tại của Candidate
         /// </summary>
         [HttpGet("balance")]
-        [Authorize(Policy = "CandidateOnly")]
+        [Authorize(Policy = "CandidateOrRecruiter")]
         public async Task<IActionResult> GetWalletBalance()
         {
             var userId = GetCurrentUserId();
@@ -64,7 +64,7 @@ namespace ITHunterview.WebAPI.Controllers
         /// Xem lịch sử giao dịch tiêu tốn/nạp coin của Candidate
         /// </summary>
         [HttpGet("transactions")]
-        [Authorize(Policy = "CandidateOnly")]
+        [Authorize(Policy = "CandidateOrRecruiter")]
         public async Task<IActionResult> GetWalletTransactions([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             var userId = GetCurrentUserId();
@@ -83,7 +83,7 @@ namespace ITHunterview.WebAPI.Controllers
         /// Xem danh sách gói Coin đang hoạt động (dành cho Candidate)
         /// </summary>
         [HttpGet("coin-packages")]
-        [Authorize(Policy = "CandidateOnly")]
+        [Authorize(Policy = "CandidateOrRecruiter")]
         public async Task<IActionResult> GetActiveCoinPackages()
         {
             var result = await _coinConfigUseCase.GetCoinConfigAsync();
@@ -98,15 +98,10 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Tạo yêu cầu thanh toán mua coin hoặc mua subscription
+        /// Candidate hoặc Recruiter tạo yêu cầu thanh toán mua coin hoặc mua subscription
         /// </summary>
         [HttpPost("pay")]
         [Authorize(Policy = "CandidateOrRecruiter")]
-
-        /// Candidate tạo yêu cầu thanh toán mua coin hoặc mua subscription
-        /// </summary>
-        [HttpPost("pay")]
-        [Authorize(Policy = "CandidateOnly")]
         public async Task<IActionResult> CreatePaymentRequest([FromBody] CreatePaymentDto dto)
         {
             var userId = GetCurrentUserId();
