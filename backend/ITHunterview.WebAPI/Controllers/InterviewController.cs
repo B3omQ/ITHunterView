@@ -20,11 +20,13 @@ namespace ITHunterview.WebAPI.Controllers
     {
         private readonly IInterviewUseCase _interviewUseCase;
         private readonly ISpeechToTextService _speechToTextService;
+        private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
 
-        public InterviewController(IInterviewUseCase interviewUseCase, ISpeechToTextService speechToTextService)
+        public InterviewController(IInterviewUseCase interviewUseCase, ISpeechToTextService speechToTextService, ICandidateFeatureUsageUseCase featureUsageUseCase)
         {
             _interviewUseCase = interviewUseCase;
             _speechToTextService = speechToTextService;
+            _featureUsageUseCase = featureUsageUseCase;
         }
 
         [HttpGet("sessions")]
@@ -89,8 +91,15 @@ namespace ITHunterview.WebAPI.Controllers
 
             try
             {
+                await _featureUsageUseCase.TryConsumeFeatureAsync(userId, "MockInterview");
+
                 var session = await _interviewUseCase.CreateSessionAsync(userId, dto);
                 return Ok(new ResponseBase<InterviewSessionDto>(session, "Interview session created successfully."));
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Not enough coin
+                return Ok(new ResponseBase<InterviewSessionDto>(ex.Message));
             }
             catch (Exception ex)
             {

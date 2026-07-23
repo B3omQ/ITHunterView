@@ -21,19 +21,22 @@ namespace ITHunterview.WebAPI.Controllers
         private readonly IHardcodeCvJobMatchingUseCase _hardcodeCvJobMatchingUseCase;
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService _cvTextExtractorService;
+        private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
 
         public CvController(
             ICvUseCase cvUseCase, 
             ICvJobMatchingUseCase cvJobMatchingUseCase,
             IHardcodeCvJobMatchingUseCase hardcodeCvJobMatchingUseCase,
             IServiceScopeFactory serviceScopeFactory,
-            ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService cvTextExtractorService)
+            ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService cvTextExtractorService,
+            ICandidateFeatureUsageUseCase featureUsageUseCase)
         {
             _cvUseCase = cvUseCase;
             _cvJobMatchingUseCase = cvJobMatchingUseCase;
             _hardcodeCvJobMatchingUseCase = hardcodeCvJobMatchingUseCase;
             _serviceScopeFactory = serviceScopeFactory;
             _cvTextExtractorService = cvTextExtractorService;
+            _featureUsageUseCase = featureUsageUseCase;
         }
 
         [HttpPost]
@@ -113,6 +116,7 @@ namespace ITHunterview.WebAPI.Controllers
 
             try
             {
+                await _featureUsageUseCase.TryConsumeFeatureAsync(userId, "CvJdMatching");
 
                 var jobId = await _cvJobMatchingUseCase.SubmitMatchingJobAsync(userId, request);
 
@@ -125,6 +129,11 @@ namespace ITHunterview.WebAPI.Controllers
                 });
 
                 return Ok(new ResponseBase<Guid>(jobId, "Matching job submitted"));
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Not enough coin
+                return Ok(new ResponseBase<Guid>(ex.Message));
             }
             catch (Exception ex)
             {
