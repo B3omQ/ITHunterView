@@ -113,6 +113,28 @@ export function CheatMenu() {
                 Mở Khóa!
               </Button>
             </div>
+            <div className="relative z-10 mt-3 p-3 bg-background/60 backdrop-blur-md rounded-lg border border-border/50 text-xs text-muted-foreground">
+              <p className="font-semibold text-foreground mb-1">📋 Danh sách ID Gói:</p>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                <div>
+                  <span className="font-medium text-indigo-500">Candidate:</span>
+                  <ul className="list-none space-y-0.5 mt-0.5 opacity-80">
+                    <li>ID <strong className="text-foreground">1</strong>: Basic</li>
+                    <li>ID <strong className="text-foreground">2</strong>: Pro Career</li>
+                    <li>ID <strong className="text-foreground">3</strong>: Mastery</li>
+                  </ul>
+                </div>
+                <div>
+                  <span className="font-medium text-emerald-500">Recruiter:</span>
+                  <ul className="list-none space-y-0.5 mt-0.5 opacity-80">
+                    <li>ID <strong className="text-foreground">4</strong>: Free</li>
+                    <li>ID <strong className="text-foreground">5</strong>: Starter</li>
+                    <li>ID <strong className="text-foreground">6</strong>: Growth</li>
+                    <li>ID <strong className="text-foreground">7</strong>: Hiring Pro</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </DialogContent>
