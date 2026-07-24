@@ -42,30 +42,34 @@ export default function RecruiterPricingPage() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 items-stretch">
         {subscriptions.map((sub, idx) => {
-          const isPremium = idx === 1;
+          const isHiringPro = sub.name.toLowerCase().includes('pro');
+          const isGrowth = sub.name.toLowerCase().includes('growth');
+          const isStarter = sub.name.toLowerCase().includes('starter');
+          
+          let cardClassName = 'border-zinc-200 bg-white';
+          if (isHiringPro) {
+            cardClassName = 'border-[#609df5] bg-white ring-1 ring-[#1877F2] shadow-[0_0_15px_rgba(24,119,242,0.2)] z-10';
+          } else if (isGrowth) {
+            cardClassName = 'border-[#1877F2] bg-white ring-1 ring-[#1877F2] shadow-[0_0_15px_rgba(24,119,242,0.1)] z-10';
+          } else if (isStarter) {
+            cardClassName = 'ring-1 ring-[#1877F2]/40 bg-white shadow-md z-10';
+          }
           
           return (
             <Card 
               key={sub.id} 
-              className={`flex flex-col flex-1 relative rounded-2xl ${
-                isPremium 
-                  ? 'border-zinc-900 border-2 shadow-sm' 
-                  : 'border-zinc-200 bg-white'
-              }`}
+              className={`flex flex-col flex-1 relative rounded-2xl transition-all ${cardClassName}`}
             >
-              {isPremium && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                  <span className="bg-zinc-900 text-zinc-50 text-[10px] font-bold uppercase tracking-wider py-1 px-3 rounded-full">
-                    Enterprise Plan
-                  </span>
-                </div>
-              )}
+
               
-              <CardHeader className="pt-10 pb-6 text-left">
-                <CardTitle className="text-xl font-bold mb-2">{sub.name}</CardTitle>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-5xl font-extrabold tracking-tight text-zinc-900">
-                    {new Intl.NumberFormat('en-US').format(sub.price)} VND
+              <CardHeader className="pt-6 pb-4 text-left">
+                <CardTitle className="text-xl font-bold mb-1">{sub.name}</CardTitle>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-4xl font-bold tracking-tight text-zinc-900">
+                    {new Intl.NumberFormat('en-US').format(sub.price)}
+                  </span>
+                  <span className="text-sm font-bold text-zinc-500 mr-1">
+                    VND
                   </span>
                   {sub.durationDays < 36500 && (
                     <span className="text-sm font-medium text-zinc-500">
@@ -73,15 +77,13 @@ export default function RecruiterPricingPage() {
                     </span>
                   )}
                 </div>
-                <CardDescription className="mt-4 text-zinc-500">
-                  {isPremium 
-                    ? 'A comprehensive toolkit to help businesses recruit with high performance.' 
-                    : 'A basic package suitable for occasional recruiting needs.'}
+                <CardDescription className="mt-2 text-[13px] text-zinc-500">
+                  {isHiringPro ? 'A comprehensive toolkit to help businesses recruit with high performance.' : isGrowth ? 'A growing package with more powerful features for active hiring.' : isStarter ? 'A basic package suitable for occasional recruiting needs.' : 'Start with basic features. Experience the system.'}
                 </CardDescription>
               </CardHeader>
               
-              <CardContent className="flex-1 pb-8">
-                <ul className="space-y-4">
+              <CardContent className="flex-1 pb-6">
+                <ul className="space-y-2.5">
                   {sub.featuresConfig.jobSlots != null && (
                     <li className="flex gap-3 items-start">
                       <Check className="w-5 h-5 shrink-0 text-zinc-900" />
@@ -125,15 +127,23 @@ export default function RecruiterPricingPage() {
                 </ul>
               </CardContent>
               
-              <CardFooter className="pb-10 pt-0">
+              <CardFooter className="pb-6 pt-0 border-t-0 bg-transparent">
                 <Button 
-                  className="w-full h-12 text-sm font-semibold"
-                  variant={isPremium ? 'default' : 'outline'}
+                  className={`w-full h-11 text-sm font-semibold transition-all ${
+                    isHiringPro 
+                      ? 'bg-gradient-to-r from-[#0c4a9e] via-[#1877F2] to-[#609df5] hover:opacity-90 text-white shadow-sm'
+                      : isGrowth 
+                        ? 'bg-[#1877F2] hover:bg-[#1877F2]/90 text-white shadow-sm' 
+                        : isStarter
+                          ? 'bg-white border border-[#1877F2] hover:bg-[#1877F2]/5 text-[#1877F2] shadow-sm'
+                          : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border-transparent shadow-none'
+                  }`}
+                  variant={isHiringPro || isGrowth ? 'default' : 'outline'}
                   onClick={() => handleBuy(sub)}
                   disabled={isPending}
                 >
                   {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isPremium ? 'Upgrade to Enterprise' : 'Choose Basic Plan'}
+                  {isHiringPro ? 'Upgrade to Pro' : isGrowth ? 'Upgrade to Growth' : isStarter ? 'Choose Starter' : 'Start Using'}
                 </Button>
               </CardFooter>
             </Card>

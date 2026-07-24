@@ -40,32 +40,33 @@ export default function CandidatePricingPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-stretch">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-stretch pt-4">
         {subscriptions.map((sub, idx) => {
-          const isPremium = idx === 1; // Giả sử gói thứ 2 là gói Premium
+          const isPro = sub.name.toLowerCase().includes('pro') || idx === 1;
+          const isMastery = sub.name.toLowerCase().includes('mastery') || idx === 2;
+          
+          let cardClassName = 'border-zinc-200 bg-white';
+          if (isMastery) {
+            cardClassName = 'border-emerald-400 bg-white ring-1 ring-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.2)] z-10';
+          } else if (isPro) {
+            cardClassName = 'border-[#1877F2] bg-white ring-1 ring-[#1877F2] shadow-[0_0_15px_rgba(24,119,242,0.15)] z-10';
+          }
           
           return (
               <Card 
               key={sub.id} 
-              className={`flex flex-col flex-1 relative rounded-2xl transition-all ${
-                isPremium 
-                  ? 'border-zinc-300 bg-white ring-1 ring-zinc-900 shadow-md' 
-                  : 'border-zinc-200 bg-zinc-50/50'
-              }`}
+              className={`flex flex-col flex-1 relative rounded-2xl transition-all ${cardClassName}`}
             >
-              {isPremium && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                  <span className="bg-zinc-900 text-zinc-50 text-[11px] font-semibold tracking-wide py-1 px-4 rounded-full shadow-sm">
-                    Recommended
-                  </span>
-                </div>
-              )}
+
               
-              <CardHeader className="pt-8 pb-5 text-left">
-                <CardTitle className="text-lg font-semibold mb-1 text-zinc-900">{sub.name}</CardTitle>
-                <div className="flex items-baseline gap-1 mt-2">
+              <CardHeader className="pt-6 pb-4 text-left">
+                <CardTitle className="text-lg font-semibold text-zinc-900">{sub.name}</CardTitle>
+                <div className="flex items-baseline gap-1 mt-1">
                   <span className="text-4xl font-bold tracking-tight text-zinc-900">
-                    {new Intl.NumberFormat('en-US').format(sub.price)} VND
+                    {new Intl.NumberFormat('en-US').format(sub.price)}
+                  </span>
+                  <span className="text-sm font-bold text-zinc-500 mr-1">
+                    VND
                   </span>
                   {sub.durationDays < 36500 && (
                     <span className="text-sm font-medium text-zinc-500">
@@ -73,15 +74,16 @@ export default function CandidatePricingPage() {
                     </span>
                   )}
                 </div>
-                <CardDescription className="mt-3 text-sm text-zinc-500">
-                  {isPremium 
-                    ? 'Everything you need to quickly land your dream job.' 
-                    : 'Start with basic features. Experience the system.'}
+                <CardDescription className="mt-2 text-[13px] text-zinc-500">
+                  {idx === 0 && 'Start with basic features. Experience the system.'}
+                  {idx === 1 && 'Everything you need to quickly land your dream job.'}
+                  {idx === 2 && 'Advanced tools for professionals to maximize opportunities.'}
+                  {idx > 2 && 'Start with basic features. Experience the system.'}
                 </CardDescription>
               </CardHeader>
               
-              <CardContent className="flex-1 pb-8">
-                <ul className="space-y-3.5">
+              <CardContent className="flex-1 pb-6">
+                <ul className="space-y-2.5">
                   {sub.featuresConfig.cvMatchLimit !== null && (
                     <li className="flex gap-3 items-start">
                       <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
@@ -133,19 +135,24 @@ export default function CandidatePricingPage() {
                 </ul>
               </CardContent>
               
-              <CardFooter className="pb-8 pt-0">
+              <CardFooter className="pb-6 pt-0 border-t-0 bg-transparent">
                 <Button 
                   className={`w-full h-11 text-sm font-semibold transition-all ${
-                    isPremium 
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm' 
-                      : 'bg-white hover:bg-zinc-50 text-zinc-900 border-zinc-200'
+                    isMastery 
+                      ? 'bg-gradient-to-r from-[#1877F2] to-emerald-400 hover:opacity-90 text-white shadow-sm'
+                      : isPro 
+                        ? 'bg-[#1877F2] hover:bg-[#1877F2]/90 text-white shadow-sm' 
+                        : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border-transparent shadow-none'
                   }`}
-                  variant={isPremium ? 'default' : 'outline'}
+                  variant={isPro || isMastery ? 'default' : 'outline'}
                   onClick={() => handleBuy(sub)}
                   disabled={isPending}
                 >
                   {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isPremium ? 'Buy Now' : 'Start Using'}
+                  {idx === 0 && 'Start Using'}
+                  {idx === 1 && 'Buy Now'}
+                  {idx === 2 && 'Upgrade'}
+                  {idx > 2 && 'Start Using'}
                 </Button>
               </CardFooter>
             </Card>
