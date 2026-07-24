@@ -38,3 +38,15 @@ export function useDeleteCv() {
     },
   });
 }
+
+export function useSetPrimaryCv() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: cvService.setPrimaryCv,
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ['cvs'] });
+      }
+    },
+  });
+}

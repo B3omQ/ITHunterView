@@ -17,17 +17,20 @@ namespace ITHunterview.Service.UseCase
         private readonly Microsoft.Extensions.DependencyInjection.IServiceScopeFactory _scopeFactory;
         private readonly Microsoft.Extensions.Logging.ILogger<CvUseCase> _logger;
         private readonly ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService _textExtractorService;
+        private readonly ICandidateProfileRepository _candidateProfileRepository;
 
         public CvUseCase(
             ICvRepository cvRepository,
             Microsoft.Extensions.DependencyInjection.IServiceScopeFactory scopeFactory,
             Microsoft.Extensions.Logging.ILogger<CvUseCase> logger,
-            ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService textExtractorService)
+            ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService textExtractorService,
+            ICandidateProfileRepository candidateProfileRepository)
         {
             _cvRepository = cvRepository;
             _scopeFactory = scopeFactory;
             _logger = logger;
             _textExtractorService = textExtractorService;
+            _candidateProfileRepository = candidateProfileRepository;
         }
 
         public async Task<CvResponseDto> CreateCvAsync(Guid userId, CreateCvRequestDto request)
@@ -72,10 +75,23 @@ namespace ITHunterview.Service.UseCase
 
             var createdCv = await _cvRepository.CreateAsync(cv);
 
+            if (createdCv.IsPrimary && createdCv.ParseStatus == "PENDING")
+            {
+                var profile = await _candidateProfileRepository.GetByUserIdAsync(userId);
+                if (profile != null && profile.IsVisibleToRecruiters)
+                {
+                    bool isLocked = await _cvRepository.TryLockCvForParsingAsync(createdCv.Id);
+                    if (isLocked)
+                    {
+                        _ = Task.Run(() => ParseCvBackgroundAsync(createdCv.Id, createdCv.RawText, createdCv.FileUrl));
+                    }
+                }
+            }
+
             return MapToDto(createdCv);
         }
 
-        private async Task ParseCvBackgroundAsync(Guid cvId, string rawTextFallback, string fileUrl)
+        public async Task ParseCvBackgroundAsync(Guid cvId, string rawTextFallback, string fileUrl)
         {
             using var scope = _scopeFactory.CreateScope();
             var textExtractor = scope.ServiceProvider.GetRequiredService<ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService>();
@@ -87,9 +103,7 @@ namespace ITHunterview.Service.UseCase
             try
             {
                 _logger.LogInformation("Starting background parsing for CV {CvId}", cvId);
-                cvToUpdate.ParseStatus = "PROCESSING";
-                cvToUpdate.UpdatedAt = DateTime.UtcNow;
-                await cvRepo.UpdateAsync(cvToUpdate);
+                // Note: ParseStatus is already set to PROCESSING by TryLockCvForParsingAsync before calling this background task.
 
                 var parsedJson = await textExtractor.ExtractParsedDataFromUrlAsync(fileUrl, rawTextFallback);
 
@@ -174,6 +188,22 @@ namespace ITHunterview.Service.UseCase
         public async Task SetPrimaryCvAsync(Guid id, Guid userId)
         {
             await _cvRepository.SetPrimaryCvAsync(id, userId);
+            
+            // Check visibility and parse if needed
+            var profile = await _candidateProfileRepository.GetByUserIdAsync(userId);
+            if (profile != null && profile.IsVisibleToRecruiters)
+            {
+                var targetCv = await _cvRepository.GetByIdAsync(id);
+                if (targetCv != null && targetCv.ParseStatus == "PENDING")
+                {
+                    bool isLocked = await _cvRepository.TryLockCvForParsingAsync(id);
+                    if (isLocked)
+                    {
+                        // Fire and forget background task
+                        _ = Task.Run(() => ParseCvBackgroundAsync(id, targetCv.RawText, targetCv.FileUrl));
+                    }
+                }
+            }
         }
 
         private CvResponseDto MapToDto(Cvs cv)

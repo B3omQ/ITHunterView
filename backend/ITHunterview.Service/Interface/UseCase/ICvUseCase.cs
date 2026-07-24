@@ -12,5 +12,6 @@ namespace ITHunterview.Service.Interface.UseCase
         Task<CvResponseDto> GetCvByIdAsync(Guid id, Guid userId);
         Task DeleteCvAsync(Guid id, Guid userId);
         Task SetPrimaryCvAsync(Guid id, Guid userId);
+        Task ParseCvBackgroundAsync(Guid cvId, string rawTextFallback, string fileUrl);
     }
 }

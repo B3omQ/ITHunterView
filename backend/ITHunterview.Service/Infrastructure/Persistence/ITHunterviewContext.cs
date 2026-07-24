@@ -142,6 +142,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                       .WithMany(u => u.Cvs)
                       .HasForeignKey(c => c.UserId)
                       .OnDelete(DeleteBehavior.Cascade);
+
+                // Ensure only 1 primary CV per user
+                entity.HasIndex(e => new { e.UserId, e.IsPrimary })
+                      .IsUnique()
+                      .HasFilter("\"is_primary\" = true AND \"deleted_at\" IS NULL");
             });
 
             // CandidateProfiles

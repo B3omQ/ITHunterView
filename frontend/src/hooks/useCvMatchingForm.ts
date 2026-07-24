@@ -72,9 +72,8 @@ export function useCvMatchingForm() {
 
   useEffect(() => {
     if (myCvsData?.data && myCvsData.data.length > 0 && !selectedCvId) {
-      const primary = myCvsData.data.find(c => c.isPrimary) || myCvsData.data[0];
+      const primary = myCvsData.data.find((c: any) => c.isPrimary) || myCvsData.data[0];
       setSelectedCvId(primary.id);
-      setCvTab('saved');
     }
   }, [myCvsData, selectedCvId]);
 

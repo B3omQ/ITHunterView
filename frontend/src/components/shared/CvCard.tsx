@@ -64,6 +64,17 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
                 Primary
               </span>
             )}
+            {cv.parseStatus === 'PROCESSING' && (
+              <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-1">
+                <Loader2 className="h-2 w-2 animate-spin" />
+                Analyzing AI...
+              </span>
+            )}
+            {cv.parseStatus === 'FAILED' && (
+              <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-medium" title={cv.parseError || undefined}>
+                Analysis Failed
+              </span>
+            )}
           </div>
         </div>
       </div>
