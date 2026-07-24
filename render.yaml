@@ -4,7 +4,7 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: ./backend
-    region: singapore # Hoặc oregon, frankfurt tùy bạn chọn
+    region: singapore
     plan: free
     healthCheckPath: /health
     envVars:
@@ -13,9 +13,11 @@ services:
       - key: ASPNETCORE_URLS
         value: http://+:8080
       - key: ConnectionStrings__DefaultConnection
-        sync: false # Sẽ nhập Connection String Postgres từ Render / Supabase
+        fromDatabase:
+          name: ithunterview-db
+          property: connectionString
       - key: JwtSettings__Secret
-        generateValue: true # Render sẽ tự sinh chuỗi secret ngẫu nhiên
+        generateValue: true
       - key: JwtSettings__Issuer
         value: ITHunterview
       - key: JwtSettings__Audience
