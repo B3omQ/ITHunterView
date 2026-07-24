@@ -172,7 +172,8 @@ export function Sidebar() {
   const isActive = (href: string) => {
     if (href === pathname) return true
     if (href.endsWith("/dashboard")) return pathname === href
-    return pathname.startsWith(href.split('?')[0])
+    const baseHref = href.split('?')[0]
+    return pathname === baseHref || pathname.startsWith(`${baseHref}/`)
   }
 
   const toggleExpand = (label: string) => {

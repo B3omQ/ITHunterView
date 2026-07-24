@@ -33,13 +33,13 @@ export default function CandidatePricingPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
         <div className="inline-block bg-zinc-100 text-zinc-600 text-xs font-semibold tracking-wider uppercase px-3 py-1 rounded-full ring-1 ring-inset ring-zinc-200 self-start">
-          Bảng giá minh bạch
+          Transparent Pricing
         </div>
         <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
-          Nâng Cấp Trải Nghiệm Ứng Tuyển
+          Upgrade Your Application Experience
         </h1>
         <p className="text-muted-foreground">
-          Mở khóa các tính năng AI mạnh mẽ để tối ưu hóa CV, luyện phỏng vấn và tìm được công việc mơ ước nhanh hơn. Bắt đầu miễn phí, nâng cấp khi bạn sẵn sàng.
+          Unlock powerful AI features to optimize your CV, practice interviews, and land your dream job faster. Start for free, upgrade when you're ready.
         </p>
       </div>
 
@@ -59,7 +59,7 @@ export default function CandidatePricingPage() {
               {isPremium && (
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
                   <span className="bg-zinc-900 text-zinc-50 text-[11px] font-semibold tracking-wide py-1 px-4 rounded-full shadow-sm">
-                    Khuyên dùng
+                    Recommended
                   </span>
                 </div>
               )}
@@ -68,16 +68,18 @@ export default function CandidatePricingPage() {
                 <CardTitle className="text-lg font-semibold mb-1 text-zinc-900">{sub.name}</CardTitle>
                 <div className="flex items-baseline gap-1 mt-2">
                   <span className="text-4xl font-bold tracking-tight text-zinc-900">
-                    {new Intl.NumberFormat('vi-VN').format(sub.price)}đ
+                    {new Intl.NumberFormat('en-US').format(sub.price)} VND
                   </span>
-                  <span className="text-sm font-medium text-zinc-500">
-                    /{sub.durationDays} ngày
-                  </span>
+                  {sub.durationDays < 36500 && (
+                    <span className="text-sm font-medium text-zinc-500">
+                      /{sub.durationDays} days
+                    </span>
+                  )}
                 </div>
                 <CardDescription className="mt-3 text-sm text-zinc-500">
                   {isPremium 
-                    ? 'Mọi thứ bạn cần để nhanh chóng có được công việc mơ ước.' 
-                    : 'Bắt đầu với các tính năng cơ bản. Trải nghiệm hệ thống.'}
+                    ? 'Everything you need to quickly land your dream job.' 
+                    : 'Start with basic features. Experience the system.'}
                 </CardDescription>
               </CardHeader>
               
@@ -87,7 +89,7 @@ export default function CandidatePricingPage() {
                     <li className="flex gap-3 items-start">
                       <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                       <span className="text-zinc-600 text-sm">
-                        {sub.featuresConfig.cvMatchLimit} lượt Matching CV-JD
+                        {sub.featuresConfig.cvMatchLimit} CV-JD Matches
                       </span>
                     </li>
                   )}
@@ -95,7 +97,7 @@ export default function CandidatePricingPage() {
                     <li className="flex gap-3 items-start">
                       <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                       <span className="text-zinc-600 text-sm">
-                        {sub.featuresConfig.learningPathSlotLimit} lượt tạo Learning Path
+                        {sub.featuresConfig.learningPathSlotLimit} Learning Path Generations
                       </span>
                     </li>
                   )}
@@ -103,7 +105,7 @@ export default function CandidatePricingPage() {
                     <li className="flex gap-3 items-start">
                       <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                       <span className="text-zinc-600 text-sm">
-                        Lượt AI Refresh không giới hạn
+                        Unlimited AI Profile Refreshes
                       </span>
                     </li>
                   )}
@@ -111,7 +113,7 @@ export default function CandidatePricingPage() {
                     <li className="flex gap-3 items-start">
                       <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                       <span className="text-zinc-600 text-sm">
-                        Huy hiệu Premium nổi bật
+                        Premium Profile Badge
                       </span>
                     </li>
                   )}
@@ -119,7 +121,7 @@ export default function CandidatePricingPage() {
                     <li className="flex gap-3 items-start">
                       <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                       <span className="text-zinc-600 text-sm">
-                        Tặng {new Intl.NumberFormat('vi-VN').format(sub.featuresConfig.coinCredit)} Coin
+                        Includes {new Intl.NumberFormat('en-US').format(sub.featuresConfig.coinCredit)} Coins
                       </span>
                     </li>
                   )}
@@ -127,7 +129,7 @@ export default function CandidatePricingPage() {
                     <li className="flex gap-3 items-start">
                       <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                       <span className="text-zinc-600 text-sm">
-                        {sub.featuresConfig.mockInterviewLimit} lượt Phỏng vấn Mock AI
+                        {sub.featuresConfig.mockInterviewLimit} AI Mock Interviews
                       </span>
                     </li>
                   )}
@@ -146,7 +148,7 @@ export default function CandidatePricingPage() {
                   disabled={isPending}
                 >
                   {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isPremium ? 'Mua Ngay' : 'Bắt đầu sử dụng'}
+                  {isPremium ? 'Buy Now' : 'Start Using'}
                 </Button>
               </CardFooter>
             </Card>
@@ -156,7 +158,7 @@ export default function CandidatePricingPage() {
       
       {subscriptions.length === 0 && !isLoading && (
         <div className="text-center p-12 bg-zinc-50 rounded-2xl border border-zinc-200 max-w-2xl mx-auto">
-          <p className="text-zinc-500">Hiện tại chưa có gói cước nào được mở bán.</p>
+          <p className="text-zinc-500">There are currently no subscription plans available.</p>
         </div>
       )}
     </div>
