@@ -2,8 +2,8 @@ services:
   - type: web
     name: ithunterview-backend
     runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: ./backend
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
     region: singapore
     plan: free
     healthCheckPath: /health
@@ -32,6 +32,14 @@ services:
         sync: false
       - key: AiSettings__Providers__Gemini__ApiKey
         sync: false
+      - key: AiSettings__Providers__Gemini__Model
+        value: gemini-2.5-flash
+      - key: AiSettings__Providers__Gemini__Endpoint
+        value: https://generativelanguage.googleapis.com/v1beta/models
+      - key: SmtpSettings__Host
+        value: smtp.gmail.com
+      - key: SmtpSettings__Port
+        value: "587"
       - key: SmtpSettings__Username
         sync: false
       - key: SmtpSettings__Password
