@@ -2,17 +2,17 @@ import { Metadata } from "next";
 import { BillingHistoryTable } from "@/components/wallet/BillingHistoryTable";
 
 export const metadata: Metadata = {
-  title: "Lịch sử giao dịch | ITHunterview",
-  description: "Lịch sử các giao dịch thanh toán của Nhà tuyển dụng",
+  title: "Transaction History | ITHunterview",
+  description: "Employer payment transaction history",
 };
 
 export default function RecruiterBillingHistoryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Lịch sử giao dịch</h1>
-        <p className="text-muted-foreground mt-1">
-          Theo dõi các khoản thanh toán nâng cấp Gói và Nạp Coin của công ty.
+        <h1 className="text-3xl font-bold tracking-tight">Transaction History</h1>
+        <p className="text-muted-foreground mt-2">
+          Track your company's Subscription and Coin Top-up payments.
         </p>
       </div>
       
