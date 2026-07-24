@@ -64,8 +64,8 @@ export default function RecruiterPricingPage() {
               
               <CardHeader className="pt-6 pb-4 text-left">
                 <CardTitle className="text-xl font-bold mb-1">{sub.name}</CardTitle>
-                <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-4xl font-bold tracking-tight text-zinc-900">
+                <div className="flex items-baseline gap-1 mt-1 flex-wrap xl:flex-nowrap whitespace-nowrap">
+                  <span className="text-3xl font-bold tracking-tight text-zinc-900">
                     {new Intl.NumberFormat('en-US').format(sub.price)}
                   </span>
                   <span className="text-sm font-bold text-zinc-500 mr-1">
