@@ -22,11 +22,11 @@ export default function RecruiterTopUpPage() {
           if (res.data?.checkoutUrl) {
             window.location.href = res.data.checkoutUrl;
           } else {
-            toast.error('Không tìm thấy link thanh toán');
+            toast.error('Checkout link not found');
           }
         },
         onError: (error) => {
-          toast.error(error.message || 'Có lỗi xảy ra khi tạo thanh toán');
+          toast.error(error.message || 'An error occurred while creating payment');
         },
       }
     );
@@ -38,16 +38,16 @@ export default function RecruiterTopUpPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Nạp Coin</h1>
-        <p className="text-muted-foreground">Mua thêm coin để sử dụng các tính năng đăng tuyển và tìm kiếm ứng viên.</p>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Top Up Coins</h1>
+        <p className="text-muted-foreground mt-2">Buy more coins to use job posting and candidate sourcing features.</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Số dư hiện tại */}
         <Card className="bg-primary/5 border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xl font-medium">Số dư hiện tại</CardTitle>
+            <CardTitle className="text-xl font-medium">Current Balance</CardTitle>
             <Wallet className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
@@ -62,10 +62,9 @@ export default function RecruiterTopUpPage() {
           </CardContent>
         </Card>
 
-        {/* Bảng giá tính năng */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium">Chi phí mỗi lượt sử dụng</CardTitle>
+            <CardTitle className="text-lg font-medium">Cost per Usage</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoadingConfig ? (
@@ -101,7 +100,7 @@ export default function RecruiterTopUpPage() {
       </div>
 
       <div className="space-y-4 pt-4">
-        <h2 className="text-2xl font-semibold tracking-tight">Chọn gói Nạp Coin</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">Select a Coin Package</h2>
         
         {isLoadingConfig ? (
           <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4">
@@ -115,7 +114,7 @@ export default function RecruiterTopUpPage() {
           </div>
         ) : packages.length === 0 ? (
           <div className="text-center p-8 bg-muted/20 rounded-lg border border-dashed">
-            <p className="text-muted-foreground">Hiện tại chưa có gói Coin nào được mở bán.</p>
+            <p className="text-muted-foreground">There are currently no coin packages available.</p>
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4">
@@ -123,7 +122,7 @@ export default function RecruiterTopUpPage() {
               <Card key={pkg.id} className="flex flex-col border-2 hover:border-primary transition-colors">
                 <CardHeader className="text-center pb-4">
                   <CardTitle className="text-xl">{pkg.name}</CardTitle>
-                  <CardDescription>Gói nạp tiết kiệm</CardDescription>
+                  <CardDescription>Value Package</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 text-center space-y-4">
                   <div className="flex items-center justify-center gap-2">
@@ -141,7 +140,7 @@ export default function RecruiterTopUpPage() {
                     disabled={isBuying}
                   >
                     {isBuying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Mua ngay
+                    Buy Now
                   </Button>
                 </CardFooter>
               </Card>

@@ -31,14 +31,11 @@ export default function CandidatePricingPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <div className="inline-block bg-zinc-100 text-zinc-600 text-xs font-semibold tracking-wider uppercase px-3 py-1 rounded-full ring-1 ring-inset ring-zinc-200 self-start">
-          Transparent Pricing
-        </div>
-        <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">
           Upgrade Your Application Experience
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground mt-2">
           Unlock powerful AI features to optimize your CV, practice interviews, and land your dream job faster. Start for free, upgrade when you're ready.
         </p>
       </div>

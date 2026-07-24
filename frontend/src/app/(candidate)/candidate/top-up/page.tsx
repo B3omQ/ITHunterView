@@ -38,9 +38,9 @@ export default function TopUpPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2">
+      <div>
         <h1 className="text-3xl font-bold tracking-tight">Top Up Coins</h1>
-        <p className="text-muted-foreground">Buy more coins to use advanced AI features on the platform.</p>
+        <p className="text-muted-foreground mt-2">Buy more coins to use advanced AI features on the platform.</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

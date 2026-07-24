@@ -31,14 +31,11 @@ export default function RecruiterPricingPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <div className="inline-block bg-zinc-100 text-zinc-800 text-xs font-semibold tracking-wider uppercase px-3 py-1 rounded-full ring-1 ring-inset ring-zinc-200 self-start">
-          Enterprise Pricing
-        </div>
-        <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">
           Smart Recruiting Solutions
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground mt-2">
           Reach potential candidates faster with tailored service packages for employers. Flexible management, maximum efficiency.
         </p>
       </div>
