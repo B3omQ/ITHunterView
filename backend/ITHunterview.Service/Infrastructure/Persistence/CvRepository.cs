@@ -73,5 +73,20 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 await _context.SaveChangesAsync();
             }
         }
+
+        public async Task SetPrimaryCvAsync(Guid id, Guid userId)
+        {
+            var cvs = await _context.Cvs.Where(c => c.UserId == userId && c.DeletedAt == null).ToListAsync();
+            if (!cvs.Any(c => c.Id == id)) return; // Ensure CV exists and belongs to user
+
+            foreach (var cv in cvs)
+            {
+                cv.IsPrimary = cv.Id == id;
+                cv.UpdatedAt = DateTime.UtcNow;
+            }
+            
+            _context.Cvs.UpdateRange(cvs);
+            await _context.SaveChangesAsync();
+        }
     }
 }

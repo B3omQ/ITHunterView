@@ -71,6 +71,16 @@ export function useCvMatchingForm() {
   }, [searchParams, pollingJobId, step]);
 
   useEffect(() => {
+    if (myCvsData?.data && myCvsData.data.length > 0 && !selectedCvId) {
+      const primary = myCvsData.data.find(c => c.isPrimary) || myCvsData.data[0];
+      setSelectedCvId(primary.id);
+      setCvTab('saved');
+    }
+  }, [myCvsData, selectedCvId]);
+
+
+
+  useEffect(() => {
     if (pollQuery.data?.data) {
       const { status, matchDetails, errorMessage } = pollQuery.data.data;
       if (status === 'Completed' && matchDetails) {

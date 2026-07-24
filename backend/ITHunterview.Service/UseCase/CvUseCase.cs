@@ -171,6 +171,11 @@ namespace ITHunterview.Service.UseCase
             }
         }
 
+        public async Task SetPrimaryCvAsync(Guid id, Guid userId)
+        {
+            await _cvRepository.SetPrimaryCvAsync(id, userId);
+        }
+
         private CvResponseDto MapToDto(Cvs cv)
         {
             return new CvResponseDto

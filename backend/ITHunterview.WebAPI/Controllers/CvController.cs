@@ -255,5 +255,25 @@ namespace ITHunterview.WebAPI.Controllers
                 return BadRequest(new ResponseBase<string>(null, ex.Message));
             }
         }
+
+        [HttpPut("{id:guid}/primary")]
+        public async Task<ActionResult<ResponseBase<string>>> SetPrimaryCv(Guid id)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+                await _cvUseCase.SetPrimaryCvAsync(id, userId);
+                return Ok(new ResponseBase<string>("Primary CV updated successfully", "Success"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ResponseBase<string>(null, ex.Message));
+            }
+        }
     }
 }

@@ -12,6 +12,9 @@ export const cvService = {
   deleteCv: (id: string) =>
     api.delete<ApiResponse<string>>(`/api/cvs/${id}`).then((r) => r.data),
 
+  setPrimaryCv: (id: string) =>
+    api.put<ApiResponse<string>>(`/api/cvs/${id}/primary`).then((r) => r.data),
+
   matchCvJd: (data: import('@/types/cv.types').MatchJdRequest) =>
     api.post<ApiResponse<string>>('/api/cvs/match-jd', data, { timeout: 15000 }).then((r) => r.data),
 
