@@ -65,7 +65,7 @@ export default function TopUpPage() {
         
         <div className="relative z-10 w-36 h-36 md:w-48 md:h-48 hidden sm:block">
           <Image 
-            src="/images/topup-mascot.png" 
+            src="/images/topupMascot2.png" 
             alt="Top Up Mascot" 
             fill 
             className="object-contain"

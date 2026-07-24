@@ -5,6 +5,7 @@ import { usePublicCoinConfig } from '@/hooks/useCoin';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import Image from 'next/image';
 import { Coins, Loader2, Wallet, Unlock, Briefcase, CalendarPlus, ArrowUpCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -37,71 +38,43 @@ export default function RecruiterTopUpPage() {
   const featureCosts = configData?.data?.featureCosts;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Top Up Coins</h1>
-        <p className="text-muted-foreground mt-2">Buy more coins to use job posting and candidate sourcing features.</p>
-      </div>
+    <div className="space-y-4">
+      {/* Tier 1: Header & Context with Mascot */}
+      <div className="relative overflow-hidden bg-primary/5 border border-primary/10 rounded-2xl p-5 sm:px-8 sm:py-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        {/* Decorative background blobs */}
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
 
-      <div className="grid gap-6 md:grid-cols-2 items-stretch">
-        {/* Số dư hiện tại */}
-        <Card className="bg-primary/5 border-primary/20 flex flex-col">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xl font-medium">Current Balance</CardTitle>
-            <Wallet className="h-5 w-5 text-primary" />
-          </CardHeader>
-          <CardContent className="flex-1 flex items-center">
+        <div className="relative z-10 w-full md:w-3/5">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary">Top Up Coins</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-2 max-w-md">
+            Buy more coins to use job posting and candidate sourcing features on the platform.
+          </p>
+          <div className="mt-4 inline-flex items-center gap-2.5 bg-white shadow-sm text-primary px-4 py-2 rounded-xl border border-primary/20">
+            <Wallet className="h-5 w-5" />
+            <span className="text-sm font-medium">Your current balance:</span>
             {isLoadingBalance ? (
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-bold text-primary">{new Intl.NumberFormat('en-US').format(currentBalance)}</span>
-                <span className="text-lg font-semibold text-muted-foreground">Coins</span>
-              </div>
+              <span className="text-xl font-bold">
+                {new Intl.NumberFormat('en-US').format(currentBalance)} <span className="text-sm font-semibold">Coins</span>
+              </span>
             )}
-          </CardContent>
-        </Card>
-
-        <Card className="flex flex-col">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium">Cost per Usage</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoadingConfig ? (
-              <div className="flex justify-center p-4">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-2">
-                <div className="flex flex-col items-center p-3 bg-muted/50 rounded-lg border">
-                  <Unlock className="h-5 w-5 text-[#1877F2] mb-2" />
-                  <span className="text-sm font-medium text-center">Unlock CV</span>
-                  <Badge variant="secondary" className="mt-1">{new Intl.NumberFormat('en-US').format(featureCosts?.unlockCv ?? 0)} Coins</Badge>
-                </div>
-                <div className="flex flex-col items-center p-3 bg-muted/50 rounded-lg border">
-                  <Briefcase className="h-5 w-5 text-[#1877F2] mb-2" />
-                  <span className="text-sm font-medium text-center">Post Job</span>
-                  <Badge variant="secondary" className="mt-1">{new Intl.NumberFormat('en-US').format(featureCosts?.postJob ?? 0)} Coins</Badge>
-                </div>
-                <div className="flex flex-col items-center p-3 bg-muted/50 rounded-lg border">
-                  <CalendarPlus className="h-5 w-5 text-[#1877F2] mb-2" />
-                  <span className="text-sm font-medium text-center">Extend Job</span>
-                  <Badge variant="secondary" className="mt-1">{new Intl.NumberFormat('en-US').format(featureCosts?.extendJob ?? 0)} Coins</Badge>
-                </div>
-                <div className="flex flex-col items-center p-3 bg-muted/50 rounded-lg border">
-                  <ArrowUpCircle className="h-5 w-5 text-[#1877F2] mb-2" />
-                  <span className="text-sm font-medium text-center">Push Top</span>
-                  <Badge variant="secondary" className="mt-1">{new Intl.NumberFormat('en-US').format(featureCosts?.pushTop ?? 0)} Coins</Badge>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+        
+        <div className="relative z-10 w-36 h-36 md:w-48 md:h-48 hidden sm:block">
+          <Image 
+            src="/images/topupMascot2.png" 
+            alt="Top Up Mascot" 
+            fill 
+            className="object-contain"
+          />
+        </div>
       </div>
 
-      <div className="space-y-4 pt-4">
-        <h2 className="text-2xl font-semibold tracking-tight">Select a Coin Package</h2>
-        
+      {/* Tier 2: Core Action */}
+      <div>
         {isLoadingConfig ? (
           <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
@@ -142,10 +115,10 @@ export default function RecruiterTopUpPage() {
                     {formatCurrency(pkg.price)}
                   </div>
                 </CardContent>
-                <CardFooter className="pb-8 pt-0 border-t-0 bg-transparent">
+                <CardFooter className="pb-6 pt-0 border-t-0 bg-transparent">
                   <Button 
-                    className="w-full h-11 text-sm font-semibold transition-all bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border-transparent shadow-none"
-                    variant="outline"
+                    className="w-full h-11 text-sm font-semibold transition-all shadow-sm bg-[#1877F2] hover:bg-[#1877F2]/90 text-white"
+                    variant="default"
                     onClick={() => handleBuyPackage(pkg.id)}
                     disabled={isBuying}
                   >
@@ -158,6 +131,34 @@ export default function RecruiterTopUpPage() {
           </div>
         )}
       </div>
+
+      {/* Tier 3: Reference Info (Inline Banner) */}
+      {!isLoadingConfig && featureCosts && (
+        <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-4 text-sm text-zinc-500">
+          <div className="flex items-center gap-2 font-medium text-zinc-700">
+            Wondering how much things cost?
+          </div>
+          <div className="hidden sm:block text-zinc-300">|</div>
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
+            <span className="flex items-center gap-1.5">
+              <Unlock className="h-4 w-4 text-[#1877F2]" />
+              Unlock CV: <strong className="text-zinc-900">{new Intl.NumberFormat('en-US').format(featureCosts.unlockCv)}</strong>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Briefcase className="h-4 w-4 text-[#1877F2]" />
+              Post Job: <strong className="text-zinc-900">{new Intl.NumberFormat('en-US').format(featureCosts.postJob)}</strong>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <CalendarPlus className="h-4 w-4 text-[#1877F2]" />
+              Extend Job: <strong className="text-zinc-900">{new Intl.NumberFormat('en-US').format(featureCosts.extendJob)}</strong>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <ArrowUpCircle className="h-4 w-4 text-[#1877F2]" />
+              Push Top: <strong className="text-zinc-900">{new Intl.NumberFormat('en-US').format(featureCosts.pushTop)}</strong>
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
