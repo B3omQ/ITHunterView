@@ -43,26 +43,26 @@ export default function RecruiterTopUpPage() {
         <p className="text-muted-foreground mt-2">Buy more coins to use job posting and candidate sourcing features.</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 items-stretch">
         {/* Số dư hiện tại */}
-        <Card className="bg-primary/5 border-primary/20">
+        <Card className="bg-primary/5 border-primary/20 flex flex-col">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xl font-medium">Current Balance</CardTitle>
             <Wallet className="h-5 w-5 text-primary" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 flex items-center">
             {isLoadingBalance ? (
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             ) : (
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold text-primary">{currentBalance}</span>
+                <span className="text-5xl font-bold text-primary">{new Intl.NumberFormat('en-US').format(currentBalance)}</span>
                 <span className="text-lg font-semibold text-muted-foreground">Coins</span>
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="flex flex-col">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-medium">Cost per Usage</CardTitle>
           </CardHeader>
@@ -74,24 +74,24 @@ export default function RecruiterTopUpPage() {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-2">
                 <div className="flex flex-col items-center p-3 bg-muted/50 rounded-lg border">
-                  <Unlock className="h-5 w-5 text-indigo-500 mb-2" />
+                  <Unlock className="h-5 w-5 text-[#1877F2] mb-2" />
                   <span className="text-sm font-medium text-center">Unlock CV</span>
-                  <Badge variant="secondary" className="mt-1">{featureCosts?.unlockCv ?? 0} Coins</Badge>
+                  <Badge variant="secondary" className="mt-1">{new Intl.NumberFormat('en-US').format(featureCosts?.unlockCv ?? 0)} Coins</Badge>
                 </div>
                 <div className="flex flex-col items-center p-3 bg-muted/50 rounded-lg border">
-                  <Briefcase className="h-5 w-5 text-blue-500 mb-2" />
+                  <Briefcase className="h-5 w-5 text-[#1877F2] mb-2" />
                   <span className="text-sm font-medium text-center">Post Job</span>
-                  <Badge variant="secondary" className="mt-1">{featureCosts?.postJob ?? 0} Coins</Badge>
+                  <Badge variant="secondary" className="mt-1">{new Intl.NumberFormat('en-US').format(featureCosts?.postJob ?? 0)} Coins</Badge>
                 </div>
                 <div className="flex flex-col items-center p-3 bg-muted/50 rounded-lg border">
-                  <CalendarPlus className="h-5 w-5 text-amber-500 mb-2" />
+                  <CalendarPlus className="h-5 w-5 text-[#1877F2] mb-2" />
                   <span className="text-sm font-medium text-center">Extend Job</span>
-                  <Badge variant="secondary" className="mt-1">{featureCosts?.extendJob ?? 0} Coins</Badge>
+                  <Badge variant="secondary" className="mt-1">{new Intl.NumberFormat('en-US').format(featureCosts?.extendJob ?? 0)} Coins</Badge>
                 </div>
                 <div className="flex flex-col items-center p-3 bg-muted/50 rounded-lg border">
-                  <ArrowUpCircle className="h-5 w-5 text-emerald-500 mb-2" />
+                  <ArrowUpCircle className="h-5 w-5 text-[#1877F2] mb-2" />
                   <span className="text-sm font-medium text-center">Push Top</span>
-                  <Badge variant="secondary" className="mt-1">{featureCosts?.pushTop ?? 0} Coins</Badge>
+                  <Badge variant="secondary" className="mt-1">{new Intl.NumberFormat('en-US').format(featureCosts?.pushTop ?? 0)} Coins</Badge>
                 </div>
               </div>
             )}
@@ -117,25 +117,35 @@ export default function RecruiterTopUpPage() {
             <p className="text-muted-foreground">There are currently no coin packages available.</p>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4">
-            {packages.map((pkg) => (
-              <Card key={pkg.id} className="flex flex-col border-2 hover:border-primary transition-colors">
-                <CardHeader className="text-center pb-4">
-                  <CardTitle className="text-xl">{pkg.name}</CardTitle>
-                  <CardDescription>Value Package</CardDescription>
+          <div className="grid gap-6 md:grid-cols-3 max-w-4xl mx-auto pt-4">
+            {packages.map((pkg, idx) => {
+              const isPopular = idx === 1;
+              return (
+              <Card key={pkg.id} className="flex flex-col transition-all border-zinc-200 hover:border-primary/50 relative overflow-hidden">
+                {isPopular && (
+                  <div className="absolute top-5 -right-10 w-40 bg-gradient-to-r from-[#1877F2] to-cyan-400 text-white text-[10px] font-bold uppercase tracking-wider text-center py-1 shadow-sm rotate-45 z-10">
+                    Popular
+                  </div>
+                )}
+                <CardHeader className="text-center pb-4 pt-8">
+                  <CardTitle className="text-xl font-bold">{pkg.name}</CardTitle>
+                  <CardDescription>
+                    {idx === 0 ? 'For beginners' : idx === 1 ? 'Best value' : 'For professionals'}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 text-center space-y-4">
                   <div className="flex items-center justify-center gap-2">
-                    <Coins className="h-8 w-8 text-amber-500" />
-                    <span className="text-4xl font-bold">{pkg.coins}</span>
+                    <Coins className="h-7 w-7 text-[#1877F2]" />
+                    <span className="text-3xl font-bold">{new Intl.NumberFormat('en-US').format(pkg.coins)}</span>
                   </div>
                   <div className="text-2xl font-semibold text-primary">
                     {formatCurrency(pkg.price)}
                   </div>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="pb-8 pt-0 border-t-0 bg-transparent">
                   <Button 
-                    className="w-full" 
+                    className="w-full h-11 text-sm font-semibold transition-all bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border-transparent shadow-none"
+                    variant="outline"
                     onClick={() => handleBuyPackage(pkg.id)}
                     disabled={isBuying}
                   >
@@ -144,7 +154,7 @@ export default function RecruiterTopUpPage() {
                   </Button>
                 </CardFooter>
               </Card>
-            ))}
+            )})}
           </div>
         )}
       </div>
