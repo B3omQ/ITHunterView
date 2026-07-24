@@ -16,11 +16,13 @@ import {
   Filter,
   Users,
   FileText,
-  Download
+  Download,
+  FileSpreadsheet
 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { JobApplicationDetailDto } from "@/types/job-application.types"
+import { exportApplicantsToExcel } from "@/utils/excel-export.util"
 
 export default function JobApplicantsPage() {
   const router = useRouter()
@@ -197,6 +199,19 @@ export default function JobApplicantsPage() {
     )
   }
 
+  const handleExportExcel = () => {
+    try {
+      if (filteredApplicants.length === 0) {
+        toast.error("Không có dữ liệu ứng viên để xuất Excel.")
+        return
+      }
+      exportApplicantsToExcel(job?.title || "Job", filteredApplicants)
+      toast.success("Đã xuất danh sách ứng viên ra file Excel thành công!")
+    } catch (err: any) {
+      toast.error(err.message || "Có lỗi xảy ra khi xuất Excel.")
+    }
+  }
+
   const totalPages = Math.ceil(totalCount / pageSize)
 
   return (
@@ -234,6 +249,15 @@ export default function JobApplicantsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
+            <Button
+              onClick={handleExportExcel}
+              disabled={filteredApplicants.length === 0 || loading}
+              variant="outline"
+              className="border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 font-semibold gap-2 w-full sm:w-auto"
+              title="Xuất danh sách ứng viên ra Excel để nộp Cấp trên"
+            >
+              <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Xuất Excel
+            </Button>
             <Button variant="outline" className="bg-white border-zinc-200 text-zinc-700 font-medium gap-2 w-full sm:w-auto hidden sm:flex">
               <Filter className="h-4 w-4" /> Filter
             </Button>
