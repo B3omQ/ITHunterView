@@ -538,7 +538,7 @@ namespace ITHunterview.Service.UseCase
             // exactLevel and totalQuestions are declared above sampleQuestions loading
 
             // Định nghĩa hướng dẫn động cho từng câu hỏi tiếp theo
-            string questionInstruction = "QUY TẮC QUAN TRỌNG: Mọi câu hỏi bạn đặt ra BẮT BUỘC phải dựa trên bối cảnh thực tế từ CV của ứng viên hoặc yêu cầu của JD. TUYỆT ĐỐI KHÔNG hỏi các câu lý thuyết chung chung như trong sách giáo khoa nếu không liên kết với một kỹ năng/dự án trong CV. Bạn có thể hỏi follow-up 1 câu với câu trước nếu ứng viên trả lời chưa rõ.\n\n";
+            string questionInstruction = "QUY TẮC QUAN TRỌNG: Mọi câu hỏi bạn đặt ra BẮT BUỘC phải dựa trên bối cảnh thực tế từ CV của ứng viên hoặc yêu cầu của JD. TUYỆT ĐỐI KHÔNG hỏi các câu lý thuyết chung chung như trong sách giáo khoa nếu không liên kết với một kỹ năng/dự án trong CV. Bạn bắt buộc hỏi thêm 1 đến 2 câu follow up nếu ứng viên trả lời chưa rõ câu hỏi.\n\n";
             
             if (questionIndex >= totalQuestions)
             {

@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: ithunterview-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: ./backend
+    region: singapore # Hoặc oregon, frankfurt tùy bạn chọn
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:8080
+      - key: ConnectionStrings__DefaultConnection
+        sync: false # Sẽ nhập Connection String Postgres từ Render / Supabase
+      - key: JwtSettings__Secret
+        generateValue: true # Render sẽ tự sinh chuỗi secret ngẫu nhiên
+      - key: JwtSettings__Issuer
+        value: ITHunterview
+      - key: JwtSettings__Audience
+        value: ITHunterview
+      - key: CloudinarySettings__CloudName
+        sync: false
+      - key: CloudinarySettings__ApiKey
+        sync: false
+      - key: CloudinarySettings__ApiSecret
+        sync: false
+      - key: AiSettings__Providers__Gemini__ApiKey
+        sync: false
+      - key: SmtpSettings__Username
+        sync: false
+      - key: SmtpSettings__Password
+        sync: false
+      - key: FrontendUrl
+        sync: false
+
+databases:
+  - name: ithunterview-db
+    databaseName: ithunterview
+    user: ithunterview_user
+    plan: free
+    region: singapore
