@@ -20,6 +20,7 @@ builder.Services.AddControllers()
     });
 builder.Services.AddOpenApi();
 builder.Services.AddSignalR();
+builder.Services.AddHealthChecks();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -183,6 +184,7 @@ app.UseMiddleware<ITHunterview.WebAPI.Middlewares.UserStatusCheckMiddleware>();
 app.UseMiddleware<ITHunterview.WebAPI.Middlewares.AiRateLimitMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/health");
 app.MapHub<NotificationHub>("/hubs/notification");
 
 app.Run();
