@@ -188,6 +188,15 @@ namespace ITHunterview.Service.Service.Matching
             return string.Empty;
         }
 
+        public async Task<string> ExtractParsedDataFromRawTextAsync(string rawText)
+        {
+            if (string.IsNullOrWhiteSpace(rawText) || IsTextGarbage(rawText))
+                return string.Empty;
+
+            var textPrompt = CvParsingPrompt.GetPrompt(rawText);
+            return await ExtractJsonWithGeminiTextAsync(textPrompt);
+        }
+
         private async Task<string> ExtractJsonWithGeminiTextAsync(string prompt)
         {
             var systemPrompt = CvParsingPrompt.SystemPrompt;

@@ -72,11 +72,6 @@ namespace ITHunterview.Service.UseCase
 
             var createdCv = await _cvRepository.CreateAsync(cv);
 
-            if (createdCv.ParseStatus == "PENDING")
-            {
-                _ = ParseCvBackgroundAsync(createdCv.Id, createdCv.RawText, createdCv.FileUrl);
-            }
-
             return MapToDto(createdCv);
         }
 
@@ -135,7 +130,6 @@ namespace ITHunterview.Service.UseCase
                 }
             }
         }
-
 
         public async Task<IEnumerable<CvResponseDto>> GetMyCvsAsync(Guid userId)
         {

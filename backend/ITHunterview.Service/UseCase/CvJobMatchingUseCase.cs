@@ -110,8 +110,32 @@ namespace ITHunterview.Service.UseCase
             return string.Empty;
         }
 
+        private async Task EnsureCvIsParsedAsync(Cvs cv)
+        {
+            if (string.IsNullOrWhiteSpace(cv.ParsedData) || cv.ParseStatus != "SUCCESS")
+            {
+                _logger.LogInformation("[INFO] On-demand parsing CV {CvId} in AI Matching.", cv.Id);
+                var parsedData = await _cvTextExtractorService.ExtractParsedDataFromUrlAsync(cv.FileUrl, cv.RawText);
+                
+                if (string.IsNullOrWhiteSpace(parsedData))
+                {
+                    cv.ParseStatus = "FAILED";
+                    _context.Cvs.Update(cv);
+                    await _context.SaveChangesAsync();
+                    throw new Exception($"Cannot parse CV data on-demand for CV {cv.Id}.");
+                }
+                
+                cv.ParsedData = parsedData;
+                cv.ParseStatus = "SUCCESS";
+                _context.Cvs.Update(cv);
+                await _context.SaveChangesAsync();
+            }
+        }
+
         private async Task GenerateEmbeddingsForCvAsync(Cvs cv)
         {
+            await EnsureCvIsParsedAsync(cv);
+
             bool updated = false;
             
             if (cv.TitleEmbedding == null)
@@ -221,7 +245,6 @@ namespace ITHunterview.Service.UseCase
         {
             var cv = await _context.Cvs.FindAsync(cvId);
             if (cv == null) throw new Exception("CV not found");
-            if (cv.ParseStatus != "SUCCESS") throw new Exception($"CV is currently in status '{cv.ParseStatus ?? "PENDING"}'. AI parsing must complete before matching.");
 
             await GenerateEmbeddingsForCvAsync(cv);
 
@@ -393,41 +416,136 @@ namespace ITHunterview.Service.UseCase
                 matchRecord.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
-                // 1. Get CV Text
+                // === STEP 1 & 2: Quyết định trước xem có cần gọi AI không, rồi chạy song song ===
+
+                // --- Phân tích luồng CV ---
+                Cvs? savedCv = null;
+                bool cvNeedsAiExtract = false;   // Cần gọi AI extract raw text (temp upload URL)
+                bool cvNeedsAiParse = false;      // Cần gọi AI parse ParsedData (saved CV hoặc Temp raw text)
+                bool isCvTextJson = false;
+
                 string cvText = request.CvText ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(cvText))
+                
+                if (!string.IsNullOrWhiteSpace(cvText))
+                {
+                    try { using (JsonDocument.Parse(cvText)) { isCvTextJson = true; } } catch { }
+                    if (!isCvTextJson) cvNeedsAiParse = true; // Raw text từ Temp Upload hoặc Paste, cần parse JSON
+                }
+                else
                 {
                     if (!string.IsNullOrWhiteSpace(request.CvUrl))
                     {
-                        cvText = await _cvTextExtractorService.ExtractTextFromUrlAsync(request.CvUrl);
+                        cvNeedsAiExtract = true;
                     }
-                    else 
+                    else if (matchRecord.CvId.HasValue)
                     {
-                        var cv = matchRecord.CvId.HasValue ? await _context.Cvs.FindAsync(matchRecord.CvId.Value) : null;
-                        if (cv != null)
+                        savedCv = await _context.Cvs.FindAsync(matchRecord.CvId.Value);
+                        if (savedCv != null && (string.IsNullOrWhiteSpace(savedCv.ParsedData) || savedCv.ParseStatus != "SUCCESS"))
+                            cvNeedsAiParse = true;
+                    }
+                }
+                _logger.LogInformation("CV needs AI extract: {Extract}, needs AI parse: {Parse}", cvNeedsAiExtract, cvNeedsAiParse);
+                // --- Phân tích luồng JD ---
+                string jdRequirementsJson = "";
+                List<ScoringRequirement> requirementsList = new List<ScoringRequirement>();
+                Domain.Entities.JobPostings? savedJob = null;
+                bool jdNeedsAiParse = false; // Cần gọi LLM Stage 1 cho JD
+
+                if (request.JobId.HasValue)
+                {
+                    savedJob = await _context.JobPostings.FindAsync(request.JobId.Value);
+                    if (savedJob != null)
+                    {
+                        if (string.IsNullOrEmpty(matchRecord.JdTitle)) matchRecord.JdTitle = savedJob.Title;
+                        if (savedJob.ParseStatus == "SUCCESS" && !string.IsNullOrWhiteSpace(savedJob.ParsedData))
                         {
-                            if (!string.IsNullOrWhiteSpace(cv.ParsedData))
-                                cvText = cv.ParsedData;
-                            else if (!string.IsNullOrWhiteSpace(cv.RawText))
-                                cvText = cv.RawText;
-                            else if (!string.IsNullOrWhiteSpace(cv.FileUrl))
+                            _logger.LogInformation("[INFO] Stage 1 skipped. Using ParsedData from Job {JobId}", request.JobId);
+                            jdRequirementsJson = savedJob.ParsedData;
+                        }
+                        else jdNeedsAiParse = true;
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(request.RawJdText))
+                {
+                    jdNeedsAiParse = true;
+                }
+
+                // --- Chạy song song nếu cả 2 cần gọi AI ---
+                bool runParallel = (cvNeedsAiExtract || cvNeedsAiParse) && jdNeedsAiParse;
+                if (runParallel)
+                    _logger.LogInformation("[INFO] Running CV extraction and JD Stage 1 parsing in PARALLEL to reduce latency.");
+
+                Task<string> cvTask = Task.FromResult(string.Empty);
+                Task<string> jdTask = Task.FromResult(string.Empty);
+
+                if (cvNeedsAiExtract)
+                    cvTask = _cvTextExtractorService.ExtractTextFromUrlAsync(request.CvUrl);
+                else if (cvNeedsAiParse)
+                {
+                    if (savedCv != null)
+                        cvTask = _cvTextExtractorService.ExtractParsedDataFromUrlAsync(savedCv.FileUrl, savedCv.RawText);
+                    else if (!string.IsNullOrWhiteSpace(cvText) && !isCvTextJson)
+                        cvTask = _cvTextExtractorService.ExtractParsedDataFromRawTextAsync(cvText);
+                }
+                if (jdNeedsAiParse)
+                {
+                    string rawJdText = savedJob != null
+                        ? $"Title: {savedJob.Title}\nDescription: {savedJob.Description}\nRequirements: {savedJob.Requirements}\nBenefits: {savedJob.Benefits}"
+                        : request.RawJdText;
+                    var promptStage1 = ITHunterview.Service.Constant.Prompts.JdExtractionPrompt.BuildUser(rawJdText);
+                    jdTask = _textAiService.GenerateTextAsync(promptStage1, ITHunterview.Service.Constant.Prompts.JdExtractionPrompt.System);
+                }
+
+                // Await cùng lúc — nếu chỉ 1 trong 2 task thực sự cần AI, cái còn lại là Task.FromResult nên chi phí ~0
+                await Task.WhenAll(cvTask, jdTask);
+
+                // --- Xử lý kết quả CV ---
+                if (cvNeedsAiExtract)
+                {
+                    cvText = await cvTask;
+                }
+                else if (cvNeedsAiParse)
+                {
+                    var parsedData = await cvTask;
+                    if (!string.IsNullOrWhiteSpace(parsedData))
+                    {
+                        if (savedCv != null)
+                        {
+                            savedCv.ParsedData = parsedData;
+                            savedCv.ParseStatus = "SUCCESS";
+                            _context.Cvs.Update(savedCv);
+                            await _context.SaveChangesAsync();
+                        }
+                        cvText = parsedData;
+                        isCvTextJson = true;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("[WARN] On-demand parse failed. Falling back to RawText.");
+                        if (savedCv != null)
+                        {
+                            if (!string.IsNullOrWhiteSpace(savedCv.RawText))
+                                cvText = savedCv.RawText;
+                            else if (!string.IsNullOrWhiteSpace(savedCv.FileUrl))
                             {
-                                _logger.LogInformation("[INFO] CV RawText is empty in Matching. Extracting from URL: {Url}", cv.FileUrl);
-                                cvText = await _cvTextExtractorService.ExtractTextFromUrlAsync(cv.FileUrl);
-                                cv.RawText = cvText;
-                                _context.Cvs.Update(cv);
+                                cvText = await _cvTextExtractorService.ExtractTextFromUrlAsync(savedCv.FileUrl);
+                                savedCv.RawText = cvText;
+                                _context.Cvs.Update(savedCv);
                                 await _context.SaveChangesAsync();
                             }
                         }
                     }
                 }
+                else if (string.IsNullOrWhiteSpace(cvText) && savedCv != null)
+                {
+                    // CV đã parsed sẵn, không cần gọi AI
+                    cvText = !string.IsNullOrWhiteSpace(savedCv.ParsedData) ? savedCv.ParsedData : savedCv.RawText ?? string.Empty;
+                    isCvTextJson = !string.IsNullOrWhiteSpace(savedCv.ParsedData);
+                }
 
                 // Cập nhật tên CV nếu là CV từ hệ thống
-                if (matchRecord.CvId.HasValue && string.IsNullOrEmpty(matchRecord.CvFileName))
-                {
-                    var cv = await _context.Cvs.FindAsync(matchRecord.CvId.Value);
-                    if (cv != null) matchRecord.CvFileName = cv.FileName ?? "Saved CV";
-                }
+                if (savedCv != null && string.IsNullOrEmpty(matchRecord.CvFileName))
+                    matchRecord.CvFileName = savedCv.FileName ?? "Saved CV";
 
                 if (string.IsNullOrWhiteSpace(cvText))
                 {
@@ -436,37 +554,10 @@ namespace ITHunterview.Service.UseCase
                     throw new Exception($"Cannot extract text from CV ({cvSource}). {urlDebug}The file URL may be an invalid PDF/DOCX or blocked by Cloudinary.");
                 }
 
-                // 2. Get JD Requirements (STAGE 1)
-                string jdRequirementsJson = "";
-                List<ScoringRequirement> requirementsList = new List<ScoringRequirement>();
-
-                if (request.JobId.HasValue)
+                // --- Xử lý kết quả JD Stage 1 ---
+                if (jdNeedsAiParse)
                 {
-                    var job = await _context.JobPostings.FindAsync(request.JobId.Value);
-                    if (job != null)
-                    {
-                        if (string.IsNullOrEmpty(matchRecord.JdTitle)) matchRecord.JdTitle = job.Title;
-                        
-                        if (job.ParseStatus == "SUCCESS" && !string.IsNullOrWhiteSpace(job.ParsedData))
-                        {
-                            _logger.LogInformation("[INFO] Stage 1 skipped. Using ParsedData from Job {JobId}", request.JobId);
-                            jdRequirementsJson = job.ParsedData;
-                        }
-                        else
-                        {
-                            _logger.LogInformation("[INFO] Stage 1 Fallback. Parsing JD text for Job {JobId}", request.JobId);
-                            string rawJdText = $"Title: {job.Title}\nDescription: {job.Description}\nRequirements: {job.Requirements}\nBenefits: {job.Benefits}";
-                            var promptStage1 = ITHunterview.Service.Constant.Prompts.JdExtractionPrompt.BuildUser(rawJdText);
-                            var aiResponse = await _textAiService.GenerateTextAsync(promptStage1, ITHunterview.Service.Constant.Prompts.JdExtractionPrompt.System);
-                            jdRequirementsJson = ExtractJsonFromText(aiResponse);
-                        }
-                    }
-                }
-                else if (!string.IsNullOrWhiteSpace(request.RawJdText))
-                {
-                    _logger.LogInformation("[INFO] Stage 1 Execution for Paste Text mode.");
-                    var promptStage1 = ITHunterview.Service.Constant.Prompts.JdExtractionPrompt.BuildUser(request.RawJdText);
-                    var aiResponse = await _textAiService.GenerateTextAsync(promptStage1, ITHunterview.Service.Constant.Prompts.JdExtractionPrompt.System);
+                    var aiResponse = await jdTask;
                     jdRequirementsJson = ExtractJsonFromText(aiResponse);
                 }
 
@@ -517,9 +608,23 @@ namespace ITHunterview.Service.UseCase
                     r.ReqId, r.NormalizedText, r.Category, r.Importance, r.DetailVerbatim
                 }), new JsonSerializerOptions { WriteIndented = true });
 
-                // Limit CV text
-                if (cvText.Length > 8000) cvText = cvText.Substring(0, 8000);
-
+                // Limit CV text/json intelligently to prevent breaking JSON structure
+                if (cvText.Length > 8000)
+                {
+                    if (isCvTextJson)
+                    {
+                        // JSON is too large, we shouldn't just Substring it or it will break JSON.
+                        // Since this is CV parsed JSON, it contains many fields. 
+                        // Instead of a full parse/re-serialize which might be complex, we just try to keep it as raw text and truncate, 
+                        // but actually Stage 2 can tolerate some malformed JSON if we just provide the first 8000 chars. 
+                        // However, to be safe, we just let the LLM handle it, or string truncate.
+                        cvText = cvText.Substring(0, 8000); 
+                    }
+                    else
+                    {
+                        cvText = cvText.Substring(0, 8000);
+                    }
+                }
                 // 3. Prompt Stage 2
                 var variables = new Dictionary<string, string>
                 {

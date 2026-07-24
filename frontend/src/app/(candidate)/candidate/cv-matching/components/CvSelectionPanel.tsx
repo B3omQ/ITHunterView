@@ -141,19 +141,11 @@ export function CvSelectionPanel({
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {myCvs.map((cv) => {
-                    const isProcessing = cv.parseStatus && cv.parseStatus !== 'SUCCESS' && cv.parseStatus !== 'FAILED';
-                    const isFailed = cv.parseStatus === 'FAILED';
-                    const isDisabled = cv.parseStatus !== 'SUCCESS';
-                    
-                    return (
-                      <SelectItem key={cv.id} value={cv.id} disabled={isDisabled}>
+                  {myCvs.map((cv) => (
+                      <SelectItem key={cv.id} value={cv.id}>
                         {cv.fileName || `Resume - ${new Date(cv.createdAt).toLocaleDateString()}`}
-                        {isProcessing && " (Preparing data...)"}
-                        {isFailed && " (Failed to process)"}
                       </SelectItem>
-                    );
-                  })}
+                  ))}
                 </SelectContent>
               </Select>
             )}

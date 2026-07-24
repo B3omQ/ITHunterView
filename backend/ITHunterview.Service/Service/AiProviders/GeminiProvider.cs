@@ -7,6 +7,7 @@ using ITHunterview.Service.Config;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.Persistence;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace ITHunterview.Service.Service.AiProviders
 {
@@ -15,13 +16,19 @@ namespace ITHunterview.Service.Service.AiProviders
         private readonly HttpClient _httpClient;
         private readonly ProviderConfig _config;
         private readonly ISystemConfigRepository _systemConfigRepository;
+        private readonly Microsoft.Extensions.Caching.Memory.IMemoryCache _memoryCache;
+        
+        // SemaphoreSlim để tránh cache stampede khi nhiều thread cùng miss cache
+        private static readonly System.Threading.SemaphoreSlim _cacheSemaphore = new System.Threading.SemaphoreSlim(1, 1);
+        private const string CacheKey = "GeminiProvider_ApiKey";
 
         public string ProviderName => "Gemini";
 
-        public GeminiProvider(HttpClient httpClient, IOptions<AiSettings> settings, ISystemConfigRepository systemConfigRepository)
+        public GeminiProvider(HttpClient httpClient, IOptions<AiSettings> settings, ISystemConfigRepository systemConfigRepository, Microsoft.Extensions.Caching.Memory.IMemoryCache memoryCache)
         {
             _httpClient = httpClient;
             _systemConfigRepository = systemConfigRepository;
+            _memoryCache = memoryCache;
             if (settings.Value.Providers.TryGetValue("Gemini", out var config))
             {
                 _config = config;
@@ -31,11 +38,35 @@ namespace ITHunterview.Service.Service.AiProviders
                 _config = new ProviderConfig();
             }
         }
+        
+        private async Task<string> GetApiKeyAsync()
+        {
+            if (_memoryCache.TryGetValue(CacheKey, out string cachedKey))
+                return cachedKey;
+
+            await _cacheSemaphore.WaitAsync();
+            try
+            {
+                // Double-check sau khi acquire semaphore
+                if (_memoryCache.TryGetValue(CacheKey, out string cachedKey2))
+                    return cachedKey2;
+
+                var dbKeyConfig = await _systemConfigRepository.GetByKeyAsync("AiApiKey_Gemini");
+                var apiKey = dbKeyConfig?.ConfigValue ?? _config.ApiKey ?? string.Empty;
+
+                // Cache 5 phút
+                _memoryCache.Set(CacheKey, apiKey, TimeSpan.FromMinutes(5));
+                return apiKey;
+            }
+            finally
+            {
+                _cacheSemaphore.Release();
+            }
+        }
 
         public async Task<string> GenerateTextAsync(string prompt, string systemPrompt = null)
         {
-            var dbKeyConfig = await _systemConfigRepository.GetByKeyAsync("AiApiKey_Gemini");
-            var apiKey = dbKeyConfig?.ConfigValue ?? _config.ApiKey;
+            var apiKey = await GetApiKeyAsync();
 
             if (string.IsNullOrEmpty(apiKey) || apiKey == "YOUR_GEMINI_API_KEY")
             {

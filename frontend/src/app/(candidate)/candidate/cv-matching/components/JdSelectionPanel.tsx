@@ -70,19 +70,11 @@ export function JdSelectionPanel({
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {savedJobs.map((job) => {
-                    const isProcessing = job.parseStatus && job.parseStatus !== 'SUCCESS' && job.parseStatus !== 'FAILED';
-                    const isFailed = job.parseStatus === 'FAILED';
-                    const isDisabled = job.parseStatus !== 'SUCCESS';
-
-                    return (
-                      <SelectItem key={job.jobId} value={job.jobId} disabled={isDisabled}>
+                  {savedJobs.map((job) => (
+                      <SelectItem key={job.jobId} value={job.jobId}>
                         {job.title} - {job.companyName}
-                        {isProcessing && " (Preparing data...)"}
-                        {isFailed && " (Failed to process)"}
                       </SelectItem>
-                    );
-                  })}
+                  ))}
                 </SelectContent>
               </Select>
             )}

@@ -140,8 +140,8 @@ namespace ITHunterview.WebAPI.Controllers
             {
                 using var ms = new System.IO.MemoryStream();
                 await file.CopyToAsync(ms);
-                var jsonParsedData = await _cvTextExtractorService.ExtractParsedDataFromBytesAsync(ms.ToArray(), file.ContentType, file.FileName);
-                return Ok(new ResponseBase<string>(jsonParsedData, "CV parsed successfully"));
+                var rawText = await _cvTextExtractorService.ExtractTextFromBytesAsync(ms.ToArray(), file.ContentType, file.FileName);
+                return Ok(new ResponseBase<string>(rawText, "CV text extracted successfully"));
             }
             catch (Exception ex)
 

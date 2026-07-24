@@ -7,16 +7,25 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using ITHunterview.Service.Interface.Service.Matching;
+using Microsoft.Extensions.Logging;
 
 namespace ITHunterview.Service.UseCase
 {
     public class HardcodeCvJobMatchingUseCase : IHardcodeCvJobMatchingUseCase
     {
         private readonly ITHunterviewContext _context;
+        private readonly ICvTextExtractorService _cvTextExtractorService;
+        private readonly ILogger<HardcodeCvJobMatchingUseCase> _logger;
 
-        public HardcodeCvJobMatchingUseCase(ITHunterviewContext context)
+        public HardcodeCvJobMatchingUseCase(
+            ITHunterviewContext context,
+            ICvTextExtractorService cvTextExtractorService,
+            ILogger<HardcodeCvJobMatchingUseCase> logger)
         {
             _context = context;
+            _cvTextExtractorService = cvTextExtractorService;
+            _logger = logger;
         }
 
         private JsonElement? GetJsonElement(string? jsonString, string fieldName)
@@ -204,11 +213,34 @@ namespace ITHunterview.Service.UseCase
             }
         }
 
+        private async Task EnsureCvIsParsedAsync(Cvs cv)
+        {
+            if (string.IsNullOrWhiteSpace(cv.ParsedData) || cv.ParseStatus != "SUCCESS")
+            {
+                _logger.LogInformation("[INFO] On-demand parsing CV {CvId} in Hardcode Matching.", cv.Id);
+                var parsedData = await _cvTextExtractorService.ExtractParsedDataFromUrlAsync(cv.FileUrl, cv.RawText);
+                
+                if (string.IsNullOrWhiteSpace(parsedData))
+                {
+                    cv.ParseStatus = "FAILED";
+                    _context.Cvs.Update(cv);
+                    await _context.SaveChangesAsync();
+                    throw new Exception($"Cannot parse CV data on-demand for CV {cv.Id}.");
+                }
+                
+                cv.ParsedData = parsedData;
+                cv.ParseStatus = "SUCCESS";
+                _context.Cvs.Update(cv);
+                await _context.SaveChangesAsync();
+            }
+        }
+
         public async Task MatchCvWithAllJobsHardcodeAsync(Guid cvId, Guid userId)
         {
             var cv = await _context.Cvs.FindAsync(cvId);
             if (cv == null) throw new Exception("CV not found");
-            if (cv.ParseStatus != "SUCCESS") throw new Exception($"CV is currently in status '{cv.ParseStatus ?? "PENDING"}'. AI parsing must complete before matching.");
+            
+            await EnsureCvIsParsedAsync(cv);
 
             var cvMetrics = ExtractMetrics(cv.ParsedData);
 

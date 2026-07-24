@@ -235,20 +235,7 @@ export function useCvMatchingForm() {
     const hasJD = (jdTab === 'paste' && jdText.trim()) || (jdTab === 'saved' && selectedJobId);
 
     let isCvReady = true;
-    if (cvTab === 'saved' && selectedCvId && myCvsData?.data) {
-      const selectedCv = myCvsData.data.find((c: any) => c.id === selectedCvId);
-      if (selectedCv && selectedCv.parseStatus !== 'SUCCESS') {
-        isCvReady = false;
-      }
-    }
-
     let isJdReady = true;
-    if (jdTab === 'saved' && selectedJobId && savedJobsData?.data) {
-      const selectedJob = savedJobsData.data.find((j: any) => j.jobId === selectedJobId);
-      if (selectedJob && selectedJob.parseStatus !== 'SUCCESS') {
-        isJdReady = false;
-      }
-    }
 
     return !hasCV || !hasJD || isExtracting || !isCvReady || !isJdReady;
   };
