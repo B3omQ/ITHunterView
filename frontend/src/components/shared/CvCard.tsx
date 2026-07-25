@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FileText, Eye, Trash2, Star, Loader2 } from 'lucide-react';
+import { useIsMutating } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import type { Cv } from '@/types/cv.types';
 
@@ -18,6 +19,7 @@ interface CvCardProps {
 export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const { mutate: setPrimary, isPending: isSettingPrimary } = useSetPrimaryCv();
+  const isAnySettingPrimary = useIsMutating({ mutationKey: ['set-primary-cv'] }) > 0;
 
   // Format date: "Jun 10, 2026"
   const formattedDate = new Date(cv.createdAt).toLocaleDateString('en-US', {
@@ -95,13 +97,13 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
                 setPrimary(cv.id);
               }
             }}
-            disabled={isDeleting || isSettingPrimary || cv.isPrimary}
+            disabled={isDeleting || isAnySettingPrimary || cv.isPrimary}
             className={cn(
               "gap-1.5 h-8 transition-colors",
               cv.isPrimary 
                 ? "text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 opacity-100" 
                 : "text-muted-foreground hover:text-yellow-500 hover:bg-yellow-50",
-              (isDeleting || isSettingPrimary) && "opacity-50 cursor-not-allowed"
+              (isDeleting || isAnySettingPrimary) && "opacity-50 cursor-not-allowed"
             )}
             title={cv.isPrimary ? "This is your primary CV" : "Set as primary"}
           >

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.Memory;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Service.DTOs.Cv;
 using ITHunterview.Service.Interface.Persistence;
@@ -18,32 +19,48 @@ namespace ITHunterview.Service.UseCase
         private readonly Microsoft.Extensions.Logging.ILogger<CvUseCase> _logger;
         private readonly ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService _textExtractorService;
         private readonly ICandidateProfileRepository _candidateProfileRepository;
+        private readonly IMemoryCache _cache;
 
         public CvUseCase(
             ICvRepository cvRepository,
             Microsoft.Extensions.DependencyInjection.IServiceScopeFactory scopeFactory,
             Microsoft.Extensions.Logging.ILogger<CvUseCase> logger,
             ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService textExtractorService,
-            ICandidateProfileRepository candidateProfileRepository)
+            ICandidateProfileRepository candidateProfileRepository,
+            IMemoryCache cache)
         {
             _cvRepository = cvRepository;
             _scopeFactory = scopeFactory;
             _logger = logger;
             _textExtractorService = textExtractorService;
             _candidateProfileRepository = candidateProfileRepository;
+            _cache = cache;
         }
 
         public async Task<CvResponseDto> CreateCvAsync(Guid userId, CreateCvRequestDto request)
         {
+            string? warningMessage = null;
+
             if (request.IsPrimary)
             {
-                await _cvRepository.ResetPrimaryCvAsync(userId);
+                if (!CheckAndRecordPrimaryCvRateLimit(userId, isCheckOnly: true))
+                {
+                    request.IsPrimary = false;
+                    warningMessage = "Tải CV thành công nhưng không thể đặt làm CV Chính do bạn đã đạt giới hạn (3 lần/ngày hoặc chờ 20s).";
+                }
+                else
+                {
+                    await _cvRepository.ResetPrimaryCvAsync(userId);
+                    CheckAndRecordPrimaryCvRateLimit(userId, isCheckOnly: false);
+                }
             }
-            else
+            
+            if (!request.IsPrimary)
             {
                 bool hasPrimary = await _cvRepository.HasPrimaryCvAsync(userId);
                 if (!hasPrimary)
                 {
+                    // Nếu là CV đầu tiên, không tính vào Rate Limit
                     request.IsPrimary = true;
                 }
             }
@@ -88,7 +105,9 @@ namespace ITHunterview.Service.UseCase
                 }
             }
 
-            return MapToDto(createdCv);
+            var responseDto = MapToDto(createdCv);
+            responseDto.WarningMessage = warningMessage;
+            return responseDto;
         }
 
         public async Task ParseCvBackgroundAsync(Guid cvId, string rawTextFallback, string fileUrl)
@@ -187,7 +206,13 @@ namespace ITHunterview.Service.UseCase
 
         public async Task SetPrimaryCvAsync(Guid id, Guid userId)
         {
+            if (!CheckAndRecordPrimaryCvRateLimit(userId, isCheckOnly: true))
+            {
+                throw new InvalidOperationException("Bạn đã đạt giới hạn thay đổi CV chính (3 lần/ngày) hoặc thao tác quá nhanh (đợi 20s).");
+            }
+
             await _cvRepository.SetPrimaryCvAsync(id, userId);
+            CheckAndRecordPrimaryCvRateLimit(userId, isCheckOnly: false);
             
             // Check visibility and parse if needed
             var profile = await _candidateProfileRepository.GetByUserIdAsync(userId);
@@ -223,6 +248,38 @@ namespace ITHunterview.Service.UseCase
                 CreatedAt = cv.CreatedAt,
                 UpdatedAt = cv.UpdatedAt
             };
+        }
+
+        private bool CheckAndRecordPrimaryCvRateLimit(Guid userId, bool isCheckOnly)
+        {
+            var vnTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            var vnTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vnTimeZone);
+            string dateStr = vnTime.ToString("yyyyMMdd");
+
+            string cooldownKey = $"CvPrimarySet_Cooldown_{userId}";
+            string dailyLimitKey = $"CvPrimarySet_DailyCount_{userId}_{dateStr}";
+
+            if (_cache.TryGetValue(cooldownKey, out _))
+            {
+                return false; // Cooldown not met
+            }
+
+            if (_cache.TryGetValue(dailyLimitKey, out int currentCount) && currentCount >= 3)
+            {
+                return false; // Daily limit exceeded
+            }
+
+            if (!isCheckOnly)
+            {
+                _cache.Set(cooldownKey, true, TimeSpan.FromSeconds(20));
+
+                var eod = vnTime.Date.AddDays(1); // Midnight next day VN time
+                var timeUntilEod = eod - vnTime;
+                
+                _cache.Set(dailyLimitKey, currentCount + 1, timeUntilEod);
+            }
+
+            return true;
         }
     }
 }

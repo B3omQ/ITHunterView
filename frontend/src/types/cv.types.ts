@@ -9,6 +9,7 @@ export interface Cv {
   parsedData: string;
   parseStatus?: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED';
   parseError?: string | null;
+  warningMessage?: string;
   createdAt: string;
   updatedAt: string;
 }

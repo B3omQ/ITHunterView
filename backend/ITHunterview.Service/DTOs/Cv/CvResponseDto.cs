@@ -16,5 +16,6 @@ namespace ITHunterview.Service.DTOs.Cv
         public string? ParseError { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public string? WarningMessage { get; set; }
     }
 }
