@@ -11,6 +11,7 @@ namespace ITHunterview.Service.Interface.Service.Matching
         
         Task<string> ExtractParsedDataFromBytesAsync(byte[] fileBytes, string contentType, string fileName);
         Task<string> ExtractParsedDataFromUrlAsync(string fileUrl, string rawTextFallback);
+        Task<string> ExtractParsedDataFromRawTextAsync(string rawText);
         
         List<CvChunkDto> ChunkCvText(string rawCvText);
     }

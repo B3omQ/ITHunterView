@@ -43,9 +43,10 @@ export interface SavedJobDto {
   jobId: string;
   title: string;
   companyName: string;
-  logoUrl: string;
+  logoUrl?: string;
   location: string;
   salaryText: string;
+  parseStatus?: string;
   savedAt: string;
 }
 

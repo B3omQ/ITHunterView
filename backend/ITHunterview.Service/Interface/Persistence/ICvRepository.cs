@@ -14,5 +14,7 @@ namespace ITHunterview.Service.Interface.Persistence
         Task DeleteAsync(Cvs cv);
         Task<bool> HasPrimaryCvAsync(Guid userId);
         Task ResetPrimaryCvAsync(Guid userId);
+        Task SetPrimaryCvAsync(Guid id, Guid userId);
+        Task<bool> TryLockCvForParsingAsync(Guid id);
     }
 }

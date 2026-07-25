@@ -10,6 +10,7 @@ namespace ITHunterview.Service.DTOs.JobSearch
         public string LogoUrl { get; set; }
         public string Location { get; set; }
         public string SalaryText { get; set; }
+        public string ParseStatus { get; set; }
         public DateTime SavedAt { get; set; }
     }
 }

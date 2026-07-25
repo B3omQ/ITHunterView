@@ -50,6 +50,21 @@ export function useJobs(initialPage = 1, initialPageSize = 7, initialStatus = 'A
     fetchJobs();
   }, [fetchJobs]);
 
+  // Auto-polling if any job is currently PENDING or PROCESSING
+  useEffect(() => {
+    const hasPendingOrProcessing = jobs.some(
+      (j) => j.parseStatus === 'PENDING' || j.parseStatus === 'PROCESSING'
+    );
+
+    if (!hasPendingOrProcessing) return;
+
+    const interval = setInterval(() => {
+      fetchJobs();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [jobs, fetchJobs]);
+
   const closeJob = useCallback(async (id: string) => {
     const res = await recruiterService.closeJob(id);
     if (res.success && res.data && res.data.success) {

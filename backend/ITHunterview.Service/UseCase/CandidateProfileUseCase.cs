@@ -14,6 +14,8 @@ namespace ITHunterview.Service.UseCase
         private readonly ICandidateCertificationRepository _certRepo;
         private readonly ICandidateSkillRepository _skillRepo;
         private readonly IFileUploadService _fileUploadService;
+        private readonly ICvRepository _cvRepository;
+        private readonly ICvUseCase _cvUseCase;
 
         public CandidateProfileUseCase(
             ICandidateProfileRepository profileRepo,
@@ -21,7 +23,9 @@ namespace ITHunterview.Service.UseCase
             ICandidateEducationRepository eduRepo,
             ICandidateCertificationRepository certRepo,
             ICandidateSkillRepository skillRepo,
-            IFileUploadService fileUploadService)
+            IFileUploadService fileUploadService,
+            ICvRepository cvRepository,
+            ICvUseCase cvUseCase)
         {
             _profileRepo = profileRepo;
             _expRepo = expRepo;
@@ -29,6 +33,8 @@ namespace ITHunterview.Service.UseCase
             _certRepo = certRepo;
             _skillRepo = skillRepo;
             _fileUploadService = fileUploadService;
+            _cvRepository = cvRepository;
+            _cvUseCase = cvUseCase;
         }
 
         // ─── Personal Info ─────────────────────────────────────────────────────
@@ -95,6 +101,27 @@ namespace ITHunterview.Service.UseCase
         public async Task<bool> SetVisibilityAsync(Guid userId, bool isVisible)
         {
             var profile = await GetOrCreateProfileAsync(userId);
+
+            if (isVisible)
+            {
+                bool hasPrimary = await _cvRepository.HasPrimaryCvAsync(userId);
+                if (!hasPrimary)
+                {
+                    throw new InvalidOperationException("Bạn cần phải thiết lập CV Chính (Primary CV) trước khi hiển thị hồ sơ.");
+                }
+
+                var cvs = await _cvRepository.GetByUserIdAsync(userId);
+                var primaryCv = cvs.FirstOrDefault(c => c.IsPrimary);
+                if (primaryCv != null && primaryCv.ParseStatus == "PENDING")
+                {
+                    bool isLocked = await _cvRepository.TryLockCvForParsingAsync(primaryCv.Id);
+                    if (isLocked)
+                    {
+                        // Fire and forget
+                        _ = Task.Run(() => _cvUseCase.ParseCvBackgroundAsync(primaryCv.Id, primaryCv.RawText, primaryCv.FileUrl));
+                    }
+                }
+            }
 
             profile.IsVisibleToRecruiters = isVisible;
             await _profileRepo.SaveChangesAsync();

@@ -5,6 +5,7 @@ using ITHunterview.Domain.Entities.Cv;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -14,9 +15,11 @@ using Pgvector;
 namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ITHunterviewContext))]
-    partial class ITHunterviewContextModelSnapshot : ModelSnapshot
+    [Migration("20260722135928_AddParseStatusAndErrorToCvsAndJobs")]
+    partial class AddParseStatusAndErrorToCvsAndJobs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1021,10 +1024,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("JobId")
                         .HasColumnType("uuid")
                         .HasColumnName("job_id");
-
-                    b.Property<string>("Language")
-                        .HasColumnType("text")
-                        .HasColumnName("language");
 
                     b.Property<string>("SfiaExtractResult")
                         .HasColumnType("text")

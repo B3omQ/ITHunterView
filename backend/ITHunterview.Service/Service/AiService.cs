@@ -6,31 +6,31 @@ using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ITHunterview.Service.Service
 {
     public class AiService : IAiService
     {
         private readonly IAiProviderFactory _providerFactory;
-        private readonly ISystemConfigRepository _systemConfigRepository;
+        private readonly Microsoft.Extensions.DependencyInjection.IServiceScopeFactory _scopeFactory;
         private readonly AiSettings _settings;
-        private readonly ITHunterviewContext _context;
 
         public AiService(
             IAiProviderFactory providerFactory,
-            ISystemConfigRepository systemConfigRepository,
-            IOptions<AiSettings> settings,
-            ITHunterviewContext context)
+            Microsoft.Extensions.DependencyInjection.IServiceScopeFactory scopeFactory,
+            IOptions<AiSettings> settings)
         {
             _providerFactory = providerFactory;
-            _systemConfigRepository = systemConfigRepository;
+            _scopeFactory = scopeFactory;
             _settings = settings.Value;
-            _context = context;
         }
 
         public async Task<string> GetActiveProviderNameAsync()
         {
-            var config = await _systemConfigRepository.GetByKeyAsync("ActiveAiProvider");
+            using var scope = _scopeFactory.CreateScope();
+            var systemConfigRepository = scope.ServiceProvider.GetRequiredService<ISystemConfigRepository>();
+            var config = await systemConfigRepository.GetByKeyAsync("ActiveAiProvider");
             if (config != null && !string.IsNullOrWhiteSpace(config.ConfigValue))
             {
                 return config.ConfigValue;
@@ -59,6 +59,8 @@ namespace ITHunterview.Service.Service
                 // Write a log to database (fire and forget or async)
                 try
                 {
+                    using var scope = _scopeFactory.CreateScope();
+                    var context = scope.ServiceProvider.GetRequiredService<ITHunterviewContext>();
                     var log = new AiApiUsageLogs
                     {
                         Id = Guid.NewGuid(),
@@ -69,8 +71,8 @@ namespace ITHunterview.Service.Service
                         CreatedAt = DateTime.UtcNow
                     };
 
-                    _context.AiApiUsageLogs.Add(log);
-                    await _context.SaveChangesAsync();
+                    context.AiApiUsageLogs.Add(log);
+                    await context.SaveChangesAsync();
                 }
                 catch
                 {

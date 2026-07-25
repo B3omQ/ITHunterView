@@ -73,5 +73,39 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 await _context.SaveChangesAsync();
             }
         }
+
+        public async Task SetPrimaryCvAsync(Guid id, Guid userId)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var cvs = await _context.Cvs.Where(c => c.UserId == userId && c.DeletedAt == null).ToListAsync();
+                if (!cvs.Any(c => c.Id == id)) return; // Ensure CV exists and belongs to user
+
+                foreach (var cv in cvs)
+                {
+                    cv.IsPrimary = cv.Id == id;
+                    cv.UpdatedAt = DateTime.UtcNow;
+                }
+                
+                _context.Cvs.UpdateRange(cvs);
+                await _context.SaveChangesAsync();
+                
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
+        public async Task<bool> TryLockCvForParsingAsync(Guid id)
+        {
+            var rowsAffected = await _context.Database.ExecuteSqlRawAsync(
+                "UPDATE cvs SET parse_status = 'PROCESSING', updated_at = {0} WHERE id = {1} AND parse_status = 'PENDING' AND deleted_at IS NULL", 
+                DateTime.UtcNow, id);
+            return rowsAffected > 0;
+        }
     }
 }

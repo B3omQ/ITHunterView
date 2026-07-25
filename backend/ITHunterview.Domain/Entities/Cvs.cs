@@ -46,6 +46,12 @@ namespace ITHunterview.Domain.Entities
         [Column("parsed_data")]
         public string ParsedData { get; set; }
 
+        [Column("parse_status")]
+        public string ParseStatus { get; set; } = "PENDING";
+
+        [Column("parse_error")]
+        public string? ParseError { get; set; }
+
         [Column("raw_text")]
         public string? RawText { get; set; }
 
