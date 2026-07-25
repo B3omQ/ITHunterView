@@ -323,11 +323,21 @@ namespace ITHunterview.Service.UseCase
             await GenerateEmbeddingsForJobAsync(job);
 
             var existingScores = await _context.CvJobMatchScores
-                .Where(s => s.JobId == jobId && s.UserId == userId)
+                .Where(s => s.JobId == jobId) // Fix Duplicate Bug: Bỏ lọc theo Recruiter UserId
                 .ToDictionaryAsync(s => s.CvId);
 
-            var cvs = await _context.Cvs.AsNoTracking()
-                .Where(c => c.IsPrimary && c.ParseStatus == "SUCCESS" && c.TitleEmbedding != null && c.SkillsEmbedding != null && c.ExperienceEmbedding != null && c.DomainEmbedding != null)
+            var cvs = await _context.Cvs
+                .Include(c => c.User)
+                .ThenInclude(u => u.CandidateProfile)
+                .AsNoTracking()
+                .Where(c => c.IsPrimary 
+                         && c.User.CandidateProfile != null 
+                         && c.User.CandidateProfile.IsVisibleToRecruiters == true // Fix Privacy Bug
+                         && c.ParseStatus == "SUCCESS" 
+                         && c.TitleEmbedding != null 
+                         && c.SkillsEmbedding != null 
+                         && c.ExperienceEmbedding != null 
+                         && c.DomainEmbedding != null)
                 .ToListAsync();
 
             foreach (var cv in cvs)
@@ -370,7 +380,7 @@ namespace ITHunterview.Service.UseCase
                 {
                     _context.CvJobMatchScores.Add(new CvJobMatchScores
                     {
-                        UserId = userId,
+                        UserId = cv.UserId, // Fix Wrong ID Bug: Lưu ID của Candidate thay vì Recruiter
                         CvId = cv.Id,
                         JobId = jobId,
                         RawJdText = job.Title,
