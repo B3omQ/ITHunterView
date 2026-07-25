@@ -7,12 +7,13 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, User, Briefcase, Bookmark, Bell, Settings, HelpCircle, LogOut,
   ChevronRight, Users, FileText, Building2, Shield, BarChart3, BrainCircuit,
-  ClipboardList, Database, CreditCard, MessageSquare, KeyRound, AlertCircle, Sparkles, History, Map, Coins, FileSearch
+  ClipboardList, Database, CreditCard, MessageSquare, KeyRound, AlertCircle, Sparkles, History, Map, Coins, FileSearch, PlusCircle
 } from "lucide-react"
 import { useAuthStore } from "@/store/auth.store"
 import { Logo } from "@/components/layout/Logo"
 import { APP_ROUTES } from "@/lib/constants"
 import { useGetMyCompany } from "@/hooks/useCompany"
+import { useWalletBalance } from "@/hooks/useWallet"
 import { NotificationDialog } from "@/components/shared/NotificationDialog"
 import { useQuery } from "@tanstack/react-query"
 import { notificationService } from "@/services/notification.service"
@@ -81,6 +82,7 @@ const RECRUITER_NAV: NavItem[] = [
     icon: "CreditCard",
     children: [
       { label: "Subscriptions", href: "/recruiter/billing" },
+      { label: "Top Up Coins", href: APP_ROUTES.RECRUITER.TOP_UP },
       { label: "Transaction History", href: APP_ROUTES.RECRUITER.BILLING_HISTORY }
     ]
   },
@@ -142,6 +144,12 @@ export function Sidebar() {
     enabled: isRecruiter
   })
 
+  // Get Wallet Balance & Subscription
+  const { data: walletData, isLoading: walletLoading } = useWalletBalance()
+  const balance = walletData?.data?.balance ?? 0
+  const activeSubName = walletData?.data?.activeSubscriptionName
+  const subEndDate = walletData?.data?.subscriptionEndDate ? new Date(walletData.data.subscriptionEndDate).toLocaleDateString('vi-VN') : null
+
   // Poll for notifications to update badge
   const { data: notificationsData } = useQuery({
     queryKey: ['notifications'],
@@ -164,7 +172,8 @@ export function Sidebar() {
   const isActive = (href: string) => {
     if (href === pathname) return true
     if (href.endsWith("/dashboard")) return pathname === href
-    return pathname.startsWith(href.split('?')[0])
+    const baseHref = href.split('?')[0]
+    return pathname === baseHref || pathname.startsWith(`${baseHref}/`)
   }
 
   const toggleExpand = (label: string) => {
@@ -176,7 +185,10 @@ export function Sidebar() {
   // Auto-expand active group
   React.useEffect(() => {
     navItems.forEach(item => {
-      if (item.children && isActive(item.href) && !expandedGroups.includes(item.label)) {
+      const isParentActive = item.href ? isActive(item.href) : false;
+      const isChildActive = item.children ? item.children.some(c => isActive(c.href)) : false;
+      
+      if (item.children && (isParentActive || isChildActive) && !expandedGroups.includes(item.label)) {
         setExpandedGroups(prev => [...prev, item.label])
       }
     })
@@ -192,7 +204,7 @@ export function Sidebar() {
       {/* 2. Navigation (Moved up, immediately visible) */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {navItems.map((item) => {
-          const active = isActive(item.href)
+          const active = item.href ? isActive(item.href) : false
           const isExpanded = expandedGroups.includes(item.label)
 
           return (
@@ -261,7 +273,7 @@ export function Sidebar() {
       </nav>
 
       {/* 3. Bottom Actions & User Profile Footer */}
-      <div className="p-3 flex flex-col gap-2 border-t border-border/40">
+      <div className="p-3 flex flex-col gap-0.5 border-t border-border/40">
         {/* Global Actions (e.g., Notifications) */}
         <div
           onClick={() => setIsNotificationOpen(true)}
@@ -278,41 +290,109 @@ export function Sidebar() {
           <span className="flex-1 truncate">Notifications</span>
         </div>
 
+        {/* Wallet Info */}
+        {(user?.role?.name?.toLowerCase() === "candidate" || isRecruiter) && (
+          <div className="flex flex-col px-3">
+            <div className="flex items-center justify-between h-9">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Coins size={18} strokeWidth={2.5} className="text-muted-foreground drop-shadow-sm"/> 
+                  Coins
+                </span>
+                <span className="text-sm font-bold text-foreground">{walletLoading ? "..." : balance.toLocaleString()}</span>
+              </div>
+              
+              <Link 
+                href={`/${user?.role?.name?.toLowerCase() === 'candidate' ? 'candidate' : 'recruiter'}/top-up`} 
+                className="text-[#1877F2] hover:bg-[#1877F2]/10 p-1 rounded-md transition-colors flex items-center justify-center -mr-1.5"
+                title="Top Up"
+              >
+                <PlusCircle size={18} strokeWidth={2.5} />
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* User Card (Replaces top block & standalone logout) */}
         {user && (
-          <div className="mt-1">
-            <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-sidebar-accent/50 transition-all group">
+          <div>
+            <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-sidebar-accent/50 transition-all group cursor-pointer">
               {/* Avatar */}
-              <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 border border-border/50 bg-white dark:bg-slate-900 flex items-center justify-center relative">
-                {/* Fallback Image - Always rendered beneath */}
-                <Image 
-                  src={`/images/avatar_${user.role?.name?.toLowerCase() || 'candidate'}.png`}
-                  alt={user.fullName || user.email}
-                  fill
-                  sizes="36px"
-                  className="object-cover" 
-                />
+              <div className="relative flex-shrink-0">
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                  // Candidate Plans
+                  activeSubName === 'Mastery' ? 'bg-gradient-to-tr from-[#1877F2] to-emerald-400 p-[2px] shadow-[0_0_10px_rgba(24,119,242,0.3)]' 
+                  : activeSubName === 'Pro Career' ? 'bg-[#1877F2] p-[1.5px]'
+                  // Recruiter Plans
+                  : (activeSubName === 'Hiring Pro' || activeSubName === 'Pro') ? 'bg-gradient-to-tr from-[#0c4a9e] via-[#1877F2] to-[#609df5] p-[2px] shadow-[0_0_10px_rgba(24,119,242,0.4)]'
+                  : activeSubName === 'Growth' ? 'bg-[#1877F2] p-[1.5px]'
+                  : activeSubName === 'Starter' ? 'bg-[#1877F2]/30 p-[1.5px]'
+                  : 'border border-border/50 bg-white'
+                }`}>
+                  <div className="w-full h-full rounded-full overflow-hidden relative bg-white dark:bg-slate-900">
+                    {/* Fallback Image - Always rendered beneath */}
+                    <Image 
+                      src={`/images/avatar_${user.role?.name?.toLowerCase() || 'candidate'}.png`}
+                      alt={user.fullName || user.email}
+                      fill
+                      sizes="36px"
+                      className="object-cover" 
+                    />
+                    
+                    {/* Real Avatar - Fades in on load */}
+                    {user.avatarUrl && user.avatarUrl !== 'null' && user.avatarUrl !== 'undefined' && !avatarError && (
+                      <Image 
+                        src={user.avatarUrl} 
+                        alt={user.fullName || user.email}
+                        fill
+                        sizes="36px"
+                        className={`object-cover transition-opacity duration-300 ${isAvatarLoaded ? 'opacity-100' : 'opacity-0'}`} 
+                        onLoad={() => setIsAvatarLoaded(true)}
+                        onError={() => setAvatarError(true)}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Candidate Badges */}
+                {activeSubName === 'Mastery' && (
+                  <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 flex items-center justify-center leading-none bg-gradient-to-r from-[#1877F2] to-emerald-400 text-white text-[7px] font-bold px-1.5 py-[2px] rounded-[3px] border-[1.5px] border-white dark:border-slate-900 shadow-sm z-10 whitespace-nowrap">
+                    MASTERY
+                  </div>
+                )}
+                {activeSubName === 'Pro Career' && (
+                  <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 flex items-center justify-center leading-none bg-[#1877F2] text-white text-[7px] font-bold px-1.5 py-[2px] rounded-[3px] border-[1.5px] border-white dark:border-slate-900 shadow-sm z-10 whitespace-nowrap">
+                    PRO
+                  </div>
+                )}
                 
-                {/* Real Avatar - Fades in on load */}
-                {user.avatarUrl && user.avatarUrl !== 'null' && user.avatarUrl !== 'undefined' && !avatarError && (
-                  <Image 
-                    src={user.avatarUrl} 
-                    alt={user.fullName || user.email}
-                    fill
-                    sizes="36px"
-                    className={`object-cover transition-opacity duration-300 ${isAvatarLoaded ? 'opacity-100' : 'opacity-0'}`} 
-                    onLoad={() => setIsAvatarLoaded(true)}
-                    onError={() => setAvatarError(true)}
-                  />
+                {/* Recruiter Badges */}
+                {(activeSubName === 'Hiring Pro' || activeSubName === 'Pro') && (
+                  <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 flex items-center justify-center leading-none bg-gradient-to-r from-[#0c4a9e] via-[#1877F2] to-[#609df5] text-white text-[7px] font-bold px-1.5 py-[2px] rounded-[3px] border-[1.5px] border-white dark:border-slate-900 shadow-sm z-10 whitespace-nowrap">
+                    PRO
+                  </div>
+                )}
+                {activeSubName === 'Growth' && (
+                  <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 flex items-center justify-center leading-none bg-[#1877F2] text-white text-[7px] font-bold px-1.5 py-[2px] rounded-[3px] border-[1.5px] border-white dark:border-slate-900 shadow-sm z-10 whitespace-nowrap">
+                    GROWTH
+                  </div>
+                )}
+                {activeSubName === 'Starter' && (
+                  <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 flex items-center justify-center leading-none bg-white text-[#1877F2] text-[7px] font-bold px-1.5 py-[2px] rounded-[3px] border-[1.5px] border-[#1877F2]/30 shadow-sm z-10 whitespace-nowrap">
+                    STARTER
+                  </div>
                 )}
               </div>
 
               {/* Name & Role */}
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-sidebar-foreground truncate">
+              <div className="min-w-0 flex-1 py-0.5">
+                <p 
+                  className="text-sm font-semibold text-sidebar-foreground line-clamp-2 leading-tight break-words"
+                  title={user.fullName || user.email}
+                >
                   {user.fullName || user.email}
                 </p>
-                <p className="text-xs text-muted-foreground capitalize truncate">
+                <p className="text-xs text-muted-foreground capitalize mt-0.5 truncate">
                   {user.role?.name || "Candidate"}
                 </p>
               </div>

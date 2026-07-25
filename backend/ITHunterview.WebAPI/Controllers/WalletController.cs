@@ -19,6 +19,7 @@ namespace ITHunterview.WebAPI.Controllers
     public class WalletController : ControllerBase
     {
         private readonly IWalletUseCase _walletUseCase;
+
         private readonly ICoinConfigUseCase _coinConfigUseCase;
         private readonly PayOSClient _payOS;
         private readonly ILogger<WalletController> _logger;
@@ -30,6 +31,8 @@ namespace ITHunterview.WebAPI.Controllers
             _payOS = payOS;
             _logger = logger;
         }
+
+      
 
         private Guid? GetCurrentUserId()
         {
@@ -43,7 +46,7 @@ namespace ITHunterview.WebAPI.Controllers
         /// Xem số dư ví hiện tại của Candidate
         /// </summary>
         [HttpGet("balance")]
-        [Authorize(Policy = "CandidateOnly")]
+        [Authorize(Policy = "CandidateOrRecruiter")]
         public async Task<IActionResult> GetWalletBalance()
         {
             var userId = GetCurrentUserId();
@@ -61,7 +64,7 @@ namespace ITHunterview.WebAPI.Controllers
         /// Xem lịch sử giao dịch tiêu tốn/nạp coin của Candidate
         /// </summary>
         [HttpGet("transactions")]
-        [Authorize(Policy = "CandidateOnly")]
+        [Authorize(Policy = "CandidateOrRecruiter")]
         public async Task<IActionResult> GetWalletTransactions([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             var userId = GetCurrentUserId();
@@ -76,10 +79,11 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         /// <summary>
+
         /// Xem danh sách gói Coin đang hoạt động (dành cho Candidate)
         /// </summary>
         [HttpGet("coin-packages")]
-        [Authorize(Policy = "CandidateOnly")]
+        [Authorize(Policy = "CandidateOrRecruiter")]
         public async Task<IActionResult> GetActiveCoinPackages()
         {
             var result = await _coinConfigUseCase.GetCoinConfigAsync();
@@ -94,7 +98,7 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Tạo yêu cầu thanh toán mua coin hoặc mua subscription
+        /// Candidate hoặc Recruiter tạo yêu cầu thanh toán mua coin hoặc mua subscription
         /// </summary>
         [HttpPost("pay")]
         [Authorize(Policy = "CandidateOrRecruiter")]
@@ -199,6 +203,92 @@ namespace ITHunterview.WebAPI.Controllers
                 _logger.LogError(ex, "Internal error processing webhook for OrderCode {code}", data.OrderCode);
                 return StatusCode(500, new { success = false, message = "Internal processing error" });
             }
+        }
+
+        /// <summary>
+        /// Cheat: Add coins directly for testing purposes
+        /// </summary>
+        [HttpPost("cheat/add-coin")]
+        [Authorize]
+        public async Task<IActionResult> CheatAddCoin(
+            [FromServices] ITHunterview.Service.Infrastructure.Persistence.ITHunterviewContext dbContext, 
+            [FromQuery] int amount)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            var wallet = dbContext.UserWallets.FirstOrDefault(w => w.UserId == userId);
+            if (wallet == null)
+            {
+                wallet = new ITHunterview.Domain.Entities.UserWallets
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId.Value,
+                    Balance = amount,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                dbContext.UserWallets.Add(wallet);
+            }
+            else
+            {
+                wallet.Balance += amount;
+                wallet.UpdatedAt = DateTime.UtcNow;
+            }
+
+            var transaction = new ITHunterview.Domain.Entities.CreditTransactions
+            {
+                Id = Guid.NewGuid(),
+                WalletId = wallet.Id,
+                Amount = amount,
+                TransactionType = ITHunterview.Domain.Enums.CreditTransactionType.BONUS,
+                Description = "Cheat Add Coin",
+                CreatedAt = DateTime.UtcNow
+            };
+            dbContext.CreditTransactions.Add(transaction);
+
+            await dbContext.SaveChangesAsync();
+            return Ok(new { success = true, balance = wallet.Balance, message = "Coins added successfully via cheat!" });
+        }
+
+        /// <summary>
+        /// Cheat: Activate subscription directly for testing purposes
+        /// </summary>
+        [HttpPost("cheat/subscribe")]
+        [Authorize]
+        public async Task<IActionResult> CheatSubscribe(
+            [FromServices] ITHunterview.Service.Infrastructure.Persistence.ITHunterviewContext dbContext, 
+            [FromQuery] int subscriptionId)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            var subscription = dbContext.Subscriptions.FirstOrDefault(s => s.Id == subscriptionId);
+            if (subscription == null) return BadRequest(new { success = false, message = "Subscription not found" });
+
+            var userSub = dbContext.UserSubscriptions.FirstOrDefault(us => us.UserId == userId);
+            if (userSub == null)
+            {
+                userSub = new ITHunterview.Domain.Entities.UserSubscriptions
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId.Value,
+                    SubId = subscription.Id,
+                    StartDate = DateTime.UtcNow,
+                    EndDate = DateTime.UtcNow.AddMonths(1),
+                    Status = ITHunterview.Domain.Enums.UserSubscriptionStatus.ACTIVE
+                };
+                dbContext.UserSubscriptions.Add(userSub);
+            }
+            else
+            {
+                userSub.SubId = subscriptionId;
+                userSub.StartDate = DateTime.UtcNow;
+                userSub.EndDate = DateTime.UtcNow.AddMonths(1);
+                userSub.Status = ITHunterview.Domain.Enums.UserSubscriptionStatus.ACTIVE;
+            }
+
+            await dbContext.SaveChangesAsync();
+            return Ok(new { success = true, message = "Subscription activated successfully via cheat!" });
         }
     }
 }

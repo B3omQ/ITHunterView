@@ -294,14 +294,29 @@ export default function EditJobPage() {
                 />
               </div>
 
-              <div className="space-y-2 col-span-1 md:col-span-2">
-                <Label htmlFor="location" className="font-semibold text-zinc-700 dark:text-zinc-300">Location *</Label>
-                <Input
+              <div className="space-y-2 col-span-1 md:col-span-1">
+                <Label htmlFor="location" className="font-semibold text-zinc-700 dark:text-zinc-300">City / Province *</Label>
+                <select
                   id="location"
                   name="location"
-                  placeholder="e.g. 123 Nguyen Van Cu, District 5, HCMC"
                   required
+                  className="w-full h-9 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-1 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
                   value={formData.location}
+                  onChange={handleChange}
+                >
+                  <option value="">Select City/Province</option>
+                  {VIETNAM_PROVINCES.map((loc) => (
+                    <option key={loc} value={loc}>{loc}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2 col-span-1 md:col-span-1">
+                <Label htmlFor="detailedLocation" className="font-semibold text-zinc-700 dark:text-zinc-300">Detailed Location</Label>
+                <Input
+                  id="detailedLocation"
+                  name="detailedLocation"
+                  placeholder="e.g. 123 Nguyen Van Cu, District 5"
+                  value={formData.detailedLocation}
                   onChange={handleChange}
                   className="w-full focus-visible:ring-blue-500"
                 />

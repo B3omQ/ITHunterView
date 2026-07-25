@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Brain, FileCode, Users, RefreshCcw, AlertCircle, FileText, Download, Eye } from 'lucide-react';
+import { Brain, FileCode, Users, RefreshCcw, AlertCircle, FileText, Download, Eye, FileSpreadsheet } from 'lucide-react';
 import { recruiterService } from '@/services/recruiter.service';
 import type { MatchHistoryDto } from '@/types/cv.types';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
+import { toast } from 'sonner';
+import { exportMatchingResultsToExcel } from '@/utils/excel-export.util';
 
 interface MatchCvsSectionProps {
   jobId: string;
@@ -71,6 +73,17 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
     if (isParsePending) return "Hệ thống đang phân tích yêu cầu công việc để tìm kiếm ứng viên chuẩn xác nhất. Vui lòng thử lại sau vài giây...";
     if (isParseFailed) return "Lỗi phân tích dữ liệu, không thể matching.";
     return "Scan CVs";
+  const handleExportExcel = () => {
+    try {
+      if (matches.length === 0) {
+        toast.error('Không có dữ liệu ứng viên để xuất Excel. Hãy nhấn "Scan DB" trước.');
+        return;
+      }
+      exportMatchingResultsToExcel(matches[0]?.jdTitle || 'Job', matches);
+      toast.success('Đã xuất file Excel thành công!');
+    } catch (err: any) {
+      toast.error(err.message || 'Lỗi khi xuất file Excel.');
+    }
   };
 
   return (
@@ -82,7 +95,7 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
             Suggested Candidates
           </CardTitle>
           
-          <div className="flex items-center gap-4 bg-slate-50 px-4 py-2 rounded-lg border border-slate-200">
+          <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-lg border border-slate-200">
             <div className="flex items-center gap-2">
               <Label className="text-xs font-semibold text-slate-700">Method:</Label>
               <span className={cn("text-xs font-medium", !useAI ? "text-slate-900" : "text-slate-400")}>Hardcode</span>
@@ -104,6 +117,18 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
             >
               <RefreshCcw className={cn("h-4 w-4", isScanning && "animate-spin")} />
               {isScanning ? 'Scanning...' : (isParsePending ? 'Preparing Data...' : 'Scan DB')}
+            </Button>
+
+            <Button
+              onClick={handleExportExcel}
+              disabled={matches.length === 0 || isLoadingHistory}
+              variant="outline"
+              size="sm"
+              className="gap-2 border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 font-semibold"
+              title="Xuất danh sách ứng viên phù hợp ra file Excel để gửi Manager"
+            >
+              <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+              Xuất Excel
             </Button>
           </div>
         </div>

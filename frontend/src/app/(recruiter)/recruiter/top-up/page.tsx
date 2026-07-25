@@ -6,11 +6,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { Coins, Loader2, Wallet, Zap, Sparkles, BrainCircuit } from 'lucide-react';
+import { Coins, Loader2, Wallet, Unlock, Briefcase, CalendarPlus, ArrowUpCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 
-export default function TopUpPage() {
+export default function RecruiterTopUpPage() {
   const { data: balanceData, isLoading: isLoadingBalance } = useWalletBalance();
   const { data: configData, isLoading: isLoadingConfig } = usePublicCoinConfig();
   const { mutate: buyPackage, isPending: isBuying } = useBuySubscription();
@@ -48,7 +48,7 @@ export default function TopUpPage() {
         <div className="relative z-10 w-full md:w-3/5">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary">Top Up Coins</h1>
           <p className="text-sm md:text-base text-muted-foreground mt-2 max-w-md">
-            Buy more coins to use advanced AI features like CV Matching and Mock Interviews on the platform.
+            Buy more coins to use job posting and candidate sourcing features on the platform.
           </p>
           <div className="mt-4 inline-flex items-center gap-2.5 bg-white shadow-sm text-primary px-4 py-2 rounded-xl border border-primary/20">
             <Wallet className="h-5 w-5" />
@@ -90,45 +90,44 @@ export default function TopUpPage() {
             <p className="text-muted-foreground">There are currently no coin packages available.</p>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-3 max-w-4xl mx-auto">
+          <div className="grid gap-6 md:grid-cols-3 max-w-4xl mx-auto pt-4">
             {packages.map((pkg, idx) => {
               const isPopular = idx === 1;
               return (
-                <Card key={pkg.id} className="flex flex-col transition-all border-zinc-200 hover:border-primary/50 relative overflow-hidden">
-                  {isPopular && (
-                    <div className="absolute top-5 -right-10 w-40 bg-gradient-to-r from-[#1877F2] to-cyan-400 text-white text-[10px] font-bold uppercase tracking-wider text-center py-1 shadow-sm rotate-45 z-10">
-                      Popular
-                    </div>
-                  )}
-                  <CardHeader className="text-center pb-4 pt-8">
-                    <CardTitle className="text-xl font-bold">{pkg.name}</CardTitle>
-                    <CardDescription>
-                      {idx === 0 ? 'For beginners' : idx === 1 ? 'Best value' : 'For professionals'}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1 text-center space-y-4">
-                    <div className="flex items-center justify-center gap-2">
-                      <Coins className="h-7 w-7 text-[#1877F2]" />
-                      <span className="text-3xl font-bold">{new Intl.NumberFormat('en-US').format(pkg.coins)}</span>
-                    </div>
-                    <div className="text-2xl font-semibold text-primary">
-                      {formatCurrency(pkg.price)}
-                    </div>
-                  </CardContent>
-                  <CardFooter className="pb-6 pt-0 border-t-0 bg-transparent">
-                    <Button
-                      className="w-full h-11 text-sm font-semibold transition-all shadow-sm bg-[#1877F2] hover:bg-[#1877F2]/90 text-white"
-                      variant="default"
-                      onClick={() => handleBuyPackage(pkg.id)}
-                      disabled={isBuying}
-                    >
-                      {isBuying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      Buy Now
-                    </Button>
-                  </CardFooter>
-                </Card>
-              )
-            })}
+              <Card key={pkg.id} className="flex flex-col transition-all border-zinc-200 hover:border-primary/50 relative overflow-hidden">
+                {isPopular && (
+                  <div className="absolute top-5 -right-10 w-40 bg-gradient-to-r from-[#1877F2] to-cyan-400 text-white text-[10px] font-bold uppercase tracking-wider text-center py-1 shadow-sm rotate-45 z-10">
+                    Popular
+                  </div>
+                )}
+                <CardHeader className="text-center pb-4 pt-8">
+                  <CardTitle className="text-xl font-bold">{pkg.name}</CardTitle>
+                  <CardDescription>
+                    {idx === 0 ? 'For beginners' : idx === 1 ? 'Best value' : 'For professionals'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 text-center space-y-4">
+                  <div className="flex items-center justify-center gap-2">
+                    <Coins className="h-7 w-7 text-[#1877F2]" />
+                    <span className="text-3xl font-bold">{new Intl.NumberFormat('en-US').format(pkg.coins)}</span>
+                  </div>
+                  <div className="text-2xl font-semibold text-primary">
+                    {formatCurrency(pkg.price)}
+                  </div>
+                </CardContent>
+                <CardFooter className="pb-6 pt-0 border-t-0 bg-transparent">
+                  <Button 
+                    className="w-full h-11 text-sm font-semibold transition-all shadow-sm bg-[#1877F2] hover:bg-[#1877F2]/90 text-white"
+                    variant="default"
+                    onClick={() => handleBuyPackage(pkg.id)}
+                    disabled={isBuying}
+                  >
+                    {isBuying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Buy Now
+                  </Button>
+                </CardFooter>
+              </Card>
+            )})}
           </div>
         )}
       </div>
@@ -142,16 +141,20 @@ export default function TopUpPage() {
           <div className="hidden sm:block text-zinc-300">|</div>
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <span className="flex items-center gap-1.5">
-              <Sparkles className="h-4 w-4 text-[#1877F2]" />
-              CV Match: <strong className="text-zinc-900">{new Intl.NumberFormat('en-US').format(featureCosts.cvJdMatching)}</strong>
+              <Unlock className="h-4 w-4 text-[#1877F2]" />
+              Unlock CV: <strong className="text-zinc-900">{new Intl.NumberFormat('en-US').format(featureCosts.unlockCv)}</strong>
             </span>
             <span className="flex items-center gap-1.5">
-              <BrainCircuit className="h-4 w-4 text-[#1877F2]" />
-              Mock Interview: <strong className="text-zinc-900">{new Intl.NumberFormat('en-US').format(featureCosts.mockInterview)}</strong>
+              <Briefcase className="h-4 w-4 text-[#1877F2]" />
+              Post Job: <strong className="text-zinc-900">{new Intl.NumberFormat('en-US').format(featureCosts.postJob)}</strong>
             </span>
             <span className="flex items-center gap-1.5">
-              <Zap className="h-4 w-4 text-[#1877F2]" />
-              Learning Path: <strong className="text-zinc-900">{new Intl.NumberFormat('en-US').format(featureCosts.learningPath)}</strong>
+              <CalendarPlus className="h-4 w-4 text-[#1877F2]" />
+              Extend Job: <strong className="text-zinc-900">{new Intl.NumberFormat('en-US').format(featureCosts.extendJob)}</strong>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <ArrowUpCircle className="h-4 w-4 text-[#1877F2]" />
+              Push Top: <strong className="text-zinc-900">{new Intl.NumberFormat('en-US').format(featureCosts.pushTop)}</strong>
             </span>
           </div>
         </div>

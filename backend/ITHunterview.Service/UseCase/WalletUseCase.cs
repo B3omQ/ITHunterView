@@ -70,10 +70,24 @@ namespace ITHunterview.Service.UseCase
                 }
             }
 
+            var activeSub = await _context.UserSubscriptions
+                .FirstOrDefaultAsync(us => us.UserId == userId && us.Status == UserSubscriptionStatus.ACTIVE && us.EndDate >= DateTime.UtcNow);
+                
+            string? activeSubName = null;
+            if (activeSub != null)
+            {
+                activeSubName = await _context.Subscriptions
+                    .Where(s => s.Id == activeSub.SubId)
+                    .Select(s => s.Name)
+                    .FirstOrDefaultAsync();
+            }
+
             var dto = new WalletBalanceDto
             {
                 UserId = wallet.UserId,
-                Balance = wallet.Balance
+                Balance = wallet.Balance,
+                ActiveSubscriptionName = activeSubName,
+                SubscriptionEndDate = activeSub?.EndDate
             };
 
             return new ResponseBase<WalletBalanceDto>(dto, "Lấy số dư ví thành công");

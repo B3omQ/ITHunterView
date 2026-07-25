@@ -1,6 +1,8 @@
 export interface WalletBalanceDto {
   userId: string;
   balance: number;
+  activeSubscriptionName?: string | null;
+  subscriptionEndDate?: string | null;
 }
 
 export interface WalletTransactionDto {

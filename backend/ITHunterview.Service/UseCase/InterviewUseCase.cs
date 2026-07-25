@@ -81,7 +81,8 @@ namespace ITHunterview.Service.UseCase
                     Status = session.Status,
                     StartedAt = session.StartedAt,
                     EndedAt = session.EndedAt,
-                    AiProvider = session.AiProvider
+                    AiProvider = session.AiProvider,
+                    Language = session.Language
                 });
             }
 
@@ -122,7 +123,8 @@ namespace ITHunterview.Service.UseCase
                 Status = session.Status,
                 StartedAt = session.StartedAt,
                 EndedAt = session.EndedAt,
-                AiProvider = session.AiProvider
+                AiProvider = session.AiProvider,
+                Language = session.Language
             };
 
             var answers = await _answerRepository.GetBySessionIdAsync(sessionId);
@@ -225,6 +227,8 @@ namespace ITHunterview.Service.UseCase
                 }
             }
 
+            string sessionLanguage = (dto.Language ?? "vi").ToLower() == "en" ? "en" : "vi";
+
             var session = new InterviewSessions
             {
                 Id = Guid.NewGuid(),
@@ -234,7 +238,8 @@ namespace ITHunterview.Service.UseCase
                 DifficultyLevel = resolvedDifficulty,
                 Status = InterviewSessionStatus.IN_PROGRESS,
                 StartedAt = DateTime.UtcNow,
-                AiProvider = provider
+                AiProvider = provider,
+                Language = sessionLanguage
             };
 
             await _sessionRepository.AddAsync(session);
@@ -293,8 +298,13 @@ namespace ITHunterview.Service.UseCase
                 : "";
 
             int totalQuestions = resolvedDifficulty == DifficultyLevel.HARD ? 8 : 7;
- 
+
+            string langInstruction = sessionLanguage == "en"
+                ? "BẮT BUỘC NGÔN NGỮ: Bạn PHẢI thực hiện toàn bộ buổi phỏng vấn bằng TIẾNG ANH (English). Đặt tất cả câu hỏi và trả lời hoàn toàn bằng tiếng Anh."
+                : "BẮT BUỘC NGÔN NGỮ: Bạn PHẢI thực hiện toàn bộ buổi phỏng vấn bằng tiếng Việt.";
+
             var systemPrompt = $"Bạn là một người phỏng vấn IT tuyển dụng chuyên nghiệp. Nhiệm vụ của bạn là thực hiện một buổi phỏng vấn thử (mock interview) gồm đúng {totalQuestions} câu hỏi cho cấp độ ứng viên: {exactLevel} (Role: {role}).\n\n" +
+                               $"{langInstruction}\n\n" +
                                $"LỘ TRÌNH PHỎNG VẤN:\n" +
                                $"Phần 1: Giới thiệu bản thân (Câu 1)\n" +
                                $"Phần 2: Câu hỏi kiến thức\n" +
@@ -328,7 +338,7 @@ namespace ITHunterview.Service.UseCase
                                $"- Đây là câu hỏi số 1/{totalQuestions} (Chủ đề: Phần 1 - Giới thiệu bản thân).\n" +
                                $"- Hãy bắt đầu bằng lời chào mừng ứng viên ứng tuyển vào vị trí (được ghi trong JD) từ hệ thống ITHunterView, sau đó mời ứng viên giới thiệu bản thân.\n" +
                                $"- Chỉ hỏi DUY NHẤT một câu hỏi chính trong mỗi lượt chat.\n" +
-                               $"- Trả lời ngắn gọn bằng tiếng Việt.";
+                               (sessionLanguage == "en" ? "- Trả lời ngắn gọn bằng tiếng Anh (English)." : "- Trả lời ngắn gọn bằng tiếng Việt.");
 
             string candidateName = "";
             if (cv != null && !string.IsNullOrWhiteSpace(cv.ParsedData))
@@ -345,20 +355,37 @@ namespace ITHunterview.Service.UseCase
                 catch { }
             }
 
-            string greetingPart = !string.IsNullOrWhiteSpace(candidateName)
-                ? $"Chào bạn {candidateName.Trim()}"
-                : "Chào bạn";
-
             string positionName = !string.IsNullOrWhiteSpace(jobTitle) ? jobTitle : (role + " Developer");
 
-            string firstQuestion = $"{greetingPart}, cảm ơn bạn đã tham gia buổi phỏng vấn cho vị trí {positionName} ngày hôm nay.\n\n" +
-                                   $"Lộ trình phỏng vấn của chúng ta sẽ gồm {totalQuestions} câu hỏi đi qua các phần:\n" +
-                                   $"- Phần 1: Giới thiệu bản thân (Câu 1)\n" +
-                                   $"- Phần 2: Câu hỏi kiến thức\n" +
-                                   $"- Phần 3: Câu hỏi kinh nghiệm & dự án\n" +
-                                   $"- Phần 4: Kỹ năng mềm / Xử lý tình huống\n" +
-                                   $"- Phần 5: Hiểu biết về công ty (Câu {totalQuestions})\n\n" +
-                                   $"Để bắt đầu, bạn hãy giới thiệu đôi chút về bản thân và những kinh nghiệm làm việc/học tập nổi bật của mình nhé.";
+            string firstQuestion;
+            if (sessionLanguage == "en")
+            {
+                string greetingPartEn = !string.IsNullOrWhiteSpace(candidateName)
+                    ? $"Hello {candidateName.Trim()}"
+                    : "Hello";
+                firstQuestion = $"{greetingPartEn}, thank you for joining the interview session for the {positionName} position today.\n\n" +
+                                $"Our interview roadmap consists of {totalQuestions} questions covering:\n" +
+                                $"- Part 1: Self-Introduction (Question 1)\n" +
+                                $"- Part 2: Technical Knowledge\n" +
+                                $"- Part 3: Experience & Projects\n" +
+                                $"- Part 4: Soft Skills / Scenario Handling\n" +
+                                $"- Part 5: Company Understanding (Question {totalQuestions})\n\n" +
+                                $"To get started, please introduce yourself and highlight your relevant work or academic background.";
+            }
+            else
+            {
+                string greetingPart = !string.IsNullOrWhiteSpace(candidateName)
+                    ? $"Chào bạn {candidateName.Trim()}"
+                    : "Chào bạn";
+                firstQuestion = $"{greetingPart}, cảm ơn bạn đã tham gia buổi phỏng vấn cho vị trí {positionName} ngày hôm nay.\n\n" +
+                                $"Lộ trình phỏng vấn của chúng ta sẽ gồm {totalQuestions} câu hỏi đi qua các phần:\n" +
+                                $"- Phần 1: Giới thiệu bản thân (Câu 1)\n" +
+                                $"- Phần 2: Câu hỏi kiến thức\n" +
+                                $"- Phần 3: Câu hỏi kinh nghiệm & dự án\n" +
+                                $"- Phần 4: Kỹ năng mềm / Xử lý tình huống\n" +
+                                $"- Phần 5: Hiểu biết về công ty (Câu {totalQuestions})\n\n" +
+                                $"Để bắt đầu, bạn hãy giới thiệu đôi chút về bản thân và những kinh nghiệm làm việc/học tập nổi bật của mình nhé.";
+            }
 
             var firstTurn = new InterviewAnswers
             {
@@ -380,7 +407,8 @@ namespace ITHunterview.Service.UseCase
                 DifficultyLevel = session.DifficultyLevel,
                 Status = session.Status,
                 StartedAt = session.StartedAt,
-                AiProvider = session.AiProvider
+                AiProvider = session.AiProvider,
+                Language = session.Language
             };
         }
 
@@ -510,7 +538,7 @@ namespace ITHunterview.Service.UseCase
             // exactLevel and totalQuestions are declared above sampleQuestions loading
 
             // Định nghĩa hướng dẫn động cho từng câu hỏi tiếp theo
-            string questionInstruction = "QUY TẮC QUAN TRỌNG: Mọi câu hỏi bạn đặt ra BẮT BUỘC phải dựa trên bối cảnh thực tế từ CV của ứng viên hoặc yêu cầu của JD. TUYỆT ĐỐI KHÔNG hỏi các câu lý thuyết chung chung như trong sách giáo khoa nếu không liên kết với một kỹ năng/dự án trong CV. Bạn có thể hỏi follow-up 1 câu với câu trước nếu ứng viên trả lời chưa rõ.\n\n";
+            string questionInstruction = "QUY TẮC QUAN TRỌNG: Mọi câu hỏi bạn đặt ra BẮT BUỘC phải dựa trên bối cảnh thực tế từ CV của ứng viên hoặc yêu cầu của JD. TUYỆT ĐỐI KHÔNG hỏi các câu lý thuyết chung chung như trong sách giáo khoa nếu không liên kết với một kỹ năng/dự án trong CV. Bạn bắt buộc hỏi thêm 1 đến 2 câu follow up nếu ứng viên trả lời chưa rõ câu hỏi.\n\n";
             
             if (questionIndex >= totalQuestions)
             {
@@ -578,7 +606,13 @@ namespace ITHunterview.Service.UseCase
                                        $"- {sectionInstruction}";
             }
 
+            string currentLang = (session.Language ?? "vi").ToLower() == "en" ? "en" : "vi";
+            string langTurnInstruction = currentLang == "en"
+                ? "BẮT BUỘC NGÔN NGỮ: Bạn PHẢI giao tiếp, đặt câu hỏi tiếp theo và nhận xét (general_feedback, strengths, improvements) HOÀN TOÀN BẰNG TIẾNG ANH (English)."
+                : "BẮT BUỘC NGÔN NGỮ: Bạn PHẢI giao tiếp, đặt câu hỏi tiếp theo và nhận xét bằng tiếng Việt.";
+
             var systemPrompt = $"Bạn là một người phỏng vấn IT tuyển dụng chuyên nghiệp. Bạn đang thực hiện một buổi phỏng vấn thử với ứng viên (Cấp độ: {exactLevel}, Role: {role}).\n\n" +
+                               $"{langTurnInstruction}\n\n" +
                                $"THÔNG TIN BỐ CẢNH:\n" +
                                $"--- START CV ---\n{cvContext}\n--- END CV ---\n\n" +
                                $"--- START JD ---\n{jobContext}\n--- END JD ---\n\n" +

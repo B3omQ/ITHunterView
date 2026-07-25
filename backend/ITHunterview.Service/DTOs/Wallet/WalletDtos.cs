@@ -7,6 +7,8 @@ namespace ITHunterview.Service.DTOs.Wallet
     {
         public Guid UserId { get; set; }
         public int Balance { get; set; }
+        public string? ActiveSubscriptionName { get; set; }
+        public DateTime? SubscriptionEndDate { get; set; }
     }
 
     public class WalletTransactionDto

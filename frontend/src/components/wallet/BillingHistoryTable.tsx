@@ -39,12 +39,12 @@ export function BillingHistoryTable() {
     switch (status) {
       case "SUCCESS":
       case "PAID":
-        return <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/20">Thành công</Badge>;
+        return <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/20">Success</Badge>;
       case "PENDING":
-        return <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/20">Đang chờ</Badge>;
+        return <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/20">Pending</Badge>;
       case "FAILED":
       case "CANCELLED":
-        return <Badge className="bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 border-rose-500/20">Thất bại/Hủy</Badge>;
+        return <Badge className="bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 border-rose-500/20">Failed/Cancelled</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -52,10 +52,10 @@ export function BillingHistoryTable() {
 
   const getTargetTypeLabel = (type: string, subName: string | null) => {
     if (type === "SUBSCRIPTION") {
-      return subName ? `Gói: ${subName}` : "Nâng cấp gói";
+      return subName ? `Plan: ${subName}` : "Upgrade Plan";
     }
     if (type === "WALLET_TOPUP" || type === "COIN_PACKAGE") {
-      return "Nạp Coin";
+      return "Top Up Coins";
     }
     return type;
   };
@@ -74,24 +74,24 @@ export function BillingHistoryTable() {
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <Select value={status} onValueChange={(val) => { setStatus(val || "ALL"); setPage(1); }}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Trạng thái" />
+              <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">Tất cả trạng thái</SelectItem>
-              <SelectItem value="SUCCESS">Thành công</SelectItem>
-              <SelectItem value="PENDING">Đang chờ</SelectItem>
-              <SelectItem value="FAILED">Hủy / Thất bại</SelectItem>
+              <SelectItem value="ALL">All Statuses</SelectItem>
+              <SelectItem value="SUCCESS">Success</SelectItem>
+              <SelectItem value="PENDING">Pending</SelectItem>
+              <SelectItem value="FAILED">Failed/Cancelled</SelectItem>
             </SelectContent>
           </Select>
 
           <Select value={targetType} onValueChange={(val) => { setTargetType(val || "ALL"); setPage(1); }}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Loại giao dịch" />
+              <SelectValue placeholder="Transaction Type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">Tất cả loại</SelectItem>
-              <SelectItem value="SUBSCRIPTION">Mua Gói (Subscription)</SelectItem>
-              <SelectItem value="WALLET_TOPUP">Nạp Coin</SelectItem>
+              <SelectItem value="ALL">All Types</SelectItem>
+              <SelectItem value="SUBSCRIPTION">Subscription</SelectItem>
+              <SelectItem value="WALLET_TOPUP">Top Up Coins</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -102,11 +102,11 @@ export function BillingHistoryTable() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">
-              <TableHead>Mã đơn hàng</TableHead>
-              <TableHead>Ngày giao dịch</TableHead>
-              <TableHead>Nội dung</TableHead>
-              <TableHead className="text-right">Số tiền</TableHead>
-              <TableHead className="text-center">Trạng thái</TableHead>
+              <TableHead>Order ID</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead className="text-right">Amount</TableHead>
+              <TableHead className="text-center">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -119,7 +119,7 @@ export function BillingHistoryTable() {
             ) : isError ? (
               <TableRow>
                 <TableCell colSpan={5} className="h-48 text-center text-rose-500">
-                  Có lỗi xảy ra khi tải dữ liệu lịch sử giao dịch.
+                  An error occurred while loading transaction history.
                 </TableCell>
               </TableRow>
             ) : !response?.data?.items?.length ? (
@@ -127,7 +127,7 @@ export function BillingHistoryTable() {
                 <TableCell colSpan={5} className="h-48 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
                     <SearchX className="h-8 w-8 mb-2 opacity-50" />
-                    <p>Không tìm thấy giao dịch nào phù hợp.</p>
+                    <p>No matching transactions found.</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -167,10 +167,10 @@ export function BillingHistoryTable() {
             className="h-8 px-2 lg:px-3"
           >
             <ArrowLeft className="h-4 w-4 lg:mr-2" />
-            <span className="hidden lg:inline">Trang trước</span>
+            <span className="hidden lg:inline">Previous</span>
           </Button>
           <div className="text-sm font-medium px-2 text-muted-foreground">
-            Trang {page} / {response.data.totalPages}
+            Page {page} of {response.data.totalPages}
           </div>
           <Button
             variant="outline"
@@ -179,7 +179,7 @@ export function BillingHistoryTable() {
             disabled={page >= response.data.totalPages}
             className="h-8 px-2 lg:px-3"
           >
-            <span className="hidden lg:inline">Trang sau</span>
+            <span className="hidden lg:inline">Next</span>
             <ArrowRight className="h-4 w-4 lg:ml-2" />
           </Button>
         </div>

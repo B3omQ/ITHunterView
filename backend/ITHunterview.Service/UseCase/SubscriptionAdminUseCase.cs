@@ -294,16 +294,18 @@ namespace ITHunterview.Service.UseCase
 
             if (config.Role.Equals("CANDIDATE", StringComparison.OrdinalIgnoreCase))
             {
-                config.ActiveJobPostings = null;
-                config.ActiveSourcingLimit = null;
-                config.HighlightedJobs = null;
-                config.Analytics = null;
+                config.JobSlots = null;
+                config.JobExtendLimit = null;
+                config.UnlockCvLimit = null;
+                config.PushTopLimit = null;
             }
             else if (config.Role.Equals("RECRUITER", StringComparison.OrdinalIgnoreCase))
             {
                 config.CvMatchLimit = null;
                 config.MockInterviewLimit = null;
-                config.CvOptimizeLimit = null;
+                config.LearningPathSlotLimit = null;
+                config.AiRefreshUnlimited = null;
+                config.PremiumBadge = null;
             }
         }
 
@@ -324,11 +326,14 @@ namespace ITHunterview.Service.UseCase
             return string.Equals(a.Role, b.Role, StringComparison.OrdinalIgnoreCase) &&
                    a.CvMatchLimit == b.CvMatchLimit &&
                    a.MockInterviewLimit == b.MockInterviewLimit &&
-                   a.CvOptimizeLimit == b.CvOptimizeLimit &&
-                   a.ActiveJobPostings == b.ActiveJobPostings &&
-                   a.ActiveSourcingLimit == b.ActiveSourcingLimit &&
-                   a.HighlightedJobs == b.HighlightedJobs &&
-                   a.Analytics == b.Analytics;
+                   a.LearningPathSlotLimit == b.LearningPathSlotLimit &&
+                   a.AiRefreshUnlimited == b.AiRefreshUnlimited &&
+                   a.PremiumBadge == b.PremiumBadge &&
+                   a.JobSlots == b.JobSlots &&
+                   a.JobExtendLimit == b.JobExtendLimit &&
+                   a.UnlockCvLimit == b.UnlockCvLimit &&
+                   a.PushTopLimit == b.PushTopLimit &&
+                   a.CoinCredit == b.CoinCredit;
         }
     }
 }

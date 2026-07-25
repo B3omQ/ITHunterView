@@ -12,10 +12,13 @@ import { useGetMyCvs } from '@/hooks/useCv';
 import { usePublicJobs } from '@/hooks/usePublicJobs';
 import { useJobDetail } from '@/hooks/useJobDetail';
 import { Button } from '@/components/ui/button';
+
 import { Card, CardContent } from '@/components/ui/card';
 import { ListPagination } from '@/components/shared/ListPagination';
 import { CardSkeleton } from '@/components/shared/CardSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
+
+
 import {
   Dialog,
   DialogContent,
@@ -55,6 +58,7 @@ import {
   ChevronRight,
   MoreHorizontal,
   Eye,
+  Globe,
 } from 'lucide-react';
 import type { DifficultyLevel } from '@/types/interview.types';
 
@@ -66,6 +70,7 @@ function CandidateInterviewContent() {
   const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('MEDIUM');
+  const [language, setLanguage] = useState<'vi' | 'en'>('vi');
   const [selectedCv, setSelectedCv] = useState<string>('none');
   const [selectedJob, setSelectedJob] = useState<string>('none');
   const [selectedModel, setSelectedModel] = useState<string>('Gemini');
@@ -131,6 +136,7 @@ function CandidateInterviewContent() {
         cvId: selectedCv === 'none' ? undefined : selectedCv,
         jobId: selectedJob === 'none' ? undefined : selectedJob,
         aiProvider: selectedModel,
+        language: language,
       });
 
       if (res.success && res.data) {
@@ -351,113 +357,111 @@ function CandidateInterviewContent() {
 
       <div className="flex flex-col gap-4">
 
-          {sessionsLoading ? (
-            <div className="flex flex-col gap-3">
-              {[1, 2, 3].map((n) => <CardSkeleton key={n} />)}
-            </div>
-          ) : sessions.length === 0 ? (
-            <EmptyState 
-              title="No mock interview sessions yet" 
-              description="Start your first session to level up your interview skills and get detailed AI feedback."
-              imageUrl="/images/emptyInterview.png"
-            >
-              <Button onClick={() => setIsOpen(true)} className="mt-4 bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">
-                <Plus className="mr-1 h-4 w-4" />
-                Start Mock Interview
-                <Sparkles className="mr-2 h-4 w-4 ml-1" />
-              </Button>
-            </EmptyState>
-          ) : (
-            <>
-              <div className="flex flex-col gap-4">
-                {paginatedSessions.map((session) => (
-                  <Card
-                    key={session.id}
-                    onClick={() => router.push(`/candidate/interview/${session.id}`)}
-                    className="group cursor-pointer hover:border-primary/50 transition-colors"
-                  >
-                    <CardContent className="flex flex-col gap-3">
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          {/* Left: Status Icon */}
-                          <Image src="/images/mascotAvatar.png" alt="Mascot" width={44} height={44} className={`w-11 h-11 rounded-lg shrink-0 object-cover border bg-white dark:bg-slate-900 ${
-                            session.status === 'IN_PROGRESS'
-                              ? 'border-blue-200 dark:border-blue-800 ring-1 ring-blue-500/20'
-                              : 'border-emerald-200 dark:border-emerald-800 ring-1 ring-emerald-500/20'
+        {sessionsLoading ? (
+          <div className="flex flex-col gap-3">
+            {[1, 2, 3].map((n) => <CardSkeleton key={n} />)}
+          </div>
+        ) : sessions.length === 0 ? (
+          <EmptyState
+            title="No mock interview sessions yet"
+            description="Start your first session to level up your interview skills and get detailed AI feedback."
+            imageUrl="/images/emptyInterview.png"
+          >
+            <Button onClick={() => setIsOpen(true)} className="mt-4 bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">
+              <Plus className="mr-1 h-4 w-4" />
+              Start Mock Interview
+              <Sparkles className="mr-2 h-4 w-4 ml-1" />
+            </Button>
+          </EmptyState>
+        ) : (
+          <>
+            <div className="flex flex-col gap-4">
+              {paginatedSessions.map((session) => (
+                <Card
+                  key={session.id}
+                  onClick={() => router.push(`/candidate/interview/${session.id}`)}
+                  className="group cursor-pointer hover:border-primary/50 transition-colors"
+                >
+                  <CardContent className="flex flex-col gap-3">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {/* Left: Status Icon */}
+                        <Image src="/images/mascotAvatar.png" alt="Mascot" width={44} height={44} className={`w-11 h-11 rounded-lg shrink-0 object-cover border bg-white dark:bg-slate-900 ${session.status === 'IN_PROGRESS'
+                            ? 'border-blue-200 dark:border-blue-800 ring-1 ring-blue-500/20'
+                            : 'border-emerald-200 dark:border-emerald-800 ring-1 ring-emerald-500/20'
                           }`} />
 
-                          {/* Center: Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="font-medium text-base text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug">
-                                {session.jobTitle || 'Free Mock Interview'}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-4 flex-wrap mt-1 text-sm text-slate-600">
-                              <div className="flex items-center">
-                                <Badge
-                                  className={`shrink-0 text-xs px-2 py-0.5 border-none font-medium ${
-                                    session.status === 'IN_PROGRESS'
-                                      ? 'bg-blue-500/10 text-blue-700'
-                                      : 'bg-emerald-500/10 text-emerald-700'
+                        {/* Center: Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-medium text-base text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug">
+                              {session.jobTitle || 'Free Mock Interview'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 flex-wrap mt-1 text-sm text-slate-600">
+                            <div className="flex items-center">
+                              <Badge
+                                className={`shrink-0 text-xs px-2 py-0.5 border-none font-medium ${session.status === 'IN_PROGRESS'
+                                    ? 'bg-blue-500/10 text-blue-700'
+                                    : 'bg-emerald-500/10 text-emerald-700'
                                   }`}
-                                >
-                                  {session.status === 'IN_PROGRESS' ? 'In Progress' : 'Completed'}
-                                </Badge>
-                              </div>
-                              <span className="flex items-center gap-1.5">
-                                <Calendar className="h-4 w-4 shrink-0 text-slate-400" />
-                                {session.startedAt ? new Date(session.startedAt).toLocaleDateString('vi-VN') : 'N/A'}
-                              </span>
-                              {session.cvFileName && (
-                                <span className="flex items-center gap-1.5 truncate max-w-[180px]">
-                                  <FileText className="h-4 w-4 shrink-0 text-slate-400" />
-                                  {session.cvFileName}
-                                </span>
-                              )}
+                              >
+                                {session.status === 'IN_PROGRESS' ? 'In Progress' : 'Completed'}
+                              </Badge>
                             </div>
+                            <span className="flex items-center gap-1.5">
+                              <Calendar className="h-4 w-4 shrink-0 text-slate-400" />
+                              {session.startedAt ? new Date(session.startedAt).toLocaleDateString('vi-VN') : 'N/A'}
+                            </span>
+                            {session.cvFileName && (
+                              <span className="flex items-center gap-1.5 truncate max-w-[180px]">
+                                <FileText className="h-4 w-4 shrink-0 text-slate-400" />
+                                {session.cvFileName}
+                              </span>
+                            )}
                           </div>
                         </div>
-
-                        {/* Action Zone (Right side) */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={(e) => { e.stopPropagation(); router.push(`/candidate/interview/${session.id}`); }}>
-                            {session.status === 'IN_PROGRESS' ? (
-                              <><Play className="w-4 h-4 fill-current" /> Resume</>
-                            ) : (
-                              <><Eye className="w-4 h-4" /> Review</>
-                            )}
-                          </Button>
-
-                          <Popover>
-                            <PopoverTrigger className="inline-flex items-center justify-center h-9 w-9 text-slate-500 hover:text-foreground shrink-0 border border-transparent hover:border-border hover:bg-muted/50 rounded-lg transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring" onClick={(e) => e.stopPropagation()}>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </PopoverTrigger>
-                            <PopoverContent align="end" className="w-48 p-1">
-                              <div className="flex flex-col">
-                                <Button 
-                                  variant="ghost" 
-                                  className="w-full justify-start gap-2 h-9 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                                  onClick={(e) => handleDeleteSession(e, session.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  <span>Delete Session</span>
-                                </Button>
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                        </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
 
-              {/* Pagination Controls */}
-              <ListPagination page={currentPage} totalPages={totalPages} setPage={setCurrentPage} />
-            </>
-          )}
-        </div>
+                      {/* Action Zone (Right side) */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={(e) => { e.stopPropagation(); router.push(`/candidate/interview/${session.id}`); }}>
+                          {session.status === 'IN_PROGRESS' ? (
+                            <><Play className="w-4 h-4 fill-current" /> Resume</>
+                          ) : (
+                            <><Eye className="w-4 h-4" /> Review</>
+                          )}
+                        </Button>
+
+                        <Popover>
+                          <PopoverTrigger className="inline-flex items-center justify-center h-9 w-9 text-slate-500 hover:text-foreground shrink-0 border border-transparent hover:border-border hover:bg-muted/50 rounded-lg transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring" onClick={(e) => e.stopPropagation()}>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-48 p-1">
+                            <div className="flex flex-col">
+                              <Button
+                                variant="ghost"
+                                className="w-full justify-start gap-2 h-9 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                                onClick={(e) => handleDeleteSession(e, session.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span>Delete Session</span>
+                              </Button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            <ListPagination page={currentPage} totalPages={totalPages} setPage={setCurrentPage} />
+          </>
+        )}
+      </div>
 
       {/* Startup Session Modal */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -614,6 +618,30 @@ function CandidateInterviewContent() {
                     </Select>
                   </div>
                 )}
+
+                {/* Interview Language */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                    <Globe className="h-4 w-4 text-emerald-500" /> Interview Language / Ngôn ngữ phỏng vấn
+                  </label>
+                  <Select value={language} onValueChange={(val) => setLanguage((val ?? 'vi') as 'vi' | 'en')}>
+                    <SelectTrigger className="w-full h-11 px-3 bg-card border-border hover:border-primary/50 focus:ring-primary/20 hover:bg-muted/10 transition-all rounded-xl shadow-sm text-sm font-medium">
+                      <SelectValue placeholder="Select Language" />
+                    </SelectTrigger>
+                    <SelectContent alignItemWithTrigger={false} className="bg-popover border-border text-popover-foreground">
+                      <SelectItem value="vi">
+                        <div className="flex items-center gap-2 font-medium">
+                          <span>🇻🇳 Tiếng Việt (Vietnamese)</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="en">
+                        <div className="flex items-center gap-2 font-medium">
+                          <span>🇬🇧 Tiếng Anh (English)</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 
