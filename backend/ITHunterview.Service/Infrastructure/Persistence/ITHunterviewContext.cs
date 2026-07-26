@@ -41,7 +41,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         // ATS & Jobs
         public DbSet<JobPostings> JobPostings { get; set; } = null!;
         public DbSet<JobSkillRequirements> JobSkillRequirements { get; set; } = null!;
+        public DbSet<JobAnalysisRuns> JobAnalysisRuns { get; set; } = null!;
+        public DbSet<JobSkillDecisions> JobSkillDecisions { get; set; } = null!;
         public DbSet<JobReviews> JobReviews { get; set; } = null!;
+
         public DbSet<UserSavedJobs> UserSavedJobs { get; set; } = null!;
         public DbSet<JobApplications> JobApplications { get; set; } = null!;
         public DbSet<ApplicationHistory> ApplicationHistory { get; set; } = null!;
@@ -387,6 +390,80 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             {
                 entity.HasIndex(e => e.OrderCode).IsUnique();
             });
+
+            // JobAnalysisRuns
+            modelBuilder.Entity<JobAnalysisRuns>(entity =>
+            {
+                entity.ToTable("job_analysis_runs");
+                entity.HasKey(e => e.Id);
+
+                entity.HasIndex(e => new { e.JobId, e.InputRevision }).IsUnique();
+                entity.HasIndex(e => new { e.JobId, e.InputHash });
+                entity.HasIndex(e => new { e.Status, e.CreatedAt });
+
+                entity.Property(e => e.Status)
+                      .HasConversion<string>();
+
+                entity.Property(e => e.RawInputSnapshot).HasColumnType("jsonb");
+                entity.Property(e => e.RawAnalysisJson).HasColumnType("jsonb");
+                entity.Property(e => e.EffectiveAnalysisJson).HasColumnType("jsonb");
+                entity.Property(e => e.ValidationErrorsJson).HasColumnType("jsonb");
+
+                entity.HasOne(e => e.Job)
+                      .WithMany()
+                      .HasForeignKey(e => e.JobId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.SystemPromptVersion)
+                      .WithMany()
+                      .HasForeignKey(e => e.SystemPromptVersionId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.UserPromptVersion)
+                      .WithMany()
+                      .HasForeignKey(e => e.UserPromptVersionId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // JobSkillDecisions
+            modelBuilder.Entity<JobSkillDecisions>(entity =>
+            {
+                entity.ToTable("job_skill_decisions");
+                entity.HasKey(e => e.Id);
+
+                entity.HasIndex(e => e.JobAnalysisRunId);
+
+                entity.Property(e => e.ResolutionStatus)
+                      .HasConversion<string>();
+
+                entity.Property(e => e.DecisionStatus)
+                      .HasConversion<string>();
+
+                entity.HasOne(e => e.JobAnalysisRun)
+                      .WithMany()
+                      .HasForeignKey(e => e.JobAnalysisRunId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.SuggestedSkill)
+                      .WithMany()
+                      .HasForeignKey(e => e.SuggestedSkillId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.ResolvedSkill)
+                      .WithMany()
+                      .HasForeignKey(e => e.ResolvedSkillId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // JobPostings ActiveAnalysisRun
+            modelBuilder.Entity<JobPostings>(entity =>
+            {
+                entity.HasOne(e => e.ActiveAnalysisRun)
+                      .WithMany()
+                      .HasForeignKey(e => e.ActiveAnalysisRunId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
         }
     }
 }
+

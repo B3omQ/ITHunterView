@@ -44,7 +44,7 @@ namespace ITHunterview.Service.UseCase
             Guid? recruiterId = null)
         {
             if (page <= 0) page = 1;
-            if (pageSize <= 0) pageSize = 7; // Matching the mock UI showing 7 rows by default
+            if (pageSize <= 0) pageSize = 7;
 
             var (items, totalCount) = await _jobPostingRepository.GetPagedAsync(search, status, page, pageSize, recruiterId);
 
@@ -110,15 +110,6 @@ namespace ITHunterview.Service.UseCase
                 return new ResponseBase<JobPostingDetailDto>("Thời gian xuất bản tin không được vượt quá 30 ngày.");
             }
 
-            if (dto.Status == JobStatus.PUBLISHED)
-            {
-                var company = await _companyRepository.GetByIdAsync(companyId.Value);
-                if (company == null || company.Status != CompanyStatus.VERIFIED)
-                {
-                    return new ResponseBase<JobPostingDetailDto>("Your company must be verified before you can publish a job posting.");
-                }
-            }
-
             var job = new JobPostings
             {
                 JobCode = string.IsNullOrWhiteSpace(dto.JobCode) 
@@ -138,38 +129,28 @@ namespace ITHunterview.Service.UseCase
                 Currency = dto.Currency,
                 Location = dto.Location,
 
-                Status = dto.Status,
+                Status = JobStatus.DRAFT,
                 Level = dto.Level,
                 WorkingModel = dto.WorkingModel,
                 JobExpertise = dto.JobExpertise,
                 JobDomain = dto.JobDomain,
                 ApplicationCount = 0,
                 ViewCount = 0,
-                PublishedAt = dto.Status == JobStatus.PUBLISHED ? DateTime.UtcNow : null,
+                PublishedAt = null,
                 ExpiresAt = dto.ExpiresAt,
-                ParseStatus = "PENDING",
+                AnalysisRevision = 1,
+                ParseStatus = "NOT_REQUESTED",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
-            using (var scope = new System.Transactions.TransactionScope(System.Transactions.TransactionScopeAsyncFlowOption.Enabled))
-            {
-                await _jobPostingRepository.AddAsync(job);
-
-                if (dto.Skills != null && dto.Skills.Any())
-                {
-                    await _jobPostingRepository.UpdateJobSkillsAsync(job.Id, dto.Skills);
-                }
-
-                scope.Complete();
-            }
+            await _jobPostingRepository.AddAsync(job);
 
             var detail = MapToDetailDto(job);
-            detail.Skills = await _jobPostingRepository.GetSkillsByJobIdAsync(job.Id);
+            detail.Skills = new List<JobSkillRequirementDto>();
 
-            _ = ParseJdBackgroundAsync(job.Id);
+            return new ResponseBase<JobPostingDetailDto>(detail, "Job posting created successfully as DRAFT.");
 
-            return new ResponseBase<JobPostingDetailDto>(detail, "Job posting created successfully.");
         }
 
         public async Task<ResponseBase<JobPostingDetailDto>> UpdateJobAsync(Guid id, UpdateJobPostingDto dto, Guid recruiterId)
@@ -185,14 +166,24 @@ namespace ITHunterview.Service.UseCase
                 throw new UnauthorizedAccessException("You do not have permission to update this job posting.");
             }
 
+            if (job.Status == JobStatus.PUBLISHED || job.Status == JobStatus.PENDING_REVIEW)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Published or pending review jobs cannot be edited directly. Please clone as a new draft.");
+            }
+
             if (dto.ExpiresAt.HasValue && dto.ExpiresAt.Value > job.CreatedAt.AddDays(30))
             {
                 return new ResponseBase<JobPostingDetailDto>("Thời gian xuất bản tin không được vượt quá 30 ngày kể từ lúc tạo.");
             }
 
-            job.JobCode = dto.JobCode;
+            bool semanticChanged = job.Description != dto.Description ||
+                                  job.Requirements != dto.Requirements ||
+                                  job.Level != dto.Level ||
+                                  job.WorkingModel != dto.WorkingModel ||
+                                  job.JobExpertise != dto.JobExpertise ||
+                                  !AreDomainListsEqual(job.JobDomain, dto.JobDomain);
 
-            // Title is intentionally omitted from update to prevent changing the job title
+            job.JobCode = dto.JobCode;
             job.Description = dto.Description;
             job.Requirements = dto.Requirements;
             job.Benefits = dto.Benefits;
@@ -208,49 +199,28 @@ namespace ITHunterview.Service.UseCase
             job.WorkingModel = dto.WorkingModel;
             job.JobExpertise = dto.JobExpertise;
             job.JobDomain = dto.JobDomain;
-            job.ParsedData = null;
-            job.ParseStatus = "PENDING";
-            job.ParseError = null;
-            job.SkillsEmbedding = null;
-            job.ExperienceEmbedding = null;
-            job.DomainEmbedding = null;
             job.UpdatedAt = DateTime.UtcNow;
 
-            if (job.Status != dto.Status)
+            if (semanticChanged)
             {
-                if (dto.Status == JobStatus.PUBLISHED)
-                {
-                    var company = await _companyRepository.GetByIdAsync(job.CompanyId);
-                    if (company == null || company.Status != CompanyStatus.VERIFIED)
-                    {
-                        return new ResponseBase<JobPostingDetailDto>("Your company must be verified before you can publish a job posting.");
-                    }
-                    if (job.PublishedAt == null)
-                    {
-                        job.PublishedAt = DateTime.UtcNow;
-                    }
-                }
-                job.Status = dto.Status;
+                job.AnalysisRevision += 1;
+                job.ActiveAnalysisRunId = null;
+                job.ParseStatus = "STALE";
             }
 
-            using (var scope = new System.Transactions.TransactionScope(System.Transactions.TransactionScopeAsyncFlowOption.Enabled))
-            {
-                await _jobPostingRepository.UpdateAsync(job);
-
-                if (dto.Skills != null)
-                {
-                    await _jobPostingRepository.UpdateJobSkillsAsync(job.Id, dto.Skills);
-                }
-
-                scope.Complete();
-            }
+            await _jobPostingRepository.UpdateAsync(job);
 
             var detail = MapToDetailDto(job);
             detail.Skills = await _jobPostingRepository.GetSkillsByJobIdAsync(job.Id);
 
-            _ = ParseJdBackgroundAsync(job.Id);
+            return new ResponseBase<JobPostingDetailDto>(detail, "Job draft updated successfully.");
+        }
 
-            return new ResponseBase<JobPostingDetailDto>(detail, "Job posting updated successfully.");
+        private static bool AreDomainListsEqual(List<string>? list1, List<string>? list2)
+        {
+            if (list1 == null && list2 == null) return true;
+            if (list1 == null || list2 == null) return false;
+            return list1.SequenceEqual(list2);
         }
 
         public async Task<ResponseBase<bool>> CloseJobAsync(Guid id, Guid recruiterId)
@@ -329,7 +299,6 @@ namespace ITHunterview.Service.UseCase
                 var prompt = JdExtractionPrompt.BuildUser(rawText);
                 var aiResponse = await aiService.GenerateTextAsync(prompt, JdExtractionPrompt.System);
 
-                // Clean json
                 var cleanJson = aiResponse.Trim();
                 if (cleanJson.StartsWith("```json")) cleanJson = cleanJson.Substring(7);
                 if (cleanJson.StartsWith("```")) cleanJson = cleanJson.Substring(3);

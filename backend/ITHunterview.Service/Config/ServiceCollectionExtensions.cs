@@ -4,6 +4,11 @@ using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Service;
+using ITHunterview.Service.Services;
+using ITHunterview.Service.Validators;
+using ITHunterview.Service.Helpers;
+using ITHunterview.Service.BackgroundServices;
+using ITHunterview.Service.DTOs.JobAnalysis;
 using ITHunterview.Service.Service.AiProviders;
 using ITHunterview.Service.Service.Matching;
 using ITHunterview.Service.Interface.Service.Matching;
@@ -13,6 +18,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace ITHunterview.Service.Config
+
 {
     public static class ServiceCollectionExtensions
     {
@@ -144,8 +150,18 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IPublicJobUseCase, PublicJobUseCase>();
             services.AddScoped<ICandidateJobUseCase, CandidateJobUseCase>();
 
+            // Job Analysis V2 Pipeline
+            services.AddScoped<IJobAnalysisRepository, JobAnalysisRepository>();
+            services.AddScoped<IJobAnalysisUseCase, JobAnalysisUseCase>();
+            services.AddScoped<IJobAnalysisProcessor, JobAnalysisProcessor>();
+            services.AddScoped<IJobAnalysisInputBuilder, JobAnalysisInputBuilder>();
+            services.AddScoped<IJdAnalysisResponseValidator, JdAnalysisResponseValidator>();
+            services.AddScoped<ISkillNormalizationService, SkillNormalizationService>();
+            services.AddScoped<ISkillResolver, SkillResolver>();
+            services.AddHostedService<ITHunterview.Service.BackgroundServices.JobAnalysisWorker>();
 
             return services;
+
         }
     }
 }

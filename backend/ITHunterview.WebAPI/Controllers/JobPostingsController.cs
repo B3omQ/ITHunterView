@@ -1,10 +1,13 @@
 using System;
 using System.Security.Claims;
+using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Job;
+using ITHunterview.Service.DTOs.JobAnalysis;
 using ITHunterview.Service.Interface.UseCase;
+using ITHunterview.Service.UseCase;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,17 +21,20 @@ namespace ITHunterview.WebAPI.Controllers
         private readonly IUserUseCase _userUseCase;
         private readonly ICvJobMatchingUseCase _cvJobMatchingUseCase;
         private readonly IHardcodeCvJobMatchingUseCase _hardcodeCvJobMatchingUseCase;
+        private readonly IJobAnalysisUseCase _jobAnalysisUseCase;
 
         public JobPostingsController(
             IJobPostingsUseCase jobPostingsUseCase, 
             IUserUseCase userUseCase, 
             ICvJobMatchingUseCase cvJobMatchingUseCase,
-            IHardcodeCvJobMatchingUseCase hardcodeCvJobMatchingUseCase)
+            IHardcodeCvJobMatchingUseCase hardcodeCvJobMatchingUseCase,
+            IJobAnalysisUseCase jobAnalysisUseCase)
         {
             _jobPostingsUseCase = jobPostingsUseCase;
             _userUseCase = userUseCase;
             _cvJobMatchingUseCase = cvJobMatchingUseCase;
             _hardcodeCvJobMatchingUseCase = hardcodeCvJobMatchingUseCase;
+            _jobAnalysisUseCase = jobAnalysisUseCase;
         }
 
         [HttpGet]
@@ -120,6 +126,52 @@ namespace ITHunterview.WebAPI.Controllers
                 return BadRequest(result);
             }
             return Ok(result);
+        }
+
+        [HttpPost("{id:guid}/analysis")]
+        [Authorize(Policy = "RecruiterOnly")]
+        public async Task<IActionResult> RequestAnalysis(Guid id, [FromBody] AnalyzeJobRequestDto dto, CancellationToken ct)
+        {
+            var recruiterId = await ResolveRecruiterIdAsync();
+            if (recruiterId == Guid.Empty) return Unauthorized();
+
+            var statusDto = await _jobAnalysisUseCase.RequestAnalysisAsync(id, recruiterId, dto, ct);
+            return Accepted(new ResponseBase<JobAnalysisStatusDto>(statusDto, "Job analysis requested successfully."));
+        }
+
+        [HttpGet("{id:guid}/analysis")]
+        [Authorize(Policy = "RecruiterOnly")]
+        public async Task<IActionResult> GetAnalysisPreview(Guid id, CancellationToken ct)
+        {
+            var recruiterId = await ResolveRecruiterIdAsync();
+            if (recruiterId == Guid.Empty) return Unauthorized();
+
+            var previewDto = await _jobAnalysisUseCase.GetPreviewAsync(id, recruiterId, ct);
+            if (previewDto == null) return NotFound(new ResponseBase<JobAnalysisPreviewDto>("Job preview not found or access denied."));
+
+            return Ok(new ResponseBase<JobAnalysisPreviewDto>(previewDto));
+        }
+
+        [HttpPut("{id:guid}/analysis/{runId:guid}/decisions")]
+        [Authorize(Policy = "RecruiterOnly")]
+        public async Task<IActionResult> UpdateDecisions(Guid id, Guid runId, [FromBody] UpdateJobSkillDecisionsDto dto, CancellationToken ct)
+        {
+            var recruiterId = await ResolveRecruiterIdAsync();
+            if (recruiterId == Guid.Empty) return Unauthorized();
+
+            var previewDto = await _jobAnalysisUseCase.UpdateDecisionsAsync(id, runId, recruiterId, dto, ct);
+            return Ok(new ResponseBase<JobAnalysisPreviewDto>(previewDto, "Skill decisions updated successfully."));
+        }
+
+        [HttpPost("{id:guid}/finalize")]
+        [Authorize(Policy = "RecruiterOnly")]
+        public async Task<IActionResult> Finalize(Guid id, [FromBody] FinalizeJobRequestDto dto, CancellationToken ct)
+        {
+            var recruiterId = await ResolveRecruiterIdAsync();
+            if (recruiterId == Guid.Empty) return Unauthorized();
+
+            var finalizeDto = await _jobAnalysisUseCase.FinalizeAsync(id, recruiterId, dto, ct);
+            return Ok(new ResponseBase<FinalizeJobResponseDto>(finalizeDto, "Job finalized successfully."));
         }
 
         [HttpPost("{id:guid}/match-cvs")]

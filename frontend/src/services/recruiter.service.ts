@@ -1,56 +1,55 @@
-import api from './api-client';
-
-export interface JobSkill {
-  skillId: number;
-  skillName?: string;
-  name?: string;
-  isMandatory: boolean;
-}
-
-export interface JobPosting {
-  id: string;
-  jobCode: string;
-  title: string;
-  location: string;
-  workLocationText: string;
-  status: string;
-  minSalary: number | null;
-  maxSalary: number | null;
-  currency: string;
-  description: string;
-  requirements: string;
-  benefits: string;
-  incomeText: string;
-  level?: string;
-  workingModel?: string;
-  jobExpertise?: string;
-  jobDomain?: string[];
-  skills?: JobSkill[];
-  createdAt: string;
-  publishedAt?: string;
-  expiresAt?: string;
-  applicationCount?: number;
-  parseStatus?: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED';
-  parseError?: string | null;
-}
+import api from '@/services/api-client';
 
 export interface JobPostingSummary {
   id: string;
   jobCode: string;
   title: string;
   location: string;
-  status: string;
+  status: 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'PENDING_REVIEW';
   applicationCount: number;
   viewCount: number;
-  publishedAt?: string;
-  expiresAt?: string;
+  publishedAt: string | null;
+  expiresAt: string | null;
   createdAt: string;
   level?: string;
   workingModel?: string;
   jobExpertise?: string;
+  jobDomain?: string[];
   skills: string[];
-  parseStatus?: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED';
+  parseStatus?: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'NOT_REQUESTED' | 'STALE';
   parseError?: string | null;
+  analysisRevision?: number;
+}
+
+export interface JobPosting {
+  id: string;
+  jobCode: string;
+  recruiterId: string;
+  companyId: string;
+  title: string;
+  description: string;
+  requirements: string;
+  benefits: string;
+  incomeText: string;
+  workLocationText: string;
+  minSalary: number | null;
+  maxSalary: number | null;
+  currency: string;
+  location: string;
+  status: 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'PENDING_REVIEW';
+  applicationCount: number;
+  viewCount: number;
+  publishedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  level?: string;
+  workingModel?: string;
+  jobExpertise?: string;
+  jobDomain?: string[];
+  skills: any[];
+  parseStatus?: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'NOT_REQUESTED' | 'STALE';
+  parseError?: string | null;
+  analysisRevision?: number;
 }
 
 export interface JobCategory {
@@ -75,6 +74,7 @@ export interface CreateJobPostingDto {
   minSalary: number | null;
   maxSalary: number | null;
   currency: string;
+  expiresAt?: string | null;
   description: string;
   requirements: string;
   benefits: string;
@@ -83,7 +83,7 @@ export interface CreateJobPostingDto {
   workingModel?: string;
   jobExpertise?: string;
   jobDomain?: string[];
-  skills: { skillId: number; isMandatory: boolean }[];
+  skills?: { skillId: number; isMandatory: boolean }[];
 }
 
 export interface UpdateJobPostingDto extends CreateJobPostingDto {}
@@ -156,7 +156,7 @@ export const recruiterService = {
 
   closeJob: async (id: string) => {
     try {
-      const response = await api.patch<ApiResponse<any>>(`/api/jobpostings/${id}/close`);
+      const response = await api.patch<ApiResponse<boolean>>(`/api/jobpostings/${id}/close`);
       return { success: true, data: response.data };
     } catch (error: any) {
       return {
@@ -173,7 +173,7 @@ export const recruiterService = {
     } catch (error: any) {
       return {
         success: false,
-        message: error.response?.data?.message || error.message || 'Failed to fetch job categories',
+        message: error.response?.data?.message || error.message || 'Failed to fetch categories',
       };
     }
   },
@@ -190,7 +190,7 @@ export const recruiterService = {
     }
   },
 
-  createSkill: async (name: string, categoryId: number = 1) => {
+  createSkill: async (name: string, categoryId = 1) => {
     try {
       const response = await api.post<ApiResponse<Skill>>('/api/skills', { name, categoryId });
       return { success: true, data: response.data };
@@ -202,9 +202,21 @@ export const recruiterService = {
     }
   },
 
+  getCandidateProfile: async (id: string) => {
+    try {
+      const response = await api.get<ApiResponse<any>>(`/api/candidateprofile/${id}`);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Failed to fetch candidate profile',
+      };
+    }
+  },
+
   getMajors: async () => {
     try {
-      const response = await api.get<ApiResponse<PaginatedResult<{ id: number; name: string; parentId?: number; parentName?: string }>>>('/api/majors?pageSize=1000');
+      const response = await api.get<ApiResponse<PaginatedResult<any>>>('/api/majors');
       return { success: true, data: response.data };
     } catch (error: any) {
       return {
@@ -214,51 +226,42 @@ export const recruiterService = {
     }
   },
 
-  matchJobWithCvs: async (jobId: string) => {
+
+  getJobMatches: async (jobId: string, page = 1, pageSize = 10) => {
     try {
-      const response = await api.post<ApiResponse<string>>(`/api/jobpostings/${jobId}/match-cvs`, null, { timeout: 120000 });
+      const response = await api.get<ApiResponse<any>>(`/api/jobpostings/${jobId}/matches?page=${page}&pageSize=${pageSize}`);
       return { success: true, data: response.data };
     } catch (error: any) {
       return {
         success: false,
-        message: error.response?.data?.message || error.message || 'Failed to trigger match',
+        message: error.response?.data?.message || error.message || 'Failed to fetch job matches',
+      };
+    }
+  },
+
+  matchJobWithCvs: async (jobId: string) => {
+    try {
+      const response = await api.post<ApiResponse<any>>(`/api/jobpostings/${jobId}/match-cvs`);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Failed to match job with CVs',
       };
     }
   },
 
   matchJobWithCvsHardcode: async (jobId: string) => {
     try {
-      const response = await api.post<ApiResponse<string>>(`/api/jobpostings/${jobId}/match-cvs-hardcode`, null, { timeout: 120000 });
+      const response = await api.post<ApiResponse<any>>(`/api/jobpostings/${jobId}/match-cvs-hardcode`);
       return { success: true, data: response.data };
     } catch (error: any) {
       return {
         success: false,
-        message: error.response?.data?.message || error.message || 'Failed to trigger hardcode match',
+        message: error.response?.data?.message || error.message || 'Failed to match job with CVs using hardcode',
       };
     }
   },
-
-  getJobMatches: async (jobId: string, page: number = 1, pageSize: number = 10) => {
-    try {
-      const response = await api.get<ApiResponse<PaginatedResult<import('@/types/cv.types').MatchHistoryDto>>>(`/api/jobpostings/${jobId}/matches?page=${page}&pageSize=${pageSize}`);
-      return { success: true, data: response.data };
-    } catch (error: any) {
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to fetch matches',
-      };
-    }
-  },
-
-  getCandidateProfile: async (candidateId: string) => {
-    try {
-      const response = await api.get<ApiResponse<any>>(`/api/v1/recruiter/candidates/${candidateId}/profile`);
-      return { success: true, data: response.data };
-    } catch (error: any) {
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to fetch candidate profile',
-      };
-    }
-  }
 };
+
+

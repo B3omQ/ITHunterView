@@ -109,5 +109,16 @@ namespace ITHunterview.Domain.Entities
         [Column("deleted_at")]
         public DateTime? DeletedAt { get; set; }
 
+        [Column("analysis_revision")]
+        public int AnalysisRevision { get; set; }
+
+        [Column("analysis_input_hash")]
+        public string? AnalysisInputHash { get; set; }
+
+        [Column("active_analysis_run_id")]
+        public Guid? ActiveAnalysisRunId { get; set; }
+
+        [ForeignKey(nameof(ActiveAnalysisRunId))]
+        public virtual JobAnalysisRuns? ActiveAnalysisRun { get; set; }
     }
 }
