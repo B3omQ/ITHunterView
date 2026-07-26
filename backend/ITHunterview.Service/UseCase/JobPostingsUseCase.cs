@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ITHunterview.Domain.Entities;
@@ -20,17 +21,23 @@ namespace ITHunterview.Service.UseCase
         private readonly IJobPostingRepository _jobPostingRepository;
         private readonly ICompanyRepository _companyRepository;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly INotificationUseCase _notificationUseCase;
+        private readonly Microsoft.AspNetCore.SignalR.IHubContext<ITHunterview.Service.Hubs.NotificationHub> _hubContext;
         private readonly ILogger<JobPostingsUseCase> _logger;
 
         public JobPostingsUseCase(
             IJobPostingRepository jobPostingRepository,
             ICompanyRepository companyRepository,
             IServiceScopeFactory scopeFactory,
+            INotificationUseCase notificationUseCase,
+            Microsoft.AspNetCore.SignalR.IHubContext<ITHunterview.Service.Hubs.NotificationHub> hubContext,
             ILogger<JobPostingsUseCase> logger)
         {
             _jobPostingRepository = jobPostingRepository;
             _companyRepository = companyRepository;
             _scopeFactory = scopeFactory;
+            _notificationUseCase = notificationUseCase;
+            _hubContext = hubContext;
             _logger = logger;
         }
 
@@ -67,7 +74,9 @@ namespace ITHunterview.Service.UseCase
                 WorkingModel = j.WorkingModel,
                 JobExpertise = j.JobExpertise,
                 JobDomain = j.JobDomain,
-                Skills = jobSkills.TryGetValue(j.Id, out var skills) ? skills : new List<string>()
+                Skills = jobSkills.TryGetValue(j.Id, out var skills) ? skills : new List<string>(),
+                IsBanned = j.IsBanned,
+                BanReason = j.BanReason
             }).ToList();
 
             var pagedResult = new PagedResult<JobPostingSummaryDto>
@@ -159,6 +168,12 @@ namespace ITHunterview.Service.UseCase
 
             _ = ParseJdBackgroundAsync(job.Id);
 
+            // Broadcast real-time update
+            if (detail.Status == JobStatus.PUBLISHED)
+            {
+                await _hubContext.Clients.All.SendAsync("JobCreated", detail);
+            }
+
             return new ResponseBase<JobPostingDetailDto>(detail, "Job posting created successfully.");
         }
 
@@ -168,6 +183,11 @@ namespace ITHunterview.Service.UseCase
             if (job == null)
             {
                 return new ResponseBase<JobPostingDetailDto>("Job posting not found.");
+            }
+
+            if (job.IsBanned)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Job posting is banned and cannot be updated.");
             }
 
             if (dto.ExpiresAt.HasValue && dto.ExpiresAt.Value > job.CreatedAt.AddDays(30))
@@ -243,6 +263,60 @@ namespace ITHunterview.Service.UseCase
             return new ResponseBase<bool>(true, "Job posting closed successfully.");
         }
 
+        public async Task<ResponseBase<bool>> BanJobAsync(Guid id, string reason)
+        {
+            var job = await _jobPostingRepository.GetByIdAsync(id);
+            if (job == null)
+            {
+                return new ResponseBase<bool>("Job posting not found.");
+            }
+
+            job.IsBanned = true;
+            job.BanReason = reason;
+            job.UpdatedAt = DateTime.UtcNow;
+
+            await _jobPostingRepository.UpdateAsync(job);
+
+            await _notificationUseCase.CreateNotificationAsync(new ITHunterview.Service.DTOs.Notification.CreateNotificationDto
+            {
+                UserId = job.RecruiterId,
+                Title = "Bài đăng tuyển dụng của bạn đã bị khóa",
+                Message = $"Bài đăng '{job.Title}' đã bị khóa bởi quản trị viên. Lý do: {reason}",
+                Type = NotificationType.SYSTEM
+            });
+
+            await _hubContext.Clients.All.SendAsync("JobStatusChanged", id);
+
+            return new ResponseBase<bool>(true, "Job posting banned successfully.");
+        }
+
+        public async Task<ResponseBase<bool>> UnbanJobAsync(Guid id)
+        {
+            var job = await _jobPostingRepository.GetByIdAsync(id);
+            if (job == null)
+            {
+                return new ResponseBase<bool>("Job posting not found.");
+            }
+
+            job.IsBanned = false;
+            job.BanReason = null;
+            job.UpdatedAt = DateTime.UtcNow;
+
+            await _jobPostingRepository.UpdateAsync(job);
+
+            await _notificationUseCase.CreateNotificationAsync(new ITHunterview.Service.DTOs.Notification.CreateNotificationDto
+            {
+                UserId = job.RecruiterId,
+                Title = "Bài đăng tuyển dụng đã được mở khóa",
+                Message = $"Bài đăng '{job.Title}' đã được mở khóa và hoạt động bình thường.",
+                Type = NotificationType.SYSTEM
+            });
+
+            await _hubContext.Clients.All.SendAsync("JobStatusChanged", id);
+
+            return new ResponseBase<bool>(true, "Job posting unbanned successfully.");
+        }
+
         private static JobPostingDetailDto MapToDetailDto(JobPostings j)
         {
             return new JobPostingDetailDto
@@ -272,7 +346,9 @@ namespace ITHunterview.Service.UseCase
                 ViewCount = j.ViewCount,
                 PublishedAt = j.PublishedAt,
                 ExpiresAt = j.ExpiresAt,
-                CreatedAt = j.CreatedAt
+                CreatedAt = j.CreatedAt,
+                IsBanned = j.IsBanned,
+                BanReason = j.BanReason
             };
         }
 

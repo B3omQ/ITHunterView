@@ -102,11 +102,6 @@ namespace ITHunterview.WebAPI.Controllers
         /// </summary>
         [HttpPost("pay")]
         [Authorize(Policy = "CandidateOrRecruiter")]
-
-        /// Candidate tạo yêu cầu thanh toán mua coin hoặc mua subscription
-        /// </summary>
-        [HttpPost("pay")]
-        [Authorize(Policy = "CandidateOnly")]
         public async Task<IActionResult> CreatePaymentRequest([FromBody] CreatePaymentDto dto)
         {
             var userId = GetCurrentUserId();

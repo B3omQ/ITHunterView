@@ -30,6 +30,8 @@ export interface JobPosting {
   publishedAt?: string;
   expiresAt?: string;
   applicationCount?: number;
+  isBanned?: boolean;
+  banReason?: string;
 }
 
 export interface JobPostingSummary {
@@ -50,6 +52,8 @@ export interface JobPostingSummary {
   jobExpertise?: string;
   jobDomain?: string[];
   skills: string[];
+  isBanned?: boolean;
+  banReason?: string;
 }
 
 export interface JobCategory {

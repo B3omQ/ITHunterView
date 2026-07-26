@@ -1,8 +1,9 @@
 import axios from 'axios';
 import { authStore } from '@/store/auth.store';
 
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
+  baseURL: apiUrl.replace('127.0.0.1', 'localhost'),
   timeout: 60000,
   paramsSerializer: {
     indexes: null

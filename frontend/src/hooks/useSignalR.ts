@@ -10,7 +10,8 @@ export function useSignalR(hubUrl: string) {
     
     if (!token) return;
 
-    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/+$/, '');
+    const rawUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const baseUrl = rawUrl.replace('127.0.0.1', 'localhost').replace(/\/+$/, '');
     const safeHubUrl = hubUrl.startsWith('/') ? hubUrl : `/${hubUrl}`;
     const fullUrl = `${baseUrl}${safeHubUrl}`;
     
@@ -18,7 +19,9 @@ export function useSignalR(hubUrl: string) {
 
     const newConnection = new HubConnectionBuilder()
       .withUrl(fullUrl, {
-        accessTokenFactory: () => token
+        accessTokenFactory: () => token,
+        skipNegotiation: true,
+        transport: HttpTransportType.WebSockets
       })
       .configureLogging(LogLevel.Information)
       .withAutomaticReconnect()

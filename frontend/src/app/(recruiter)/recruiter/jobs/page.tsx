@@ -1,8 +1,10 @@
 "use client"
 
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useJobs } from "@/hooks/useJobs"
+import { useSignalR } from "@/hooks/useSignalR"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -20,7 +22,8 @@ import {
   Calendar,
   Layers,
   Target,
-  Monitor
+  Monitor,
+  Ban
 } from "lucide-react"
 
 export default function JobPostingsPage() {
@@ -37,8 +40,24 @@ export default function JobPostingsPage() {
     status,
     setStatus,
     loading,
-    closeJob
+    closeJob,
+    refresh
   } = useJobs(1, pageSize)
+
+  const connection = useSignalR("/hubs/notification")
+
+  useEffect(() => {
+    if (connection) {
+      connection.on("JobStatusChanged", () => {
+        refresh()
+      })
+    }
+    return () => {
+      if (connection) {
+        connection.off("JobStatusChanged")
+      }
+    }
+  }, [connection, refresh])
 
   // Handle Close Job Posting
   const handleCloseJob = async (id: string) => {
@@ -77,8 +96,22 @@ export default function JobPostingsPage() {
   }
 
   // Render Status Badge
-  const renderStatusBadge = (statusVal: string) => {
-    switch (statusVal) {
+  const renderStatusBadge = (job: any) => {
+    if (job.isBanned) {
+      return (
+        <div className="flex flex-col items-center gap-1">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 border border-red-200 dark:border-red-900/50">
+            <Ban className="h-3 w-3" />
+            BANNED
+          </span>
+          <span className="text-[10px] text-red-500 max-w-[100px] truncate" title={job.banReason}>
+            {job.banReason}
+          </span>
+        </div>
+      )
+    }
+
+    switch (job.status) {
       case "PUBLISHED":
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50">
@@ -103,7 +136,7 @@ export default function JobPostingsPage() {
       default:
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-zinc-50 text-zinc-600 dark:bg-zinc-800/40 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700/50">
-            {statusVal}
+            {job.status}
           </span>
         )
     }
@@ -235,7 +268,7 @@ export default function JobPostingsPage() {
                         </Link>
                       </td>
                       <td className="px-5 py-3 align-top text-center">
-                        {renderStatusBadge(job.status)}
+                        {renderStatusBadge(job)}
                       </td>
                       <td className="px-5 py-3 align-top text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -243,8 +276,9 @@ export default function JobPostingsPage() {
                             variant="ghost" 
                             size="icon" 
                             onClick={() => openEditModal(job.id)}
-                            title="Edit Job"
-                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30"
+                            title={job.isBanned ? "Cannot edit banned job" : "Edit Job"}
+                            disabled={job.isBanned}
+                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 disabled:opacity-30 disabled:hover:bg-transparent"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -257,7 +291,7 @@ export default function JobPostingsPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {job.status !== "CLOSED" && (
+                          {job.status !== "CLOSED" && !job.isBanned && (
                             <Button 
                               variant="ghost" 
                               size="icon" 

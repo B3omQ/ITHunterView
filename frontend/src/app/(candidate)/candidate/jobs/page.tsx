@@ -3,6 +3,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useCandidateJobs } from '@/hooks/useCandidateJobs';
+import { useSignalR } from '@/hooks/useSignalR';
 import { JobCard } from '@/components/shared/JobCard';
 import { JobCardSkeleton } from '@/components/jobs/JobCardSkeleton';
 import { JobSearchFilter } from '@/components/jobs/JobSearchFilter';
@@ -11,6 +12,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ChevronLeft, ChevronRight, SearchX, MousePointerClick } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import type { JobSearchQuery } from '@/types/job.types';
 import { JobDetailPanel } from '@/components/jobs/JobDetailPanel';
 import JobDetailModal from '@/components/jobs/JobDetailModal';
@@ -40,9 +42,28 @@ function CandidateJobsContent() {
     postedWithinDays: searchParams.get('postedWithinDays') ? parseInt(searchParams.get('postedWithinDays') as string, 10) : undefined,
   };
 
-  const { data, isLoading, isError } = useCandidateJobs(query);
+  const { data, isLoading, isError, refetch } = useCandidateJobs(query);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
+  const connection = useSignalR('/hubs/notification');
+
+  useEffect(() => {
+    if (connection) {
+      connection.on("JobCreated", (job) => {
+        toast.success(`Một bài đăng mới phù hợp vừa được tạo: ${job.title}`);
+        refetch();
+      });
+      connection.on("JobStatusChanged", () => {
+        refetch(); // Reload jobs when a job is banned/unbanned/closed
+      });
+    }
+    return () => {
+      if (connection) {
+        connection.off("JobCreated");
+        connection.off("JobStatusChanged");
+      }
+    };
+  }, [connection, refetch]);
 
   // Auto-select first job on desktop when data loads
   useEffect(() => {

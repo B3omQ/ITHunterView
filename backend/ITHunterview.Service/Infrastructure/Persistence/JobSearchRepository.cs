@@ -20,7 +20,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
         public async Task<PaginatedDataResponse<JobCardDto>> SearchJobsAsync(JobSearchQueryDto query, Guid? userId = null)
         {
-            var jobsQuery = _context.JobPostings.AsQueryable();
+            var jobsQuery = _context.JobPostings.Where(j => !j.IsBanned).AsQueryable();
 
             if (query.Status.HasValue)
             {
@@ -199,7 +199,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         {
             var jobWithCompany = await (from job in _context.JobPostings
                                         join company in _context.Companies on job.CompanyId equals company.Id
-                                        where job.Id == jobId && job.Status == JobStatus.PUBLISHED
+                                        where job.Id == jobId && job.Status == JobStatus.PUBLISHED && !job.IsBanned
                                         select new { job, company }).FirstOrDefaultAsync();
 
             if (jobWithCompany == null)

@@ -103,5 +103,11 @@ namespace ITHunterview.Domain.Entities
         [Column("deleted_at")]
         public DateTime? DeletedAt { get; set; }
 
+        [Column("is_banned")]
+        public bool IsBanned { get; set; } = false;
+
+        [Column("ban_reason")]
+        public string? BanReason { get; set; }
+
     }
 }
