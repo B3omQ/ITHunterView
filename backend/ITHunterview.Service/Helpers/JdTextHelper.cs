@@ -25,7 +25,11 @@ namespace ITHunterview.Service.Helpers
                 sb.AppendLine($"Income: {job.IncomeText}");
 
             if (!string.IsNullOrWhiteSpace(job.WorkLocationText))
-                sb.AppendLine($"Work Location: {job.WorkLocationText}");
+            {
+                var formattedLocation = WorkLocationTextHelper.FormatForAi(job.WorkLocationText);
+                if (!string.IsNullOrWhiteSpace(formattedLocation))
+                    sb.AppendLine(formattedLocation);
+            }
 
             return sb.ToString().TrimEnd();
         }

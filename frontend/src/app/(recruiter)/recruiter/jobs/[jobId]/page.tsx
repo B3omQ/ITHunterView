@@ -6,22 +6,21 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { 
   ArrowLeft, 
-  Briefcase, 
   MapPin, 
   DollarSign, 
   Calendar, 
   FileText, 
-  CheckCircle,
   Pencil,
   Loader2,
   ListTodo,
-  Users,
   Award,
   Monitor,
   Layers,
   Target
 } from "lucide-react"
 import { MatchCvsSection } from "@/components/recruiter/MatchCvsSection"
+import { JobTextContent } from "@/components/jobs/JobTextContent"
+import { WorkLocationScheduleContent } from "@/components/jobs/WorkLocationScheduleContent"
 
 export default function JobDetailPage() {
   const router = useRouter()
@@ -101,7 +100,6 @@ export default function JobDetailPage() {
           </div>
 
           <div className="flex items-center gap-2">
-
             <Button
               onClick={() => router.push(`/recruiter/jobs/${job.id}/edit`)}
               className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md shadow-blue-500/10 gap-1.5"
@@ -112,7 +110,7 @@ export default function JobDetailPage() {
           </div>
         </div>
 
-        {/* Main Details Card with Premium Blue Accent Top Border */}
+        {/* Main Details Card */}
         <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs overflow-hidden relative border-t-4 border-t-blue-600">
           <CardContent className="p-8 space-y-8">
             
@@ -122,15 +120,12 @@ export default function JobDetailPage() {
                 <h2 className="text-2xl font-black text-zinc-900 dark:text-zinc-50 leading-tight">{job.title}</h2>
                 <div className="flex items-center gap-2 mt-2">
                   {getStatusBadge(job.status)}
-
                 </div>
               </div>
             </div>
 
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-zinc-50 dark:bg-zinc-900/30 p-5 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60">
-
-
               <div className="flex items-start gap-2.5">
                 <MapPin className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
                 <div>
@@ -195,7 +190,7 @@ export default function JobDetailPage() {
                   <div>
                     <span className="text-[10px] uppercase font-bold text-zinc-400 block tracking-wider">Domain</span>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {job.jobDomain.map((domain, index) => (
+                      {job.jobDomain.map((domain: string, index: number) => (
                         <span key={index} className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
                           {domain}
                         </span>
@@ -250,48 +245,40 @@ export default function JobDetailPage() {
 
             {/* Markdown/Sections content */}
             <div className="space-y-6">
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-2 flex items-center gap-1.5">
-                  <FileText className="h-4 w-4 text-blue-500" /> Job Description
-                </h3>
-                <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
-                  {job.description || "No description provided."}
-                </p>
-              </div>
+              {job.description && (
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-2 flex items-center gap-1.5">
+                    <FileText className="h-4 w-4 text-blue-500" /> Job Description
+                  </h3>
+                  <JobTextContent value={job.description} variant="bullet" />
+                </div>
+              )}
 
               {job.incomeText && (
                 <div>
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-2">Thu nhập</h3>
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
-                    {job.incomeText}
-                  </p>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-2">Income</h3>
+                  <JobTextContent value={job.incomeText} variant="bullet" />
                 </div>
               )}
 
               {job.workLocationText && (
                 <div>
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-2">Địa điểm làm việc cụ thể</h3>
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
-                    {job.workLocationText}
-                  </p>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-2">Work Location & Schedule</h3>
+                  <WorkLocationScheduleContent workLocationText={job.workLocationText} />
                 </div>
               )}
 
               {job.requirements && (
                 <div>
                   <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-2">Requirements</h3>
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
-                    {job.requirements}
-                  </p>
+                  <JobTextContent value={job.requirements} variant="bullet" />
                 </div>
               )}
 
               {job.benefits && (
                 <div>
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-2">Benefits & Perks</h3>
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
-                    {job.benefits}
-                  </p>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-2">Benefits</h3>
+                  <JobTextContent value={job.benefits} variant="bullet" />
                 </div>
               )}
             </div>

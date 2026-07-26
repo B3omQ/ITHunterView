@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useJobMetadata, useJobDetails } from "@/hooks/useJobs"
 import { useGetMyCompany } from "@/hooks/useCompany"
@@ -8,10 +8,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { ArrowLeft, Plus, X, Sparkles, AlertCircle } from "lucide-react"
-import { LEVELS, WORKING_MODELS, JOB_DOMAINS, JOB_EXPERTISES, VIETNAM_PROVINCES } from "@/lib/job-constants"
+import { ArrowLeft, X, Sparkles, AlertCircle } from "lucide-react"
+import { LEVELS, WORKING_MODELS, JOB_DOMAINS, VIETNAM_PROVINCES } from "@/lib/job-constants"
 import { MajorCombobox } from "@/components/shared/MajorCombobox"
 import { recruiterService } from "@/services/recruiter.service"
+import {
+  DEFAULT_HOW_TO_APPLY,
+  serializeWorkLocationText,
+  getSerializedWorkLocationLength,
+  normalizeMultilineText,
+} from "@/lib/job-posting-text"
 
 export default function CreateJobPage() {
   const router = useRouter()
@@ -20,26 +26,26 @@ export default function CreateJobPage() {
   const [formData, setFormData] = useState({
     jobCode: "",
     title: "",
-
     location: "",
-
     status: "DRAFT",
     minSalary: "",
     maxSalary: "",
     currency: "USD",
     expiresAt: "",
     description: "",
+    incomeText: "",
+    workLocation: "",
+    workingHours: "",
+    howToApply: DEFAULT_HOW_TO_APPLY,
     requirements: "",
     benefits: "",
-    incomeText: "",
-    workLocationText: "",
     level: "",
     workingModel: "",
     jobExpertise: "",
     jobDomain: [] as string[],
   })
 
-  const { categories, availableSkills, majors, loading: metadataLoading, error: metadataError } = useJobMetadata()
+  const { availableSkills, majors, loading: metadataLoading, error: metadataError } = useJobMetadata()
   const { createJob, saving, error: saveError } = useJobDetails()
 
   const [selectedSkills, setSelectedSkills] = useState<Array<{ skillId: number; name: string; isMandatory: boolean }>>([])
@@ -72,7 +78,6 @@ export default function CreateJobPage() {
     }))
   }
 
-  // Skill Selection Handlers
   const addSkill = (skill: any, isMandatory: boolean) => {
     if (selectedSkills.some(s => s.skillId === skill.id)) {
       setSelectedSkills(prev =>
@@ -92,14 +97,13 @@ export default function CreateJobPage() {
     if (!searchSkill.trim()) return
     setCreatingSkill(true)
     try {
-      // Find categoryId = 1 or any default. If backend auto-assigns, just pass name
       const res = await recruiterService.createSkill(searchSkill.trim(), 1)
       if (res.success && res.data?.success && res.data.data) {
         addSkill(res.data.data, isMandatory)
       } else {
         alert("Failed to create skill. " + (res.message || ""))
       }
-    } catch (e: any) {
+    } catch {
       alert("Error creating skill.")
     } finally {
       setCreatingSkill(false)
@@ -117,10 +121,21 @@ export default function CreateJobPage() {
     if (niceToHaveSkills.length === 0) return "At least one Nice-to-have Skill is required"
 
     if (!formData.description.trim()) return "Job Description is required"
-    if (!formData.requirements.trim()) return "Detailed Requirements is required"
-    if (!formData.benefits.trim()) return "Perks & Benefits is required"
     if (!formData.incomeText.trim()) return "Income is required"
-    if (!formData.workLocationText.trim()) return "Work location is required"
+    if (!formData.workLocation.trim()) return "Work location is required"
+    if (!formData.workingHours.trim()) return "Working hours are required"
+    if (!formData.howToApply.trim()) return "How to apply is required"
+    if (!formData.requirements.trim()) return "Requirements are required"
+    if (!formData.benefits.trim()) return "Benefits are required"
+
+    const serializedLen = getSerializedWorkLocationLength({
+      workLocation: formData.workLocation,
+      workingHours: formData.workingHours,
+      howToApply: formData.howToApply,
+    })
+    if (serializedLen > 4000) {
+      return "Work location details must not exceed 4,000 characters after formatting"
+    }
 
     if (!formData.expiresAt) return "Expiration Date is required"
 
@@ -147,13 +162,30 @@ export default function CreateJobPage() {
       return
     }
 
+    const serializedWorkLocation = serializeWorkLocationText({
+      workLocation: formData.workLocation,
+      workingHours: formData.workingHours,
+      howToApply: formData.howToApply,
+    })
+
     const payload = {
-      ...formData,
+      jobCode: formData.jobCode,
+      title: formData.title,
+      location: formData.location,
       status: statusVal,
       minSalary: formData.minSalary ? Number(formData.minSalary) : null,
       maxSalary: formData.maxSalary ? Number(formData.maxSalary) : null,
       currency: formData.currency,
       expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null,
+      description: normalizeMultilineText(formData.description),
+      incomeText: normalizeMultilineText(formData.incomeText),
+      workLocationText: serializedWorkLocation,
+      requirements: normalizeMultilineText(formData.requirements),
+      benefits: normalizeMultilineText(formData.benefits),
+      level: formData.level,
+      workingModel: formData.workingModel,
+      jobExpertise: formData.jobExpertise,
+      jobDomain: formData.jobDomain,
       skills: selectedSkills.map(s => ({ skillId: s.skillId, isMandatory: s.isMandatory }))
     }
 
@@ -163,7 +195,6 @@ export default function CreateJobPage() {
     }
   }
 
-  // Filter skills based on search term
   const filteredAvailableSkills = availableSkills.filter(
     skill =>
       skill.name.toLowerCase().includes(searchSkill.toLowerCase()) &&
@@ -524,7 +555,10 @@ export default function CreateJobPage() {
             <hr className="border-zinc-200/60 dark:border-zinc-800/60" />
 
             <div className="space-y-2">
-              <Label htmlFor="description" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Description *</Label>
+              <div>
+                <Label htmlFor="description" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Description *</Label>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Each new line will be displayed as a bullet point.</p>
+              </div>
               <textarea
                 id="description"
                 name="description"
@@ -538,39 +572,82 @@ export default function CreateJobPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="incomeText" className="font-semibold text-zinc-700 dark:text-zinc-300">Thu nhập</Label>
+              <div>
+                <Label htmlFor="incomeText" className="font-semibold text-zinc-700 dark:text-zinc-300">Income *</Label>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Each new line will be displayed on a separate line.</p>
+              </div>
               <textarea
                 id="incomeText"
                 name="incomeText"
                 rows={2}
                 required
-                placeholder="Ví dụ: Từ 10 - 20 triệu, Thỏa thuận, Lên đến $1000..."
+                placeholder="e.g. $1,000 - $2,000, Negotiable, 13th month bonus..."
                 className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 value={formData.incomeText}
                 onChange={handleChange}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="workLocationText" className="font-semibold text-zinc-700 dark:text-zinc-300">Địa điểm làm việc cụ thể</Label>
-              <textarea
-                id="workLocationText"
-                name="workLocationText"
-                rows={2}
-                required
-                placeholder="Ví dụ: Tòa nhà FPT, Quận 9, TP.HCM hoặc Remote toàn phần..."
-                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                value={formData.workLocationText}
-                onChange={handleChange}
-              />
+            {/* Work Location & Schedule 3-field section */}
+            <div className="space-y-4 pt-2 border-t border-zinc-100 dark:border-zinc-900">
+              <div>
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-50">Work Location & Schedule</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Specify location details, working hours, and application instructions.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="workLocation" className="font-semibold text-zinc-700 dark:text-zinc-300">Work Location *</Label>
+                <textarea
+                  id="workLocation"
+                  name="workLocation"
+                  rows={2}
+                  required
+                  placeholder={`Ha Noi: 125 Hoang Ngan, Yen Hoa...\nHo Chi Minh City: ...`}
+                  className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  value={formData.workLocation}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="workingHours" className="font-semibold text-zinc-700 dark:text-zinc-300">Working Hours *</Label>
+                <textarea
+                  id="workingHours"
+                  name="workingHours"
+                  rows={2}
+                  required
+                  placeholder="Monday - Friday (09:00 - 18:00)"
+                  className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  value={formData.workingHours}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="howToApply" className="font-semibold text-zinc-700 dark:text-zinc-300">How to Apply *</Label>
+                <textarea
+                  id="howToApply"
+                  name="howToApply"
+                  rows={2}
+                  required
+                  placeholder="Application instructions..."
+                  className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  value={formData.howToApply}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="requirements" className="font-semibold text-zinc-700 dark:text-zinc-300">Detailed Requirements *</Label>
+              <div>
+                <Label htmlFor="requirements" className="font-semibold text-zinc-700 dark:text-zinc-300">Requirements *</Label>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Each new line will be displayed as a bullet point.</p>
+              </div>
               <textarea
                 id="requirements"
                 name="requirements"
                 rows={3}
+                required
                 placeholder="List specific qualifications, experience level, degree, or other requirements..."
                 className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 value={formData.requirements}
@@ -579,11 +656,15 @@ export default function CreateJobPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="benefits" className="font-semibold text-zinc-700 dark:text-zinc-300">Perks & Benefits *</Label>
+              <div>
+                <Label htmlFor="benefits" className="font-semibold text-zinc-700 dark:text-zinc-300">Benefits *</Label>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Each new line will be displayed as a bullet point.</p>
+              </div>
               <textarea
                 id="benefits"
                 name="benefits"
                 rows={3}
+                required
                 placeholder="List key benefits (e.g. 13th month salary, health insurance, flexible working hours)..."
                 className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 value={formData.benefits}
