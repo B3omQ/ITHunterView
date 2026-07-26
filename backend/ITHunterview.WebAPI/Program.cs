@@ -20,6 +20,7 @@ builder.Services.AddControllers()
     });
 builder.Services.AddOpenApi();
 builder.Services.AddSignalR();
+builder.Services.AddHealthChecks();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -36,8 +37,12 @@ builder.Services.AddScoped<ITHunterview.Service.Interface.Infrastructure.IActorP
 builder.Services.AddSingleton<ITHunterview.Service.Interface.Infrastructure.IAuditLogQueue, ITHunterview.Service.Infrastructure.Infrastructure.AuditLogQueue>();
 builder.Services.AddScoped<AuditLogInterceptor>();
 
-var dataSourceBuilder = new NpgsqlDataSourceBuilder(
-    builder.Configuration.GetConnectionString("DefaultConnection"));
+var rawConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+    ?? builder.Configuration["DATABASE_URL"] 
+    ?? "";
+var connectionString = ParsePostgresConnectionString(rawConnectionString);
+
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 dataSourceBuilder.MapEnum<UserStatus>("user_status");
 dataSourceBuilder.MapEnum<CompanyVerificationMethod>("company_verification_method");
 dataSourceBuilder.MapEnum<CompanyStatus>("company_status");
@@ -183,8 +188,29 @@ app.UseMiddleware<ITHunterview.WebAPI.Middlewares.UserStatusCheckMiddleware>();
 app.UseMiddleware<ITHunterview.WebAPI.Middlewares.AiRateLimitMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/health");
 app.MapHub<NotificationHub>("/hubs/notification");
 
 app.Run();
 
-public partial class Program { }
+public partial class Program 
+{
+    private static string ParsePostgresConnectionString(string connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString)) return connectionString;
+        if (connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+            connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+        {
+            var uri = new Uri(connectionString);
+            var userInfo = uri.UserInfo.Split(':');
+            var username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : "";
+            var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+            var host = uri.Host;
+            var port = uri.Port > 0 ? uri.Port : 5432;
+            var database = uri.AbsolutePath.TrimStart('/');
+
+            return $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Prefer;Trust Server Certificate=true";
+        }
+        return connectionString;
+    }
+}

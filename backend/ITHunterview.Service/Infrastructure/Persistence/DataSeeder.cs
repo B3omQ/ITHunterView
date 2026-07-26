@@ -286,6 +286,73 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 await context.SaveChangesAsync();
             }
 
+            // Seed MB Bank Company & Recruiter Profile if missing
+            var mbCompany = context.Companies.FirstOrDefault(c => c.TaxCode == "0100283873" || c.Name.Contains("MB Bank") || c.Name.Contains("Quân đội"));
+            if (mbCompany == null)
+            {
+                mbCompany = new Companies
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Ngân hàng TMCP Quân đội (MB Bank)",
+                    TaxCode = "0100283873",
+                    HeadquartersAddress = "Số 18 Lê Văn Lương, Phường Trung Hòa, Quận Cầu Giấy, Hà Nội",
+                    Industry = "Banking & Financial Technology (Fintech)",
+                    CompanySize = "1000+",
+                    Description = "Ngân hàng Thương mại Cổ phần Quân đội (MB) là một doanh nghiệp trực thuộc Bộ Quốc phòng, tiên phong trong chuyển đổi số và cung cấp các dịch vụ tài chính, ngân hàng số hiện đại hàng đầu Việt Nam.",
+                    Website = "https://www.mbbank.com.vn",
+                    LogoUrl = "https://upload.wikimedia.org/wikipedia/commons/2/25/Logo_MB_new.png",
+                    CompanyType = "IT Product / Banking",
+                    VerificationMethod = CompanyVerificationMethod.BUSINESS_REGISTRATION,
+                    VerificationDocumentUrl = "https://www.mbbank.com.vn/license.pdf",
+                    Status = CompanyStatus.VERIFIED,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                context.Companies.Add(mbCompany);
+                await context.SaveChangesAsync();
+            }
+
+            if (recruiterRole != null)
+            {
+                string mbRecruiterEmail = "recruiter.mbbank@ithunterview.com";
+                var mbUser = context.Users.FirstOrDefault(u => u.Email == mbRecruiterEmail);
+                if (mbUser == null)
+                {
+                    mbUser = new User
+                    {
+                        Id = Guid.NewGuid(),
+                        Email = mbRecruiterEmail,
+                        PasswordHash = PasswordHasher.HashPassword("123456"),
+                        Status = UserStatus.ACTIVE,
+                        RoleId = recruiterRole.Id
+                    };
+                    context.Users.Add(mbUser);
+                    await context.SaveChangesAsync();
+                }
+
+                var mbProfile = context.RecruiterProfiles.FirstOrDefault(rp => rp.UserId == mbUser.Id);
+                if (mbProfile == null)
+                {
+                    context.RecruiterProfiles.Add(new RecruiterProfiles
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = mbUser.Id,
+                        CompanyId = mbCompany.Id,
+                        FullName = "Tuyển dụng MB Bank",
+                        PositionTitle = "Head of Talent Acquisition",
+                        Phone = "02437674050",
+                        AvatarUrl = "https://avatar.iran.liara.run/public/34"
+                    });
+                    await context.SaveChangesAsync();
+                }
+                else if (mbProfile.CompanyId != mbCompany.Id)
+                {
+                    mbProfile.CompanyId = mbCompany.Id;
+                    context.RecruiterProfiles.Update(mbProfile);
+                    await context.SaveChangesAsync();
+                }
+            }
+
             // Seed profiles for candidate users if missing
             if (candidateRole != null)
             {
@@ -567,44 +634,63 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             {
                 var subs = new List<Subscriptions>
                 {
+                    // Candidate Subscriptions
                     new Subscriptions 
                     { 
-                        Name = "Candidate Free", 
+                        Name = "Basic", 
                         Price = 0, 
                         DurationDays = 36500, 
-                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":2,\"mockInterviewLimit\":0,\"cvOptimizeLimit\":0}",
+                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":5,\"mockInterviewLimit\":1,\"learningPathSlotLimit\":1,\"aiRefreshUnlimited\":false,\"premiumBadge\":false,\"coinCredit\":0}",
                         Status = SubscriptionStatus.ACTIVE
                     },
                     new Subscriptions 
                     { 
-                        Name = "Candidate Premium", 
-                        Price = 99000, 
+                        Name = "Pro Career", 
+                        Price = 199000, 
                         DurationDays = 30, 
-                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":30,\"mockInterviewLimit\":10,\"cvOptimizeLimit\":10}",
+                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":30,\"mockInterviewLimit\":10,\"learningPathSlotLimit\":3,\"aiRefreshUnlimited\":true,\"premiumBadge\":false,\"coinCredit\":3500}",
                         Status = SubscriptionStatus.ACTIVE
                     },
                     new Subscriptions 
                     { 
-                        Name = "Recruiter Free", 
+                        Name = "Mastery", 
+                        Price = 449000, 
+                        DurationDays = 30, 
+                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":100,\"mockInterviewLimit\":20,\"learningPathSlotLimit\":3,\"aiRefreshUnlimited\":true,\"premiumBadge\":true,\"coinCredit\":10000}",
+                        Status = SubscriptionStatus.ACTIVE
+                    },
+                    
+                    // Recruiter Subscriptions
+                    new Subscriptions 
+                    { 
+                        Name = "Free", 
                         Price = 0, 
                         DurationDays = 36500, 
-                        FeaturesConfig = "{\"role\":\"RECRUITER\",\"activeJobPostings\":1,\"activeSourcingLimit\":5,\"highlightedJobs\":0,\"analytics\":false}",
+                        FeaturesConfig = "{\"role\":\"RECRUITER\",\"jobSlots\":1,\"jobExtendLimit\":0,\"unlockCvLimit\":0,\"pushTopLimit\":0,\"coinCredit\":0}",
                         Status = SubscriptionStatus.ACTIVE
                     },
                     new Subscriptions 
                     { 
-                        Name = "Recruiter Premium", 
-                        Price = 499000, 
+                        Name = "Starter", 
+                        Price = 399000, 
                         DurationDays = 30, 
-                        FeaturesConfig = "{\"role\":\"RECRUITER\",\"activeJobPostings\":10,\"activeSourcingLimit\":50,\"highlightedJobs\":3,\"analytics\":true}",
+                        FeaturesConfig = "{\"role\":\"RECRUITER\",\"jobSlots\":3,\"jobExtendLimit\":3,\"unlockCvLimit\":15,\"pushTopLimit\":0,\"coinCredit\":2500}",
                         Status = SubscriptionStatus.ACTIVE
                     },
                     new Subscriptions 
                     { 
-                        Name = "Recruiter Enterprise", 
-                        Price = 1999000, 
+                        Name = "Growth", 
+                        Price = 790000, 
                         DurationDays = 30, 
-                        FeaturesConfig = "{\"role\":\"RECRUITER\",\"activeJobPostings\":-1,\"activeSourcingLimit\":-1,\"highlightedJobs\":-1,\"analytics\":true}",
+                        FeaturesConfig = "{\"role\":\"RECRUITER\",\"jobSlots\":6,\"jobExtendLimit\":6,\"unlockCvLimit\":35,\"pushTopLimit\":4,\"coinCredit\":15000}",
+                        Status = SubscriptionStatus.ACTIVE
+                    },
+                    new Subscriptions 
+                    { 
+                        Name = "Hiring Pro", 
+                        Price = 1990000, 
+                        DurationDays = 30, 
+                        FeaturesConfig = "{\"role\":\"RECRUITER\",\"jobSlots\":18,\"jobExtendLimit\":15,\"unlockCvLimit\":100,\"pushTopLimit\":8,\"coinCredit\":20000}",
                         Status = SubscriptionStatus.ACTIVE
                     }
                 };
@@ -620,12 +706,16 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             {
                 var features = new List<CoinFeatures>
                 {
-                    new CoinFeatures { FeatureKey = "CvJdMatching", CoinCost = 2, Description = "So khớp CV-JD AI" },
-                    new CoinFeatures
-                    {
-                        FeatureKey = "MockInterview", CoinCost = 10, Description = "Phỏng vấn thử AI Mock Interview"
-                    },
-                    new CoinFeatures { FeatureKey = "CvOptimize", CoinCost = 3, Description = "Tối ưu hóa CV AI" }
+                    // Candidate Features
+                    new CoinFeatures { FeatureKey = "LearningPath", CoinCost = 500, Description = "Create Learning Path" },
+                    new CoinFeatures { FeatureKey = "CvJdMatching", CoinCost = 1000, Description = "AI CV-JD Matching" },
+                    new CoinFeatures { FeatureKey = "MockInterview", CoinCost = 2000, Description = "AI Mock Interview" },
+                    
+                    // Recruiter Features
+                    new CoinFeatures { FeatureKey = "UnlockCv", CoinCost = 3000, Description = "Unlock Candidate Profile" },
+                    new CoinFeatures { FeatureKey = "PostJob", CoinCost = 20000, Description = "Post Job (30 Days)" },
+                    new CoinFeatures { FeatureKey = "ExtendJob", CoinCost = 10000, Description = "Extend Job (15 Days)" },
+                    new CoinFeatures { FeatureKey = "PushTop", CoinCost = 5000, Description = "Push Job to Top (1 Day)" }
                 };
                 context.CoinFeatures.AddRange(features);
                 await context.SaveChangesAsync();
@@ -638,18 +728,18 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 {
                     new CoinPackages
                     {
-                        Id = Guid.Parse("00000000-0000-0000-0000-000000000020"), Name = "Gói nạp 20 Coin", Coins = 20,
-                        Price = 39000, IsActive = true
+                        Id = Guid.Parse("00000000-0000-0000-0000-000000000100"), Name = "Starter Package", Coins = 10500,
+                        Price = 100000, IsActive = true
                     },
                     new CoinPackages
                     {
-                        Id = Guid.Parse("00000000-0000-0000-0000-000000000050"), Name = "Gói nạp 50 Coin", Coins = 50,
-                        Price = 89000, IsActive = true
+                        Id = Guid.Parse("00000000-0000-0000-0000-000000000500"), Name = "Value Package", Coins = 60000,
+                        Price = 500000, IsActive = true
                     },
                     new CoinPackages
                     {
-                        Id = Guid.Parse("00000000-0000-0000-0000-000000000120"), Name = "Gói nạp 120 Coin", Coins = 120,
-                        Price = 199000, IsActive = true
+                        Id = Guid.Parse("00000000-0000-0000-0000-000000002000"), Name = "Pro Funder Package", Coins = 300000,
+                        Price = 2000000, IsActive = true
                     }
                 };
                 context.CoinPackages.AddRange(packages);

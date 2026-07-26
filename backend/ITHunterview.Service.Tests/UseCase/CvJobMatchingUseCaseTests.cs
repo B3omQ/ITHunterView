@@ -30,9 +30,10 @@ namespace ITHunterview.Service.Tests.UseCase
             _mockPromptService = new Mock<IPromptManagementService>();
             _mockSystemConfigRepository = new Mock<ITHunterview.Service.Interface.Persistence.ISystemConfigRepository>();
             var mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<CvJobMatchingUseCase>>();
+            var mockTextAiService = new Mock<IAiService>();
             
             // Pass null for context since we only test methods that don't hit DB
-            _sut = new CvJobMatchingUseCase(null!, _mockAiService.Object, _mockExtractorService.Object, _mockHttpClientFactory.Object, _mockConfiguration.Object, mockLogger.Object, _mockPromptService.Object, _mockSystemConfigRepository.Object);
+            _sut = new CvJobMatchingUseCase(null!, _mockAiService.Object, _mockExtractorService.Object, _mockHttpClientFactory.Object, _mockConfiguration.Object, mockLogger.Object, _mockPromptService.Object, _mockSystemConfigRepository.Object, mockTextAiService.Object);
         }
 
         [Theory]

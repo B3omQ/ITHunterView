@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { FileText, Eye, Trash2 } from 'lucide-react';
+import { FileText, Eye, Trash2, Star, Loader2 } from 'lucide-react';
+import { useIsMutating } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import type { Cv } from '@/types/cv.types';
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { useSetPrimaryCv } from '@/hooks/useCv';
 
 interface CvCardProps {
   cv: Cv;
@@ -15,6 +18,8 @@ interface CvCardProps {
 
 export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardProps) {
   const [showConfirm, setShowConfirm] = useState(false);
+  const { mutate: setPrimary, isPending: isSettingPrimary } = useSetPrimaryCv();
+  const isAnySettingPrimary = useIsMutating({ mutationKey: ['set-primary-cv'] }) > 0;
 
   // Format date: "Jun 10, 2026"
   const formattedDate = new Date(cv.createdAt).toLocaleDateString('en-US', {
@@ -45,13 +50,34 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
         )}>
           <FileText className="h-5 w-5" />
         </div>
-        <div className="flex flex-col overflow-hidden justify-center py-1">
-          <h4 className="truncate text-base font-semibold text-foreground group-hover:text-primary transition-colors" title={cv.fileName}>
-            {cv.fileName}
-          </h4>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {formattedDate} • {formattedSize}
-          </p>
+        <div className="flex flex-col overflow-hidden justify-center py-1 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="truncate text-base font-semibold text-foreground group-hover:text-primary transition-colors" title={cv.fileName}>
+              {cv.fileName}
+            </h4>
+
+          </div>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-sm text-muted-foreground">
+              {formattedDate} • {formattedSize}
+            </p>
+            {cv.isPrimary && (
+              <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
+                Primary
+              </span>
+            )}
+            {cv.parseStatus === 'PROCESSING' && (
+              <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-1">
+                <Loader2 className="h-2 w-2 animate-spin" />
+                Analyzing AI...
+              </span>
+            )}
+            {cv.parseStatus === 'FAILED' && (
+              <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-medium" title={cv.parseError || undefined}>
+                Analysis Failed
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -61,6 +87,35 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
         </span>
         
         <div className="flex items-center gap-2">
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!cv.isPrimary) {
+                setPrimary(cv.id);
+              }
+            }}
+            disabled={isDeleting || isAnySettingPrimary || cv.isPrimary}
+            className={cn(
+              "gap-1.5 h-8 transition-colors",
+              cv.isPrimary 
+                ? "text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 opacity-100" 
+                : "text-muted-foreground hover:text-yellow-500 hover:bg-yellow-50",
+              (isDeleting || isAnySettingPrimary) && "opacity-50 cursor-not-allowed"
+            )}
+            title={cv.isPrimary ? "This is your primary CV" : "Set as primary"}
+          >
+            {isSettingPrimary ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Star className={cn("h-3.5 w-3.5", cv.isPrimary && "fill-current")} />
+            )}
+            <span className="hidden sm:inline">
+              {isSettingPrimary ? 'Setting...' : cv.isPrimary ? 'Primary' : 'Set Primary'}
+            </span>
+          </Button>
 
           <Button
             variant="ghost"

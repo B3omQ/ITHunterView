@@ -142,9 +142,9 @@ export function CvSelectionPanel({
                 </SelectTrigger>
                 <SelectContent>
                   {myCvs.map((cv) => (
-                    <SelectItem key={cv.id} value={cv.id}>
-                      {cv.fileName || `Resume - ${new Date(cv.createdAt).toLocaleDateString()}`}
-                    </SelectItem>
+                      <SelectItem key={cv.id} value={cv.id}>
+                        {cv.fileName || `Resume - ${new Date(cv.createdAt).toLocaleDateString()}`}
+                      </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

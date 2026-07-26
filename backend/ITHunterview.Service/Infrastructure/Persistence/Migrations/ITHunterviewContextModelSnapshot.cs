@@ -800,6 +800,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_primary");
 
+                    b.Property<string>("ParseError")
+                        .HasColumnType("text")
+                        .HasColumnName("parse_error");
+
+                    b.Property<string>("ParseStatus")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("parse_status");
+
                     b.Property<string>("ParsedData")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1013,6 +1022,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("job_id");
 
+                    b.Property<string>("Language")
+                        .HasColumnType("text")
+                        .HasColumnName("language");
+
                     b.Property<string>("SfiaExtractResult")
                         .HasColumnType("text")
                         .HasColumnName("sfia_extract_result");
@@ -1198,6 +1211,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Property<decimal?>("MinSalary")
                         .HasColumnType("numeric")
                         .HasColumnName("min_salary");
+
+                    b.Property<string>("ParseError")
+                        .HasColumnType("text")
+                        .HasColumnName("parse_error");
+
+                    b.Property<string>("ParseStatus")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("parse_status");
 
                     b.Property<string>("ParsedData")
                         .HasColumnType("jsonb")

@@ -7,7 +7,7 @@ namespace ITHunterview.WebAPI.Controllers
 {
     [ApiController]
     [Route("api/v1/coin-packages")]
-    [Authorize(Policy = "CandidateOnly")] // Chỉ Candidate mới mua gói coin
+    [Authorize(Policy = "CandidateOrRecruiter")] // Cho phép cả Candidate và Recruiter
     public class PublicCoinController : ControllerBase
     {
         private readonly ICoinConfigUseCase _coinConfigUseCase;

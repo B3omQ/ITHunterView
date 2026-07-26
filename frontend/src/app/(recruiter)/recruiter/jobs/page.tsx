@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useJobs } from "@/hooks/useJobs"
 import { useSignalR } from "@/hooks/useSignalR"
+import { AiParseStatusBadge } from "@/components/shared/AiParseStatusBadge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -268,7 +269,12 @@ export default function JobPostingsPage() {
                         </Link>
                       </td>
                       <td className="px-5 py-3 align-top text-center">
-                        {renderStatusBadge(job)}
+
+                        <div className="flex flex-col items-center gap-1.5">
+                          {renderStatusBadge(job.status)}
+                          <AiParseStatusBadge status={job.parseStatus} error={job.parseError} />
+                        </div>
+
                       </td>
                       <td className="px-5 py-3 align-top text-right">
                         <div className="flex items-center justify-end gap-1">

@@ -71,9 +71,9 @@ export function JdSelectionPanel({
                 </SelectTrigger>
                 <SelectContent>
                   {savedJobs.map((job) => (
-                    <SelectItem key={job.jobId} value={job.jobId}>
-                      {job.title} - {job.companyName}
-                    </SelectItem>
+                      <SelectItem key={job.jobId} value={job.jobId}>
+                        {job.title} - {job.companyName}
+                      </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

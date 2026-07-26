@@ -32,6 +32,8 @@ export interface JobPosting {
   applicationCount?: number;
   isBanned?: boolean;
   banReason?: string;
+  parseStatus?: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED';
+  parseError?: string | null;
 }
 
 export interface JobPostingSummary {
@@ -50,10 +52,11 @@ export interface JobPostingSummary {
   level?: string;
   workingModel?: string;
   jobExpertise?: string;
-  jobDomain?: string[];
   skills: string[];
   isBanned?: boolean;
   banReason?: string;
+  parseStatus?: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED';
+  parseError?: string | null;
 }
 
 export interface JobCategory {

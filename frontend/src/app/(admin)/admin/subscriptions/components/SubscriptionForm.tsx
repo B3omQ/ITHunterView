@@ -32,12 +32,16 @@ const formSchema = z.object({
   // Candidate AI limits
   cvMatchLimit: z.coerce.number().nullable().optional(),
   mockInterviewLimit: z.coerce.number().nullable().optional(),
-  cvOptimizeLimit: z.coerce.number().nullable().optional(),
+  learningPathSlotLimit: z.coerce.number().nullable().optional(),
+  aiRefreshUnlimited: z.boolean().default(false),
+  premiumBadge: z.boolean().default(false),
   // Recruiter Limits
-  activeJobPostings: z.coerce.number().nullable().optional(),
-  activeSourcingLimit: z.coerce.number().nullable().optional(),
-  highlightedJobs: z.coerce.number().nullable().optional(),
-  analytics: z.boolean().default(false),
+  jobSlots: z.coerce.number().nullable().optional(),
+  jobExtendLimit: z.coerce.number().nullable().optional(),
+  unlockCvLimit: z.coerce.number().nullable().optional(),
+  pushTopLimit: z.coerce.number().nullable().optional(),
+  // Common
+  coinCredit: z.coerce.number().nullable().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -61,11 +65,14 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
       role: 'CANDIDATE',
       cvMatchLimit: null,
       mockInterviewLimit: null,
-      cvOptimizeLimit: null,
-      activeJobPostings: null,
-      activeSourcingLimit: null,
-      highlightedJobs: null,
-      analytics: false,
+      learningPathSlotLimit: null,
+      aiRefreshUnlimited: false,
+      premiumBadge: false,
+      jobSlots: null,
+      jobExtendLimit: null,
+      unlockCvLimit: null,
+      pushTopLimit: null,
+      coinCredit: 0,
     },
   });
 
@@ -81,11 +88,14 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
         role: cfg.role || 'CANDIDATE',
         cvMatchLimit: cfg.cvMatchLimit ?? null,
         mockInterviewLimit: cfg.mockInterviewLimit ?? null,
-        cvOptimizeLimit: cfg.cvOptimizeLimit ?? null,
-        activeJobPostings: cfg.activeJobPostings ?? null,
-        activeSourcingLimit: cfg.activeSourcingLimit ?? null,
-        highlightedJobs: cfg.highlightedJobs ?? null,
-        analytics: cfg.analytics ?? false,
+        learningPathSlotLimit: cfg.learningPathSlotLimit ?? null,
+        aiRefreshUnlimited: cfg.aiRefreshUnlimited ?? false,
+        premiumBadge: cfg.premiumBadge ?? false,
+        jobSlots: cfg.jobSlots ?? null,
+        jobExtendLimit: cfg.jobExtendLimit ?? null,
+        unlockCvLimit: cfg.unlockCvLimit ?? null,
+        pushTopLimit: cfg.pushTopLimit ?? null,
+        coinCredit: cfg.coinCredit ?? 0,
       });
     } else {
       form.reset({
@@ -95,11 +105,14 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
         role: 'CANDIDATE',
         cvMatchLimit: null,
         mockInterviewLimit: null,
-        cvOptimizeLimit: null,
-        activeJobPostings: null,
-        activeSourcingLimit: null,
-        highlightedJobs: null,
-        analytics: false,
+        learningPathSlotLimit: null,
+        aiRefreshUnlimited: false,
+        premiumBadge: false,
+        jobSlots: null,
+        jobExtendLimit: null,
+        unlockCvLimit: null,
+        pushTopLimit: null,
+        coinCredit: 0,
       });
     }
   }, [initialData, form]);
@@ -110,15 +123,18 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
       role: values.role,
     };
 
+    featuresConfig.coinCredit = values.coinCredit;
     if (values.role === 'CANDIDATE') {
       featuresConfig.cvMatchLimit = values.cvMatchLimit;
       featuresConfig.mockInterviewLimit = values.mockInterviewLimit;
-      featuresConfig.cvOptimizeLimit = values.cvOptimizeLimit;
+      featuresConfig.learningPathSlotLimit = values.learningPathSlotLimit;
+      featuresConfig.aiRefreshUnlimited = values.aiRefreshUnlimited;
+      featuresConfig.premiumBadge = values.premiumBadge;
     } else {
-      featuresConfig.activeJobPostings = values.activeJobPostings;
-      featuresConfig.activeSourcingLimit = values.activeSourcingLimit;
-      featuresConfig.highlightedJobs = values.highlightedJobs;
-      featuresConfig.analytics = values.analytics;
+      featuresConfig.jobSlots = values.jobSlots;
+      featuresConfig.jobExtendLimit = values.jobExtendLimit;
+      featuresConfig.unlockCvLimit = values.unlockCvLimit;
+      featuresConfig.pushTopLimit = values.pushTopLimit;
     }
 
     onSubmit({
@@ -240,13 +256,104 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                   </FormItem>
                 )}
               />
-              {/* CV Optimize Limit */}
+              {/* Learning Path Slot Limit */}
               <FormField
                 control={form.control}
-                name="cvOptimizeLimit"
+                name="learningPathSlotLimit"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>CV Optimization Limit per Month</FormLabel>
+                    <FormLabel>Learning Path Slot Limit</FormLabel>
+                    <FormControl>
+                      <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {/* AI Refresh Unlimited */}
+              <FormField
+                control={form.control}
+                name="aiRefreshUnlimited"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-white">
+                    <div className="space-y-0.5">
+                      <FormLabel>AI Refresh (Unlimited)</FormLabel>
+                    </div>
+                    <FormControl>
+                      <Switch disabled={isUsed} checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              {/* Premium Badge */}
+              <FormField
+                control={form.control}
+                name="premiumBadge"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-white">
+                    <div className="space-y-0.5">
+                      <FormLabel>Premium Badge</FormLabel>
+                    </div>
+                    <FormControl>
+                      <Switch disabled={isUsed} checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
+
+          {selectedRole === 'RECRUITER' && (
+            <div className="space-y-4">
+              {/* Job Slots */}
+              <FormField
+                control={form.control}
+                name="jobSlots"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Job Slots</FormLabel>
+                    <FormControl>
+                      <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {/* Job Extend Limit */}
+              <FormField
+                control={form.control}
+                name="jobExtendLimit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Job Extend Limit (per month)</FormLabel>
+                    <FormControl>
+                      <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {/* Unlock CV Limit */}
+              <FormField
+                control={form.control}
+                name="unlockCvLimit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unlock CV Limit</FormLabel>
+                    <FormControl>
+                      <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {/* Push Top Limit */}
+              <FormField
+                control={form.control}
+                name="pushTopLimit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Push Top Limit</FormLabel>
                     <FormControl>
                       <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
                     </FormControl>
@@ -257,71 +364,20 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
             </div>
           )}
 
-          {selectedRole === 'RECRUITER' && (
-            <div className="space-y-4">
-              {/* Active Job Postings */}
-              <FormField
-                control={form.control}
-                name="activeJobPostings"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Maximum Active Job Postings</FormLabel>
-                    <FormControl>
-                      <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {/* Active Sourcing Limit */}
-              <FormField
-                control={form.control}
-                name="activeSourcingLimit"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Candidate Sourcing Limit per Month</FormLabel>
-                    <FormControl>
-                      <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {/* Highlighted Jobs */}
-              <FormField
-                control={form.control}
-                name="highlightedJobs"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Maximum Highlighted Jobs</FormLabel>
-                    <FormControl>
-                      <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {/* Analytics */}
-              <FormField
-                control={form.control}
-                name="analytics"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-white">
-                    <div className="space-y-0.5">
-                      <FormLabel>Advanced Analytics &amp; Reporting</FormLabel>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        disabled={isUsed}
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
-          )}
+          {/* Common Field: Coin Credit */}
+          <FormField
+            control={form.control}
+            name="coinCredit"
+            render={({ field }) => (
+              <FormItem className="mt-4">
+                <FormLabel>Coin Credit Bonus</FormLabel>
+                <FormControl>
+                  <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
 
         {isUsed && (

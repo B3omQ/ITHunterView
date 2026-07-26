@@ -91,9 +91,13 @@ export function CoinConfigTab() {
   const updateMutation = useUpdateCoinConfig();
 
   // State chi phí AI có kiểm soát (Controlled state)
-  const [cvJdMatching, setCvJdMatching] = useState<number>(2);
-  const [mockInterview, setMockInterview] = useState<number>(10);
-  const [cvOptimize, setCvOptimize] = useState<number>(3);
+  const [cvJdMatching, setCvJdMatching] = useState<number>(1000);
+  const [mockInterview, setMockInterview] = useState<number>(2000);
+  const [learningPath, setLearningPath] = useState<number>(500);
+  const [unlockCv, setUnlockCv] = useState<number>(3000);
+  const [postJob, setPostJob] = useState<number>(20000);
+  const [extendJob, setExtendJob] = useState<number>(10000);
+  const [pushTop, setPushTop] = useState<number>(5000);
 
   // State danh sách các gói nạp coin
   const [packages, setPackages] = useState<CoinPackageDto[]>([]);
@@ -102,9 +106,13 @@ export function CoinConfigTab() {
   useEffect(() => {
     if (data?.data) {
       const config = data.data;
-      setCvJdMatching(config.featureCosts?.cvJdMatching ?? 2);
-      setMockInterview(config.featureCosts?.mockInterview ?? 10);
-      setCvOptimize(config.featureCosts?.cvOptimize ?? 3);
+      setCvJdMatching(config.featureCosts?.cvJdMatching ?? 1000);
+      setMockInterview(config.featureCosts?.mockInterview ?? 2000);
+      setLearningPath(config.featureCosts?.learningPath ?? 500);
+      setUnlockCv(config.featureCosts?.unlockCv ?? 3000);
+      setPostJob(config.featureCosts?.postJob ?? 20000);
+      setExtendJob(config.featureCosts?.extendJob ?? 10000);
+      setPushTop(config.featureCosts?.pushTop ?? 5000);
       setPackages(config.packages || []);
     }
   }, [data]);
@@ -140,12 +148,8 @@ export function CoinConfigTab() {
 
   // Xử lý submit lưu cấu hình lên API
   const handleSave = () => {
-    const cvJdMatchingCost = cvJdMatching;
-    const mockInterviewCost = mockInterview;
-    const cvOptimizeCost = cvOptimize;
-
     // Validate cơ bản
-    if (cvJdMatchingCost < 0 || mockInterviewCost < 0 || cvOptimizeCost < 0) {
+    if (cvJdMatching < 0 || mockInterview < 0 || learningPath < 0 || unlockCv < 0 || postJob < 0 || extendJob < 0 || pushTop < 0) {
       toast.error('AI feature cost cannot be negative');
       return;
     }
@@ -172,9 +176,13 @@ export function CoinConfigTab() {
 
     const payload: UpdateCoinConfigDto = {
       featureCosts: {
-        cvJdMatching: cvJdMatchingCost,
-        mockInterview: mockInterviewCost,
-        cvOptimize: cvOptimizeCost,
+        cvJdMatching: cvJdMatching,
+        mockInterview: mockInterview,
+        learningPath: learningPath,
+        unlockCv: unlockCv,
+        postJob: postJob,
+        extendJob: extendJob,
+        pushTop: pushTop,
       },
       packages: packages.map(p => ({
         id: p.id,
@@ -244,13 +252,59 @@ export function CoinConfigTab() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-neutral-700">CV Optimization</label>
+              <label className="text-sm font-semibold text-neutral-700">Learning Path</label>
               <div className="relative flex items-center">
                 <Input
-                  type="number"
-                  min="0"
-                  value={cvOptimize}
-                  onChange={(e) => setCvOptimize(e.target.value === '' ? 0 : Number(e.target.value))}
+                  type="number" min="0" value={learningPath}
+                  onChange={(e) => setLearningPath(e.target.value === '' ? 0 : Number(e.target.value))}
+                  className="pr-12"
+                />
+                <span className="absolute right-3 text-xs font-semibold text-neutral-400">Coin</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-700">Unlock CV</label>
+              <div className="relative flex items-center">
+                <Input
+                  type="number" min="0" value={unlockCv}
+                  onChange={(e) => setUnlockCv(e.target.value === '' ? 0 : Number(e.target.value))}
+                  className="pr-12"
+                />
+                <span className="absolute right-3 text-xs font-semibold text-neutral-400">Coin</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-700">Post Job</label>
+              <div className="relative flex items-center">
+                <Input
+                  type="number" min="0" value={postJob}
+                  onChange={(e) => setPostJob(e.target.value === '' ? 0 : Number(e.target.value))}
+                  className="pr-12"
+                />
+                <span className="absolute right-3 text-xs font-semibold text-neutral-400">Coin</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-700">Extend Job</label>
+              <div className="relative flex items-center">
+                <Input
+                  type="number" min="0" value={extendJob}
+                  onChange={(e) => setExtendJob(e.target.value === '' ? 0 : Number(e.target.value))}
+                  className="pr-12"
+                />
+                <span className="absolute right-3 text-xs font-semibold text-neutral-400">Coin</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-neutral-700">Push Top</label>
+              <div className="relative flex items-center">
+                <Input
+                  type="number" min="0" value={pushTop}
+                  onChange={(e) => setPushTop(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="pr-12"
                 />
                 <span className="absolute right-3 text-xs font-semibold text-neutral-400">Coin</span>

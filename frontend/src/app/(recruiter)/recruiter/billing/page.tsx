@@ -30,103 +30,120 @@ export default function RecruiterPricingPage() {
   }
 
   return (
-    <div className="container mx-auto py-16 px-4 max-w-5xl">
-      <div className="text-center mb-16 space-y-4">
-        <div className="inline-block bg-zinc-100 text-zinc-800 text-xs font-semibold tracking-wider uppercase px-3 py-1 rounded-full mb-4">
-          Bảng giá doanh nghiệp
-        </div>
-        <h1 className="text-4xl font-extrabold tracking-tight text-zinc-900 sm:text-5xl">
-          Giải Pháp Tuyển Dụng Thông Minh
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Smart Recruiting Solutions
         </h1>
-        <p className="text-lg text-zinc-500 max-w-2xl mx-auto">
-          Tiếp cận ứng viên tiềm năng nhanh chóng hơn với các gói dịch vụ được thiết kế riêng cho nhà tuyển dụng. Quản lý linh hoạt, hiệu quả tối đa.
+        <p className="text-muted-foreground mt-2">
+          Reach potential candidates faster with tailored service packages for employers. Flexible management, maximum efficiency.
         </p>
       </div>
 
-      <div className="flex flex-col md:flex-row justify-center gap-8 items-stretch max-w-4xl mx-auto">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 items-stretch">
         {subscriptions.map((sub, idx) => {
-          const isPremium = idx === 1;
+          const isHiringPro = sub.name.toLowerCase().includes('pro');
+          const isGrowth = sub.name.toLowerCase().includes('growth');
+          const isStarter = sub.name.toLowerCase().includes('starter');
+          
+          let cardClassName = 'border-zinc-200 bg-white';
+          if (isHiringPro) {
+            cardClassName = 'border-[#609df5] bg-white ring-1 ring-[#1877F2] shadow-[0_0_15px_rgba(24,119,242,0.2)] z-10';
+          } else if (isGrowth) {
+            cardClassName = 'border-[#1877F2] bg-white ring-1 ring-[#1877F2] shadow-[0_0_15px_rgba(24,119,242,0.1)] z-10';
+          } else if (isStarter) {
+            cardClassName = 'ring-1 ring-[#1877F2]/40 bg-white shadow-md z-10';
+          }
           
           return (
             <Card 
               key={sub.id} 
-              className={`flex flex-col flex-1 relative rounded-2xl ${
-                isPremium 
-                  ? 'border-zinc-900 border-2 shadow-sm' 
-                  : 'border-zinc-200 bg-white'
-              }`}
+              className={`flex flex-col flex-1 relative rounded-2xl transition-all ${cardClassName}`}
             >
-              {isPremium && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                  <span className="bg-zinc-900 text-zinc-50 text-[10px] font-bold uppercase tracking-wider py-1 px-3 rounded-full">
-                    Gói Doanh Nghiệp
-                  </span>
-                </div>
-              )}
+
               
-              <CardHeader className="pt-10 pb-6 text-left">
-                <CardTitle className="text-xl font-bold mb-2">{sub.name}</CardTitle>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-5xl font-extrabold tracking-tight text-zinc-900">
-                    {new Intl.NumberFormat('vi-VN').format(sub.price)}đ
+              <CardHeader className="pt-6 pb-4 text-left">
+                <CardTitle className="text-xl font-bold mb-1">{sub.name}</CardTitle>
+                <div className="flex items-baseline gap-1 mt-1 flex-wrap xl:flex-nowrap whitespace-nowrap">
+                  <span className="text-3xl font-bold tracking-tight text-zinc-900">
+                    {new Intl.NumberFormat('en-US').format(sub.price)}
                   </span>
-                  <span className="text-sm font-medium text-zinc-500">
-                    /{sub.durationDays} ngày
+                  <span className="text-sm font-bold text-zinc-500 mr-1">
+                    VND
                   </span>
+                  {sub.durationDays < 36500 && (
+                    <span className="text-sm font-medium text-zinc-500">
+                      /{sub.durationDays} days
+                    </span>
+                  )}
                 </div>
-                <CardDescription className="mt-4 text-zinc-500">
-                  {isPremium 
-                    ? 'Bộ công cụ toàn diện giúp doanh nghiệp tuyển dụng hiệu suất cao.' 
-                    : 'Gói cơ bản phù hợp với nhu cầu tuyển dụng nhỏ lẻ.'}
+                <CardDescription className="mt-2 text-[13px] text-zinc-500">
+                  {isHiringPro ? 'A comprehensive toolkit to help businesses recruit with high performance.' : isGrowth ? 'A growing package with more powerful features for active hiring.' : isStarter ? 'A basic package suitable for occasional recruiting needs.' : 'Start with basic features. Experience the system.'}
                 </CardDescription>
               </CardHeader>
               
-              <CardContent className="flex-1 pb-8">
-                <ul className="space-y-4">
-                  {sub.featuresConfig.activeJobPostings !== null && (
-                    <li className="flex gap-3 items-center">
+              <CardContent className="flex-1 pb-6">
+                <ul className="space-y-2.5">
+                  {sub.featuresConfig.jobSlots != null && (
+                    <li className="flex gap-3 items-start">
                       <Check className="w-5 h-5 shrink-0 text-zinc-900" />
-                      <span className="text-zinc-600 text-sm">
-                        {sub.featuresConfig.activeJobPostings} Tin tuyển dụng Active
+                      <span className="text-zinc-600 text-sm mt-0.5">
+                        {sub.featuresConfig.jobSlots} Active Job Postings
                       </span>
                     </li>
                   )}
-                  {sub.featuresConfig.activeSourcingLimit !== null && (
-                    <li className="flex gap-3 items-center">
+                  {sub.featuresConfig.unlockCvLimit != null && (
+                    <li className="flex gap-3 items-start">
                       <Check className="w-5 h-5 shrink-0 text-zinc-900" />
-                      <span className="text-zinc-600 text-sm">
-                        {sub.featuresConfig.activeSourcingLimit} lượt Sourcing ứng viên
+                      <span className="text-zinc-600 text-sm mt-0.5">
+                        {sub.featuresConfig.unlockCvLimit} CV Unlocks (Sourcing)
                       </span>
                     </li>
                   )}
-                  {sub.featuresConfig.highlightedJobs !== null && (
-                    <li className="flex gap-3 items-center">
+                  {sub.featuresConfig.pushTopLimit != null && (
+                    <li className="flex gap-3 items-start">
                       <Check className="w-5 h-5 shrink-0 text-zinc-900" />
-                      <span className="text-zinc-600 text-sm">
-                        {sub.featuresConfig.highlightedJobs} Tin nổi bật (Highlighted)
+                      <span className="text-zinc-600 text-sm mt-0.5">
+                        {sub.featuresConfig.pushTopLimit} Job Push-to-Top Credits
                       </span>
                     </li>
                   )}
-                  {sub.featuresConfig.analytics && (
-                    <li className="flex gap-3 items-center">
+                  {sub.featuresConfig.jobExtendLimit != null && (
+                    <li className="flex gap-3 items-start">
                       <Check className="w-5 h-5 shrink-0 text-zinc-900" />
-                      <span className="text-zinc-600 text-sm">
-                        Báo cáo & Phân tích chuyên sâu
+                      <span className="text-zinc-600 text-sm mt-0.5">
+                        {sub.featuresConfig.jobExtendLimit} Job Extension Credits
+                      </span>
+                    </li>
+                  )}
+                  {sub.featuresConfig.coinCredit != null && (
+                    <li className="flex gap-3 items-start">
+                      <Check className="w-5 h-5 shrink-0 text-zinc-900" />
+                      <span className="text-zinc-600 text-sm mt-0.5">
+                        Includes {new Intl.NumberFormat('en-US').format(sub.featuresConfig.coinCredit)} Coins
                       </span>
                     </li>
                   )}
                 </ul>
               </CardContent>
               
-              <CardFooter className="pb-10 pt-0">
+              <CardFooter className="pb-6 pt-0 border-t-0 bg-transparent">
                 <Button 
-                  className="w-full h-12 text-sm font-semibold"
-                  variant={isPremium ? 'default' : 'outline'}
+                  className={`w-full h-11 text-sm font-semibold transition-all ${
+                    isHiringPro 
+                      ? 'bg-gradient-to-r from-[#0c4a9e] via-[#1877F2] to-[#609df5] hover:opacity-90 text-white shadow-sm'
+                      : isGrowth 
+                        ? 'bg-[#1877F2] hover:bg-[#1877F2]/90 text-white shadow-sm' 
+                        : isStarter
+                          ? 'bg-white border border-[#1877F2] hover:bg-[#1877F2]/5 text-[#1877F2] shadow-sm'
+                          : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border-transparent shadow-none'
+                  }`}
+                  variant={isHiringPro || isGrowth ? 'default' : 'outline'}
                   onClick={() => handleBuy(sub)}
                   disabled={isPending}
                 >
                   {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isPremium ? 'Nâng cấp Doanh nghiệp' : 'Chọn gói cơ bản'}
+                  {isHiringPro ? 'Upgrade to Pro' : isGrowth ? 'Upgrade to Growth' : isStarter ? 'Choose Starter' : 'Start Using'}
                 </Button>
               </CardFooter>
             </Card>
@@ -136,7 +153,7 @@ export default function RecruiterPricingPage() {
       
       {subscriptions.length === 0 && !isLoading && (
         <div className="text-center p-12 bg-zinc-50 rounded-2xl border border-zinc-200 max-w-2xl mx-auto">
-          <p className="text-zinc-500">Hiện tại chưa có gói cước nào dành cho Nhà tuyển dụng.</p>
+          <p className="text-zinc-500">There are currently no subscription plans available for Recruiters.</p>
         </div>
       )}
     </div>

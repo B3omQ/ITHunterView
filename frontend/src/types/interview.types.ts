@@ -14,6 +14,7 @@ export interface InterviewSession {
   startedAt?: string;
   endedAt?: string;
   aiProvider?: string;
+  language?: string;
 }
 
 export interface InterviewAnswer {
@@ -42,6 +43,7 @@ export interface InterviewSessionDetail {
   session: InterviewSession;
   messages: InterviewAnswer[];
   report?: InterviewReport;
+  language?: string;
 }
 
 export interface CreateInterviewSessionRequest {
@@ -49,6 +51,7 @@ export interface CreateInterviewSessionRequest {
   jobId?: string;
   cvId?: string;
   aiProvider?: string;
+  language?: string;
 }
 
 export interface SubmitReplyRequest {

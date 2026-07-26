@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { candidateService } from '@/services/candidate.service';
 import type {
   UpdateVisibilityRequest,
@@ -58,6 +59,9 @@ export function useUpdateVisibility() {
     mutationFn: (payload: UpdateVisibilityRequest) => candidateService.updateVisibility(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.summary });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Không thể cập nhật trạng thái hiển thị.');
     },
   });
 }

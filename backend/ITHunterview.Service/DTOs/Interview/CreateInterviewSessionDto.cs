@@ -9,5 +9,6 @@ namespace ITHunterview.Service.DTOs.Interview
         public Guid? JobId { get; set; }
         public Guid? CvId { get; set; }
         public string? AiProvider { get; set; } = "Gemini";
+        public string? Language { get; set; } = "vi";
     }
 }

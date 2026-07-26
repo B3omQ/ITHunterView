@@ -75,8 +75,13 @@ namespace ITHunterview.Service.UseCase
                 JobExpertise = j.JobExpertise,
                 JobDomain = j.JobDomain,
                 Skills = jobSkills.TryGetValue(j.Id, out var skills) ? skills : new List<string>(),
+
                 IsBanned = j.IsBanned,
                 BanReason = j.BanReason
+
+                ParseStatus = j.ParseStatus ?? "PENDING",
+                ParseError = j.ParseError
+
             }).ToList();
 
             var pagedResult = new PagedResult<JobPostingSummaryDto>
@@ -127,8 +132,9 @@ namespace ITHunterview.Service.UseCase
 
             var job = new JobPostings
             {
-                Id = Guid.NewGuid(),
-                JobCode = string.IsNullOrWhiteSpace(dto.JobCode) ? $"JB-{new Random().Next(1000, 9999)}" : dto.JobCode,
+                JobCode = string.IsNullOrWhiteSpace(dto.JobCode) 
+                    ? $"JB-{DateTime.UtcNow:yyyyMMddHHmmss}-{Random.Shared.Next(100, 999)}" 
+                    : dto.JobCode,
                 RecruiterId = recruiterId,
                 CompanyId = companyId.Value,
 
@@ -152,15 +158,21 @@ namespace ITHunterview.Service.UseCase
                 ViewCount = 0,
                 PublishedAt = dto.Status == JobStatus.PUBLISHED ? DateTime.UtcNow : null,
                 ExpiresAt = dto.ExpiresAt,
+                ParseStatus = "PENDING",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
-            await _jobPostingRepository.AddAsync(job);
-
-            if (dto.Skills != null && dto.Skills.Any())
+            using (var scope = new System.Transactions.TransactionScope(System.Transactions.TransactionScopeAsyncFlowOption.Enabled))
             {
-                await _jobPostingRepository.UpdateJobSkillsAsync(job.Id, dto.Skills);
+                await _jobPostingRepository.AddAsync(job);
+
+                if (dto.Skills != null && dto.Skills.Any())
+                {
+                    await _jobPostingRepository.UpdateJobSkillsAsync(job.Id, dto.Skills);
+                }
+
+                scope.Complete();
             }
 
             var detail = MapToDetailDto(job);
@@ -232,11 +244,16 @@ namespace ITHunterview.Service.UseCase
                 job.Status = dto.Status;
             }
 
-            await _jobPostingRepository.UpdateAsync(job);
-
-            if (dto.Skills != null)
+            using (var scope = new System.Transactions.TransactionScope(System.Transactions.TransactionScopeAsyncFlowOption.Enabled))
             {
-                await _jobPostingRepository.UpdateJobSkillsAsync(job.Id, dto.Skills);
+                await _jobPostingRepository.UpdateAsync(job);
+
+                if (dto.Skills != null)
+                {
+                    await _jobPostingRepository.UpdateJobSkillsAsync(job.Id, dto.Skills);
+                }
+
+                scope.Complete();
             }
 
             var detail = MapToDetailDto(job);
@@ -349,19 +366,25 @@ namespace ITHunterview.Service.UseCase
                 CreatedAt = j.CreatedAt,
                 IsBanned = j.IsBanned,
                 BanReason = j.BanReason
+                ParseStatus = j.ParseStatus ?? "PENDING",
+                ParseError = j.ParseError
             };
         }
 
         private async Task ParseJdBackgroundAsync(Guid jobId)
         {
+            using var scope = _scopeFactory.CreateScope();
+            var repo = scope.ServiceProvider.GetRequiredService<IJobPostingRepository>();
+            var aiService = scope.ServiceProvider.GetRequiredService<IAiService>();
+
+            var job = await repo.GetByIdAsync(jobId);
+            if (job == null) return;
+
             try
             {
-                using var scope = _scopeFactory.CreateScope();
-                var repo = scope.ServiceProvider.GetRequiredService<IJobPostingRepository>();
-                var aiService = scope.ServiceProvider.GetRequiredService<IAiService>();
-
-                var job = await repo.GetByIdAsync(jobId);
-                if (job == null) return;
+                job.ParseStatus = "PROCESSING";
+                job.UpdatedAt = DateTime.UtcNow;
+                await repo.UpdateAsync(job);
 
                 var rawText = $"Title: {job.Title}\nDescription: {job.Description}\nRequirements: {job.Requirements}\nBenefits: {job.Benefits}";
                 
@@ -375,13 +398,27 @@ namespace ITHunterview.Service.UseCase
                 if (cleanJson.EndsWith("```")) cleanJson = cleanJson.Substring(0, cleanJson.Length - 3);
                 cleanJson = cleanJson.Trim();
 
-                job.ParsedData = cleanJson;
-                await repo.UpdateAsync(job);
+                var freshJob = await repo.GetByIdAsync(jobId);
+                if (freshJob == null) return;
+
+                freshJob.ParsedData = cleanJson;
+                freshJob.ParseStatus = "SUCCESS";
+                freshJob.ParseError = null;
+                freshJob.UpdatedAt = DateTime.UtcNow;
+                await repo.UpdateAsync(freshJob);
                 _logger.LogInformation($"Successfully parsed and updated JD {jobId} in background.");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Failed to parse JD {jobId} in background");
+                var freshJob = await repo.GetByIdAsync(jobId);
+                if (freshJob != null)
+                {
+                    freshJob.ParseStatus = "FAILED";
+                    freshJob.ParseError = ex.Message;
+                    freshJob.UpdatedAt = DateTime.UtcNow;
+                    await repo.UpdateAsync(freshJob);
+                }
             }
         }
     }

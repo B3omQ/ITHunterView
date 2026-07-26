@@ -1,0 +1,55 @@
+services:
+  - type: web
+    name: ithunterview-backend
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    region: singapore
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:8080
+      - key: DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE
+        value: "false"
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: ithunterview-db
+          property: connectionString
+      - key: JwtSettings__Secret
+        generateValue: true
+      - key: JwtSettings__Issuer
+        value: ITHunterview
+      - key: JwtSettings__Audience
+        value: ITHunterview
+      - key: CloudinarySettings__CloudName
+        sync: false
+      - key: CloudinarySettings__ApiKey
+        sync: false
+      - key: CloudinarySettings__ApiSecret
+        sync: false
+      - key: AiSettings__Providers__Gemini__ApiKey
+        sync: false
+      - key: AiSettings__Providers__Gemini__Model
+        value: gemini-2.5-flash
+      - key: AiSettings__Providers__Gemini__Endpoint
+        value: https://api.shopaikey.com/v1beta/models
+      - key: SmtpSettings__Host
+        value: smtp.gmail.com
+      - key: SmtpSettings__Port
+        value: "587"
+      - key: SmtpSettings__Username
+        sync: false
+      - key: SmtpSettings__Password
+        sync: false
+      - key: FrontendUrl
+        sync: false
+
+databases:
+  - name: ithunterview-db
+    databaseName: ithunterview
+    user: ithunterview_user
+    plan: free
+    region: singapore
