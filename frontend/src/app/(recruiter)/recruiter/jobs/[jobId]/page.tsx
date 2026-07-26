@@ -259,11 +259,20 @@ export default function JobDetailPage() {
                 </p>
               </div>
 
-              {job.responsibilities && (
+              {job.incomeText && (
                 <div>
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-2">Key Responsibilities</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-2">Thu nhập</h3>
                   <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
-                    {job.responsibilities}
+                    {job.incomeText}
+                  </p>
+                </div>
+              )}
+
+              {job.workLocationText && (
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-2">Địa điểm làm việc cụ thể</h3>
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
+                    {job.workLocationText}
                   </p>
                 </div>
               )}

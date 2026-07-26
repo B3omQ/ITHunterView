@@ -22,5 +22,6 @@ namespace ITHunterview.Service.Interface.Persistence
         Task<List<JobSkillRequirementDto>> GetSkillsByJobIdAsync(Guid jobId);
         Task<Dictionary<Guid, List<string>>> GetSkillsForJobsAsync(List<Guid> jobIds);
         Task UpdateJobSkillsAsync(Guid jobId, List<JobSkillRequirementInputDto> skills);
+        Task<List<Guid>> ClaimPendingParseJobIdsAsync(int limit);
     }
 }

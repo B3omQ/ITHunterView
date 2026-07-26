@@ -28,7 +28,6 @@ export interface JobCardDto {
   maxSalary?: number;
   currency: string;
   location: string;
-  detailedLocation?: string;
   level?: string;
   workingModel?: string;
   jobExpertise?: string;
@@ -57,14 +56,14 @@ export interface JobDetailViewDto {
   companyId: string;
   logoUrl: string;
   description: string;
-  responsibilities: string;
   requirements: string;
   benefits: string;
+  incomeText: string;
+  workLocationText: string;
   minSalary?: number;
   maxSalary?: number;
   currency: string;
   location: string;
-  detailedLocation?: string;
   level?: string;
   workingModel?: string;
   jobExpertise?: string;

@@ -22,7 +22,6 @@ export default function CreateJobPage() {
     title: "",
 
     location: "",
-    detailedLocation: "",
 
     status: "DRAFT",
     minSalary: "",
@@ -30,9 +29,10 @@ export default function CreateJobPage() {
     currency: "USD",
     expiresAt: "",
     description: "",
-    responsibilities: "",
     requirements: "",
     benefits: "",
+    incomeText: "",
+    workLocationText: "",
     level: "",
     workingModel: "",
     jobExpertise: "",
@@ -117,9 +117,10 @@ export default function CreateJobPage() {
     if (niceToHaveSkills.length === 0) return "At least one Nice-to-have Skill is required"
 
     if (!formData.description.trim()) return "Job Description is required"
-    if (!formData.responsibilities.trim()) return "Key Responsibilities is required"
     if (!formData.requirements.trim()) return "Detailed Requirements is required"
     if (!formData.benefits.trim()) return "Perks & Benefits is required"
+    if (!formData.incomeText.trim()) return "Income is required"
+    if (!formData.workLocationText.trim()) return "Work location is required"
 
     if (!formData.expiresAt) return "Expiration Date is required"
 
@@ -268,17 +269,6 @@ export default function CreateJobPage() {
                     <option key={loc} value={loc}>{loc}</option>
                   ))}
                 </select>
-              </div>
-              <div className="space-y-2 col-span-1 md:col-span-1">
-                <Label htmlFor="detailedLocation" className="font-semibold text-zinc-700 dark:text-zinc-300">Detailed Location</Label>
-                <Input
-                  id="detailedLocation"
-                  name="detailedLocation"
-                  placeholder="e.g. 123 Nguyen Van Cu, District 5"
-                  value={formData.detailedLocation}
-                  onChange={handleChange}
-                  className="w-full focus-visible:ring-blue-500"
-                />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -548,14 +538,29 @@ export default function CreateJobPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="responsibilities" className="font-semibold text-zinc-700 dark:text-zinc-300">Key Responsibilities *</Label>
+              <Label htmlFor="incomeText" className="font-semibold text-zinc-700 dark:text-zinc-300">Thu nhập</Label>
               <textarea
-                id="responsibilities"
-                name="responsibilities"
-                rows={3}
-                placeholder="List major responsibilities (e.g. design scalable microservices, manage CI/CD)..."
+                id="incomeText"
+                name="incomeText"
+                rows={2}
+                required
+                placeholder="Ví dụ: Từ 10 - 20 triệu, Thỏa thuận, Lên đến $1000..."
                 className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                value={formData.responsibilities}
+                value={formData.incomeText}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="workLocationText" className="font-semibold text-zinc-700 dark:text-zinc-300">Địa điểm làm việc cụ thể</Label>
+              <textarea
+                id="workLocationText"
+                name="workLocationText"
+                rows={2}
+                required
+                placeholder="Ví dụ: Tòa nhà FPT, Quận 9, TP.HCM hoặc Remote toàn phần..."
+                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                value={formData.workLocationText}
                 onChange={handleChange}
               />
             </div>

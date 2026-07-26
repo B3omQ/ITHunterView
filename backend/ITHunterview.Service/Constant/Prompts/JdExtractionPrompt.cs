@@ -107,8 +107,9 @@ SCHEMA OUTPUT (bất biến):
     ""title"": ""Copy y nguyên chức danh"",
     ""description"": ""Copy y nguyên mô tả công việc"",
     ""requirements"": ""Copy y nguyên phần yêu cầu"",
-    ""responsibilities"": ""Copy y nguyên phần trách nhiệm"",
-    ""benefits"": ""Copy y nguyên phần quyền lợi""
+    ""benefits"": ""Copy y nguyên phần quyền lợi"",
+    ""income"": ""Copy y nguyên phần thu nhập"",
+    ""work_location"": ""Copy y nguyên phần địa điểm làm việc""
   },
   ""matching_metrics"": {
     ""job_titles_normalized"": [""Software Engineer"", ""Backend Developer""],

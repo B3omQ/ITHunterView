@@ -5,6 +5,7 @@ using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Job;
 using ITHunterview.Service.Interface.UseCase;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ITHunterview.WebAPI.Controllers
@@ -68,6 +69,7 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "RecruiterOnly")]
         public async Task<ActionResult<ResponseBase<JobPostingDetailDto>>> CreateJob([FromBody] CreateJobPostingDto dto)
         {
             var recruiterId = await ResolveRecruiterIdAsync();
@@ -85,9 +87,16 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Policy = "RecruiterOnly")]
         public async Task<ActionResult<ResponseBase<JobPostingDetailDto>>> UpdateJob(Guid id, [FromBody] UpdateJobPostingDto dto)
         {
-            var result = await _jobPostingsUseCase.UpdateJobAsync(id, dto);
+            var recruiterId = await ResolveRecruiterIdAsync();
+            if (recruiterId == Guid.Empty)
+            {
+                return Unauthorized();
+            }
+
+            var result = await _jobPostingsUseCase.UpdateJobAsync(id, dto, recruiterId);
             if (!result.Success)
             {
                 return BadRequest(result);
@@ -96,9 +105,16 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpPatch("{id}/close")]
+        [Authorize(Policy = "RecruiterOnly")]
         public async Task<ActionResult<ResponseBase<bool>>> CloseJob(Guid id)
         {
-            var result = await _jobPostingsUseCase.CloseJobAsync(id);
+            var recruiterId = await ResolveRecruiterIdAsync();
+            if (recruiterId == Guid.Empty)
+            {
+                return Unauthorized();
+            }
+
+            var result = await _jobPostingsUseCase.CloseJobAsync(id, recruiterId);
             if (!result.Success)
             {
                 return BadRequest(result);
@@ -107,6 +123,7 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpPost("{id:guid}/match-cvs")]
+        [Authorize(Policy = "RecruiterOnly")]
         public async Task<ActionResult<ResponseBase<string>>> MatchCvs(Guid id)
         {
             try
@@ -115,6 +132,16 @@ namespace ITHunterview.WebAPI.Controllers
                 if (!jobResult.Success)
                 {
                     return NotFound(new ResponseBase<string>("Job not found"));
+                }
+
+                var recruiterId = await ResolveRecruiterIdAsync();
+                if (recruiterId == Guid.Empty)
+                {
+                    return Unauthorized();
+                }
+                if (jobResult.Data!.RecruiterId != recruiterId)
+                {
+                    return Forbid();
                 }
 
                 var userIdStr = User.FindFirstValue("userId");
@@ -133,6 +160,7 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpPost("{id:guid}/match-cvs-hardcode")]
+        [Authorize(Policy = "RecruiterOnly")]
         public async Task<ActionResult<ResponseBase<string>>> MatchCvsHardcode(Guid id)
         {
             try
@@ -141,6 +169,16 @@ namespace ITHunterview.WebAPI.Controllers
                 if (!jobResult.Success)
                 {
                     return NotFound(new ResponseBase<string>("Job not found"));
+                }
+
+                var recruiterId = await ResolveRecruiterIdAsync();
+                if (recruiterId == Guid.Empty)
+                {
+                    return Unauthorized();
+                }
+                if (jobResult.Data!.RecruiterId != recruiterId)
+                {
+                    return Forbid();
                 }
 
                 var userIdStr = User.FindFirstValue("userId");
@@ -159,22 +197,48 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpGet("{id:guid}/matches")]
+        [Authorize(Policy = "RecruiterOnly")]
         public async Task<ActionResult<ResponseBase<PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>>> GetJobMatches(Guid id, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
-                var userIdStr = User.FindFirstValue("userId");
-                if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+                var jobResult = await _jobPostingsUseCase.GetJobByIdAsync(id);
+                if (!jobResult.Success)
+                {
+                    return NotFound(new ResponseBase<PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>("Job not found"));
+                }
+
+                var recruiterId = await ResolveRecruiterIdAsync();
+                if (recruiterId == Guid.Empty)
                 {
                     return Unauthorized();
                 }
+                if (jobResult.Data!.RecruiterId != recruiterId)
+                {
+                    return Forbid();
+                }
 
-                var result = await _cvJobMatchingUseCase.GetJobMatchHistoryAsync(id, userId, page, pageSize);
+                var result = await _cvJobMatchingUseCase.GetJobMatchHistoryAsync(id, page, pageSize);
                 return Ok(new ResponseBase<PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>(result, "Job matches retrieved"));
             }
             catch (Exception ex)
             {
                 return BadRequest(new ResponseBase<PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>(null, ex.Message));
+            }
+        }
+
+        [HttpPost("reparse-pending")]
+        [Authorize(Policy = "AdminOnly")]
+        public async Task<ActionResult<ResponseBase<string>>> ReparsePendingJobs([FromQuery] int limit = 50)
+        {
+            try
+            {
+                var result = await _jobPostingsUseCase.ReparsePendingJobsAsync(limit);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ResponseBase<string>(null, ex.Message));
             }
         }
 

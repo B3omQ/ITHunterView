@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.UseCase;
+using ITHunterview.Service.Helpers;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -95,7 +96,9 @@ namespace ITHunterview.Service.UseCase
                     var items = new List<string>();
                     foreach (var item in current.EnumerateArray())
                     {
-                        var str = item.GetString();
+                        var str = item.ValueKind == JsonValueKind.String
+                            ? item.GetString()
+                            : item.ToString();
                         if (!string.IsNullOrWhiteSpace(str)) items.Add(str);
                     }
                     return string.Join(", ", items);
@@ -198,7 +201,7 @@ namespace ITHunterview.Service.UseCase
             if (job.ExperienceEmbedding == null)
             {
                 var expText = ExtractJsonField(job.ParsedData, "matching_metrics.total_years_exp");
-                if (string.IsNullOrWhiteSpace(expText)) expText = job.Responsibilities ?? "No responsibilities provided";
+                if (string.IsNullOrWhiteSpace(expText)) expText = job.Requirements ?? "No requirements provided";
                 else expText += " years";
                 job.ExperienceEmbedding = new Vector(await _aiService.GenerateEmbeddingAsync(expText));
                 updated = true;
@@ -500,7 +503,7 @@ namespace ITHunterview.Service.UseCase
                 if (jdNeedsAiParse)
                 {
                     string rawJdText = savedJob != null
-                        ? $"Title: {savedJob.Title}\nDescription: {savedJob.Description}\nRequirements: {savedJob.Requirements}\nBenefits: {savedJob.Benefits}"
+                        ? JdTextHelper.BuildRawText(savedJob)
                         : request.RawJdText;
                     var promptStage1 = ITHunterview.Service.Constant.Prompts.JdExtractionPrompt.BuildUser(rawJdText);
                     jdTask = _textAiService.GenerateTextAsync(promptStage1, ITHunterview.Service.Constant.Prompts.JdExtractionPrompt.System);
@@ -1197,12 +1200,12 @@ namespace ITHunterview.Service.UseCase
             };
         }
 
-        public async Task<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>> GetJobMatchHistoryAsync(Guid jobId, Guid userId, int page, int pageSize)
+        public async Task<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>> GetJobMatchHistoryAsync(Guid jobId, int page, int pageSize)
         {
             var query = from s in _context.CvJobMatchScores
                         join c in _context.Cvs on s.CvId equals c.Id into cvs
                         from c in cvs.DefaultIfEmpty()
-                        where s.JobId == jobId && s.UserId == userId
+                        where s.JobId == jobId
                         orderby s.MatchScore descending
                         select new { Score = s, Cv = c };
 

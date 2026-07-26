@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -8,6 +9,7 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Job;
+using ITHunterview.Service.Helpers;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Interface.Service;
@@ -55,7 +57,6 @@ namespace ITHunterview.Service.UseCase
                 JobCode = j.JobCode,
                 Title = j.Title,
                 Location = j.Location,
-                DetailedLocation = j.DetailedLocation,
 
                 Status = j.Status,
                 ApplicationCount = j.ApplicationCount,
@@ -128,14 +129,14 @@ namespace ITHunterview.Service.UseCase
 
                 Title = dto.Title,
                 Description = dto.Description,
-                Responsibilities = dto.Responsibilities,
                 Requirements = dto.Requirements,
                 Benefits = dto.Benefits,
+                IncomeText = dto.IncomeText,
+                WorkLocationText = dto.WorkLocationText,
                 MinSalary = dto.MinSalary,
                 MaxSalary = dto.MaxSalary,
                 Currency = dto.Currency,
                 Location = dto.Location,
-                DetailedLocation = dto.DetailedLocation,
 
                 Status = dto.Status,
                 Level = dto.Level,
@@ -171,12 +172,17 @@ namespace ITHunterview.Service.UseCase
             return new ResponseBase<JobPostingDetailDto>(detail, "Job posting created successfully.");
         }
 
-        public async Task<ResponseBase<JobPostingDetailDto>> UpdateJobAsync(Guid id, UpdateJobPostingDto dto)
+        public async Task<ResponseBase<JobPostingDetailDto>> UpdateJobAsync(Guid id, UpdateJobPostingDto dto, Guid recruiterId)
         {
             var job = await _jobPostingRepository.GetByIdAsync(id);
             if (job == null)
             {
                 return new ResponseBase<JobPostingDetailDto>("Job posting not found.");
+            }
+
+            if (job.RecruiterId != recruiterId)
+            {
+                throw new UnauthorizedAccessException("You do not have permission to update this job posting.");
             }
 
             if (dto.ExpiresAt.HasValue && dto.ExpiresAt.Value > job.CreatedAt.AddDays(30))
@@ -188,20 +194,26 @@ namespace ITHunterview.Service.UseCase
 
             // Title is intentionally omitted from update to prevent changing the job title
             job.Description = dto.Description;
-            job.Responsibilities = dto.Responsibilities;
             job.Requirements = dto.Requirements;
             job.Benefits = dto.Benefits;
+            job.IncomeText = dto.IncomeText;
+            job.WorkLocationText = dto.WorkLocationText;
             job.MinSalary = dto.MinSalary;
             job.MaxSalary = dto.MaxSalary;
             job.Currency = dto.Currency;
             job.Location = dto.Location;
-            job.DetailedLocation = dto.DetailedLocation;
             job.ExpiresAt = dto.ExpiresAt;
 
             job.Level = dto.Level;
             job.WorkingModel = dto.WorkingModel;
             job.JobExpertise = dto.JobExpertise;
             job.JobDomain = dto.JobDomain;
+            job.ParsedData = null;
+            job.ParseStatus = "PENDING";
+            job.ParseError = null;
+            job.SkillsEmbedding = null;
+            job.ExperienceEmbedding = null;
+            job.DomainEmbedding = null;
             job.UpdatedAt = DateTime.UtcNow;
 
             if (job.Status != dto.Status)
@@ -241,12 +253,17 @@ namespace ITHunterview.Service.UseCase
             return new ResponseBase<JobPostingDetailDto>(detail, "Job posting updated successfully.");
         }
 
-        public async Task<ResponseBase<bool>> CloseJobAsync(Guid id)
+        public async Task<ResponseBase<bool>> CloseJobAsync(Guid id, Guid recruiterId)
         {
             var job = await _jobPostingRepository.GetByIdAsync(id);
             if (job == null)
             {
                 return new ResponseBase<bool>("Job posting not found.");
+            }
+
+            if (job.RecruiterId != recruiterId)
+            {
+                throw new UnauthorizedAccessException("You do not have permission to close this job posting.");
             }
 
             job.Status = JobStatus.CLOSED;
@@ -268,14 +285,14 @@ namespace ITHunterview.Service.UseCase
 
                 Title = j.Title,
                 Description = j.Description,
-                Responsibilities = j.Responsibilities,
                 Requirements = j.Requirements,
                 Benefits = j.Benefits,
+                IncomeText = j.IncomeText,
+                WorkLocationText = j.WorkLocationText,
                 MinSalary = j.MinSalary,
                 MaxSalary = j.MaxSalary,
                 Currency = j.Currency,
                 Location = j.Location,
-                DetailedLocation = j.DetailedLocation,
 
                 Status = j.Status,
                 Level = j.Level,
@@ -307,7 +324,7 @@ namespace ITHunterview.Service.UseCase
                 job.UpdatedAt = DateTime.UtcNow;
                 await repo.UpdateAsync(job);
 
-                var rawText = $"Title: {job.Title}\nDescription: {job.Description}\nRequirements: {job.Requirements}\nBenefits: {job.Benefits}";
+                var rawText = JdTextHelper.BuildRawText(job);
                 
                 var prompt = JdExtractionPrompt.BuildUser(rawText);
                 var aiResponse = await aiService.GenerateTextAsync(prompt, JdExtractionPrompt.System);
@@ -341,6 +358,32 @@ namespace ITHunterview.Service.UseCase
                     await repo.UpdateAsync(freshJob);
                 }
             }
+        }
+
+        public async Task<ResponseBase<string>> ReparsePendingJobsAsync(int limit = 50)
+        {
+            limit = Math.Clamp(limit, 1, 20);
+            var jobIds = await _jobPostingRepository.ClaimPendingParseJobIdsAsync(limit);
+            if (!jobIds.Any())
+            {
+                return new ResponseBase<string>(string.Empty, "No pending jobs found to parse.");
+            }
+
+            using var concurrencyLimiter = new SemaphoreSlim(5);
+            await Task.WhenAll(jobIds.Select(async jobId =>
+            {
+                await concurrencyLimiter.WaitAsync();
+                try
+                {
+                    await ParseJdBackgroundAsync(jobId);
+                }
+                finally
+                {
+                    concurrencyLimiter.Release();
+                }
+            }));
+
+            return new ResponseBase<string>($"Reparse completed for {jobIds.Count} jobs.");
         }
     }
 }

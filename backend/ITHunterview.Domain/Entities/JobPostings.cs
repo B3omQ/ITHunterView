@@ -49,14 +49,17 @@ namespace ITHunterview.Domain.Entities
         [Column("description")]
         public string Description { get; set; }
 
-        [Column("responsibilities")]
-        public string Responsibilities { get; set; }
-
         [Column("requirements")]
         public string Requirements { get; set; }
 
         [Column("benefits")]
         public string Benefits { get; set; }
+
+        [Column("income_text")]
+        public string IncomeText { get; set; } = string.Empty;
+
+        [Column("work_location_text")]
+        public string WorkLocationText { get; set; } = string.Empty;
 
         [Column("min_salary")]
         public decimal? MinSalary { get; set; }
@@ -69,9 +72,6 @@ namespace ITHunterview.Domain.Entities
 
         [Column("location")]
         public string Location { get; set; }
-
-        [Column("detailed_location")]
-        public string? DetailedLocation { get; set; }
 
         [Column("status")]
         public JobStatus Status { get; set; }

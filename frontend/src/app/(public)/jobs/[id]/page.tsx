@@ -118,10 +118,19 @@ export default function PublicJobDetailPage() {
             <div className="prose max-w-none text-slate-700 whitespace-pre-wrap">{job.description}</div>
           </section>
 
-          <section>
-            <h3 className="text-lg font-semibold mb-3 border-l-4 border-primary pl-3">Responsibilities</h3>
-            <div className="prose max-w-none text-slate-700 whitespace-pre-wrap">{job.responsibilities}</div>
-          </section>
+          {job.incomeText && (
+            <section>
+              <h3 className="text-lg font-semibold mb-3 border-l-4 border-primary pl-3">Thu nhập</h3>
+              <div className="prose max-w-none text-slate-700 whitespace-pre-wrap">{job.incomeText}</div>
+            </section>
+          )}
+
+          {job.workLocationText && (
+            <section>
+              <h3 className="text-lg font-semibold mb-3 border-l-4 border-primary pl-3">Địa điểm làm việc cụ thể</h3>
+              <div className="prose max-w-none text-slate-700 whitespace-pre-wrap">{job.workLocationText}</div>
+            </section>
+          )}
 
           <section>
             <h3 className="text-lg font-semibold mb-3 border-l-4 border-primary pl-3">Requirements</h3>

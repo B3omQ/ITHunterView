@@ -23,16 +23,16 @@ export default function EditJobPage() {
     title: "",
 
     location: "",
-    detailedLocation: "",
 
     status: "DRAFT",
     minSalary: "",
     maxSalary: "",
     expiresAt: "",
     description: "",
-    responsibilities: "",
     requirements: "",
     benefits: "",
+    incomeText: "",
+    workLocationText: "",
     level: "",
     workingModel: "",
     jobExpertise: "",
@@ -65,16 +65,16 @@ export default function EditJobPage() {
         title: job.title || "",
 
         location: job.location || "",
-        detailedLocation: job.detailedLocation || "",
 
         status: job.status || "DRAFT",
         minSalary: job.minSalary ? job.minSalary.toString() : "",
         maxSalary: job.maxSalary ? job.maxSalary.toString() : "",
         expiresAt: job.expiresAt ? new Date(job.expiresAt).toISOString().split("T")[0] : "",
         description: job.description || "",
-        responsibilities: job.responsibilities || "",
         requirements: job.requirements || "",
         benefits: job.benefits || "",
+        incomeText: job.incomeText || "",
+        workLocationText: job.workLocationText || "",
         level: job.level || "",
         workingModel: job.workingModel || "",
         jobExpertise: job.jobExpertise || "",
@@ -152,9 +152,10 @@ export default function EditJobPage() {
     if (niceToHaveSkills.length === 0) return "At least one Nice-to-have Skill is required"
 
     if (!formData.description.trim()) return "Job Description is required"
-    if (!formData.responsibilities.trim()) return "Key Responsibilities is required"
     if (!formData.requirements.trim()) return "Detailed Requirements is required"
     if (!formData.benefits.trim()) return "Perks & Benefits is required"
+    if (!formData.incomeText.trim()) return "Income is required"
+    if (!formData.workLocationText.trim()) return "Work location is required"
 
     if (!formData.expiresAt) return "Expiration Date is required"
 
@@ -309,17 +310,6 @@ export default function EditJobPage() {
                     <option key={loc} value={loc}>{loc}</option>
                   ))}
                 </select>
-              </div>
-              <div className="space-y-2 col-span-1 md:col-span-1">
-                <Label htmlFor="detailedLocation" className="font-semibold text-zinc-700 dark:text-zinc-300">Detailed Location</Label>
-                <Input
-                  id="detailedLocation"
-                  name="detailedLocation"
-                  placeholder="e.g. 123 Nguyen Van Cu, District 5"
-                  value={formData.detailedLocation}
-                  onChange={handleChange}
-                  className="w-full focus-visible:ring-blue-500"
-                />
               </div>
             </div>
 
@@ -592,14 +582,29 @@ export default function EditJobPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="responsibilities" className="font-semibold text-zinc-700 dark:text-zinc-300">Key Responsibilities *</Label>
+              <Label htmlFor="incomeText" className="font-semibold text-zinc-700 dark:text-zinc-300">Thu nhập</Label>
               <textarea
-                id="responsibilities"
-                name="responsibilities"
-                rows={3}
-                placeholder="List major responsibilities..."
-                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-955 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                value={formData.responsibilities}
+                id="incomeText"
+                name="incomeText"
+                rows={2}
+                required
+                placeholder="Ví dụ: Từ 10 - 20 triệu, Thỏa thuận, Lên đến $1000..."
+                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                value={formData.incomeText}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="workLocationText" className="font-semibold text-zinc-700 dark:text-zinc-300">Địa điểm làm việc cụ thể</Label>
+              <textarea
+                id="workLocationText"
+                name="workLocationText"
+                rows={2}
+                required
+                placeholder="Ví dụ: Tòa nhà FPT, Quận 9, TP.HCM hoặc Remote toàn phần..."
+                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                value={formData.workLocationText}
                 onChange={handleChange}
               />
             </div>

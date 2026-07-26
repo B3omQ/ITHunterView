@@ -192,10 +192,17 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
             </section>
           )}
 
-          {job.responsibilities && (
+          {job.incomeText && (
             <section>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Responsibilities</h2>
-              <div className="prose prose-slate max-w-none text-slate-700 whitespace-pre-wrap leading-relaxed">{job.responsibilities}</div>
+              <h2 className="text-xl font-bold text-slate-900 mb-4">Thu nhập</h2>
+              <div className="prose prose-slate max-w-none text-slate-700 whitespace-pre-wrap leading-relaxed">{job.incomeText}</div>
+            </section>
+          )}
+
+          {job.workLocationText && (
+            <section>
+              <h2 className="text-xl font-bold text-slate-900 mb-4">Địa điểm làm việc cụ thể</h2>
+              <div className="prose prose-slate max-w-none text-slate-700 whitespace-pre-wrap leading-relaxed">{job.workLocationText}</div>
             </section>
           )}
 

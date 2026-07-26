@@ -12,15 +12,15 @@ export interface JobPosting {
   jobCode: string;
   title: string;
   location: string;
-  detailedLocation?: string;
+  workLocationText: string;
   status: string;
   minSalary: number | null;
   maxSalary: number | null;
   currency: string;
   description: string;
-  responsibilities?: string;
-  requirements?: string;
-  benefits?: string;
+  requirements: string;
+  benefits: string;
+  incomeText: string;
   level?: string;
   workingModel?: string;
   jobExpertise?: string;
@@ -39,8 +39,6 @@ export interface JobPostingSummary {
   jobCode: string;
   title: string;
   location: string;
-  detailedLocation?: string;
-
   status: string;
   applicationCount: number;
   viewCount: number;
@@ -72,15 +70,15 @@ export interface CreateJobPostingDto {
   jobCode: string;
   title: string;
   location: string;
-  detailedLocation?: string;
+  workLocationText: string;
   status: string;
   minSalary: number | null;
   maxSalary: number | null;
   currency: string;
   description: string;
-  responsibilities?: string;
-  requirements?: string;
-  benefits?: string;
+  requirements: string;
+  benefits: string;
+  incomeText: string;
   level?: string;
   workingModel?: string;
   jobExpertise?: string;

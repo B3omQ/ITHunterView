@@ -124,5 +124,33 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             await _context.SaveChangesAsync();
         }
+
+        public async Task<List<Guid>> ClaimPendingParseJobIdsAsync(int limit)
+        {
+            var candidateIds = await _context.JobPostings
+                .Where(j => j.ParseStatus == "PENDING" && j.DeletedAt == null)
+                .OrderBy(j => j.CreatedAt)
+                .Take(limit)
+                .Select(j => j.Id)
+                .ToListAsync();
+
+            var claimedIds = new List<Guid>();
+            foreach (var id in candidateIds)
+            {
+                var claimed = await _context.JobPostings
+                    .Where(j => j.Id == id && j.ParseStatus == "PENDING" && j.DeletedAt == null)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(j => j.ParseStatus, "PROCESSING")
+                        .SetProperty(j => j.ParseError, (string?)null)
+                        .SetProperty(j => j.UpdatedAt, DateTime.UtcNow));
+
+                if (claimed == 1)
+                {
+                    claimedIds.Add(id);
+                }
+            }
+
+            return claimedIds;
+        }
     }
 }

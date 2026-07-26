@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 using ITHunterview.Domain.Enums;
 
 namespace ITHunterview.Service.DTOs.Job
@@ -9,7 +10,6 @@ namespace ITHunterview.Service.DTOs.Job
         public string JobCode { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public string Location { get; set; } = string.Empty;
-        public string? DetailedLocation { get; set; }
 
         public JobStatus Status { get; set; }
         public int ApplicationCount { get; set; }
@@ -35,14 +35,16 @@ namespace ITHunterview.Service.DTOs.Job
 
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        public string Responsibilities { get; set; } = string.Empty;
+
         public string Requirements { get; set; } = string.Empty;
+
         public string Benefits { get; set; } = string.Empty;
+        public string IncomeText { get; set; } = string.Empty;
+        public string WorkLocationText { get; set; } = string.Empty;
         public decimal? MinSalary { get; set; }
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; } = "USD";
         public string Location { get; set; } = string.Empty;
-        public string? DetailedLocation { get; set; }
 
         public JobStatus Status { get; set; }
         public int ApplicationCount { get; set; }
@@ -64,15 +66,28 @@ namespace ITHunterview.Service.DTOs.Job
         public string JobCode { get; set; } = string.Empty;
 
         public string Title { get; set; } = string.Empty;
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(10000)]
         public string Description { get; set; } = string.Empty;
-        public string Responsibilities { get; set; } = string.Empty;
+
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(10000)]
         public string Requirements { get; set; } = string.Empty;
+
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(10000)]
         public string Benefits { get; set; } = string.Empty;
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(4000)]
+        public string IncomeText { get; set; } = string.Empty;
+
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(4000)]
+        public string WorkLocationText { get; set; } = string.Empty;
         public decimal? MinSalary { get; set; }
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; } = "USD";
         public string Location { get; set; } = string.Empty;
-        public string? DetailedLocation { get; set; }
 
         public JobStatus Status { get; set; } = JobStatus.DRAFT;
         public DateTime? ExpiresAt { get; set; }
@@ -88,15 +103,28 @@ namespace ITHunterview.Service.DTOs.Job
         public string JobCode { get; set; } = string.Empty;
 
         public string Title { get; set; } = string.Empty;
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(10000)]
         public string Description { get; set; } = string.Empty;
-        public string Responsibilities { get; set; } = string.Empty;
+
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(10000)]
         public string Requirements { get; set; } = string.Empty;
+
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(10000)]
         public string Benefits { get; set; } = string.Empty;
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(4000)]
+        public string IncomeText { get; set; } = string.Empty;
+
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(4000)]
+        public string WorkLocationText { get; set; } = string.Empty;
         public decimal? MinSalary { get; set; }
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; } = "USD";
         public string Location { get; set; } = string.Empty;
-        public string? DetailedLocation { get; set; }
 
         public JobStatus Status { get; set; }
         public DateTime? ExpiresAt { get; set; }
