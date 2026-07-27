@@ -13,8 +13,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Loader2, Sparkles, Info, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Loader2, Sparkles, Info, ArrowLeft, CheckCircle2, Coins, Zap } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useWalletBalance } from '@/hooks/useWallet';
+import { usePublicCoinConfig } from '@/hooks/useCoin';
+import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 
 const SFIA_LEVEL_HINTS: Record<number, { title: string; essence: string }> = {
   1: { title: "Follow", essence: "Works under close supervision. Uses little discretion." },
@@ -33,6 +37,19 @@ export default function NewLearningPathPage() {
   const generateMutation = useGenerateLearningPath();
   const extractFromCvJdMutation = useExtractFromCvJd();
   const extractFromInterviewMutation = useExtractFromInterview();
+
+  const { data: walletRes } = useWalletBalance();
+  const { data: coinConfigRes } = usePublicCoinConfig();
+
+  const balance = walletRes?.data?.balance ?? 0;
+  const activeSubName = walletRes?.data?.activeSubscriptionName;
+  const learningPathCost = coinConfigRes?.data?.featureCosts?.learningPath ?? 500;
+  const learningPathLimit = walletRes?.data?.learningPathLimit ?? (walletRes?.data?.learningPathSlotLimit ?? 0);
+  const learningPathUsed = walletRes?.data?.learningPathUsed ?? 0;
+
+  const isSubUnlimited = activeSubName && (learningPathLimit === -1 || learningPathLimit >= 999);
+  const subRemaining = activeSubName && !isSubUnlimited ? Math.max(0, (learningPathLimit || 0) - learningPathUsed) : 0;
+  const hasActiveSub = !!activeSubName && (isSubUnlimited || subRemaining > 0);
 
   const { data: matchHistoryData } = useGetMatchHistory(1, 50);
   const { data: interviewSessionsData } = useGetInterviewSessions();
@@ -77,6 +94,20 @@ export default function NewLearningPathPage() {
   };
 
   const handleGenerate = () => {
+    if (!hasActiveSub && balance < learningPathCost) {
+      toast.error(
+        <div className="flex flex-col gap-2">
+          <div className="font-semibold text-rose-600">Số dư ví không đủ!</div>
+          <div className="text-sm">Tính năng tạo Lộ trình học thuật (Learning Path) cần <b>{learningPathCost.toLocaleString()} Coin</b>. Bạn hiện có <b>{balance.toLocaleString()} Coin</b>.</div>
+          <a href="/candidate/top-up" className="inline-block mt-1 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white py-1 px-3 rounded text-center transition">
+            Nạp ngay
+          </a>
+        </div>,
+        { duration: 5000 }
+      );
+      return;
+    }
+
     if (customProfile) {
       generateMutation.mutate({
         customTargetRoleName: customProfile.customRoleName,
@@ -195,6 +226,55 @@ export default function NewLearningPathPage() {
             Configure your target role and assess your skills to generate a personalized journey.
           </p>
         </div>
+      </div>
+
+      {/* Feature Cost & Wallet Balance Banner */}
+      <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500/10 via-amber-500/10 to-transparent border border-purple-500/20 shadow-sm flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-500 shadow-inner">
+            {hasActiveSub ? <Zap className="h-5 w-5 text-purple-600 dark:text-purple-400 fill-purple-600/20" /> : <Coins className="h-5 w-5 text-amber-500 fill-amber-500/20" />}
+          </div>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Phí dịch vụ:</span>
+              {hasActiveSub ? (
+                <>
+                  <Badge className="bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 shadow-sm">
+                    FREE ({activeSubName})
+                  </Badge>
+                  <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
+                    {isSubUnlimited ? "• Vô hạn lượt" : `• Còn ${subRemaining}/${learningPathLimit} lượt`}
+                  </span>
+                </>
+              ) : (
+                <span className="text-sm font-black text-amber-600 dark:text-amber-400">
+                  {learningPathCost.toLocaleString()} Coin / Lượt
+                </span>
+              )}
+            </div>
+            {!!activeSubName && !hasActiveSub && (
+              <span className="text-xs text-rose-500 mt-0.5 font-medium">
+                Gói {activeSubName} đã hết lượt miễn phí. Chuyển sang trừ Coin:
+              </span>
+            )}
+            {!hasActiveSub && (
+              <span className="text-xs text-muted-foreground mt-0.5 font-medium">
+                Số dư hiện tại: <strong className={balance < learningPathCost ? "text-rose-500 font-bold" : "text-emerald-600 font-bold"}>{balance.toLocaleString()} Coin</strong>
+              </span>
+            )}
+          </div>
+        </div>
+
+        {!hasActiveSub && balance < learningPathCost && (
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => router.push('/candidate/top-up')}
+            className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold px-3 py-1.5 text-xs rounded-lg shadow-md hover:shadow-amber-500/25 transition-all shrink-0"
+          >
+            Nạp Coin
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -594,11 +674,19 @@ export default function NewLearningPathPage() {
           )}
 
           <Button
-            className="w-full mt-6"
-            disabled={isGenerateDisabled()}
+            className={`w-full mt-6 text-base font-semibold transition-all ${
+              !hasActiveSub && balance < learningPathCost
+                ? "bg-rose-500 hover:bg-rose-600 text-white opacity-90 cursor-not-allowed"
+                : ""
+            }`}
+            disabled={isGenerateDisabled() || (!hasActiveSub && balance < learningPathCost)}
             onClick={handleGenerate}
           >
-            Generate Learning Path
+            {!hasActiveSub && balance < learningPathCost ? (
+              `Không đủ Coin (${balance.toLocaleString()}/${learningPathCost.toLocaleString()})`
+            ) : (
+              `Generate Learning Path ${hasActiveSub ? "(Free)" : `(-${learningPathCost.toLocaleString()} Coin)`}`
+            )}
           </Button>
 
           {isAnyError && (

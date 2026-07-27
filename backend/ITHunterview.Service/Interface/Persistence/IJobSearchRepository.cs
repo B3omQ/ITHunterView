@@ -9,5 +9,6 @@ namespace ITHunterview.Service.Interface.Persistence
     {
         Task<PaginatedDataResponse<JobCardDto>> SearchJobsAsync(JobSearchQueryDto query, Guid? userId = null);
         Task<JobDetailViewDto?> GetJobDetailAsync(Guid jobId, Guid? userId = null);
+        Task<System.Collections.Generic.List<JobCardDto>> GetFeaturedTopJobsAsync(int limit = 6);
     }
 }

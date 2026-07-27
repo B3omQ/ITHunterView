@@ -22,8 +22,12 @@ import {
   ChevronDown as ChevronDownIcon,
   Check as CheckIcon,
   LogOut as LogOutIcon,
-  LayoutDashboard as LayoutDashboardIcon
+  LayoutDashboard as LayoutDashboardIcon,
+  Sparkles as SparklesIcon
 } from "lucide-react"
+import { jobService } from "@/services/job.service"
+import { JobCard } from "@/components/shared/JobCard"
+import type { JobCardDto } from "@/types/job.types"
 
 const LOCATIONS = [
   "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Cần Thơ", "Hải Phòng",
@@ -51,8 +55,17 @@ export default function Home() {
     return removeAccents(loc).includes(removeAccents(searchLoc));
   });
 
+  const [featuredJobs, setFeaturedJobs] = useState<JobCardDto[]>([])
+  const [loadingFeatured, setLoadingFeatured] = useState(true)
+
   useEffect(() => {
     setMounted(true)
+    jobService.getFeaturedTopJobs(6)
+      .then((res) => {
+        if (res.data) setFeaturedJobs(res.data)
+      })
+      .catch((err) => console.error("Error fetching featured top jobs:", err))
+      .finally(() => setLoadingFeatured(false))
   }, [])
 
   const handleSearch = () => {
@@ -233,6 +246,59 @@ export default function Home() {
         </div>
       </section>
 
+      <hr className="border-border w-full" />
+
+      {/* Featured Top Jobs Section (Dưới Hero Section) */}
+      <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full relative z-10">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+          <div className="text-left">
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-extrabold bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 text-orange-600 dark:text-orange-400 border border-orange-500/30 shadow-sm mb-3 uppercase tracking-wide">
+              <SparklesIcon className="h-3.5 w-3.5 fill-orange-500 animate-spin" style={{ animationDuration: '6s' }} />
+              Việc Làm Top Trang Chủ 24H
+            </div>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-foreground tracking-tight flex items-center gap-3">
+              Việc Làm Nổi Bật Tốt Nhất
+              <span className="inline-flex h-3 w-3 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-gradient-to-tr from-amber-500 to-orange-600"></span>
+              </span>
+            </h2>
+            <p className="text-muted-foreground mt-2 text-sm sm:text-base md:text-lg max-w-2xl">
+              Các vị trí IT hot nhất từ top nhà tuyển dụng uy tín, được ưu tiên đẩy Top và tuyển gấp trong ngày!
+            </p>
+          </div>
+          <Link
+            href="/jobs"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-zinc-100 dark:bg-zinc-800/80 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-600 text-sm font-bold text-zinc-800 dark:text-zinc-200 transition-all shadow-sm shrink-0 group"
+          >
+            <span>Khám phá tất cả việc làm</span>
+            <ArrowRightIcon size={16} className="group-hover:translate-x-1.5 transition-transform" />
+          </Link>
+        </div>
+
+        {loadingFeatured ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((item) => (
+              <div key={item} className="h-64 rounded-2xl bg-zinc-100 dark:bg-zinc-800/50 animate-pulse border border-zinc-200/50 dark:border-zinc-700/50" />
+            ))}
+          </div>
+        ) : featuredJobs.length === 0 ? (
+          <div className="glass-panel text-center py-16 px-6 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 shadow-inner">
+            <SparklesIcon className="h-10 w-10 text-zinc-400 mx-auto mb-3 opacity-50" />
+            <p className="text-muted-foreground text-base font-medium">Hiện chưa có việc làm nào được đẩy lên Top trong 24 giờ qua.</p>
+            <p className="text-xs text-zinc-400 mt-1">Hãy là nhà tuyển dụng đầu tiên đẩy tin tuyển dụng của bạn lên Top vị trí này!</p>
+            <Link href="/jobs" className="mt-5 inline-block text-sm text-primary font-bold px-6 py-2 bg-primary/10 rounded-full hover:bg-primary hover:text-white transition-colors">Xem toàn bộ danh sách việc làm</Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+            {featuredJobs.map((job) => (
+              <div key={job.id} className="transition-all duration-300 hover:-translate-y-2 h-full">
+                <JobCard job={{ ...job, isPushedTop: true }} />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <hr className="border-border w-full" />
 

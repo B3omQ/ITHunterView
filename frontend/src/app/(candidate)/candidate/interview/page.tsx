@@ -11,6 +11,9 @@ import {
 import { useGetMyCvs } from '@/hooks/useCv';
 import { usePublicJobs } from '@/hooks/usePublicJobs';
 import { useJobDetail } from '@/hooks/useJobDetail';
+import { useWalletBalance } from '@/hooks/useWallet';
+import { usePublicCoinConfig } from '@/hooks/useCoin';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -59,6 +62,8 @@ import {
   MoreHorizontal,
   Eye,
   Globe,
+  Coins,
+  Zap,
 } from 'lucide-react';
 import type { DifficultyLevel } from '@/types/interview.types';
 import { toast } from 'sonner';
@@ -88,6 +93,18 @@ function CandidateInterviewContent() {
   );
   const startSessionMutation = useCreateInterviewSession();
   const deleteSessionMutation = useDeleteInterviewSession();
+  const { data: walletRes } = useWalletBalance();
+  const { data: coinConfigRes } = usePublicCoinConfig();
+
+  const balance = walletRes?.data?.balance ?? 0;
+  const activeSubName = walletRes?.data?.activeSubscriptionName;
+  const mockInterviewCost = coinConfigRes?.data?.featureCosts?.mockInterview ?? 2000;
+  
+  const mockLimit = walletRes?.data?.mockInterviewLimit ?? 0;
+  const mockUsed = walletRes?.data?.mockInterviewUsed ?? 0;
+  const isSubUnlimited = mockLimit === -1;
+  const subRemaining = isSubUnlimited ? -1 : Math.max(0, mockLimit - mockUsed);
+  const hasActiveSub = !!activeSubName && (isSubUnlimited || subRemaining > 0);
 
   const sessions = sessionsRes?.data || [];
   const cvs = cvsRes?.data || [];
@@ -131,6 +148,33 @@ function CandidateInterviewContent() {
   };
 
   const handleStartInterview = async () => {
+    if (!hasActiveSub && balance < mockInterviewCost) {
+      toast.error(
+        <div className="flex flex-col gap-1.5">
+          <span className="font-semibold text-rose-600 dark:text-rose-400">Số dư Coin không đủ!</span>
+          <span className="text-xs text-muted-foreground">
+            Bạn có {balance.toLocaleString()} Coin nhưng tính năng này yêu cầu {mockInterviewCost.toLocaleString()} Coin.
+          </span>
+          <div className="flex items-center gap-2 mt-1">
+            <button 
+              onClick={() => { setIsOpen(false); router.push('/candidate/top-up'); }}
+              className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white font-medium text-xs rounded-lg shadow-sm transition"
+            >
+              Nạp ngay
+            </button>
+            <button 
+              onClick={() => { setIsOpen(false); router.push('/candidate/pricing'); }}
+              className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs rounded-lg shadow-sm transition"
+            >
+              Xem Gói cước
+            </button>
+          </div>
+        </div>,
+        { duration: 6000 }
+      );
+      return;
+    }
+
     try {
       const res = await startSessionMutation.mutateAsync({
         difficultyLevel: difficulty,
@@ -142,12 +186,20 @@ function CandidateInterviewContent() {
 
       if (res.success && res.data) {
         setIsOpen(false);
+        toast.success(
+          hasActiveSub 
+            ? `Bắt đầu phỏng vấn AI (Miễn phí từ gói ${activeSubName}${isSubUnlimited ? "" : `, còn ${Math.max(0, subRemaining - 1)} lượt`})!`
+            : `Đã sử dụng ${mockInterviewCost.toLocaleString()} Coin để tạo phòng phỏng vấn AI!`
+        );
         router.push(`/candidate/interview/${res.data.id}`);
       } else {
+
         toast.error(res.message || 'Error starting interview');
+
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error(err?.response?.data?.message || err.message || 'Có lỗi xảy ra khi tạo phòng phỏng vấn.');
     }
   };
 
@@ -481,6 +533,58 @@ function CandidateInterviewContent() {
                 </DialogDescription>
               </DialogHeader>
 
+              {/* Feature Cost & Wallet Balance Banner */}
+              <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500/10 via-amber-500/10 to-transparent border border-purple-500/20 shadow-sm flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-500 shadow-inner">
+                    {hasActiveSub ? <Zap className="h-5 w-5 text-purple-600 dark:text-purple-400 fill-purple-600/20" /> : <Coins className="h-5 w-5 text-amber-500 fill-amber-500/20" />}
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Phí dịch vụ:</span>
+                      {hasActiveSub ? (
+                        <>
+                          <Badge className="bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 shadow-sm">
+                            FREE ({activeSubName})
+                          </Badge>
+                          <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
+                            {isSubUnlimited ? "• Vô hạn lượt" : `• Còn ${subRemaining}/${mockLimit} lượt`}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-sm font-black text-amber-600 dark:text-amber-400">
+                          {mockInterviewCost.toLocaleString()} Coin / Lượt
+                        </span>
+                      )}
+                    </div>
+                    {!!activeSubName && !hasActiveSub && (
+                      <span className="text-xs text-rose-500 mt-0.5 font-medium">
+                        Gói {activeSubName} đã hết lượt miễn phí. Chuyển sang trừ Coin:
+                      </span>
+                    )}
+                    {!hasActiveSub && (
+                      <span className="text-xs text-muted-foreground mt-0.5 font-medium">
+                        Số dư hiện tại: <strong className={balance < mockInterviewCost ? "text-rose-500 font-bold" : "text-emerald-600 font-bold"}>{balance.toLocaleString()} Coin</strong>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {!hasActiveSub && balance < mockInterviewCost && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      setIsOpen(false);
+                      router.push('/candidate/top-up');
+                    }}
+                    className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold px-3 py-1.5 text-xs rounded-lg shadow-md hover:shadow-amber-500/25 transition-all shrink-0"
+                  >
+                    Nạp Coin
+                  </Button>
+                )}
+              </div>
+
               <div className="space-y-5 py-2">
                 {/* Choose CV */}
                 <div className="space-y-2">
@@ -658,14 +762,20 @@ function CandidateInterviewContent() {
               </Button>
               <Button
                 onClick={handleStartInterview}
-                disabled={startSessionMutation.isPending}
-                className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center justify-center gap-2 transition-colors"
+                disabled={startSessionMutation.isPending || (!hasActiveSub && balance < mockInterviewCost)}
+                className={`w-full h-10 font-semibold flex items-center justify-center gap-2 transition-colors ${
+                  !hasActiveSub && balance < mockInterviewCost
+                    ? "bg-rose-500 hover:bg-rose-600 text-white opacity-90 cursor-not-allowed"
+                    : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                }`}
               >
                 {startSessionMutation.isPending ? (
                   <>Initializing interview...</>
+                ) : !hasActiveSub && balance < mockInterviewCost ? (
+                  <>Không đủ Coin ({balance.toLocaleString()}/{mockInterviewCost.toLocaleString()})</>
                 ) : (
                   <>
-                    <Play className="h-4 w-4 fill-current" /> Start Now
+                    <Play className="h-4 w-4 fill-current" /> Start Now {hasActiveSub ? "(Free)" : `(-${mockInterviewCost.toLocaleString()} Coin)`}
                   </>
                 )}
               </Button>

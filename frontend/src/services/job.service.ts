@@ -14,6 +14,11 @@ export const jobService = {
       .get<ApiResponse<JobDetailViewDto>>(`/api/public/jobs/${id}`)
       .then((r) => r.data),
 
+  getFeaturedTopJobs: (limit = 6) =>
+    api
+      .get<ApiResponse<JobCardDto[]>>('/api/public/jobs/featured-top', { params: { limit } })
+      .then((r) => r.data),
+
   // Candidate APIs
   getCandidateJobs: (query?: JobSearchQuery) =>
     api

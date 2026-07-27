@@ -1,10 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useJobs } from "@/hooks/useJobs"
 import { useSignalR } from "@/hooks/useSignalR"
+import { useWalletBalance } from "@/hooks/useWallet"
+import { recruiterService } from "@/services/recruiter.service"
 import { AiParseStatusBadge } from "@/components/shared/AiParseStatusBadge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,13 +26,75 @@ import {
   Layers,
   Target,
   Monitor,
-  Ban
+  Ban,
+  CalendarPlus,
+  Sparkles,
+  Coins,
+  AlertTriangle,
+  Rocket,
+  Flame,
+  TrendingUp
 } from "lucide-react"
 
 export default function JobPostingsPage() {
   const router = useRouter()
   const pageSize = 7 // Matches mockup showing 7 items
   
+  const { data: walletRes, refetch: refetchWallet } = useWalletBalance()
+  const walletData = walletRes?.data
+  const jobSlotsLimit = walletData?.jobSlotsLimit ?? 1
+  const jobSlotsUsed = walletData?.jobSlotsUsed ?? 0
+  const isSlotFull = jobSlotsLimit !== -1 && jobSlotsUsed >= jobSlotsLimit
+
+  const jobExtendLimit = walletData?.jobExtendLimit ?? 0
+  const jobExtendUsed = walletData?.jobExtendUsed ?? 0
+  const isExtendQuotaFull = jobExtendLimit !== -1 && (jobExtendLimit === 0 || jobExtendUsed >= jobExtendLimit)
+  const coinBalance = walletData?.balance ?? 0
+  const extendCoinCost = 10000
+  const canPayWithCoins = coinBalance >= extendCoinCost
+
+  const [extendingJob, setExtendingJob] = useState<any | null>(null)
+  const [extendSubmitting, setExtendSubmitting] = useState(false)
+
+  const handleConfirmExtend = async () => {
+    if (!extendingJob) return
+    setExtendSubmitting(true)
+    const res = await recruiterService.extendJob(extendingJob.id)
+    setExtendSubmitting(false)
+    if (res.success) {
+      alert(res.message || "Đã gia hạn tin tuyển dụng thành công!")
+      setExtendingJob(null)
+      refresh()
+      refetchWallet()
+    } else {
+      alert(res.message || "Gia hạn không thành công.")
+    }
+  }
+
+  const jobPushTopLimit = walletData?.pushTopLimit ?? 0
+  const jobPushTopUsed = walletData?.pushTopUsed ?? 0
+  const isPushTopQuotaFull = jobPushTopLimit !== -1 && (jobPushTopLimit === 0 || jobPushTopUsed >= jobPushTopLimit)
+  const pushTopCoinCost = 5000
+  const canPayPushTopWithCoins = coinBalance >= pushTopCoinCost
+
+  const [pushingTopJob, setPushingTopJob] = useState<any | null>(null)
+  const [pushTopSubmitting, setPushTopSubmitting] = useState(false)
+
+  const handleConfirmPushTop = async () => {
+    if (!pushingTopJob) return
+    setPushTopSubmitting(true)
+    const res = await recruiterService.pushTopJob(pushingTopJob.id)
+    setPushTopSubmitting(false)
+    if (res.success) {
+      alert(res.message || "Đã đẩy tin tuyển dụng lên Top thành công!")
+      setPushingTopJob(null)
+      refresh()
+      refetchWallet()
+    } else {
+      alert(res.message || "Đẩy Top không thành công.")
+    }
+  }
+
   const {
     jobs,
     totalCount,
@@ -162,6 +226,57 @@ export default function JobPostingsPage() {
           </Button>
         </div>
 
+        {/* Job Slots & Quota Status Banner */}
+        {walletData && (
+          <div className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs transition-all ${
+            isSlotFull 
+              ? "bg-amber-50/80 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/50" 
+              : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/40"
+          }`}>
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className={`p-2.5 rounded-lg shrink-0 mt-0.5 sm:mt-0 ${isSlotFull ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" : "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"}`}>
+                <Briefcase className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                  <span>Tin đang Active: <strong className="text-blue-600 dark:text-blue-400 font-bold">{jobSlotsUsed}</strong></span>
+                  <span className="text-zinc-300 dark:text-zinc-600">•</span>
+                  <span>Hạn mức theo gói: <strong className="text-zinc-800 dark:text-zinc-200">{jobSlotsLimit === -1 ? "Vô hạn" : jobSlotsLimit}</strong> tin</span>
+                  {walletData.activeSubscriptionName ? (
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
+                      Gói {walletData.activeSubscriptionName}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                      Gói Free (Mặc định)
+                    </span>
+                  )}
+                  {isSlotFull && (
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                      Đã dùng hết Slot miễn phí
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                  {isSlotFull 
+                    ? `Hiện bạn đã vượt quá hạn mức ${jobSlotsLimit === -1 ? "vô hạn" : jobSlotsLimit} tin miễn phí trong gói. Khi đăng thêm tin Active mới, hệ thống sẽ sử dụng 20,000 Coin từ ví cho mỗi tin (Số dư hiện tại: ${(walletData.balance || 0).toLocaleString()} Coin). Lưu dưới dạng Draft (Bản nháp) thì hoàn toàn miễn phí.`
+                    : `Gói hiện tại cho phép bạn duy trì tối đa ${jobSlotsLimit === -1 ? "vô số" : jobSlotsLimit} việc làm Active đồng thời. Bạn có thể đăng thêm ${jobSlotsLimit === -1 ? "vô số" : (jobSlotsLimit || 0) - (jobSlotsUsed || 0)} tin miễn phí mà không mất Coin.`}
+                </p>
+              </div>
+            </div>
+            {isSlotFull && (
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={() => router.push("/recruiter/billing")}
+                className="shrink-0 border-amber-300 dark:border-amber-700 hover:bg-amber-100/50 text-amber-800 dark:text-amber-300 text-xs font-medium self-end sm:self-center"
+              >
+                Nâng cấp gói ngay
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Filter Card */}
         <div className="flex flex-col sm:flex-row items-center gap-4 justify-between py-2 border-b border-zinc-200 dark:border-zinc-800 mb-4">
             <div className="relative w-full sm:max-w-md">
@@ -271,7 +386,13 @@ export default function JobPostingsPage() {
                       <td className="px-5 py-3 align-top text-center">
 
                         <div className="flex flex-col items-center gap-1.5">
-                          {renderStatusBadge(job.status)}
+                          {renderStatusBadge(job)}
+                          {job.pushedTopUntil && new Date(job.pushedTopUntil) >= new Date() && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-sm animate-pulse">
+                              <Flame className="h-3 w-3 text-orange-500 fill-orange-500" />
+                              Top 24h
+                            </span>
+                          )}
                           <AiParseStatusBadge status={job.parseStatus} error={job.parseError} />
                         </div>
 
@@ -297,6 +418,28 @@ export default function JobPostingsPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
+                          {!job.isBanned && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => setExtendingJob(job)}
+                              title="Gia hạn tin tuyển dụng (thêm 15 ngày)"
+                              className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
+                            >
+                              <CalendarPlus className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {job.status === "PUBLISHED" && !job.isBanned && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => setPushingTopJob(job)}
+                              title="Đẩy Tin Lên Top Trang Chủ (24 Giờ)"
+                              className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-transform hover:scale-110"
+                            >
+                              <Rocket className="h-4 w-4 text-amber-500 fill-amber-500" />
+                            </Button>
+                          )}
                           {job.status !== "CLOSED" && !job.isBanned && (
                             <Button 
                               variant="ghost" 
@@ -374,6 +517,254 @@ export default function JobPostingsPage() {
           )}
         </div>
       </div>
+
+      {/* Extend Job Modal */}
+      {extendingJob && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                  <CalendarPlus className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Gia hạn tin tuyển dụng</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Thêm 15 ngày hiển thị active cho công việc</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => !extendSubmitting && setExtendingJob(null)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-700/60 rounded-xl p-4 space-y-2">
+              <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 line-clamp-1">
+                📌 Tin tuyển dụng: <span className="font-semibold text-emerald-600 dark:text-emerald-400">{extendingJob.title}</span>
+              </p>
+              <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 pt-1 border-t border-zinc-200/40 dark:border-zinc-700/40">
+                <span>Hết hạn hiện tại: <strong className="text-zinc-700 dark:text-zinc-300">{formatDate(extendingJob.expiresAt)}</strong></span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">+ 15 ngày</span>
+              </div>
+            </div>
+
+            {/* Quota & Billing Breakdown */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                Quyền lợi Gói & Thanh toán
+              </h4>
+              <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-gradient-to-r from-zinc-50 to-emerald-50/20 dark:from-zinc-900 dark:to-emerald-950/20 flex flex-col gap-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-zinc-600 dark:text-zinc-400">Gói dịch vụ hiện tại:</span>
+                  <span className="font-semibold px-2.5 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    {walletData?.activeSubscriptionName || "Gói Mặc định (Free)"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-zinc-600 dark:text-zinc-400">Hạn mức gia hạn trong gói:</span>
+                  <span className="font-medium text-zinc-900 dark:text-white">
+                    {jobExtendLimit === -1 ? (
+                      <span className="text-emerald-600 font-semibold">♾️ Vô hạn (Miễn phí)</span>
+                    ) : jobExtendLimit === 0 ? (
+                      <span className="text-amber-600 dark:text-amber-400 font-semibold">0 lượt (Thanh toán lẻ)</span>
+                    ) : (
+                      <span>Đã dùng <strong>{jobExtendUsed}</strong> / <strong>{jobExtendLimit}</strong> lượt</span>
+                    )}
+                  </span>
+                </div>
+                
+                <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800 flex items-center justify-between text-sm font-semibold">
+                  <span className="text-zinc-700 dark:text-zinc-300">Chi phí lần gia hạn này:</span>
+                  {!isExtendQuotaFull ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <Sparkles className="h-4 w-4" /> 0 Coin (Miễn phí từ gói)
+                    </span>
+                  ) : (
+                    <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                      <Coins className="h-4 w-4" /> 10,000 Coin (Ví pay-as-you-go)
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Insufficient balance warning if out of quota and not enough coins */}
+              {isExtendQuotaFull && !canPayWithCoins && (
+                <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs space-y-2.5">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold">Số dư Coin không đủ để thanh toán</p>
+                      <p className="text-amber-700 dark:text-amber-300/80 mt-0.5">
+                        Bạn đã hết lượt gia hạn miễn phí trong gói và số dư hiện tại (<strong>{(coinBalance).toLocaleString()} Coin</strong>) không đủ 10,000 Coin.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Link href="/recruiter/billing">
+                      <Button size="sm" variant="outline" className="h-7 text-xs border-amber-300 dark:border-amber-700 bg-white dark:bg-zinc-900">
+                        Nâng cấp gói
+                      </Button>
+                    </Link>
+                    <Link href="/recruiter/billing">
+                      <Button size="sm" className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white">
+                        Nạp Coin ngay
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-800/80">
+              <Button
+                variant="outline"
+                disabled={extendSubmitting}
+                onClick={() => setExtendingJob(null)}
+              >
+                Hủy bỏ
+              </Button>
+              <Button
+                disabled={extendSubmitting || (isExtendQuotaFull && !canPayWithCoins)}
+                onClick={handleConfirmExtend}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 px-5 shadow-sm"
+              >
+                {extendSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {!isExtendQuotaFull ? "✨ Gia hạn ngay (Miễn phí)" : "🪙 Xác nhận (10,000 Coin)"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Push Top Job Modal */}
+      {pushingTopJob && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-amber-500/30 space-y-6">
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-md shadow-amber-500/20">
+                  <Rocket className="h-6 w-6 fill-white animate-bounce" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                    Đẩy Tin Lên Top Trang Chủ <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700/50">24 Giờ</span>
+                  </h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Tăng đột phá lượt xem và ứng tuyển từ ứng viên</p>
+                </div>
+              </div>
+              <button
+                onClick={() => !pushTopSubmitting && setPushingTopJob(null)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-sm">
+              <div className="p-3.5 bg-gradient-to-r from-amber-50/80 via-orange-50/50 to-amber-50/80 dark:from-amber-950/20 dark:via-zinc-800/50 dark:to-amber-950/20 rounded-xl border border-amber-200/60 dark:border-amber-800/40 text-zinc-800 dark:text-zinc-200 flex flex-col gap-1.5">
+                <div className="flex items-center gap-2 font-medium">
+                  <Flame className="h-4 w-4 text-orange-500 fill-orange-500 shrink-0" />
+                  <span>Tin tuyển dụng: <strong className="text-amber-700 dark:text-amber-400 font-bold">{pushingTopJob.title}</strong></span>
+                </div>
+                <div className="text-xs text-zinc-600 dark:text-zinc-400 pl-6 space-y-1">
+                  <div>✨ Hiển thị nổi bật <strong>Dưới Hero Section</strong> của Trang chủ ITHunterview.</div>
+                  <div>✨ Trở thành tin ưu tiên hàng đầu tại Trang tìm kiếm Việc làm công khai.</div>
+                  {pushingTopJob.pushedTopUntil && new Date(pushingTopJob.pushedTopUntil) >= new Date() && (
+                    <div className="text-emerald-600 dark:text-emerald-400 font-semibold pt-1">
+                      * Tin đang trên Top đến: {new Date(pushingTopJob.pushedTopUntil).toLocaleString('vi-VN')}. Đẩy tiếp sẽ được cộng nối tiếp thêm 24 giờ!
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Thông tin quota theo gói / coin */}
+              <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 space-y-3">
+                <div className="flex items-center justify-between text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                  <span>Gói tài khoản hiện tại</span>
+                  <span className="font-bold text-amber-600 dark:text-amber-400 uppercase">
+                    {walletData?.activeSubscriptionName || "Free / Regular"}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-zinc-200/60 dark:border-zinc-700/60">
+                  <span className="font-medium text-zinc-700 dark:text-zinc-300">Quyền lợi Đẩy Top trong gói</span>
+                  <div className="text-right">
+                    {jobPushTopLimit === -1 ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                        <Sparkles className="h-3 w-3" /> Không giới hạn
+                      </span>
+                    ) : jobPushTopLimit === 0 ? (
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">Gói không kèm lượt đẩy Top</span>
+                    ) : (
+                      <span className="text-xs font-bold">Đã dùng <strong>{jobPushTopUsed}</strong> / <strong>{jobPushTopLimit}</strong> lượt</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-zinc-200/60 dark:border-zinc-700/60">
+                  <span className="font-medium text-zinc-700 dark:text-zinc-300">Chi phí Đẩy Top lần này:</span>
+                  {!isPushTopQuotaFull ? (
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      ✨ Miễn phí <span className="text-[10px] font-normal text-zinc-500">(Trừ vào lượt trong gói)</span>
+                    </span>
+                  ) : (
+                    <div className="text-right">
+                      <span className="text-sm font-bold text-amber-600 dark:text-amber-400 flex items-center justify-end gap-1">
+                        <Coins className="h-4 w-4" /> 5,000 Coin
+                      </span>
+                      <div className="text-[11px] text-zinc-500 mt-0.5">
+                        Số dư: <strong>{coinBalance.toLocaleString()} Coin</strong>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {isPushTopQuotaFull && !canPayPushTopWithCoins && (
+                <div className="p-3 bg-red-50/90 dark:bg-red-950/40 border border-red-200 dark:border-red-800/80 rounded-xl flex items-start gap-3 text-red-800 dark:text-red-300 text-xs">
+                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-bold">Không đủ lượt trong Gói và số dư Coin</p>
+                    <p className="mt-0.5 opacity-90">
+                      Bạn đã hết lượt đẩy Top miễn phí theo gói và số dư không đủ 5,000 Coin. Vui lòng nạp thêm Coin hoặc nâng cấp gói để trải nghiệm tính năng!
+                    </p>
+                    <Link
+                      href="/recruiter/billing"
+                      className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg text-xs shadow-sm transition-all"
+                    >
+                      💳 Nạp Coin / Nâng cấp gói ngay
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-800/80">
+              <Button
+                variant="outline"
+                disabled={pushTopSubmitting}
+                onClick={() => setPushingTopJob(null)}
+              >
+                Hủy bỏ
+              </Button>
+              <Button
+                disabled={pushTopSubmitting || (isPushTopQuotaFull && !canPayPushTopWithCoins)}
+                onClick={handleConfirmPushTop}
+                className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold gap-2 px-5 shadow-md shadow-amber-500/20"
+              >
+                {pushTopSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Rocket className="h-4 w-4 fill-white" />
+                )}
+                {!isPushTopQuotaFull ? "✨ Đẩy Top Ngay (Miễn phí)" : "🪙 Xác nhận Đẩy (5,000 Coin)"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )

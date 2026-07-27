@@ -119,8 +119,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             var totalItems = await queryable.CountAsync();
 
+            var now = DateTime.UtcNow;
             var pagedResults = await queryable
-                .OrderByDescending(x => x.job.PublishedAt)
+                .OrderByDescending(x => x.job.PushedTopUntil.HasValue && x.job.PushedTopUntil.Value >= now)
+                .ThenByDescending(x => x.job.PublishedAt)
                 .Skip((query.Page - 1) * query.PageSize)
                 .Take(query.PageSize)
                 .ToListAsync();
@@ -152,6 +154,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 JobDomain = x.job.JobDomain,
                 PublishedAt = x.job.PublishedAt,
                 IsSaved = false,
+                PushedTopUntil = x.job.PushedTopUntil,
                 Skills = skillLookup.ContainsKey(x.job.Id) ? skillLookup[x.job.Id] : new List<string>()
             }).ToList();
 
@@ -252,8 +255,55 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 PublishedAt = jobWithCompany.job.PublishedAt,
                 IsSaved = isSaved,
                 IsApplied = isApplied,
+                PushedTopUntil = jobWithCompany.job.PushedTopUntil,
                 Skills = skills
             };
+        }
+
+        public async Task<List<JobCardDto>> GetFeaturedTopJobsAsync(int limit = 6)
+        {
+            var now = DateTime.UtcNow;
+            var queryable = from job in _context.JobPostings
+                            join company in _context.Companies on job.CompanyId equals company.Id
+                            where job.Status == Domain.Enums.JobStatus.PUBLISHED
+                                  && !job.IsBanned
+                                  && job.PushedTopUntil.HasValue
+                                  && job.PushedTopUntil.Value >= now
+                                  && (!job.ExpiresAt.HasValue || job.ExpiresAt.Value >= now)
+                            orderby job.PushedTopUntil descending, job.PublishedAt descending
+                            select new { job, company };
+
+            var results = await queryable.Take(limit).ToListAsync();
+            var jobIds = results.Select(x => x.job.Id).ToList();
+
+            var jobSkills = await (from jsr in _context.JobSkillRequirements
+                                   join s in _context.Skills on jsr.SkillId equals s.Id
+                                   where jobIds.Contains(jsr.JobId)
+                                   select new { jsr.JobId, s.Name })
+                                  .ToListAsync();
+
+            var skillLookup = jobSkills.GroupBy(x => x.JobId)
+                                       .ToDictionary(g => g.Key, g => g.Select(x => x.Name).ToList());
+
+            return results.Select(x => new JobCardDto
+            {
+                Id = x.job.Id,
+                Title = x.job.Title,
+                CompanyName = x.company.Name,
+                LogoUrl = x.company.LogoUrl,
+                MinSalary = x.job.MinSalary,
+                MaxSalary = x.job.MaxSalary,
+                Currency = x.job.Currency,
+                Location = x.job.Location,
+                Level = x.job.Level,
+                WorkingModel = x.job.WorkingModel,
+                JobExpertise = x.job.JobExpertise,
+                JobDomain = x.job.JobDomain,
+                PublishedAt = x.job.PublishedAt,
+                IsSaved = false,
+                PushedTopUntil = x.job.PushedTopUntil,
+                Skills = skillLookup.ContainsKey(x.job.Id) ? skillLookup[x.job.Id] : new List<string>()
+            }).ToList();
         }
     }
 }

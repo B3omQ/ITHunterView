@@ -12,9 +12,8 @@ namespace ITHunterview.Service.DTOs.Subscription
         // Candidate limits
         public int? CvMatchLimit { get; set; }
         public int? MockInterviewLimit { get; set; }
+        public int? LearningPathLimit { get; set; }
         public int? LearningPathSlotLimit { get; set; }
-        public bool? AiRefreshUnlimited { get; set; }
-        public bool? PremiumBadge { get; set; }
 
         // Recruiter limits
         public int? JobSlots { get; set; }
@@ -35,14 +34,11 @@ namespace ITHunterview.Service.DTOs.Subscription
                 if (!MockInterviewLimit.HasValue || MockInterviewLimit < -1)
                     yield return new ValidationResult("MockInterviewLimit là bắt buộc và phải >= -1.", new[] { nameof(MockInterviewLimit) });
                 
+                if (!LearningPathLimit.HasValue || LearningPathLimit < -1)
+                    yield return new ValidationResult("LearningPathLimit là bắt buộc và phải >= -1.", new[] { nameof(LearningPathLimit) });
+
                 if (!LearningPathSlotLimit.HasValue || LearningPathSlotLimit < -1)
                     yield return new ValidationResult("LearningPathSlotLimit là bắt buộc và phải >= -1.", new[] { nameof(LearningPathSlotLimit) });
-                
-                if (!AiRefreshUnlimited.HasValue)
-                    yield return new ValidationResult("AiRefreshUnlimited là bắt buộc đối với Candidate.", new[] { nameof(AiRefreshUnlimited) });
-                
-                if (!PremiumBadge.HasValue)
-                    yield return new ValidationResult("PremiumBadge là bắt buộc đối với Candidate.", new[] { nameof(PremiumBadge) });
                 
                 if (!CoinCredit.HasValue || CoinCredit < 0)
                     yield return new ValidationResult("CoinCredit là bắt buộc và phải >= 0.", new[] { nameof(CoinCredit) });
@@ -70,10 +66,10 @@ namespace ITHunterview.Service.DTOs.Subscription
                 if (!CoinCredit.HasValue || CoinCredit < 0)
                     yield return new ValidationResult("CoinCredit là bắt buộc và phải >= 0.", new[] { nameof(CoinCredit) });
 
-                if (CvMatchLimit.HasValue || MockInterviewLimit.HasValue || LearningPathSlotLimit.HasValue || AiRefreshUnlimited.HasValue || PremiumBadge.HasValue)
+                if (CvMatchLimit.HasValue || MockInterviewLimit.HasValue || LearningPathLimit.HasValue || LearningPathSlotLimit.HasValue)
                 {
                     yield return new ValidationResult("Không được cấu hình các hạn mức của Candidate cho gói Recruiter.", 
-                        new[] { nameof(CvMatchLimit), nameof(MockInterviewLimit), nameof(LearningPathSlotLimit), nameof(AiRefreshUnlimited), nameof(PremiumBadge) });
+                        new[] { nameof(CvMatchLimit), nameof(MockInterviewLimit), nameof(LearningPathLimit), nameof(LearningPathSlotLimit) });
                 }
             }
         }

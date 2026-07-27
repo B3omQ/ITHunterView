@@ -22,6 +22,7 @@ namespace ITHunterview.Service.UseCase
         private readonly ICompanyRepository _companyRepository;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly INotificationUseCase _notificationUseCase;
+        private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
         private readonly Microsoft.AspNetCore.SignalR.IHubContext<ITHunterview.Service.Hubs.NotificationHub> _hubContext;
         private readonly ILogger<JobPostingsUseCase> _logger;
 
@@ -30,6 +31,7 @@ namespace ITHunterview.Service.UseCase
             ICompanyRepository companyRepository,
             IServiceScopeFactory scopeFactory,
             INotificationUseCase notificationUseCase,
+            ICandidateFeatureUsageUseCase featureUsageUseCase,
             Microsoft.AspNetCore.SignalR.IHubContext<ITHunterview.Service.Hubs.NotificationHub> hubContext,
             ILogger<JobPostingsUseCase> logger)
         {
@@ -37,6 +39,7 @@ namespace ITHunterview.Service.UseCase
             _companyRepository = companyRepository;
             _scopeFactory = scopeFactory;
             _notificationUseCase = notificationUseCase;
+            _featureUsageUseCase = featureUsageUseCase;
             _hubContext = hubContext;
             _logger = logger;
         }
@@ -80,8 +83,8 @@ namespace ITHunterview.Service.UseCase
                 BanReason = j.BanReason,
 
                 ParseStatus = j.ParseStatus ?? "PENDING",
-                ParseError = j.ParseError
-
+                ParseError = j.ParseError,
+                PushedTopUntil = j.PushedTopUntil
             }).ToList();
 
             var pagedResult = new PagedResult<JobPostingSummaryDto>
@@ -128,6 +131,8 @@ namespace ITHunterview.Service.UseCase
                 {
                     return new ResponseBase<JobPostingDetailDto>("Your company must be verified before you can publish a job posting.");
                 }
+
+                await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "PostJob");
             }
 
             var job = new JobPostings
@@ -240,6 +245,8 @@ namespace ITHunterview.Service.UseCase
                     {
                         job.PublishedAt = DateTime.UtcNow;
                     }
+
+                    await _featureUsageUseCase.TryConsumeFeatureAsync(job.RecruiterId, "PostJob", job.Id.ToString());
                 }
                 job.Status = dto.Status;
             }
@@ -278,6 +285,84 @@ namespace ITHunterview.Service.UseCase
             await _jobPostingRepository.UpdateAsync(job);
 
             return new ResponseBase<bool>(true, "Job posting closed successfully.");
+        }
+
+        public async Task<ResponseBase<JobPostingDetailDto>> ExtendJobAsync(Guid id, Guid recruiterId)
+        {
+            var job = await _jobPostingRepository.GetByIdAsync(id);
+            if (job == null)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Không tìm thấy tin tuyển dụng.");
+            }
+
+            if (job.RecruiterId != recruiterId)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Bạn không có quyền gia hạn tin tuyển dụng này.");
+            }
+
+            if (job.IsBanned)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Không thể gia hạn tin tuyển dụng đã bị khóa.");
+            }
+
+            // Tiêu thụ slot gia hạn trong gói hoặc trừ Coin từ ví pay-as-you-go
+            await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "ExtendJob", job.Id.ToString());
+
+            DateTime baseTime = (!job.ExpiresAt.HasValue || job.ExpiresAt.Value < DateTime.UtcNow)
+                ? DateTime.UtcNow
+                : job.ExpiresAt.Value;
+
+            job.ExpiresAt = baseTime.AddDays(15);
+            job.Status = JobStatus.PUBLISHED;
+            job.UpdatedAt = DateTime.UtcNow;
+
+            await _jobPostingRepository.UpdateAsync(job);
+
+            var detail = MapToDetailDto(job);
+            detail.Skills = await _jobPostingRepository.GetSkillsByJobIdAsync(job.Id);
+
+            return new ResponseBase<JobPostingDetailDto>(detail, $"Đã gia hạn tin tuyển dụng đến {job.ExpiresAt.Value:dd/MM/yyyy} thành công.");
+        }
+
+        public async Task<ResponseBase<JobPostingDetailDto>> PushTopJobAsync(Guid id, Guid recruiterId)
+        {
+            var job = await _jobPostingRepository.GetByIdAsync(id);
+            if (job == null)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Không tìm thấy tin tuyển dụng.");
+            }
+
+            if (job.RecruiterId != recruiterId)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Bạn không có quyền đẩy Top tin tuyển dụng này.");
+            }
+
+            if (job.IsBanned)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Không thể đẩy Top tin tuyển dụng đã bị khóa.");
+            }
+
+            if (job.Status != JobStatus.PUBLISHED)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Tin tuyển dụng phải ở trạng thái Đang hiển thị (PUBLISHED) để đẩy Lên Top.");
+            }
+
+            // Tiêu thụ slot đẩy Top trong gói hoặc trừ Coin từ ví pay-as-you-go (mặc định 5,000 Coin)
+            await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "PushTop", job.Id.ToString());
+
+            DateTime baseTime = (!job.PushedTopUntil.HasValue || job.PushedTopUntil.Value < DateTime.UtcNow)
+                ? DateTime.UtcNow
+                : job.PushedTopUntil.Value;
+
+            job.PushedTopUntil = baseTime.AddHours(24);
+            job.UpdatedAt = DateTime.UtcNow;
+
+            await _jobPostingRepository.UpdateAsync(job);
+
+            var detail = MapToDetailDto(job);
+            detail.Skills = await _jobPostingRepository.GetSkillsByJobIdAsync(job.Id);
+
+            return new ResponseBase<JobPostingDetailDto>(detail, $"Đã đẩy tin tuyển dụng lên Top Trang chủ trong 24 giờ (đến {job.PushedTopUntil.Value:dd/MM/yyyy HH:mm}) thành công!");
         }
 
         public async Task<ResponseBase<bool>> BanJobAsync(Guid id, string reason)
@@ -367,7 +452,8 @@ namespace ITHunterview.Service.UseCase
                 IsBanned = j.IsBanned,
                 BanReason = j.BanReason,
                 ParseStatus = j.ParseStatus ?? "PENDING",
-                ParseError = j.ParseError
+                ParseError = j.ParseError,
+                PushedTopUntil = j.PushedTopUntil
             };
         }
 

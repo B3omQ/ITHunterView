@@ -5,9 +5,8 @@ export interface FeaturesConfigDto {
   // Quota cho Candidate
   cvMatchLimit?: number | null;
   mockInterviewLimit?: number | null;
+  learningPathLimit?: number | null;
   learningPathSlotLimit?: number | null;
-  aiRefreshUnlimited?: boolean | null;
-  premiumBadge?: boolean | null;
   // Quota cho Recruiter
   jobSlots?: number | null;
   jobExtendLimit?: number | null;

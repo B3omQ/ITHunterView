@@ -18,10 +18,12 @@ namespace ITHunterview.WebAPI.Controllers
     public class LearningPathController : ControllerBase
     {
         private readonly ILearningPathUseCase _learningPathUseCase;
+        private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
 
-        public LearningPathController(ILearningPathUseCase learningPathUseCase)
+        public LearningPathController(ILearningPathUseCase learningPathUseCase, ICandidateFeatureUsageUseCase featureUsageUseCase)
         {
             _learningPathUseCase = learningPathUseCase;
+            _featureUsageUseCase = featureUsageUseCase;
         }
 
         [HttpGet("target-roles")]
@@ -35,6 +37,7 @@ namespace ITHunterview.WebAPI.Controllers
         public async Task<ActionResult<ResponseBase<LearningPathResponseDto>>> Generate([FromBody] GeneratePathRequestDto request)
         {
             var candidateId = GetUserId();
+            await _featureUsageUseCase.TryConsumeFeatureAsync(candidateId, "LearningPath");
             var result = await _learningPathUseCase.GenerateLearningPathAsync(candidateId, request);
             return new ResponseBase<LearningPathResponseDto>(result);
         }
