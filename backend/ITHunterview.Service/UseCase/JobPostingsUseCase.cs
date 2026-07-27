@@ -287,6 +287,43 @@ namespace ITHunterview.Service.UseCase
             return new ResponseBase<bool>(true, "Job posting closed successfully.");
         }
 
+        public async Task<ResponseBase<JobPostingDetailDto>> ExtendJobAsync(Guid id, Guid recruiterId)
+        {
+            var job = await _jobPostingRepository.GetByIdAsync(id);
+            if (job == null)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Không tìm thấy tin tuyển dụng.");
+            }
+
+            if (job.RecruiterId != recruiterId)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Bạn không có quyền gia hạn tin tuyển dụng này.");
+            }
+
+            if (job.IsBanned)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Không thể gia hạn tin tuyển dụng đã bị khóa.");
+            }
+
+            // Tiêu thụ slot gia hạn trong gói hoặc trừ Coin từ ví pay-as-you-go
+            await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "ExtendJob", job.Id.ToString());
+
+            DateTime baseTime = (!job.ExpiresAt.HasValue || job.ExpiresAt.Value < DateTime.UtcNow)
+                ? DateTime.UtcNow
+                : job.ExpiresAt.Value;
+
+            job.ExpiresAt = baseTime.AddDays(15);
+            job.Status = JobStatus.PUBLISHED;
+            job.UpdatedAt = DateTime.UtcNow;
+
+            await _jobPostingRepository.UpdateAsync(job);
+
+            var detail = MapToDetailDto(job);
+            detail.Skills = await _jobPostingRepository.GetSkillsByJobIdAsync(job.Id);
+
+            return new ResponseBase<JobPostingDetailDto>(detail, $"Đã gia hạn tin tuyển dụng đến {job.ExpiresAt.Value:dd/MM/yyyy} thành công.");
+        }
+
         public async Task<ResponseBase<bool>> BanJobAsync(Guid id, string reason)
         {
             var job = await _jobPostingRepository.GetByIdAsync(id);

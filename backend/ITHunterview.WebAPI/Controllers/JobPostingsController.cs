@@ -106,6 +106,24 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(result);
         }
 
+        [HttpPost("{id}/extend")]
+        [HttpPatch("{id}/extend")]
+        public async Task<ActionResult<ResponseBase<JobPostingDetailDto>>> ExtendJob(Guid id)
+        {
+            var recruiterId = await ResolveRecruiterIdAsync();
+            if (recruiterId == Guid.Empty)
+            {
+                return BadRequest(new ResponseBase<JobPostingDetailDto>("Could not resolve recruiter user."));
+            }
+
+            var result = await _jobPostingsUseCase.ExtendJobAsync(id, recruiterId);
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+            return Ok(result);
+        }
+
         [HttpPost("{id:guid}/match-cvs")]
         public async Task<ActionResult<ResponseBase<string>>> MatchCvs(Guid id)
         {

@@ -172,6 +172,18 @@ export const recruiterService = {
     }
   },
 
+  extendJob: async (id: string) => {
+    try {
+      const response = await api.post<ApiResponse<any>>(`/api/jobpostings/${id}/extend`);
+      return { success: true, data: response.data, message: response.data?.message || 'Gia hạn thành công' };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Gia hạn thất bại',
+      };
+    }
+  },
+
   getCategories: async () => {
     try {
       const response = await api.get<ApiResponse<JobCategory[]>>('/api/jobcategories');

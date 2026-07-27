@@ -19,6 +19,7 @@ namespace ITHunterview.Service.Interface.UseCase
         Task<ResponseBase<JobPostingDetailDto>> CreateJobAsync(CreateJobPostingDto dto, Guid recruiterId);
         Task<ResponseBase<JobPostingDetailDto>> UpdateJobAsync(Guid id, UpdateJobPostingDto dto);
         Task<ResponseBase<bool>> CloseJobAsync(Guid id);
+        Task<ResponseBase<JobPostingDetailDto>> ExtendJobAsync(Guid id, Guid recruiterId);
         Task<ResponseBase<bool>> BanJobAsync(Guid id, string reason);
         Task<ResponseBase<bool>> UnbanJobAsync(Guid id);
     }

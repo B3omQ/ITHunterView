@@ -120,15 +120,15 @@ namespace ITHunterview.Service.UseCase
                             // Bỏ qua lỗi JSON
                         }
 
+                        var start = activeSub.StartDate;
+                        var end = activeSub.EndDate;
+
                         if (features != null && features.Role.Equals("CANDIDATE", StringComparison.OrdinalIgnoreCase))
                         {
                             mockInterviewLimit = features.MockInterviewLimit;
                             cvMatchLimit = features.CvMatchLimit;
                             learningPathLimit = features.LearningPathLimit ?? features.LearningPathSlotLimit;
                             learningPathSlotLimit = features.LearningPathSlotLimit;
-
-                            var start = activeSub.StartDate;
-                            var end = activeSub.EndDate;
 
                             if (mockInterviewLimit.HasValue)
                             {
@@ -164,9 +164,27 @@ namespace ITHunterview.Service.UseCase
                             unlockCvLimit = features.UnlockCvLimit ?? 0;
                             jobExtendLimit = features.JobExtendLimit ?? 0;
                             pushTopLimit = features.PushTopLimit ?? 0;
-                            unlockCvUsed = 0;
-                            jobExtendUsed = 0;
-                            pushTopUsed = 0;
+
+                            if (unlockCvLimit != 0)
+                            {
+                                unlockCvUsed = await _context.UserActivityLogs
+                                    .Where(x => x.UserId == userId && x.Action == "ConsumeFeature:UnlockCv:Sub" && x.CreatedAt >= start && x.CreatedAt <= end)
+                                    .CountAsync();
+                            }
+
+                            if (jobExtendLimit != 0)
+                            {
+                                jobExtendUsed = await _context.UserActivityLogs
+                                    .Where(x => x.UserId == userId && x.Action == "ConsumeFeature:ExtendJob:Sub" && x.CreatedAt >= start && x.CreatedAt <= end)
+                                    .CountAsync();
+                            }
+
+                            if (pushTopLimit != 0)
+                            {
+                                pushTopUsed = await _context.UserActivityLogs
+                                    .Where(x => x.UserId == userId && x.Action == "ConsumeFeature:PushTop:Sub" && x.CreatedAt >= start && x.CreatedAt <= end)
+                                    .CountAsync();
+                            }
                         }
                     }
                 }

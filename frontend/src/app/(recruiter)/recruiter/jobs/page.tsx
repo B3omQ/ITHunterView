@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useJobs } from "@/hooks/useJobs"
 import { useSignalR } from "@/hooks/useSignalR"
 import { useWalletBalance } from "@/hooks/useWallet"
+import { recruiterService } from "@/services/recruiter.service"
 import { AiParseStatusBadge } from "@/components/shared/AiParseStatusBadge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,18 +26,47 @@ import {
   Layers,
   Target,
   Monitor,
-  Ban
+  Ban,
+  CalendarPlus,
+  Sparkles,
+  Coins,
+  AlertTriangle
 } from "lucide-react"
 
 export default function JobPostingsPage() {
   const router = useRouter()
   const pageSize = 7 // Matches mockup showing 7 items
   
-  const { data: walletRes } = useWalletBalance()
+  const { data: walletRes, refetch: refetchWallet } = useWalletBalance()
   const walletData = walletRes?.data
   const jobSlotsLimit = walletData?.jobSlotsLimit ?? 1
   const jobSlotsUsed = walletData?.jobSlotsUsed ?? 0
   const isSlotFull = jobSlotsLimit !== -1 && jobSlotsUsed >= jobSlotsLimit
+
+  const jobExtendLimit = walletData?.jobExtendLimit ?? 0
+  const jobExtendUsed = walletData?.jobExtendUsed ?? 0
+  const isExtendQuotaFull = jobExtendLimit !== -1 && (jobExtendLimit === 0 || jobExtendUsed >= jobExtendLimit)
+  const coinBalance = walletData?.balance ?? 0
+  const extendCoinCost = 10000
+  const canPayWithCoins = coinBalance >= extendCoinCost
+
+  const [extendingJob, setExtendingJob] = useState<any | null>(null)
+  const [extendSubmitting, setExtendSubmitting] = useState(false)
+
+  const handleConfirmExtend = async () => {
+    if (!extendingJob) return
+    setExtendSubmitting(true)
+    const res = await recruiterService.extendJob(extendingJob.id)
+    setExtendSubmitting(false)
+    if (res.success) {
+      alert(res.message || "Đã gia hạn tin tuyển dụng thành công!")
+      setExtendingJob(null)
+      refresh()
+      refetchWallet()
+    } else {
+      alert(res.message || "Gia hạn không thành công.")
+    }
+  }
 
   const {
     jobs,
@@ -355,6 +385,17 @@ export default function JobPostingsPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
+                          {!job.isBanned && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => setExtendingJob(job)}
+                              title="Gia hạn tin tuyển dụng (thêm 15 ngày)"
+                              className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
+                            >
+                              <CalendarPlus className="h-4 w-4" />
+                            </Button>
+                          )}
                           {job.status !== "CLOSED" && !job.isBanned && (
                             <Button 
                               variant="ghost" 
@@ -432,6 +473,126 @@ export default function JobPostingsPage() {
           )}
         </div>
       </div>
+
+      {/* Extend Job Modal */}
+      {extendingJob && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                  <CalendarPlus className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Gia hạn tin tuyển dụng</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Thêm 15 ngày hiển thị active cho công việc</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => !extendSubmitting && setExtendingJob(null)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-700/60 rounded-xl p-4 space-y-2">
+              <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 line-clamp-1">
+                📌 Tin tuyển dụng: <span className="font-semibold text-emerald-600 dark:text-emerald-400">{extendingJob.title}</span>
+              </p>
+              <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 pt-1 border-t border-zinc-200/40 dark:border-zinc-700/40">
+                <span>Hết hạn hiện tại: <strong className="text-zinc-700 dark:text-zinc-300">{formatDate(extendingJob.expiresAt)}</strong></span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">+ 15 ngày</span>
+              </div>
+            </div>
+
+            {/* Quota & Billing Breakdown */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                Quyền lợi Gói & Thanh toán
+              </h4>
+              <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-gradient-to-r from-zinc-50 to-emerald-50/20 dark:from-zinc-900 dark:to-emerald-950/20 flex flex-col gap-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-zinc-600 dark:text-zinc-400">Gói dịch vụ hiện tại:</span>
+                  <span className="font-semibold px-2.5 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    {walletData?.activeSubscriptionName || "Gói Mặc định (Free)"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-zinc-600 dark:text-zinc-400">Hạn mức gia hạn trong gói:</span>
+                  <span className="font-medium text-zinc-900 dark:text-white">
+                    {jobExtendLimit === -1 ? (
+                      <span className="text-emerald-600 font-semibold">♾️ Vô hạn (Miễn phí)</span>
+                    ) : jobExtendLimit === 0 ? (
+                      <span className="text-amber-600 dark:text-amber-400 font-semibold">0 lượt (Thanh toán lẻ)</span>
+                    ) : (
+                      <span>Đã dùng <strong>{jobExtendUsed}</strong> / <strong>{jobExtendLimit}</strong> lượt</span>
+                    )}
+                  </span>
+                </div>
+                
+                <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800 flex items-center justify-between text-sm font-semibold">
+                  <span className="text-zinc-700 dark:text-zinc-300">Chi phí lần gia hạn này:</span>
+                  {!isExtendQuotaFull ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <Sparkles className="h-4 w-4" /> 0 Coin (Miễn phí từ gói)
+                    </span>
+                  ) : (
+                    <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                      <Coins className="h-4 w-4" /> 10,000 Coin (Ví pay-as-you-go)
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Insufficient balance warning if out of quota and not enough coins */}
+              {isExtendQuotaFull && !canPayWithCoins && (
+                <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs space-y-2.5">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold">Số dư Coin không đủ để thanh toán</p>
+                      <p className="text-amber-700 dark:text-amber-300/80 mt-0.5">
+                        Bạn đã hết lượt gia hạn miễn phí trong gói và số dư hiện tại (<strong>{(coinBalance).toLocaleString()} Coin</strong>) không đủ 10,000 Coin.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Link href="/recruiter/billing">
+                      <Button size="sm" variant="outline" className="h-7 text-xs border-amber-300 dark:border-amber-700 bg-white dark:bg-zinc-900">
+                        Nâng cấp gói
+                      </Button>
+                    </Link>
+                    <Link href="/recruiter/billing">
+                      <Button size="sm" className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white">
+                        Nạp Coin ngay
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-800/80">
+              <Button
+                variant="outline"
+                disabled={extendSubmitting}
+                onClick={() => setExtendingJob(null)}
+              >
+                Hủy bỏ
+              </Button>
+              <Button
+                disabled={extendSubmitting || (isExtendQuotaFull && !canPayWithCoins)}
+                onClick={handleConfirmExtend}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 px-5 shadow-sm"
+              >
+                {extendSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {!isExtendQuotaFull ? "✨ Gia hạn ngay (Miễn phí)" : "🪙 Xác nhận (10,000 Coin)"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )
