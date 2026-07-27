@@ -92,30 +92,26 @@ export default function CandidatePricingPage() {
                       </span>
                     </li>
                   )}
-                  {sub.featuresConfig.learningPathSlotLimit !== null && sub.featuresConfig.learningPathSlotLimit !== undefined && (
-                    <li className="flex gap-3 items-start">
-                      <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
-                      <span className="text-zinc-600 text-sm">
-                        {sub.featuresConfig.learningPathSlotLimit} Learning Path Generations
-                      </span>
-                    </li>
-                  )}
-                  {sub.featuresConfig.aiRefreshUnlimited === true && (
-                    <li className="flex gap-3 items-start">
-                      <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
-                      <span className="text-zinc-600 text-sm">
-                        Unlimited AI Profile Refreshes
-                      </span>
-                    </li>
-                  )}
-                  {sub.featuresConfig.premiumBadge === true && (
-                    <li className="flex gap-3 items-start">
-                      <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
-                      <span className="text-zinc-600 text-sm">
-                        Premium Profile Badge
-                      </span>
-                    </li>
-                  )}
+                  {(sub.featuresConfig.learningPathLimit !== null && sub.featuresConfig.learningPathLimit !== undefined) || (sub.featuresConfig.learningPathSlotLimit !== null && sub.featuresConfig.learningPathSlotLimit !== undefined) ? (
+                    <>
+                      <li className="flex gap-3 items-start">
+                        <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
+                        <span className="text-zinc-600 text-sm font-medium">
+                          {sub.name === 'Basic' || sub.durationDays > 365 
+                            ? `${sub.featuresConfig.learningPathLimit ?? 1} Lượt tạo Learning Path (duy nhất trong chu kỳ)` 
+                            : `${sub.featuresConfig.learningPathLimit ?? sub.featuresConfig.learningPathSlotLimit} Lượt tạo Learning Path / tháng`}
+                        </span>
+                      </li>
+                      <li className="flex gap-3 items-start">
+                        <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
+                        <span className="text-zinc-600 text-sm font-medium">
+                          {(sub.featuresConfig.learningPathSlotLimit === -1 || (sub.featuresConfig.learningPathSlotLimit && sub.featuresConfig.learningPathSlotLimit >= 999))
+                            ? 'Vô hạn Slot lưu trữ lộ trình học'
+                            : `${sub.featuresConfig.learningPathSlotLimit ?? 1} Slot lưu trữ lộ trình học`}
+                        </span>
+                      </li>
+                    </>
+                  ) : null}
                   {sub.featuresConfig.coinCredit !== null && sub.featuresConfig.coinCredit !== undefined && sub.featuresConfig.coinCredit > 0 && (
                     <li className="flex gap-3 items-start">
                       <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />

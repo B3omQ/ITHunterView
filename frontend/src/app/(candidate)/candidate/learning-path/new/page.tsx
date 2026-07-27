@@ -44,11 +44,11 @@ export default function NewLearningPathPage() {
   const balance = walletRes?.data?.balance ?? 0;
   const activeSubName = walletRes?.data?.activeSubscriptionName;
   const learningPathCost = coinConfigRes?.data?.featureCosts?.learningPath ?? 500;
-  const learningPathLimit = walletRes?.data?.learningPathSlotLimit ?? 0;
-  const learningPathUsed = walletRes?.data?.learningPathSlotUsed ?? 0;
+  const learningPathLimit = walletRes?.data?.learningPathLimit ?? (walletRes?.data?.learningPathSlotLimit ?? 0);
+  const learningPathUsed = walletRes?.data?.learningPathUsed ?? 0;
 
-  const isSubUnlimited = activeSubName && (learningPathLimit === null || learningPathLimit >= 999);
-  const subRemaining = activeSubName ? Math.max(0, (learningPathLimit || 0) - learningPathUsed) : 0;
+  const isSubUnlimited = activeSubName && (learningPathLimit === -1 || learningPathLimit >= 999);
+  const subRemaining = activeSubName && !isSubUnlimited ? Math.max(0, (learningPathLimit || 0) - learningPathUsed) : 0;
   const hasActiveSub = !!activeSubName && (isSubUnlimited || subRemaining > 0);
 
   const { data: matchHistoryData } = useGetMatchHistory(1, 50);

@@ -94,7 +94,7 @@ namespace ITHunterview.Service.UseCase
                                 {
                                     "CvJdMatching" => features.CvMatchLimit ?? 0,
                                     "MockInterview" => features.MockInterviewLimit ?? 0,
-                                    "LearningPath" => features.LearningPathSlotLimit ?? 0,
+                                    "LearningPath" => features.LearningPathLimit ?? (features.LearningPathSlotLimit ?? 0),
                                     _ => 0
                                 };
 

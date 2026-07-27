@@ -82,6 +82,8 @@ namespace ITHunterview.Service.UseCase
             int? mockInterviewUsed = null;
             int? cvMatchLimit = null;
             int? cvMatchUsed = null;
+            int? learningPathLimit = null;
+            int? learningPathUsed = null;
             int? learningPathSlotLimit = null;
             int? learningPathSlotUsed = null;
 
@@ -111,6 +113,7 @@ namespace ITHunterview.Service.UseCase
                         {
                             mockInterviewLimit = features.MockInterviewLimit;
                             cvMatchLimit = features.CvMatchLimit;
+                            learningPathLimit = features.LearningPathLimit ?? features.LearningPathSlotLimit;
                             learningPathSlotLimit = features.LearningPathSlotLimit;
 
                             var start = activeSub.StartDate;
@@ -130,10 +133,17 @@ namespace ITHunterview.Service.UseCase
                                     .CountAsync();
                             }
 
+                            if (learningPathLimit.HasValue)
+                            {
+                                learningPathUsed = await _context.LearningPaths
+                                    .Where(x => x.CandidateId == userId && x.CreatedAt >= start && x.CreatedAt <= end)
+                                    .CountAsync();
+                            }
+
                             if (learningPathSlotLimit.HasValue)
                             {
                                 learningPathSlotUsed = await _context.LearningPaths
-                                    .Where(x => x.CandidateId == userId && x.CreatedAt >= start && x.CreatedAt <= end)
+                                    .Where(x => x.CandidateId == userId)
                                     .CountAsync();
                             }
                         }
@@ -151,6 +161,8 @@ namespace ITHunterview.Service.UseCase
                 MockInterviewUsed = mockInterviewUsed,
                 CvMatchLimit = cvMatchLimit,
                 CvMatchUsed = cvMatchUsed,
+                LearningPathLimit = learningPathLimit,
+                LearningPathUsed = learningPathUsed,
                 LearningPathSlotLimit = learningPathSlotLimit,
                 LearningPathSlotUsed = learningPathSlotUsed
             };
