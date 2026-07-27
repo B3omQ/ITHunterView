@@ -17,6 +17,14 @@ namespace ITHunterview.Service.DTOs.Wallet
         public int? LearningPathUsed { get; set; }
         public int? LearningPathSlotLimit { get; set; }
         public int? LearningPathSlotUsed { get; set; }
+        public int? JobSlotsLimit { get; set; }
+        public int? JobSlotsUsed { get; set; }
+        public int? UnlockCvLimit { get; set; }
+        public int? UnlockCvUsed { get; set; }
+        public int? JobExtendLimit { get; set; }
+        public int? JobExtendUsed { get; set; }
+        public int? PushTopLimit { get; set; }
+        public int? PushTopUsed { get; set; }
     }
 
     public class WalletTransactionDto

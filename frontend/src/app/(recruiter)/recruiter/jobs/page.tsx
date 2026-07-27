@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useJobs } from "@/hooks/useJobs"
 import { useSignalR } from "@/hooks/useSignalR"
+import { useWalletBalance } from "@/hooks/useWallet"
 import { AiParseStatusBadge } from "@/components/shared/AiParseStatusBadge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,6 +32,12 @@ export default function JobPostingsPage() {
   const router = useRouter()
   const pageSize = 7 // Matches mockup showing 7 items
   
+  const { data: walletRes } = useWalletBalance()
+  const walletData = walletRes?.data
+  const jobSlotsLimit = walletData?.jobSlotsLimit ?? 1
+  const jobSlotsUsed = walletData?.jobSlotsUsed ?? 0
+  const isSlotFull = jobSlotsLimit !== -1 && jobSlotsUsed >= jobSlotsLimit
+
   const {
     jobs,
     totalCount,
@@ -162,6 +169,57 @@ export default function JobPostingsPage() {
           </Button>
         </div>
 
+        {/* Job Slots & Quota Status Banner */}
+        {walletData && (
+          <div className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs transition-all ${
+            isSlotFull 
+              ? "bg-amber-50/80 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/50" 
+              : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/40"
+          }`}>
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className={`p-2.5 rounded-lg shrink-0 mt-0.5 sm:mt-0 ${isSlotFull ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" : "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"}`}>
+                <Briefcase className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                  <span>Tin đang Active: <strong className="text-blue-600 dark:text-blue-400 font-bold">{jobSlotsUsed}</strong></span>
+                  <span className="text-zinc-300 dark:text-zinc-600">•</span>
+                  <span>Hạn mức theo gói: <strong className="text-zinc-800 dark:text-zinc-200">{jobSlotsLimit === -1 ? "Vô hạn" : jobSlotsLimit}</strong> tin</span>
+                  {walletData.activeSubscriptionName ? (
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
+                      Gói {walletData.activeSubscriptionName}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                      Gói Free (Mặc định)
+                    </span>
+                  )}
+                  {isSlotFull && (
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                      Đã dùng hết Slot miễn phí
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                  {isSlotFull 
+                    ? `Hiện bạn đã vượt quá hạn mức ${jobSlotsLimit === -1 ? "vô hạn" : jobSlotsLimit} tin miễn phí trong gói. Khi đăng thêm tin Active mới, hệ thống sẽ sử dụng 20,000 Coin từ ví cho mỗi tin (Số dư hiện tại: ${(walletData.balance || 0).toLocaleString()} Coin). Lưu dưới dạng Draft (Bản nháp) thì hoàn toàn miễn phí.`
+                    : `Gói hiện tại cho phép bạn duy trì tối đa ${jobSlotsLimit === -1 ? "vô số" : jobSlotsLimit} việc làm Active đồng thời. Bạn có thể đăng thêm ${jobSlotsLimit === -1 ? "vô số" : (jobSlotsLimit || 0) - (jobSlotsUsed || 0)} tin miễn phí mà không mất Coin.`}
+                </p>
+              </div>
+            </div>
+            {isSlotFull && (
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={() => router.push("/recruiter/billing")}
+                className="shrink-0 border-amber-300 dark:border-amber-700 hover:bg-amber-100/50 text-amber-800 dark:text-amber-300 text-xs font-medium self-end sm:self-center"
+              >
+                Nâng cấp gói ngay
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Filter Card */}
         <div className="flex flex-col sm:flex-row items-center gap-4 justify-between py-2 border-b border-zinc-200 dark:border-zinc-800 mb-4">
             <div className="relative w-full sm:max-w-md">
@@ -271,7 +329,7 @@ export default function JobPostingsPage() {
                       <td className="px-5 py-3 align-top text-center">
 
                         <div className="flex flex-col items-center gap-1.5">
-                          {renderStatusBadge(job.status)}
+                          {renderStatusBadge(job)}
                           <AiParseStatusBadge status={job.parseStatus} error={job.parseError} />
                         </div>
 

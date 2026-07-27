@@ -22,6 +22,7 @@ namespace ITHunterview.Service.UseCase
         private readonly ICompanyRepository _companyRepository;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly INotificationUseCase _notificationUseCase;
+        private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
         private readonly Microsoft.AspNetCore.SignalR.IHubContext<ITHunterview.Service.Hubs.NotificationHub> _hubContext;
         private readonly ILogger<JobPostingsUseCase> _logger;
 
@@ -30,6 +31,7 @@ namespace ITHunterview.Service.UseCase
             ICompanyRepository companyRepository,
             IServiceScopeFactory scopeFactory,
             INotificationUseCase notificationUseCase,
+            ICandidateFeatureUsageUseCase featureUsageUseCase,
             Microsoft.AspNetCore.SignalR.IHubContext<ITHunterview.Service.Hubs.NotificationHub> hubContext,
             ILogger<JobPostingsUseCase> logger)
         {
@@ -37,6 +39,7 @@ namespace ITHunterview.Service.UseCase
             _companyRepository = companyRepository;
             _scopeFactory = scopeFactory;
             _notificationUseCase = notificationUseCase;
+            _featureUsageUseCase = featureUsageUseCase;
             _hubContext = hubContext;
             _logger = logger;
         }
@@ -128,6 +131,8 @@ namespace ITHunterview.Service.UseCase
                 {
                     return new ResponseBase<JobPostingDetailDto>("Your company must be verified before you can publish a job posting.");
                 }
+
+                await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "PostJob");
             }
 
             var job = new JobPostings
@@ -240,6 +245,8 @@ namespace ITHunterview.Service.UseCase
                     {
                         job.PublishedAt = DateTime.UtcNow;
                     }
+
+                    await _featureUsageUseCase.TryConsumeFeatureAsync(job.RecruiterId, "PostJob", job.Id.ToString());
                 }
                 job.Status = dto.Status;
             }

@@ -22,6 +22,17 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             await SeedJobPostingsAsync(context);
             await SeedSfiaSkillsAsync(context);
             await SeedRealisticSpecificJDsAsync(context);
+
+            // Cập nhật trạng thái ParseStatus của các Job mẫu được seed sang SUCCESS để không hiển thị kẹt ở trạng thái AI Processing
+            var pendingJobs = await context.JobPostings.Where(j => j.ParseStatus == "PENDING" || j.ParseStatus == null).ToListAsync();
+            if (pendingJobs.Any())
+            {
+                foreach (var job in pendingJobs)
+                {
+                    job.ParseStatus = "SUCCESS";
+                }
+                await context.SaveChangesAsync();
+            }
         }
 
         private static async Task SeedRolesAndPermissionsAsync(ITHunterviewContext context)

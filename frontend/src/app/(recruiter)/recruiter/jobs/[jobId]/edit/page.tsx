@@ -195,6 +195,8 @@ export default function EditJobPage() {
     const res = await updateJob(payload)
     if (res.success) {
       router.push("/recruiter/jobs")
+    } else {
+      alert(res.message || "Không thể cập nhật tin tuyển dụng. Vui lòng kiểm tra số dư Coin hoặc gói dịch vụ của bạn.")
     }
   }
 

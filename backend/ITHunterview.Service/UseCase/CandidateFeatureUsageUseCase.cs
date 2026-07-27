@@ -95,6 +95,10 @@ namespace ITHunterview.Service.UseCase
                                     "CvJdMatching" => features.CvMatchLimit ?? 0,
                                     "MockInterview" => features.MockInterviewLimit ?? 0,
                                     "LearningPath" => features.LearningPathLimit ?? (features.LearningPathSlotLimit ?? 0),
+                                    "PostJob" => features.JobSlots ?? 1, // Gói mặc định hoặc configured slot
+                                    "UnlockCv" => features.UnlockCvLimit ?? 0,
+                                    "ExtendJob" => features.JobExtendLimit ?? 0,
+                                    "PushTop" => features.PushTopLimit ?? 0,
                                     _ => 0
                                 };
 
@@ -114,6 +118,18 @@ namespace ITHunterview.Service.UseCase
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    // Nếu không có gói Active, kiểm tra quyền hạn miễn phí cho gói Free mặc định
+                    if (activeSub == null && featureKey == "PostJob")
+                    {
+                        int defaultFreeSlotLimit = 1;
+                        int usedCount = await GetUsedCountInPeriodAsync(userId, featureKey, DateTime.MinValue, DateTime.MaxValue);
+                        if (usedCount < defaultFreeSlotLimit)
+                        {
+                            await transaction.CommitAsync();
+                            return true; // Gói Free được miễn phí 1 slot đăng việc Active
                         }
                     }
 
@@ -137,6 +153,10 @@ namespace ITHunterview.Service.UseCase
                             "CvJdMatching" => defaultCosts.CvJdMatching,
                             "MockInterview" => defaultCosts.MockInterview,
                             "LearningPath" => defaultCosts.LearningPath,
+                            "PostJob" => defaultCosts.PostJob,
+                            "UnlockCv" => defaultCosts.UnlockCv,
+                            "ExtendJob" => defaultCosts.ExtendJob,
+                            "PushTop" => defaultCosts.PushTop,
                             _ => 0
                         };
                     }
@@ -149,7 +169,11 @@ namespace ITHunterview.Service.UseCase
 
                     if (wallet.Balance < coinCost)
                     {
-                        throw new InvalidOperationException($"Số dư ví không đủ. Tính năng này yêu cầu {coinCost} Coin nhưng bạn hiện chỉ có {wallet.Balance} Coin. Vui lòng nạp thêm Coin.");
+                        if (featureKey == "PostJob")
+                        {
+                            throw new InvalidOperationException($"Bạn đã sử dụng hết số slot đăng tin Active miễn phí trong gói hiện tại. Để đăng thêm tin mới, bạn cần trả {coinCost:N0} Coin nhưng số dư ví không đủ (hiện có {wallet.Balance:N0} Coin). Vui lòng nạp thêm Coin hoặc nâng cấp gói dịch vụ để nhận thêm slot.");
+                        }
+                        throw new InvalidOperationException($"Số dư ví không đủ. Tính năng này yêu cầu {coinCost:N0} Coin nhưng bạn hiện chỉ có {wallet.Balance:N0} Coin. Vui lòng nạp thêm Coin.");
                     }
 
                     // Trừ số dư ví
@@ -209,6 +233,16 @@ namespace ITHunterview.Service.UseCase
                 case "LearningPath":
                     return await _context.LearningPaths
                         .Where(x => x.CandidateId == userId && x.CreatedAt >= start && x.CreatedAt <= end)
+                        .CountAsync();
+
+                case "PostJob":
+                    // Đếm số job đang Active (PUBLISHED, chưa hết hạn, không bị xóa hay ban) của Recruiter
+                    return await _context.JobPostings
+                        .Where(x => x.RecruiterId == userId && 
+                                    x.Status == Domain.Enums.JobStatus.PUBLISHED && 
+                                    !x.IsBanned &&
+                                    x.DeletedAt == null &&
+                                    (!x.ExpiresAt.HasValue || x.ExpiresAt.Value >= DateTime.UtcNow))
                         .CountAsync();
 
                 default:
