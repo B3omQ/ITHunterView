@@ -7,6 +7,8 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Wallet;
+using ITHunterview.Service.DTOs.Subscription;
+using System.Text.Json;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.UseCase;
 using PayOS;
@@ -71,15 +73,71 @@ namespace ITHunterview.Service.UseCase
             }
 
             var activeSub = await _context.UserSubscriptions
-                .FirstOrDefaultAsync(us => us.UserId == userId && us.Status == UserSubscriptionStatus.ACTIVE && us.EndDate >= DateTime.UtcNow);
+                .Where(us => us.UserId == userId && us.Status == UserSubscriptionStatus.ACTIVE && us.EndDate >= DateTime.UtcNow)
+                .OrderByDescending(us => us.EndDate)
+                .FirstOrDefaultAsync();
                 
             string? activeSubName = null;
+            int? mockInterviewLimit = null;
+            int? mockInterviewUsed = null;
+            int? cvMatchLimit = null;
+            int? cvMatchUsed = null;
+            int? learningPathSlotLimit = null;
+            int? learningPathSlotUsed = null;
+
             if (activeSub != null)
             {
-                activeSubName = await _context.Subscriptions
-                    .Where(s => s.Id == activeSub.SubId)
-                    .Select(s => s.Name)
-                    .FirstOrDefaultAsync();
+                var subscription = await _context.Subscriptions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.Id == activeSub.SubId && s.Status == SubscriptionStatus.ACTIVE);
+
+                if (subscription != null)
+                {
+                    activeSubName = subscription.Name;
+
+                    if (!string.IsNullOrEmpty(subscription.FeaturesConfig))
+                    {
+                        FeaturesConfigDto? features = null;
+                        try
+                        {
+                            features = JsonSerializer.Deserialize<FeaturesConfigDto>(subscription.FeaturesConfig, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        }
+                        catch
+                        {
+                            // Bỏ qua lỗi JSON
+                        }
+
+                        if (features != null && features.Role.Equals("CANDIDATE", StringComparison.OrdinalIgnoreCase))
+                        {
+                            mockInterviewLimit = features.MockInterviewLimit;
+                            cvMatchLimit = features.CvMatchLimit;
+                            learningPathSlotLimit = features.LearningPathSlotLimit;
+
+                            var start = activeSub.StartDate;
+                            var end = activeSub.EndDate;
+
+                            if (mockInterviewLimit.HasValue)
+                            {
+                                mockInterviewUsed = await _context.InterviewSessions
+                                    .Where(x => x.CandidateId == userId && x.StartedAt >= start && x.StartedAt <= end)
+                                    .CountAsync();
+                            }
+
+                            if (cvMatchLimit.HasValue)
+                            {
+                                cvMatchUsed = await (from match in _context.CvJobMatchScores
+                                                     join cv in _context.Cvs on match.CvId equals cv.Id
+                                                     where cv.UserId == userId && match.UpdatedAt >= start && match.UpdatedAt <= end
+                                                     select match.Id).CountAsync();
+                            }
+
+                            if (learningPathSlotLimit.HasValue)
+                            {
+                                learningPathSlotUsed = 0;
+                            }
+                        }
+                    }
+                }
             }
 
             var dto = new WalletBalanceDto
@@ -87,7 +145,13 @@ namespace ITHunterview.Service.UseCase
                 UserId = wallet.UserId,
                 Balance = wallet.Balance,
                 ActiveSubscriptionName = activeSubName,
-                SubscriptionEndDate = activeSub?.EndDate
+                SubscriptionEndDate = activeSub?.EndDate,
+                MockInterviewLimit = mockInterviewLimit,
+                MockInterviewUsed = mockInterviewUsed,
+                CvMatchLimit = cvMatchLimit,
+                CvMatchUsed = cvMatchUsed,
+                LearningPathSlotLimit = learningPathSlotLimit,
+                LearningPathSlotUsed = learningPathSlotUsed
             };
 
             return new ResponseBase<WalletBalanceDto>(dto, "Lấy số dư ví thành công");

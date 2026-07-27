@@ -9,6 +9,12 @@ namespace ITHunterview.Service.DTOs.Wallet
         public int Balance { get; set; }
         public string? ActiveSubscriptionName { get; set; }
         public DateTime? SubscriptionEndDate { get; set; }
+        public int? MockInterviewLimit { get; set; }
+        public int? MockInterviewUsed { get; set; }
+        public int? CvMatchLimit { get; set; }
+        public int? CvMatchUsed { get; set; }
+        public int? LearningPathSlotLimit { get; set; }
+        public int? LearningPathSlotUsed { get; set; }
     }
 
     public class WalletTransactionDto
