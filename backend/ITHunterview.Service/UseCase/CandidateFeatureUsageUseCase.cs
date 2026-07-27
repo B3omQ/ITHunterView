@@ -196,10 +196,9 @@ namespace ITHunterview.Service.UseCase
             {
                 case "CvJdMatching":
                     // Đếm số lần thực hiện matching trong chu kỳ dựa trên lịch sử cv_job_match_scores
-                    return await (from match in _context.CvJobMatchScores
-                                  join cv in _context.Cvs on match.CvId equals cv.Id
-                                  where cv.UserId == userId && match.UpdatedAt >= start && match.UpdatedAt <= end
-                                  select match.Id).CountAsync();
+                    return await _context.CvJobMatchScores
+                        .Where(m => m.UserId == userId && m.UpdatedAt >= start && m.UpdatedAt <= end)
+                        .CountAsync();
 
                 case "MockInterview":
                     // Đếm số lần mock interview trong chu kỳ dựa trên lịch sử interview_sessions

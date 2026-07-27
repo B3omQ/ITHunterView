@@ -125,10 +125,9 @@ namespace ITHunterview.Service.UseCase
 
                             if (cvMatchLimit.HasValue)
                             {
-                                cvMatchUsed = await (from match in _context.CvJobMatchScores
-                                                     join cv in _context.Cvs on match.CvId equals cv.Id
-                                                     where cv.UserId == userId && match.UpdatedAt >= start && match.UpdatedAt <= end
-                                                     select match.Id).CountAsync();
+                                cvMatchUsed = await _context.CvJobMatchScores
+                                    .Where(m => m.UserId == userId && m.UpdatedAt >= start && m.UpdatedAt <= end)
+                                    .CountAsync();
                             }
 
                             if (learningPathSlotLimit.HasValue)
