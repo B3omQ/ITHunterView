@@ -83,7 +83,7 @@ namespace ITHunterview.WebAPI.Controllers
         /// Xem danh sách gói Coin đang hoạt động (dành cho Candidate)
         /// </summary>
         [HttpGet("coin-packages")]
-        [Authorize(Policy = "CandidateOrRecruiter")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetActiveCoinPackages()
         {
             var result = await _coinConfigUseCase.GetCoinConfigAsync();

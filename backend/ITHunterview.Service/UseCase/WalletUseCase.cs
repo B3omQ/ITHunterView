@@ -13,6 +13,8 @@ using PayOS;
 using PayOS.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.SignalR;
+using ITHunterview.Service.Hubs;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -21,17 +23,20 @@ namespace ITHunterview.Service.UseCase
         private readonly ITHunterviewContext _context;
         private readonly PayOSClient _payOS;
         private readonly IConfiguration _configuration;
+        private readonly IHubContext<NotificationHub> _hubContext;
         private readonly ILogger<WalletUseCase> _logger;
 
         public WalletUseCase(
             ITHunterviewContext context,
             PayOSClient payOS,
             IConfiguration configuration,
+            IHubContext<NotificationHub> hubContext,
             ILogger<WalletUseCase> logger)
         {
             _context = context;
             _payOS = payOS;
             _configuration = configuration;
+            _hubContext = hubContext;
             _logger = logger;
         }
 
@@ -437,6 +442,26 @@ namespace ITHunterview.Service.UseCase
                     }
                 }
             }
+
+            var paymentDto = MapToDto(payment);
+            
+            var user = await _context.Users
+                .Include(u => u.CandidateProfile)
+                .Include(u => u.RecruiterProfile)
+                .FirstOrDefaultAsync(u => u.Id == payment.UserId);
+                
+            if (user != null)
+            {
+                paymentDto.UserName = user.RecruiterProfile?.FullName ?? 
+                                     $"{user.CandidateProfile?.FirstName} {user.CandidateProfile?.LastName}".Trim();
+                if (string.IsNullOrWhiteSpace(paymentDto.UserName)) paymentDto.UserName = "Unknown User";
+                
+                paymentDto.UserEmail = user.Email;
+            }
+
+            await PopulateSubscriptionNamesAsync(new List<PaymentDto> { paymentDto });
+
+            await _hubContext.Clients.All.SendAsync("ReceiveNewPayment", paymentDto);
         }
 
         public async Task<ResponseBase<PagedResult<PaymentDto>>> GetPagedPaymentsAsync(int page, int pageSize)
@@ -454,6 +479,26 @@ namespace ITHunterview.Service.UseCase
 
             var dtos = items.Select(MapToDto).ToList();
             await PopulateSubscriptionNamesAsync(dtos);
+
+            var userIds = dtos.Select(d => d.UserId).Distinct().ToList();
+            var users = await _context.Users
+                .Include(u => u.CandidateProfile)
+                .Include(u => u.RecruiterProfile)
+                .Where(u => userIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => new { 
+                    Email = u.Email, 
+                    Name = u.RecruiterProfile != null ? u.RecruiterProfile.FullName : 
+                           u.CandidateProfile != null ? $"{u.CandidateProfile.FirstName} {u.CandidateProfile.LastName}".Trim() : "Unknown User"
+                });
+
+            foreach(var dto in dtos)
+            {
+                if (users.TryGetValue(dto.UserId, out var userInfo))
+                {
+                    dto.UserName = string.IsNullOrWhiteSpace(userInfo.Name) ? "Unknown User" : userInfo.Name;
+                    dto.UserEmail = userInfo.Email;
+                }
+            }
             
             var result = new PagedResult<PaymentDto>
             {

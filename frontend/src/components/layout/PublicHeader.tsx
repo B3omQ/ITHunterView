@@ -23,7 +23,7 @@ export function PublicHeader() {
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
           <Link href="/jobs" className="hover:text-foreground transition-colors">Jobs</Link>
           <Link href="/#mock-interview" className="hover:text-foreground transition-colors">Mock Interview</Link>
-          <Link href="/#pricing" className="hover:text-foreground transition-colors">Pricing</Link>
+          <Link href="/pricing" className="hover:text-foreground transition-colors">Pricing</Link>
         </nav>
 
         <div className="flex items-center gap-3">
