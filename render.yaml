@@ -46,6 +46,13 @@ services:
         sync: false
       - key: FrontendUrl
         sync: false
+      - key: PayOS__ClientId
+        sync: false
+      - key: PayOS__ApiKey
+        sync: false
+      - key: PayOS__ChecksumKey
+        sync: false
+
 
 databases:
   - name: ithunterview-db
