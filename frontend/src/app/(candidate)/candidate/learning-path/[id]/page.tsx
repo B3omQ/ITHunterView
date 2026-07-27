@@ -145,18 +145,20 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
         <CardContent>
           <Accordion className="w-full space-y-4">
             {modules.map((module: LearningModule, index: number) => {
-              const isModuleLocked = index > 0 && !modules[index - 1].completed;
+              const isModCompleted = (m: LearningModule) => Boolean(m.completed || (m.tasks && m.tasks.length > 0 && m.tasks.every(t => t.completed)));
+              const currentModCompleted = isModCompleted(module);
+              const isModuleLocked = index > 0 && !isModCompleted(modules[index - 1]);
               return (
-              <AccordionItem key={index} value={`module-${index}`} className={`border rounded-lg px-4 transition-colors ${module.completed ? 'bg-muted/30 border-muted' : 'bg-card'} ${isModuleLocked ? 'opacity-70 grayscale-[0.5]' : ''}`}>
+              <AccordionItem key={index} value={`module-${index}`} className={`border rounded-lg px-4 transition-colors ${currentModCompleted ? 'bg-muted/30 border-muted' : 'bg-card'} ${isModuleLocked ? 'opacity-70 grayscale-[0.5]' : ''}`}>
                 <AccordionTrigger className="hover:no-underline py-4">
                   <div className="flex flex-col sm:flex-row sm:items-center text-left gap-2 sm:gap-4 w-full pr-4">
                     <div className="flex items-center gap-3">
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 font-semibold ${module.completed ? 'bg-green-100 text-green-700' : isModuleLocked ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
-                        {module.completed ? <CheckCircle2 className="w-5 h-5" /> : isModuleLocked ? <Lock className="w-4 h-4" /> : index + 1}
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 font-semibold ${currentModCompleted ? 'bg-green-100 text-green-700' : isModuleLocked ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
+                        {currentModCompleted ? <CheckCircle2 className="w-5 h-5" /> : isModuleLocked ? <Lock className="w-4 h-4" /> : index + 1}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className={`font-semibold text-lg ${module.completed ? 'text-muted-foreground' : ''}`}>{module.title}</h4>
+                          <h4 className={`font-semibold text-lg ${currentModCompleted ? 'text-muted-foreground' : ''}`}>{module.title}</h4>
                         </div>
                         {module.tasks && module.tasks.length > 0 && (
                           <p className="text-xs text-muted-foreground font-normal mt-0.5">
