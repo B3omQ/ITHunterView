@@ -66,7 +66,6 @@ import {
   Zap,
 } from 'lucide-react';
 import type { DifficultyLevel } from '@/types/interview.types';
-import { toast } from 'sonner';
 
 import { Suspense } from 'react';
 import { PageLoader } from '@/components/shared/PageLoader';
