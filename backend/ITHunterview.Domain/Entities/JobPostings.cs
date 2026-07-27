@@ -115,5 +115,7 @@ namespace ITHunterview.Domain.Entities
         [Column("ban_reason")]
         public string? BanReason { get; set; }
 
+        [Column("pushed_top_until")]
+        public DateTime? PushedTopUntil { get; set; }
     }
 }

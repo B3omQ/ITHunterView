@@ -879,6 +879,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                             ApplicationCount = random.Next(0, 100),
                             ViewCount = random.Next(100, 5000),
                             PublishedAt = status == JobStatus.PUBLISHED ? publishedAt : null,
+                            PushedTopUntil = status == JobStatus.PUBLISHED && random.Next(0, 2) == 0 ? publishedAt.AddDays(14) : null,
                             CreatedAt = publishedAt.AddDays(-random.Next(1, 5)),
                             UpdatedAt = publishedAt
                         });
@@ -1027,6 +1028,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         ApplicationCount = 0,
                         ViewCount = 10,
                         PublishedAt = System.DateTime.UtcNow,
+                        PushedTopUntil = System.DateTime.UtcNow.AddDays(7),
                         CreatedAt = System.DateTime.UtcNow,
                         UpdatedAt = System.DateTime.UtcNow
                     });

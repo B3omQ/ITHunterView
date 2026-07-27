@@ -24,6 +24,13 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(result);
         }
 
+        [HttpGet("featured-top")]
+        public async Task<ActionResult<ResponseBase<System.Collections.Generic.List<JobCardDto>>>> GetFeaturedTopJobs([FromQuery] int limit = 6)
+        {
+            var result = await _publicJobUseCase.GetFeaturedTopJobsAsync(limit);
+            return Ok(result);
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<ResponseBase<JobDetailViewDto>>> GetJobDetail(Guid id)
         {

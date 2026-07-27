@@ -30,5 +30,11 @@ namespace ITHunterview.Service.UseCase
             }
             return new ResponseBase<JobDetailViewDto>(job);
         }
+
+        public async Task<ResponseBase<System.Collections.Generic.List<JobCardDto>>> GetFeaturedTopJobsAsync(int limit = 6)
+        {
+            var jobs = await _jobSearchRepository.GetFeaturedTopJobsAsync(limit);
+            return new ResponseBase<System.Collections.Generic.List<JobCardDto>>(jobs);
+        }
     }
 }
