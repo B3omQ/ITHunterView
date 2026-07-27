@@ -29,6 +29,8 @@ namespace ITHunterview.Service.DTOs.Job
         public string ParseStatus { get; set; } = "PENDING";
         public string? ParseError { get; set; }
 
+        public DateTime? PushedTopUntil { get; set; }
+        public bool IsPushedTop => PushedTopUntil.HasValue && PushedTopUntil.Value >= DateTime.UtcNow;
     }
 
     public class JobPostingDetailDto
@@ -67,6 +69,8 @@ namespace ITHunterview.Service.DTOs.Job
         public string ParseStatus { get; set; } = "PENDING";
         public string? ParseError { get; set; }
 
+        public DateTime? PushedTopUntil { get; set; }
+        public bool IsPushedTop => PushedTopUntil.HasValue && PushedTopUntil.Value >= DateTime.UtcNow;
     }
 
     public class CreateJobPostingDto

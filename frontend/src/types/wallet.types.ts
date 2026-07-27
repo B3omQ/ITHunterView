@@ -11,6 +11,14 @@ export interface WalletBalanceDto {
   learningPathUsed?: number | null;
   learningPathSlotLimit?: number | null;
   learningPathSlotUsed?: number | null;
+  jobSlotsLimit?: number | null;
+  jobSlotsUsed?: number | null;
+  unlockCvLimit?: number | null;
+  unlockCvUsed?: number | null;
+  jobExtendLimit?: number | null;
+  jobExtendUsed?: number | null;
+  pushTopLimit?: number | null;
+  pushTopUsed?: number | null;
 }
 
 export interface WalletTransactionDto {

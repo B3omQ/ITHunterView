@@ -22,6 +22,17 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             await SeedJobPostingsAsync(context);
             await SeedSfiaSkillsAsync(context);
             await SeedRealisticSpecificJDsAsync(context);
+
+            // Cập nhật trạng thái ParseStatus của các Job mẫu được seed sang SUCCESS để không hiển thị kẹt ở trạng thái AI Processing
+            var pendingJobs = await context.JobPostings.Where(j => j.ParseStatus == "PENDING" || j.ParseStatus == null).ToListAsync();
+            if (pendingJobs.Any())
+            {
+                foreach (var job in pendingJobs)
+                {
+                    job.ParseStatus = "SUCCESS";
+                }
+                await context.SaveChangesAsync();
+            }
         }
 
         private static async Task SeedRolesAndPermissionsAsync(ITHunterviewContext context)
@@ -868,6 +879,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                             ApplicationCount = random.Next(0, 100),
                             ViewCount = random.Next(100, 5000),
                             PublishedAt = status == JobStatus.PUBLISHED ? publishedAt : null,
+                            PushedTopUntil = status == JobStatus.PUBLISHED && random.Next(0, 2) == 0 ? publishedAt.AddDays(14) : null,
                             CreatedAt = publishedAt.AddDays(-random.Next(1, 5)),
                             UpdatedAt = publishedAt
                         });
@@ -1016,6 +1028,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         ApplicationCount = 0,
                         ViewCount = 10,
                         PublishedAt = System.DateTime.UtcNow,
+                        PushedTopUntil = System.DateTime.UtcNow.AddDays(7),
                         CreatedAt = System.DateTime.UtcNow,
                         UpdatedAt = System.DateTime.UtcNow
                     });

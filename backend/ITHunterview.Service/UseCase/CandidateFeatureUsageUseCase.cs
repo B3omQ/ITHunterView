@@ -95,11 +95,17 @@ namespace ITHunterview.Service.UseCase
                                     "CvJdMatching" => features.CvMatchLimit ?? 0,
                                     "MockInterview" => features.MockInterviewLimit ?? 0,
                                     "LearningPath" => features.LearningPathLimit ?? (features.LearningPathSlotLimit ?? 0),
+                                    "PostJob" => features.JobSlots ?? 1, // Gói mặc định hoặc configured slot
+                                    "UnlockCv" => features.UnlockCvLimit ?? 0,
+                                    "ExtendJob" => features.JobExtendLimit ?? 0,
+                                    "PushTop" => features.PushTopLimit ?? 0,
                                     _ => 0
                                 };
 
                                 if (limit == -1) // Không giới hạn
                                 {
+                                    await RecordFeatureUsageLogAsync(userId, featureKey, referenceId, true);
+                                    await _context.SaveChangesAsync();
                                     await transaction.CommitAsync();
                                     return true;
                                 }
@@ -109,11 +115,25 @@ namespace ITHunterview.Service.UseCase
                                     int usedCount = await GetUsedCountInPeriodAsync(userId, featureKey, activeSub.StartDate, activeSub.EndDate);
                                     if (usedCount < limit)
                                     {
+                                        await RecordFeatureUsageLogAsync(userId, featureKey, referenceId, true);
+                                        await _context.SaveChangesAsync();
                                         await transaction.CommitAsync();
                                         return true; // Hạn mức Subscription còn, cho phép thực hiện
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    // Nếu không có gói Active, kiểm tra quyền hạn miễn phí cho gói Free mặc định
+                    if (activeSub == null && featureKey == "PostJob")
+                    {
+                        int defaultFreeSlotLimit = 1;
+                        int usedCount = await GetUsedCountInPeriodAsync(userId, featureKey, DateTime.MinValue, DateTime.MaxValue);
+                        if (usedCount < defaultFreeSlotLimit)
+                        {
+                            await transaction.CommitAsync();
+                            return true; // Gói Free được miễn phí 1 slot đăng việc Active
                         }
                     }
 
@@ -137,6 +157,10 @@ namespace ITHunterview.Service.UseCase
                             "CvJdMatching" => defaultCosts.CvJdMatching,
                             "MockInterview" => defaultCosts.MockInterview,
                             "LearningPath" => defaultCosts.LearningPath,
+                            "PostJob" => defaultCosts.PostJob,
+                            "UnlockCv" => defaultCosts.UnlockCv,
+                            "ExtendJob" => defaultCosts.ExtendJob,
+                            "PushTop" => defaultCosts.PushTop,
                             _ => 0
                         };
                     }
@@ -149,7 +173,15 @@ namespace ITHunterview.Service.UseCase
 
                     if (wallet.Balance < coinCost)
                     {
-                        throw new InvalidOperationException($"Số dư ví không đủ. Tính năng này yêu cầu {coinCost} Coin nhưng bạn hiện chỉ có {wallet.Balance} Coin. Vui lòng nạp thêm Coin.");
+                        if (featureKey == "PostJob")
+                        {
+                            throw new InvalidOperationException($"Bạn đã sử dụng hết số slot đăng tin Active miễn phí trong gói hiện tại. Để đăng thêm tin mới, bạn cần trả {coinCost:N0} Coin nhưng số dư ví không đủ (hiện có {wallet.Balance:N0} Coin). Vui lòng nạp thêm Coin hoặc nâng cấp gói dịch vụ để nhận thêm slot.");
+                        }
+                        if (featureKey == "ExtendJob")
+                        {
+                            throw new InvalidOperationException($"Bạn đã sử dụng hết lượt gia hạn tin miễn phí trong gói hiện tại. Để gia hạn tin (thêm 15 ngày), bạn cần trả {coinCost:N0} Coin nhưng số dư ví không đủ (hiện có {wallet.Balance:N0} Coin). Vui lòng nạp thêm Coin hoặc nâng cấp gói dịch vụ.");
+                        }
+                        throw new InvalidOperationException($"Số dư ví không đủ. Tính năng này yêu cầu {coinCost:N0} Coin nhưng bạn hiện chỉ có {wallet.Balance:N0} Coin. Vui lòng nạp thêm Coin.");
                     }
 
                     // Trừ số dư ví
@@ -177,6 +209,8 @@ namespace ITHunterview.Service.UseCase
                     };
                     _context.CreditTransactions.Add(creditTx);
 
+                    await RecordFeatureUsageLogAsync(userId, featureKey, referenceId, false);
+
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
@@ -190,18 +224,39 @@ namespace ITHunterview.Service.UseCase
             }
         }
 
+        private Task RecordFeatureUsageLogAsync(Guid userId, string featureKey, string? referenceId, bool fromSubscription)
+        {
+            if (featureKey == "ExtendJob" || featureKey == "UnlockCv" || featureKey == "PushTop")
+            {
+                string actionTag = fromSubscription ? $"ConsumeFeature:{featureKey}:Sub" : $"ConsumeFeature:{featureKey}:Coin";
+                var log = UserActivityLogs.Create(
+                    userId,
+                    "recruiter",
+                    ActivityLogCategory.DATA_MUTATION,
+                    "recruiter@ithunterview.com",
+                    actionTag,
+                    ActivityLogStatus.SUCCESS,
+                    "127.0.0.1",
+                    "System/FeatureUsage",
+                    "JobPostings",
+                    featureKey,
+                    referenceId
+                );
+                _context.UserActivityLogs.Add(log);
+            }
+            return Task.CompletedTask;
+        }
+
         private async Task<int> GetUsedCountInPeriodAsync(Guid userId, string featureKey, DateTime start, DateTime end)
         {
             switch (featureKey)
             {
                 case "CvJdMatching":
-                    // Đếm số lần thực hiện matching trong chu kỳ dựa trên lịch sử cv_job_match_scores
                     return await _context.CvJobMatchScores
                         .Where(m => m.UserId == userId && m.UpdatedAt >= start && m.UpdatedAt <= end)
                         .CountAsync();
 
                 case "MockInterview":
-                    // Đếm số lần mock interview trong chu kỳ dựa trên lịch sử interview_sessions
                     return await _context.InterviewSessions
                         .Where(x => x.CandidateId == userId && x.StartedAt >= start && x.StartedAt <= end)
                         .CountAsync();
@@ -209,6 +264,23 @@ namespace ITHunterview.Service.UseCase
                 case "LearningPath":
                     return await _context.LearningPaths
                         .Where(x => x.CandidateId == userId && x.CreatedAt >= start && x.CreatedAt <= end)
+                        .CountAsync();
+
+                case "PostJob":
+                    return await _context.JobPostings
+                        .Where(x => x.RecruiterId == userId && 
+                                    x.Status == Domain.Enums.JobStatus.PUBLISHED && 
+                                    !x.IsBanned &&
+                                    x.DeletedAt == null &&
+                                    (!x.ExpiresAt.HasValue || x.ExpiresAt.Value >= DateTime.UtcNow))
+                        .CountAsync();
+
+                case "ExtendJob":
+                case "UnlockCv":
+                case "PushTop":
+                    string targetAction = $"ConsumeFeature:{featureKey}:Sub";
+                    return await _context.UserActivityLogs
+                        .Where(x => x.UserId == userId && x.Action == targetAction && x.CreatedAt >= start && x.CreatedAt <= end)
                         .CountAsync();
 
                 default:

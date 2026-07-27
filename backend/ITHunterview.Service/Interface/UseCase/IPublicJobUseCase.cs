@@ -8,5 +8,6 @@ namespace ITHunterview.Service.Interface.UseCase
     {
         Task<PaginatedDataResponse<JobCardDto>> SearchJobsAsync(JobSearchQueryDto query);
         Task<ResponseBase<JobDetailViewDto>> GetJobDetailAsync(System.Guid jobId);
+        Task<ResponseBase<System.Collections.Generic.List<JobCardDto>>> GetFeaturedTopJobsAsync(int limit = 6);
     }
 }

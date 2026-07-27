@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DollarSign, Briefcase, Heart, Monitor, CheckSquare, MapPin } from 'lucide-react';
+import { DollarSign, Briefcase, Heart, Monitor, CheckSquare, MapPin, Flame } from 'lucide-react';
 import type { JobCardDto } from '@/types/job.types';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
 
@@ -25,10 +25,11 @@ const getDaysAgo = (dateStr?: string) => {
 
 export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoadingAction, isActive, onClick }: JobCardProps) {
   const jobLink = isCandidateMode ? `/jobs/${job.id}` : `/jobs/${job.id}`;
+  const isTop = job.isPushedTop || (job.pushedTopUntil && new Date(job.pushedTopUntil) >= new Date());
 
   return (
     <Link href={jobLink} onClick={onClick} className="block h-full">
-      <Card className={`relative overflow-hidden transition-all group h-full flex flex-col bg-white border ${isActive ? 'border-primary shadow-md' : 'border-slate-200 hover:border-primary/50 hover:shadow-md'}`}>
+      <Card className={`relative overflow-hidden transition-all group h-full flex flex-col bg-white border ${isActive ? 'border-primary shadow-md' : isTop ? 'border-amber-400/80 shadow-md shadow-amber-500/15 hover:border-amber-500 hover:shadow-lg hover:shadow-amber-500/25 bg-gradient-to-br from-amber-50/40 via-white to-orange-50/20 dark:from-amber-950/20 dark:via-zinc-900 dark:to-orange-950/10' : 'border-slate-200 hover:border-primary/50 hover:shadow-md'}`}>
         {/* Active state styling */}
         {isActive && (
           <>
@@ -38,19 +39,32 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
             </svg>
           </>
         )}
+        {isTop && !isActive && (
+          <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden pointer-events-none">
+            <div className="absolute top-2 -right-7 rotate-45 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-[9px] uppercase px-8 py-0.5 shadow-md flex items-center justify-center tracking-wider">
+              TOP 24H
+            </div>
+          </div>
+        )}
         
-        <CardContent className={`px-4 py-2 flex-1 flex flex-col relative ${isActive ? 'pl-5' : ''}`}>
+        <CardContent className={`px-4 py-3 flex-1 flex flex-col relative ${isActive ? 'pl-5' : ''}`}>
 
           <div className="flex flex-col gap-2">
             {/* Posted time & Status */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 flex-wrap">
               {job.publishedAt && (
                 <span className="text-sm text-slate-400 font-medium">
                   {getDaysAgo(job.publishedAt)}
                 </span>
               )}
+              {isTop && (
+                <Badge variant="secondary" className="bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-red-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/30 px-2 py-0 text-[11px] font-bold gap-1 animate-pulse">
+                  <Flame className="h-3 w-3 fill-orange-500 text-orange-500" />
+                  Nổi bật Top
+                </Badge>
+              )}
               {job.isApplied && (
-                <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none px-2 py-0.5 text-xs font-semibold">
+                <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none px-2 py-0.5 text-xs font-semibold ml-auto">
                   Applied
                 </Badge>
               )}

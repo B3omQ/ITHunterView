@@ -86,6 +86,17 @@ namespace ITHunterview.Service.UseCase
             int? learningPathUsed = null;
             int? learningPathSlotLimit = null;
             int? learningPathSlotUsed = null;
+            int? jobSlotsLimit = null;
+            int? jobSlotsUsed = null;
+            int? unlockCvLimit = null;
+            int? unlockCvUsed = null;
+            int? jobExtendLimit = null;
+            int? jobExtendUsed = null;
+            int? pushTopLimit = null;
+            int? pushTopUsed = null;
+
+            var isRecruiter = await _context.RecruiterProfiles.AnyAsync(r => r.UserId == userId) || 
+                              await _context.Users.Where(u => u.Id == userId && u.Role != null && u.Role.Name != null && u.Role.Name.ToLower() == "recruiter").AnyAsync();
 
             if (activeSub != null)
             {
@@ -109,15 +120,15 @@ namespace ITHunterview.Service.UseCase
                             // Bỏ qua lỗi JSON
                         }
 
+                        var start = activeSub.StartDate;
+                        var end = activeSub.EndDate;
+
                         if (features != null && features.Role.Equals("CANDIDATE", StringComparison.OrdinalIgnoreCase))
                         {
                             mockInterviewLimit = features.MockInterviewLimit;
                             cvMatchLimit = features.CvMatchLimit;
                             learningPathLimit = features.LearningPathLimit ?? features.LearningPathSlotLimit;
                             learningPathSlotLimit = features.LearningPathSlotLimit;
-
-                            var start = activeSub.StartDate;
-                            var end = activeSub.EndDate;
 
                             if (mockInterviewLimit.HasValue)
                             {
@@ -147,8 +158,59 @@ namespace ITHunterview.Service.UseCase
                                     .CountAsync();
                             }
                         }
+                        else if (features != null && features.Role.Equals("RECRUITER", StringComparison.OrdinalIgnoreCase))
+                        {
+                            jobSlotsLimit = features.JobSlots ?? 1;
+                            unlockCvLimit = features.UnlockCvLimit ?? 0;
+                            jobExtendLimit = features.JobExtendLimit ?? 0;
+                            pushTopLimit = features.PushTopLimit ?? 0;
+
+                            if (unlockCvLimit != 0)
+                            {
+                                unlockCvUsed = await _context.UserActivityLogs
+                                    .Where(x => x.UserId == userId && x.Action == "ConsumeFeature:UnlockCv:Sub" && x.CreatedAt >= start && x.CreatedAt <= end)
+                                    .CountAsync();
+                            }
+
+                            if (jobExtendLimit != 0)
+                            {
+                                jobExtendUsed = await _context.UserActivityLogs
+                                    .Where(x => x.UserId == userId && x.Action == "ConsumeFeature:ExtendJob:Sub" && x.CreatedAt >= start && x.CreatedAt <= end)
+                                    .CountAsync();
+                            }
+
+                            if (pushTopLimit != 0)
+                            {
+                                pushTopUsed = await _context.UserActivityLogs
+                                    .Where(x => x.UserId == userId && x.Action == "ConsumeFeature:PushTop:Sub" && x.CreatedAt >= start && x.CreatedAt <= end)
+                                    .CountAsync();
+                            }
+                        }
                     }
                 }
+            }
+
+            // Mặc định gói Free cho Recruiter có 1 slot đăng tin active
+            if (activeSub == null && isRecruiter)
+            {
+                jobSlotsLimit = 1;
+                unlockCvLimit = 0;
+                jobExtendLimit = 0;
+                pushTopLimit = 0;
+                unlockCvUsed = 0;
+                jobExtendUsed = 0;
+                pushTopUsed = 0;
+            }
+
+            if (jobSlotsLimit.HasValue)
+            {
+                jobSlotsUsed = await _context.JobPostings
+                    .Where(x => x.RecruiterId == userId && 
+                                x.Status == Domain.Enums.JobStatus.PUBLISHED && 
+                                !x.IsBanned &&
+                                x.DeletedAt == null &&
+                                (!x.ExpiresAt.HasValue || x.ExpiresAt.Value >= DateTime.UtcNow))
+                    .CountAsync();
             }
 
             var dto = new WalletBalanceDto
@@ -164,7 +226,15 @@ namespace ITHunterview.Service.UseCase
                 LearningPathLimit = learningPathLimit,
                 LearningPathUsed = learningPathUsed,
                 LearningPathSlotLimit = learningPathSlotLimit,
-                LearningPathSlotUsed = learningPathSlotUsed
+                LearningPathSlotUsed = learningPathSlotUsed,
+                JobSlotsLimit = jobSlotsLimit,
+                JobSlotsUsed = jobSlotsUsed,
+                UnlockCvLimit = unlockCvLimit,
+                UnlockCvUsed = unlockCvUsed,
+                JobExtendLimit = jobExtendLimit,
+                JobExtendUsed = jobExtendUsed,
+                PushTopLimit = pushTopLimit,
+                PushTopUsed = pushTopUsed
             };
 
             return new ResponseBase<WalletBalanceDto>(dto, "Lấy số dư ví thành công");

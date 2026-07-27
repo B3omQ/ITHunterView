@@ -12,10 +12,16 @@ import { ArrowLeft, Plus, X, Sparkles, AlertCircle } from "lucide-react"
 import { LEVELS, WORKING_MODELS, JOB_DOMAINS, JOB_EXPERTISES, VIETNAM_PROVINCES } from "@/lib/job-constants"
 import { MajorCombobox } from "@/components/shared/MajorCombobox"
 import { recruiterService } from "@/services/recruiter.service"
+import { useWalletBalance } from "@/hooks/useWallet"
 
 export default function CreateJobPage() {
   const router = useRouter()
   const { data: company, isLoading: companyLoading } = useGetMyCompany()
+  const { data: walletRes } = useWalletBalance()
+  const walletData = walletRes?.data
+  const jobSlotsLimit = walletData?.jobSlotsLimit ?? 1
+  const jobSlotsUsed = walletData?.jobSlotsUsed ?? 0
+  const isSlotFull = jobSlotsLimit !== -1 && jobSlotsUsed >= jobSlotsLimit
 
   const [formData, setFormData] = useState({
     jobCode: "",
@@ -159,6 +165,8 @@ export default function CreateJobPage() {
     const res = await createJob(payload)
     if (res.success) {
       router.push("/recruiter/jobs")
+    } else {
+      alert(res.message || "Không thể tạo tin tuyển dụng. Vui lòng kiểm tra lại thông tin hoặc số dư Coin.")
     }
   }
 
@@ -587,6 +595,32 @@ export default function CreateJobPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Slot Full Notice */}
+        {isSlotFull && (
+          <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50/80 dark:bg-amber-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm">
+            <div className="flex items-center gap-3 text-amber-800 dark:text-amber-300">
+              <AlertCircle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold">Đã đạt giới hạn tin Active miễn phí của gói ({jobSlotsUsed} tin đang Active • Hạn mức theo gói: {jobSlotsLimit === -1 ? "Vô hạn" : jobSlotsLimit} tin).</span>
+                </div>
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">
+                  Nhấn &quot;Publish Job&quot; (Xuất bản Active) cho tin này sẽ tự động khấu trừ <strong>20,000 Coin</strong> từ ví của bạn (Số dư hiện có: {(walletData?.balance || 0).toLocaleString()} Coin). Nếu chưa muốn đăng ngay hoặc chưa nạp đủ Coin, bạn có thể chọn <strong>&quot;Save as Draft&quot;</strong> (Lưu nháp) hoàn toàn miễn phí.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/recruiter/billing")}
+              className="shrink-0 border-amber-300 dark:border-amber-700 hover:bg-amber-100/50 text-amber-800 dark:text-amber-300 text-xs font-medium self-end sm:self-center"
+            >
+              Nâng cấp gói
+            </Button>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 pt-2">
