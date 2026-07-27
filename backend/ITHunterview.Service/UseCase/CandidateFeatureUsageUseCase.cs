@@ -207,8 +207,9 @@ namespace ITHunterview.Service.UseCase
                         .CountAsync();
 
                 case "LearningPath":
-                    // TODO: Đếm số lượng slot Learning Path đã dùng của Candidate
-                    return 0; // Tạm thời trả về 0 cho đến khi entity LearningPath được thêm vào DB
+                    return await _context.LearningPaths
+                        .Where(x => x.CandidateId == userId && x.CreatedAt >= start && x.CreatedAt <= end)
+                        .CountAsync();
 
                 default:
                     return 0;

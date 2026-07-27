@@ -132,7 +132,9 @@ namespace ITHunterview.Service.UseCase
 
                             if (learningPathSlotLimit.HasValue)
                             {
-                                learningPathSlotUsed = 0;
+                                learningPathSlotUsed = await _context.LearningPaths
+                                    .Where(x => x.CandidateId == userId && x.CreatedAt >= start && x.CreatedAt <= end)
+                                    .CountAsync();
                             }
                         }
                     }
