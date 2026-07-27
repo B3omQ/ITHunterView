@@ -30,7 +30,11 @@ export default function CvOptimizePage({ params }: { params: Promise<{ jobId: st
     mutationFn: (payload: { cvUrl?: string; cvId?: string }) => 
       optimizeService.createSession(resolvedParams.jobId, payload),
     onSuccess: (res) => {
-      if (res.data) setSessionId(res.data);
+      if (res.success && res.data) {
+        setSessionId(res.data);
+      } else {
+        toast.error(res.message || "Could not initialize optimization session.");
+      }
     },
     onError: (err) => {
       console.error("Failed to create optimize session", err);

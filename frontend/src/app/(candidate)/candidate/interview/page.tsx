@@ -61,6 +61,7 @@ import {
   Globe,
 } from 'lucide-react';
 import type { DifficultyLevel } from '@/types/interview.types';
+import { toast } from 'sonner';
 
 import { Suspense } from 'react';
 import { PageLoader } from '@/components/shared/PageLoader';
@@ -142,6 +143,8 @@ function CandidateInterviewContent() {
       if (res.success && res.data) {
         setIsOpen(false);
         router.push(`/candidate/interview/${res.data.id}`);
+      } else {
+        toast.error(res.message || 'Error starting interview');
       }
     } catch (err) {
       console.error(err);

@@ -229,9 +229,12 @@ export function useCvMatchingForm() {
 
     try {
       const res = await matchMutation.mutateAsync(payload);
-      if (res.data) {
+      if (res.success && res.data) {
         setPollingJobId(res.data);
         setCurrentJobId(res.data);
+      } else {
+        toast.error(res.message || 'Error matching CV and JD');
+        setStep('select');
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Error matching CV and JD');
