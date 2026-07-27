@@ -234,9 +234,9 @@ export default function CandidateDashboard() {
             </h2>
             <p className="text-xs text-muted-foreground mt-1">Your competency gap across core dimensions (from active path).</p>
           </div>
-          <div className="flex-1 min-h-[250px] -mt-4">
-            {radarChartData.length > 0 ? (
-             <ResponsiveContainer width="100%" height="100%">
+          {radarChartData.length >= 3 ? (
+            <div className="flex-1 min-h-[250px] -mt-4">
+              <ResponsiveContainer width="100%" height="100%">
                 <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarChartData}>
                   <PolarGrid stroke="#e5e7eb" />
                   <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: '#4b5563', fontWeight: 500 }} />
@@ -247,13 +247,71 @@ export default function CandidateDashboard() {
                   />
                 </RadarChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center text-sm text-muted-foreground p-4">
-                <Sparkles size={24} className="text-muted-foreground/50 mb-2" />
-                <p>No skill gap data found in your current learning path.</p>
+            </div>
+          ) : radarChartData.length > 0 ? (
+            <div className="flex-1 min-h-[250px] flex flex-col justify-between py-2 space-y-6">
+              <div className="space-y-5 my-auto">
+                {radarChartData.map((item, idx) => {
+                  const current = Math.min(Math.max(0, Number(item.Current) || 0), item.fullMark || 7);
+                  const target = Math.min(Math.max(0, Number(item.Target) || 0), item.fullMark || 7);
+                  const maxLevel = item.fullMark || 7;
+                  
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-bold text-foreground truncate max-w-[70%]" title={item.subject}>{item.subject}</span>
+                        <div className="flex items-center gap-2 text-xs font-semibold">
+                          <span className="text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 dark:text-indigo-400 px-2 py-0.5 rounded-md">
+                            Current: L{current}
+                          </span>
+                          <span className="text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
+                            Target: L{target}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-7 gap-1.5 pt-1">
+                        {Array.from({ length: maxLevel }).map((_, stepIdx) => {
+                          const stepLevel = stepIdx + 1;
+                          const isCurrent = stepLevel <= current;
+                          const isTargetGap = stepLevel > current && stepLevel <= target;
+                          
+                          return (
+                            <div 
+                              key={stepIdx} 
+                              className={`h-3 rounded-sm transition-all duration-300 ${
+                                isCurrent 
+                                  ? "bg-indigo-500" 
+                                  : isTargetGap 
+                                  ? "bg-indigo-100 border border-indigo-300 dark:bg-indigo-950 dark:border-indigo-700" 
+                                  : "bg-muted/40"
+                              }`}
+                              title={`Level ${stepLevel}${isCurrent ? ' (Current)' : isTargetGap ? ' (Target Gap)' : ''}`}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          </div>
+
+              <div className="flex items-center justify-center gap-5 pt-3 text-[11px] font-medium text-muted-foreground border-t border-border/40">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500 inline-block"></span>
+                  <span>Current Level</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-indigo-100 border border-indigo-300 dark:bg-indigo-950 dark:border-indigo-700 inline-block"></span>
+                  <span>Target Gap</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 min-h-[250px] flex flex-col items-center justify-center text-center text-sm text-muted-foreground p-4">
+              <Sparkles size={24} className="text-muted-foreground/50 mb-2" />
+              <p>No skill gap data found in your current learning path.</p>
+            </div>
+          )}
         </div>
       </div>
 
