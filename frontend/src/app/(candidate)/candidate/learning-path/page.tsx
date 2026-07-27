@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useMyLearningPaths, useDeleteLearningPath } from '@/hooks/useLearningPath';
+import { useWalletBalance } from '@/hooks/useWallet';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,7 @@ import {
 
 export default function LearningPathDashboard() {
   const { data: myPathsData, isLoading } = useMyLearningPaths();
+  const { data: walletRes } = useWalletBalance();
   const deleteMutation = useDeleteLearningPath();
   const [pathToDelete, setPathToDelete] = useState<string | null>(null);
 
@@ -41,6 +43,9 @@ export default function LearningPathDashboard() {
   };
 
   const paths = myPathsData?.data || [];
+  const slotLimit = walletRes?.data?.learningPathSlotLimit ?? 1; // Basic mặc định là 1
+  const isUnlimitedSlots = slotLimit === -1 || slotLimit >= 999;
+  const isAtSlotLimit = !isUnlimitedSlots && paths.length >= slotLimit;
 
   return (
     <div className="w-full pb-8 space-y-6">
@@ -52,7 +57,7 @@ export default function LearningPathDashboard() {
           </p>
         </div>
         {paths.length > 0 && (
-          paths.length >= 3 ? (
+          isAtSlotLimit ? (
             <Tooltip>
               <TooltipTrigger render={<span className="cursor-not-allowed" />} onClick={(e) => e.preventDefault()}>
                 <span className="pointer-events-none">
@@ -64,7 +69,7 @@ export default function LearningPathDashboard() {
                 </span>
               </TooltipTrigger>
               <TooltipContent>
-                <p>You have reached the maximum of 3 learning paths.</p>
+                <p>Bạn đã đạt giới hạn tối đa {slotLimit} slot lưu trữ lộ trình của gói hiện tại. Vui lòng xoá bớt lộ trình hoặc nâng cấp gói!</p>
               </TooltipContent>
             </Tooltip>
           ) : (

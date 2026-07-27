@@ -73,6 +73,8 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
     if (isParsePending) return "Hệ thống đang phân tích yêu cầu công việc để tìm kiếm ứng viên chuẩn xác nhất. Vui lòng thử lại sau vài giây...";
     if (isParseFailed) return "Lỗi phân tích dữ liệu, không thể matching.";
     return "Scan CVs";
+  };
+
   const handleExportExcel = () => {
     try {
       if (matches.length === 0) {

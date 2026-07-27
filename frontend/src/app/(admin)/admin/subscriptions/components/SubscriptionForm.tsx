@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import type { SubscriptionDto, CreateSubscriptionDto } from '@/types/subscription.types';
 
 const formSchema = z.object({
@@ -32,9 +31,8 @@ const formSchema = z.object({
   // Candidate AI limits
   cvMatchLimit: z.coerce.number().nullable().optional(),
   mockInterviewLimit: z.coerce.number().nullable().optional(),
+  learningPathLimit: z.coerce.number().nullable().optional(),
   learningPathSlotLimit: z.coerce.number().nullable().optional(),
-  aiRefreshUnlimited: z.boolean().default(false),
-  premiumBadge: z.boolean().default(false),
   // Recruiter Limits
   jobSlots: z.coerce.number().nullable().optional(),
   jobExtendLimit: z.coerce.number().nullable().optional(),
@@ -65,9 +63,8 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
       role: 'CANDIDATE',
       cvMatchLimit: null,
       mockInterviewLimit: null,
+      learningPathLimit: null,
       learningPathSlotLimit: null,
-      aiRefreshUnlimited: false,
-      premiumBadge: false,
       jobSlots: null,
       jobExtendLimit: null,
       unlockCvLimit: null,
@@ -88,9 +85,8 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
         role: cfg.role || 'CANDIDATE',
         cvMatchLimit: cfg.cvMatchLimit ?? null,
         mockInterviewLimit: cfg.mockInterviewLimit ?? null,
+        learningPathLimit: cfg.learningPathLimit ?? null,
         learningPathSlotLimit: cfg.learningPathSlotLimit ?? null,
-        aiRefreshUnlimited: cfg.aiRefreshUnlimited ?? false,
-        premiumBadge: cfg.premiumBadge ?? false,
         jobSlots: cfg.jobSlots ?? null,
         jobExtendLimit: cfg.jobExtendLimit ?? null,
         unlockCvLimit: cfg.unlockCvLimit ?? null,
@@ -105,9 +101,8 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
         role: 'CANDIDATE',
         cvMatchLimit: null,
         mockInterviewLimit: null,
+        learningPathLimit: null,
         learningPathSlotLimit: null,
-        aiRefreshUnlimited: false,
-        premiumBadge: false,
         jobSlots: null,
         jobExtendLimit: null,
         unlockCvLimit: null,
@@ -127,9 +122,8 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
     if (values.role === 'CANDIDATE') {
       featuresConfig.cvMatchLimit = values.cvMatchLimit;
       featuresConfig.mockInterviewLimit = values.mockInterviewLimit;
+      featuresConfig.learningPathLimit = values.learningPathLimit;
       featuresConfig.learningPathSlotLimit = values.learningPathSlotLimit;
-      featuresConfig.aiRefreshUnlimited = values.aiRefreshUnlimited;
-      featuresConfig.premiumBadge = values.premiumBadge;
     } else {
       featuresConfig.jobSlots = values.jobSlots;
       featuresConfig.jobExtendLimit = values.jobExtendLimit;
@@ -256,50 +250,34 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                   </FormItem>
                 )}
               />
-              {/* Learning Path Slot Limit */}
-              <FormField
-                control={form.control}
-                name="learningPathSlotLimit"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Learning Path Slot Limit</FormLabel>
-                    <FormControl>
-                      <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {/* AI Refresh Unlimited */}
-              <FormField
-                control={form.control}
-                name="aiRefreshUnlimited"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-white">
-                    <div className="space-y-0.5">
-                      <FormLabel>AI Refresh (Unlimited)</FormLabel>
-                    </div>
-                    <FormControl>
-                      <Switch disabled={isUsed} checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              {/* Premium Badge */}
-              <FormField
-                control={form.control}
-                name="premiumBadge"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-white">
-                    <div className="space-y-0.5">
-                      <FormLabel>Premium Badge</FormLabel>
-                    </div>
-                    <FormControl>
-                      <Switch disabled={isUsed} checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+               {/* Learning Path Limit */}
+               <FormField
+                 control={form.control}
+                 name="learningPathLimit"
+                 render={({ field }) => (
+                   <FormItem>
+                     <FormLabel>Learning Path Generation Limit per Period</FormLabel>
+                     <FormControl>
+                       <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
+                     </FormControl>
+                     <FormMessage />
+                   </FormItem>
+                 )}
+               />
+               {/* Learning Path Slot Limit */}
+               <FormField
+                 control={form.control}
+                 name="learningPathSlotLimit"
+                 render={({ field }) => (
+                   <FormItem>
+                     <FormLabel>Learning Path Slot Limit (-1 for unlimited)</FormLabel>
+                     <FormControl>
+                       <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
+                     </FormControl>
+                     <FormMessage />
+                   </FormItem>
+                 )}
+               />
             </div>
           )}
 

@@ -94,7 +94,7 @@ namespace ITHunterview.Service.UseCase
                                 {
                                     "CvJdMatching" => features.CvMatchLimit ?? 0,
                                     "MockInterview" => features.MockInterviewLimit ?? 0,
-                                    "LearningPath" => features.LearningPathSlotLimit ?? 0,
+                                    "LearningPath" => features.LearningPathLimit ?? (features.LearningPathSlotLimit ?? 0),
                                     _ => 0
                                 };
 
@@ -196,10 +196,9 @@ namespace ITHunterview.Service.UseCase
             {
                 case "CvJdMatching":
                     // Đếm số lần thực hiện matching trong chu kỳ dựa trên lịch sử cv_job_match_scores
-                    return await (from match in _context.CvJobMatchScores
-                                  join cv in _context.Cvs on match.CvId equals cv.Id
-                                  where cv.UserId == userId && match.UpdatedAt >= start && match.UpdatedAt <= end
-                                  select match.Id).CountAsync();
+                    return await _context.CvJobMatchScores
+                        .Where(m => m.UserId == userId && m.UpdatedAt >= start && m.UpdatedAt <= end)
+                        .CountAsync();
 
                 case "MockInterview":
                     // Đếm số lần mock interview trong chu kỳ dựa trên lịch sử interview_sessions
@@ -208,8 +207,9 @@ namespace ITHunterview.Service.UseCase
                         .CountAsync();
 
                 case "LearningPath":
-                    // TODO: Đếm số lượng slot Learning Path đã dùng của Candidate
-                    return 0; // Tạm thời trả về 0 cho đến khi entity LearningPath được thêm vào DB
+                    return await _context.LearningPaths
+                        .Where(x => x.CandidateId == userId && x.CreatedAt >= start && x.CreatedAt <= end)
+                        .CountAsync();
 
                 default:
                     return 0;

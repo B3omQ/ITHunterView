@@ -16,12 +16,17 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import NewLearningPathPage from '../new/page';
 
 export default function LearningPathDetailPage({ params }: { params: Promise<{ id: string }> }) {
   // Use React.use to unwrap the Promise for params
   const { id } = use(params);
   const { data: pathData, isLoading, isError } = useLearningPath(id);
   const toggleMutation = useLearningPathToggle();
+
+  if (id === 'new') {
+    return <NewLearningPathPage />;
+  }
 
   if (isLoading) {
     return (

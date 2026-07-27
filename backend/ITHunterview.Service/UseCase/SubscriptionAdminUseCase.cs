@@ -303,9 +303,8 @@ namespace ITHunterview.Service.UseCase
             {
                 config.CvMatchLimit = null;
                 config.MockInterviewLimit = null;
+                config.LearningPathLimit = null;
                 config.LearningPathSlotLimit = null;
-                config.AiRefreshUnlimited = null;
-                config.PremiumBadge = null;
             }
         }
 
@@ -326,9 +325,8 @@ namespace ITHunterview.Service.UseCase
             return string.Equals(a.Role, b.Role, StringComparison.OrdinalIgnoreCase) &&
                    a.CvMatchLimit == b.CvMatchLimit &&
                    a.MockInterviewLimit == b.MockInterviewLimit &&
+                   a.LearningPathLimit == b.LearningPathLimit &&
                    a.LearningPathSlotLimit == b.LearningPathSlotLimit &&
-                   a.AiRefreshUnlimited == b.AiRefreshUnlimited &&
-                   a.PremiumBadge == b.PremiumBadge &&
                    a.JobSlots == b.JobSlots &&
                    a.JobExtendLimit == b.JobExtendLimit &&
                    a.UnlockCvLimit == b.UnlockCvLimit &&

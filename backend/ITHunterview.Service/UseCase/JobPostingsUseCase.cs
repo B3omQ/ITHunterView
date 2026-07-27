@@ -77,7 +77,7 @@ namespace ITHunterview.Service.UseCase
                 Skills = jobSkills.TryGetValue(j.Id, out var skills) ? skills : new List<string>(),
 
                 IsBanned = j.IsBanned,
-                BanReason = j.BanReason
+                BanReason = j.BanReason,
 
                 ParseStatus = j.ParseStatus ?? "PENDING",
                 ParseError = j.ParseError
@@ -365,7 +365,7 @@ namespace ITHunterview.Service.UseCase
                 ExpiresAt = j.ExpiresAt,
                 CreatedAt = j.CreatedAt,
                 IsBanned = j.IsBanned,
-                BanReason = j.BanReason
+                BanReason = j.BanReason,
                 ParseStatus = j.ParseStatus ?? "PENDING",
                 ParseError = j.ParseError
             };

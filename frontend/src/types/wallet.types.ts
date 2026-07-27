@@ -3,6 +3,14 @@ export interface WalletBalanceDto {
   balance: number;
   activeSubscriptionName?: string | null;
   subscriptionEndDate?: string | null;
+  mockInterviewLimit?: number | null;
+  mockInterviewUsed?: number | null;
+  cvMatchLimit?: number | null;
+  cvMatchUsed?: number | null;
+  learningPathLimit?: number | null;
+  learningPathUsed?: number | null;
+  learningPathSlotLimit?: number | null;
+  learningPathSlotUsed?: number | null;
 }
 
 export interface WalletTransactionDto {

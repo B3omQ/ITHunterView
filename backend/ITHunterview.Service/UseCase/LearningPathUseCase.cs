@@ -36,7 +36,6 @@ namespace ITHunterview.Service.UseCase
             _context = context;
         }
 
-        private const int MaxLearningPathsPerCandidate = 3;
 
         // ─────────────────────────────────────────────────────────────
         // Target Roles
@@ -334,12 +333,50 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
 
         private async Task EnforceMaxPathsAsync(Guid candidateId)
         {
+            var activeSub = await _context.UserSubscriptions
+                .AsNoTracking()
+                .Where(us => us.UserId == candidateId && us.Status == Domain.Enums.UserSubscriptionStatus.ACTIVE && us.EndDate >= DateTime.UtcNow)
+                .OrderByDescending(us => us.EndDate)
+                .FirstOrDefaultAsync();
+
+            int slotLimit = 1; // Mặc định gói Basic là 1 slot
+            if (activeSub != null)
+            {
+                var subscription = await _context.Subscriptions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.Id == activeSub.SubId && s.Status == Domain.Enums.SubscriptionStatus.ACTIVE);
+
+                if (subscription != null && !string.IsNullOrEmpty(subscription.FeaturesConfig))
+                {
+                    try
+                    {
+                        var features = JsonSerializer.Deserialize<DTOs.Subscription.FeaturesConfigDto>(
+                            subscription.FeaturesConfig,
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                        if (features?.LearningPathSlotLimit != null)
+                        {
+                            slotLimit = features.LearningPathSlotLimit.Value;
+                        }
+                    }
+                    catch
+                    {
+                        // Bỏ qua lỗi JSON, dùng limit mặc định
+                    }
+                }
+            }
+
+            if (slotLimit == -1 || slotLimit >= 999)
+            {
+                return; // Gói Mastery hoặc Unlimited cho phép lưu vô hạn lộ trình
+            }
+
             var existingPaths = await _learningPathRepository.GetByCandidateIdAsync(candidateId);
-            if (existingPaths.Count >= MaxLearningPathsPerCandidate)
+            if (existingPaths.Count >= slotLimit)
             {
                 throw new InvalidOperationException(
-                    $"Bạn đã đạt giới hạn tối đa {MaxLearningPathsPerCandidate} lộ trình học. " +
-                    "Vui lòng xoá một lộ trình cũ trước khi tạo lộ trình mới.");
+                    $"Bạn đã đạt giới hạn tối đa {slotLimit} lộ trình học hoạt động trên bảng điều khiển của gói hiện tại. " +
+                    "Vui lòng xoá bớt một lộ trình cũ hoặc nâng cấp gói (như Mastery với slot vô hạn) trước khi tạo lộ trình mới.");
             }
         }
 
