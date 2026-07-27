@@ -42,6 +42,8 @@ export interface PaymentDto {
   targetType: string;
   targetId: string | null;
   subscriptionName: string | null;
+  userName?: string | null;
+  userEmail?: string | null;
   status: string;
   createdAt: string;
   updatedAt: string;

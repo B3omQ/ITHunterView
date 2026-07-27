@@ -65,6 +65,8 @@ namespace ITHunterview.Service.DTOs.Wallet
         public string TargetType { get; set; } = null!;
         public Guid? TargetId { get; set; }
         public string? SubscriptionName { get; set; }
+        public string? UserName { get; set; }
+        public string? UserEmail { get; set; }
         public string Status { get; set; } = null!;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

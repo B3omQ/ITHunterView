@@ -7,7 +7,7 @@ namespace ITHunterview.WebAPI.Controllers
 {
     [ApiController]
     [Route("api/v1/subscriptions")]
-    [Authorize] // Yêu cầu đăng nhập, nhưng chấp nhận cả Candidate và Recruiter
+    [AllowAnonymous] // Cho phép khách truy cập xem danh sách gói cước
     public class PublicSubscriptionController : ControllerBase
     {
         private readonly IPublicSubscriptionUseCase _subscriptionUseCase;
