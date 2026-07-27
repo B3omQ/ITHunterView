@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using ITHunterview.Domain.Enums;
 
@@ -20,10 +21,11 @@ namespace ITHunterview.Service.DTOs.Job
         public string? Level { get; set; }
         public string? WorkingModel { get; set; }
         public string? JobExpertise { get; set; }
-        public System.Collections.Generic.List<string>? JobDomain { get; set; }
-        public System.Collections.Generic.List<string> Skills { get; set; } = new();
+        public List<string>? JobDomain { get; set; }
+        public List<string> Skills { get; set; } = new();
         public string ParseStatus { get; set; } = "PENDING";
         public string? ParseError { get; set; }
+        public int AnalysisRevision { get; set; } = 1;
     }
 
     public class JobPostingDetailDto
@@ -55,10 +57,11 @@ namespace ITHunterview.Service.DTOs.Job
         public string? Level { get; set; }
         public string? WorkingModel { get; set; }
         public string? JobExpertise { get; set; }
-        public System.Collections.Generic.List<string>? JobDomain { get; set; }
-        public System.Collections.Generic.List<JobSkillRequirementDto> Skills { get; set; } = new();
+        public List<string>? JobDomain { get; set; }
+        public List<JobSkillRequirementDto> Skills { get; set; } = new();
         public string ParseStatus { get; set; } = "PENDING";
         public string? ParseError { get; set; }
+        public int AnalysisRevision { get; set; } = 1;
     }
 
     public class CreateJobPostingDto
@@ -66,6 +69,7 @@ namespace ITHunterview.Service.DTOs.Job
         public string JobCode { get; set; } = string.Empty;
 
         public string Title { get; set; } = string.Empty;
+
         [Required(AllowEmptyStrings = false)]
         [StringLength(10000)]
         public string Description { get; set; } = string.Empty;
@@ -77,6 +81,7 @@ namespace ITHunterview.Service.DTOs.Job
         [Required(AllowEmptyStrings = false)]
         [StringLength(10000)]
         public string Benefits { get; set; } = string.Empty;
+
         [Required(AllowEmptyStrings = false)]
         [StringLength(4000)]
         public string IncomeText { get; set; } = string.Empty;
@@ -84,18 +89,17 @@ namespace ITHunterview.Service.DTOs.Job
         [Required(AllowEmptyStrings = false)]
         [StringLength(4000)]
         public string WorkLocationText { get; set; } = string.Empty;
+
         public decimal? MinSalary { get; set; }
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; } = "USD";
         public string Location { get; set; } = string.Empty;
 
-        public JobStatus Status { get; set; } = JobStatus.DRAFT;
         public DateTime? ExpiresAt { get; set; }
         public string? Level { get; set; }
         public string? WorkingModel { get; set; }
         public string? JobExpertise { get; set; }
-        public System.Collections.Generic.List<string>? JobDomain { get; set; }
-        public System.Collections.Generic.List<JobSkillRequirementInputDto>? Skills { get; set; }
+        public List<string>? JobDomain { get; set; }
     }
 
     public class UpdateJobPostingDto
@@ -103,6 +107,7 @@ namespace ITHunterview.Service.DTOs.Job
         public string JobCode { get; set; } = string.Empty;
 
         public string Title { get; set; } = string.Empty;
+
         [Required(AllowEmptyStrings = false)]
         [StringLength(10000)]
         public string Description { get; set; } = string.Empty;
@@ -114,6 +119,7 @@ namespace ITHunterview.Service.DTOs.Job
         [Required(AllowEmptyStrings = false)]
         [StringLength(10000)]
         public string Benefits { get; set; } = string.Empty;
+
         [Required(AllowEmptyStrings = false)]
         [StringLength(4000)]
         public string IncomeText { get; set; } = string.Empty;
@@ -121,18 +127,17 @@ namespace ITHunterview.Service.DTOs.Job
         [Required(AllowEmptyStrings = false)]
         [StringLength(4000)]
         public string WorkLocationText { get; set; } = string.Empty;
+
         public decimal? MinSalary { get; set; }
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; } = "USD";
         public string Location { get; set; } = string.Empty;
 
-        public JobStatus Status { get; set; }
         public DateTime? ExpiresAt { get; set; }
         public string? Level { get; set; }
         public string? WorkingModel { get; set; }
         public string? JobExpertise { get; set; }
-        public System.Collections.Generic.List<string>? JobDomain { get; set; }
-        public System.Collections.Generic.List<JobSkillRequirementInputDto>? Skills { get; set; }
+        public List<string>? JobDomain { get; set; }
     }
 
     public class JobSkillRequirementDto

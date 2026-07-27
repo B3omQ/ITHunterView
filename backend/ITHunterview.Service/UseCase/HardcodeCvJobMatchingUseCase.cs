@@ -8,6 +8,7 @@ using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using ITHunterview.Service.Interface.Service.Matching;
+using ITHunterview.Service.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace ITHunterview.Service.UseCase
@@ -146,13 +147,36 @@ namespace ITHunterview.Service.UseCase
 
         private ParsedMetrics ExtractMetrics(string? parsedData)
         {
+            var metrics = JobAnalysisMetricsReader.Read(parsedData);
             return new ParsedMetrics
             {
-                Titles = ExtractJsonArray(parsedData, "matching_metrics.job_titles_normalized"),
-                Skills = ExtractJsonArray(parsedData, "matching_metrics.skills_normalized"),
-                Exp = ExtractJsonInt(parsedData, "matching_metrics.total_years_exp"),
-                Domains = ExtractJsonArray(parsedData, "matching_metrics.domains")
+                Titles = metrics.Titles,
+                Skills = metrics.Skills,
+                Exp = metrics.TotalYearsExperience,
+                Domains = metrics.Domains
             };
+        }
+
+        private async Task<ParsedMetrics> ExtractJobMetricsAsync(JobPostings job)
+        {
+            var metrics = ExtractMetrics(job.ParsedData);
+            if (metrics.Skills.Count > 0)
+            {
+                return metrics;
+            }
+
+            // Older parsed documents may have no usable skill array. The normalized
+            // recruiter-approved tags are the safe compatibility fallback.
+            metrics.Skills = await (
+                from requirement in _context.JobSkillRequirements.AsNoTracking()
+                join skill in _context.Skills.AsNoTracking() on requirement.SkillId equals skill.Id
+                where requirement.JobId == job.Id
+                select skill.Name)
+                .Distinct()
+                .OrderBy(name => name)
+                .ToListAsync();
+
+            return metrics;
         }
 
         private void ProcessMatching(Cvs cv, ParsedMetrics cvMetrics, JobPostings job, ParsedMetrics jobMetrics, Guid userId, CvJobMatchScores? existingScore)
@@ -255,7 +279,7 @@ namespace ITHunterview.Service.UseCase
                 if (job.ParseStatus != "SUCCESS") continue; // Skip unparsed jobs to avoid inaccurate 0% matches
 
                 existingScores.TryGetValue(job.Id, out var existingScore);
-                var jobMetrics = ExtractMetrics(job.ParsedData);
+                var jobMetrics = await ExtractJobMetricsAsync(job);
                 ProcessMatching(cv, cvMetrics, job, jobMetrics, userId, existingScore);
             }
 
@@ -268,7 +292,7 @@ namespace ITHunterview.Service.UseCase
             if (job == null) throw new Exception("Job not found");
             if (job.ParseStatus != "SUCCESS") throw new Exception($"Job posting is currently in status '{job.ParseStatus ?? "PENDING"}'. AI analysis must complete before matching.");
 
-            var jobMetrics = ExtractMetrics(job.ParsedData);
+            var jobMetrics = await ExtractJobMetricsAsync(job);
 
             var existingScores = await _context.CvJobMatchScores
                 .Where(s => s.JobId == jobId) // Fix Duplicate Bug: Bỏ lọc theo Recruiter UserId

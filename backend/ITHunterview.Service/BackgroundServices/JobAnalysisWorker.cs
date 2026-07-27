@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Service.Infrastructure.Persistence;
+using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

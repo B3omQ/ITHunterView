@@ -115,10 +115,22 @@ namespace ITHunterview.Domain.Entities
         [Column("analysis_input_hash")]
         public string? AnalysisInputHash { get; set; }
 
+        [Column("semantic_content_hash")]
+        public string? SemanticContentHash { get; set; }
+
+        [Column("effective_analysis_revision")]
+        public int? EffectiveAnalysisRevision { get; set; }
+
         [Column("active_analysis_run_id")]
         public Guid? ActiveAnalysisRunId { get; set; }
 
         [ForeignKey(nameof(ActiveAnalysisRunId))]
         public virtual JobAnalysisRuns? ActiveAnalysisRun { get; set; }
+
+        [Column("effective_analysis_run_id")]
+        public Guid? EffectiveAnalysisRunId { get; set; }
+
+        [ForeignKey(nameof(EffectiveAnalysisRunId))]
+        public virtual JobAnalysisRuns? EffectiveAnalysisRun { get; set; }
     }
 }

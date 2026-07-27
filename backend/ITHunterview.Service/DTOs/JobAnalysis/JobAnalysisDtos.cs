@@ -5,6 +5,16 @@ using ITHunterview.Domain.Enums;
 
 namespace ITHunterview.Service.DTOs.JobAnalysis
 {
+    public enum JobAnalysisLifecycleState
+    {
+        NOT_REQUESTED,
+        PENDING,
+        PROCESSING,
+        READY,
+        FAILED,
+        STALE
+    }
+
     public sealed class AnalyzeJobRequestDto
     {
         [Range(0, int.MaxValue)]
@@ -36,16 +46,21 @@ namespace ITHunterview.Service.DTOs.JobAnalysis
         public Guid AnalysisRunId { get; set; }
         public int ExpectedJobRevision { get; set; }
         public int ExpectedDecisionVersion { get; set; }
+        public bool ConfirmNoStandardSkills { get; set; }
     }
 
     public sealed class JobAnalysisStatusDto
     {
         public Guid JobId { get; set; }
         public Guid AnalysisRunId { get; set; }
+        public Guid RunId { get => AnalysisRunId; set => AnalysisRunId = value; }
         public int InputRevision { get; set; }
+        public int CurrentJobRevision { get; set; }
         public JobAnalysisStatus Status { get; set; }
         public string? FailureCode { get; set; }
         public string? Message { get; set; }
+        public bool IsReused { get; set; }
+        public bool IsQueued { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? CompletedAt { get; set; }
     }
@@ -53,8 +68,16 @@ namespace ITHunterview.Service.DTOs.JobAnalysis
     public sealed class JobAnalysisPreviewDto
     {
         public Guid JobId { get; set; }
+        /// <summary>
+        /// False means the draft has never queued an analysis.  Do not infer this
+        /// state from Status: PENDING is reserved for a real queued run.
+        /// </summary>
+        public bool HasAnalysisRun { get; set; }
         public Guid AnalysisRunId { get; set; }
         public int InputRevision { get; set; }
+        public int CurrentJobRevision { get; set; }
+        public JobAnalysisLifecycleState LifecycleState { get; set; }
+        public bool IsCurrentAnalysis { get; set; }
         public JobAnalysisStatus Status { get; set; }
         public int DecisionVersion { get; set; }
         public string? FailureCode { get; set; }
@@ -95,8 +118,12 @@ namespace ITHunterview.Service.DTOs.JobAnalysis
 
     public sealed class FinalizeJobResponseDto
     {
+        public bool Success { get; set; } = true;
+        public string Message { get; set; } = string.Empty;
         public Guid JobId { get; set; }
         public string Status { get; set; } = string.Empty;
+        public string FinalJobStatus { get; set; } = string.Empty;
+        public string? ParseStatus { get; set; }
         public DateTime? PublishedAt { get; set; }
         public int SkillCount { get; set; }
     }

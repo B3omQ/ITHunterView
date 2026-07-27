@@ -79,17 +79,35 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                var cvs = await _context.Cvs.Where(c => c.UserId == userId && c.DeletedAt == null).ToListAsync();
+                // Lock every active CV of this user before changing the primary flag.
+                // This serializes concurrent "set primary" requests for one user.
+                var cvs = await _context.Cvs
+                    .FromSqlInterpolated($"SELECT * FROM cvs WHERE user_id = {userId} AND deleted_at IS NULL FOR UPDATE")
+                    .ToListAsync();
+
                 if (!cvs.Any(c => c.Id == id)) return; // Ensure CV exists and belongs to user
 
-                foreach (var cv in cvs)
+                var now = DateTime.UtcNow;
+
+                // PostgreSQL checks the partial unique index immediately. Do not use
+                // UpdateRange: EF can send the promotion before the demotion, briefly
+                // creating two primary CVs and violating IX_cvs_user_id_is_primary.
+                await _context.Cvs
+                    .Where(c => c.UserId == userId && c.DeletedAt == null && c.IsPrimary)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(c => c.IsPrimary, false)
+                        .SetProperty(c => c.UpdatedAt, now));
+
+                var promotedRows = await _context.Cvs
+                    .Where(c => c.Id == id && c.UserId == userId && c.DeletedAt == null)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(c => c.IsPrimary, true)
+                        .SetProperty(c => c.UpdatedAt, now));
+
+                if (promotedRows != 1)
                 {
-                    cv.IsPrimary = cv.Id == id;
-                    cv.UpdatedAt = DateTime.UtcNow;
+                    throw new KeyNotFoundException("CV not found or no longer belongs to the user.");
                 }
-                
-                _context.Cvs.UpdateRange(cvs);
-                await _context.SaveChangesAsync();
                 
                 await transaction.CommitAsync();
             }

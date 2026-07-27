@@ -134,7 +134,6 @@ export default function CreateJobPage() {
         jobCode: formData.jobCode,
         title: formData.title,
         location: formData.location,
-        status: "DRAFT",
         minSalary: formData.minSalary ? Number(formData.minSalary) : null,
         maxSalary: formData.maxSalary ? Number(formData.maxSalary) : null,
         currency: formData.currency,
@@ -154,7 +153,8 @@ export default function CreateJobPage() {
       if (res.success && res.data) {
         const createdJobId = res.data.id
         if (action === "PREVIEW") {
-          router.push(`/recruiter/jobs/${createdJobId}/preview`)
+          const needsAnalysis = res.data.parseStatus === "NOT_REQUESTED" || res.data.parseStatus === "STALE"
+          router.push("/recruiter/jobs/" + createdJobId + "/preview" + (needsAnalysis ? "?analyze=1" : ""))
         } else {
           router.push("/recruiter/jobs")
         }
@@ -319,6 +319,20 @@ export default function CreateJobPage() {
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="howToApply" className="font-semibold text-zinc-700 dark:text-zinc-300">How to Apply *</Label>
+              <textarea
+                id="howToApply"
+                name="howToApply"
+                rows={2}
+                required
+                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-950 focus:outline-none focus:ring-2 focus:ring-ring dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                value={formData.howToApply}
+                onChange={handleChange}
+              />
+              <p className="text-xs text-muted-foreground">The default text guides candidates to the online application button; you may adapt it for this role.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

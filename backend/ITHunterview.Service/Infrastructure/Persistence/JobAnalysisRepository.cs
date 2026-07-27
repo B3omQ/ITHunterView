@@ -7,63 +7,11 @@ using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.JobAnalysis;
+using ITHunterview.Service.Interface.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace ITHunterview.Service.Infrastructure.Persistence
 {
-    public sealed class ApplyDecisionResult
-    {
-        public bool Success { get; set; }
-        public string? ErrorCode { get; set; }
-        public string? ErrorMessage { get; set; }
-        public JobAnalysisPreviewDto? Preview { get; set; }
-    }
-
-    public sealed class FinalizeJobResult
-    {
-        public bool Success { get; set; }
-        public string? ErrorCode { get; set; }
-        public string? ErrorMessage { get; set; }
-        public JobPostings? Job { get; set; }
-        public int SkillCount { get; set; }
-    }
-
-    public interface IJobAnalysisRepository
-    {
-        Task<JobAnalysisRuns?> GetRunAsync(Guid runId, CancellationToken ct = default);
-        Task<JobAnalysisRuns?> GetReusableReadyRunAsync(Guid jobId, string inputHash, CancellationToken ct = default);
-        Task<JobAnalysisRuns?> GetActiveProcessingRunAsync(Guid jobId, string inputHash, CancellationToken ct = default);
-        Task<JobAnalysisRuns> AddPendingRunAsync(JobAnalysisRuns run, CancellationToken ct = default);
-        Task<IReadOnlyList<Guid>> ClaimPendingRunIdsAsync(int limit, CancellationToken ct = default);
-        Task<bool> TryCompleteReadyAsync(
-            Guid runId,
-            int expectedRevision,
-            string rawJson,
-            string effectiveJson,
-            IReadOnlyList<JobSkillDecisions> decisions,
-            string? provider,
-            string? model,
-            CancellationToken ct = default);
-        Task MarkFailedAsync(Guid runId, string failureCode, string validationErrorsJson, CancellationToken ct = default);
-        Task<JobAnalysisPreviewDto?> GetPreviewAsync(Guid jobId, Guid recruiterId, CancellationToken ct = default);
-        Task<ApplyDecisionResult> ApplyDecisionsAsync(
-            Guid jobId,
-            Guid runId,
-            Guid recruiterId,
-            int expectedJobRevision,
-            int expectedDecisionVersion,
-            IReadOnlyList<JobSkillDecisionInputDto> decisions,
-            CancellationToken ct = default);
-        Task<FinalizeJobResult> FinalizeAsync(
-            Guid jobId,
-            Guid runId,
-            Guid recruiterId,
-            int expectedJobRevision,
-            int expectedDecisionVersion,
-            JobStatus targetStatus,
-            CancellationToken ct = default);
-    }
-
     public class JobAnalysisRepository : IJobAnalysisRepository
     {
         private readonly ITHunterviewContext _context;
@@ -73,6 +21,19 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
+        public async Task<JobAnalysisRequestContext?> GetRequestContextAsync(Guid jobId, Guid recruiterId, CancellationToken ct = default)
+        {
+            var job = await _context.JobPostings.FirstOrDefaultAsync(j => j.Id == jobId, ct);
+            if (job == null || job.RecruiterId != recruiterId) return null;
+
+            var company = await _context.Companies.AsNoTracking().FirstOrDefaultAsync(c => c.Id == job.CompanyId, ct);
+            return new JobAnalysisRequestContext
+            {
+                Job = job,
+                IsCompanyVerified = company?.Status == CompanyStatus.VERIFIED
+            };
+        }
+
         public async Task<JobAnalysisRuns?> GetRunAsync(Guid runId, CancellationToken ct = default)
         {
             return await _context.JobAnalysisRuns
@@ -80,13 +41,48 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 .FirstOrDefaultAsync(r => r.Id == runId, ct);
         }
 
-        public async Task<JobAnalysisRuns?> GetReusableReadyRunAsync(Guid jobId, string inputHash, CancellationToken ct = default)
+        public async Task<JobAnalysisRuns?> FindByIdempotencyKeyAsync(Guid jobId, string key, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return null;
+            return await _context.JobAnalysisRuns
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.JobId == jobId && r.IdempotencyKey == key, ct);
+        }
+
+        public async Task<JobAnalysisRuns?> FindReusableRunAsync(Guid jobId, int revision, string inputHash, CancellationToken ct = default)
         {
             return await _context.JobAnalysisRuns
                 .AsNoTracking()
-                .Where(r => r.JobId == jobId && r.InputHash == inputHash && r.Status == JobAnalysisStatus.READY)
+                .Where(r => r.JobId == jobId && r.InputRevision == revision && r.InputHash == inputHash && r.Status != JobAnalysisStatus.SUPERSEDED && r.Status != JobAnalysisStatus.FAILED)
                 .OrderByDescending(r => r.CreatedAt)
                 .FirstOrDefaultAsync(ct);
+        }
+
+        public async Task<bool> ActivateReusableRunAsync(Guid jobId, Guid runId, int expectedRevision, CancellationToken ct = default)
+        {
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            var job = await _context.JobPostings
+                .FromSqlInterpolated($"SELECT * FROM job_postings WHERE id = {jobId} FOR UPDATE")
+                .FirstOrDefaultAsync(ct);
+            if (job == null || job.AnalysisRevision != expectedRevision)
+            {
+                return false;
+            }
+
+            var run = await _context.JobAnalysisRuns.FirstOrDefaultAsync(r => r.Id == runId && r.JobId == jobId, ct);
+            if (run == null || run.InputRevision != expectedRevision ||
+                (run.Status != JobAnalysisStatus.PENDING && run.Status != JobAnalysisStatus.PROCESSING && run.Status != JobAnalysisStatus.READY))
+            {
+                return false;
+            }
+
+            job.ActiveAnalysisRunId = run.Id;
+            job.AnalysisInputHash = run.InputHash;
+            job.ParseStatus = run.Status == JobAnalysisStatus.READY ? "READY" : run.Status.ToString();
+            job.ParseError = null;
+            await _context.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+            return true;
         }
 
         public async Task<JobAnalysisRuns?> GetActiveProcessingRunAsync(Guid jobId, string inputHash, CancellationToken ct = default)
@@ -98,14 +94,27 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 .FirstOrDefaultAsync(ct);
         }
 
+        public async Task<int> GetNextAttemptNumberAsync(Guid jobId, int revision, CancellationToken ct = default)
+        {
+            int maxAttempt = await _context.JobAnalysisRuns
+                .Where(r => r.JobId == jobId && r.InputRevision == revision)
+                .Select(r => (int?)r.AttemptNumber)
+                .MaxAsync(ct) ?? 0;
+
+            return maxAttempt + 1;
+        }
+
         public async Task<JobAnalysisRuns> AddPendingRunAsync(JobAnalysisRuns run, CancellationToken ct = default)
+        {
+            return await CreatePendingRunAsync(run, ct);
+        }
+
+        public async Task<JobAnalysisRuns> CreatePendingRunAsync(JobAnalysisRuns run, CancellationToken ct = default)
         {
             await using var tx = await _context.Database.BeginTransactionAsync(ct);
 
-            // Mark existing pending/processing/ready runs as SUPERSEDED if revision changed
             var previousRuns = await _context.JobAnalysisRuns
-                .Where(r => r.JobId == run.JobId && r.InputRevision < run.InputRevision &&
-                           (r.Status == JobAnalysisStatus.PENDING || r.Status == JobAnalysisStatus.PROCESSING || r.Status == JobAnalysisStatus.READY))
+                .Where(r => r.JobId == run.JobId && (r.Status == JobAnalysisStatus.PENDING || r.Status == JobAnalysisStatus.PROCESSING))
                 .ToListAsync(ct);
 
             foreach (var oldRun in previousRuns)
@@ -115,7 +124,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             _context.JobAnalysisRuns.Add(run);
 
-            var job = await _context.JobPostings.FirstOrDefaultAsync(j => j.Id == run.JobId, ct);
+            var job = await _context.JobPostings
+                .FromSqlInterpolated($"SELECT * FROM job_postings WHERE id = {run.JobId} FOR UPDATE")
+                .FirstOrDefaultAsync(ct);
             if (job != null)
             {
                 job.ActiveAnalysisRunId = run.Id;
@@ -123,30 +134,85 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 job.ParseStatus = "PENDING";
             }
 
-            await _context.SaveChangesAsync(ct);
-            await tx.CommitAsync(ct);
-            return run;
+            try
+            {
+                await _context.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+                return run;
+            }
+            catch (DbUpdateException)
+            {
+                // The partial unique index allows only one live run per job
+                // revision. A concurrent double-click/request should reuse that
+                // run, not leak a database error to the recruiter.
+                await tx.RollbackAsync(ct);
+                _context.ChangeTracker.Clear();
+
+                var activeRun = await _context.JobAnalysisRuns
+                    .AsNoTracking()
+                    .Where(r => r.JobId == run.JobId
+                                && r.InputRevision == run.InputRevision
+                                && (r.Status == JobAnalysisStatus.PENDING || r.Status == JobAnalysisStatus.PROCESSING))
+                    .OrderByDescending(r => r.CreatedAt)
+                    .FirstOrDefaultAsync(ct);
+
+                if (activeRun != null)
+                {
+                    return activeRun;
+                }
+
+                throw;
+            }
         }
 
         public async Task<IReadOnlyList<Guid>> ClaimPendingRunIdsAsync(int limit, CancellationToken ct = default)
         {
             await using var tx = await _context.Database.BeginTransactionAsync(ct);
 
+            var now = DateTime.UtcNow;
+
+            // Recover work abandoned by an application restart or a terminated
+            // provider call.  A run is only re-queued after its lease expires.
+            var staleProcessingCutoff = now.AddMinutes(-5);
+            var staleRuns = await _context.JobAnalysisRuns
+                .Where(r => r.Status == JobAnalysisStatus.PROCESSING
+                            && ((r.LeaseExpiresAt != null && r.LeaseExpiresAt < now)
+                                // Runs created before lease support (or interrupted
+                                // before a lease was persisted) must not remain
+                                // permanently invisible to the worker.
+                                || (r.LeaseExpiresAt == null
+                                    && r.StartedAt != null
+                                    && r.StartedAt < staleProcessingCutoff)))
+                .ToListAsync(ct);
+            foreach (var staleRun in staleRuns)
+            {
+                staleRun.Status = JobAnalysisStatus.PENDING;
+                staleRun.StartedAt = null;
+                staleRun.LeaseExpiresAt = null;
+                staleRun.LastHeartbeatAt = now;
+            }
+
+            // PostgreSQL row locks prevent multiple API instances from claiming
+            // the same pending run and spending AI credits twice.
             var pendingRuns = await _context.JobAnalysisRuns
-                .Where(r => r.Status == JobAnalysisStatus.PENDING)
-                .OrderBy(r => r.CreatedAt)
-                .Take(limit)
+                .FromSqlInterpolated($@"SELECT *
+                    FROM job_analysis_runs
+                    WHERE status = {JobAnalysisStatus.PENDING.ToString()}
+                    ORDER BY created_at
+                    LIMIT {limit}
+                    FOR UPDATE SKIP LOCKED")
                 .ToListAsync(ct);
 
             if (pendingRuns.Count == 0) return Array.Empty<Guid>();
 
             var claimedIds = new List<Guid>();
-            DateTime now = DateTime.UtcNow;
 
             foreach (var run in pendingRuns)
             {
                 run.Status = JobAnalysisStatus.PROCESSING;
                 run.StartedAt = now;
+                run.LastHeartbeatAt = now;
+                run.LeaseExpiresAt = now.AddMinutes(5);
                 claimedIds.Add(run.Id);
             }
 
@@ -173,7 +239,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 return false;
             }
 
-            var job = await _context.JobPostings.FirstOrDefaultAsync(j => j.Id == run.JobId, ct);
+            var job = await _context.JobPostings
+                .FromSqlInterpolated($"SELECT * FROM job_postings WHERE id = {run.JobId} FOR UPDATE")
+                .FirstOrDefaultAsync(ct);
             if (job == null || job.AnalysisRevision != expectedRevision || job.ActiveAnalysisRunId != runId)
             {
                 run.Status = JobAnalysisStatus.SUPERSEDED;
@@ -188,6 +256,14 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             run.ProviderName = provider;
             run.ModelName = model;
             run.CompletedAt = DateTime.UtcNow;
+            run.LeaseExpiresAt = null;
+            run.LastHeartbeatAt = DateTime.UtcNow;
+            run.DecisionVersion = decisions?.Count > 0 ? 1 : 0;
+
+            // READY means parsing has completed; publication still requires
+            // the recruiter to finalize the reviewed result.
+            job.ParseStatus = "READY";
+            job.ParseError = null;
 
             if (decisions != null && decisions.Count > 0)
             {
@@ -208,14 +284,28 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 run.FailureCode = failureCode;
                 run.ValidationErrorsJson = validationErrorsJson;
                 run.CompletedAt = DateTime.UtcNow;
+                run.LeaseExpiresAt = null;
+                run.LastHeartbeatAt = DateTime.UtcNow;
 
-                var job = await _context.JobPostings.FirstOrDefaultAsync(j => j.Id == run.JobId, ct);
+                var job = await _context.JobPostings
+                    .FromSqlInterpolated($"SELECT * FROM job_postings WHERE id = {run.JobId} FOR UPDATE")
+                    .FirstOrDefaultAsync(ct);
                 if (job != null && job.ActiveAnalysisRunId == runId)
                 {
                     job.ParseStatus = "FAILED";
                     job.ParseError = failureCode;
                 }
 
+                await _context.SaveChangesAsync(ct);
+            }
+        }
+
+        public async Task MarkSupersededAsync(Guid runId, CancellationToken ct = default)
+        {
+            var run = await _context.JobAnalysisRuns.FirstOrDefaultAsync(r => r.Id == runId, ct);
+            if (run != null)
+            {
+                run.Status = JobAnalysisStatus.SUPERSEDED;
                 await _context.SaveChangesAsync(ct);
             }
         }
@@ -237,14 +327,42 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             if (run == null)
             {
+                var lifecycleState = string.Equals(job.ParseStatus, "STALE", StringComparison.OrdinalIgnoreCase)
+                    ? JobAnalysisLifecycleState.STALE
+                    : JobAnalysisLifecycleState.NOT_REQUESTED;
+
                 return new JobAnalysisPreviewDto
                 {
                     JobId = jobId,
                     AnalysisRunId = Guid.Empty,
                     InputRevision = job.AnalysisRevision,
-                    Status = JobAnalysisStatus.PENDING,
+                    CurrentJobRevision = job.AnalysisRevision,
+                    LifecycleState = lifecycleState,
+                    IsCurrentAnalysis = false,
                     CanFinalize = false,
-                    BlockingReasons = new List<string> { "No analysis has been initiated for this job." }
+                    HasAnalysisRun = false,
+                    BlockingReasons = lifecycleState == JobAnalysisLifecycleState.STALE
+                        ? new List<string> { "Job source content changed. Run analysis again before publishing." }
+                        : new List<string>()
+                };
+            }
+
+            if (run.InputRevision != job.AnalysisRevision)
+            {
+                return new JobAnalysisPreviewDto
+                {
+                    JobId = jobId,
+                    AnalysisRunId = Guid.Empty,
+                    InputRevision = job.AnalysisRevision,
+                    CurrentJobRevision = job.AnalysisRevision,
+                    LifecycleState = JobAnalysisLifecycleState.STALE,
+                    IsCurrentAnalysis = false,
+                    CanFinalize = false,
+                    HasAnalysisRun = false,
+                    BlockingReasons = new List<string>
+                    {
+                        "The active analysis does not match the current job source content. Run analysis again before publishing."
+                    }
                 };
             }
 
@@ -282,23 +400,20 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 blockingReasons.Add($"Analysis run is currently in status '{run.Status}'. It must be READY to publish.");
             }
 
-            var unmappedOrPendingDecisions = decisions.Where(d => d.DecisionStatus == SkillDecisionStatus.PENDING).ToList();
-            if (unmappedOrPendingDecisions.Any())
-            {
-                blockingReasons.Add($"There are {unmappedOrPendingDecisions.Count} skill proposals requiring recruiter review.");
-            }
-
-            var unresolvedSkills = decisions.Where(d => d.DecisionStatus == SkillDecisionStatus.ACCEPTED && d.ResolvedSkillId == null).ToList();
-            if (unresolvedSkills.Any())
-            {
-                blockingReasons.Add($"{unresolvedSkills.Count} accepted skills are not mapped to a master skill in the dictionary.");
-            }
+            // AI owns the technical extraction.  A recruiter is not required to
+            // approve individual technologies: only resolved dictionary skills
+            // become tags/filters; all other validated requirements remain in the
+            // detailed matching contract.
 
             return new JobAnalysisPreviewDto
             {
                 JobId = jobId,
+                HasAnalysisRun = true,
                 AnalysisRunId = run.Id,
                 InputRevision = run.InputRevision,
+                CurrentJobRevision = job.AnalysisRevision,
+                LifecycleState = ToLifecycleState(run.Status),
+                IsCurrentAnalysis = run.InputRevision == job.AnalysisRevision && job.ActiveAnalysisRunId == run.Id,
                 Status = run.Status,
                 DecisionVersion = decisionVersion,
                 FailureCode = run.FailureCode,
@@ -307,6 +422,18 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 BlockingReasons = blockingReasons,
                 FinalActionLabel = "Publish",
                 FinalTargetStatus = "PUBLISHED"
+            };
+        }
+
+        private static JobAnalysisLifecycleState ToLifecycleState(JobAnalysisStatus status)
+        {
+            return status switch
+            {
+                JobAnalysisStatus.PENDING => JobAnalysisLifecycleState.PENDING,
+                JobAnalysisStatus.PROCESSING => JobAnalysisLifecycleState.PROCESSING,
+                JobAnalysisStatus.READY => JobAnalysisLifecycleState.READY,
+                JobAnalysisStatus.FAILED => JobAnalysisLifecycleState.FAILED,
+                _ => JobAnalysisLifecycleState.STALE
             };
         }
 
@@ -322,7 +449,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             var res = new ApplyDecisionResult();
             await using var tx = await _context.Database.BeginTransactionAsync(ct);
 
-            var job = await _context.JobPostings.FirstOrDefaultAsync(j => j.Id == jobId, ct);
+            var job = await _context.JobPostings
+                .FromSqlInterpolated($"SELECT * FROM job_postings WHERE id = {jobId} FOR UPDATE")
+                .FirstOrDefaultAsync(ct);
             if (job == null || job.RecruiterId != recruiterId)
             {
                 res.Success = false;
@@ -340,11 +469,27 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             }
 
             var run = await _context.JobAnalysisRuns.FirstOrDefaultAsync(r => r.Id == runId && r.JobId == jobId, ct);
-            if (run == null || run.Status != JobAnalysisStatus.READY)
+            if (run == null || run.InputRevision != job.AnalysisRevision || job.ActiveAnalysisRunId != runId)
+            {
+                res.Success = false;
+                res.ErrorCode = "ANALYSIS_STALE";
+                res.ErrorMessage = "Analysis run is not the current job revision. Please rerun analysis.";
+                return res;
+            }
+
+            if (run.Status != JobAnalysisStatus.READY)
             {
                 res.Success = false;
                 res.ErrorCode = "RUN_NOT_READY";
                 res.ErrorMessage = "Analysis run is not ready for decision updates.";
+                return res;
+            }
+
+            if (run.DecisionVersion != expectedDecisionVersion)
+            {
+                res.Success = false;
+                res.ErrorCode = "DECISION_VERSION_CONFLICT";
+                res.ErrorMessage = $"Skill decision version mismatch. Expected '{expectedDecisionVersion}' but found '{run.DecisionVersion}'.";
                 return res;
             }
 
@@ -376,6 +521,12 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 }
             }
 
+            run.DecisionVersion = expectedDecisionVersion + 1;
+
+            run.EffectiveAnalysisJson = RebuildEffectiveAnalysisWithAcceptedStandardSkills(
+                run.EffectiveAnalysisJson ?? run.RawAnalysisJson,
+                existingDecisions);
+
             await _context.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
 
@@ -390,13 +541,16 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             Guid recruiterId,
             int expectedJobRevision,
             int expectedDecisionVersion,
-            JobStatus targetStatus,
+            bool confirmNoStandardSkills,
+            bool reviewRequired,
             CancellationToken ct = default)
         {
             var res = new FinalizeJobResult();
             await using var tx = await _context.Database.BeginTransactionAsync(ct);
 
-            var job = await _context.JobPostings.FirstOrDefaultAsync(j => j.Id == jobId, ct);
+            var job = await _context.JobPostings
+                .FromSqlInterpolated($"SELECT * FROM job_postings WHERE id = {jobId} FOR UPDATE")
+                .FirstOrDefaultAsync(ct);
             if (job == null || job.RecruiterId != recruiterId)
             {
                 res.Success = false;
@@ -423,7 +577,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             }
 
             var run = await _context.JobAnalysisRuns.FirstOrDefaultAsync(r => r.Id == runId && r.JobId == jobId, ct);
-            if (run == null || run.Status != JobAnalysisStatus.READY)
+            if (run == null || run.InputRevision != job.AnalysisRevision || job.ActiveAnalysisRunId != runId)
+            {
+                res.Success = false;
+                res.ErrorCode = "ANALYSIS_STALE";
+                res.ErrorMessage = "Analysis run is not the current job revision. Please rerun analysis.";
+                return res;
+            }
+
+            if (run.Status != JobAnalysisStatus.READY)
             {
                 res.Success = false;
                 res.ErrorCode = "RUN_NOT_READY";
@@ -431,9 +593,25 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 return res;
             }
 
+            if (run.DecisionVersion != expectedDecisionVersion)
+            {
+                res.Success = false;
+                res.ErrorCode = "DECISION_VERSION_CONFLICT";
+                res.ErrorMessage = $"Decision version mismatch during finalize. Expected '{expectedDecisionVersion}' but found '{run.DecisionVersion}'.";
+                return res;
+            }
+
             var acceptedDecisions = await _context.JobSkillDecisions
                 .Where(d => d.JobAnalysisRunId == runId && d.DecisionStatus == SkillDecisionStatus.ACCEPTED && d.ResolvedSkillId != null)
                 .ToListAsync(ct);
+
+            if (acceptedDecisions.Count == 0 && !confirmNoStandardSkills)
+            {
+                res.Success = false;
+                res.ErrorCode = "NO_STANDARD_SKILLS_UNCONFIRMED";
+                res.ErrorMessage = "Job posting has no accepted standard skills. Confirmation is required.";
+                return res;
+            }
 
             // Remove existing JSR
             var oldJsr = await _context.JobSkillRequirements.Where(jsr => jsr.JobId == jobId).ToListAsync(ct);
@@ -454,13 +632,25 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 });
             }
 
-
             _context.JobSkillRequirements.AddRange(newJsrList);
 
-            // Copy effective analysis JSON into ParsedData compatibility projection
-            job.ParsedData = run.EffectiveAnalysisJson ?? run.RawAnalysisJson;
+            run.EffectiveAnalysisJson = RebuildEffectiveAnalysisWithAcceptedStandardSkills(
+                run.EffectiveAnalysisJson ?? run.RawAnalysisJson,
+                acceptedDecisions);
+
+            if (string.IsNullOrWhiteSpace(run.EffectiveAnalysisJson))
+            {
+                res.Success = false;
+                res.ErrorCode = "ANALYSIS_RESULT_INTEGRITY_ERROR";
+                res.ErrorMessage = "Analysis result is incomplete. Please retry analysis.";
+                return res;
+            }
+
+            job.ParsedData = run.EffectiveAnalysisJson;
             job.ParseStatus = "SUCCESS";
             job.ParseError = null;
+            job.EffectiveAnalysisRevision = job.AnalysisRevision;
+            job.EffectiveAnalysisRunId = run.Id;
 
             // Clear embeddings to trigger rebuild
             job.TitleEmbedding = null;
@@ -468,6 +658,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             job.ExperienceEmbedding = null;
             job.DomainEmbedding = null;
 
+            var targetStatus = reviewRequired ? JobStatus.PENDING_REVIEW : JobStatus.PUBLISHED;
             job.Status = targetStatus;
             if (targetStatus == JobStatus.PUBLISHED && !job.PublishedAt.HasValue)
             {
@@ -482,6 +673,61 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             res.Job = job;
             res.SkillCount = newJsrList.Count;
             return res;
+        }
+
+        private static string? RebuildEffectiveAnalysisWithAcceptedStandardSkills(
+            string? sourceJson,
+            IEnumerable<JobSkillDecisions> decisions)
+        {
+            if (string.IsNullOrWhiteSpace(sourceJson)) return sourceJson;
+
+            try
+            {
+                using var doc = JsonDocument.Parse(sourceJson);
+                var root = doc.RootElement;
+                var metrics = root.TryGetProperty("matching_metrics", out var metricsElement) ? metricsElement : default;
+                var schemaVersion = root.TryGetProperty("schema_version", out var schemaElement)
+                    ? schemaElement.GetString()
+                    : "jd-analysis/v2";
+
+                var acceptedSkills = decisions
+                    .Where(decision => decision.DecisionStatus == SkillDecisionStatus.ACCEPTED && decision.ResolvedSkillId != null)
+                    .OrderBy(decision => decision.Category)
+                    .ThenBy(decision => decision.NormalizedMention)
+                    .ThenBy(decision => decision.RawMention)
+                    .Select(decision => new
+                    {
+                        name = decision.NormalizedMention,
+                        category = decision.Category,
+                        importance = decision.Importance,
+                        raw_mention = decision.RawMention,
+                        source_section = decision.SourceSection,
+                        evidence = decision.EvidenceText,
+                        confidence = decision.Confidence
+                    })
+                    .ToList();
+
+                var effectiveAnalysis = new
+                {
+                    schema_version = schemaVersion,
+                    matching_metrics = new
+                    {
+                        job_titles_normalized = metrics.ValueKind != JsonValueKind.Undefined && metrics.TryGetProperty("job_titles_normalized", out var titles) ? titles : (object)new string[0],
+                        skills_normalized = acceptedSkills,
+                        total_years_exp = metrics.ValueKind != JsonValueKind.Undefined && metrics.TryGetProperty("total_years_exp", out var totalYears) ? totalYears : (object)null!,
+                        domains = metrics.ValueKind != JsonValueKind.Undefined && metrics.TryGetProperty("domains", out var domains) ? domains : (object)new string[0],
+                        requirements_list = metrics.ValueKind != JsonValueKind.Undefined && metrics.TryGetProperty("requirements_list", out var requirements) ? requirements : (object)new object[0]
+                    }
+                };
+
+                return JsonSerializer.Serialize(effectiveAnalysis);
+            }
+            catch (JsonException)
+            {
+                // Do not destroy a persisted analysis document if a legacy payload
+                // is malformed. Finalize will subsequently reject an empty result.
+                return sourceJson;
+            }
         }
     }
 }

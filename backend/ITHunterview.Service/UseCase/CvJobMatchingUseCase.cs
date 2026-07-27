@@ -19,6 +19,7 @@ using System.Net.Http.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ITHunterview.Service.Interface.Service.Matching;
+using ITHunterview.Service.Services;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -34,6 +35,7 @@ namespace ITHunterview.Service.UseCase
         private readonly IPromptManagementService _promptManagementService;
         private readonly ISystemConfigRepository _systemConfigRepository;
         private readonly IAiService _textAiService;
+        private readonly IJobAnalysisExtractionService? _jobAnalysisExtractionService;
 
         public CvJobMatchingUseCase(
             ITHunterviewContext context, 
@@ -44,7 +46,8 @@ namespace ITHunterview.Service.UseCase
             ILogger<CvJobMatchingUseCase> logger,
             IPromptManagementService promptManagementService,
             ISystemConfigRepository systemConfigRepository,
-            IAiService textAiService)
+            IAiService textAiService,
+            IJobAnalysisExtractionService? jobAnalysisExtractionService = null)
         {
             _context = context;
             _aiService = aiService;
@@ -55,6 +58,7 @@ namespace ITHunterview.Service.UseCase
             _promptManagementService = promptManagementService;
             _systemConfigRepository = systemConfigRepository;
             _textAiService = textAiService;
+            _jobAnalysisExtractionService = jobAnalysisExtractionService;
         }
 
         public string ExtractJsonField(string? jsonString, string fieldName)
@@ -183,32 +187,43 @@ namespace ITHunterview.Service.UseCase
         private async Task GenerateEmbeddingsForJobAsync(JobPostings job)
         {
             bool updated = false;
+            var metrics = JobAnalysisMetricsReader.Read(job.ParsedData);
+            var skillNames = metrics.Skills;
+            if (skillNames.Count == 0)
+            {
+                skillNames = await (
+                    from requirement in _context.JobSkillRequirements.AsNoTracking()
+                    join skill in _context.Skills.AsNoTracking() on requirement.SkillId equals skill.Id
+                    where requirement.JobId == job.Id
+                    select skill.Name)
+                    .Distinct()
+                    .OrderBy(name => name)
+                    .ToListAsync();
+            }
             
             if (job.TitleEmbedding == null)
             {
-                var titleText = ExtractJsonField(job.ParsedData, "matching_metrics.job_titles_normalized");
+                var titleText = string.Join(", ", metrics.Titles);
                 if (string.IsNullOrEmpty(titleText)) titleText = job.Title ?? "Unknown Title";
                 job.TitleEmbedding = new Vector(await _aiService.GenerateEmbeddingAsync(titleText));
                 updated = true;
             }
             if (job.SkillsEmbedding == null)
             {
-                var skillsText = ExtractJsonField(job.ParsedData, "matching_metrics.skills_normalized");
+                var skillsText = string.Join(", ", skillNames);
                 if (string.IsNullOrEmpty(skillsText)) skillsText = job.Requirements ?? "No requirements provided";
                 job.SkillsEmbedding = new Vector(await _aiService.GenerateEmbeddingAsync(skillsText));
                 updated = true;
             }
             if (job.ExperienceEmbedding == null)
             {
-                var expText = ExtractJsonField(job.ParsedData, "matching_metrics.total_years_exp");
-                if (string.IsNullOrWhiteSpace(expText)) expText = job.Requirements ?? "No requirements provided";
-                else expText += " years";
+                var expText = metrics.TotalYearsExperience > 0 ? $"{metrics.TotalYearsExperience} years" : job.Requirements ?? "No requirements provided";
                 job.ExperienceEmbedding = new Vector(await _aiService.GenerateEmbeddingAsync(expText));
                 updated = true;
             }
             if (job.DomainEmbedding == null)
             {
-                var domainText = ExtractJsonField(job.ParsedData, "matching_metrics.domains");
+                var domainText = string.Join(", ", metrics.Domains);
                 if (string.IsNullOrEmpty(domainText)) domainText = job.Description ?? "Unknown domain";
                 job.DomainEmbedding = new Vector(await _aiService.GenerateEmbeddingAsync(domainText));
                 updated = true;
@@ -502,11 +517,7 @@ namespace ITHunterview.Service.UseCase
                 }
                 if (jdNeedsAiParse)
                 {
-                    string rawJdText = savedJob != null
-                        ? JdTextHelper.BuildRawText(savedJob)
-                        : request.RawJdText;
-                    var promptStage1 = ITHunterview.Service.Constant.Prompts.JdExtractionPrompt.BuildUser(rawJdText);
-                    jdTask = _textAiService.GenerateTextAsync(promptStage1, ITHunterview.Service.Constant.Prompts.JdExtractionPrompt.System);
+                    jdTask = ExtractJdWithV2Async(savedJob, request.RawJdText, request.JdTitle);
                 }
 
                 // Await cùng lúc — nếu chỉ 1 trong 2 task thực sự cần AI, cái còn lại là Task.FromResult nên chi phí ~0
@@ -570,8 +581,7 @@ namespace ITHunterview.Service.UseCase
                 // --- Xử lý kết quả JD Stage 1 ---
                 if (jdNeedsAiParse)
                 {
-                    var aiResponse = await jdTask;
-                    jdRequirementsJson = ExtractJsonFromText(aiResponse);
+                    jdRequirementsJson = await jdTask;
                 }
 
                 if (string.IsNullOrWhiteSpace(jdRequirementsJson))
@@ -689,6 +699,31 @@ namespace ITHunterview.Service.UseCase
                 matchRecord.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
             }
+        }
+
+        private async Task<string> ExtractJdWithV2Async(JobPostings? savedJob, string? rawJdText, string? requestedTitle)
+        {
+            if (_jobAnalysisExtractionService == null)
+            {
+                throw new InvalidOperationException("JOB_ANALYSIS_EXTRACTION_SERVICE_NOT_CONFIGURED");
+            }
+
+            var snapshot = savedJob == null
+                ? new JobAnalysisInputSnapshot
+                {
+                    Title = requestedTitle ?? string.Empty,
+                    Description = rawJdText ?? string.Empty,
+                    Requirements = string.Empty
+                }
+                : new JobAnalysisInputBuilder().Build(savedJob);
+
+            var extraction = await _jobAnalysisExtractionService.ExtractWithActivePromptsAsync(snapshot);
+            if (!extraction.Validation.IsValid || extraction.Validation.Data == null)
+            {
+                throw new InvalidOperationException($"INVALID_JD_ANALYSIS: {string.Join("; ", extraction.Validation.Errors)}");
+            }
+
+            return _jobAnalysisExtractionService.SerializeEffectiveAnalysis(extraction.Validation.Data);
         }
 
         private static decimal GetCategoryWeight(string category) => category switch

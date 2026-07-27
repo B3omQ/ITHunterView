@@ -30,6 +30,7 @@ export default function EditJobPage() {
     location: "",
     minSalary: "",
     maxSalary: "",
+    currency: "USD",
     expiresAt: "",
     description: "",
     incomeText: "",
@@ -47,7 +48,7 @@ export default function EditJobPage() {
   const initializedRef = useRef(false)
 
   const { majors, loading: metadataLoading, error: metadataError } = useJobMetadata()
-  const { job, loading: detailLoading, saving, error: detailError, updateJob } = useJobDetails(id)
+  const { job, loading: detailLoading, error: detailError, updateJob } = useJobDetails(id)
   const { data: company, isLoading: companyLoading } = useGetMyCompany()
 
   const [searchDomain, setSearchDomain] = useState("")
@@ -72,6 +73,7 @@ export default function EditJobPage() {
         location: job.location || "",
         minSalary: job.minSalary ? job.minSalary.toString() : "",
         maxSalary: job.maxSalary ? job.maxSalary.toString() : "",
+        currency: job.currency || "USD",
         expiresAt: job.expiresAt ? new Date(job.expiresAt).toISOString().split("T")[0] : "",
         description: job.description || "",
         incomeText: job.incomeText || "",
@@ -133,6 +135,9 @@ export default function EditJobPage() {
     const created = job ? new Date(job.createdAt) : new Date()
     created.setHours(0, 0, 0, 0)
     const expDate = new Date(formData.expiresAt)
+    if (expDate <= new Date()) {
+      return "Expiration Date must be in the future (after today)"
+    }
 
     const maxExpDate = new Date(created)
     maxExpDate.setDate(maxExpDate.getDate() + 30)
@@ -162,10 +167,9 @@ export default function EditJobPage() {
         jobCode: formData.jobCode,
         title: formData.title,
         location: formData.location,
-        status: job?.status || "DRAFT",
         minSalary: formData.minSalary ? Number(formData.minSalary) : null,
         maxSalary: formData.maxSalary ? Number(formData.maxSalary) : null,
-        currency: "USD",
+        currency: formData.currency,
         expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null,
         description: normalizeMultilineText(formData.description),
         incomeText: normalizeMultilineText(formData.incomeText),
@@ -179,9 +183,10 @@ export default function EditJobPage() {
       }
 
       const res = await updateJob(payload)
-      if (res.success) {
+      if (res.success && res.data) {
         if (action === "PREVIEW") {
-          router.push(`/recruiter/jobs/${id}/preview`)
+          const needsAnalysis = res.data.parseStatus === "NOT_REQUESTED" || res.data.parseStatus === "STALE"
+          router.push("/recruiter/jobs/" + id + "/preview" + (needsAnalysis ? "?analyze=1" : ""))
         } else {
           router.push("/recruiter/jobs")
         }
@@ -333,6 +338,20 @@ export default function EditJobPage() {
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="howToApply" className="font-semibold text-zinc-700 dark:text-zinc-300">How to Apply *</Label>
+              <textarea
+                id="howToApply"
+                name="howToApply"
+                rows={2}
+                required
+                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-950 focus:outline-none focus:ring-2 focus:ring-ring dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                value={formData.howToApply}
+                onChange={handleChange}
+              />
+              <p className="text-xs text-muted-foreground">The default text guides candidates to the online application button; you may adapt it for this role.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

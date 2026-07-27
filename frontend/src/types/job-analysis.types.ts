@@ -1,4 +1,11 @@
 export type JobAnalysisStatus = 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED' | 'SUPERSEDED'
+export type JobAnalysisLifecycleState =
+  | 'NOT_REQUESTED'
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'READY'
+  | 'FAILED'
+  | 'STALE'
 export type SkillResolutionStatus = 'EXACT_CANONICAL' | 'EXACT_ALIAS' | 'AMBIGUOUS' | 'UNMATCHED' | 'MANUAL'
 export type SkillDecisionStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED'
 
@@ -24,15 +31,19 @@ export interface FinalizeJobRequest {
   analysisRunId: string
   expectedJobRevision: number
   expectedDecisionVersion: number
+  confirmNoStandardSkills?: boolean
 }
 
 export interface JobAnalysisStatusDto {
   jobId: string
   analysisRunId: string
   inputRevision: number
+  currentJobRevision: number
   status: JobAnalysisStatus
   failureCode?: string | null
   message?: string | null
+  isReused: boolean
+  isQueued: boolean
   createdAt: string
   completedAt?: string | null
 }
@@ -64,8 +75,12 @@ export interface OtherRequirementDto {
 
 export interface JobAnalysisPreviewDto {
   jobId: string
+  hasAnalysisRun: boolean
   analysisRunId: string
   inputRevision: number
+  currentJobRevision: number
+  lifecycleState: JobAnalysisLifecycleState
+  isCurrentAnalysis: boolean
   status: JobAnalysisStatus
   decisionVersion: number
   failureCode?: string | null
@@ -79,6 +94,8 @@ export interface JobAnalysisPreviewDto {
 }
 
 export interface FinalizeJobResponseDto {
+  success: boolean
+  message: string
   jobId: string
   status: string
   publishedAt?: string | null

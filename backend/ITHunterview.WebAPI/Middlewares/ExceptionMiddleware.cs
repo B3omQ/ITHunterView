@@ -4,6 +4,7 @@ using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ITHunterview.Service.DTOs.Common;
+using ITHunterview.Service.Exceptions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -45,6 +46,10 @@ namespace ITHunterview.WebAPI.Middlewares
 
             switch (exception)
             {
+                case JobAnalysisException jobAnalysisException:
+                    statusCode = (HttpStatusCode)jobAnalysisException.HttpStatus;
+                    message = jobAnalysisException.SafeMessage;
+                    break;
                 case KeyNotFoundException:
                     statusCode = HttpStatusCode.NotFound;
                     message = exception.Message;

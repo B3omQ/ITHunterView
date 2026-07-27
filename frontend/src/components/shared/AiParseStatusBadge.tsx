@@ -1,67 +1,60 @@
-import React from 'react';
-import { Loader2, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { AlertCircle, CheckCircle2, Clock3, Loader2, RefreshCw, Sparkles } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { cn } from '@/lib/utils'
 
 interface AiParseStatusBadgeProps {
-  status?: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | string;
-  error?: string | null;
-  className?: string;
-  forCandidate?: boolean;
+  status?: 'NOT_REQUESTED' | 'PENDING' | 'PROCESSING' | 'READY' | 'SUCCESS' | 'FAILED' | 'STALE' | string
+  error?: string | null
+  className?: string
+  forCandidate?: boolean
 }
 
-export const AiParseStatusBadge: React.FC<AiParseStatusBadgeProps> = ({
-  status = 'SUCCESS',
-  error,
+export function AiParseStatusBadge({ status, error, className, forCandidate = false }: AiParseStatusBadgeProps) {
+  const normalized = status?.toUpperCase()
+
+  if (forCandidate || !normalized) return null
+
+  if (normalized === 'PENDING' || normalized === 'PROCESSING') {
+    return <StatusBadge className={className} title="AI is analyzing the current draft" icon={<Loader2 className="size-3 animate-spin" />} tone="amber">AI analyzing</StatusBadge>
+  }
+  if (normalized === 'STALE') {
+    return <StatusBadge className={className} title="Job requirements changed. Run analysis again before publishing." icon={<RefreshCw className="size-3" />} tone="amber">Analysis needs refresh</StatusBadge>
+  }
+  if (normalized === 'READY') {
+    return <StatusBadge className={className} title="AI analysis is ready for the recruiter review step." icon={<Clock3 className="size-3" />} tone="blue">Ready for review</StatusBadge>
+  }
+  if (normalized === 'FAILED') {
+    return <StatusBadge className={className} title={error || 'AI analysis failed'} icon={<AlertCircle className="size-3" />} tone="red">AI failed</StatusBadge>
+  }
+  if (normalized === 'SUCCESS') {
+    return <StatusBadge className={className} title="AI analysis was finalized with this job." icon={<CheckCircle2 className="size-3" />} tone="green">AI finalized</StatusBadge>
+  }
+  if (normalized === 'NOT_REQUESTED') {
+    return <StatusBadge className={className} title="This draft has not been analyzed yet." icon={<Sparkles className="size-3" />} tone="neutral">Not analyzed</StatusBadge>
+  }
+
+  return <StatusBadge className={className} title="AI analysis status is unavailable." icon={<AlertCircle className="size-3" />} tone="neutral">Status unavailable</StatusBadge>
+}
+
+function StatusBadge({
+  children,
+  icon,
+  title,
+  tone,
   className,
-  forCandidate = false,
-}) => {
-  const normalizedStatus = (status || 'SUCCESS').toUpperCase();
-
-  if (normalizedStatus === 'PENDING' || normalizedStatus === 'PROCESSING') {
-    return (
-      <div
-        className={cn(
-          'inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 border border-amber-500/20',
-          className
-        )}
-        title={forCandidate ? "Hệ thống cần xử lý thêm CV của bạn để có kết quả tốt nhất" : "AI is analyzing content"}
-      >
-        <Loader2 className="h-3 w-3 animate-spin text-amber-500" />
-        <span>{forCandidate ? "Processing..." : "AI Processing..."}</span>
-      </div>
-    );
+}: {
+  children: ReactNode
+  icon: ReactNode
+  title: string
+  tone: 'amber' | 'blue' | 'red' | 'green' | 'neutral'
+  className?: string
+}) {
+  const tones = {
+    amber: 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400',
+    blue: 'border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-400',
+    red: 'border-destructive/20 bg-destructive/10 text-destructive',
+    green: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+    neutral: 'border-border bg-muted text-muted-foreground',
   }
-
-  if (normalizedStatus === 'FAILED') {
-    return (
-      <div
-        className={cn(
-          'inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2.5 py-0.5 text-xs font-medium text-rose-600 dark:text-rose-400 border border-rose-500/20 cursor-help',
-          className
-        )}
-        title={forCandidate ? "Vui lòng thử lại hoặc upload file khác" : (error || 'Failed to parse AI content')}
-      >
-        <AlertCircle className="h-3 w-3 text-rose-500" />
-        <span>{forCandidate ? "Action Required" : "AI Failed"}</span>
-      </div>
-    );
-  }
-
-  // If candidate and SUCCESS, we can just return a generic Ready badge, or hide it. Let's return a clean "Ready" badge.
-  if (forCandidate) {
-     return null; // The user prefers it hidden if SUCCESS, or at least no AI mention. Let's hide it for candidate if success so it's cleaner.
-  }
-
-  return (
-    <div
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 border border-emerald-500/20',
-        className
-      )}
-      title="AI content parsed successfully"
-    >
-      <Sparkles className="h-3 w-3 text-emerald-500" />
-      <span>AI Parsed</span>
-    </div>
-  );
-};
+  return <span title={title} className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium', tones[tone], className)}>{icon}{children}</span>
+}

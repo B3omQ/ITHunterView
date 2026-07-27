@@ -397,9 +397,17 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 entity.ToTable("job_analysis_runs");
                 entity.HasKey(e => e.Id);
 
-                entity.HasIndex(e => new { e.JobId, e.InputRevision }).IsUnique();
-                entity.HasIndex(e => new { e.JobId, e.InputHash });
+                entity.HasIndex(e => new { e.JobId, e.InputRevision, e.AttemptNumber }).IsUnique();
+                entity.HasIndex(e => new { e.JobId, e.InputRevision, e.InputHash });
                 entity.HasIndex(e => new { e.Status, e.CreatedAt });
+
+                entity.HasIndex(e => new { e.JobId, e.InputRevision })
+                      .IsUnique()
+                      .HasFilter("status IN ('PENDING', 'PROCESSING')");
+
+                entity.HasIndex(e => new { e.JobId, e.IdempotencyKey })
+                      .IsUnique()
+                      .HasFilter("idempotency_key IS NOT NULL");
 
                 entity.Property(e => e.Status)
                       .HasConversion<string>();
@@ -455,12 +463,17 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                       .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // JobPostings ActiveAnalysisRun
+            // JobPostings ActiveAnalysisRun and EffectiveAnalysisRun
             modelBuilder.Entity<JobPostings>(entity =>
             {
                 entity.HasOne(e => e.ActiveAnalysisRun)
                       .WithMany()
                       .HasForeignKey(e => e.ActiveAnalysisRunId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.EffectiveAnalysisRun)
+                      .WithMany()
+                      .HasForeignKey(e => e.EffectiveAnalysisRunId)
                       .OnDelete(DeleteBehavior.Restrict);
             });
         }

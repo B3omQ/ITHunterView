@@ -63,6 +63,24 @@ namespace ITHunterview.Domain.Entities
         [Column("completed_at")]
         public DateTime? CompletedAt { get; set; }
 
+        [Column("attempt_number")]
+        public int AttemptNumber { get; set; } = 1;
+
+        [Column("idempotency_key")]
+        public string? IdempotencyKey { get; set; }
+
+        [Column("decision_version")]
+        public int DecisionVersion { get; set; } = 0;
+
+        [Column("lease_expires_at")]
+        public DateTime? LeaseExpiresAt { get; set; }
+
+        [Column("last_heartbeat_at")]
+        public DateTime? LastHeartbeatAt { get; set; }
+
+        [Column("provider_call_started_at")]
+        public DateTime? ProviderCallStartedAt { get; set; }
+
         [Column("failure_code")]
         public string? FailureCode { get; set; }
 

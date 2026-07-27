@@ -1,41 +1,32 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.JobAnalysis;
+using ITHunterview.Service.Exceptions;
 using ITHunterview.Service.Helpers;
-using ITHunterview.Service.Infrastructure.Persistence;
+using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
-using Microsoft.EntityFrameworkCore;
+using ITHunterview.Service.Interface.UseCase;
 using Microsoft.Extensions.Logging;
 
 namespace ITHunterview.Service.UseCase
 {
-    public interface IJobAnalysisUseCase
-    {
-        Task<JobAnalysisStatusDto> RequestAnalysisAsync(Guid jobId, Guid recruiterId, AnalyzeJobRequestDto dto, CancellationToken ct = default);
-        Task<JobAnalysisPreviewDto?> GetPreviewAsync(Guid jobId, Guid recruiterId, CancellationToken ct = default);
-        Task<JobAnalysisPreviewDto> UpdateDecisionsAsync(Guid jobId, Guid runId, Guid recruiterId, UpdateJobSkillDecisionsDto dto, CancellationToken ct = default);
-        Task<FinalizeJobResponseDto> FinalizeAsync(Guid jobId, Guid recruiterId, FinalizeJobRequestDto dto, CancellationToken ct = default);
-    }
-
     public class JobAnalysisUseCase : IJobAnalysisUseCase
     {
-        private readonly ITHunterviewContext _context;
         private readonly IJobAnalysisRepository _jobAnalysisRepository;
         private readonly IJobAnalysisInputBuilder _inputBuilder;
         private readonly IPromptManagementService _promptService;
         private readonly ILogger<JobAnalysisUseCase> _logger;
 
         public JobAnalysisUseCase(
-            ITHunterviewContext context,
             IJobAnalysisRepository jobAnalysisRepository,
             IJobAnalysisInputBuilder inputBuilder,
             IPromptManagementService promptService,
             ILogger<JobAnalysisUseCase> logger)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
             _jobAnalysisRepository = jobAnalysisRepository ?? throw new ArgumentNullException(nameof(jobAnalysisRepository));
             _inputBuilder = inputBuilder ?? throw new ArgumentNullException(nameof(inputBuilder));
             _promptService = promptService ?? throw new ArgumentNullException(nameof(promptService));
@@ -44,85 +35,133 @@ namespace ITHunterview.Service.UseCase
 
         public async Task<JobAnalysisStatusDto> RequestAnalysisAsync(Guid jobId, Guid recruiterId, AnalyzeJobRequestDto dto, CancellationToken ct = default)
         {
-            var job = await _context.JobPostings.FirstOrDefaultAsync(j => j.Id == jobId, ct);
-            if (job == null || job.RecruiterId != recruiterId)
+            var reqContext = await _jobAnalysisRepository.GetRequestContextAsync(jobId, recruiterId, ct);
+            if (reqContext == null)
             {
                 throw new KeyNotFoundException("Job posting not found or access denied.");
             }
 
+            var job = reqContext.Job;
             if (job.Status != JobStatus.DRAFT)
             {
                 throw new InvalidOperationException("ONLY_DRAFT_JOB_CAN_BE_ANALYZED: Analysis can only be requested for jobs in DRAFT status.");
             }
 
+            if (!reqContext.IsCompanyVerified)
+            {
+                throw new InvalidOperationException("UNVERIFIED_COMPANY: Company must be VERIFIED to run AI analysis.");
+            }
+
             if (dto.ExpectedRevision != job.AnalysisRevision)
             {
-                throw new InvalidOperationException($"ANALYSIS_STALE: Expected revision '{dto.ExpectedRevision}' does not match current job revision '{job.AnalysisRevision}'.");
+                throw JobAnalysisException.AnalysisStale($"Expected revision '{dto.ExpectedRevision}' does not match current job revision '{job.AnalysisRevision}'.");
             }
 
-            var systemPromptSnapshot = await _promptService.GetActivePromptSnapshotAsync("JD_ANALYSIS_V2_SYSTEM", ct);
-            var userPromptSnapshot = await _promptService.GetActivePromptSnapshotAsync("JD_ANALYSIS_V2_USER", ct);
-
-            var inputSnapshot = _inputBuilder.Build(job);
-            string inputHash = _inputBuilder.ComputeHash(inputSnapshot, systemPromptSnapshot.VersionId, userPromptSnapshot.VersionId);
-
-            // Check if reusable READY run exists for exact same hash
-            var existingReady = await _jobAnalysisRepository.GetReusableReadyRunAsync(jobId, inputHash, ct);
-            if (existingReady != null)
+            // Check idempotency key
+            if (!string.IsNullOrWhiteSpace(dto.IdempotencyKey))
             {
-                return new JobAnalysisStatusDto
+                var existingIdempotentRun = await _jobAnalysisRepository.FindByIdempotencyKeyAsync(jobId, dto.IdempotencyKey, ct);
+                if (existingIdempotentRun != null)
                 {
-                    JobId = jobId,
-                    AnalysisRunId = existingReady.Id,
-                    InputRevision = existingReady.InputRevision,
-                    Status = JobAnalysisStatus.READY,
-                    CreatedAt = existingReady.CreatedAt,
-                    CompletedAt = existingReady.CompletedAt
-                };
+                    if (existingIdempotentRun.InputRevision == job.AnalysisRevision)
+                    {
+                        if (!await _jobAnalysisRepository.ActivateReusableRunAsync(jobId, existingIdempotentRun.Id, job.AnalysisRevision, ct))
+                        {
+                            throw JobAnalysisException.AnalysisStale("The existing analysis run is no longer current.");
+                        }
+                        return MapToStatusDto(existingIdempotentRun, isReused: true,
+                            isQueued: existingIdempotentRun.Status == JobAnalysisStatus.PENDING || existingIdempotentRun.Status == JobAnalysisStatus.PROCESSING);
+                    }
+                    throw JobAnalysisException.InvalidPayload("IDEMPOTENCY_KEY_REUSED: Idempotency key reused for a different job revision.");
+                }
             }
 
-            // Check if active PENDING or PROCESSING run exists for exact same hash
-            var existingProcessing = await _jobAnalysisRepository.GetActiveProcessingRunAsync(jobId, inputHash, ct);
-            if (existingProcessing != null)
+            var sysPrompt = await _promptService.GetActivePromptSnapshotAsync("JD_ANALYSIS_V2_SYSTEM", ct);
+            var userPrompt = await _promptService.GetActivePromptSnapshotAsync("JD_ANALYSIS_V2_USER", ct);
+
+            var snapshot = _inputBuilder.Build(job);
+            var analysisInputHash = _inputBuilder.ComputeAnalysisHash(snapshot, sysPrompt.VersionId, userPrompt.VersionId);
+
+            // Reusable run check
+            var reusableRun = await _jobAnalysisRepository.FindReusableRunAsync(jobId, job.AnalysisRevision, analysisInputHash, ct);
+            if (reusableRun != null)
             {
-                return new JobAnalysisStatusDto
+                if (reusableRun.Status == JobAnalysisStatus.READY)
                 {
-                    JobId = jobId,
-                    AnalysisRunId = existingProcessing.Id,
-                    InputRevision = existingProcessing.InputRevision,
-                    Status = existingProcessing.Status,
-                    CreatedAt = existingProcessing.CreatedAt,
-                    CompletedAt = existingProcessing.CompletedAt
-                };
+                    if (!await _jobAnalysisRepository.ActivateReusableRunAsync(jobId, reusableRun.Id, job.AnalysisRevision, ct))
+                    {
+                        throw JobAnalysisException.AnalysisStale("The reusable analysis run is no longer current.");
+                    }
+                    return MapToStatusDto(reusableRun, isReused: true);
+                }
+                if (reusableRun.Status == JobAnalysisStatus.PENDING || reusableRun.Status == JobAnalysisStatus.PROCESSING)
+                {
+                    if (!await _jobAnalysisRepository.ActivateReusableRunAsync(jobId, reusableRun.Id, job.AnalysisRevision, ct))
+                    {
+                        throw JobAnalysisException.AnalysisStale("The reusable analysis run is no longer current.");
+                    }
+                    return MapToStatusDto(reusableRun, isReused: true, isQueued: true);
+                }
             }
 
-            // Create new PENDING run
-            string rawInputJson = System.Text.Json.JsonSerializer.Serialize(inputSnapshot);
+            int nextAttempt = await _jobAnalysisRepository.GetNextAttemptNumberAsync(jobId, job.AnalysisRevision, ct);
+            string rawSnapshotJson = _inputBuilder.SerializeCanonical(snapshot);
+
             var newRun = new JobAnalysisRuns
             {
                 Id = Guid.NewGuid(),
                 JobId = jobId,
                 InputRevision = job.AnalysisRevision,
-                InputHash = inputHash,
+                InputHash = analysisInputHash,
+                AttemptNumber = nextAttempt,
+                IdempotencyKey = string.IsNullOrWhiteSpace(dto.IdempotencyKey) ? null : dto.IdempotencyKey,
                 Status = JobAnalysisStatus.PENDING,
-                SystemPromptVersionId = systemPromptSnapshot.VersionId,
-                UserPromptVersionId = userPromptSnapshot.VersionId,
+                SystemPromptVersionId = sysPrompt.VersionId,
+                UserPromptVersionId = userPrompt.VersionId,
                 SchemaVersion = "jd-analysis/v2",
-                RawInputSnapshot = rawInputJson,
+                RawInputSnapshot = rawSnapshotJson,
                 RequestedBy = recruiterId,
+                DecisionVersion = 0,
                 CreatedAt = DateTime.UtcNow
             };
 
-            await _jobAnalysisRepository.AddPendingRunAsync(newRun, ct);
+            var created = await _jobAnalysisRepository.CreatePendingRunAsync(newRun, ct);
+            _logger.LogInformation("Created job analysis run {RunId} (attempt {Attempt}) for Job {JobId} revision {Revision}.", created.Id, nextAttempt, jobId, job.AnalysisRevision);
 
-            return new JobAnalysisStatusDto
+            return MapToStatusDto(created, isQueued: true);
+        }
+
+        public async Task<JobAnalysisStatusDto> RetryAnalysisAsync(Guid jobId, Guid runId, Guid recruiterId, AnalyzeJobRequestDto dto, CancellationToken ct = default)
+        {
+            var reqContext = await _jobAnalysisRepository.GetRequestContextAsync(jobId, recruiterId, ct);
+            if (reqContext == null)
             {
-                JobId = jobId,
-                AnalysisRunId = newRun.Id,
-                InputRevision = newRun.InputRevision,
-                Status = JobAnalysisStatus.PENDING,
-                CreatedAt = newRun.CreatedAt
-            };
+                throw new KeyNotFoundException("Job posting not found or access denied.");
+            }
+
+            var job = reqContext.Job;
+            if (job.Status != JobStatus.DRAFT)
+            {
+                throw new InvalidOperationException("ONLY_DRAFT_JOB_CAN_BE_ANALYZED: Job is not in DRAFT status.");
+            }
+
+            var targetRun = await _jobAnalysisRepository.GetRunAsync(runId, ct);
+            if (targetRun == null || targetRun.JobId != jobId)
+            {
+                throw new KeyNotFoundException("Referenced analysis run not found.");
+            }
+
+            if (targetRun.Status != JobAnalysisStatus.FAILED)
+            {
+                throw new InvalidOperationException("ONLY_FAILED_RUN_CAN_BE_RETRIED: Only FAILED analysis runs can be retried.");
+            }
+
+            if (targetRun.InputRevision != job.AnalysisRevision)
+            {
+                throw JobAnalysisException.AnalysisStale("Cannot retry failed run from a previous revision.");
+            }
+
+            return await RequestAnalysisAsync(jobId, recruiterId, dto, ct);
         }
 
         public async Task<JobAnalysisPreviewDto?> GetPreviewAsync(Guid jobId, Guid recruiterId, CancellationToken ct = default)
@@ -132,6 +171,8 @@ namespace ITHunterview.Service.UseCase
 
         public async Task<JobAnalysisPreviewDto> UpdateDecisionsAsync(Guid jobId, Guid runId, Guid recruiterId, UpdateJobSkillDecisionsDto dto, CancellationToken ct = default)
         {
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
+
             var result = await _jobAnalysisRepository.ApplyDecisionsAsync(
                 jobId,
                 runId,
@@ -143,7 +184,15 @@ namespace ITHunterview.Service.UseCase
 
             if (!result.Success)
             {
-                throw new InvalidOperationException($"{result.ErrorCode}: {result.ErrorMessage}");
+                if (result.ErrorCode == "ANALYSIS_STALE")
+                {
+                    throw JobAnalysisException.AnalysisStale(result.ErrorMessage ?? "Analysis state is stale.");
+                }
+                if (result.ErrorCode == "DECISION_VERSION_CONFLICT")
+                {
+                    throw JobAnalysisException.DecisionVersionConflict(result.ErrorMessage ?? "Decision version conflict.");
+                }
+                throw JobAnalysisException.InvalidPayload(result.ErrorMessage ?? "Failed to apply decisions.");
             }
 
             return result.Preview!;
@@ -151,11 +200,7 @@ namespace ITHunterview.Service.UseCase
 
         public async Task<FinalizeJobResponseDto> FinalizeAsync(Guid jobId, Guid recruiterId, FinalizeJobRequestDto dto, CancellationToken ct = default)
         {
-            // Determine system review gate configuration
-            var config = await _context.SystemConfigs.AsNoTracking().FirstOrDefaultAsync(c => c.ConfigKey == "JobPostingReviewRequired", ct);
-            bool reviewRequired = config != null && bool.TryParse(config.ConfigValue, out bool req) && req;
-
-            JobStatus targetStatus = reviewRequired ? JobStatus.PENDING_REVIEW : JobStatus.PUBLISHED;
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
 
             var result = await _jobAnalysisRepository.FinalizeAsync(
                 jobId,
@@ -163,20 +208,56 @@ namespace ITHunterview.Service.UseCase
                 recruiterId,
                 dto.ExpectedJobRevision,
                 dto.ExpectedDecisionVersion,
-                targetStatus,
+                dto.ConfirmNoStandardSkills,
+                // There is currently no staff job-review workflow or approval
+                // endpoint.  Finalization must therefore publish the reviewed
+                // draft instead of trapping it permanently in PENDING_REVIEW.
+                reviewRequired: false,
                 ct);
 
             if (!result.Success)
             {
-                throw new InvalidOperationException($"{result.ErrorCode}: {result.ErrorMessage}");
+                switch (result.ErrorCode)
+                {
+                    case "ANALYSIS_STALE":
+                        throw JobAnalysisException.AnalysisStale(result.ErrorMessage);
+                    case "DECISION_VERSION_CONFLICT":
+                        throw JobAnalysisException.DecisionVersionConflict(result.ErrorMessage);
+                    case "INCOMPLETE_REVIEW":
+                    case "NO_STANDARD_SKILLS_UNCONFIRMED":
+                        throw JobAnalysisException.IncompleteReview(result.ErrorMessage ?? "Recruiter review is incomplete.");
+                    default:
+                        throw JobAnalysisException.InvalidPayload(result.ErrorMessage ?? "Failed to finalize job posting.");
+                }
             }
 
             return new FinalizeJobResponseDto
             {
+                Success = true,
+                Message = "Job posting finalized successfully.",
                 JobId = jobId,
                 Status = result.Job!.Status.ToString(),
-                PublishedAt = result.Job.PublishedAt,
-                SkillCount = result.SkillCount
+                FinalJobStatus = result.Job!.Status.ToString(),
+                SkillCount = result.SkillCount,
+                ParseStatus = result.Job.ParseStatus,
+                PublishedAt = result.Job.PublishedAt
+            };
+        }
+
+        private static JobAnalysisStatusDto MapToStatusDto(JobAnalysisRuns run, bool isReused = false, bool isQueued = false)
+        {
+            return new JobAnalysisStatusDto
+            {
+                RunId = run.Id,
+                JobId = run.JobId,
+                InputRevision = run.InputRevision,
+                CurrentJobRevision = run.InputRevision,
+                Status = run.Status,
+                FailureCode = run.FailureCode,
+                CreatedAt = run.CreatedAt,
+                CompletedAt = run.CompletedAt,
+                IsReused = isReused,
+                IsQueued = isQueued
             };
         }
     }

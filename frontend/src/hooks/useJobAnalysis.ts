@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { jobAnalysisService } from '@/services/job-analysis.service'
+import { shouldPollJobAnalysis } from '@/lib/job-analysis-lifecycle'
 import type {
   AnalyzeJobRequest,
   FinalizeJobRequest,
-  UpdateDecisionsRequest
 } from '@/types/job-analysis.types'
 
 export const jobAnalysisKeys = {
@@ -20,13 +20,14 @@ export function useJobAnalysis(jobId: string) {
     },
     enabled: Boolean(jobId),
     refetchInterval: (query) => {
-      const status = query.state.data?.status
-      if (status === 'PENDING' || status === 'PROCESSING') {
-        return 2500
-      }
-      return false
+      return shouldPollJobAnalysis(query.state.data) ? 2500 : false
     },
   })
+}
+
+function invalidateAnalysisState(queryClient: ReturnType<typeof useQueryClient>, jobId: string) {
+  void queryClient.invalidateQueries({ queryKey: jobAnalysisKeys.detail(jobId) })
+  void queryClient.invalidateQueries({ queryKey: ['recruiter-jobs'] })
 }
 
 export function useRequestJobAnalysis(jobId: string) {
@@ -35,22 +36,18 @@ export function useRequestJobAnalysis(jobId: string) {
     mutationFn: (payload: AnalyzeJobRequest) =>
       jobAnalysisService.requestAnalysis(jobId, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: jobAnalysisKeys.detail(jobId) })
+      invalidateAnalysisState(queryClient, jobId)
     },
   })
 }
 
-export function useUpdateJobDecisions(jobId: string, runId: string) {
+export function useRetryJobAnalysis(jobId: string, runId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: UpdateDecisionsRequest) =>
-      jobAnalysisService.updateDecisions(jobId, runId, payload),
-    onSuccess: (res) => {
-      if (res.data) {
-        queryClient.setQueryData(jobAnalysisKeys.detail(jobId), res.data)
-      } else {
-        queryClient.invalidateQueries({ queryKey: jobAnalysisKeys.detail(jobId) })
-      }
+    mutationFn: (payload: AnalyzeJobRequest) =>
+      jobAnalysisService.retryAnalysis(jobId, runId, payload),
+    onSuccess: () => {
+      invalidateAnalysisState(queryClient, jobId)
     },
   })
 }
@@ -61,8 +58,7 @@ export function useFinalizeJob(jobId: string) {
     mutationFn: (payload: FinalizeJobRequest) =>
       jobAnalysisService.finalize(jobId, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: jobAnalysisKeys.detail(jobId) })
-      queryClient.invalidateQueries({ queryKey: ['recruiter-jobs'] })
+      invalidateAnalysisState(queryClient, jobId)
     },
   })
 }

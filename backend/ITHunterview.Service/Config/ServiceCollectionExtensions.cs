@@ -156,6 +156,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IJobAnalysisProcessor, JobAnalysisProcessor>();
             services.AddScoped<IJobAnalysisInputBuilder, JobAnalysisInputBuilder>();
             services.AddScoped<IJdAnalysisResponseValidator, JdAnalysisResponseValidator>();
+            services.AddScoped<IJobAnalysisExtractionService, JobAnalysisExtractionService>();
             services.AddScoped<ISkillNormalizationService, SkillNormalizationService>();
             services.AddScoped<ISkillResolver, SkillResolver>();
             services.AddHostedService<ITHunterview.Service.BackgroundServices.JobAnalysisWorker>();

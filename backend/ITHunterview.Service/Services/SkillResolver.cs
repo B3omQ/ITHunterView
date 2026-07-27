@@ -112,7 +112,7 @@ namespace ITHunterview.Service.Services
                     Category = m.Category,
                     SourceSection = m.SourceSection,
                     EvidenceText = m.Evidence,
-                    Importance = "must_have",
+                    Importance = m.Importance,
                     Confidence = m.Confidence
                 };
 

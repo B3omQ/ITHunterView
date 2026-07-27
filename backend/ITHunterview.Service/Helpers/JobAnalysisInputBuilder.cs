@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -21,6 +20,9 @@ namespace ITHunterview.Service.Helpers
         [JsonPropertyName("requirements")]
         public string Requirements { get; set; } = string.Empty;
 
+        // Legacy snapshots may contain context fields. New snapshots deliberately
+        // omit them: V2 analysis requirements are evidenced only by title,
+        // description and requirements, so metadata edits must not spend AI credit.
         [JsonPropertyName("level")]
         public string? Level { get; set; }
 
@@ -37,6 +39,9 @@ namespace ITHunterview.Service.Helpers
     public interface IJobAnalysisInputBuilder
     {
         JobAnalysisInputSnapshot Build(JobPostings job);
+        string SerializeCanonical(JobAnalysisInputSnapshot snapshot);
+        string ComputeSemanticHash(JobAnalysisInputSnapshot snapshot);
+        string ComputeAnalysisHash(JobAnalysisInputSnapshot snapshot, Guid systemPromptVersionId, Guid userPromptVersionId, string schemaVersion = "jd-analysis/v2");
         string ComputeHash(JobAnalysisInputSnapshot snapshot, Guid systemPromptVersionId, Guid userPromptVersionId, string schemaVersion = "jd-analysis/v2");
     }
 
@@ -50,36 +55,35 @@ namespace ITHunterview.Service.Helpers
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
 
-
         public JobAnalysisInputSnapshot Build(JobPostings job)
         {
             if (job == null) throw new ArgumentNullException(nameof(job));
 
-            var domains = job.JobDomain != null && job.JobDomain.Count > 0
-                ? job.JobDomain.Where(d => !string.IsNullOrWhiteSpace(d))
-                               .Select(d => NormalizeString(d))
-                               .Distinct(StringComparer.OrdinalIgnoreCase)
-                               .OrderBy(d => d, StringComparer.OrdinalIgnoreCase)
-                               .ToList()
-                : null;
-
             return new JobAnalysisInputSnapshot
             {
-                Title = NormalizeString(job.Title),
-                Description = NormalizeString(job.Description),
-                Requirements = NormalizeString(job.Requirements),
-                Level = NormalizeNullableString(job.Level),
-                WorkingModel = NormalizeNullableString(job.WorkingModel),
-                JobExpertise = NormalizeNullableString(job.JobExpertise),
-                JobDomain = domains
+                Title = NormalizeAnalysisSourceText(job.Title),
+                Description = NormalizeAnalysisSourceText(job.Description),
+                Requirements = NormalizeAnalysisSourceText(job.Requirements)
             };
         }
 
-        public string ComputeHash(JobAnalysisInputSnapshot snapshot, Guid systemPromptVersionId, Guid userPromptVersionId, string schemaVersion = "jd-analysis/v2")
+        public string SerializeCanonical(JobAnalysisInputSnapshot snapshot)
         {
             if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
+            return JsonSerializer.Serialize(snapshot, JsonOptions);
+        }
 
-            string canonicalJson = JsonSerializer.Serialize(snapshot, JsonOptions);
+        public string ComputeSemanticHash(JobAnalysisInputSnapshot snapshot)
+        {
+            string canonicalJson = SerializeCanonical(snapshot);
+            byte[] bytes = Encoding.UTF8.GetBytes(canonicalJson);
+            byte[] hashBytes = SHA256.HashData(bytes);
+            return Convert.ToHexStringLower(hashBytes);
+        }
+
+        public string ComputeAnalysisHash(JobAnalysisInputSnapshot snapshot, Guid systemPromptVersionId, Guid userPromptVersionId, string schemaVersion = "jd-analysis/v2")
+        {
+            string canonicalJson = SerializeCanonical(snapshot);
             string rawPayload = $"{schemaVersion}:{systemPromptVersionId}:{userPromptVersionId}:{canonicalJson}";
 
             byte[] bytes = Encoding.UTF8.GetBytes(rawPayload);
@@ -87,17 +91,62 @@ namespace ITHunterview.Service.Helpers
             return Convert.ToHexStringLower(hashBytes);
         }
 
-        private static string NormalizeString(string? value)
+        public string ComputeHash(JobAnalysisInputSnapshot snapshot, Guid systemPromptVersionId, Guid userPromptVersionId, string schemaVersion = "jd-analysis/v2")
         {
-            if (string.IsNullOrEmpty(value)) return string.Empty;
-            string normalizedLines = value.Replace("\r\n", "\n").Replace("\r", "\n").Trim();
-            return normalizedLines.Normalize(NormalizationForm.FormKC);
+            return ComputeAnalysisHash(snapshot, systemPromptVersionId, userPromptVersionId, schemaVersion);
         }
 
-        private static string? NormalizeNullableString(string? value)
+        private static string NormalizeAnalysisSourceText(string? value)
         {
-            if (string.IsNullOrWhiteSpace(value)) return null;
-            return NormalizeString(value);
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+
+            var normalized = value.Normalize(NormalizationForm.FormKC)
+                .Replace("\r\n", "\n")
+                .Replace("\r", "\n")
+                .Replace('\u00A0', ' ')
+                .Replace('\t', ' ');
+
+            var lines = new List<string>();
+            bool previousWasBlank = false;
+            foreach (var rawLine in normalized.Split('\n'))
+            {
+                var line = CollapseHorizontalWhitespace(rawLine).Trim();
+                bool isBlank = line.Length == 0;
+                if (isBlank && (previousWasBlank || lines.Count == 0))
+                {
+                    previousWasBlank = true;
+                    continue;
+                }
+
+                lines.Add(line);
+                previousWasBlank = isBlank;
+            }
+
+            while (lines.Count > 0 && lines[^1].Length == 0)
+            {
+                lines.RemoveAt(lines.Count - 1);
+            }
+
+            return string.Join("\n", lines);
+        }
+
+        private static string CollapseHorizontalWhitespace(string value)
+        {
+            var builder = new StringBuilder(value.Length);
+            bool previousWasWhitespace = false;
+            foreach (var character in value)
+            {
+                if (char.IsWhiteSpace(character))
+                {
+                    if (!previousWasWhitespace) builder.Append(' ');
+                    previousWasWhitespace = true;
+                    continue;
+                }
+
+                builder.Append(character);
+                previousWasWhitespace = false;
+            }
+            return builder.ToString();
         }
     }
 }

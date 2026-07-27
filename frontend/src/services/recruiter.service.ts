@@ -1,5 +1,11 @@
 import api from '@/services/api-client';
 
+export interface JobSkillRequirement {
+  skillId: number;
+  skillName: string;
+  isMandatory: boolean;
+}
+
 export interface JobPostingSummary {
   id: string;
   jobCode: string;
@@ -16,9 +22,9 @@ export interface JobPostingSummary {
   jobExpertise?: string;
   jobDomain?: string[];
   skills: string[];
-  parseStatus?: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'NOT_REQUESTED' | 'STALE';
+  parseStatus?: 'PENDING' | 'PROCESSING' | 'READY' | 'SUCCESS' | 'FAILED' | 'NOT_REQUESTED' | 'STALE';
   parseError?: string | null;
-  analysisRevision?: number;
+  analysisRevision: number;
 }
 
 export interface JobPosting {
@@ -46,10 +52,10 @@ export interface JobPosting {
   workingModel?: string;
   jobExpertise?: string;
   jobDomain?: string[];
-  skills: any[];
-  parseStatus?: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'NOT_REQUESTED' | 'STALE';
+  skills: JobSkillRequirement[];
+  parseStatus?: 'PENDING' | 'PROCESSING' | 'READY' | 'SUCCESS' | 'FAILED' | 'NOT_REQUESTED' | 'STALE';
   parseError?: string | null;
-  analysisRevision?: number;
+  analysisRevision: number;
 }
 
 export interface JobCategory {
@@ -70,7 +76,6 @@ export interface CreateJobPostingDto {
   title: string;
   location: string;
   workLocationText: string;
-  status: string;
   minSalary: number | null;
   maxSalary: number | null;
   currency: string;
@@ -83,10 +88,26 @@ export interface CreateJobPostingDto {
   workingModel?: string;
   jobExpertise?: string;
   jobDomain?: string[];
-  skills?: { skillId: number; isMandatory: boolean }[];
 }
 
-export interface UpdateJobPostingDto extends CreateJobPostingDto {}
+export interface UpdateJobPostingDto {
+  jobCode: string;
+  title: string;
+  location: string;
+  workLocationText: string;
+  minSalary: number | null;
+  maxSalary: number | null;
+  currency: string;
+  expiresAt?: string | null;
+  description: string;
+  requirements: string;
+  benefits: string;
+  incomeText: string;
+  level?: string;
+  workingModel?: string;
+  jobExpertise?: string;
+  jobDomain?: string[];
+}
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -263,5 +284,4 @@ export const recruiterService = {
     }
   },
 };
-
 

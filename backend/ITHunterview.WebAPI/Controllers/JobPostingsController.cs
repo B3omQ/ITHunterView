@@ -38,25 +38,17 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpGet]
+        [Authorize(Policy = "RecruiterOnly")]
         public async Task<ActionResult<ResponseBase<PagedResult<JobPostingSummaryDto>>>> GetJobs(
             [FromQuery] string? search,
             [FromQuery] JobStatus? status,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 7)
         {
-            Guid? recruiterId = null;
-
-            if (User.Identity?.IsAuthenticated == true)
+            var recruiterId = await ResolveRecruiterIdAsync();
+            if (recruiterId == Guid.Empty)
             {
-                var role = User.FindFirst(ClaimTypes.Role)?.Value ?? User.FindFirst("role")?.Value;
-                if (role == "recruiter")
-                {
-                    var resolvedId = await ResolveRecruiterIdAsync();
-                    if (resolvedId != Guid.Empty)
-                    {
-                        recruiterId = resolvedId;
-                    }
-                }
+                return Unauthorized(new ResponseBase<PagedResult<JobPostingSummaryDto>>("Could not resolve recruiter user."));
             }
 
             var result = await _jobPostingsUseCase.GetJobsAsync(search, status, page, pageSize, recruiterId);
@@ -64,13 +56,26 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize(Policy = "RecruiterOnly")]
         public async Task<ActionResult<ResponseBase<JobPostingDetailDto>>> GetJobById(Guid id)
         {
+            var recruiterId = await ResolveRecruiterIdAsync();
+            if (recruiterId == Guid.Empty)
+            {
+                return Unauthorized(new ResponseBase<JobPostingDetailDto>("Could not resolve recruiter user."));
+            }
+
             var result = await _jobPostingsUseCase.GetJobByIdAsync(id);
-            if (!result.Success)
+            if (!result.Success || result.Data == null)
             {
                 return NotFound(result);
             }
+
+            if (result.Data.RecruiterId != recruiterId)
+            {
+                return Forbid();
+            }
+
             return Ok(result);
         }
 
@@ -136,7 +141,25 @@ namespace ITHunterview.WebAPI.Controllers
             if (recruiterId == Guid.Empty) return Unauthorized();
 
             var statusDto = await _jobAnalysisUseCase.RequestAnalysisAsync(id, recruiterId, dto, ct);
+            if (statusDto.IsReused)
+            {
+                var message = statusDto.IsQueued
+                    ? "Reused the existing queued analysis run."
+                    : "Reused the existing ready analysis run.";
+                return Ok(new ResponseBase<JobAnalysisStatusDto>(statusDto, message));
+            }
             return Accepted(new ResponseBase<JobAnalysisStatusDto>(statusDto, "Job analysis requested successfully."));
+        }
+
+        [HttpPost("{id:guid}/analysis/{runId:guid}/retry")]
+        [Authorize(Policy = "RecruiterOnly")]
+        public async Task<IActionResult> RetryAnalysis(Guid id, Guid runId, [FromBody] AnalyzeJobRequestDto dto, CancellationToken ct)
+        {
+            var recruiterId = await ResolveRecruiterIdAsync();
+            if (recruiterId == Guid.Empty) return Unauthorized();
+
+            var statusDto = await _jobAnalysisUseCase.RetryAnalysisAsync(id, runId, recruiterId, dto, ct);
+            return Accepted(new ResponseBase<JobAnalysisStatusDto>(statusDto, "Job analysis retry requested successfully."));
         }
 
         [HttpGet("{id:guid}/analysis")]
@@ -281,17 +304,10 @@ namespace ITHunterview.WebAPI.Controllers
 
         [HttpPost("reparse-pending")]
         [Authorize(Policy = "AdminOnly")]
-        public async Task<ActionResult<ResponseBase<string>>> ReparsePendingJobs([FromQuery] int limit = 50)
+        public ActionResult<ResponseBase<string>> ReparsePendingJobs([FromQuery] int limit = 50)
         {
-            try
-            {
-                var result = await _jobPostingsUseCase.ReparsePendingJobsAsync(limit);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ResponseBase<string>(null, ex.Message));
-            }
+            return StatusCode(StatusCodes.Status410Gone,
+                new ResponseBase<string>(null, "LEGACY_REPARSE_DISABLED: Use POST /api/JobPostings/{id}/analysis for draft jobs."));
         }
 
         private Task<Guid> ResolveRecruiterIdAsync()
