@@ -39,6 +39,7 @@ function unwrap<T>(result: { success: boolean; data?: ApiResponse<T>; message?: 
 export function useJobs(initialPage = 1, initialPageSize = 7, initialStatus = 'ALL') {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(initialPage)
+  const [pageSize, setPageSize] = useState(initialPageSize)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [status, setStatus] = useState(initialStatus)
@@ -52,10 +53,10 @@ export function useJobs(initialPage = 1, initialPageSize = 7, initialStatus = 'A
   }, [search])
 
   const jobsQuery = useQuery({
-    queryKey: recruiterJobKeys.list(page, initialPageSize, status, debouncedSearch),
+    queryKey: recruiterJobKeys.list(page, pageSize, status, debouncedSearch),
     queryFn: async () =>
       unwrap<PaginatedResult<JobPostingSummary>>(
-        await recruiterService.getJobs(page, initialPageSize, status, debouncedSearch),
+        await recruiterService.getJobs(page, pageSize, status, debouncedSearch),
         'Failed to load job postings',
       ),
     refetchInterval: (query) => {
@@ -74,6 +75,24 @@ export function useJobs(initialPage = 1, initialPageSize = 7, initialStatus = 'A
     },
   })
 
+  const extendMutation = useMutation({
+    mutationFn: async (id: string) => await recruiterService.extendJob(id),
+    onSuccess: (res) => {
+      if (res.success) {
+        void queryClient.invalidateQueries({ queryKey: recruiterJobKeys.lists() })
+      }
+    },
+  })
+
+  const pushTopMutation = useMutation({
+    mutationFn: async (id: string) => await recruiterService.pushTopJob(id),
+    onSuccess: (res) => {
+      if (res.success) {
+        void queryClient.invalidateQueries({ queryKey: recruiterJobKeys.lists() })
+      }
+    },
+  })
+
   const closeJob = async (id: string) => {
     try {
       await closeMutation.mutateAsync(id)
@@ -83,11 +102,29 @@ export function useJobs(initialPage = 1, initialPageSize = 7, initialStatus = 'A
     }
   }
 
+  const extendJob = async (id: string) => {
+    try {
+      return await extendMutation.mutateAsync(id)
+    } catch (error) {
+      return { success: false, message: getErrorMessage(error, 'Gia hạn không thành công.') }
+    }
+  }
+
+  const pushTopJob = async (id: string) => {
+    try {
+      return await pushTopMutation.mutateAsync(id)
+    } catch (error) {
+      return { success: false, message: getErrorMessage(error, 'Đẩy Top không thành công.') }
+    }
+  }
+
   return {
     jobs: jobsQuery.data?.items ?? [],
     totalCount: jobsQuery.data?.totalCount ?? 0,
     page,
     setPage,
+    pageSize,
+    setPageSize,
     search,
     setSearch,
     status,
@@ -97,6 +134,10 @@ export function useJobs(initialPage = 1, initialPageSize = 7, initialStatus = 'A
     refresh: jobsQuery.refetch,
     closeJob,
     isClosing: closeMutation.isPending,
+    extendJob,
+    isExtending: extendMutation.isPending,
+    pushTopJob,
+    isPushingTop: pushTopMutation.isPending,
   }
 }
 
