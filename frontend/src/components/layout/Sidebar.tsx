@@ -75,7 +75,6 @@ const RECRUITER_NAV: NavItem[] = [
   { label: "Dashboard", href: APP_ROUTES.RECRUITER.DASHBOARD, icon: "LayoutDashboard" },
   { label: "Company", href: APP_ROUTES.RECRUITER.COMPANY, icon: "Building2" },
   { label: "Job Postings", href: APP_ROUTES.RECRUITER.JOBS, icon: "Briefcase" },
-  { label: "Analytics", href: APP_ROUTES.RECRUITER.ANALYTICS, icon: "BarChart3" },
   { 
     label: "Billing & Plans", 
     href: "", 
