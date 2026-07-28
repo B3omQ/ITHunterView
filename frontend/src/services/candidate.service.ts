@@ -38,6 +38,11 @@ export const candidateService = {
       .get<ApiResponse<ProfileCompletionStatus>>('/api/v1/candidate/profile/completion-status')
       .then((r) => r.data),
 
+  claimNewbieReward: () =>
+    api
+      .post<ApiResponse<ProfileCompletionStatus>>('/api/v1/candidate/profile/claim-newbie-reward')
+      .then((r) => r.data),
+
   updateOnboardingProfile: (payload: OnboardingProfilePayload) =>
     api
       .patch<ApiResponse<ProfileCompletionStatus>>('/api/v1/candidate/profile/onboarding', payload)

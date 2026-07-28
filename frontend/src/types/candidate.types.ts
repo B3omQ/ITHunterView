@@ -14,6 +14,9 @@ export interface ProfileCompletionStatus {
   isComplete: boolean;
   missingFields: string[];
   completionPercentage: number;
+  isEmailVerified: boolean;
+  isNewbieRewardClaimed: boolean;
+  canClaimNewbieReward: boolean;
 }
 
 export interface OnboardingProfilePayload {

@@ -16,6 +16,8 @@ namespace ITHunterview.Service.UseCase
         private readonly IFileUploadService _fileUploadService;
         private readonly ICvRepository _cvRepository;
         private readonly ICvUseCase _cvUseCase;
+        private readonly IUserRepository _userRepo;
+        private readonly IWalletUseCase _walletUseCase;
 
         public CandidateProfileUseCase(
             ICandidateProfileRepository profileRepo,
@@ -25,7 +27,9 @@ namespace ITHunterview.Service.UseCase
             ICandidateSkillRepository skillRepo,
             IFileUploadService fileUploadService,
             ICvRepository cvRepository,
-            ICvUseCase cvUseCase)
+            ICvUseCase cvUseCase,
+            IUserRepository userRepo,
+            IWalletUseCase walletUseCase)
         {
             _profileRepo = profileRepo;
             _expRepo = expRepo;
@@ -35,6 +39,8 @@ namespace ITHunterview.Service.UseCase
             _fileUploadService = fileUploadService;
             _cvRepository = cvRepository;
             _cvUseCase = cvUseCase;
+            _userRepo = userRepo;
+            _walletUseCase = walletUseCase;
         }
 
         // ─── Personal Info ─────────────────────────────────────────────────────
@@ -193,25 +199,18 @@ namespace ITHunterview.Service.UseCase
         public async Task<ProfileCompletionStatusResponseDto> GetProfileCompletionStatusAsync(Guid userId)
         {
             var profile = await GetOrCreateProfileAsync(userId);
+            var evaluation = EvaluateProfileCompletion(profile);
 
-            if (!profile.IsProfileComplete)
+            if (evaluation.IsComplete && !profile.IsProfileComplete)
             {
-                var evaluation = EvaluateProfileCompletion(profile);
-                if (evaluation.IsComplete)
-                {
-                    profile.IsProfileComplete = true;
-                    profile.ProfileCompletedAt = DateTime.UtcNow;
-                    await _profileRepo.SaveChangesAsync();
-                }
-                return evaluation;
+                profile.IsProfileComplete = true;
+                profile.ProfileCompletedAt = DateTime.UtcNow;
+                await _profileRepo.SaveChangesAsync();
             }
 
-            return new ProfileCompletionStatusResponseDto
-            {
-                IsComplete = true,
-                CompletionPercentage = 100,
-                MissingFields = new List<string>()
-            };
+            await CheckAndAwardNewbieBonusAsync(profile, evaluation);
+
+            return evaluation;
         }
 
         public async Task<ProfileCompletionStatusResponseDto> CompleteOnboardingProfileAsync(Guid userId, OnboardingProfileRequestDto request)
@@ -244,7 +243,31 @@ namespace ITHunterview.Service.UseCase
 
             await _profileRepo.SaveChangesAsync();
 
+            await CheckAndAwardNewbieBonusAsync(profile, evaluation);
+
             return evaluation;
+        }
+
+        public async Task<ProfileCompletionStatusResponseDto> ClaimNewbieRewardAsync(Guid userId)
+        {
+            var profile = await GetOrCreateProfileAsync(userId);
+            var status = EvaluateProfileCompletion(profile);
+
+            if (!status.IsEmailVerified)
+            {
+                throw new ArgumentException("Bạn cần xác thực email trước khi nhận phần thưởng này.");
+            }
+            if (!status.IsComplete)
+            {
+                throw new ArgumentException("Bạn cần hoàn thiện 100% hồ sơ trước khi nhận phần thưởng này.");
+            }
+            if (profile.IsNewbieRewardClaimed)
+            {
+                throw new ArgumentException("Bạn đã nhận phần thưởng tân binh 1.500 coin trước đó rồi.");
+            }
+
+            await CheckAndAwardNewbieBonusAsync(profile, status);
+            return status;
         }
 
         // ─── Private helpers ───────────────────────────────────────────────────
@@ -273,12 +296,20 @@ namespace ITHunterview.Service.UseCase
         private async Task<CandidateProfiles> GetOrCreateProfileAsync(Guid userId)
         {
             var profile = await _profileRepo.GetByUserIdAsync(userId);
-            if (profile != null)
-                return profile;
+            if (profile == null)
+            {
+                // Auto-create nếu chưa có (new user)
+                var newProfile = new CandidateProfiles { UserId = userId };
+                await _profileRepo.CreateAsync(newProfile);
+                profile = await _profileRepo.GetByUserIdAsync(userId) ?? newProfile;
+            }
 
-            // Auto-create nếu chưa có (new user)
-            var newProfile = new CandidateProfiles { UserId = userId };
-            return await _profileRepo.CreateAsync(newProfile);
+            if (profile.User == null)
+            {
+                profile.User = (await _userRepo.GetUserByIdAsync(userId))!;
+            }
+
+            return profile;
         }
 
         private static PersonalInfoResponseDto MapToPersonalInfoDto(CandidateProfiles profile)
@@ -315,8 +346,21 @@ namespace ITHunterview.Service.UseCase
             {
                 IsComplete = missingFields.Count == 0,
                 MissingFields = missingFields,
-                CompletionPercentage = percentage
+                CompletionPercentage = percentage,
+                IsEmailVerified = profile.User?.Status == Domain.Enums.UserStatus.ACTIVE,
+                IsNewbieRewardClaimed = profile.IsNewbieRewardClaimed
             };
+        }
+
+        private async Task CheckAndAwardNewbieBonusAsync(CandidateProfiles profile, ProfileCompletionStatusResponseDto status)
+        {
+            if (status.IsComplete && status.IsEmailVerified && !profile.IsNewbieRewardClaimed)
+            {
+                profile.IsNewbieRewardClaimed = true;
+                await _profileRepo.SaveChangesAsync();
+                await _walletUseCase.AddBonusCoinsAsync(profile.UserId, 1500, "Thưởng tân binh hoàn thành 100% hồ sơ và xác thực email (1,500 Coin)");
+                status.IsNewbieRewardClaimed = true;
+            }
         }
     }
 }

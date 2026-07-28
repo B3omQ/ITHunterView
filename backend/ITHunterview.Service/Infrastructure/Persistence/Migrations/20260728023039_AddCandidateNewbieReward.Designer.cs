@@ -5,6 +5,7 @@ using ITHunterview.Domain.Entities.Cv;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -14,9 +15,11 @@ using Pgvector;
 namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ITHunterviewContext))]
-    partial class ITHunterviewContextModelSnapshot : ModelSnapshot
+    [Migration("20260728023039_AddCandidateNewbieReward")]
+    partial class AddCandidateNewbieReward
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -502,10 +505,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("industry");
-
-                    b.Property<bool>("IsNewbieRewardClaimed")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_newbie_reward_claimed");
 
                     b.Property<double?>("Latitude")
                         .HasColumnType("double precision")
