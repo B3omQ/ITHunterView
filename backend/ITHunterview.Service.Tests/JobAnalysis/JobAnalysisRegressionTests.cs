@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Service.DTOs.Job;
 using ITHunterview.Service.DTOs.JobAnalysis;
-using ITHunterview.Service.Helpers;
+using ITHunterview.Service.Utils;
 using Xunit;
 
 namespace ITHunterview.Service.Tests.JobAnalysis

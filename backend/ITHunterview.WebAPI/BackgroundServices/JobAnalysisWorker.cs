@@ -3,12 +3,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.Persistence;
-using ITHunterview.Service.Services;
+using ITHunterview.Service.Service;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace ITHunterview.Service.BackgroundServices
+namespace ITHunterview.WebAPI.BackgroundServices
 {
     public class JobAnalysisWorker : BackgroundService
     {

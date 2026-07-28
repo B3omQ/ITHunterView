@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using ITHunterview.Domain.Entities;
 
-namespace ITHunterview.Service.Helpers
+namespace ITHunterview.Service.Utils
 {
     public sealed class JobAnalysisInputSnapshot
     {

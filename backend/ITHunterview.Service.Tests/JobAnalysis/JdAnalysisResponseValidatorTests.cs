@@ -1,5 +1,5 @@
-using ITHunterview.Service.Helpers;
-using ITHunterview.Service.Validators;
+using ITHunterview.Service.Utils;
+using ITHunterview.Service.Utils;
 using Xunit;
 
 namespace ITHunterview.Service.Tests.JobAnalysis

@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Job;
-using ITHunterview.Service.Helpers;
+using ITHunterview.Service.Utils;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.UseCase;
 using Microsoft.Extensions.Logging.Abstractions;

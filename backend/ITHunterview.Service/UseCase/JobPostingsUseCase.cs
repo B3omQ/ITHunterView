@@ -8,7 +8,7 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Job;
-using ITHunterview.Service.Helpers;
+using ITHunterview.Service.Utils;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Interface.Service;

@@ -7,10 +7,10 @@ using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.Infrastructure.Persistence;
-using ITHunterview.Service.Validators;
+using ITHunterview.Service.Utils;
 using Microsoft.EntityFrameworkCore;
 
-namespace ITHunterview.Service.Services
+namespace ITHunterview.Service.Service
 {
     public interface ISkillNormalizationService
     {

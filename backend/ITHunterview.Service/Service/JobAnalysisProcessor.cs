@@ -6,14 +6,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
-using ITHunterview.Service.Helpers;
+using ITHunterview.Service.Utils;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
-using ITHunterview.Service.Validators;
+using ITHunterview.Service.Utils;
 using Microsoft.Extensions.Logging;
 
-namespace ITHunterview.Service.Services
+namespace ITHunterview.Service.Service
 {
     public interface IJobAnalysisProcessor
     {

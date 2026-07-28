@@ -1,6 +1,6 @@
 using System;
 
-namespace ITHunterview.Service.Exceptions
+namespace ITHunterview.Service.Utils
 {
     public class JobAnalysisException : Exception
     {

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using ITHunterview.Service.Helpers;
+using ITHunterview.Service.Utils;
 
-namespace ITHunterview.Service.Validators
+namespace ITHunterview.Service.Utils
 {
     public sealed class ValidatedJobAnalysis
     {

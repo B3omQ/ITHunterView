@@ -5,11 +5,11 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using ITHunterview.Service.Helpers;
+using ITHunterview.Service.Utils;
 using ITHunterview.Service.Interface.Service;
-using ITHunterview.Service.Validators;
+using ITHunterview.Service.Utils;
 
-namespace ITHunterview.Service.Services
+namespace ITHunterview.Service.Service
 {
     public sealed class JobAnalysisExtractionResult
     {

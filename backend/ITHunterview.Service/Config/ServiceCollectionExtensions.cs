@@ -4,10 +4,7 @@ using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Service;
-using ITHunterview.Service.Services;
-using ITHunterview.Service.Validators;
-using ITHunterview.Service.Helpers;
-using ITHunterview.Service.BackgroundServices;
+using ITHunterview.Service.Utils;
 using ITHunterview.Service.DTOs.JobAnalysis;
 using ITHunterview.Service.Service.AiProviders;
 using ITHunterview.Service.Service.Matching;
@@ -159,7 +156,6 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IJobAnalysisExtractionService, JobAnalysisExtractionService>();
             services.AddScoped<ISkillNormalizationService, SkillNormalizationService>();
             services.AddScoped<ISkillResolver, SkillResolver>();
-            services.AddHostedService<ITHunterview.Service.BackgroundServices.JobAnalysisWorker>();
 
             return services;
 

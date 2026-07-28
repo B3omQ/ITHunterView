@@ -2,8 +2,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using ITHunterview.Service.Interface.Service;
-using ITHunterview.Service.Services;
-using ITHunterview.Service.Validators;
+using ITHunterview.Service.Service;
+using ITHunterview.Service.Utils;
 using Moq;
 
 namespace ITHunterview.Service.Tests.JobAnalysis;

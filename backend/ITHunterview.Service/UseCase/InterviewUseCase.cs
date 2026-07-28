@@ -14,7 +14,7 @@ using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Utils;
 using ITHunterview.Service.Infrastructure.Persistence;
-using ITHunterview.Service.Helpers;
+using ITHunterview.Service.Utils;
 
 namespace ITHunterview.Service.UseCase
 {

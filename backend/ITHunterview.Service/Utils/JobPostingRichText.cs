@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace ITHunterview.Service.Helpers
+namespace ITHunterview.Service.Utils
 {
     public sealed record JobPostingRichTextValue(string StoredMarkdown, string PlainText);
 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 
-namespace ITHunterview.Service.Helpers
+namespace ITHunterview.Service.Utils
 {
     /// <summary>
     /// Compatibility reader for persisted job/CV analysis documents.  V1 stored

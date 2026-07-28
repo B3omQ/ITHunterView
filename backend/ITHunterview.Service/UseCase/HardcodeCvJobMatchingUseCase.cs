@@ -8,7 +8,7 @@ using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using ITHunterview.Service.Interface.Service.Matching;
-using ITHunterview.Service.Helpers;
+using ITHunterview.Service.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace ITHunterview.Service.UseCase

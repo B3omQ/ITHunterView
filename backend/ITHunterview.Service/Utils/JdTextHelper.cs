@@ -1,7 +1,7 @@
 using ITHunterview.Domain.Entities;
 using System.Text;
 
-namespace ITHunterview.Service.Helpers
+namespace ITHunterview.Service.Utils
 {
     public static class JdTextHelper
     {

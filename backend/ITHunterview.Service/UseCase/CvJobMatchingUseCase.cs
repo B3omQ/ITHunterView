@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.UseCase;
-using ITHunterview.Service.Helpers;
+using ITHunterview.Service.Utils;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +19,7 @@ using System.Net.Http.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ITHunterview.Service.Interface.Service.Matching;
-using ITHunterview.Service.Services;
+using ITHunterview.Service.Service;
 
 namespace ITHunterview.Service.UseCase
 {

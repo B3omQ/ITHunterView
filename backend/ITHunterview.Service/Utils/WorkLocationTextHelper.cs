@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 
-namespace ITHunterview.Service.Helpers
+namespace ITHunterview.Service.Utils
 {
     public static class WorkLocationTextHelper
     {

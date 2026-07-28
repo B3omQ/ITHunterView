@@ -1,5 +1,5 @@
 using ITHunterview.Domain.Entities;
-using ITHunterview.Service.Helpers;
+using ITHunterview.Service.Utils;
 using Xunit;
 
 namespace ITHunterview.Service.Tests.Helpers

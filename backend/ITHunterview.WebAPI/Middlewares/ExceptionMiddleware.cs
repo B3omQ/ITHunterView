@@ -4,7 +4,7 @@ using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ITHunterview.Service.DTOs.Common;
-using ITHunterview.Service.Exceptions;
+using ITHunterview.Service.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
