@@ -19,8 +19,9 @@ import {
   Target
 } from "lucide-react"
 import { MatchCvsSection } from "@/components/recruiter/MatchCvsSection"
-import { JobTextContent } from "@/components/jobs/JobTextContent"
+import { JobPostingMarkdownContent } from "@/components/jobs/JobPostingMarkdownContent"
 import { WorkLocationScheduleContent } from "@/components/jobs/WorkLocationScheduleContent"
+import type { JobSkillRequirement } from "@/services/recruiter.service"
 
 export default function JobDetailPage() {
   const router = useRouter()
@@ -75,8 +76,8 @@ export default function JobDetailPage() {
     )
   }
 
-  const mustHaveSkills = job.skills?.filter((s: any) => s.isMandatory) || []
-  const niceToHaveSkills = job.skills?.filter((s: any) => !s.isMandatory) || []
+  const mustHaveSkills = job.skills?.filter((skill: JobSkillRequirement) => skill.isMandatory) || []
+  const niceToHaveSkills = job.skills?.filter((skill: JobSkillRequirement) => !skill.isMandatory) || []
 
   return (
     <div className="min-h-screen bg-background transition-colors duration-200">
@@ -214,7 +215,7 @@ export default function JobDetailPage() {
                   <span className="block text-xs font-bold text-blue-600 dark:text-blue-400 mb-2 uppercase tracking-wide">Must-have Skills</span>
                   <div className="flex flex-wrap gap-1.5">
                     {mustHaveSkills.length > 0 ? (
-                      mustHaveSkills.map((s: any) => (
+                      mustHaveSkills.map((s: JobSkillRequirement) => (
                         <span key={s.skillId} className="inline-flex items-center bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/50 px-2.5 py-1 rounded-md text-xs font-semibold">
                           {s.skillName}
                         </span>
@@ -230,7 +231,7 @@ export default function JobDetailPage() {
                   <span className="block text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-2 uppercase tracking-wide">Nice-to-have Skills</span>
                   <div className="flex flex-wrap gap-1.5">
                     {niceToHaveSkills.length > 0 ? (
-                      niceToHaveSkills.map((s: any) => (
+                      niceToHaveSkills.map((s: JobSkillRequirement) => (
                         <span key={s.skillId} className="inline-flex items-center bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/50 px-2.5 py-1 rounded-md text-xs font-semibold">
                           {s.skillName}
                         </span>
@@ -250,14 +251,14 @@ export default function JobDetailPage() {
                   <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-2 flex items-center gap-1.5">
                     <FileText className="h-4 w-4 text-blue-500" /> Job Description
                   </h3>
-                  <JobTextContent value={job.description} variant="bullet" />
+                  <JobPostingMarkdownContent value={job.description} legacyMode="bullet" />
                 </div>
               )}
 
               {job.incomeText && (
                 <div>
                   <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-2">Income</h3>
-                  <JobTextContent value={job.incomeText} variant="bullet" />
+                  <JobPostingMarkdownContent value={job.incomeText} legacyMode="lines" />
                 </div>
               )}
 
@@ -271,14 +272,14 @@ export default function JobDetailPage() {
               {job.requirements && (
                 <div>
                   <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-2">Requirements</h3>
-                  <JobTextContent value={job.requirements} variant="bullet" />
+                  <JobPostingMarkdownContent value={job.requirements} legacyMode="bullet" />
                 </div>
               )}
 
               {job.benefits && (
                 <div>
                   <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400 mb-2">Benefits</h3>
-                  <JobTextContent value={job.benefits} variant="bullet" />
+                  <JobPostingMarkdownContent value={job.benefits} legacyMode="bullet" />
                 </div>
               )}
             </div>

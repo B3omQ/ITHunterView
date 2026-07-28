@@ -184,7 +184,7 @@ export function useJobMetadata() {
         await recruiterService.getMajors(),
         'Failed to load majors',
       )
-      return result.items ?? []
+      return result?.items ?? (result as any)?.Items ?? []
     },
     staleTime: 5 * 60 * 1000,
   })

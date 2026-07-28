@@ -115,6 +115,8 @@ namespace ITHunterview.Service.UseCase
                 return new ResponseBase<JobPostingDetailDto>("Thời gian xuất bản tin không được vượt quá 30 ngày.");
             }
 
+            var text = NormalizeRichTextFields(dto.Description, dto.Requirements, dto.Benefits, dto.IncomeText);
+
             var job = new JobPostings
             {
                 JobCode = string.IsNullOrWhiteSpace(dto.JobCode) 
@@ -124,10 +126,10 @@ namespace ITHunterview.Service.UseCase
                 CompanyId = companyId.Value,
 
                 Title = dto.Title,
-                Description = dto.Description,
-                Requirements = dto.Requirements,
-                Benefits = dto.Benefits,
-                IncomeText = dto.IncomeText,
+                Description = text.Description,
+                Requirements = text.Requirements,
+                Benefits = text.Benefits,
+                IncomeText = text.IncomeText,
                 WorkLocationText = dto.WorkLocationText,
                 MinSalary = dto.MinSalary,
                 MaxSalary = dto.MaxSalary,
@@ -185,13 +187,14 @@ namespace ITHunterview.Service.UseCase
 
             var oldSnapshot = _inputBuilder.Build(job);
             var oldSemanticHash = _inputBuilder.ComputeSemanticHash(oldSnapshot);
+            var text = NormalizeRichTextFields(dto.Description, dto.Requirements, dto.Benefits, dto.IncomeText);
 
             job.JobCode = dto.JobCode;
             job.Title = dto.Title;
-            job.Description = dto.Description;
-            job.Requirements = dto.Requirements;
-            job.Benefits = dto.Benefits;
-            job.IncomeText = dto.IncomeText;
+            job.Description = text.Description;
+            job.Requirements = text.Requirements;
+            job.Benefits = text.Benefits;
+            job.IncomeText = text.IncomeText;
             job.WorkLocationText = dto.WorkLocationText;
             job.MinSalary = dto.MinSalary;
             job.MaxSalary = dto.MaxSalary;
@@ -284,6 +287,41 @@ namespace ITHunterview.Service.UseCase
                 AnalysisRevision = j.AnalysisRevision
             };
         }
+
+        private static NormalizedJobText NormalizeRichTextFields(
+            string description,
+            string requirements,
+            string benefits,
+            string incomeText)
+        {
+            return new NormalizedJobText(
+                NormalizeRequiredRichText(description, "Description", 10000),
+                NormalizeRequiredRichText(requirements, "Requirements", 10000),
+                NormalizeRequiredRichText(benefits, "Benefits", 10000),
+                NormalizeRequiredRichText(incomeText, "IncomeText", 4000));
+        }
+
+        private static string NormalizeRequiredRichText(string value, string fieldName, int maximumLength)
+        {
+            var normalized = JobPostingRichText.NormalizeForStorage(value);
+            if (!JobPostingRichText.HasVisibleText(normalized.StoredMarkdown))
+            {
+                throw new ArgumentException($"{fieldName} must contain visible text.", fieldName);
+            }
+
+            if (normalized.StoredMarkdown.Length > maximumLength)
+            {
+                throw new ArgumentException($"{fieldName} exceeds the maximum length of {maximumLength} characters.", fieldName);
+            }
+
+            return normalized.StoredMarkdown;
+        }
+
+        private sealed record NormalizedJobText(
+            string Description,
+            string Requirements,
+            string Benefits,
+            string IncomeText);
 
         [Obsolete("Legacy V1 reparse is disabled. Use the V2 analysis endpoint for a draft job.")]
         public Task<ResponseBase<string>> ReparsePendingJobsAsync(int limit = 50)

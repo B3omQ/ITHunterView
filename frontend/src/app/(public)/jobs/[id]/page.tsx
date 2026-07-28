@@ -11,7 +11,7 @@ import { MapPin, DollarSign, Calendar, Briefcase, ChevronLeft, Bookmark } from '
 import { useAuthStore } from '@/store/auth.store';
 import { ApplyJobModal } from '@/components/jobs/ApplyJobModal';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
-import { JobTextContent } from '@/components/jobs/JobTextContent';
+import { JobPostingMarkdownContent } from '@/components/jobs/JobPostingMarkdownContent';
 import { WorkLocationScheduleContent } from '@/components/jobs/WorkLocationScheduleContent';
 
 export default function PublicJobDetailPage() {
@@ -115,14 +115,14 @@ export default function PublicJobDetailPage() {
           {job.description && (
             <section>
               <h3 className="text-lg font-semibold mb-3 border-l-4 border-primary pl-3">Job Description</h3>
-              <JobTextContent value={job.description} variant="bullet" />
+              <JobPostingMarkdownContent value={job.description} legacyMode="bullet" />
             </section>
           )}
 
           {job.incomeText && (
             <section>
               <h3 className="text-lg font-semibold mb-3 border-l-4 border-primary pl-3">Income</h3>
-              <JobTextContent value={job.incomeText} variant="bullet" />
+              <JobPostingMarkdownContent value={job.incomeText} legacyMode="lines" />
             </section>
           )}
 
@@ -136,14 +136,14 @@ export default function PublicJobDetailPage() {
           {job.requirements && (
             <section>
               <h3 className="text-lg font-semibold mb-3 border-l-4 border-primary pl-3">Requirements</h3>
-              <JobTextContent value={job.requirements} variant="bullet" />
+              <JobPostingMarkdownContent value={job.requirements} legacyMode="bullet" />
             </section>
           )}
 
           {job.benefits && (
             <section>
               <h3 className="text-lg font-semibold mb-3 border-l-4 border-primary pl-3">Benefits</h3>
-              <JobTextContent value={job.benefits} variant="bullet" />
+              <JobPostingMarkdownContent value={job.benefits} legacyMode="bullet" />
             </section>
           )}
         </div>

@@ -42,5 +42,26 @@ namespace ITHunterview.Service.Tests.Helpers
             Assert.Contains("Title: Frontend Developer", rawText);
             Assert.Contains("Work Location: 125 Hoang Ngan, Hanoi", rawText);
         }
+
+        [Fact]
+        public void BuildRawText_WithMarkdownFields_UsesPlainTextForAiContext()
+        {
+            var job = new JobPostings
+            {
+                Description = "**Build APIs**\n- React",
+                Requirements = "_Node.js_\n++CI/CD++",
+                Benefits = "- Health insurance",
+                IncomeText = "**Negotiable**"
+            };
+
+            var rawText = JdTextHelper.BuildRawText(job);
+
+            Assert.Contains("Description: Build APIs\nReact", rawText);
+            Assert.Contains("Requirements: Node.js\nCI/CD", rawText);
+            Assert.Contains("Benefits: Health insurance", rawText);
+            Assert.Contains("Income: Negotiable", rawText);
+            Assert.DoesNotContain("**", rawText);
+            Assert.DoesNotContain("++", rawText);
+        }
     }
 }

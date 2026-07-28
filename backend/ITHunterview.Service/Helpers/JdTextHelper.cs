@@ -13,16 +13,16 @@ namespace ITHunterview.Service.Helpers
                 sb.AppendLine($"Title: {job.Title}");
 
             if (!string.IsNullOrWhiteSpace(job.Description))
-                sb.AppendLine($"Description: {job.Description}");
+                sb.AppendLine($"Description: {JobPostingRichText.ToPlainText(job.Description)}");
 
             if (!string.IsNullOrWhiteSpace(job.Requirements))
-                sb.AppendLine($"Requirements: {job.Requirements}");
+                sb.AppendLine($"Requirements: {JobPostingRichText.ToPlainText(job.Requirements)}");
 
             if (!string.IsNullOrWhiteSpace(job.Benefits))
-                sb.AppendLine($"Benefits: {job.Benefits}");
+                sb.AppendLine($"Benefits: {JobPostingRichText.ToPlainText(job.Benefits)}");
 
             if (!string.IsNullOrWhiteSpace(job.IncomeText))
-                sb.AppendLine($"Income: {job.IncomeText}");
+                sb.AppendLine($"Income: {JobPostingRichText.ToPlainText(job.IncomeText)}");
 
             if (!string.IsNullOrWhiteSpace(job.WorkLocationText))
             {

@@ -120,6 +120,63 @@ namespace ITHunterview.Service.Tests.JobAnalysis
         }
 
         [Fact]
+        public void ComputeHashes_WhenOnlyMarkdownFormattingChanges_ReturnSameValues()
+        {
+            var systemPrompt = Guid.NewGuid();
+            var userPrompt = Guid.NewGuid();
+            var job1 = new JobPostings
+            {
+                Title = "Backend Engineer",
+                Description = "Build APIs with React",
+                Requirements = "React\nNode.js"
+            };
+            var job2 = new JobPostings
+            {
+                Title = "Backend Engineer",
+                Description = "Build APIs with **React**",
+                Requirements = "- React\n- _Node.js_"
+            };
+
+            var snapshot1 = _builder.Build(job1);
+            var snapshot2 = _builder.Build(job2);
+
+            Assert.Equal(snapshot1.Description, snapshot2.Description);
+            Assert.Equal(snapshot1.Requirements, snapshot2.Requirements);
+            Assert.Equal(_builder.ComputeSemanticHash(snapshot1), _builder.ComputeSemanticHash(snapshot2));
+            Assert.Equal(
+                _builder.ComputeAnalysisHash(snapshot1, systemPrompt, userPrompt),
+                _builder.ComputeAnalysisHash(snapshot2, systemPrompt, userPrompt));
+        }
+
+        [Fact]
+        public void ComputeHashes_WhenFormattingWrapsAcrossLines_ReturnSameValues()
+        {
+            var systemPrompt = Guid.NewGuid();
+            var userPrompt = Guid.NewGuid();
+            var plainJob = new JobPostings
+            {
+                Title = "Backend Engineer",
+                Description = "Own the API\nlifecycle",
+                Requirements = "React"
+            };
+            var formattedJob = new JobPostings
+            {
+                Title = "Backend Engineer",
+                Description = "**Own the API\nlifecycle**",
+                Requirements = "React"
+            };
+
+            var plainSnapshot = _builder.Build(plainJob);
+            var formattedSnapshot = _builder.Build(formattedJob);
+
+            Assert.Equal(plainSnapshot.Description, formattedSnapshot.Description);
+            Assert.Equal(_builder.ComputeSemanticHash(plainSnapshot), _builder.ComputeSemanticHash(formattedSnapshot));
+            Assert.Equal(
+                _builder.ComputeAnalysisHash(plainSnapshot, systemPrompt, userPrompt),
+                _builder.ComputeAnalysisHash(formattedSnapshot, systemPrompt, userPrompt));
+        }
+
+        [Fact]
         public void ComputeHashes_WhenOnlyContextMetadataChanges_ReturnSameValues()
         {
             var systemPrompt = Guid.NewGuid();

@@ -211,20 +211,25 @@ namespace ITHunterview.Service.UseCase
             if (job.SkillsEmbedding == null)
             {
                 var skillsText = string.Join(", ", skillNames);
-                if (string.IsNullOrEmpty(skillsText)) skillsText = job.Requirements ?? "No requirements provided";
+                if (string.IsNullOrEmpty(skillsText)) skillsText = JobPostingRichText.ToPlainText(job.Requirements);
+                if (string.IsNullOrEmpty(skillsText)) skillsText = "No requirements provided";
                 job.SkillsEmbedding = new Vector(await _aiService.GenerateEmbeddingAsync(skillsText));
                 updated = true;
             }
             if (job.ExperienceEmbedding == null)
             {
-                var expText = metrics.TotalYearsExperience > 0 ? $"{metrics.TotalYearsExperience} years" : job.Requirements ?? "No requirements provided";
+                var expText = metrics.TotalYearsExperience > 0
+                    ? $"{metrics.TotalYearsExperience} years"
+                    : JobPostingRichText.ToPlainText(job.Requirements);
+                if (string.IsNullOrEmpty(expText)) expText = "No requirements provided";
                 job.ExperienceEmbedding = new Vector(await _aiService.GenerateEmbeddingAsync(expText));
                 updated = true;
             }
             if (job.DomainEmbedding == null)
             {
                 var domainText = string.Join(", ", metrics.Domains);
-                if (string.IsNullOrEmpty(domainText)) domainText = job.Description ?? "Unknown domain";
+                if (string.IsNullOrEmpty(domainText)) domainText = JobPostingRichText.ToPlainText(job.Description);
+                if (string.IsNullOrEmpty(domainText)) domainText = "Unknown domain";
                 job.DomainEmbedding = new Vector(await _aiService.GenerateEmbeddingAsync(domainText));
                 updated = true;
             }
@@ -709,12 +714,12 @@ namespace ITHunterview.Service.UseCase
             }
 
             var snapshot = savedJob == null
-                ? new JobAnalysisInputSnapshot
+                ? new JobAnalysisInputBuilder().Build(new JobPostings
                 {
                     Title = requestedTitle ?? string.Empty,
-                    Description = rawJdText ?? string.Empty,
+                    Description = JobPostingRichText.ToPlainText(rawJdText),
                     Requirements = string.Empty
-                }
+                })
                 : new JobAnalysisInputBuilder().Build(savedJob);
 
             var extraction = await _jobAnalysisExtractionService.ExtractWithActivePromptsAsync(snapshot);

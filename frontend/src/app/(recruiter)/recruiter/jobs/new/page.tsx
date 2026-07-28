@@ -11,12 +11,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ArrowLeft, Sparkles, Loader2, Save } from "lucide-react"
 import { LEVELS, WORKING_MODELS, JOB_DOMAINS, VIETNAM_PROVINCES } from "@/lib/job-constants"
 import { MajorCombobox } from "@/components/shared/MajorCombobox"
+import { JobPostingRichTextEditor } from "@/components/forms/JobPostingRichTextEditor"
 import {
   DEFAULT_HOW_TO_APPLY,
   serializeWorkLocationText,
   getSerializedWorkLocationLength,
-  normalizeMultilineText,
 } from "@/lib/job-posting-text"
+import {
+  normalizeRecruiterJobPostingRichTextFields,
+  validateRecruiterJobPostingRichTextFields,
+} from "@/lib/recruiter-job-posting-form"
+import { JOB_POSTING_RICH_TEXT_LIMITS } from "@/lib/job-posting-markdown"
 
 export default function CreateJobPage() {
   const router = useRouter()
@@ -80,13 +85,12 @@ export default function CreateJobPage() {
     if (!formData.workingModel) return "Working Model is required"
     if (!formData.jobExpertise) return "Specialization (Expertise) is required"
 
-    if (!formData.description.trim()) return "Job Description is required"
-    if (!formData.incomeText.trim()) return "Income is required"
+    const richTextError = validateRecruiterJobPostingRichTextFields(formData)
+    if (richTextError) return richTextError.message
+
     if (!formData.workLocation.trim()) return "Work location is required"
     if (!formData.workingHours.trim()) return "Working hours are required"
     if (!formData.howToApply.trim()) return "How to apply is required"
-    if (!formData.requirements.trim()) return "Requirements are required"
-    if (!formData.benefits.trim()) return "Benefits are required"
 
     const serializedLen = getSerializedWorkLocationLength({
       workLocation: formData.workLocation,
@@ -129,6 +133,7 @@ export default function CreateJobPage() {
         workingHours: formData.workingHours,
         howToApply: formData.howToApply,
       })
+      const richText = normalizeRecruiterJobPostingRichTextFields(formData)
 
       const payload = {
         jobCode: formData.jobCode,
@@ -138,11 +143,11 @@ export default function CreateJobPage() {
         maxSalary: formData.maxSalary ? Number(formData.maxSalary) : null,
         currency: formData.currency,
         expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null,
-        description: normalizeMultilineText(formData.description),
-        incomeText: normalizeMultilineText(formData.incomeText),
+        description: richText.description,
+        incomeText: richText.incomeText,
         workLocationText: serializedWorkLocation,
-        requirements: normalizeMultilineText(formData.requirements),
-        benefits: normalizeMultilineText(formData.benefits),
+        requirements: richText.requirements,
+        benefits: richText.benefits,
         level: formData.level,
         workingModel: formData.workingModel,
         jobExpertise: formData.jobExpertise,
@@ -377,15 +382,14 @@ export default function CreateJobPage() {
 
             <div className="space-y-2">
               <Label htmlFor="description" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Description *</Label>
-              <textarea
+              <JobPostingRichTextEditor
                 id="description"
-                name="description"
-                rows={5}
                 required
                 placeholder="Describe the job position, key responsibilities, and team culture..."
-                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                 value={formData.description}
-                onChange={handleChange}
+                maxLength={JOB_POSTING_RICH_TEXT_LIMITS.description}
+                disabled={loading || submittingAction !== null}
+                onChange={(description) => setFormData((previous) => ({ ...previous, description }))}
               />
             </div>
 
@@ -449,15 +453,14 @@ export default function CreateJobPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="incomeText" className="font-semibold text-zinc-700 dark:text-zinc-300">Income Details *</Label>
-                <textarea
+                <JobPostingRichTextEditor
                   id="incomeText"
-                  name="incomeText"
-                  rows={2}
                   required
                   placeholder="Up to $3,000 / month + performance bonus..."
-                  className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={formData.incomeText}
-                  onChange={handleChange}
+                  maxLength={JOB_POSTING_RICH_TEXT_LIMITS.incomeText}
+                  disabled={loading || submittingAction !== null}
+                  onChange={(incomeText) => setFormData((previous) => ({ ...previous, incomeText }))}
                 />
               </div>
 
@@ -493,34 +496,30 @@ export default function CreateJobPage() {
             <div className="space-y-2">
               <div>
                 <Label htmlFor="requirements" className="font-semibold text-zinc-700 dark:text-zinc-300">Requirements *</Label>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Each new line will be displayed as a bullet point.</p>
               </div>
-              <textarea
+              <JobPostingRichTextEditor
                 id="requirements"
-                name="requirements"
-                rows={3}
                 required
                 placeholder="List specific qualifications, experience level, degree, or other requirements..."
-                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={formData.requirements}
-                onChange={handleChange}
+                maxLength={JOB_POSTING_RICH_TEXT_LIMITS.requirements}
+                disabled={loading || submittingAction !== null}
+                onChange={(requirements) => setFormData((previous) => ({ ...previous, requirements }))}
               />
             </div>
 
             <div className="space-y-2">
               <div>
                 <Label htmlFor="benefits" className="font-semibold text-zinc-700 dark:text-zinc-300">Benefits *</Label>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Each new line will be displayed as a bullet point.</p>
               </div>
-              <textarea
+              <JobPostingRichTextEditor
                 id="benefits"
-                name="benefits"
-                rows={3}
                 required
                 placeholder="List key benefits (e.g. 13th month salary, health insurance, flexible working hours)..."
-                className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={formData.benefits}
-                onChange={handleChange}
+                maxLength={JOB_POSTING_RICH_TEXT_LIMITS.benefits}
+                disabled={loading || submittingAction !== null}
+                onChange={(benefits) => setFormData((previous) => ({ ...previous, benefits }))}
               />
             </div>
           </CardContent>

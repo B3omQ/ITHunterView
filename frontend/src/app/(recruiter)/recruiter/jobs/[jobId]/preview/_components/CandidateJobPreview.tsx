@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { JobPosting } from "@/services/recruiter.service"
-import { JobTextContent } from "@/components/jobs/JobTextContent"
+import { JobPostingMarkdownContent } from "@/components/jobs/JobPostingMarkdownContent"
 import { WorkLocationScheduleContent } from "@/components/jobs/WorkLocationScheduleContent"
 
 interface CandidateJobPreviewProps {
@@ -30,13 +30,13 @@ export function CandidateJobPreview({ job }: CandidateJobPreviewProps) {
       <CardContent className="space-y-8 pt-6">
         <div>
           <h3 className="mb-3 text-base font-semibold">Job Description</h3>
-          <JobTextContent value={job.description} variant="bullet" emptyFallback="No job description provided." />
+          <JobPostingMarkdownContent value={job.description} legacyMode="bullet" emptyFallback="No job description provided." />
         </div>
 
         {job.incomeText && (
           <div>
             <h3 className="mb-3 text-base font-semibold">Income</h3>
-            <JobTextContent value={job.incomeText} variant="bullet" />
+            <JobPostingMarkdownContent value={job.incomeText} legacyMode="lines" />
           </div>
         )}
 
@@ -49,13 +49,13 @@ export function CandidateJobPreview({ job }: CandidateJobPreviewProps) {
 
         <div>
           <h3 className="mb-3 text-base font-semibold">Requirements</h3>
-          <JobTextContent value={job.requirements} variant="bullet" emptyFallback="No requirements provided." />
+          <JobPostingMarkdownContent value={job.requirements} legacyMode="bullet" emptyFallback="No requirements provided." />
         </div>
 
         {job.benefits && (
           <div>
             <h3 className="mb-3 text-base font-semibold">Benefits</h3>
-            <JobTextContent value={job.benefits} variant="bullet" />
+            <JobPostingMarkdownContent value={job.benefits} legacyMode="bullet" />
           </div>
         )}
       </CardContent>

@@ -62,8 +62,8 @@ namespace ITHunterview.Service.Helpers
             return new JobAnalysisInputSnapshot
             {
                 Title = NormalizeAnalysisSourceText(job.Title),
-                Description = NormalizeAnalysisSourceText(job.Description),
-                Requirements = NormalizeAnalysisSourceText(job.Requirements)
+                Description = NormalizeAnalysisSourceText(JobPostingRichText.ToPlainText(job.Description)),
+                Requirements = NormalizeAnalysisSourceText(JobPostingRichText.ToPlainText(job.Requirements))
             };
         }
 

@@ -12,7 +12,7 @@ import { ApplyJobModal } from '@/components/jobs/ApplyJobModal';
 import { useJobActions } from '@/hooks/useJobActions';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { JobTextContent } from '@/components/jobs/JobTextContent';
+import { JobPostingMarkdownContent } from '@/components/jobs/JobPostingMarkdownContent';
 import { WorkLocationScheduleContent } from '@/components/jobs/WorkLocationScheduleContent';
 
 interface JobDetailPanelProps {
@@ -190,14 +190,14 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
           {job.description && (
             <section>
               <h2 className="text-xl font-bold text-slate-900 mb-4">Job Description</h2>
-              <JobTextContent value={job.description} variant="bullet" />
+              <JobPostingMarkdownContent value={job.description} legacyMode="bullet" />
             </section>
           )}
 
           {job.incomeText && (
             <section>
               <h2 className="text-xl font-bold text-slate-900 mb-4">Income</h2>
-              <JobTextContent value={job.incomeText} variant="bullet" />
+              <JobPostingMarkdownContent value={job.incomeText} legacyMode="lines" />
             </section>
           )}
 
@@ -211,14 +211,14 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
           {job.requirements && (
             <section>
               <h2 className="text-xl font-bold text-slate-900 mb-4">Requirements</h2>
-              <JobTextContent value={job.requirements} variant="bullet" />
+              <JobPostingMarkdownContent value={job.requirements} legacyMode="bullet" />
             </section>
           )}
 
           {job.benefits && (
             <section>
               <h2 className="text-xl font-bold text-slate-900 mb-4">Benefits</h2>
-              <JobTextContent value={job.benefits} variant="bullet" />
+              <JobPostingMarkdownContent value={job.benefits} legacyMode="bullet" />
             </section>
           )}
         </div>
@@ -241,7 +241,7 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
           <DialogHeader>
             <DialogTitle>Unsave Job?</DialogTitle>
             <DialogDescription>
-              Are you sure you want to remove "{job.title}" from your saved jobs?
+              Are you sure you want to remove &quot;{job.title}&quot; from your saved jobs?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
