@@ -16,15 +16,33 @@ import {
   ExternalLink,
   Check,
   Ban,
-  Clock,
-  User
+  User,
+  SearchX,
+  Building2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCompanies, useUpdateCompanyStatus } from '@/hooks/useCompany';
-import { Company, CompanyStatus } from '@/types/company.types';
+import { Company } from '@/types/company.types';
 import { CompanyStatusBadge } from '@/components/shared/CompanyStatusBadge';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -35,24 +53,24 @@ import {
 } from '@/components/ui/dialog';
 
 const STATUS_FILTERS = [
-  { value: 'ALL', label: 'All' },
+  { value: 'ALL', label: 'All Statuses' },
   { value: 'PENDING', label: 'Pending Review' },
   { value: 'PENDING_UPDATE', label: 'Pending Update' },
   { value: 'VERIFIED', label: 'Verified' },
-  { value: 'REJECTED', label: 'Rejected' }
+  { value: 'REJECTED', label: 'Rejected' },
 ];
 
 export default function StaffCompaniesPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('PENDING'); // Default to PENDING for action items
+  const [statusFilter, setStatusFilter] = useState('PENDING'); // Default to PENDING for staff action items
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState(10);
 
   // Detail & Action Modals state
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  
+
   // Confirm action states
   const [confirmAction, setConfirmAction] = useState<{
     company: Company;
@@ -73,21 +91,20 @@ export default function StaffCompaniesPage() {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
       setPage(1);
-    }, 300);
+    }, 350);
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Fetch Companies
+  // Fetch Companies adhering to kinh-mantra.md (page -> hook -> service -> api-client -> backend)
   const {
     data: companyData,
     isLoading,
     isError,
-    refetch
   } = useCompanies({
     page,
     pageSize,
     search: debouncedSearch || undefined,
-    status: statusFilter === 'ALL' ? undefined : statusFilter
+    status: statusFilter === 'ALL' ? undefined : statusFilter,
   });
 
   // Status update mutation
@@ -102,17 +119,17 @@ export default function StaffCompaniesPage() {
     try {
       await updateStatus({
         id: companyId,
-        dto: { 
+        dto: {
           status,
-          rejectReason: status === 'REJECTED' ? rejectReasonInput.trim() : undefined
-        }
+          rejectReason: status === 'REJECTED' ? rejectReasonInput.trim() : undefined,
+        },
       });
       toast.success(
-        status === 'VERIFIED' 
-          ? 'Company verified successfully!' 
+        status === 'VERIFIED'
+          ? 'Company verified successfully!'
           : 'Company rejected successfully!'
       );
-      
+
       // Update selected company status in detail modal if open
       if (selectedCompany && selectedCompany.id === companyId) {
         if (selectedCompany.hasPendingChange) {
@@ -121,16 +138,20 @@ export default function StaffCompaniesPage() {
               ...selectedCompany,
               name: selectedCompany.pendingName || selectedCompany.name,
               taxCode: selectedCompany.pendingTaxCode || selectedCompany.taxCode,
-              headquartersAddress: selectedCompany.pendingHeadquartersAddress || selectedCompany.headquartersAddress,
-              verificationMethod: selectedCompany.pendingVerificationMethod || selectedCompany.verificationMethod,
-              verificationDocumentUrl: selectedCompany.pendingVerificationDocumentUrl || selectedCompany.verificationDocumentUrl,
+              headquartersAddress:
+                selectedCompany.pendingHeadquartersAddress || selectedCompany.headquartersAddress,
+              verificationMethod:
+                selectedCompany.pendingVerificationMethod || selectedCompany.verificationMethod,
+              verificationDocumentUrl:
+                selectedCompany.pendingVerificationDocumentUrl ||
+                selectedCompany.verificationDocumentUrl,
               hasPendingChange: false,
               pendingName: undefined,
               pendingTaxCode: undefined,
               pendingHeadquartersAddress: undefined,
               pendingVerificationMethod: undefined,
               pendingVerificationDocumentUrl: undefined,
-              rejectReason: undefined
+              rejectReason: undefined,
             });
           } else {
             setSelectedCompany({
@@ -141,18 +162,18 @@ export default function StaffCompaniesPage() {
               pendingHeadquartersAddress: undefined,
               pendingVerificationMethod: undefined,
               pendingVerificationDocumentUrl: undefined,
-              rejectReason: rejectReasonInput.trim()
+              rejectReason: rejectReasonInput.trim(),
             });
           }
         } else {
           setSelectedCompany({
             ...selectedCompany,
             status,
-            rejectReason: status === 'REJECTED' ? rejectReasonInput.trim() : undefined
+            rejectReason: status === 'REJECTED' ? rejectReasonInput.trim() : undefined,
           });
         }
       }
-      
+
       setConfirmAction(null);
       setRejectReasonInput('');
     } catch (err) {
@@ -166,248 +187,413 @@ export default function StaffCompaniesPage() {
     setPage(1);
   };
 
-  const totalPages = companyData?.totalPages || 0;
+  const isFilterActive = search !== '' || statusFilter !== 'ALL';
+  const totalPages = companyData?.totalPages || 1;
   const totalItems = companyData?.total || 0;
+  const companiesList = companyData?.items || [];
+
+  const startResult = totalItems > 0 ? (page - 1) * pageSize + 1 : 0;
+  const endResult = Math.min(page * pageSize, totalItems);
 
   return (
-    <div className="w-full pb-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <Building className="text-primary shrink-0" size={28} />
-            Company Verification Portal
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Review legal registration documents and verify recruiter company accounts.
-          </p>
+    <div className="min-h-screen bg-background transition-colors duration-200">
+      <div className="w-full pb-10 space-y-5">
+        {/* Top Header Card */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-2">
+          <div>
+            <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
+              <Building2 className="text-[#1877F2] shrink-0 h-8 w-8" />
+              Company Verification Portal
+            </h1>
+            <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
+              Review legal registration documents and verify recruiter company accounts.
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* Tabs & Search Bar */}
-      <div className="flex flex-col gap-4">
-        {/* Status Filters Tabs */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-1">
-          {STATUS_FILTERS.map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => {
-                setStatusFilter(tab.value);
+        {/* TẦNG 1: TOOLBAR (Search, Filters, Reset) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 flex-1">
+            {/* Search Bar */}
+            <div className="relative w-full sm:w-72 md:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#65676B] dark:text-zinc-400" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by company name, tax code, address..."
+                className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#65676B] hover:text-[#050505] dark:hover:text-white transition-colors p-1 cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Status Filter Select */}
+            <Select
+              value={statusFilter}
+              onValueChange={(val) => {
+                if (val) setStatusFilter(val);
                 setPage(1);
               }}
-              className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
-                statusFilter === tab.value
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
             >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+              <SelectTrigger className="w-full sm:w-[190px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
+                <SelectValue placeholder="Status Filter" />
+              </SelectTrigger>
+              <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
+                {STATUS_FILTERS.map((tab) => (
+                  <SelectItem key={tab.value} value={tab.value}>
+                    {tab.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-        {/* Search Bar */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="relative md:col-span-2">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-            <input
-              type="text"
-              placeholder="Search by company name, tax code, address..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-border rounded-xl bg-background text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-muted"
+            {/* Reset Filters Button */}
+            {isFilterActive && (
+              <Button
+                onClick={handleResetFilters}
+                variant="ghost"
+                className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
               >
-                <X size={14} />
-              </button>
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+              </Button>
             )}
           </div>
-
-          {(search || statusFilter !== 'PENDING') && (
-            <button
-              onClick={handleResetFilters}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 border border-border hover:bg-muted text-muted-foreground hover:text-foreground font-semibold text-sm rounded-xl transition-colors cursor-pointer"
-            >
-              <RotateCcw size={14} />
-              <span>Reset Filters</span>
-            </button>
-          )}
         </div>
-      </div>
 
-      {/* Grid/Table List */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
-        {isLoading ? (
-          <div className="py-20 flex flex-col items-center justify-center text-muted-foreground gap-3">
-            <Loader2 className="animate-spin text-primary" size={32} />
-            <span className="text-sm font-medium">Loading companies...</span>
-          </div>
-        ) : isError ? (
-          <div className="py-20 text-center text-rose-500 font-medium">
-            Failed to load company data. Please try again.
-          </div>
-        ) : !companyData?.items?.length ? (
-          <div className="py-20 text-center text-muted-foreground">
-            No companies found matching the filters.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40 font-bold text-muted-foreground">
-                  <th className="px-4 py-4 w-[80px] text-center">Logo</th>
-                  <th className="px-4 py-4">Company Name</th>
-                  <th className="px-4 py-4">Tax Code</th>
-                  <th className="px-4 py-4">Industry</th>
-                  <th className="px-4 py-4">Headquarters</th>
-                  <th className="px-4 py-4">Status</th>
-                  <th className="px-4 py-4 text-center w-[180px]">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {companyData.items.map((company: Company) => (
-                  <tr key={company.id} className="hover:bg-muted/10 transition-colors">
-                    <td className="px-4 py-4 text-center">
-                      <div className="flex items-center justify-center">
-                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center border border-border overflow-hidden">
+        {/* TẦNG 2: MAIN TABLE CONTAINER (TABLE_STANDARD - SHADCN TABLE) */}
+        <div className="rounded-lg border border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-2xs w-full">
+          <Table className="w-full text-left border-collapse table-fixed">
+            {/* Table Header */}
+            <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
+              <TableRow className="hover:bg-transparent border-none">
+                <TableHead className="w-[7%] py-3 px-2 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  LOGO
+                </TableHead>
+
+                <TableHead className="w-[28%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  COMPANY NAME
+                </TableHead>
+
+                <TableHead className="w-[14%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  TAX CODE
+                </TableHead>
+
+                <TableHead className="w-[14%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  INDUSTRY
+                </TableHead>
+
+                <TableHead className="w-[17%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  HEADQUARTERS
+                </TableHead>
+
+                <TableHead className="w-[12%] text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400 px-3 py-3">
+                  STATUS
+                </TableHead>
+
+                <TableHead className="w-[8%] text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400 px-2 py-3">
+                  ACTIONS
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+
+            {/* Table Body */}
+            <TableBody>
+              {isLoading ? (
+                // Loading Skeleton State (6 rows)
+                Array.from({ length: pageSize || 6 }).map((_, index) => (
+                  <TableRow key={index} className="border-b border-[#CED0D4]/60 dark:border-zinc-800/60">
+                    <TableCell className="py-3.5 px-2 text-center">
+                      <Skeleton className="h-10 w-10 rounded-lg mx-auto bg-slate-100 dark:bg-zinc-800" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3">
+                      <div className="space-y-1">
+                        <Skeleton className="h-4 w-3/4 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                        <Skeleton className="h-3 w-1/2 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3">
+                      <Skeleton className="h-4 w-20 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3">
+                      <Skeleton className="h-4 w-24 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3">
+                      <Skeleton className="h-4 w-28 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3 text-center">
+                      <Skeleton className="h-6 w-20 bg-slate-100 dark:bg-zinc-800 rounded-full mx-auto" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-2 text-center">
+                      <Skeleton className="h-8 w-16 bg-slate-100 dark:bg-zinc-800 rounded-md mx-auto" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : isError ? (
+                // Error State
+                <TableRow>
+                  <TableCell colSpan={7} className="h-64 text-center">
+                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
+                      <p className="font-semibold text-rose-600 dark:text-rose-400 text-base">
+                        Failed to load company records
+                      </p>
+                      <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
+                        An error occurred while fetching company verification data.
+                      </p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : companiesList.length === 0 ? (
+                // Empty State
+                <TableRow>
+                  <TableCell colSpan={7} className="h-72 text-center">
+                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
+                      <div className="h-12 w-12 rounded-full bg-[#E7F3FF] dark:bg-blue-950/50 flex items-center justify-center text-[#1877F2] dark:text-blue-400 mb-3">
+                        <SearchX className="h-6 w-6" />
+                      </div>
+                      <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">
+                        No companies found
+                      </p>
+                      <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
+                        {isFilterActive
+                          ? 'No records match the current filters. Try clearing or adjusting your search criteria.'
+                          : 'No company verification requests found.'}
+                      </p>
+                      {isFilterActive && (
+                        <Button
+                          onClick={handleResetFilters}
+                          variant="outline"
+                          className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" /> Clear All Filters
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                // Actual Data Rows
+                companiesList.map((company: Company) => (
+                  <TableRow
+                    key={company.id}
+                    className="border-b border-[#CED0D4]/60 dark:border-zinc-800/60 hover:bg-[#E7F3FF]/40 dark:hover:bg-blue-950/20 transition-colors duration-150 group"
+                  >
+                    {/* Logo Column */}
+                    <TableCell className="py-3 px-2 text-center align-top">
+                      <div className="flex items-center justify-center mt-0.5">
+                        <div className="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center border border-zinc-200 dark:border-zinc-700 overflow-hidden shrink-0">
                           <CompanyLogo
                             src={company.logoUrl}
                             alt={company.name}
                             fallbackType="building"
-                            fallbackIconClassName="text-muted-foreground w-5 h-5"
+                            fallbackIconClassName="text-zinc-400 w-5 h-5"
                             imageClassName="w-full h-full object-cover bg-background"
                           />
                         </div>
                       </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-foreground">{company.name}</span>
+                    </TableCell>
+
+                    {/* Company Name Column */}
+                    <TableCell className="py-3 px-3 align-top">
+                      <div className="flex flex-col gap-0.5 mt-0.5">
+                        <span className="font-bold text-sm text-[#050505] dark:text-zinc-100 group-hover:text-[#1877F2] dark:group-hover:text-blue-400 transition-colors block line-clamp-1">
+                          {company.name}
+                        </span>
                         {company.createdByName && (
-                          <span className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
-                            <User size={10} className="text-primary" />
+                          <span className="text-[11px] text-[#65676B] dark:text-zinc-400 flex items-center gap-1">
+                            <User size={10} className="text-[#1877F2] shrink-0" />
                             <span>By: {company.createdByName}</span>
                           </span>
                         )}
                         {company.website && (
                           <a
-                            href={company.website.startsWith('http') ? company.website : `https://${company.website}`}
+                            href={
+                              company.website.startsWith('http')
+                                ? company.website
+                                : `https://${company.website}`
+                            }
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline flex items-center gap-0.5 mt-0.5"
+                            className="text-xs text-[#1877F2] dark:text-blue-400 hover:underline flex items-center gap-0.5 mt-0.5"
                           >
-                            <span>{company.website}</span>
-                            <ExternalLink size={10} />
+                            <span className="truncate max-w-[180px]">{company.website}</span>
+                            <ExternalLink size={10} className="shrink-0" />
                           </a>
                         )}
                       </div>
-                    </td>
-                    <td className="px-4 py-4 font-mono font-medium text-foreground">{company.taxCode || '-'}</td>
-                    <td className="px-4 py-4 text-muted-foreground text-xs">{company.industry || '-'}</td>
-                    <td className="px-4 py-4 text-muted-foreground text-xs max-w-[200px] truncate">
-                      {company.headquartersAddress || '-'}
-                    </td>
-                    <td className="px-4 py-4">
-                      <CompanyStatusBadge 
-                        status={company.status} 
-                        hasPendingChange={company.hasPendingChange} 
-                        rejectReason={company.rejectReason} 
-                      />
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
+                    </TableCell>
+
+                    {/* Tax Code Column */}
+                    <TableCell className="py-3 px-3 align-top font-mono text-xs font-semibold text-[#050505] dark:text-zinc-200">
+                      <div className="mt-1">{company.taxCode || '-'}</div>
+                    </TableCell>
+
+                    {/* Industry Column */}
+                    <TableCell className="py-3 px-3 align-top text-xs text-[#65676B] dark:text-zinc-400">
+                      <div className="mt-1 truncate max-w-[140px]">{company.industry || '-'}</div>
+                    </TableCell>
+
+                    {/* Headquarters Column */}
+                    <TableCell className="py-3 px-3 align-top text-xs text-[#65676B] dark:text-zinc-400">
+                      <div className="mt-1 max-w-[180px] truncate" title={company.headquartersAddress || undefined}>
+                        {company.headquartersAddress || '-'}
+                      </div>
+                    </TableCell>
+
+                    {/* Status Column */}
+                    <TableCell className="py-3 px-3 align-top text-center">
+                      <div className="mt-0.5 flex justify-center">
+                        <CompanyStatusBadge
+                          status={company.status}
+                          hasPendingChange={company.hasPendingChange}
+                          rejectReason={company.rejectReason}
+                        />
+                      </div>
+                    </TableCell>
+
+                    {/* Actions Column */}
+                    <TableCell className="py-3 px-2 align-top text-center">
+                      <div className="flex items-center justify-center gap-1.5 mt-0.5">
                         <Button
-                          variant="outline"
-                          size="sm"
+                          variant="ghost"
+                          size="icon"
                           onClick={() => {
                             setSelectedCompany(company);
                             setIsDetailOpen(true);
                           }}
-                          className="cursor-pointer"
+                          className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
+                          title="View Details"
                         >
-                          <Eye size={14} className="mr-1" />
-                          Details
+                          <Eye size={15} />
                         </Button>
 
                         {(company.status === 'PENDING' || company.hasPendingChange) && (
                           <>
                             <Button
-                              variant="default"
-                              size="sm"
+                              variant="ghost"
+                              size="icon"
                               onClick={() => {
                                 setConfirmAction({ company, targetStatus: 'VERIFIED' });
                               }}
-                              className="bg-green-600 hover:bg-green-700 text-white cursor-pointer"
+                              className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
+                              title="Approve Verification"
                             >
-                              <Check size={14} />
+                              <Check size={15} />
                             </Button>
                             <Button
-                              variant="destructive"
-                              size="sm"
+                              variant="ghost"
+                              size="icon"
                               onClick={() => {
                                 setConfirmAction({ company, targetStatus: 'REJECTED' });
                               }}
-                              className="cursor-pointer"
+                              className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                              title="Reject Verification"
                             >
-                              <Ban size={14} />
+                              <Ban size={15} />
                             </Button>
                           </>
                         )}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
-      {/* Pagination */}
-      {companyData && totalPages > 1 && (
-        <div className="flex items-center justify-between border border-border bg-card p-4 rounded-2xl shadow-xs">
-          <span className="text-sm text-muted-foreground">
-            Showing page <strong className="text-foreground">{page}</strong> of{' '}
-            <strong className="text-foreground">{totalPages}</strong> pages ({totalItems} results)
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(p - 1, 1))}
-              disabled={page === 1}
-              className="p-2 border border-border rounded-xl hover:bg-muted disabled:opacity-40 transition-colors cursor-pointer"
+        {/* TẦNG 3: PAGINATION FOOTER */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 px-1">
+          <div className="flex items-center space-x-3 text-sm text-[#65676B] dark:text-zinc-400">
+            <div>
+              Showing <span className="font-semibold text-[#050505] dark:text-zinc-200">{startResult} - {endResult}</span> of <span className="font-semibold text-[#050505] dark:text-zinc-200">{totalItems}</span> companies
+            </div>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(val) => {
+                if (val) setPageSize(Number(val));
+                setPage(1);
+              }}
             >
-              <ChevronLeft size={16} />
-            </button>
-            {Array.from({ length: totalPages }).map((_, i) => {
-              const pg = i + 1;
-              return (
-                <button
-                  key={pg}
-                  onClick={() => setPage(pg)}
-                  className={`w-9 h-9 rounded-xl text-sm font-bold transition-all cursor-pointer ${
-                    page === pg
-                      ? 'bg-primary text-primary-foreground'
-                      : 'border border-border hover:bg-muted text-foreground'
-                  }`}
-                >
-                  {pg}
-                </button>
-              );
+              <SelectTrigger className="h-8 w-[110px] border-[#CED0D4] dark:border-zinc-800 text-xs font-medium focus:ring-[#1877F2]">
+                <SelectValue placeholder="Page size" />
+              </SelectTrigger>
+              <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
+                <SelectItem value="10">10 / page</SelectItem>
+                <SelectItem value="20">20 / page</SelectItem>
+                <SelectItem value="50">50 / page</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Page Buttons */}
+          <div className="flex items-center space-x-1.5">
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={page === 1 || isLoading}
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              className="h-8 w-8 border-[#CED0D4] dark:border-zinc-800 text-[#65676B] dark:text-zinc-400 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 disabled:opacity-40 cursor-pointer"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+
+            {Array.from({ length: totalPages }).map((_, index) => {
+              const pageNum = index + 1;
+              if (
+                totalPages <= 5 ||
+                pageNum === 1 ||
+                pageNum === totalPages ||
+                Math.abs(pageNum - page) <= 1
+              ) {
+                const isCurrent = pageNum === page;
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={isCurrent ? 'default' : 'outline'}
+                    disabled={isLoading}
+                    onClick={() => setPage(pageNum)}
+                    className={`h-8 w-8 text-xs font-semibold rounded-md shadow-2xs transition-all cursor-pointer ${
+                      isCurrent
+                        ? 'bg-[#1877F2] hover:bg-[#166FE5] text-white border-[#1877F2]'
+                        : 'border-[#CED0D4] dark:border-zinc-800 text-[#050505] dark:text-zinc-300 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 dark:hover:text-blue-400'
+                    }`}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              }
+              if (
+                (pageNum === 2 && page > 3) ||
+                (pageNum === totalPages - 1 && page < totalPages - 2)
+              ) {
+                return (
+                  <span key={pageNum} className="px-1 text-xs text-[#65676B]">
+                    ...
+                  </span>
+                );
+              }
+              return null;
             })}
-            <button
-              onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-              disabled={page === totalPages}
-              className="p-2 border border-border rounded-xl hover:bg-muted disabled:opacity-40 transition-colors cursor-pointer"
+
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={page >= totalPages || isLoading}
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+              className="h-8 w-8 border-[#CED0D4] dark:border-zinc-800 text-[#65676B] dark:text-zinc-400 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 disabled:opacity-40 cursor-pointer"
             >
-              <ChevronRight size={16} />
-            </button>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Detail Modal */}
       {selectedCompany && (
@@ -415,7 +601,7 @@ export default function StaffCompaniesPage() {
           <DialogContent className="max-w-4xl sm:max-w-4xl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-                <Building size={20} className="text-primary" />
+                <Building size={20} className="text-[#1877F2]" />
                 Company Verification Details
               </DialogTitle>
               <DialogDescription>
@@ -522,7 +708,7 @@ export default function StaffCompaniesPage() {
                             href={selectedCompany.verificationDocumentUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-primary hover:underline font-bold"
+                            className="inline-flex items-center gap-1.5 text-[#1877F2] hover:underline font-bold"
                           >
                             <FileText size={14} />
                             <span>Original Doc</span>
@@ -615,7 +801,7 @@ export default function StaffCompaniesPage() {
                           href={selectedCompany.website.startsWith('http') ? selectedCompany.website : `https://${selectedCompany.website}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary hover:underline inline-flex items-center gap-1 font-medium"
+                          className="text-[#1877F2] hover:underline inline-flex items-center gap-1 font-medium"
                         >
                           {selectedCompany.website}
                           <ExternalLink size={12} />
@@ -654,7 +840,7 @@ export default function StaffCompaniesPage() {
                               href={selectedCompany.verificationDocumentUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-primary hover:underline font-bold"
+                              className="inline-flex items-center gap-1.5 text-[#1877F2] hover:underline font-bold"
                             >
                               <FileText size={14} />
                               <span>Download / View Document</span>
