@@ -13,18 +13,39 @@ import {
   Edit2,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   Users,
   AlertTriangle,
   X,
   Building,
   UserPlus,
-  XCircle
+  XCircle,
+  RotateCcw,
+  SearchX,
 } from 'lucide-react';
 import { useUsers } from '@/hooks/useUserGovernance';
 import { UserStatus, SystemRole } from '@/types/user-governance.types';
 import { CreateStaffModal } from './components/create-staff-modal';
 import { UpdateStatusModal } from './components/update-status-modal';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { format } from 'date-fns';
 
 export default function AdminAccountsPage() {
   // Accounts Filters
@@ -33,7 +54,7 @@ export default function AdminAccountsPage() {
   const [selectedRole, setSelectedRole] = useState<number | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [accountsPage, setAccountsPage] = useState(1);
-  const accountsPageSize = 10;
+  const [accountsPageSize, setAccountsPageSize] = useState(10);
 
   // Modals State (Only what needs to be controlled by parent)
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
@@ -58,15 +79,17 @@ export default function AdminAccountsPage() {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery);
       setAccountsPage(1);
-    }, 300);
+    }, 350);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch Accounts
+  // Fetch Accounts complying with kinh-mantra.md (page -> hook -> service -> api-client -> backend)
   const {
     data: accountsData,
     isLoading: isAccountsLoading,
     isError: isAccountsError,
+    refetch,
+    isFetching,
   } = useUsers({
     page: accountsPage,
     pageSize: accountsPageSize,
@@ -75,299 +98,451 @@ export default function AdminAccountsPage() {
     status: selectedStatus || undefined,
   });
 
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setSelectedRole(null);
+    setSelectedStatus(null);
+    setAccountsPage(1);
+  };
+
+  const isFilterActive =
+    searchQuery !== '' || selectedRole !== null || selectedStatus !== null;
+
   const getStatusBadge = (status: UserStatus) => {
     switch (status) {
       case 'ACTIVE':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-            <CheckCircle size={12} />
+          <Badge className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none inline-flex items-center gap-1">
+            <CheckCircle size={11} />
             <span>Active</span>
-          </span>
+          </Badge>
         );
       case 'INACTIVE':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-zinc-500/10 text-zinc-500 border border-zinc-500/20">
-            <Clock size={12} />
+          <Badge className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 rounded-full px-2.5 py-0.5 text-xs font-medium inline-flex items-center gap-1">
+            <Clock size={11} />
             <span>Inactive</span>
-          </span>
+          </Badge>
         );
       case 'BANNED':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-500 border border-rose-500/20">
-            <Ban size={12} />
+          <Badge className="bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none inline-flex items-center gap-1">
+            <Ban size={11} />
             <span>Banned</span>
-          </span>
+          </Badge>
         );
       case 'PENDING_VERIFICATION':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/20">
-            <AlertTriangle size={12} />
-            <span>Pending Verification</span>
-          </span>
+          <Badge className="bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none inline-flex items-center gap-1">
+            <AlertTriangle size={11} />
+            <span>Pending</span>
+          </Badge>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-muted text-muted-foreground border border-border">
-            <span>{status}</span>
-          </span>
+          <Badge variant="outline" className="rounded-full px-2.5 py-0.5 text-xs font-medium">
+            {status}
+          </Badge>
         );
     }
   };
 
   const getRoleBadge = (roleName: string) => {
-    const name = roleName.toLowerCase();
+    const name = roleName?.toLowerCase() || '';
     if (name.includes('admin')) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/10">
+        <Badge className="bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none inline-flex items-center gap-1">
           <Shield size={11} />
           <span>Admin</span>
-        </span>
+        </Badge>
       );
     } else if (name.includes('staff')) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/10">
+        <Badge className="bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none inline-flex items-center gap-1">
           <User size={11} />
           <span>Staff</span>
-        </span>
+        </Badge>
       );
     } else if (name.includes('recruiter')) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/10">
+        <Badge className="bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none inline-flex items-center gap-1">
           <Building size={11} />
           <span>Recruiter</span>
-        </span>
+        </Badge>
       );
     } else {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border border-zinc-500/10">
+        <Badge className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 rounded-full px-2.5 py-0.5 text-xs font-medium inline-flex items-center gap-1">
           <User size={11} />
           <span>Candidate</span>
-        </span>
+        </Badge>
       );
     }
   };
 
-  const accountsTotalPages = accountsData?.data?.totalPages || 0;
+  const accountsTotalPages = accountsData?.data?.totalPages || 1;
   const accountsTotal = accountsData?.data?.total || 0;
+  const accountsList = accountsData?.data?.items || [];
+
+  const startResult = accountsTotal > 0 ? (accountsPage - 1) * accountsPageSize + 1 : 0;
+  const endResult = Math.min(accountsPage * accountsPageSize, accountsTotal);
 
   return (
-    <div className="w-full pb-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <Users className="text-primary shrink-0" size={28} />
-            User Governance
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage user accounts, review access status, and suspend policy-violating users.
-          </p>
-        </div>
-        <div>
-          <CreateStaffModal onSuccess={(msg) => showToast(msg, 'success')}>
-            <button
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm rounded-xl shadow-xs transition-colors"
-            >
-              <UserPlus size={16} />
-              <span>Create Staff Account</span>
-            </button>
-          </CreateStaffModal>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        {/* Filters Bar */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-card border border-border p-4 rounded-2xl shadow-xs">
-          {/* Search */}
-          <div className="relative md:col-span-2">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-            <input
-              type="text"
-              placeholder="Search by email, name, company..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-border rounded-xl bg-background text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-muted"
-              >
-                <X size={14} />
-              </button>
-            )}
+    <div className="min-h-screen bg-background transition-colors duration-200">
+      <div className="w-full pb-10 space-y-5">
+        {/* Top Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-2">
+          <div>
+            <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
+              <Users className="text-[#1877F2] shrink-0 h-8 w-8" />
+              User Governance
+            </h1>
+            <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
+              Manage user accounts, review access status, and suspend policy-violating users across the platform.
+            </p>
           </div>
 
-          {/* Role Filter */}
-          <select
-            value={selectedRole || ''}
-            onChange={(e) => {
-              const val = e.target.value;
-              setSelectedRole(val ? parseInt(val, 10) : null);
-              setAccountsPage(1);
-            }}
-            className="py-2 px-3 border border-border rounded-xl bg-background text-sm text-foreground outline-none focus:border-primary transition-all"
-          >
-            <option value="">All Roles</option>
-            <option value={SystemRole.Admin}>Admin</option>
-            <option value={SystemRole.Staff}>Staff</option>
-            <option value={SystemRole.Recruiter}>Recruiter</option>
-            <option value={SystemRole.Candidate}>Candidate</option>
-          </select>
-
-          {/* Status Filter */}
-          <select
-            value={selectedStatus || ''}
-            onChange={(e) => {
-              setSelectedStatus(e.target.value || null);
-              setAccountsPage(1);
-            }}
-            className="py-2 px-3 border border-border rounded-xl bg-background text-sm text-foreground outline-none focus:border-primary transition-all"
-          >
-            <option value="">All Statuses</option>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
-            <option value="BANNED">Banned</option>
-            <option value="PENDING_VERIFICATION">Pending Verification</option>
-          </select>
+          <CreateStaffModal onSuccess={(msg) => showToast(msg, 'success')}>
+            <Button className="bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium h-10 px-4 rounded-lg shadow-2xs active:scale-[0.98] transition-all gap-2 cursor-pointer w-full sm:w-auto">
+              <UserPlus className="h-4 w-4" />
+              Create Staff Account
+            </Button>
+          </CreateStaffModal>
         </div>
 
-        {/* Table Container */}
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
-          {isAccountsLoading ? (
-            <div className="py-20 flex flex-col items-center justify-center text-muted-foreground gap-3">
-              <Loader2 className="animate-spin text-primary" size={32} />
-              <span className="text-sm font-medium">Loading user accounts...</span>
+        {/* TẦNG 1: TOOLBAR (Search, Role, Status Filters, Reset, Refresh) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 flex-1">
+            {/* Search Bar */}
+            <div className="relative w-full sm:w-72 md:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#65676B] dark:text-zinc-400" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by email, name, company..."
+                className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#65676B] hover:text-[#050505] dark:hover:text-white transition-colors p-1 cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
-          ) : isAccountsError ? (
-            <div className="py-20 text-center text-rose-500 font-medium">
-              Failed to load user accounts. Please try again.
-            </div>
-          ) : !accountsData?.data?.items?.length ? (
-            <div className="py-20 text-center text-muted-foreground">
-              No accounts found matching the filters.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/40 font-bold text-muted-foreground">
-                    <th className="px-6 py-4">Full Name</th>
-                    <th className="px-6 py-4">Email</th>
-                    <th className="px-6 py-4">Role</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Created Date</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {accountsData.data.items.map((user) => (
-                    <tr key={user.id} className="hover:bg-muted/10 transition-colors">
-                      <td className="px-6 py-4 font-semibold text-foreground">
-                        {user.fullName || (user.roleName?.toLowerCase() === 'staff' ? user.email : <span className="text-muted-foreground italic font-normal">Not updated</span>)}
-                      </td>
-                      <td className="px-6 py-4 text-muted-foreground font-mono">{user.email}</td>
-                      <td className="px-6 py-4">{getRoleBadge(user.roleName)}</td>
-                      <td className="px-6 py-4">{getStatusBadge(user.status)}</td>
-                      <td className="px-6 py-4 text-muted-foreground">
-                        {new Date(user.createdAt).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                      </td>
-                      <td className="px-6 py-4 text-right space-x-2">
-                        <Link
-                          href={`/admin/accounts/${user.id}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border hover:bg-muted text-foreground font-semibold text-xs rounded-lg transition-colors"
+
+            {/* Role Filter */}
+            <Select
+              value={selectedRole !== null ? String(selectedRole) : 'ALL'}
+              onValueChange={(val) => {
+                if (val) setSelectedRole(val === 'ALL' ? null : parseInt(val, 10));
+                setAccountsPage(1);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[150px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
+                <SelectValue placeholder="Role Filter" />
+              </SelectTrigger>
+              <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
+                <SelectItem value="ALL">All Roles</SelectItem>
+                <SelectItem value={String(SystemRole.Admin)}>Admin</SelectItem>
+                <SelectItem value={String(SystemRole.Staff)}>Staff</SelectItem>
+                <SelectItem value={String(SystemRole.Recruiter)}>Recruiter</SelectItem>
+                <SelectItem value={String(SystemRole.Candidate)}>Candidate</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Status Filter */}
+            <Select
+              value={selectedStatus || 'ALL'}
+              onValueChange={(val) => {
+                if (val) setSelectedStatus(val === 'ALL' ? null : val);
+                setAccountsPage(1);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[170px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
+                <SelectValue placeholder="Status Filter" />
+              </SelectTrigger>
+              <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
+                <SelectItem value="ALL">All Statuses</SelectItem>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="INACTIVE">Inactive</SelectItem>
+                <SelectItem value="BANNED">Banned</SelectItem>
+                <SelectItem value="PENDING_VERIFICATION">Pending Verification</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Clear Filters Button */}
+            {isFilterActive && (
+              <Button
+                onClick={handleResetFilters}
+                variant="ghost"
+                className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
+              >
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* TẦNG 2: MAIN TABLE CONTAINER (TABLE_STANDARD - SHADCN TABLE) */}
+        <div className="rounded-lg border border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-2xs w-full">
+          <Table className="w-full text-left border-collapse table-fixed">
+            {/* Table Header */}
+            <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
+              <TableRow className="hover:bg-transparent border-none">
+                <TableHead className="w-[22%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  FULL NAME
+                </TableHead>
+
+                <TableHead className="w-[25%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  EMAIL
+                </TableHead>
+
+                <TableHead className="w-[14%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  ROLE
+                </TableHead>
+
+                <TableHead className="w-[15%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  STATUS
+                </TableHead>
+
+                <TableHead className="w-[12%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  CREATED DATE
+                </TableHead>
+
+                <TableHead className="w-[12%] py-3 px-2 text-right text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  ACTIONS
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+
+            {/* Table Body */}
+            <TableBody>
+              {isAccountsLoading ? (
+                // Loading Skeleton State (6 rows)
+                Array.from({ length: accountsPageSize || 6 }).map((_, index) => (
+                  <TableRow key={index} className="border-b border-[#CED0D4]/60 dark:border-zinc-800/60">
+                    <TableCell className="py-3.5 px-3">
+                      <Skeleton className="h-5 w-3/4 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3">
+                      <Skeleton className="h-4 w-4/5 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3 text-center">
+                      <Skeleton className="h-6 w-20 bg-slate-100 dark:bg-zinc-800 rounded-full mx-auto" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3 text-center">
+                      <Skeleton className="h-6 w-20 bg-slate-100 dark:bg-zinc-800 rounded-full mx-auto" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3">
+                      <Skeleton className="h-5 w-24 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-2 text-right">
+                      <Skeleton className="h-8 w-24 bg-slate-100 dark:bg-zinc-800 rounded-md ml-auto" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : isAccountsError ? (
+                // Error State
+                <TableRow>
+                  <TableCell colSpan={6} className="h-64 text-center">
+                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
+                      <p className="font-semibold text-rose-600 dark:text-rose-400 text-base">
+                        Failed to load user accounts
+                      </p>
+                      <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
+                        An error occurred while fetching user accounts data. Please try again.
+                      </p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : accountsList.length === 0 ? (
+                // Empty State
+                <TableRow>
+                  <TableCell colSpan={6} className="h-72 text-center">
+                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
+                      <div className="h-12 w-12 rounded-full bg-[#E7F3FF] dark:bg-blue-950/50 flex items-center justify-center text-[#1877F2] dark:text-blue-400 mb-3">
+                        <SearchX className="h-6 w-6" />
+                      </div>
+                      <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">
+                        No user accounts found
+                      </p>
+                      <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
+                        {isFilterActive
+                          ? 'No user accounts match the current filters. Try clearing or adjusting your search criteria.'
+                          : 'No user accounts recorded yet.'}
+                      </p>
+                      {isFilterActive && (
+                        <Button
+                          onClick={handleResetFilters}
+                          variant="outline"
+                          className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
                         >
-                          <Eye size={12} />
-                          <span>Details</span>
+                          <RotateCcw className="h-4 w-4 mr-2" /> Clear All Filters
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                // Actual Data Rows
+                accountsList.map((user) => (
+                  <TableRow
+                    key={user.id}
+                    className="border-b border-[#CED0D4]/60 dark:border-zinc-800/60 hover:bg-[#E7F3FF]/40 dark:hover:bg-blue-950/20 transition-colors duration-150 group"
+                  >
+                    {/* Full Name */}
+                    <TableCell className="py-3.5 px-3 align-middle font-bold text-sm text-[#050505] dark:text-zinc-100 group-hover:text-[#1877F2] dark:group-hover:text-blue-400 transition-colors">
+                      {user.fullName || (user.roleName?.toLowerCase() === 'staff' ? user.email : <span className="text-[#65676B] dark:text-zinc-400 italic font-normal">Not updated</span>)}
+                    </TableCell>
+
+                    {/* Email */}
+                    <TableCell className="py-3.5 px-3 align-middle font-mono text-xs text-[#65676B] dark:text-zinc-300">
+                      {user.email}
+                    </TableCell>
+
+                    {/* Role */}
+                    <TableCell className="py-3.5 px-3 align-middle text-center">
+                      <div className="flex justify-center">
+                        {getRoleBadge(user.roleName)}
+                      </div>
+                    </TableCell>
+
+                    {/* Status */}
+                    <TableCell className="py-3.5 px-3 align-middle text-center">
+                      <div className="flex justify-center">
+                        {getStatusBadge(user.status)}
+                      </div>
+                    </TableCell>
+
+                    {/* Created Date */}
+                    <TableCell className="py-3.5 px-3 align-middle text-sm text-[#65676B] dark:text-zinc-300 font-medium">
+                      {format(new Date(user.createdAt), 'MMM dd, yyyy')}
+                    </TableCell>
+
+                    {/* Actions */}
+                    <TableCell className="py-3.5 px-2 align-middle text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Link href={`/admin/accounts/${user.id}`}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 border-[#CED0D4] dark:border-zinc-800 text-[#050505] dark:text-zinc-300 hover:bg-[#E7F3FF] hover:text-[#1877F2] hover:border-[#1877F2] dark:hover:bg-blue-950/40 dark:hover:text-blue-400 cursor-pointer font-medium px-2.5"
+                          >
+                            <Eye className="h-3.5 w-3.5 mr-1 text-[#1877F2]" />
+                            Details
+                          </Button>
                         </Link>
                         {user.roleName?.toLowerCase() !== 'admin' && (
-                          <button
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => {
                               setStatusTargetUser({ id: user.id, email: user.email, currentStatus: user.status });
                               setIsStatusModalOpen(true);
                             }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border hover:bg-muted text-foreground font-semibold text-xs rounded-lg transition-colors"
+                            className="h-8 border-[#CED0D4] dark:border-zinc-800 text-[#050505] dark:text-zinc-300 hover:bg-[#E7F3FF] hover:text-[#1877F2] hover:border-[#1877F2] dark:hover:bg-blue-950/40 dark:hover:text-blue-400 cursor-pointer font-medium px-2.5"
                           >
-                            <Edit2 size={12} />
-                            <span>Status</span>
-                          </button>
+                            <Edit2 className="h-3.5 w-3.5 mr-1 text-[#1877F2]" />
+                            Status
+                          </Button>
                         )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
 
-        {/* Accounts Pagination */}
-        {accountsData?.data && accountsTotalPages > 1 && (
-          <div className="flex items-center justify-between border border-border bg-card p-4 rounded-2xl shadow-xs">
-            <span className="text-sm text-muted-foreground">
-              Showing page <strong className="text-foreground">{accountsPage}</strong> of{' '}
-              <strong className="text-foreground">{accountsTotalPages}</strong> pages ({accountsTotal} results)
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setAccountsPage((p) => Math.max(p - 1, 1))}
-                disabled={accountsPage === 1}
-                className="p-2 border border-border rounded-xl hover:bg-muted disabled:opacity-40 transition-colors"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              {(() => {
-                const pages = [];
-                const maxPagesToShow = 5;
-                if (accountsTotalPages <= maxPagesToShow) {
-                  for (let i = 1; i <= accountsTotalPages; i++) pages.push(i);
-                } else {
-                  if (accountsPage <= 3) {
-                    pages.push(1, 2, 3, 4, '...', accountsTotalPages);
-                  } else if (accountsPage >= accountsTotalPages - 2) {
-                    pages.push(1, '...', accountsTotalPages - 3, accountsTotalPages - 2, accountsTotalPages - 1, accountsTotalPages);
-                  } else {
-                    pages.push(1, '...', accountsPage - 1, accountsPage, accountsPage + 1, '...', accountsTotalPages);
-                  }
-                }
-
-                return pages.map((pg, idx) => {
-                  if (pg === '...') {
-                    return (
-                      <span key={`dots-${idx}`} className="px-2 text-muted-foreground font-semibold">
-                        ...
-                      </span>
-                    );
-                  }
-                  return (
-                    <button
-                      key={pg}
-                      onClick={() => setAccountsPage(pg as number)}
-                      className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${
-                        accountsPage === pg
-                          ? 'bg-primary text-primary-foreground shadow-xs'
-                          : 'border border-border hover:bg-muted text-foreground'
-                      }`}
-                    >
-                      {pg}
-                    </button>
-                  );
-                });
-              })()}
-              <button
-                onClick={() => setAccountsPage((p) => Math.min(p + 1, accountsTotalPages))}
-                disabled={accountsPage === accountsTotalPages}
-                className="p-2 border border-border rounded-xl hover:bg-muted disabled:opacity-40 transition-colors"
-              >
-                <ChevronRight size={16} />
-              </button>
+        {/* TẦNG 3: PAGINATION FOOTER */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 px-1">
+          <div className="flex items-center space-x-3 text-sm text-[#65676B] dark:text-zinc-400">
+            <div>
+              Showing <span className="font-semibold text-[#050505] dark:text-zinc-200">{startResult} - {endResult}</span> of <span className="font-semibold text-[#050505] dark:text-zinc-200">{accountsTotal}</span> user accounts
             </div>
+            <Select
+              value={String(accountsPageSize)}
+              onValueChange={(val) => {
+                if (val) setAccountsPageSize(Number(val));
+                setAccountsPage(1);
+              }}
+            >
+              <SelectTrigger className="h-8 w-[110px] border-[#CED0D4] dark:border-zinc-800 text-xs font-medium focus:ring-[#1877F2]">
+                <SelectValue placeholder="Page size" />
+              </SelectTrigger>
+              <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
+                <SelectItem value="10">10 / page</SelectItem>
+                <SelectItem value="20">20 / page</SelectItem>
+                <SelectItem value="50">50 / page</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        )}
+
+          {/* Page Buttons */}
+          <div className="flex items-center space-x-1.5">
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={accountsPage === 1 || isAccountsLoading}
+              onClick={() => setAccountsPage((prev) => Math.max(1, prev - 1))}
+              className="h-8 w-8 border-[#CED0D4] dark:border-zinc-800 text-[#65676B] dark:text-zinc-400 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 disabled:opacity-40 cursor-pointer"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+
+            {Array.from({ length: accountsTotalPages }).map((_, index) => {
+              const pageNum = index + 1;
+              if (
+                accountsTotalPages <= 5 ||
+                pageNum === 1 ||
+                pageNum === accountsTotalPages ||
+                Math.abs(pageNum - accountsPage) <= 1
+              ) {
+                const isCurrent = pageNum === accountsPage;
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={isCurrent ? 'default' : 'outline'}
+                    disabled={isAccountsLoading}
+                    onClick={() => setAccountsPage(pageNum)}
+                    className={`h-8 w-8 text-xs font-semibold rounded-md shadow-2xs transition-all cursor-pointer ${
+                      isCurrent
+                        ? 'bg-[#1877F2] hover:bg-[#166FE5] text-white border-[#1877F2]'
+                        : 'border-[#CED0D4] dark:border-zinc-800 text-[#050505] dark:text-zinc-300 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 dark:hover:text-blue-400'
+                    }`}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              }
+              if (
+                (pageNum === 2 && accountsPage > 3) ||
+                (pageNum === accountsTotalPages - 1 && accountsPage < accountsTotalPages - 2)
+              ) {
+                return (
+                  <span key={pageNum} className="px-1 text-xs text-[#65676B]">
+                    ...
+                  </span>
+                );
+              }
+              return null;
+            })}
+
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={accountsPage >= accountsTotalPages || isAccountsLoading}
+              onClick={() => setAccountsPage((prev) => Math.min(accountsTotalPages, prev + 1))}
+              className="h-8 w-8 border-[#CED0D4] dark:border-zinc-800 text-[#65676B] dark:text-zinc-400 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 disabled:opacity-40 cursor-pointer"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* UPDATE STATUS DIALOG */}
@@ -392,7 +567,7 @@ export default function AdminAccountsPage() {
             <span>{toast.message}</span>
             <button
               onClick={() => setToast(null)}
-              className="text-muted-foreground hover:text-foreground shrink-0 p-0.5 rounded-lg hover:bg-black/5"
+              className="text-muted-foreground hover:text-foreground shrink-0 p-0.5 rounded-lg hover:bg-black/5 cursor-pointer"
             >
               <X size={14} />
             </button>

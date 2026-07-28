@@ -254,19 +254,6 @@ export default function StaffAuditLogsPage() {
               </Button>
             )}
           </div>
-
-          {/* Refresh Button */}
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button
-              variant="outline"
-              onClick={() => refetch()}
-              disabled={isAuditLoading || isFetching}
-              className="h-10 border-[#CED0D4] dark:border-zinc-800 text-[#050505] dark:text-zinc-300 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 transition-colors cursor-pointer w-full sm:w-auto"
-            >
-              <RefreshCcw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
         </div>
 
         {/* TẦNG 2: MAIN TABLE CONTAINER (TABLE_STANDARD - SHADCN TABLE) */}
