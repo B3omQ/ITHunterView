@@ -49,14 +49,17 @@ namespace ITHunterview.Domain.Entities
         [Column("description")]
         public string Description { get; set; }
 
-        [Column("responsibilities")]
-        public string Responsibilities { get; set; }
-
         [Column("requirements")]
         public string Requirements { get; set; }
 
         [Column("benefits")]
         public string Benefits { get; set; }
+
+        [Column("income_text")]
+        public string IncomeText { get; set; } = string.Empty;
+
+        [Column("work_location_text")]
+        public string WorkLocationText { get; set; } = string.Empty;
 
         [Column("min_salary")]
         public decimal? MinSalary { get; set; }
@@ -69,9 +72,6 @@ namespace ITHunterview.Domain.Entities
 
         [Column("location")]
         public string Location { get; set; }
-
-        [Column("detailed_location")]
-        public string? DetailedLocation { get; set; }
 
         [Column("status")]
         public JobStatus Status { get; set; }
@@ -109,6 +109,29 @@ namespace ITHunterview.Domain.Entities
         [Column("deleted_at")]
         public DateTime? DeletedAt { get; set; }
 
+        [Column("analysis_revision")]
+        public int AnalysisRevision { get; set; }
+
+        [Column("analysis_input_hash")]
+        public string? AnalysisInputHash { get; set; }
+
+        [Column("semantic_content_hash")]
+        public string? SemanticContentHash { get; set; }
+
+        [Column("effective_analysis_revision")]
+        public int? EffectiveAnalysisRevision { get; set; }
+
+        [Column("active_analysis_run_id")]
+        public Guid? ActiveAnalysisRunId { get; set; }
+
+        [ForeignKey(nameof(ActiveAnalysisRunId))]
+        public virtual JobAnalysisRuns? ActiveAnalysisRun { get; set; }
+
+        [Column("effective_analysis_run_id")]
+        public Guid? EffectiveAnalysisRunId { get; set; }
+
+        [ForeignKey(nameof(EffectiveAnalysisRunId))]
+        public virtual JobAnalysisRuns? EffectiveAnalysisRun { get; set; }
         [Column("is_banned")]
         public bool IsBanned { get; set; } = false;
 

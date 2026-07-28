@@ -6,12 +6,14 @@ import { PageLoader } from '@/components/shared/PageLoader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, DollarSign, Calendar, Briefcase, Bookmark, ExternalLink, Award, Monitor, Target, Layers, Heart, Clock } from 'lucide-react';
+import { MapPin, DollarSign, ExternalLink, Monitor, Heart, Clock } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { ApplyJobModal } from '@/components/jobs/ApplyJobModal';
 import { useJobActions } from '@/hooks/useJobActions';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { JobPostingMarkdownContent } from '@/components/jobs/JobPostingMarkdownContent';
+import { WorkLocationScheduleContent } from '@/components/jobs/WorkLocationScheduleContent';
 
 interface JobDetailPanelProps {
   jobId: string;
@@ -54,7 +56,7 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
       router.push(`/login?redirect=/jobs`);
       return;
     }
-    
+
     if (job.isSaved) {
       setShowUnsaveDialog(true);
     } else {
@@ -84,8 +86,8 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
             <div className="flex items-center gap-2 mt-2 text-slate-700">
               <DollarSign className="w-5 h-5 text-slate-700" />
               <span className="font-semibold text-sm underline cursor-pointer decoration-slate-400 underline-offset-2">
-                {!job.minSalary && !job.maxSalary 
-                  ? "Negotiable" 
+                {!job.minSalary && !job.maxSalary
+                  ? "Negotiable"
                   : (job.minSalary && !job.maxSalary)
                     ? `From ${job.minSalary.toLocaleString()} ${job.currency}`
                     : (!job.minSalary && job.maxSalary)
@@ -189,29 +191,36 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
         <div className="flex flex-col gap-8">
           {job.description && (
             <section>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Job description</h2>
-              <div className="prose prose-slate max-w-none text-slate-700 whitespace-pre-wrap leading-relaxed">{job.description}</div>
+              <h2 className="text-xl font-bold text-slate-900 mb-4">Job Description</h2>
+              <JobPostingMarkdownContent value={job.description} legacyMode="bullet" />
             </section>
           )}
 
-          {job.responsibilities && (
+          {job.incomeText && (
             <section>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Responsibilities</h2>
-              <div className="prose prose-slate max-w-none text-slate-700 whitespace-pre-wrap leading-relaxed">{job.responsibilities}</div>
+              <h2 className="text-xl font-bold text-slate-900 mb-4">Income</h2>
+              <JobPostingMarkdownContent value={job.incomeText} legacyMode="lines" />
+            </section>
+          )}
+
+          {job.workLocationText && (
+            <section>
+              <h2 className="text-xl font-bold text-slate-900 mb-4">Work Location & Schedule</h2>
+              <WorkLocationScheduleContent workLocationText={job.workLocationText} />
             </section>
           )}
 
           {job.requirements && (
             <section>
               <h2 className="text-xl font-bold text-slate-900 mb-4">Requirements</h2>
-              <div className="prose prose-slate max-w-none text-slate-700 whitespace-pre-wrap leading-relaxed">{job.requirements}</div>
+              <JobPostingMarkdownContent value={job.requirements} legacyMode="bullet" />
             </section>
           )}
 
           {job.benefits && (
             <section>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Benefits & Perks</h2>
-              <div className="prose prose-slate max-w-none text-slate-700 whitespace-pre-wrap leading-relaxed">{job.benefits}</div>
+              <h2 className="text-xl font-bold text-slate-900 mb-4">Benefits</h2>
+              <JobPostingMarkdownContent value={job.benefits} legacyMode="bullet" />
             </section>
           )}
         </div>
@@ -234,7 +243,7 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
           <DialogHeader>
             <DialogTitle>Unsave Job?</DialogTitle>
             <DialogDescription>
-              Are you sure you want to remove "{job.title}" from your saved jobs?
+              Are you sure you want to remove &quot;{job.title}&quot; from your saved jobs?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

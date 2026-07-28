@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Service.Infrastructure.Persistence;
@@ -24,6 +25,7 @@ namespace ITHunterview.Service.Service
         public async Task<string> GetActivePromptContentAsync(string promptKey)
         {
             var activeVersion = await _context.PromptVersions
+                .AsNoTracking()
                 .Include(pv => pv.Prompt)
                 .Where(pv => pv.Prompt.PromptKey == promptKey && pv.IsActive)
                 .FirstOrDefaultAsync();
@@ -49,20 +51,71 @@ namespace ITHunterview.Service.Service
             foreach (var variable in variables)
             {
                 var placeholder = $"[{variable.Key}]";
-                
-                // If the template contains the placeholder, replace it.
-                // If the template doesn't contain it, the admin might have deleted it. We log a warning.
                 if (!content.Contains(placeholder))
                 {
                     _logger.LogWarning($"Template for {promptKey} is missing the placeholder {placeholder}. The data might be ignored by the LLM.");
                 }
-                
                 content = content.Replace(placeholder, variable.Value);
             }
 
-            // Simple validation to see if there are left-over placeholders (e.g. admin misspelled [CV_TEXXT])
-            // We can't catch everything, but this helps.
             return content;
+        }
+
+        public async Task<PromptSnapshotDto> GetActivePromptSnapshotAsync(string promptKey, CancellationToken ct = default)
+        {
+            var activeVersions = await _context.PromptVersions
+                .AsNoTracking()
+                .Include(pv => pv.Prompt)
+                .Where(pv => pv.Prompt.PromptKey == promptKey && pv.IsActive)
+                .ToListAsync(ct);
+
+            if (activeVersions.Count == 0)
+            {
+                _logger.LogError($"PROMPT_NOT_CONFIGURED: Active prompt key '{promptKey}' not found.");
+                throw new InvalidOperationException($"PROMPT_NOT_CONFIGURED: Active prompt key '{promptKey}' not found.");
+            }
+
+            if (activeVersions.Count > 1)
+            {
+                var ids = string.Join(", ", activeVersions.Select(v => v.Id));
+                _logger.LogError($"PROMPT_CONFIGURATION_INVALID: Multiple active versions found for key '{promptKey}': {ids}");
+                throw new InvalidOperationException($"PROMPT_CONFIGURATION_INVALID: Multiple active versions found for key '{promptKey}'.");
+            }
+
+            var v = activeVersions[0];
+            return new PromptSnapshotDto
+            {
+                PromptId = v.PromptId,
+                VersionId = v.Id,
+                PromptKey = v.Prompt.PromptKey,
+                VersionTag = v.VersionTag,
+                Content = v.Content,
+                ModelConfig = v.ModelConfig
+            };
+        }
+
+        public async Task<PromptSnapshotDto> GetPromptSnapshotByVersionIdAsync(Guid versionId, CancellationToken ct = default)
+        {
+            var version = await _context.PromptVersions
+                .AsNoTracking()
+                .Include(pv => pv.Prompt)
+                .FirstOrDefaultAsync(pv => pv.Id == versionId, ct);
+
+            if (version == null)
+            {
+                _logger.LogError($"PROMPT_VERSION_NOT_FOUND: Prompt version '{versionId}' not found.");
+                throw new InvalidOperationException($"PROMPT_VERSION_NOT_FOUND: Prompt version '{versionId}' not found.");
+            }
+
+            return new PromptSnapshotDto
+            {
+                PromptId = version.PromptId,
+                VersionId = version.Id,
+                PromptKey = version.Prompt.PromptKey,
+                VersionTag = version.VersionTag,
+                Content = version.Content,
+                ModelConfig = version.ModelConfig
+            };
         }
     }
 }

@@ -14,6 +14,7 @@ using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Utils;
 using ITHunterview.Service.Infrastructure.Persistence;
+using ITHunterview.Service.Utils;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -193,7 +194,7 @@ namespace ITHunterview.Service.UseCase
                 if (job != null)
                 {
                     jobTitle = job.Title ?? "";
-                    jobContext = $"Title: {job.Title}\nDescription: {job.Description}\nRequirements: {job.Requirements}";
+                    jobContext = JdTextHelper.BuildRawText(job);
                     
                     if (!string.IsNullOrWhiteSpace(job.Level))
                     {
@@ -314,6 +315,7 @@ namespace ITHunterview.Service.UseCase
                                $"THÔNG TIN BỐ CẢNH:\n" +
                                $"--- START CV ---\n{cvContext}\n--- END CV ---\n\n" +
                                $"--- START JD ---\n{jobContext}\n--- END JD ---\n\n" +
+                               $"(CHÚ Ý: Chỉ sử dụng phần Description và Requirements của JD để đặt câu hỏi đánh giá năng lực, bỏ qua các phần Benefits, Income và Work Location.)\n\n" +
                                $"{rubricContext}\n\n" +
                                $"QUY TẮC PHÂN LOẠI DẠNG CÂU HỎI THEO LEVEL:\n" +
                                $"Bạn phải đặt câu hỏi tuân thủ nghiêm ngặt theo dạng câu hỏi (đóng/mở/outside-the-box) dựa trên Cấp độ phỏng vấn hiện tại:\n" +
@@ -485,7 +487,7 @@ namespace ITHunterview.Service.UseCase
                 {
                     jobTitle = job.Title ?? "";
                     jobLevel = job.Level ?? "";
-                    jobContext = $"Title: {job.Title}\nDescription: {job.Description}\nRequirements: {job.Requirements}";
+                    jobContext = JdTextHelper.BuildRawText(job);
                 }
             }
 
@@ -616,6 +618,7 @@ namespace ITHunterview.Service.UseCase
                                $"THÔNG TIN BỐ CẢNH:\n" +
                                $"--- START CV ---\n{cvContext}\n--- END CV ---\n\n" +
                                $"--- START JD ---\n{jobContext}\n--- END JD ---\n\n" +
+                               $"(CHÚ Ý: Chỉ sử dụng phần Description và Requirements của JD để đặt câu hỏi đánh giá năng lực, bỏ qua các phần Benefits, Income và Work Location.)\n\n" +
                                $"{rubricContext}\n\n" +
                                $"QUY TẮC PHÂN LOẠI DẠNG CÂU HỎI THEO LEVEL:\n" +
                                $"Bạn phải đặt câu hỏi tuân thủ nghiêm ngặt theo dạng câu hỏi (đóng/mở/outside-the-box) dựa trên Cấp độ phỏng vấn hiện tại:\n" +

@@ -39,7 +39,7 @@ export function MajorCombobox({ majors, value, onChange, className, placeholder 
 
   const roots = majors.filter(m => !m.parentId);
   const getChildren = (parentId: number) => majors.filter(m => m.parentId === parentId);
-  const orphans = majors.filter(m => m.parentId && !roots.some(r => r.id === m.parentId));
+  const orphans = majors.filter(m => m.parentId && !majors.some(parent => parent.id === m.parentId));
 
   const handleSelect = (currentValue: string) => {
     const selected = majors.find(m => m.name.toLowerCase() === currentValue.toLowerCase())?.name || currentValue;
@@ -89,20 +89,38 @@ export function MajorCombobox({ majors, value, onChange, className, placeholder 
                   </CommandItem>
                   
                   {getChildren(root.id).map(child => (
-                    <CommandItem
-                      key={child.id}
-                      value={child.name}
-                      onSelect={handleSelect}
-                      className="pl-8"
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          value === child.name ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      {child.name}
-                    </CommandItem>
+                    <React.Fragment key={child.id}>
+                      <CommandItem
+                        value={child.name}
+                        onSelect={handleSelect}
+                        className="pl-8"
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            value === child.name ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {child.name}
+                      </CommandItem>
+                      
+                      {getChildren(child.id).map(subChild => (
+                        <CommandItem
+                          key={subChild.id}
+                          value={subChild.name}
+                          onSelect={handleSelect}
+                          className="pl-14 text-sm text-muted-foreground"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              value === subChild.name ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {subChild.name}
+                        </CommandItem>
+                      ))}
+                    </React.Fragment>
                   ))}
                 </React.Fragment>
               ))}

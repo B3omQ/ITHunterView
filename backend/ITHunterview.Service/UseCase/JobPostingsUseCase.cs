@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,10 +10,10 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Job;
+using ITHunterview.Service.Utils;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Interface.Service;
-using ITHunterview.Service.Constant.Prompts;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -20,6 +21,7 @@ namespace ITHunterview.Service.UseCase
     {
         private readonly IJobPostingRepository _jobPostingRepository;
         private readonly ICompanyRepository _companyRepository;
+        private readonly IJobAnalysisInputBuilder _inputBuilder;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly INotificationUseCase _notificationUseCase;
         private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
@@ -29,6 +31,7 @@ namespace ITHunterview.Service.UseCase
         public JobPostingsUseCase(
             IJobPostingRepository jobPostingRepository,
             ICompanyRepository companyRepository,
+            IJobAnalysisInputBuilder inputBuilder,
             IServiceScopeFactory scopeFactory,
             INotificationUseCase notificationUseCase,
             ICandidateFeatureUsageUseCase featureUsageUseCase,
@@ -37,6 +40,7 @@ namespace ITHunterview.Service.UseCase
         {
             _jobPostingRepository = jobPostingRepository;
             _companyRepository = companyRepository;
+            _inputBuilder = inputBuilder;
             _scopeFactory = scopeFactory;
             _notificationUseCase = notificationUseCase;
             _featureUsageUseCase = featureUsageUseCase;
@@ -52,7 +56,7 @@ namespace ITHunterview.Service.UseCase
             Guid? recruiterId = null)
         {
             if (page <= 0) page = 1;
-            if (pageSize <= 0) pageSize = 7; // Matching the mock UI showing 7 rows by default
+            if (pageSize <= 0) pageSize = 7;
 
             var (items, totalCount) = await _jobPostingRepository.GetPagedAsync(search, status, page, pageSize, recruiterId);
 
@@ -65,7 +69,6 @@ namespace ITHunterview.Service.UseCase
                 JobCode = j.JobCode,
                 Title = j.Title,
                 Location = j.Location,
-                DetailedLocation = j.DetailedLocation,
 
                 Status = j.Status,
                 ApplicationCount = j.ApplicationCount,
@@ -84,6 +87,7 @@ namespace ITHunterview.Service.UseCase
 
                 ParseStatus = j.ParseStatus ?? "PENDING",
                 ParseError = j.ParseError,
+                AnalysisRevision = j.AnalysisRevision
                 PushedTopUntil = j.PushedTopUntil
             }).ToList();
 
@@ -119,12 +123,7 @@ namespace ITHunterview.Service.UseCase
                 return new ResponseBase<JobPostingDetailDto>("Recruiter company not found. Please link recruiter to a company first.");
             }
 
-            if (dto.ExpiresAt.HasValue && dto.ExpiresAt.Value > DateTime.UtcNow.AddDays(30))
-            {
-                return new ResponseBase<JobPostingDetailDto>("Thời gian xuất bản tin không được vượt quá 30 ngày.");
-            }
-
-            if (dto.Status == JobStatus.PUBLISHED)
+           if (dto.Status == JobStatus.PUBLISHED)
             {
                 var company = await _companyRepository.GetByIdAsync(companyId.Value);
                 if (company == null || company.Status != CompanyStatus.VERIFIED)
@@ -135,6 +134,13 @@ namespace ITHunterview.Service.UseCase
                 await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "PostJob");
             }
 
+            if (dto.ExpiresAt.HasValue && dto.ExpiresAt.Value > DateTime.UtcNow.AddDays(30))
+            {
+                return new ResponseBase<JobPostingDetailDto>("Thời gian xuất bản tin không được vượt quá 30 ngày.");
+            }
+
+            var text = NormalizeRichTextFields(dto.Description, dto.Requirements, dto.Benefits, dto.IncomeText);
+
             var job = new JobPostings
             {
                 JobCode = string.IsNullOrWhiteSpace(dto.JobCode) 
@@ -144,46 +150,39 @@ namespace ITHunterview.Service.UseCase
                 CompanyId = companyId.Value,
 
                 Title = dto.Title,
-                Description = dto.Description,
-                Responsibilities = dto.Responsibilities,
-                Requirements = dto.Requirements,
-                Benefits = dto.Benefits,
+                Description = text.Description,
+                Requirements = text.Requirements,
+                Benefits = text.Benefits,
+                IncomeText = text.IncomeText,
+                WorkLocationText = dto.WorkLocationText,
                 MinSalary = dto.MinSalary,
                 MaxSalary = dto.MaxSalary,
                 Currency = dto.Currency,
                 Location = dto.Location,
-                DetailedLocation = dto.DetailedLocation,
 
-                Status = dto.Status,
+                Status = JobStatus.DRAFT,
                 Level = dto.Level,
                 WorkingModel = dto.WorkingModel,
                 JobExpertise = dto.JobExpertise,
                 JobDomain = dto.JobDomain,
                 ApplicationCount = 0,
                 ViewCount = 0,
-                PublishedAt = dto.Status == JobStatus.PUBLISHED ? DateTime.UtcNow : null,
+                PublishedAt = null,
                 ExpiresAt = dto.ExpiresAt,
-                ParseStatus = "PENDING",
+                AnalysisRevision = 1,
+                ParseStatus = "NOT_REQUESTED",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
-            using (var scope = new System.Transactions.TransactionScope(System.Transactions.TransactionScopeAsyncFlowOption.Enabled))
-            {
-                await _jobPostingRepository.AddAsync(job);
+            job.SemanticContentHash = _inputBuilder.ComputeSemanticHash(_inputBuilder.Build(job));
 
-                if (dto.Skills != null && dto.Skills.Any())
-                {
-                    await _jobPostingRepository.UpdateJobSkillsAsync(job.Id, dto.Skills);
-                }
-
-                scope.Complete();
-            }
+            await _jobPostingRepository.AddAsync(job);
 
             var detail = MapToDetailDto(job);
-            detail.Skills = await _jobPostingRepository.GetSkillsByJobIdAsync(job.Id);
+            detail.Skills = new List<JobSkillRequirementDto>();
 
-            _ = ParseJdBackgroundAsync(job.Id);
+            return new ResponseBase<JobPostingDetailDto>(detail, "Job posting created successfully as DRAFT.");
 
             // Broadcast real-time update
             if (detail.Status == JobStatus.PUBLISHED)
@@ -194,7 +193,7 @@ namespace ITHunterview.Service.UseCase
             return new ResponseBase<JobPostingDetailDto>(detail, "Job posting created successfully.");
         }
 
-        public async Task<ResponseBase<JobPostingDetailDto>> UpdateJobAsync(Guid id, UpdateJobPostingDto dto)
+        public async Task<ResponseBase<JobPostingDetailDto>> UpdateJobAsync(Guid id, UpdateJobPostingDto dto, Guid recruiterId)
         {
             var job = await _jobPostingRepository.GetByIdAsync(id);
             if (job == null)
@@ -202,6 +201,14 @@ namespace ITHunterview.Service.UseCase
                 return new ResponseBase<JobPostingDetailDto>("Job posting not found.");
             }
 
+            if (job.RecruiterId != recruiterId)
+            {
+                throw new UnauthorizedAccessException("You do not have permission to update this job posting.");
+            }
+
+            if (job.Status == JobStatus.PUBLISHED || job.Status == JobStatus.PENDING_REVIEW)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Published or pending review jobs cannot be edited directly. Please clone as a new draft.");
             if (job.IsBanned)
             {
                 return new ResponseBase<JobPostingDetailDto>("Job posting is banned and cannot be updated.");
@@ -212,18 +219,21 @@ namespace ITHunterview.Service.UseCase
                 return new ResponseBase<JobPostingDetailDto>("Thời gian xuất bản tin không được vượt quá 30 ngày kể từ lúc tạo.");
             }
 
-            job.JobCode = dto.JobCode;
+            var oldSnapshot = _inputBuilder.Build(job);
+            var oldSemanticHash = _inputBuilder.ComputeSemanticHash(oldSnapshot);
+            var text = NormalizeRichTextFields(dto.Description, dto.Requirements, dto.Benefits, dto.IncomeText);
 
-            // Title is intentionally omitted from update to prevent changing the job title
-            job.Description = dto.Description;
-            job.Responsibilities = dto.Responsibilities;
-            job.Requirements = dto.Requirements;
-            job.Benefits = dto.Benefits;
+            job.JobCode = dto.JobCode;
+            job.Title = dto.Title;
+            job.Description = text.Description;
+            job.Requirements = text.Requirements;
+            job.Benefits = text.Benefits;
+            job.IncomeText = text.IncomeText;
+            job.WorkLocationText = dto.WorkLocationText;
             job.MinSalary = dto.MinSalary;
             job.MaxSalary = dto.MaxSalary;
             job.Currency = dto.Currency;
             job.Location = dto.Location;
-            job.DetailedLocation = dto.DetailedLocation;
             job.ExpiresAt = dto.ExpiresAt;
 
             job.Level = dto.Level;
@@ -232,6 +242,9 @@ namespace ITHunterview.Service.UseCase
             job.JobDomain = dto.JobDomain;
             job.UpdatedAt = DateTime.UtcNow;
 
+            var newSnapshot = _inputBuilder.Build(job);
+            var newSemanticHash = _inputBuilder.ComputeSemanticHash(newSnapshot);
+            bool semanticChanged = oldSemanticHash != newSemanticHash;
             if (job.Status != dto.Status)
             {
                 if (dto.Status == JobStatus.PUBLISHED)
@@ -251,32 +264,36 @@ namespace ITHunterview.Service.UseCase
                 job.Status = dto.Status;
             }
 
-            using (var scope = new System.Transactions.TransactionScope(System.Transactions.TransactionScopeAsyncFlowOption.Enabled))
+            job.SemanticContentHash = newSemanticHash;
+
+            if (semanticChanged)
             {
-                await _jobPostingRepository.UpdateAsync(job);
-
-                if (dto.Skills != null)
-                {
-                    await _jobPostingRepository.UpdateJobSkillsAsync(job.Id, dto.Skills);
-                }
-
-                scope.Complete();
+                job.AnalysisRevision += 1;
+                job.ActiveAnalysisRunId = null;
+                job.AnalysisInputHash = null;
+                job.ParseStatus = "STALE";
+                job.ParseError = null;
             }
+
+            await _jobPostingRepository.UpdateAsync(job);
 
             var detail = MapToDetailDto(job);
             detail.Skills = await _jobPostingRepository.GetSkillsByJobIdAsync(job.Id);
 
-            _ = ParseJdBackgroundAsync(job.Id);
-
-            return new ResponseBase<JobPostingDetailDto>(detail, "Job posting updated successfully.");
+            return new ResponseBase<JobPostingDetailDto>(detail, "Job draft updated successfully.");
         }
 
-        public async Task<ResponseBase<bool>> CloseJobAsync(Guid id)
+        public async Task<ResponseBase<bool>> CloseJobAsync(Guid id, Guid recruiterId)
         {
             var job = await _jobPostingRepository.GetByIdAsync(id);
             if (job == null)
             {
                 return new ResponseBase<bool>("Job posting not found.");
+            }
+
+            if (job.RecruiterId != recruiterId)
+            {
+                throw new UnauthorizedAccessException("You do not have permission to close this job posting.");
             }
 
             job.Status = JobStatus.CLOSED;
@@ -430,14 +447,14 @@ namespace ITHunterview.Service.UseCase
 
                 Title = j.Title,
                 Description = j.Description,
-                Responsibilities = j.Responsibilities,
                 Requirements = j.Requirements,
                 Benefits = j.Benefits,
+                IncomeText = j.IncomeText,
+                WorkLocationText = j.WorkLocationText,
                 MinSalary = j.MinSalary,
                 MaxSalary = j.MaxSalary,
                 Currency = j.Currency,
                 Location = j.Location,
-                DetailedLocation = j.DetailedLocation,
 
                 Status = j.Status,
                 Level = j.Level,
@@ -453,59 +470,50 @@ namespace ITHunterview.Service.UseCase
                 BanReason = j.BanReason,
                 ParseStatus = j.ParseStatus ?? "PENDING",
                 ParseError = j.ParseError,
+                AnalysisRevision = j.AnalysisRevision
                 PushedTopUntil = j.PushedTopUntil
             };
         }
 
-        private async Task ParseJdBackgroundAsync(Guid jobId)
+        private static NormalizedJobText NormalizeRichTextFields(
+            string description,
+            string requirements,
+            string benefits,
+            string incomeText)
         {
-            using var scope = _scopeFactory.CreateScope();
-            var repo = scope.ServiceProvider.GetRequiredService<IJobPostingRepository>();
-            var aiService = scope.ServiceProvider.GetRequiredService<IAiService>();
+            return new NormalizedJobText(
+                NormalizeRequiredRichText(description, "Description", 10000),
+                NormalizeRequiredRichText(requirements, "Requirements", 10000),
+                NormalizeRequiredRichText(benefits, "Benefits", 10000),
+                NormalizeRequiredRichText(incomeText, "IncomeText", 4000));
+        }
 
-            var job = await repo.GetByIdAsync(jobId);
-            if (job == null) return;
-
-            try
+        private static string NormalizeRequiredRichText(string value, string fieldName, int maximumLength)
+        {
+            var normalized = JobPostingRichText.NormalizeForStorage(value);
+            if (!JobPostingRichText.HasVisibleText(normalized.StoredMarkdown))
             {
-                job.ParseStatus = "PROCESSING";
-                job.UpdatedAt = DateTime.UtcNow;
-                await repo.UpdateAsync(job);
-
-                var rawText = $"Title: {job.Title}\nDescription: {job.Description}\nRequirements: {job.Requirements}\nBenefits: {job.Benefits}";
-                
-                var prompt = JdExtractionPrompt.BuildUser(rawText);
-                var aiResponse = await aiService.GenerateTextAsync(prompt, JdExtractionPrompt.System);
-
-                // Clean json
-                var cleanJson = aiResponse.Trim();
-                if (cleanJson.StartsWith("```json")) cleanJson = cleanJson.Substring(7);
-                if (cleanJson.StartsWith("```")) cleanJson = cleanJson.Substring(3);
-                if (cleanJson.EndsWith("```")) cleanJson = cleanJson.Substring(0, cleanJson.Length - 3);
-                cleanJson = cleanJson.Trim();
-
-                var freshJob = await repo.GetByIdAsync(jobId);
-                if (freshJob == null) return;
-
-                freshJob.ParsedData = cleanJson;
-                freshJob.ParseStatus = "SUCCESS";
-                freshJob.ParseError = null;
-                freshJob.UpdatedAt = DateTime.UtcNow;
-                await repo.UpdateAsync(freshJob);
-                _logger.LogInformation($"Successfully parsed and updated JD {jobId} in background.");
+                throw new ArgumentException($"{fieldName} must contain visible text.", fieldName);
             }
-            catch (Exception ex)
+
+            if (normalized.StoredMarkdown.Length > maximumLength)
             {
-                _logger.LogError(ex, $"Failed to parse JD {jobId} in background");
-                var freshJob = await repo.GetByIdAsync(jobId);
-                if (freshJob != null)
-                {
-                    freshJob.ParseStatus = "FAILED";
-                    freshJob.ParseError = ex.Message;
-                    freshJob.UpdatedAt = DateTime.UtcNow;
-                    await repo.UpdateAsync(freshJob);
-                }
+                throw new ArgumentException($"{fieldName} exceeds the maximum length of {maximumLength} characters.", fieldName);
             }
+
+            return normalized.StoredMarkdown;
+        }
+
+        private sealed record NormalizedJobText(
+            string Description,
+            string Requirements,
+            string Benefits,
+            string IncomeText);
+
+        [Obsolete("Legacy V1 reparse is disabled. Use the V2 analysis endpoint for a draft job.")]
+        public Task<ResponseBase<string>> ReparsePendingJobsAsync(int limit = 50)
+        {
+            return Task.FromResult(new ResponseBase<string>(string.Empty, "LEGACY_REPARSE_DISABLED: Request V2 analysis from the job preview instead."));
         }
     }
 }

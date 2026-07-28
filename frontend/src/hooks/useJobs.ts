@@ -1,218 +1,200 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   recruiterService,
-  JobPosting,
-  JobPostingSummary,
-  JobCategory,
-  Skill,
-  CreateJobPostingDto,
-  UpdateJobPostingDto,
-} from '@/services/recruiter.service';
+  type ApiResponse,
+  type CreateJobPostingDto,
+  type JobCategory,
+  type JobPosting,
+  type JobPostingSummary,
+  type PaginatedResult,
+  type Skill,
+  type UpdateJobPostingDto,
+} from '@/services/recruiter.service'
 
-// Hook to manage job postings list with filters, searching, and pagination
+export const recruiterJobKeys = {
+  all: ['recruiter-jobs'] as const,
+  lists: () => [...recruiterJobKeys.all, 'list'] as const,
+  list: (page: number, pageSize: number, status: string, search: string) =>
+    [...recruiterJobKeys.lists(), page, pageSize, status, search] as const,
+  details: () => [...recruiterJobKeys.all, 'detail'] as const,
+  detail: (jobId: string) => [...recruiterJobKeys.details(), jobId] as const,
+  metadata: () => [...recruiterJobKeys.all, 'metadata'] as const,
+  categories: () => [...recruiterJobKeys.metadata(), 'categories'] as const,
+  skills: () => [...recruiterJobKeys.metadata(), 'skills'] as const,
+  majors: () => [...recruiterJobKeys.metadata(), 'majors'] as const,
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback
+}
+
+function unwrap<T>(result: { success: boolean; data?: ApiResponse<T>; message?: string }, fallback: string): T {
+  if (!result.success || !result.data?.success || result.data.data === undefined || result.data.data === null) {
+    throw new Error(result.data?.message || result.message || fallback)
+  }
+  return result.data.data
+}
+
 export function useJobs(initialPage = 1, initialPageSize = 7, initialStatus = 'ALL') {
-  const [jobs, setJobs] = useState<JobPostingSummary[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [page, setPage] = useState(initialPage);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [status, setStatus] = useState(initialStatus);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const queryClient = useQueryClient()
+  const [page, setPage] = useState(initialPage)
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [status, setStatus] = useState(initialStatus)
 
-  // Debounce search input
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(search);
-      setPage(1); // Reset to first page on search
-    }, 400);
-    return () => clearTimeout(handler);
-  }, [search]);
+    const handler = window.setTimeout(() => {
+      setDebouncedSearch(search)
+      setPage(1)
+    }, 400)
+    return () => window.clearTimeout(handler)
+  }, [search])
 
-  const fetchJobs = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    const res = await recruiterService.getJobs(page, initialPageSize, status, debouncedSearch);
-    if (res.success && res.data) {
-      if (res.data.success) {
-        setJobs(res.data.data.items || []);
-        setTotalCount(res.data.data.totalCount || 0);
-      } else {
-        setError(res.data.message || 'Failed to fetch jobs');
-      }
-    } else {
-      setError(res.message || 'Error occurred while loading jobs');
+  const jobsQuery = useQuery({
+    queryKey: recruiterJobKeys.list(page, initialPageSize, status, debouncedSearch),
+    queryFn: async () =>
+      unwrap<PaginatedResult<JobPostingSummary>>(
+        await recruiterService.getJobs(page, initialPageSize, status, debouncedSearch),
+        'Failed to load job postings',
+      ),
+    refetchInterval: (query) => {
+      const hasActiveAnalysis = query.state.data?.items.some(
+        (job) => job.parseStatus === 'PENDING' || job.parseStatus === 'PROCESSING',
+      )
+      return hasActiveAnalysis ? 3000 : false
+    },
+  })
+
+  const closeMutation = useMutation({
+    mutationFn: async (id: string) =>
+      unwrap<boolean>(await recruiterService.closeJob(id), 'Failed to close job posting'),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: recruiterJobKeys.lists() })
+    },
+  })
+
+  const closeJob = async (id: string) => {
+    try {
+      await closeMutation.mutateAsync(id)
+      return { success: true }
+    } catch (error) {
+      return { success: false, message: getErrorMessage(error, 'Failed to close job posting') }
     }
-    setLoading(false);
-  }, [page, initialPageSize, status, debouncedSearch]);
-
-  useEffect(() => {
-    fetchJobs();
-  }, [fetchJobs]);
-
-  // Auto-polling if any job is currently PENDING or PROCESSING
-  useEffect(() => {
-    const hasPendingOrProcessing = jobs.some(
-      (j) => j.parseStatus === 'PENDING' || j.parseStatus === 'PROCESSING'
-    );
-
-    if (!hasPendingOrProcessing) return;
-
-    const interval = setInterval(() => {
-      fetchJobs();
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [jobs, fetchJobs]);
-
-  const closeJob = useCallback(async (id: string) => {
-    const res = await recruiterService.closeJob(id);
-    if (res.success && res.data && res.data.success) {
-      await fetchJobs();
-      return { success: true };
-    }
-    return {
-      success: false,
-      message: res.data?.message || res.message || 'Failed to close job',
-    };
-  }, [fetchJobs]);
+  }
 
   return {
-    jobs,
-    totalCount,
+    jobs: jobsQuery.data?.items ?? [],
+    totalCount: jobsQuery.data?.totalCount ?? 0,
     page,
     setPage,
     search,
     setSearch,
     status,
     setStatus,
-    loading,
-    error,
-    refresh: fetchJobs,
+    loading: jobsQuery.isLoading || jobsQuery.isFetching,
+    error: jobsQuery.isError ? getErrorMessage(jobsQuery.error, 'Failed to load job postings') : '',
+    refresh: jobsQuery.refetch,
     closeJob,
-  };
+    isClosing: closeMutation.isPending,
+  }
 }
 
-// Hook to manage single job detail fetching and updating
 export function useJobDetails(jobId?: string) {
-  const [job, setJob] = useState<JobPosting | null>(null);
-  const [loading, setLoading] = useState(!!jobId);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const queryClient = useQueryClient()
+  const detailQuery = useQuery({
+    queryKey: recruiterJobKeys.detail(jobId ?? ''),
+    enabled: Boolean(jobId),
+    queryFn: async () =>
+      unwrap<JobPosting>(await recruiterService.getJobById(jobId!), 'Failed to load job details'),
+  })
 
-  const fetchJobDetails = useCallback(async () => {
-    if (!jobId) return;
-    setLoading(true);
-    setError('');
-    const res = await recruiterService.getJobById(jobId);
-    if (res.success && res.data) {
-      if (res.data.success) {
-        setJob(res.data.data);
-      } else {
-        setError(res.data.message || 'Failed to load job details');
+  const createMutation = useMutation({
+    mutationFn: (payload: CreateJobPostingDto) => recruiterService.createJob(payload),
+    onSuccess: (result) => {
+      if (result.success && result.data?.success && result.data.data) {
+        queryClient.setQueryData(recruiterJobKeys.detail(result.data.data.id), result.data.data)
       }
-    } else {
-      setError(res.message || 'Error fetching details from server');
-    }
-    setLoading(false);
-  }, [jobId]);
+      void queryClient.invalidateQueries({ queryKey: recruiterJobKeys.lists() })
+    },
+  })
 
-  useEffect(() => {
-    fetchJobDetails();
-  }, [fetchJobDetails]);
+  const updateMutation = useMutation({
+    mutationFn: (payload: UpdateJobPostingDto) => recruiterService.updateJob(jobId!, payload),
+    onSuccess: (result) => {
+      if (result.success && result.data?.success && result.data.data && jobId) {
+        queryClient.setQueryData(recruiterJobKeys.detail(jobId), result.data.data)
+      }
+      if (jobId) {
+        void queryClient.invalidateQueries({ queryKey: ['job-analysis', jobId] })
+      }
+      void queryClient.invalidateQueries({ queryKey: recruiterJobKeys.lists() })
+    },
+  })
 
-  const createJob = useCallback(async (payload: CreateJobPostingDto) => {
-    setSaving(true);
-    setError('');
-    const res = await recruiterService.createJob(payload);
-    setSaving(false);
-    if (res.success && res.data && res.data.success) {
-      return { success: true, data: res.data.data };
+  const createJob = async (payload: CreateJobPostingDto) => {
+    try {
+      const result = await createMutation.mutateAsync(payload)
+      const data = unwrap<JobPosting>(result, 'Failed to create job posting')
+      return { success: true, data }
+    } catch (error) {
+      return { success: false, message: getErrorMessage(error, 'Failed to create job posting') }
     }
-    return {
-      success: false,
-      message: res.data?.message || res.message || 'Failed to create job posting',
-    };
-  }, []);
+  }
 
-  const updateJob = useCallback(async (payload: UpdateJobPostingDto) => {
-    if (!jobId) return { success: false, message: 'Job ID is required for updating' };
-    setSaving(true);
-    setError('');
-    const res = await recruiterService.updateJob(jobId, payload);
-    setSaving(false);
-    if (res.success && res.data && res.data.success) {
-      return { success: true, data: res.data.data };
+  const updateJob = async (payload: UpdateJobPostingDto) => {
+    if (!jobId) return { success: false, message: 'Job ID is required for updating' }
+    try {
+      const result = await updateMutation.mutateAsync(payload)
+      const data = unwrap<JobPosting>(result, 'Failed to update job posting')
+      return { success: true, data }
+    } catch (error) {
+      return { success: false, message: getErrorMessage(error, 'Failed to update job posting') }
     }
-    return {
-      success: false,
-      message: res.data?.message || res.message || 'Failed to update job posting',
-    };
-  }, [jobId]);
+  }
 
   return {
-    job,
-    loading,
-    saving,
-    error,
-    setError,
-    refresh: fetchJobDetails,
+    job: detailQuery.data ?? null,
+    loading: detailQuery.isLoading || detailQuery.isFetching,
+    saving: createMutation.isPending || updateMutation.isPending,
+    error: detailQuery.isError ? getErrorMessage(detailQuery.error, 'Failed to load job details') : '',
+    setError: () => undefined,
+    refresh: detailQuery.refetch,
     createJob,
     updateJob,
-  };
+  }
 }
 
-// Hook to load job categories and skills list (metadata)
 export function useJobMetadata() {
-  const [categories, setCategories] = useState<JobCategory[]>([]);
-  const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
-  const [majors, setMajors] = useState<{ id: number; name: string; parentId?: number; parentName?: string }[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const categoriesQuery = useQuery({
+    queryKey: recruiterJobKeys.categories(),
+    queryFn: async () =>
+      unwrap<JobCategory[]>(await recruiterService.getCategories(), 'Failed to load job categories'),
+    staleTime: 5 * 60 * 1000,
+  })
+  const skillsQuery = useQuery({
+    queryKey: recruiterJobKeys.skills(),
+    queryFn: async () => unwrap<Skill[]>(await recruiterService.getSkills(), 'Failed to load skills'),
+    staleTime: 5 * 60 * 1000,
+  })
+  const majorsQuery = useQuery({
+    queryKey: recruiterJobKeys.majors(),
+    queryFn: async () => {
+      const result = unwrap<PaginatedResult<{ id: number; name: string; parentId?: number; parentName?: string }>>(
+        await recruiterService.getMajors(),
+        'Failed to load majors',
+      )
+      return result?.items ?? (result as any)?.Items ?? []
+    },
+    staleTime: 5 * 60 * 1000,
+  })
 
-  useEffect(() => {
-    const fetchMetadata = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const [catRes, skillRes, majorRes] = await Promise.all([
-          recruiterService.getCategories(),
-          recruiterService.getSkills(),
-          recruiterService.getMajors(),
-        ]);
-
-        if (catRes.success && catRes.data?.success) {
-          setCategories(catRes.data.data || []);
-        } else {
-          setError(prev => prev || catRes.message || 'Failed to load categories');
-        }
-
-        if (skillRes.success && skillRes.data?.success) {
-          setAvailableSkills(skillRes.data.data || []);
-        } else {
-          setError(prev => prev || skillRes.message || 'Failed to load skills');
-        }
-
-        if (majorRes.success && majorRes.data?.success) {
-          setMajors(majorRes.data.data.items || []);
-        } else {
-          setError(prev => prev || majorRes.message || 'Failed to load majors');
-        }
-      } catch (err: any) {
-        setError(err.message || 'Error occurred while loading metadata');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMetadata();
-  }, []);
-
+  const firstError = categoriesQuery.error || skillsQuery.error || majorsQuery.error
   return {
-    categories,
-    availableSkills,
-    majors,
-    loading,
-    error,
-  };
+    categories: categoriesQuery.data ?? [],
+    availableSkills: skillsQuery.data ?? [],
+    majors: majorsQuery.data ?? [],
+    loading: categoriesQuery.isLoading || skillsQuery.isLoading || majorsQuery.isLoading,
+    error: firstError ? getErrorMessage(firstError, 'Failed to load job metadata') : '',
+  }
 }

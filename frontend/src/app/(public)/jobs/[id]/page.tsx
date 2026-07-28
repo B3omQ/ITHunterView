@@ -11,6 +11,8 @@ import { MapPin, DollarSign, Calendar, Briefcase, ChevronLeft, Bookmark } from '
 import { useAuthStore } from '@/store/auth.store';
 import { ApplyJobModal } from '@/components/jobs/ApplyJobModal';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
+import { JobPostingMarkdownContent } from '@/components/jobs/JobPostingMarkdownContent';
+import { WorkLocationScheduleContent } from '@/components/jobs/WorkLocationScheduleContent';
 
 export default function PublicJobDetailPage() {
   const params = useParams();
@@ -24,7 +26,6 @@ export default function PublicJobDetailPage() {
   const job = data.data;
 
   const handleApplyClick = () => {
-    // Get fresh auth state from the store directly to avoid hydration issues
     const { accessToken, user } = useAuthStore.getState();
     const isAuthenticated = !!accessToken;
 
@@ -33,7 +34,6 @@ export default function PublicJobDetailPage() {
       return;
     }
 
-    // Check if user is a candidate
     if (user?.role?.name?.toLowerCase() !== 'candidate') {
       alert('Only candidates can apply for jobs.');
       return;
@@ -48,7 +48,6 @@ export default function PublicJobDetailPage() {
       router.push(`/login?redirect=/jobs/${params.id}`);
       return;
     }
-    // Save job logic here if any
   };
 
   return (
@@ -113,25 +112,40 @@ export default function PublicJobDetailPage() {
             </section>
           )}
 
-          <section>
-            <h3 className="text-lg font-semibold mb-3 border-l-4 border-primary pl-3">Job Description</h3>
-            <div className="prose max-w-none text-slate-700 whitespace-pre-wrap">{job.description}</div>
-          </section>
+          {job.description && (
+            <section>
+              <h3 className="text-lg font-semibold mb-3 border-l-4 border-primary pl-3">Job Description</h3>
+              <JobPostingMarkdownContent value={job.description} legacyMode="bullet" />
+            </section>
+          )}
 
-          <section>
-            <h3 className="text-lg font-semibold mb-3 border-l-4 border-primary pl-3">Responsibilities</h3>
-            <div className="prose max-w-none text-slate-700 whitespace-pre-wrap">{job.responsibilities}</div>
-          </section>
+          {job.incomeText && (
+            <section>
+              <h3 className="text-lg font-semibold mb-3 border-l-4 border-primary pl-3">Income</h3>
+              <JobPostingMarkdownContent value={job.incomeText} legacyMode="lines" />
+            </section>
+          )}
 
-          <section>
-            <h3 className="text-lg font-semibold mb-3 border-l-4 border-primary pl-3">Requirements</h3>
-            <div className="prose max-w-none text-slate-700 whitespace-pre-wrap">{job.requirements}</div>
-          </section>
+          {job.workLocationText && (
+            <section>
+              <h3 className="text-lg font-semibold mb-3 border-l-4 border-primary pl-3">Work Location & Schedule</h3>
+              <WorkLocationScheduleContent workLocationText={job.workLocationText} />
+            </section>
+          )}
 
-          <section>
-            <h3 className="text-lg font-semibold mb-3 border-l-4 border-primary pl-3">Benefits</h3>
-            <div className="prose max-w-none text-slate-700 whitespace-pre-wrap">{job.benefits}</div>
-          </section>
+          {job.requirements && (
+            <section>
+              <h3 className="text-lg font-semibold mb-3 border-l-4 border-primary pl-3">Requirements</h3>
+              <JobPostingMarkdownContent value={job.requirements} legacyMode="bullet" />
+            </section>
+          )}
+
+          {job.benefits && (
+            <section>
+              <h3 className="text-lg font-semibold mb-3 border-l-4 border-primary pl-3">Benefits</h3>
+              <JobPostingMarkdownContent value={job.benefits} legacyMode="bullet" />
+            </section>
+          )}
         </div>
       </div>
 
@@ -140,9 +154,7 @@ export default function PublicJobDetailPage() {
         onClose={() => setIsApplyModalOpen(false)}
         jobId={job.id}
         jobTitle={job.title}
-        onSuccess={() => {
-          // You could optionally refetch the job detail or change button state here
-        }}
+        onSuccess={() => {}}
       />
     </div>
   );

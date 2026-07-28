@@ -85,6 +85,8 @@ builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.LogClea
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.AuditLogProcessor>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.NotificationCleanupBackgroundService>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.PaymentCleanupBackgroundService>();
+builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.JobAnalysisWorker>();
+
 
 // ─── JWT Authentication ───────────────────────────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");

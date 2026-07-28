@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using ITHunterview.Domain.Enums;
 
 namespace ITHunterview.Service.DTOs.Job
@@ -9,7 +11,6 @@ namespace ITHunterview.Service.DTOs.Job
         public string JobCode { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public string Location { get; set; } = string.Empty;
-        public string? DetailedLocation { get; set; }
 
         public JobStatus Status { get; set; }
         public int ApplicationCount { get; set; }
@@ -28,7 +29,7 @@ namespace ITHunterview.Service.DTOs.Job
 
         public string ParseStatus { get; set; } = "PENDING";
         public string? ParseError { get; set; }
-
+        public int AnalysisRevision { get; set; } = 1;
         public DateTime? PushedTopUntil { get; set; }
         public bool IsPushedTop => PushedTopUntil.HasValue && PushedTopUntil.Value >= DateTime.UtcNow;
     }
@@ -42,14 +43,16 @@ namespace ITHunterview.Service.DTOs.Job
 
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        public string Responsibilities { get; set; } = string.Empty;
+
         public string Requirements { get; set; } = string.Empty;
+
         public string Benefits { get; set; } = string.Empty;
+        public string IncomeText { get; set; } = string.Empty;
+        public string WorkLocationText { get; set; } = string.Empty;
         public decimal? MinSalary { get; set; }
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; } = "USD";
         public string Location { get; set; } = string.Empty;
-        public string? DetailedLocation { get; set; }
 
         public JobStatus Status { get; set; }
         public int ApplicationCount { get; set; }
@@ -62,6 +65,7 @@ namespace ITHunterview.Service.DTOs.Job
         public string? JobExpertise { get; set; }
         public System.Collections.Generic.List<string>? JobDomain { get; set; }
         public System.Collections.Generic.List<JobSkillRequirementDto> Skills { get; set; } = new();
+        public int AnalysisRevision { get; set; } = 1;
 
         public bool IsBanned { get; set; }
         public string? BanReason { get; set; }
@@ -78,23 +82,37 @@ namespace ITHunterview.Service.DTOs.Job
         public string JobCode { get; set; } = string.Empty;
 
         public string Title { get; set; } = string.Empty;
+
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(10000)]
         public string Description { get; set; } = string.Empty;
-        public string Responsibilities { get; set; } = string.Empty;
+
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(10000)]
         public string Requirements { get; set; } = string.Empty;
+
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(10000)]
         public string Benefits { get; set; } = string.Empty;
+
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(4000)]
+        public string IncomeText { get; set; } = string.Empty;
+
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(4000)]
+        public string WorkLocationText { get; set; } = string.Empty;
+
         public decimal? MinSalary { get; set; }
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; } = "USD";
         public string Location { get; set; } = string.Empty;
-        public string? DetailedLocation { get; set; }
 
-        public JobStatus Status { get; set; } = JobStatus.DRAFT;
         public DateTime? ExpiresAt { get; set; }
         public string? Level { get; set; }
         public string? WorkingModel { get; set; }
         public string? JobExpertise { get; set; }
-        public System.Collections.Generic.List<string>? JobDomain { get; set; }
-        public System.Collections.Generic.List<JobSkillRequirementInputDto>? Skills { get; set; }
+        public List<string>? JobDomain { get; set; }
     }
 
     public class UpdateJobPostingDto
@@ -102,23 +120,37 @@ namespace ITHunterview.Service.DTOs.Job
         public string JobCode { get; set; } = string.Empty;
 
         public string Title { get; set; } = string.Empty;
+
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(10000)]
         public string Description { get; set; } = string.Empty;
-        public string Responsibilities { get; set; } = string.Empty;
+
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(10000)]
         public string Requirements { get; set; } = string.Empty;
+
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(10000)]
         public string Benefits { get; set; } = string.Empty;
+
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(4000)]
+        public string IncomeText { get; set; } = string.Empty;
+
+        [Required(AllowEmptyStrings = false)]
+        [StringLength(4000)]
+        public string WorkLocationText { get; set; } = string.Empty;
+
         public decimal? MinSalary { get; set; }
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; } = "USD";
         public string Location { get; set; } = string.Empty;
-        public string? DetailedLocation { get; set; }
 
-        public JobStatus Status { get; set; }
         public DateTime? ExpiresAt { get; set; }
         public string? Level { get; set; }
         public string? WorkingModel { get; set; }
         public string? JobExpertise { get; set; }
-        public System.Collections.Generic.List<string>? JobDomain { get; set; }
-        public System.Collections.Generic.List<JobSkillRequirementInputDto>? Skills { get; set; }
+        public List<string>? JobDomain { get; set; }
     }
 
     public class JobSkillRequirementDto

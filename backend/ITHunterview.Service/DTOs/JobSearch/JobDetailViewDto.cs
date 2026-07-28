@@ -11,9 +11,10 @@ namespace ITHunterview.Service.DTOs.JobSearch
         public Guid CompanyId { get; set; }
         public string LogoUrl { get; set; }
         public string Description { get; set; }
-        public string Responsibilities { get; set; }
         public string Requirements { get; set; }
         public string Benefits { get; set; }
+        public string IncomeText { get; set; } = string.Empty;
+        public string WorkLocationText { get; set; } = string.Empty;
         public decimal? MinSalary { get; set; }
         public decimal? MaxSalary { get; set; }
         public string Currency { get; set; }

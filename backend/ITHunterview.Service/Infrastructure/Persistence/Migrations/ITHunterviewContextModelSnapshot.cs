@@ -1053,6 +1053,137 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.ToTable("interview_sessions");
                 });
 
+            modelBuilder.Entity("ITHunterview.Domain.Entities.JobAnalysisRuns", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_number");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("DecisionVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("decision_version");
+
+                    b.Property<string>("EffectiveAnalysisJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("effective_analysis_json");
+
+                    b.Property<string>("FailureCode")
+                        .HasColumnType("text")
+                        .HasColumnName("failure_code");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasColumnType("text")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("InputHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("input_hash");
+
+                    b.Property<int>("InputRevision")
+                        .HasColumnType("integer")
+                        .HasColumnName("input_revision");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<DateTime?>("LastHeartbeatAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_heartbeat_at");
+
+                    b.Property<DateTime?>("LeaseExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lease_expires_at");
+
+                    b.Property<string>("ModelName")
+                        .HasColumnType("text")
+                        .HasColumnName("model_name");
+
+                    b.Property<DateTime?>("ProviderCallStartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("provider_call_started_at");
+
+                    b.Property<string>("ProviderName")
+                        .HasColumnType("text")
+                        .HasColumnName("provider_name");
+
+                    b.Property<string>("RawAnalysisJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("raw_analysis_json");
+
+                    b.Property<string>("RawInputSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("raw_input_snapshot");
+
+                    b.Property<Guid>("RequestedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by");
+
+                    b.Property<string>("SchemaVersion")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("schema_version");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("SystemPromptVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("system_prompt_version_id");
+
+                    b.Property<Guid>("UserPromptVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_prompt_version_id");
+
+                    b.Property<string>("ValidationErrorsJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("validation_errors_json");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SystemPromptVersionId");
+
+                    b.HasIndex("UserPromptVersionId");
+
+                    b.HasIndex("JobId", "IdempotencyKey")
+                        .IsUnique()
+                        .HasFilter("idempotency_key IS NOT NULL");
+
+                    b.HasIndex("JobId", "InputRevision")
+                        .IsUnique()
+                        .HasFilter("status IN ('PENDING', 'PROCESSING')");
+
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.HasIndex("JobId", "InputRevision", "AttemptNumber")
+                        .IsUnique();
+
+                    b.HasIndex("JobId", "InputRevision", "InputHash");
+
+                    b.ToTable("job_analysis_runs", (string)null);
+                });
+
             modelBuilder.Entity("ITHunterview.Domain.Entities.JobApplications", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1137,6 +1268,18 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("ActiveAnalysisRunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("active_analysis_run_id");
+
+                    b.Property<string>("AnalysisInputHash")
+                        .HasColumnType("text")
+                        .HasColumnName("analysis_input_hash");
+
+                    b.Property<int>("AnalysisRevision")
+                        .HasColumnType("integer")
+                        .HasColumnName("analysis_revision");
+
                     b.Property<int>("ApplicationCount")
                         .HasColumnType("integer")
                         .HasColumnName("application_count");
@@ -1172,13 +1315,17 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
-                    b.Property<string>("DetailedLocation")
-                        .HasColumnType("text")
-                        .HasColumnName("detailed_location");
-
                     b.Property<Vector>("DomainEmbedding")
                         .HasColumnType("vector(768)")
                         .HasColumnName("domain_embedding");
+
+                    b.Property<int?>("EffectiveAnalysisRevision")
+                        .HasColumnType("integer")
+                        .HasColumnName("effective_analysis_revision");
+
+                    b.Property<Guid?>("EffectiveAnalysisRunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("effective_analysis_run_id");
 
                     b.Property<Vector>("ExperienceEmbedding")
                         .HasColumnType("vector(768)")
@@ -1188,6 +1335,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
+                    b.Property<string>("IncomeText")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("income_text");
                     b.Property<bool>("IsBanned")
                         .HasColumnType("boolean")
                         .HasColumnName("is_banned");
@@ -1252,10 +1403,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("requirements");
 
-                    b.Property<string>("Responsibilities")
-                        .IsRequired()
+                    b.Property<string>("SemanticContentHash")
                         .HasColumnType("text")
-                        .HasColumnName("responsibilities");
+                        .HasColumnName("semantic_content_hash");
 
                     b.Property<Vector>("SkillsEmbedding")
                         .HasColumnType("vector(768)")
@@ -1282,11 +1432,20 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("view_count");
 
+                    b.Property<string>("WorkLocationText")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("work_location_text");
+
                     b.Property<string>("WorkingModel")
                         .HasColumnType("text")
                         .HasColumnName("working_model");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ActiveAnalysisRunId");
+
+                    b.HasIndex("EffectiveAnalysisRunId");
 
                     b.ToTable("job_postings");
                 });
@@ -1350,6 +1509,96 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("job_reviews");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.JobSkillDecisions", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("category");
+
+                    b.Property<decimal?>("Confidence")
+                        .HasColumnType("numeric")
+                        .HasColumnName("confidence");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("DecidedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by");
+
+                    b.Property<string>("DecisionStatus")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("decision_status");
+
+                    b.Property<int>("DecisionVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("decision_version");
+
+                    b.Property<string>("EvidenceText")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("evidence_text");
+
+                    b.Property<string>("Importance")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("importance");
+
+                    b.Property<Guid>("JobAnalysisRunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_analysis_run_id");
+
+                    b.Property<string>("NormalizedMention")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("normalized_mention");
+
+                    b.Property<string>("RawMention")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("raw_mention");
+
+                    b.Property<string>("ResolutionStatus")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("resolution_status");
+
+                    b.Property<int?>("ResolvedSkillId")
+                        .HasColumnType("integer")
+                        .HasColumnName("resolved_skill_id");
+
+                    b.Property<string>("SourceSection")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source_section");
+
+                    b.Property<int?>("SuggestedSkillId")
+                        .HasColumnType("integer")
+                        .HasColumnName("suggested_skill_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobAnalysisRunId");
+
+                    b.HasIndex("ResolvedSkillId");
+
+                    b.HasIndex("SuggestedSkillId");
+
+                    b.ToTable("job_skill_decisions", (string)null);
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.JobSkillRequirements", b =>
@@ -2494,6 +2743,75 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.JobAnalysisRuns", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.JobPostings", "Job")
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ITHunterview.Domain.Entities.PromptVersions", "SystemPromptVersion")
+                        .WithMany()
+                        .HasForeignKey("SystemPromptVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ITHunterview.Domain.Entities.PromptVersions", "UserPromptVersion")
+                        .WithMany()
+                        .HasForeignKey("UserPromptVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Job");
+
+                    b.Navigation("SystemPromptVersion");
+
+                    b.Navigation("UserPromptVersion");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.JobPostings", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.JobAnalysisRuns", "ActiveAnalysisRun")
+                        .WithMany()
+                        .HasForeignKey("ActiveAnalysisRunId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ITHunterview.Domain.Entities.JobAnalysisRuns", "EffectiveAnalysisRun")
+                        .WithMany()
+                        .HasForeignKey("EffectiveAnalysisRunId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ActiveAnalysisRun");
+
+                    b.Navigation("EffectiveAnalysisRun");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.JobSkillDecisions", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.JobAnalysisRuns", "JobAnalysisRun")
+                        .WithMany()
+                        .HasForeignKey("JobAnalysisRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ITHunterview.Domain.Entities.Skills", "ResolvedSkill")
+                        .WithMany()
+                        .HasForeignKey("ResolvedSkillId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ITHunterview.Domain.Entities.Skills", "SuggestedSkill")
+                        .WithMany()
+                        .HasForeignKey("SuggestedSkillId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("JobAnalysisRun");
+
+                    b.Navigation("ResolvedSkill");
+
+                    b.Navigation("SuggestedSkill");
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.Majors", b =>

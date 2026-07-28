@@ -4,10 +4,10 @@ using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Notification;
+using ITHunterview.Service.Hubs;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
-using ITHunterview.Service.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
 namespace ITHunterview.Service.UseCase
