@@ -1,8 +1,34 @@
-"use client";
+'use client';
 
-import React, { memo } from "react";
-import { Edit2, Trash2, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
-import type { SkillDto } from "@/types/master-data.types";
+import React, { memo, useState } from 'react';
+import {
+  Edit2,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  SearchX,
+  RotateCcw,
+} from 'lucide-react';
+import type { SkillDto } from '@/types/master-data.types';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface SkillsTableProps {
   skills: SkillDto[];
@@ -19,41 +45,6 @@ interface SkillsTableProps {
   onRetry: () => void;
 }
 
-function TableSkeleton({ columns }: { columns: number }) {
-  return (
-    <div className="w-full">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-border bg-muted/30">
-              {Array.from({ length: columns }).map((_, i) => (
-                <th key={i} className="px-6 py-4">
-                  <div className="h-4 bg-muted animate-pulse rounded-md w-24" />
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/60">
-            {Array.from({ length: 5 }).map((_, rowIndex) => (
-              <tr key={rowIndex}>
-                {Array.from({ length: columns }).map((_, colIndex) => (
-                  <td key={colIndex} className="px-6 py-4">
-                    <div
-                      className={`h-5 bg-muted/70 animate-pulse rounded-md ${
-                        colIndex === columns - 1 ? "ml-auto w-16" : "w-3/4"
-                      }`}
-                    />
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 export const SkillsTable = memo(function SkillsTable({
   skills,
   isLoading,
@@ -68,154 +59,240 @@ export const SkillsTable = memo(function SkillsTable({
   onStatusToggle,
   onRetry,
 }: SkillsTableProps) {
-  if (isLoading) {
-    return <TableSkeleton columns={3} />;
-  }
+  const [internalPageSize, setInternalPageSize] = useState(pageSize);
 
-  if (isError) {
-    return (
-      <div className="text-center py-20 space-y-3">
-        <p className="text-sm text-destructive font-medium">
-          Error loading data from server.
-        </p>
-        <button
-          onClick={onRetry}
-          className="px-4 py-2 text-xs font-medium border border-border rounded-xl hover:bg-muted"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
+  const totalCount = totalItems || skills.length;
+  const computedTotalPages = totalPages || Math.ceil(totalCount / internalPageSize) || 1;
 
-  if (skills.length === 0) {
-    return (
-      <div className="text-center py-20 text-muted-foreground">
-        <p className="text-sm">No matching skills found.</p>
-      </div>
-    );
-  }
+  const startResult = totalCount > 0 ? (currentPage - 1) * internalPageSize + 1 : 0;
+  const endResult = Math.min(currentPage * internalPageSize, totalCount);
 
   return (
-    <>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-border bg-muted/30">
-              <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Skill & Aliases
-              </th>
-              <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-center">
-                Status
-              </th>
-              <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/60">
-            {skills.map((skill) => (
-              <tr
-                key={skill.id}
-                className="hover:bg-muted/20 transition-colors"
-              >
-                <td className="px-6 py-4">
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-sm font-semibold text-foreground">
-                      {skill.name}
-                    </span>
-                    {skill.aliases && skill.aliases.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-0.5">
-                        {skill.aliases.slice(0, 4).map((alias, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-muted/50 text-muted-foreground border border-border/50"
-                          >
-                            {alias}
-                          </span>
-                        ))}
-                        {skill.aliases.length > 4 && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-muted/80 text-foreground border border-border/50 shadow-sm">
-                            +{skill.aliases.length - 4} more
-                          </span>
-                        )}
-                      </div>
-                    )}
+    <div className="flex flex-col h-full justify-between">
+      {/* TẦNG 2: MAIN TABLE CONTAINER (TABLE_STANDARD - SHADCN TABLE) */}
+      <div className="rounded-lg border border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-2xs w-full">
+        <Table className="w-full text-left border-collapse table-fixed">
+          {/* Table Header */}
+          <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
+            <TableRow className="hover:bg-transparent border-none">
+              <TableHead className="w-[65%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                SKILL &amp; ALIASES
+              </TableHead>
+
+              <TableHead className="w-[20%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                STATUS
+              </TableHead>
+
+              <TableHead className="w-[15%] py-3 px-2 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                ACTIONS
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+
+          {/* Table Body */}
+          <TableBody>
+            {isLoading ? (
+              // Loading Skeleton State (6 rows)
+              Array.from({ length: internalPageSize || 6 }).map((_, index) => (
+                <TableRow key={index} className="border-b border-[#CED0D4]/60 dark:border-zinc-800/60">
+                  <TableCell className="py-3.5 px-3">
+                    <Skeleton className="h-5 w-36 bg-slate-100 dark:bg-zinc-800 rounded-md mb-1.5" />
+                    <div className="flex gap-1">
+                      <Skeleton className="h-4 w-16 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                      <Skeleton className="h-4 w-20 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-3.5 px-3 text-center">
+                    <Skeleton className="h-5 w-20 bg-slate-100 dark:bg-zinc-800 rounded-full mx-auto" />
+                  </TableCell>
+                  <TableCell className="py-3.5 px-2 text-center">
+                    <Skeleton className="h-8 w-16 bg-slate-100 dark:bg-zinc-800 rounded-md mx-auto" />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : isError ? (
+              // Error State
+              <TableRow>
+                <TableCell colSpan={3} className="h-64 text-center">
+                  <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
+                    <p className="font-semibold text-rose-600 dark:text-rose-400 text-base">
+                      Failed to load skills
+                    </p>
+                    <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
+                      An error occurred while fetching skills library. Please try again.
+                    </p>
+                    <Button
+                      onClick={onRetry}
+                      variant="outline"
+                      className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" /> Retry Loading
+                    </Button>
                   </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center justify-center">
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={skill.status === "ACTIVE"}
-                        onChange={() => onStatusToggle(skill)}
-                        className="sr-only peer"
+                </TableCell>
+              </TableRow>
+            ) : skills.length === 0 ? (
+              // Empty State
+              <TableRow>
+                <TableCell colSpan={3} className="h-72 text-center">
+                  <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
+                    <div className="h-12 w-12 rounded-full bg-[#E7F3FF] dark:bg-blue-950/50 flex items-center justify-center text-[#1877F2] dark:text-blue-400 mb-3">
+                      <SearchX className="h-6 w-6" />
+                    </div>
+                    <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">
+                      No matching skills found
+                    </p>
+                    <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
+                      No skills found in the selected category or search filter.
+                    </p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+              // Actual Data Rows
+              skills.map((skill) => (
+                <TableRow
+                  key={skill.id}
+                  className="border-b border-[#CED0D4]/60 dark:border-zinc-800/60 hover:bg-[#E7F3FF]/40 dark:hover:bg-blue-950/20 transition-colors duration-150 group"
+                >
+                  {/* Skill & Aliases */}
+                  <TableCell className="py-3.5 px-3 align-middle">
+                    <div className="flex flex-col gap-1">
+                      <span className="font-bold text-sm text-[#050505] dark:text-zinc-100 group-hover:text-[#1877F2] dark:group-hover:text-blue-400 transition-colors">
+                        {skill.name}
+                      </span>
+                      {skill.aliases && skill.aliases.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {skill.aliases.slice(0, 4).map((alias, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 dark:bg-zinc-800 text-[#65676B] dark:text-zinc-300 border border-[#CED0D4]/60 dark:border-zinc-700"
+                            >
+                              {alias}
+                            </span>
+                          ))}
+                          {skill.aliases.length > 4 && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#E7F3FF] dark:bg-blue-950/60 text-[#1877F2] dark:text-blue-400 border border-[#1877F2]/30">
+                              +{skill.aliases.length - 4} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+
+                  {/* Status (Switch + Label) */}
+                  <TableCell className="py-3.5 px-3 align-middle text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <Switch
+                        checked={skill.status === 'ACTIVE'}
+                        onCheckedChange={() => onStatusToggle(skill)}
                       />
-                      <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:height-4 after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-                    </label>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => onEdit(skill)}
-                      className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors"
-                      title="Edit"
-                    >
-                      <Edit2 size={15} />
-                    </button>
-                    <button
-                      onClick={() => onDelete(skill)}
-                      className="p-1.5 text-muted-foreground hover:text-destructive rounded-lg hover:bg-destructive/10 transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                      <span className="text-xs font-semibold text-[#050505] dark:text-zinc-300">
+                        {skill.status === 'ACTIVE' ? 'Active' : 'Deactive'}
+                      </span>
+                    </div>
+                  </TableCell>
+
+                  {/* Actions (Icon-only buttons) */}
+                  <TableCell className="py-3.5 px-2 align-middle text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onEdit(skill)}
+                        className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
+                        title="Edit Skill"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onDelete(skill)}
+                        className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                        title="Delete Skill"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
 
-      {/* Pagination */}
-      <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-border gap-4 bg-muted/10">
-        <span className="text-xs text-muted-foreground">
-          Showing {Math.min((currentPage - 1) * pageSize + 1, totalItems)} -{" "}
-          {Math.min(currentPage * pageSize, totalItems)} of {totalItems} skills
-        </span>
-        <div className="flex items-center gap-1.5">
-          <button
+      {/* TẦNG 3: PAGINATION FOOTER */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 px-1">
+        <div className="flex items-center space-x-3 text-sm text-[#65676B] dark:text-zinc-400">
+          <div>
+            Showing <span className="font-semibold text-[#050505] dark:text-zinc-200">{startResult} - {endResult}</span> of <span className="font-semibold text-[#050505] dark:text-zinc-200">{totalCount}</span> skills
+          </div>
+        </div>
+
+        {/* Page Buttons */}
+        <div className="flex items-center space-x-1.5">
+          <Button
+            variant="outline"
+            size="icon"
+            disabled={currentPage === 1 || isLoading}
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1}
-            className="p-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            className="h-8 w-8 border-[#CED0D4] dark:border-zinc-800 text-[#65676B] dark:text-zinc-400 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 disabled:opacity-40 cursor-pointer"
           >
-            <ChevronLeft size={16} />
-          </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <button
-              key={p}
-              onClick={() => onPageChange(p)}
-              className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${
-                currentPage === p
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "border-border bg-card text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {p}
-            </button>
-          ))}
-          <button
-            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage === totalPages || totalPages === 0}
-            className="p-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          {Array.from({ length: computedTotalPages }).map((_, index) => {
+            const pageNum = index + 1;
+            if (
+              computedTotalPages <= 5 ||
+              pageNum === 1 ||
+              pageNum === computedTotalPages ||
+              Math.abs(pageNum - currentPage) <= 1
+            ) {
+              const isCurrent = pageNum === currentPage;
+              return (
+                <Button
+                  key={pageNum}
+                  variant={isCurrent ? 'default' : 'outline'}
+                  disabled={isLoading}
+                  onClick={() => onPageChange(pageNum)}
+                  className={`h-8 w-8 text-xs font-semibold rounded-md shadow-2xs transition-all cursor-pointer ${
+                    isCurrent
+                      ? 'bg-[#1877F2] hover:bg-[#166FE5] text-white border-[#1877F2]'
+                      : 'border-[#CED0D4] dark:border-zinc-800 text-[#050505] dark:text-zinc-300 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 dark:hover:text-blue-400'
+                  }`}
+                >
+                  {pageNum}
+                </Button>
+              );
+            }
+            if (
+              (pageNum === 2 && currentPage > 3) ||
+              (pageNum === computedTotalPages - 1 && currentPage < computedTotalPages - 2)
+            ) {
+              return (
+                <span key={pageNum} className="px-1 text-xs text-[#65676B]">
+                  ...
+                </span>
+              );
+            }
+            return null;
+          })}
+
+          <Button
+            variant="outline"
+            size="icon"
+            disabled={currentPage >= computedTotalPages || isLoading}
+            onClick={() => onPageChange(Math.min(computedTotalPages, currentPage + 1))}
+            className="h-8 w-8 border-[#CED0D4] dark:border-zinc-800 text-[#65676B] dark:text-zinc-400 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 disabled:opacity-40 cursor-pointer"
           >
-            <ChevronRight size={16} />
-          </button>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
-    </>
+    </div>
   );
 });

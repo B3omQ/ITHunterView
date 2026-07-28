@@ -25,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 
-export default function AiConfigPage() {
+export default function StaffAiConfigPage() {
   const [config, setConfig] = useState<AiConfigResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);

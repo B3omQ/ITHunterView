@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { useAdminPayments } from '@/hooks/useAdminPayments';
@@ -15,24 +15,41 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Search,
+  X,
+  RotateCcw,
+  CreditCard,
+  SearchX,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 
 export default function FinancePage() {
   const [page, setPage] = useState(1);
-  const pageSize = 20;
+  const [pageSize, setPageSize] = useState(10);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
 
-  const { data, isLoading } = useAdminPayments({ page, pageSize });
+  const { data, isLoading, isError, refetch } = useAdminPayments({ page, pageSize });
   const result = data?.data;
   const queryClient = useQueryClient();
   const connection = useSignalR('/hubs/notification');
 
   useEffect(() => {
     if (connection) {
-      connection.on('ReceiveNewPayment', (payment: PaymentDto) => {
-        // Có thể update trực tiếp vào cache để nhanh hơn, 
-        // hoặc đơn giản là invalidate để gọi lại API
+      connection.on('ReceiveNewPayment', (_payment: PaymentDto) => {
         queryClient.invalidateQueries({ queryKey: ['admin-payments'] });
       });
     }
@@ -44,80 +61,371 @@ export default function FinancePage() {
     };
   }, [connection, queryClient]);
 
+  const paymentItems = result?.items || [];
+  const totalCount = result?.total || 0;
+  const totalPages = Math.ceil(totalCount / pageSize) || 1;
+
+  // Filter payments locally if search or status filter is typed
+  const filteredPayments = useMemo(() => {
+    return paymentItems.filter((item) => {
+      const matchesSearch =
+        !search.trim() ||
+        (item.userName && item.userName.toLowerCase().includes(search.toLowerCase().trim())) ||
+        (item.userEmail && item.userEmail.toLowerCase().includes(search.toLowerCase().trim())) ||
+        (item.id && item.id.toLowerCase().includes(search.toLowerCase().trim()));
+
+      const matchesStatus =
+        statusFilter === 'ALL' || item.status?.toUpperCase() === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [paymentItems, search, statusFilter]);
+
+  const handleResetFilters = () => {
+    setSearch('');
+    setStatusFilter('ALL');
+    setPage(1);
+  };
+
+  const isFilterActive = search !== '' || statusFilter !== 'ALL';
+  const startResult = totalCount > 0 ? (page - 1) * pageSize + 1 : 0;
+  const endResult = Math.min(page * pageSize, totalCount);
+
+  const renderStatusBadge = (status: string) => {
+    const s = status?.toUpperCase();
+    switch (s) {
+      case 'SUCCESS':
+        return (
+          <Badge className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none">
+            Success
+          </Badge>
+        );
+      case 'FAILED':
+        return (
+          <Badge className="bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none">
+            Failed
+          </Badge>
+        );
+      case 'PENDING':
+      default:
+        return (
+          <Badge className="bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none">
+            Pending
+          </Badge>
+        );
+    }
+  };
+
   return (
-    <div className="p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Quản lý tài chính & Giao dịch</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
+    <div className="min-h-screen bg-background transition-colors duration-200">
+      <div className="w-full pb-10 space-y-5">
+        {/* Top Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-2">
+          <div>
+            <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
+              <CreditCard className="text-[#1877F2] shrink-0 h-8 w-8" />
+              Financial Management & Transactions
+            </h1>
+            <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
+              Monitor, track, and audit payment transactions and financial records across the platform.
+            </p>
+          </div>
+        </div>
+
+        {/* TẦNG 1: TOOLBAR (Search Bar, Status Filter, Reset Filters) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 flex-1">
+            {/* Search Bar */}
+            <div className="relative w-full sm:w-80 md:w-96">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#65676B] dark:text-zinc-400" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by user name, email..."
+                className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#65676B] hover:text-[#050505] dark:hover:text-white transition-colors p-1 cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Status Filter */}
+            <Select
+              value={statusFilter}
+              onValueChange={(val) => {
+                if (val) setStatusFilter(val);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[170px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
+                <SelectValue placeholder="Status Filter" />
+              </SelectTrigger>
+              <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
+                <SelectItem value="ALL">All Statuses</SelectItem>
+                <SelectItem value="SUCCESS">Success</SelectItem>
+                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="FAILED">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Clear Filters Button */}
+            {isFilterActive && (
+              <Button
+                onClick={handleResetFilters}
+                variant="ghost"
+                className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
+              >
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* TẦNG 2: MAIN TABLE CONTAINER (TABLE_STANDARD - SHADCN TABLE) */}
+        <div className="rounded-lg border border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-2xs w-full">
+          <Table className="w-full text-left border-collapse table-fixed">
+            {/* Table Header */}
+            <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
+              <TableRow className="hover:bg-transparent border-none">
+                <TableHead className="w-[22%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  USER NAME
+                </TableHead>
+
+                <TableHead className="w-[26%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  EMAIL
+                </TableHead>
+
+                <TableHead className="w-[20%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  AMOUNT
+                </TableHead>
+
+                <TableHead className="w-[15%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  STATUS
+                </TableHead>
+
+                <TableHead className="w-[17%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  TRANSACTION TIME
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+
+            {/* Table Body */}
+            <TableBody>
+              {isLoading ? (
+                // Loading Skeleton State (6 rows)
+                Array.from({ length: pageSize || 6 }).map((_, index) => (
+                  <TableRow key={index} className="border-b border-[#CED0D4]/60 dark:border-zinc-800/60">
+                    <TableCell className="py-3.5 px-3">
+                      <Skeleton className="h-5 w-32 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3">
+                      <Skeleton className="h-5 w-40 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3">
+                      <Skeleton className="h-5 w-28 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3 text-center">
+                      <Skeleton className="h-6 w-20 bg-slate-100 dark:bg-zinc-800 rounded-full mx-auto" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3">
+                      <Skeleton className="h-4 w-24 bg-slate-100 dark:bg-zinc-800 rounded-md mb-1" />
+                      <Skeleton className="h-3 w-16 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : isError ? (
+                // Error State
                 <TableRow>
-                  <TableHead>Tên người dùng</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Số tiền</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Thời gian giao dịch</TableHead>
+                  <TableCell colSpan={5} className="h-64 text-center">
+                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
+                      <p className="font-semibold text-rose-600 dark:text-rose-400 text-base">
+                        Failed to load transaction history
+                      </p>
+                      <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
+                        An error occurred while fetching payment records. Please try again.
+                      </p>
+                      <Button
+                        onClick={() => refetch()}
+                        variant="outline"
+                        className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
+                      >
+                        <RotateCcw className="h-4 w-4 mr-2" /> Retry Loading
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center">Đang tải...</TableCell>
-                  </TableRow>
-                ) : !result?.items?.length ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center">Chưa có giao dịch nào.</TableCell>
-                  </TableRow>
-                ) : (
-                  result.items.map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell className="font-medium">
-                        {payment.userName || 'Unknown'}
+              ) : filteredPayments.length === 0 ? (
+                // Empty State
+                <TableRow>
+                  <TableCell colSpan={5} className="h-72 text-center">
+                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
+                      <div className="h-12 w-12 rounded-full bg-[#E7F3FF] dark:bg-blue-950/50 flex items-center justify-center text-[#1877F2] dark:text-blue-400 mb-3">
+                        <SearchX className="h-6 w-6" />
+                      </div>
+                      <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">
+                        No transactions found
+                      </p>
+                      <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
+                        {isFilterActive
+                          ? 'No transactions match the current filters. Try clearing or adjusting your search criteria.'
+                          : 'No payment transactions recorded yet.'}
+                      </p>
+                      {isFilterActive && (
+                        <Button
+                          onClick={handleResetFilters}
+                          variant="outline"
+                          className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" /> Clear All Filters
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                // Actual Data Rows
+                filteredPayments.map((payment) => {
+                  const createdAtDate = new Date(payment.createdAt);
+                  return (
+                    <TableRow
+                      key={payment.id}
+                      className="border-b border-[#CED0D4]/60 dark:border-zinc-800/60 hover:bg-[#E7F3FF]/40 dark:hover:bg-blue-950/20 transition-colors duration-150 group"
+                    >
+                      {/* User Name */}
+                      <TableCell className="py-3.5 px-3 align-middle">
+                        <span className="font-bold text-sm text-[#050505] dark:text-zinc-100 group-hover:text-[#1877F2] dark:group-hover:text-blue-400 transition-colors">
+                          {payment.userName || 'Unknown'}
+                        </span>
                       </TableCell>
-                      <TableCell>{payment.userEmail || 'N/A'}</TableCell>
-                      <TableCell className="text-green-600 font-semibold">
+
+                      {/* Email */}
+                      <TableCell className="py-3.5 px-3 align-middle text-sm text-[#65676B] dark:text-zinc-300 font-medium">
+                        {payment.userEmail || 'N/A'}
+                      </TableCell>
+
+                      {/* Amount */}
+                      <TableCell className="py-3.5 px-3 align-middle text-sm font-bold text-emerald-600 dark:text-emerald-400">
                         +{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(payment.amount)}
                       </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={payment.status === 'SUCCESS' ? 'default' : payment.status === 'FAILED' ? 'destructive' : 'secondary'}
-                        >
-                          {payment.status}
-                        </Badge>
+
+                      {/* Status */}
+                      <TableCell className="py-3.5 px-3 align-middle text-center">
+                        <div className="flex justify-center">
+                          {renderStatusBadge(payment.status)}
+                        </div>
                       </TableCell>
-                      <TableCell>
-                        {format(new Date(payment.createdAt), 'dd/MM/yyyy HH:mm:ss')}
+
+                      {/* Transaction Time (2-line Date & Time format) */}
+                      <TableCell className="py-3.5 px-3 align-middle">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-semibold text-[#050505] dark:text-zinc-200">
+                            {format(createdAtDate, 'MM/dd/yyyy')}
+                          </span>
+                          <span className="text-[11px] font-mono text-[#65676B] dark:text-zinc-400">
+                            {format(createdAtDate, 'hh:mm:ss a')}
+                          </span>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* TẦNG 3: PAGINATION FOOTER */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 px-1">
+          <div className="flex items-center space-x-3 text-sm text-[#65676B] dark:text-zinc-400">
+            <div>
+              Showing <span className="font-semibold text-[#050505] dark:text-zinc-200">{startResult} - {endResult}</span> of <span className="font-semibold text-[#050505] dark:text-zinc-200">{totalCount}</span> transactions
+            </div>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(val) => {
+                if (val) setPageSize(Number(val));
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="h-8 w-[110px] border-[#CED0D4] dark:border-zinc-800 text-xs font-medium focus:ring-[#1877F2]">
+                <SelectValue placeholder="Page size" />
+              </SelectTrigger>
+              <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
+                <SelectItem value="10">10 / page</SelectItem>
+                <SelectItem value="20">20 / page</SelectItem>
+                <SelectItem value="50">50 / page</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          
-          {result && result.total > pageSize && (
-             <div className="flex justify-end gap-2 mt-4">
-                <Button 
-                  variant="outline" 
-                  disabled={page === 1}
-                  onClick={() => setPage(page - 1)}
-                >
-                  Trang trước
-                </Button>
-                <Button 
-                  variant="outline"
-                  disabled={page * pageSize >= result.total}
-                  onClick={() => setPage(page + 1)}
-                >
-                  Trang sau
-                </Button>
-             </div>
-          )}
-        </CardContent>
-      </Card>
+
+          {/* Page Buttons */}
+          <div className="flex items-center space-x-1.5">
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={page === 1 || isLoading}
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              className="h-8 w-8 border-[#CED0D4] dark:border-zinc-800 text-[#65676B] dark:text-zinc-400 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 disabled:opacity-40 cursor-pointer"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+
+            {Array.from({ length: totalPages }).map((_, index) => {
+              const pageNum = index + 1;
+              if (
+                totalPages <= 5 ||
+                pageNum === 1 ||
+                pageNum === totalPages ||
+                Math.abs(pageNum - page) <= 1
+              ) {
+                const isCurrent = pageNum === page;
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={isCurrent ? 'default' : 'outline'}
+                    disabled={isLoading}
+                    onClick={() => setPage(pageNum)}
+                    className={`h-8 w-8 text-xs font-semibold rounded-md shadow-2xs transition-all cursor-pointer ${
+                      isCurrent
+                        ? 'bg-[#1877F2] hover:bg-[#166FE5] text-white border-[#1877F2]'
+                        : 'border-[#CED0D4] dark:border-zinc-800 text-[#050505] dark:text-zinc-300 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 dark:hover:text-blue-400'
+                    }`}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              }
+              if (
+                (pageNum === 2 && page > 3) ||
+                (pageNum === totalPages - 1 && page < totalPages - 2)
+              ) {
+                return (
+                  <span key={pageNum} className="px-1 text-xs text-[#65676B]">
+                    ...
+                  </span>
+                );
+              }
+              return null;
+            })}
+
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={page >= totalPages || isLoading}
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+              className="h-8 w-8 border-[#CED0D4] dark:border-zinc-800 text-[#65676B] dark:text-zinc-400 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 disabled:opacity-40 cursor-pointer"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,26 +1,27 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Search, Plus, X, CheckCircle, RotateCcw } from "lucide-react";
+import { Search, Plus, X, CheckCircle, RotateCcw, Target, UploadCloud } from "lucide-react";
 import { usePagedTargetRoles } from "@/hooks/useTargetRole";
 import type { TargetRoleTemplateDto } from "@/types/master-data.types";
 import { TargetRoleModal } from "../components/TargetRoleModal";
 import { TargetRoleDeleteDialog } from "../components/TargetRoleDeleteDialog";
 import { TargetRolesTable } from "../components/TargetRolesTable";
 import { ImportTargetRoleModal } from "../components/ImportTargetRoleModal";
-import { UploadCloud } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function TargetRolesPage() {
   const [roleSearch, setRoleSearch] = useState("");
   const [debouncedRoleSearch, setDebouncedRoleSearch] = useState("");
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedRoleSearch(roleSearch), 300);
+    const timer = setTimeout(() => setDebouncedRoleSearch(roleSearch), 350);
     return () => clearTimeout(timer);
   }, [roleSearch]);
 
   const [rolePage, setRolePage] = useState(1);
-  const rolePageSize = 10;
+  const [rolePageSize, setRolePageSize] = useState(10);
 
   useEffect(() => {
     setRolePage(1);
@@ -82,65 +83,100 @@ export default function TargetRolesPage() {
     setIsRoleDeleteOpen(true);
   }, []);
 
-  return (
-    <div className="w-full pb-8 space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Target Roles (Templates)</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage standard target role templates.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-background border border-border hover:bg-muted text-foreground font-medium text-sm rounded-xl transition-colors"
-          >
-            <UploadCloud size={16} />
-            <span className="hidden sm:inline">Import CSV</span>
-          </button>
-          <button
-            onClick={handleOpenRoleCreate}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/95 text-primary-foreground font-medium text-sm rounded-xl shadow-xs transition-colors"
-          >
-            <Plus size={16} />
-            <span>Add new</span>
-          </button>
-        </div>
-      </div>
+  const handleResetFilters = () => {
+    setRoleSearch("");
+    setRolePage(1);
+  };
 
-      <div className="space-y-4">
-        <div className="bg-card border border-border rounded-2xl p-4 shadow-2xs flex gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search target roles by name..."
-              value={roleSearch}
-              onChange={(e) => setRoleSearch(e.target.value)}
-              className="pl-9 pr-4 py-2 w-full rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground"
-            />
-            {roleSearch && (
-              <button onClick={() => setRoleSearch("")} className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground">
-                <X size={16} />
-              </button>
+  const isFilterActive = roleSearch !== "";
+
+  return (
+    <div className="min-h-screen bg-background transition-colors duration-200">
+      <div className="w-full pb-10 space-y-5">
+        {/* Top Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-2">
+          <div>
+            <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
+              <Target className="text-[#1877F2] shrink-0 h-8 w-8" />
+              Target Roles (Templates)
+            </h1>
+            <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
+              Manage standard target role templates and required skill mappings across the platform.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={() => setIsImportModalOpen(true)}
+              className="h-10 border-[#CED0D4] dark:border-zinc-800 text-[#050505] dark:text-zinc-300 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 transition-colors cursor-pointer w-full sm:w-auto gap-2"
+            >
+              <UploadCloud className="h-4 w-4" />
+              Import CSV
+            </Button>
+            <Button
+              onClick={handleOpenRoleCreate}
+              className="bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium h-10 px-4 rounded-lg shadow-2xs active:scale-[0.98] transition-all gap-2 cursor-pointer w-full sm:w-auto"
+            >
+              <Plus className="h-4 w-4" />
+              Add new template
+            </Button>
+          </div>
+        </div>
+
+        {/* TẦNG 1: TOOLBAR (Search & Clear Filters) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 flex-1">
+            {/* Search Bar */}
+            <div className="relative w-full sm:w-80 md:w-96">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#65676B] dark:text-zinc-400" />
+              <Input
+                value={roleSearch}
+                onChange={(e) => setRoleSearch(e.target.value)}
+                placeholder="Search target roles by name or description..."
+                className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
+              />
+              {roleSearch && (
+                <button
+                  onClick={() => setRoleSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#65676B] hover:text-[#050505] dark:hover:text-white transition-colors p-1 cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Clear Filters Button */}
+            {isFilterActive && (
+              <Button
+                onClick={handleResetFilters}
+                variant="ghost"
+                className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
+              >
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+              </Button>
             )}
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs">
-          <TargetRolesTable
-            roles={rolesData?.data?.items || []}
-            isLoading={isRolesLoading}
-            isError={isRolesError}
-            totalItems={rolesData?.data?.total || 0}
-            totalPages={rolesData?.data?.totalPages || 0}
-            currentPage={rolePage}
-            pageSize={rolePageSize}
-            onPageChange={setRolePage}
-            onEdit={handleOpenRoleEdit}
-            onDelete={handleRoleDeleteClick}
-            onRetry={refetchRoles}
-          />
-        </div>
+        {/* TẦNG 2 & 3: TARGET ROLES TABLE & PAGINATION CONTAINER */}
+        <TargetRolesTable
+          roles={rolesData?.data?.items || []}
+          isLoading={isRolesLoading}
+          isError={isRolesError}
+          totalItems={rolesData?.data?.total || 0}
+          totalPages={rolesData?.data?.totalPages || 0}
+          currentPage={rolePage}
+          pageSize={rolePageSize}
+          onPageSizeChange={setRolePageSize}
+          onPageChange={setRolePage}
+          onEdit={handleOpenRoleEdit}
+          onDelete={handleRoleDeleteClick}
+          onRetry={refetchRoles}
+          isFilterActive={isFilterActive}
+          onResetFilters={handleResetFilters}
+        />
       </div>
 
       <TargetRoleModal
@@ -170,12 +206,12 @@ export default function TargetRolesPage() {
             <div className="flex-1">
               <span>{toast.message}</span>
               {toast.undoAction && (
-                <button onClick={() => { toast.undoAction?.(); setToast(null); }} className="ml-3 inline-flex items-center gap-1 text-xs font-bold underline hover:no-underline hover:opacity-90">
+                <button onClick={() => { toast.undoAction?.(); setToast(null); }} className="ml-3 inline-flex items-center gap-1 text-xs font-bold underline hover:no-underline hover:opacity-90 cursor-pointer">
                   <RotateCcw size={12} /><span>Undo</span>
                 </button>
               )}
             </div>
-            <button onClick={() => setToast(null)} className="text-muted-foreground hover:text-foreground shrink-0 p-0.5 rounded-lg hover:bg-black/5"><X size={14} /></button>
+            <button onClick={() => setToast(null)} className="text-muted-foreground hover:text-foreground shrink-0 p-0.5 rounded-lg hover:bg-black/5 cursor-pointer"><X size={14} /></button>
           </div>
         </div>
       )}

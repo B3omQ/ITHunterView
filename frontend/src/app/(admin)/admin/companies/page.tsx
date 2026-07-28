@@ -17,7 +17,8 @@ import {
   Check,
   Ban,
   Clock,
-  User
+  User,
+  SearchX,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCompanies, useUpdateCompanyStatus } from '@/hooks/useCompany';
@@ -25,6 +26,23 @@ import { Company, CompanyStatus } from '@/types/company.types';
 import { CompanyStatusBadge } from '@/components/shared/CompanyStatusBadge';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -35,11 +53,11 @@ import {
 } from '@/components/ui/dialog';
 
 const STATUS_FILTERS = [
-  { value: 'ALL', label: 'All' },
+  { value: 'ALL', label: 'All Statuses' },
   { value: 'PENDING', label: 'Pending Review' },
   { value: 'PENDING_UPDATE', label: 'Pending Update' },
   { value: 'VERIFIED', label: 'Verified' },
-  { value: 'REJECTED', label: 'Rejected' }
+  { value: 'REJECTED', label: 'Rejected' },
 ];
 
 export default function AdminCompaniesPage() {
@@ -47,12 +65,12 @@ export default function AdminCompaniesPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('PENDING'); // Default to PENDING for action items
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState(10);
 
   // Detail & Action Modals state
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  
+
   // Confirm action states
   const [confirmAction, setConfirmAction] = useState<{
     company: Company;
@@ -73,21 +91,21 @@ export default function AdminCompaniesPage() {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
       setPage(1);
-    }, 300);
+    }, 350);
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Fetch Companies
+  // Fetch Companies complying with kinh-mantra.md (page -> hook -> service -> api-client -> backend)
   const {
     data: companyData,
     isLoading,
     isError,
-    refetch
+    refetch,
   } = useCompanies({
     page,
     pageSize,
     search: debouncedSearch || undefined,
-    status: statusFilter === 'ALL' ? undefined : statusFilter
+    status: statusFilter === 'ALL' ? undefined : statusFilter,
   });
 
   // Status update mutation
@@ -102,17 +120,17 @@ export default function AdminCompaniesPage() {
     try {
       await updateStatus({
         id: companyId,
-        dto: { 
+        dto: {
           status,
-          rejectReason: status === 'REJECTED' ? rejectReasonInput.trim() : undefined
-        }
+          rejectReason: status === 'REJECTED' ? rejectReasonInput.trim() : undefined,
+        },
       });
       toast.success(
-        status === 'VERIFIED' 
-          ? 'Company verified successfully!' 
+        status === 'VERIFIED'
+          ? 'Company verified successfully!'
           : 'Company rejected successfully!'
       );
-      
+
       // Update selected company status in detail modal if open
       if (selectedCompany && selectedCompany.id === companyId) {
         if (selectedCompany.hasPendingChange) {
@@ -130,7 +148,7 @@ export default function AdminCompaniesPage() {
               pendingHeadquartersAddress: undefined,
               pendingVerificationMethod: undefined,
               pendingVerificationDocumentUrl: undefined,
-              rejectReason: undefined
+              rejectReason: undefined,
             });
           } else {
             setSelectedCompany({
@@ -141,18 +159,18 @@ export default function AdminCompaniesPage() {
               pendingHeadquartersAddress: undefined,
               pendingVerificationMethod: undefined,
               pendingVerificationDocumentUrl: undefined,
-              rejectReason: rejectReasonInput.trim()
+              rejectReason: rejectReasonInput.trim(),
             });
           }
         } else {
           setSelectedCompany({
             ...selectedCompany,
             status,
-            rejectReason: status === 'REJECTED' ? rejectReasonInput.trim() : undefined
+            rejectReason: status === 'REJECTED' ? rejectReasonInput.trim() : undefined,
           });
         }
       }
-      
+
       setConfirmAction(null);
       setRejectReasonInput('');
     } catch (err) {
@@ -166,130 +184,224 @@ export default function AdminCompaniesPage() {
     setPage(1);
   };
 
-  const totalPages = companyData?.totalPages || 0;
+  const isFilterActive = search !== '' || statusFilter !== 'ALL';
+  const totalPages = companyData?.totalPages || 1;
   const totalItems = companyData?.total || 0;
+  const companyList = companyData?.items || [];
+
+  const startResult = totalItems > 0 ? (page - 1) * pageSize + 1 : 0;
+  const endResult = Math.min(page * pageSize, totalItems);
 
   return (
-    <div className="w-full pb-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <Building className="text-primary shrink-0" size={28} />
-            Company Verification Portal (Admin)
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Review legal registration documents and verify recruiter company accounts across the platform.
-          </p>
+    <div className="min-h-screen bg-background transition-colors duration-200">
+      <div className="w-full pb-10 space-y-5">
+        {/* Top Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-2">
+          <div>
+            <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
+              <Building className="text-[#1877F2] shrink-0 h-8 w-8" />
+              Company Verification Portal
+            </h1>
+            <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
+              Review legal registration documents and verify recruiter company accounts across the platform.
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* Tabs & Search Bar */}
-      <div className="flex flex-col gap-4">
-        {/* Status Filters Tabs */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-1">
-          {STATUS_FILTERS.map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => {
-                setStatusFilter(tab.value);
+        {/* TẦNG 1: TOOLBAR (Search, Status Filter, Clear Filters) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 flex-1">
+            {/* Search Bar */}
+            <div className="relative w-full sm:w-80 md:w-96">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#65676B] dark:text-zinc-400" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by company name, tax code, address..."
+                className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#65676B] hover:text-[#050505] dark:hover:text-white transition-colors p-1 cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Status Filter Dropdown */}
+            <Select
+              value={statusFilter}
+              onValueChange={(val) => {
+                if (val) setStatusFilter(val);
                 setPage(1);
               }}
-              className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
-                statusFilter === tab.value
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
             >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+              <SelectTrigger className="w-full sm:w-[180px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
+                <SelectValue placeholder="Status Filter" />
+              </SelectTrigger>
+              <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
+                {STATUS_FILTERS.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-        {/* Search Bar */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="relative md:col-span-2">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-            <input
-              type="text"
-              placeholder="Search by company name, tax code, address..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-border rounded-xl bg-background text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-muted"
+            {/* Clear Filters Button */}
+            {isFilterActive && (
+              <Button
+                onClick={handleResetFilters}
+                variant="ghost"
+                className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
               >
-                <X size={14} />
-              </button>
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+              </Button>
             )}
           </div>
-
-          {(search || statusFilter !== 'PENDING') && (
-            <button
-              onClick={handleResetFilters}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 border border-border hover:bg-muted text-muted-foreground hover:text-foreground font-semibold text-sm rounded-xl transition-colors cursor-pointer"
-            >
-              <RotateCcw size={14} />
-              <span>Reset Filters</span>
-            </button>
-          )}
         </div>
-      </div>
 
-      {/* Grid/Table List */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
-        {isLoading ? (
-          <div className="py-20 flex flex-col items-center justify-center text-muted-foreground gap-3">
-            <Loader2 className="animate-spin text-primary" size={32} />
-            <span className="text-sm font-medium">Loading companies...</span>
-          </div>
-        ) : isError ? (
-          <div className="py-20 text-center text-rose-500 font-medium">
-            Failed to load company data. Please try again.
-          </div>
-        ) : !companyData?.items?.length ? (
-          <div className="py-20 text-center text-muted-foreground">
-            No companies found matching the filters.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40 font-bold text-muted-foreground">
-                  <th className="px-4 py-4 w-[80px] text-center">Logo</th>
-                  <th className="px-4 py-4">Company Name</th>
-                  <th className="px-4 py-4">Tax Code</th>
-                  <th className="px-4 py-4">Industry</th>
-                  <th className="px-4 py-4">Headquarters</th>
-                  <th className="px-4 py-4">Status</th>
-                  <th className="px-4 py-4 text-center w-[180px]">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {companyData.items.map((company: Company) => (
-                  <tr key={company.id} className="hover:bg-muted/10 transition-colors">
-                    <td className="px-4 py-4 text-center">
+        {/* TẦNG 2: MAIN TABLE CONTAINER (TABLE_STANDARD - SHADCN TABLE) */}
+        <div className="rounded-lg border border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-2xs w-full">
+          <Table className="w-full text-left border-collapse table-fixed">
+            {/* Table Header */}
+            <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
+              <TableRow className="hover:bg-transparent border-none">
+                <TableHead className="w-[6%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  LOGO
+                </TableHead>
+
+                <TableHead className="w-[23%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  COMPANY NAME
+                </TableHead>
+
+                <TableHead className="w-[12%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  TAX CODE
+                </TableHead>
+
+                <TableHead className="w-[18%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  INDUSTRY
+                </TableHead>
+
+                <TableHead className="w-[21%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  HEADQUARTERS
+                </TableHead>
+
+                <TableHead className="w-[12%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  STATUS
+                </TableHead>
+
+                <TableHead className="w-[8%] py-3 px-2 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  ACTIONS
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+
+            {/* Table Body */}
+            <TableBody>
+              {isLoading ? (
+                // Loading Skeleton State (6 rows)
+                Array.from({ length: pageSize || 6 }).map((_, index) => (
+                  <TableRow key={index} className="border-b border-[#CED0D4]/60 dark:border-zinc-800/60">
+                    <TableCell className="py-3.5 px-3 text-center">
+                      <Skeleton className="h-10 w-10 rounded-lg bg-slate-100 dark:bg-zinc-800 mx-auto" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3">
+                      <Skeleton className="h-5 w-3/4 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3">
+                      <Skeleton className="h-4 w-4/5 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3">
+                      <Skeleton className="h-5 w-24 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3">
+                      <Skeleton className="h-5 w-full bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3">
+                      <Skeleton className="h-6 w-20 bg-slate-100 dark:bg-zinc-800 rounded-full" />
+                    </TableCell>
+                    <TableCell className="py-3.5 px-2 text-center">
+                      <Skeleton className="h-8 w-16 bg-slate-100 dark:bg-zinc-800 rounded-md mx-auto" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : isError ? (
+                // Error State
+                <TableRow>
+                  <TableCell colSpan={7} className="h-64 text-center">
+                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
+                      <p className="font-semibold text-rose-600 dark:text-rose-400 text-base">
+                        Failed to load company data
+                      </p>
+                      <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
+                        An error occurred while fetching company data. Please try again.
+                      </p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : companyList.length === 0 ? (
+                // Empty State
+                <TableRow>
+                  <TableCell colSpan={7} className="h-72 text-center">
+                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
+                      <div className="h-12 w-12 rounded-full bg-[#E7F3FF] dark:bg-blue-950/50 flex items-center justify-center text-[#1877F2] dark:text-blue-400 mb-3">
+                        <SearchX className="h-6 w-6" />
+                      </div>
+                      <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">
+                        No companies found
+                      </p>
+                      <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
+                        {isFilterActive
+                          ? 'No companies match the current filters. Try clearing or adjusting your search criteria.'
+                          : 'No companies registered yet.'}
+                      </p>
+                      {isFilterActive && (
+                        <Button
+                          onClick={handleResetFilters}
+                          variant="outline"
+                          className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" /> Clear All Filters
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                // Actual Data Rows
+                companyList.map((company: Company) => (
+                  <TableRow
+                    key={company.id}
+                    className="border-b border-[#CED0D4]/60 dark:border-zinc-800/60 hover:bg-[#E7F3FF]/40 dark:hover:bg-blue-950/20 transition-colors duration-150 group"
+                  >
+                    {/* Logo */}
+                    <TableCell className="py-3.5 px-3 align-middle text-center">
                       <div className="flex items-center justify-center">
-                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center border border-border overflow-hidden">
+                        <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-zinc-800 flex items-center justify-center border border-[#CED0D4]/60 dark:border-zinc-700 overflow-hidden shrink-0">
                           <CompanyLogo
                             src={company.logoUrl}
                             alt={company.name}
                             fallbackType="building"
-                            fallbackIconClassName="text-muted-foreground w-5 h-5"
+                            fallbackIconClassName="text-[#65676B] dark:text-zinc-400 w-5 h-5"
                             imageClassName="w-full h-full object-cover bg-background"
                           />
                         </div>
                       </div>
-                    </td>
-                    <td className="px-4 py-4">
+                    </TableCell>
+
+                    {/* Company Name */}
+                    <TableCell className="py-3.5 px-3 align-middle">
                       <div className="flex flex-col">
-                        <span className="font-bold text-foreground">{company.name}</span>
+                        <span className="font-bold text-sm text-[#050505] dark:text-zinc-100 group-hover:text-[#1877F2] dark:group-hover:text-blue-400 transition-colors">
+                          {company.name}
+                        </span>
                         {company.createdByName && (
-                          <span className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
-                            <User size={10} className="text-primary" />
+                          <span className="text-[11px] text-[#65676B] dark:text-zinc-400 mt-0.5 flex items-center gap-1">
+                            <User size={10} className="text-[#1877F2]" />
                             <span>By: {company.createdByName}</span>
                           </span>
                         )}
@@ -298,90 +410,170 @@ export default function AdminCompaniesPage() {
                             href={company.website.startsWith('http') ? company.website : `https://${company.website}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-0.5"
+                            className="text-xs text-[#1877F2] dark:text-blue-400 hover:underline inline-flex items-center gap-1 mt-0.5 font-medium"
                           >
                             <span>Website</span>
                             <ExternalLink size={10} />
                           </a>
                         )}
                       </div>
-                    </td>
-                    <td className="px-4 py-4 font-mono text-xs">{company.taxCode || 'N/A'}</td>
-                    <td className="px-4 py-4 text-muted-foreground">{company.industry || 'N/A'}</td>
-                    <td className="px-4 py-4 max-w-[200px] truncate text-muted-foreground" title={company.headquartersAddress}>
+                    </TableCell>
+
+                    {/* Tax Code */}
+                    <TableCell className="py-3.5 px-3 align-middle font-mono text-xs text-[#65676B] dark:text-zinc-300">
+                      {company.taxCode || 'N/A'}
+                    </TableCell>
+
+                    {/* Industry */}
+                    <TableCell
+                      className="py-3.5 px-3 align-middle text-sm text-[#65676B] dark:text-zinc-300 max-w-[180px] truncate"
+                      title={company.industry || 'N/A'}
+                    >
+                      {company.industry || 'N/A'}
+                    </TableCell>
+
+                    {/* Headquarters */}
+                    <TableCell className="py-3.5 px-3 align-middle text-sm text-[#65676B] dark:text-zinc-300 max-w-[200px] truncate" title={company.headquartersAddress}>
                       {company.headquartersAddress || 'N/A'}
-                    </td>
-                    <td className="px-4 py-4">
+                    </TableCell>
+
+                    {/* Status */}
+                    <TableCell className="py-3.5 px-3 align-middle">
                       <CompanyStatusBadge status={company.status} hasPendingChange={company.hasPendingChange} />
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button
+                    </TableCell>
+
+                    {/* Actions (Icon-only Buttons) */}
+                    <TableCell className="py-3.5 px-2 align-middle text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => {
                             setSelectedCompany(company);
                             setIsDetailOpen(true);
                           }}
-                          className="px-2.5 py-1.5 bg-muted hover:bg-muted/80 text-foreground font-semibold text-xs rounded-lg transition-colors inline-flex items-center gap-1 cursor-pointer"
+                          className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
                           title="View Verification Details"
                         >
-                          <Eye size={14} />
-                          <span>View</span>
-                        </button>
+                          <Eye className="h-4 w-4" />
+                        </Button>
 
                         {(company.status === 'PENDING' || company.hasPendingChange) && (
                           <>
-                            <button
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => setConfirmAction({ company, targetStatus: 'VERIFIED' })}
-                              className="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold rounded-lg transition-colors cursor-pointer"
+                              className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
                               title="Approve / Verify"
                             >
-                              <Check size={16} />
-                            </button>
-                            <button
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => setConfirmAction({ company, targetStatus: 'REJECTED' })}
-                              className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold rounded-lg transition-colors cursor-pointer"
+                              className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
                               title="Reject Verification"
                             >
-                              <Ban size={16} />
-                            </button>
+                              <Ban className="h-4 w-4" />
+                            </Button>
                           </>
                         )}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
-        {/* Pagination Bar */}
-        {totalPages > 1 && (
-          <div className="p-4 border-t border-border bg-muted/20 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <span className="text-xs text-muted-foreground font-medium">
-              Showing {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, totalItems)} of {totalItems} companies
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage(page - 1)}
-                className="p-1.5 border border-border rounded-lg text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-muted transition-colors"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <span className="text-xs font-semibold px-2 text-foreground">
-                Page {page} of {totalPages}
-              </span>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => setPage(page + 1)}
-                className="p-1.5 border border-border rounded-lg text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-muted transition-colors"
-              >
-                <ChevronRight size={16} />
-              </button>
+        {/* TẦNG 3: PAGINATION FOOTER */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 px-1">
+          <div className="flex items-center space-x-3 text-sm text-[#65676B] dark:text-zinc-400">
+            <div>
+              Showing <span className="font-semibold text-[#050505] dark:text-zinc-200">{startResult} - {endResult}</span> of <span className="font-semibold text-[#050505] dark:text-zinc-200">{totalItems}</span> companies
             </div>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(val) => {
+                if (val) setPageSize(Number(val));
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="h-8 w-[110px] border-[#CED0D4] dark:border-zinc-800 text-xs font-medium focus:ring-[#1877F2]">
+                <SelectValue placeholder="Page size" />
+              </SelectTrigger>
+              <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
+                <SelectItem value="10">10 / page</SelectItem>
+                <SelectItem value="20">20 / page</SelectItem>
+                <SelectItem value="50">50 / page</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        )}
+
+          {/* Page Buttons */}
+          <div className="flex items-center space-x-1.5">
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={page === 1 || isLoading}
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              className="h-8 w-8 border-[#CED0D4] dark:border-zinc-800 text-[#65676B] dark:text-zinc-400 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 disabled:opacity-40 cursor-pointer"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+
+            {Array.from({ length: totalPages }).map((_, index) => {
+              const pageNum = index + 1;
+              if (
+                totalPages <= 5 ||
+                pageNum === 1 ||
+                pageNum === totalPages ||
+                Math.abs(pageNum - page) <= 1
+              ) {
+                const isCurrent = pageNum === page;
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={isCurrent ? 'default' : 'outline'}
+                    disabled={isLoading}
+                    onClick={() => setPage(pageNum)}
+                    className={`h-8 w-8 text-xs font-semibold rounded-md shadow-2xs transition-all cursor-pointer ${
+                      isCurrent
+                        ? 'bg-[#1877F2] hover:bg-[#166FE5] text-white border-[#1877F2]'
+                        : 'border-[#CED0D4] dark:border-zinc-800 text-[#050505] dark:text-zinc-300 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 dark:hover:text-blue-400'
+                    }`}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              }
+              if (
+                (pageNum === 2 && page > 3) ||
+                (pageNum === totalPages - 1 && page < totalPages - 2)
+              ) {
+                return (
+                  <span key={pageNum} className="px-1 text-xs text-[#65676B]">
+                    ...
+                  </span>
+                );
+              }
+              return null;
+            })}
+
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={page >= totalPages || isLoading}
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+              className="h-8 w-8 border-[#CED0D4] dark:border-zinc-800 text-[#65676B] dark:text-zinc-400 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 disabled:opacity-40 cursor-pointer"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Modal 1: Detail Modal */}
@@ -391,7 +583,7 @@ export default function AdminCompaniesPage() {
             <>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-xl font-extrabold">
-                  <Building className="text-primary" size={24} />
+                  <Building className="text-[#1877F2]" size={24} />
                   {selectedCompany.name}
                 </DialogTitle>
                 <DialogDescription>
@@ -401,8 +593,8 @@ export default function AdminCompaniesPage() {
 
               <div className="space-y-6 py-2">
                 {/* Header overview card */}
-                <div className="flex items-start gap-4 p-4 rounded-xl bg-muted/40 border border-border">
-                  <div className="w-14 h-14 rounded-xl bg-background border border-border overflow-hidden flex items-center justify-center shrink-0">
+                <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-[#CED0D4] dark:border-zinc-800">
+                  <div className="w-14 h-14 rounded-xl bg-background border border-[#CED0D4] dark:border-zinc-700 overflow-hidden flex items-center justify-center shrink-0">
                     <CompanyLogo
                       src={selectedCompany.logoUrl}
                       alt={selectedCompany.name}
@@ -421,7 +613,7 @@ export default function AdminCompaniesPage() {
 
                 {/* Reject Reason Alert if Rejected */}
                 {selectedCompany.status === 'REJECTED' && selectedCompany.rejectReason && (
-                  <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-sm">
+                  <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-sm">
                     <div className="font-bold flex items-center gap-1.5 mb-1">
                       <XCircle size={16} />
                       <span>Rejection Reason</span>
@@ -432,7 +624,7 @@ export default function AdminCompaniesPage() {
 
                 {/* Pending Update Alert */}
                 {selectedCompany.hasPendingChange && (
-                  <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-sm">
+                  <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-300 text-sm">
                     <div className="font-bold flex items-center gap-1.5 mb-1">
                       <Clock size={16} />
                       <span>Pending Information Update Request</span>
@@ -445,7 +637,7 @@ export default function AdminCompaniesPage() {
 
                 {/* Information Comparison or Display */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-3.5 rounded-xl border border-border space-y-2 bg-card">
+                  <div className="p-3.5 rounded-xl border border-[#CED0D4] dark:border-zinc-800 space-y-2 bg-card">
                     <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Company Name</h4>
                     <p className="text-sm font-semibold text-foreground">{selectedCompany.name}</p>
                     {selectedCompany.hasPendingChange && selectedCompany.pendingName && selectedCompany.pendingName !== selectedCompany.name && (
@@ -455,7 +647,7 @@ export default function AdminCompaniesPage() {
                     )}
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-border space-y-2 bg-card">
+                  <div className="p-3.5 rounded-xl border border-[#CED0D4] dark:border-zinc-800 space-y-2 bg-card">
                     <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Tax Identification Code</h4>
                     <p className="text-sm font-semibold font-mono text-foreground">{selectedCompany.taxCode || 'N/A'}</p>
                     {selectedCompany.hasPendingChange && selectedCompany.pendingTaxCode && selectedCompany.pendingTaxCode !== selectedCompany.taxCode && (
@@ -465,7 +657,7 @@ export default function AdminCompaniesPage() {
                     )}
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-border space-y-2 bg-card md:col-span-2">
+                  <div className="p-3.5 rounded-xl border border-[#CED0D4] dark:border-zinc-800 space-y-2 bg-card md:col-span-2">
                     <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Headquarters Address</h4>
                     <p className="text-sm font-semibold text-foreground">{selectedCompany.headquartersAddress || 'N/A'}</p>
                     {selectedCompany.hasPendingChange && selectedCompany.pendingHeadquartersAddress && selectedCompany.pendingHeadquartersAddress !== selectedCompany.headquartersAddress && (
@@ -477,15 +669,15 @@ export default function AdminCompaniesPage() {
                 </div>
 
                 {/* Legal Verification Document Section */}
-                <div className="p-4 rounded-xl border border-border space-y-3 bg-muted/20">
+                <div className="p-4 rounded-xl border border-[#CED0D4] dark:border-zinc-800 space-y-3 bg-slate-50/50 dark:bg-zinc-900/50">
                   <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <FileText size={14} className="text-primary" />
+                    <FileText size={14} className="text-[#1877F2]" />
                     <span>Legal Verification Document</span>
                   </h4>
-                  
+
                   {(() => {
-                    const docUrl = selectedCompany.hasPendingChange && selectedCompany.pendingVerificationDocumentUrl 
-                      ? selectedCompany.pendingVerificationDocumentUrl 
+                    const docUrl = selectedCompany.hasPendingChange && selectedCompany.pendingVerificationDocumentUrl
+                      ? selectedCompany.pendingVerificationDocumentUrl
                       : selectedCompany.verificationDocumentUrl;
                     const method = selectedCompany.hasPendingChange && selectedCompany.pendingVerificationMethod
                       ? selectedCompany.pendingVerificationMethod
@@ -503,7 +695,7 @@ export default function AdminCompaniesPage() {
                             href={docUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-primary font-bold hover:underline inline-flex items-center gap-1"
+                            className="text-[#1877F2] font-bold hover:underline inline-flex items-center gap-1"
                           >
                             <span>Open Full Document</span>
                             <ExternalLink size={12} />
@@ -511,12 +703,12 @@ export default function AdminCompaniesPage() {
                         </div>
 
                         {/* Document Preview (Image/PDF wrapper) */}
-                        <div className="w-full max-h-[300px] overflow-hidden rounded-xl border border-border bg-background flex items-center justify-center">
+                        <div className="w-full max-h-[300px] overflow-hidden rounded-xl border border-[#CED0D4] dark:border-zinc-700 bg-background flex items-center justify-center">
                           {docUrl.match(/\.(jpeg|jpg|gif|png|webp)/i) ? (
                             <img src={docUrl} alt="Verification Document" className="w-full h-full object-contain max-h-[300px]" />
                           ) : (
                             <div className="p-8 text-center space-y-2">
-                              <FileText size={40} className="mx-auto text-primary opacity-60" />
+                              <FileText size={40} className="mx-auto text-[#1877F2] opacity-60" />
                               <p className="text-xs text-muted-foreground font-medium">Document attached (PDF or external file format)</p>
                             </div>
                           )}
@@ -599,7 +791,7 @@ export default function AdminCompaniesPage() {
                       placeholder="Enter the specific reason for rejecting verification (e.g. Invalid tax code, blurred business license)..."
                       value={rejectReasonInput}
                       onChange={(e) => setRejectReasonInput(e.target.value)}
-                      className="w-full p-3 border border-border rounded-xl bg-background text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground"
+                      className="w-full p-3 border border-[#CED0D4] dark:border-zinc-800 rounded-xl bg-background text-sm outline-none focus:border-[#1877F2] focus:ring-2 focus:ring-[#1877F2]/20 transition-all placeholder:text-muted-foreground"
                     />
                   </div>
                 )}
