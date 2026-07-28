@@ -711,19 +711,22 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             else
             {
                 // Đồng bộ cấu hình các gói Candidate trong DB hiện hữu theo thông số quyền lợi mới
-                var basic = await context.Subscriptions.FirstOrDefaultAsync(s => s.Name == "Basic" && s.FeaturesConfig.Contains("CANDIDATE"));
+                // Tải toàn bộ subscriptions vào bộ nhớ trước vì FeaturesConfig là kiểu jsonb trong PostgreSQL không thể dùng toán tử LIKE (Contains) trực tiếp trong SQL
+                var existingSubs = await context.Subscriptions.ToListAsync();
+
+                var basic = existingSubs.FirstOrDefault(s => s.Name == "Basic" && (s.FeaturesConfig?.Contains("CANDIDATE") == true));
                 if (basic != null && (!basic.FeaturesConfig.Contains("learningPathLimit") || !basic.FeaturesConfig.Contains("\"learningPathSlotLimit\":1") || basic.FeaturesConfig.Contains("aiRefreshUnlimited")))
                 {
                     basic.FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":5,\"mockInterviewLimit\":1,\"learningPathLimit\":1,\"learningPathSlotLimit\":1,\"coinCredit\":0}";
                 }
 
-                var pro = await context.Subscriptions.FirstOrDefaultAsync(s => (s.Name == "Pro Career" || s.Name == "Pro") && s.FeaturesConfig.Contains("CANDIDATE"));
+                var pro = existingSubs.FirstOrDefault(s => (s.Name == "Pro Career" || s.Name == "Pro") && (s.FeaturesConfig?.Contains("CANDIDATE") == true));
                 if (pro != null && (!pro.FeaturesConfig.Contains("learningPathLimit") || !pro.FeaturesConfig.Contains("\"learningPathSlotLimit\":3") || pro.FeaturesConfig.Contains("aiRefreshUnlimited")))
                 {
                     pro.FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":30,\"mockInterviewLimit\":10,\"learningPathLimit\":5,\"learningPathSlotLimit\":3,\"coinCredit\":3500}";
                 }
 
-                var mastery = await context.Subscriptions.FirstOrDefaultAsync(s => s.Name == "Mastery" && s.FeaturesConfig.Contains("CANDIDATE"));
+                var mastery = existingSubs.FirstOrDefault(s => s.Name == "Mastery" && (s.FeaturesConfig?.Contains("CANDIDATE") == true));
                 if (mastery != null && (!mastery.FeaturesConfig.Contains("learningPathLimit") || !mastery.FeaturesConfig.Contains("\"learningPathSlotLimit\":-1") || mastery.FeaturesConfig.Contains("aiRefreshUnlimited")))
                 {
                     mastery.FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":100,\"mockInterviewLimit\":20,\"learningPathLimit\":30,\"learningPathSlotLimit\":-1,\"coinCredit\":10000}";

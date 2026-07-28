@@ -47,33 +47,15 @@ namespace ITHunterview.Service.UseCase
             var wallet = await _context.UserWallets.FirstOrDefaultAsync(w => w.UserId == userId);
             if (wallet == null)
             {
-                using (var transaction = await _context.Database.BeginTransactionAsync())
-                {
-                    try
-                    {
-                        wallet = await _context.UserWallets
-                            .FromSqlRaw("SELECT * FROM user_wallets WHERE user_id = {0} LIMIT 1 FOR UPDATE", userId)
-                            .FirstOrDefaultAsync();
+                // Atomic insert to guarantee row existence under high concurrency without raising SQL 23505 Duplicate Key
+                await _context.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO user_wallets (id, user_id, balance, updated_at) VALUES ({0}, {1}, 0, {2}) ON CONFLICT (user_id) DO NOTHING;",
+                    Guid.NewGuid(), userId, DateTime.UtcNow);
 
-                        if (wallet == null)
-                        {
-                            wallet = new UserWallets
-                            {
-                                Id = Guid.NewGuid(),
-                                UserId = userId,
-                                Balance = 0,
-                                UpdatedAt = DateTime.UtcNow
-                            };
-                            _context.UserWallets.Add(wallet);
-                            await _context.SaveChangesAsync();
-                        }
-                        await transaction.CommitAsync();
-                    }
-                    catch (Exception)
-                    {
-                        await transaction.RollbackAsync();
-                        throw;
-                    }
+                wallet = await _context.UserWallets.FirstOrDefaultAsync(w => w.UserId == userId);
+                if (wallet == null)
+                {
+                    wallet = new UserWallets { Id = Guid.NewGuid(), UserId = userId, Balance = 0, UpdatedAt = DateTime.UtcNow };
                 }
             }
 
@@ -521,25 +503,24 @@ namespace ITHunterview.Service.UseCase
 
             if (payment.TargetType == PaymentTargetType.WALLET_TOPUP)
             {
+                await _context.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO user_wallets (id, user_id, balance, updated_at) VALUES ({0}, {1}, 0, {2}) ON CONFLICT (user_id) DO NOTHING;",
+                    Guid.NewGuid(), payment.UserId, DateTime.UtcNow);
+
                 var wallet = await _context.UserWallets
                     .FromSqlRaw("SELECT * FROM user_wallets WHERE user_id = {0} LIMIT 1 FOR UPDATE", payment.UserId)
                     .FirstOrDefaultAsync();
 
-                if (wallet == null)
+                if (wallet != null)
                 {
-                    wallet = new UserWallets
-                    {
-                        Id = Guid.NewGuid(),
-                        UserId = payment.UserId,
-                        Balance = 0,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-                    _context.UserWallets.Add(wallet);
+                    wallet.Balance += payment.CreditsGranted ?? 0;
+                    wallet.UpdatedAt = DateTime.UtcNow;
+                    _context.UserWallets.Update(wallet);
                 }
-
-                wallet.Balance += payment.CreditsGranted ?? 0;
-                wallet.UpdatedAt = DateTime.UtcNow;
-                _context.UserWallets.Update(wallet);
+                else
+                {
+                    throw new InvalidOperationException($"Could not acquire lock or find wallet for user {payment.UserId}");
+                }
 
                 var creditTx = new CreditTransactions
                 {
@@ -765,26 +746,23 @@ namespace ITHunterview.Service.UseCase
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
+                await _context.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO user_wallets (id, user_id, balance, updated_at) VALUES ({0}, {1}, 0, {2}) ON CONFLICT (user_id) DO NOTHING;",
+                    Guid.NewGuid(), userId, DateTime.UtcNow);
+
                 var wallet = await _context.UserWallets
                     .FromSqlRaw("SELECT * FROM user_wallets WHERE user_id = {0} LIMIT 1 FOR UPDATE", userId)
                     .FirstOrDefaultAsync();
 
-                if (wallet == null)
-                {
-                    wallet = new UserWallets
-                    {
-                        Id = Guid.NewGuid(),
-                        UserId = userId,
-                        Balance = amount,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-                    _context.UserWallets.Add(wallet);
-                }
-                else
+                if (wallet != null)
                 {
                     wallet.Balance += amount;
                     wallet.UpdatedAt = DateTime.UtcNow;
                     _context.UserWallets.Update(wallet);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Could not obtain lock on user_wallets for user {userId}");
                 }
 
                 var creditTx = new CreditTransactions

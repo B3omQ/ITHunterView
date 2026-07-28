@@ -39,7 +39,12 @@ namespace ITHunterview.Service.UseCase
 
             try
             {
-                    // 1. Áp dụng Pessimistic Lock (SELECT FOR UPDATE) trên PostgreSQL để khóa dòng ví của người dùng ngay từ đầu
+                    // 1. Đảm bảo record ví luôn tồn tại trong user_wallets một cách atomic trên PostgreSQL
+                    await _context.Database.ExecuteSqlRawAsync(
+                        "INSERT INTO user_wallets (id, user_id, balance, updated_at) VALUES ({0}, {1}, 0, {2}) ON CONFLICT (user_id) DO NOTHING;",
+                        Guid.NewGuid(), userId, DateTime.UtcNow);
+
+                    // 2. Áp dụng Pessimistic Lock (SELECT FOR UPDATE) trên PostgreSQL để khóa dòng ví của người dùng
                     // Điều này đóng vai trò như một mutex per-user cho toàn bộ luồng check subscription & trừ coin
                     var wallet = await _context.UserWallets
                         .FromSqlRaw("SELECT * FROM user_wallets WHERE user_id = {0} LIMIT 1 FOR UPDATE", userId)
@@ -47,25 +52,7 @@ namespace ITHunterview.Service.UseCase
 
                     if (wallet == null)
                     {
-                        try
-                        {
-                            wallet = new UserWallets
-                            {
-                                Id = Guid.NewGuid(),
-                                UserId = userId,
-                                Balance = 0,
-                                UpdatedAt = DateTime.UtcNow
-                            };
-                            _context.UserWallets.Add(wallet);
-                            await _context.SaveChangesAsync();
-                        }
-                        catch (DbUpdateException)
-                        {
-                            _context.ChangeTracker.Clear();
-                            wallet = await _context.UserWallets
-                                .FromSqlRaw("SELECT * FROM user_wallets WHERE user_id = {0} LIMIT 1 FOR UPDATE", userId)
-                                .FirstOrDefaultAsync();
-                        }
+                        throw new InvalidOperationException($"Could not obtain lock on user_wallets for user {userId}");
                     }
 
                     // 2. Kiểm tra Subscription đang hoạt động (ACTIVE) của người dùng

@@ -210,44 +210,15 @@ namespace ITHunterview.WebAPI.Controllers
         /// </summary>
         [HttpPost("cheat/add-coin")]
         [Authorize]
-        public async Task<IActionResult> CheatAddCoin(
-            [FromServices] ITHunterview.Service.Infrastructure.Persistence.ITHunterviewContext dbContext, 
-            [FromQuery] int amount)
+        public async Task<IActionResult> CheatAddCoin([FromQuery] int amount)
         {
             var userId = GetCurrentUserId();
             if (userId == null) return Unauthorized();
 
-            var wallet = dbContext.UserWallets.FirstOrDefault(w => w.UserId == userId);
-            if (wallet == null)
-            {
-                wallet = new ITHunterview.Domain.Entities.UserWallets
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = userId.Value,
-                    Balance = amount,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                dbContext.UserWallets.Add(wallet);
-            }
-            else
-            {
-                wallet.Balance += amount;
-                wallet.UpdatedAt = DateTime.UtcNow;
-            }
+            await _walletUseCase.AddBonusCoinsAsync(userId.Value, amount, "Cheat Add Coin");
+            var balanceRes = await _walletUseCase.GetWalletBalanceAsync(userId.Value);
 
-            var transaction = new ITHunterview.Domain.Entities.CreditTransactions
-            {
-                Id = Guid.NewGuid(),
-                WalletId = wallet.Id,
-                Amount = amount,
-                TransactionType = ITHunterview.Domain.Enums.CreditTransactionType.BONUS,
-                Description = "Cheat Add Coin",
-                CreatedAt = DateTime.UtcNow
-            };
-            dbContext.CreditTransactions.Add(transaction);
-
-            await dbContext.SaveChangesAsync();
-            return Ok(new { success = true, balance = wallet.Balance, message = "Coins added successfully via cheat!" });
+            return Ok(new { success = true, balance = balanceRes?.Data?.Balance ?? 0, message = "Coins added successfully via cheat!" });
         }
 
         /// <summary>
