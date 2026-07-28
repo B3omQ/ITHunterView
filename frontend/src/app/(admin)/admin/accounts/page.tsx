@@ -296,11 +296,11 @@ export default function AdminAccountsPage() {
                   FULL NAME
                 </TableHead>
 
-                <TableHead className="w-[25%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                <TableHead className="w-[26%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
                   EMAIL
                 </TableHead>
 
-                <TableHead className="w-[14%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                <TableHead className="w-[12%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
                   ROLE
                 </TableHead>
 
@@ -308,11 +308,11 @@ export default function AdminAccountsPage() {
                   STATUS
                 </TableHead>
 
-                <TableHead className="w-[12%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                <TableHead className="w-[17%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
                   CREATED DATE
                 </TableHead>
 
-                <TableHead className="w-[12%] py-3 px-2 text-right text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                <TableHead className="w-[8%] py-3 px-2 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
                   ACTIONS
                 </TableHead>
               </TableRow>
@@ -423,30 +423,30 @@ export default function AdminAccountsPage() {
                     </TableCell>
 
                     {/* Actions */}
-                    <TableCell className="py-3.5 px-2 align-middle text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                    <TableCell className="py-3.5 px-2 align-middle text-center">
+                      <div className="flex items-center justify-center gap-1">
                         <Link href={`/admin/accounts/${user.id}`}>
                           <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 border-[#CED0D4] dark:border-zinc-800 text-[#050505] dark:text-zinc-300 hover:bg-[#E7F3FF] hover:text-[#1877F2] hover:border-[#1877F2] dark:hover:bg-blue-950/40 dark:hover:text-blue-400 cursor-pointer font-medium px-2.5"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
+                            title="View Account Details"
                           >
-                            <Eye className="h-3.5 w-3.5 mr-1 text-[#1877F2]" />
-                            Details
+                            <Eye className="h-4 w-4" />
                           </Button>
                         </Link>
                         {user.roleName?.toLowerCase() !== 'admin' && (
                           <Button
-                            variant="outline"
-                            size="sm"
+                            variant="ghost"
+                            size="icon"
                             onClick={() => {
                               setStatusTargetUser({ id: user.id, email: user.email, currentStatus: user.status });
                               setIsStatusModalOpen(true);
                             }}
-                            className="h-8 border-[#CED0D4] dark:border-zinc-800 text-[#050505] dark:text-zinc-300 hover:bg-[#E7F3FF] hover:text-[#1877F2] hover:border-[#1877F2] dark:hover:bg-blue-950/40 dark:hover:text-blue-400 cursor-pointer font-medium px-2.5"
+                            className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
+                            title="Change User Status"
                           >
-                            <Edit2 className="h-3.5 w-3.5 mr-1 text-[#1877F2]" />
-                            Status
+                            <Edit2 className="h-4 w-4" />
                           </Button>
                         )}
                       </div>

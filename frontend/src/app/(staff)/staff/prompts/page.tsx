@@ -28,7 +28,6 @@ import {
   Search,
   X,
   RotateCcw,
-  RefreshCcw,
   MessageSquare,
   Settings2,
   ChevronLeft,

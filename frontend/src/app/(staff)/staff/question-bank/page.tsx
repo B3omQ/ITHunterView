@@ -33,7 +33,6 @@ import {
   Search,
   X,
   RotateCcw,
-  RefreshCcw,
   SearchX,
 } from 'lucide-react';
 import { toast } from 'sonner';

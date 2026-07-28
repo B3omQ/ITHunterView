@@ -35,7 +35,6 @@ import {
   Ban,
   CheckCircle2,
   Search,
-  RefreshCcw,
   Eye,
   RotateCcw,
   X,

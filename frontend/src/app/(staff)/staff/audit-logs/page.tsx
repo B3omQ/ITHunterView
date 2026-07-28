@@ -11,7 +11,6 @@ import {
   RotateCcw,
   X,
   Eye,
-  RefreshCcw,
   SearchX,
 } from 'lucide-react';
 import { useAuditLogs } from '@/hooks/useAuditLogs';
