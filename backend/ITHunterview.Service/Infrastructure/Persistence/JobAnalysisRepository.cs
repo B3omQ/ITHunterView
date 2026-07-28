@@ -8,6 +8,7 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.JobAnalysis;
 using ITHunterview.Service.Interface.Persistence;
+using ITHunterview.Service.Interface.UseCase;
 using Microsoft.EntityFrameworkCore;
 
 namespace ITHunterview.Service.Infrastructure.Persistence
@@ -15,10 +16,14 @@ namespace ITHunterview.Service.Infrastructure.Persistence
     public class JobAnalysisRepository : IJobAnalysisRepository
     {
         private readonly ITHunterviewContext _context;
+        private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
 
-        public JobAnalysisRepository(ITHunterviewContext context)
+        public JobAnalysisRepository(
+            ITHunterviewContext context,
+            ICandidateFeatureUsageUseCase featureUsageUseCase)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
+            _featureUsageUseCase = featureUsageUseCase ?? throw new ArgumentNullException(nameof(featureUsageUseCase));
         }
 
         public async Task<JobAnalysisRequestContext?> GetRequestContextAsync(Guid jobId, Guid recruiterId, CancellationToken ct = default)
@@ -559,6 +564,22 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 return res;
             }
 
+            if (job.Status == JobStatus.PUBLISHED)
+            {
+                res.Success = true;
+                res.Job = job;
+                res.SkillCount = await _context.JobSkillRequirements.CountAsync(jsr => jsr.JobId == jobId, ct);
+                return res;
+            }
+
+            if (job.Status != JobStatus.DRAFT)
+            {
+                res.Success = false;
+                res.ErrorCode = "JOB_NOT_DRAFT";
+                res.ErrorMessage = "Only a DRAFT job can be finalized.";
+                return res;
+            }
+
             var company = await _context.Companies.FirstOrDefaultAsync(c => c.Id == job.CompanyId, ct);
             if (company == null || company.Status != CompanyStatus.VERIFIED)
             {
@@ -612,6 +633,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 res.ErrorMessage = "Job posting has no accepted standard skills. Confirmation is required.";
                 return res;
             }
+
+            // The publish entitlement participates in this same transaction. A
+            // failed finalization therefore cannot leave the recruiter charged for
+            // a job that did not become PUBLISHED.
+            await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "PostJob", job.Id.ToString());
 
             // Remove existing JSR
             var oldJsr = await _context.JobSkillRequirements.Where(jsr => jsr.JobId == jobId).ToListAsync(ct);

@@ -87,7 +87,7 @@ namespace ITHunterview.Service.UseCase
 
                 ParseStatus = j.ParseStatus ?? "PENDING",
                 ParseError = j.ParseError,
-                AnalysisRevision = j.AnalysisRevision
+                AnalysisRevision = j.AnalysisRevision,
                 PushedTopUntil = j.PushedTopUntil
             }).ToList();
 
@@ -121,17 +121,6 @@ namespace ITHunterview.Service.UseCase
             if (companyId == null)
             {
                 return new ResponseBase<JobPostingDetailDto>("Recruiter company not found. Please link recruiter to a company first.");
-            }
-
-           if (dto.Status == JobStatus.PUBLISHED)
-            {
-                var company = await _companyRepository.GetByIdAsync(companyId.Value);
-                if (company == null || company.Status != CompanyStatus.VERIFIED)
-                {
-                    return new ResponseBase<JobPostingDetailDto>("Your company must be verified before you can publish a job posting.");
-                }
-
-                await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "PostJob");
             }
 
             if (dto.ExpiresAt.HasValue && dto.ExpiresAt.Value > DateTime.UtcNow.AddDays(30))
@@ -209,6 +198,8 @@ namespace ITHunterview.Service.UseCase
             if (job.Status == JobStatus.PUBLISHED || job.Status == JobStatus.PENDING_REVIEW)
             {
                 return new ResponseBase<JobPostingDetailDto>("Published or pending review jobs cannot be edited directly. Please clone as a new draft.");
+            }
+
             if (job.IsBanned)
             {
                 return new ResponseBase<JobPostingDetailDto>("Job posting is banned and cannot be updated.");
@@ -245,25 +236,6 @@ namespace ITHunterview.Service.UseCase
             var newSnapshot = _inputBuilder.Build(job);
             var newSemanticHash = _inputBuilder.ComputeSemanticHash(newSnapshot);
             bool semanticChanged = oldSemanticHash != newSemanticHash;
-            if (job.Status != dto.Status)
-            {
-                if (dto.Status == JobStatus.PUBLISHED)
-                {
-                    var company = await _companyRepository.GetByIdAsync(job.CompanyId);
-                    if (company == null || company.Status != CompanyStatus.VERIFIED)
-                    {
-                        return new ResponseBase<JobPostingDetailDto>("Your company must be verified before you can publish a job posting.");
-                    }
-                    if (job.PublishedAt == null)
-                    {
-                        job.PublishedAt = DateTime.UtcNow;
-                    }
-
-                    await _featureUsageUseCase.TryConsumeFeatureAsync(job.RecruiterId, "PostJob", job.Id.ToString());
-                }
-                job.Status = dto.Status;
-            }
-
             job.SemanticContentHash = newSemanticHash;
 
             if (semanticChanged)
@@ -470,7 +442,7 @@ namespace ITHunterview.Service.UseCase
                 BanReason = j.BanReason,
                 ParseStatus = j.ParseStatus ?? "PENDING",
                 ParseError = j.ParseError,
-                AnalysisRevision = j.AnalysisRevision
+                AnalysisRevision = j.AnalysisRevision,
                 PushedTopUntil = j.PushedTopUntil
             };
         }

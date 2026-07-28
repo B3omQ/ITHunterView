@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { ArrowLeft, Plus, X, Sparkles, AlertCircle, Loader2, Ban } from "lucide-react"
-import { LEVELS, WORKING_MODELS, JOB_DOMAINS, JOB_EXPERTISES, VIETNAM_PROVINCES } from "@/lib/job-constants"
+import { ArrowLeft, Loader2, Ban, Save, Send } from "lucide-react"
+import { LEVELS, WORKING_MODELS, JOB_DOMAINS, VIETNAM_PROVINCES } from "@/lib/job-constants"
 import { MajorCombobox } from "@/components/shared/MajorCombobox"
 import { JobPostingRichTextEditor } from "@/components/forms/JobPostingRichTextEditor"
 import {
@@ -57,7 +57,7 @@ export default function EditJobPage() {
   const { data: company, isLoading: companyLoading } = useGetMyCompany()
 
   const [searchDomain, setSearchDomain] = useState("")
-  const [submittingAction, setSubmittingAction] = useState<"DRAFT" | "PREVIEW" | null>(null)
+  const [submittingAction, setSubmittingAction] = useState<"DRAFT" | "PUBLISH" | null>(null)
 
   const loading = metadataLoading || detailLoading || companyLoading
   const error = metadataError || detailError
@@ -152,7 +152,7 @@ export default function EditJobPage() {
     return null
   }
 
-  const handleSubmit = async (action: "DRAFT" | "PREVIEW") => {
+  const handleSubmit = async (action: "DRAFT" | "PUBLISH") => {
     const validationError = validateForm()
     if (validationError) {
       alert(validationError)
@@ -189,9 +189,9 @@ export default function EditJobPage() {
 
       const res = await updateJob(payload)
       if (res.success && res.data) {
-        if (action === "PREVIEW") {
+        if (action === "PUBLISH") {
           const needsAnalysis = res.data.parseStatus === "NOT_REQUESTED" || res.data.parseStatus === "STALE"
-          router.push("/recruiter/jobs/" + id + "/preview" + (needsAnalysis ? "?analyze=1" : ""))
+          router.push("/recruiter/jobs/" + id + "/preview" + (needsAnalysis ? "?publish=1" : ""))
         } else {
           router.push("/recruiter/jobs")
         }
@@ -555,27 +555,17 @@ export default function EditJobPage() {
 
           <Button
             type="button"
-            onClick={() => handleSubmit("PREVIEW")}
+            onClick={() => handleSubmit("PUBLISH")}
             disabled={loading || submittingAction !== null}
             className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-md"
           >
-            {submittingAction === "PREVIEW" ? (
+            {submittingAction === "PUBLISH" ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
-              <Sparkles className="w-4 h-4 mr-2" />
+              <Send className="w-4 h-4 mr-2" />
             )}
-            Tiếp tục xem trước AI
+            Publish
           </Button>
-          {!job?.isBanned && (
-            <Button
-              type="button"
-              onClick={() => handleUpdate()}
-              disabled={saving}
-              className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/10"
-            >
-              {saving ? "Saving Changes..." : "Save Change"}
-            </Button>
-          )}
         </div>
       </div>
     </div>

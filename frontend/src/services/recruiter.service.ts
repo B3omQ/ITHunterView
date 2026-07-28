@@ -24,10 +24,6 @@ export interface JobPostingSummary {
   skills: string[];
   parseStatus?: 'PENDING' | 'PROCESSING' | 'READY' | 'SUCCESS' | 'FAILED' | 'NOT_REQUESTED' | 'STALE';
   parseError?: string | null;
-  createdAt: string;
-  publishedAt?: string;
-  expiresAt?: string;
-  applicationCount?: number;
   isBanned?: boolean;
   banReason?: string;
   pushedTopUntil?: string;
