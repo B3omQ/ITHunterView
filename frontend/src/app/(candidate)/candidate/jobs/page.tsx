@@ -12,7 +12,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ChevronLeft, ChevronRight, SearchX, MousePointerClick } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import type { JobSearchQuery } from '@/types/job.types';
 import { JobDetailPanel } from '@/components/jobs/JobDetailPanel';
 import JobDetailModal from '@/components/jobs/JobDetailModal';
