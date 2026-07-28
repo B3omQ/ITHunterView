@@ -6,6 +6,9 @@ export const companyService = {
   getMyCompany: () => 
     api.get<ApiResponse<Company>>('/api/companies/me').then(res => res.data.data),
     
+  claimNewbieReward: () => 
+    api.post<ApiResponse<Company>>('/api/companies/me/claim-newbie-reward').then(res => res.data.data),
+    
   createOrUpdateProfile: (dto: CreateCompanyDto) => 
     api.post<ApiResponse<Company>>('/api/companies', dto).then(res => res.data.data),
 

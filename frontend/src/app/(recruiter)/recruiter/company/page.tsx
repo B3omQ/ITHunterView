@@ -2,13 +2,14 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useGetMyCompany } from '@/hooks/useCompany';
+import { useGetMyCompany, useClaimCompanyNewbieReward } from '@/hooks/useCompany';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, PlusCircle, CheckCircle2, Clock, XCircle, ExternalLink } from 'lucide-react';
+import { Building2, PlusCircle, CheckCircle2, Clock, XCircle, ExternalLink, Sparkles } from 'lucide-react';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
 export default function CompanyOverviewPage() {
   const { data: company, isLoading } = useGetMyCompany();
+  const { mutate: claimReward, isPending: isClaiming } = useClaimCompanyNewbieReward();
 
   if (isLoading) {
     return <div className="py-12 text-center text-muted-foreground animate-pulse">Loading company overview...</div>;
@@ -92,6 +93,31 @@ export default function CompanyOverviewPage() {
                 </div>
               </div>
               
+              {company.status === 'VERIFIED' && !company.isNewbieRewardClaimed ? (
+                <div className="p-3.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15 border border-amber-500/30 space-y-2 mt-2">
+                  <div className="flex items-center gap-2 text-amber-500 font-bold text-xs uppercase tracking-wider">
+                    <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+                    <span>Thưởng 25.000 Coin</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Chúc mừng công ty của bạn đã được duyệt! Bấm bên dưới để nhận ngay 25.000 Coin thưởng vào ví.
+                  </p>
+                  <Button
+                    size="sm"
+                    disabled={isClaiming}
+                    onClick={() => claimReward()}
+                    className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 font-bold shadow-md hover:shadow-lg transition-all"
+                  >
+                    {isClaiming ? 'ĐANG NHẬN...' : '🎁 NHẬN 25.000 COIN NGAY'}
+                  </Button>
+                </div>
+              ) : company.status === 'VERIFIED' && company.isNewbieRewardClaimed ? (
+                <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                  <Sparkles className="w-4 h-4 shrink-0" />
+                  <span>Đã nhận thưởng xác thực 25.000 Coin</span>
+                </div>
+              ) : null}
+
               <div className="pt-2">
                 <Button variant="outline" size="sm" className="w-full" onClick={() => window.location.href = '/recruiter/company/legal'}>
                   Manage Verification

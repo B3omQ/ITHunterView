@@ -23,6 +23,8 @@ namespace ITHunterview.Service.DTOs.Company
         public CompanyVerificationMethod VerificationMethod { get; set; }
         public string VerificationDocumentUrl { get; set; } = string.Empty;
         public CompanyStatus Status { get; set; }
+        public bool IsNewbieRewardClaimed { get; set; }
+        public bool CanClaimNewbieReward => Status == CompanyStatus.VERIFIED && !IsNewbieRewardClaimed;
         public string? PendingName { get; set; }
         public string? PendingTaxCode { get; set; }
         public string? PendingHeadquartersAddress { get; set; }

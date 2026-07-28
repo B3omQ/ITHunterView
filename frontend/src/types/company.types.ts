@@ -19,6 +19,8 @@ export interface Company {
   verificationMethod: CompanyVerificationMethod;
   verificationDocumentUrl: string;
   status: CompanyStatus;
+  isNewbieRewardClaimed?: boolean;
+  canClaimNewbieReward?: boolean;
   createdAt: string;
   updatedAt: string;
   createdByEmail?: string;
