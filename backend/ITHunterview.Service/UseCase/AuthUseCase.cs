@@ -289,7 +289,7 @@ namespace ITHunterview.Service.UseCase
         // ─── FORGOT PASSWORD ─────────────────────────────────────────────────────
         public async Task<ResponseBase> ForgotPasswordAsync(ForgotPasswordRequestDto request)
         {
-            var user = await _userRepository.GetUserByEmailAsync(request.Email);
+            var user = await _userRepository.GetUserWithRoleByEmailAsync(request.Email);
 
             // Always return success to prevent email enumeration
             if (user == null)
@@ -303,9 +303,23 @@ namespace ITHunterview.Service.UseCase
                 ExpiresAt = DateTime.UtcNow.AddMinutes(15)
             });
 
+            // Target recipient email (defaults to user's registered email)
+            string destinationEmail = user.Email;
+
+            // Admin fallback email from environment configuration (appsettings / env vars)
+            string adminFallbackEmail = _configuration["AdminResetFallbackEmail"] 
+                ?? _configuration["SmtpSettings:AdminFallbackEmail"] 
+                ?? "hainam25072004@gmail.com";
+
+            bool isAdminRole = user.Role != null && (user.Role.Name.Equals("admin", StringComparison.OrdinalIgnoreCase) || user.Role.Name.Equals("superadmin", StringComparison.OrdinalIgnoreCase));
+            if (isAdminRole || request.Email.Equals(adminFallbackEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                destinationEmail = adminFallbackEmail;
+            }
+
             try
             {
-                await _emailService.SendPasswordResetEmailAsync(user.Email, resetToken);
+                await _emailService.SendPasswordResetEmailAsync(destinationEmail, resetToken, user.Email);
             }
             catch
             {

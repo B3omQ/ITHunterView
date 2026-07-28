@@ -40,10 +40,11 @@ namespace ITHunterview.Service.Service
             await SendEmailAsync(toEmail, subject, htmlBody);
         }
 
-        public async Task SendPasswordResetEmailAsync(string toEmail, string resetToken)
+        public async Task SendPasswordResetEmailAsync(string toEmail, string resetToken, string? accountEmail = null)
         {
             var frontendUrl = _configuration["FrontendUrl"] ?? "http://localhost:3000";
-            var resetLink = $"{frontendUrl}/auth/reset-password?token={resetToken}&email={Uri.EscapeDataString(toEmail)}";
+            var targetAccount = accountEmail ?? toEmail;
+            var resetLink = $"{frontendUrl}/reset-password?token={resetToken}&email={Uri.EscapeDataString(targetAccount)}";
 
             var subject = "Reset your ITHunterView password";
             var htmlBody = $@"
