@@ -1240,7 +1240,7 @@ namespace ITHunterview.Service.UseCase
             };
         }
 
-        public async Task<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>> GetJobMatchHistoryAsync(Guid jobId, int page, int pageSize)
+        public async Task<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>> GetJobMatchHistoryAsync(Guid jobId, Guid recruiterId, int page, int pageSize)
         {
             var query = from s in _context.CvJobMatchScores
                         join c in _context.Cvs on s.CvId equals c.Id into cvs
@@ -1252,20 +1252,85 @@ namespace ITHunterview.Service.UseCase
             var total = await query.CountAsync();
             var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
-            var mappedItems = items.Select(x => new ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto
+            // Get unlocked CV IDs for this recruiter
+            var cvIds = items.Where(x => x.Score.CvId.HasValue).Select(x => x.Score.CvId!.Value).ToList();
+            var unlockedCvIds = await _context.RecruiterUnlockedCvs
+                .Where(u => u.RecruiterId == recruiterId && cvIds.Contains(u.CvId))
+                .Select(u => u.CvId)
+                .ToListAsync();
+            var unlockedSet = new HashSet<Guid>(unlockedCvIds);
+
+            // Check active subscription quota for recruiter
+            var activeSub = await _context.UserSubscriptions
+                .Where(us => us.UserId == recruiterId && us.Status == Domain.Enums.UserSubscriptionStatus.ACTIVE && us.EndDate >= DateTime.UtcNow)
+                .OrderByDescending(us => us.EndDate)
+                .FirstOrDefaultAsync();
+
+            int unlockQuota = 0;
+            int currentUsedQuota = 0;
+
+            if (activeSub != null)
             {
-                JobId = x.Score.JobId ?? Guid.Empty,
-                CvId = x.Score.CvId,
-                CandidateId = x.Cv?.UserId,
-                CvFileName = x.Cv?.FileName ?? "Unknown CV",
-                FileUrl = x.Cv?.FileUrl,
-                SourceJobId = x.Score.Id, // using this for primary key mapping if needed
-                JdTitle = x.Score.JdTitle,
-                MatchScore = x.Score.MatchScore,
-                Status = x.Score.Status,
-                ErrorMessage = x.Score.ErrorMessage,
-                UpdatedAt = x.Score.UpdatedAt,
-                MatchType = x.Score.MatchType
+                var sub = await _context.Subscriptions.FirstOrDefaultAsync(s => s.Id == activeSub.SubId);
+                if (sub != null && !string.IsNullOrEmpty(sub.FeaturesConfig))
+                {
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(sub.FeaturesConfig);
+                        if (doc.RootElement.TryGetProperty("unlockCvLimit", out var limitProp))
+                        {
+                            unlockQuota = limitProp.GetInt32();
+                        }
+                    }
+                    catch { }
+
+                    if (unlockQuota > 0)
+                    {
+                        currentUsedQuota = await _context.RecruiterUnlockedCvs
+                            .CountAsync(u => u.RecruiterId == recruiterId && u.UnlockedVia == "SUBSCRIPTION" && u.UnlockedAt >= activeSub.StartDate && u.UnlockedAt <= activeSub.EndDate);
+                    }
+                }
+            }
+
+            int index = (page - 1) * pageSize + 1;
+            var mappedItems = items.Select(x =>
+            {
+                var cvId = x.Score.CvId;
+                bool isUnlocked = false;
+
+                if (cvId.HasValue)
+                {
+                    if (unlockedSet.Contains(cvId.Value))
+                    {
+                        isUnlocked = true;
+                    }
+                    else if (unlockQuota > 0 && currentUsedQuota < unlockQuota)
+                    {
+                        // Active subscription quota available
+                        isUnlocked = true;
+                    }
+                }
+
+                var itemIndex = index++;
+
+                return new ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto
+                {
+                    JobId = x.Score.JobId ?? Guid.Empty,
+                    CvId = cvId,
+                    // STRICT ANTI-F12 DATA MASKING: Strip CandidateId, FileUrl, and real Name if locked
+                    CandidateId = isUnlocked ? x.Cv?.UserId : null,
+                    CvFileName = isUnlocked ? (x.Cv?.FileName ?? "Unknown CV") : $"Ứng viên #{itemIndex}",
+                    FileUrl = isUnlocked ? x.Cv?.FileUrl : null,
+                    SourceJobId = x.Score.Id,
+                    JdTitle = x.Score.JdTitle,
+                    MatchScore = x.Score.MatchScore,
+                    Status = x.Score.Status,
+                    ErrorMessage = x.Score.ErrorMessage,
+                    UpdatedAt = x.Score.UpdatedAt,
+                    MatchType = x.Score.MatchType,
+                    IsUnlocked = isUnlocked,
+                    UnlockCost = 50
+                };
             }).ToList();
 
             return new ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>
@@ -1274,6 +1339,161 @@ namespace ITHunterview.Service.UseCase
                 TotalCount = total,
                 Page = page,
                 PageSize = pageSize
+            };
+        }
+
+        public async Task<ITHunterview.Service.DTOs.Cv.Matching.UnlockCandidateResponseDto> UnlockCandidateCvAsync(Guid recruiterId, ITHunterview.Service.DTOs.Cv.Matching.UnlockCandidateRequestDto dto)
+        {
+            var cv = await _context.Cvs.FindAsync(dto.CvId);
+            if (cv == null)
+            {
+                return new ITHunterview.Service.DTOs.Cv.Matching.UnlockCandidateResponseDto
+                {
+                    Success = false,
+                    Message = "Không tìm thấy hồ sơ CV của ứng viên."
+                };
+            }
+
+            // Check if already unlocked in DB
+            var existingUnlock = await _context.RecruiterUnlockedCvs
+                .FirstOrDefaultAsync(u => u.RecruiterId == recruiterId && u.CvId == dto.CvId);
+
+            if (existingUnlock != null)
+            {
+                var currentWallet = await _context.UserWallets.FirstOrDefaultAsync(w => w.UserId == recruiterId);
+                return new ITHunterview.Service.DTOs.Cv.Matching.UnlockCandidateResponseDto
+                {
+                    Success = true,
+                    Message = "Hồ sơ ứng viên đã được mở khóa từ trước.",
+                    UnlockedVia = existingUnlock.UnlockedVia,
+                    CoinsDeducted = 0,
+                    RemainingCoins = currentWallet?.Balance ?? 0,
+                    CvId = cv.Id,
+                    CandidateId = cv.UserId,
+                    CvFileName = cv.FileName ?? "Candidate CV",
+                    FileUrl = cv.FileUrl
+                };
+            }
+
+            // Check Active Subscription
+            var activeSub = await _context.UserSubscriptions
+                .Where(us => us.UserId == recruiterId && us.Status == Domain.Enums.UserSubscriptionStatus.ACTIVE && us.EndDate >= DateTime.UtcNow)
+                .OrderByDescending(us => us.EndDate)
+                .FirstOrDefaultAsync();
+
+            int unlockQuota = 0;
+            if (activeSub != null)
+            {
+                var sub = await _context.Subscriptions.FirstOrDefaultAsync(s => s.Id == activeSub.SubId);
+                if (sub != null && !string.IsNullOrEmpty(sub.FeaturesConfig))
+                {
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(sub.FeaturesConfig);
+                        if (doc.RootElement.TryGetProperty("unlockCvLimit", out var limitProp))
+                        {
+                            unlockQuota = limitProp.GetInt32();
+                        }
+                    }
+                    catch { }
+
+                    if (unlockQuota > 0)
+                    {
+                        var usedQuota = await _context.RecruiterUnlockedCvs
+                            .CountAsync(u => u.RecruiterId == recruiterId && u.UnlockedVia == "SUBSCRIPTION" && u.UnlockedAt >= activeSub.StartDate && u.UnlockedAt <= activeSub.EndDate);
+
+                        if (usedQuota < unlockQuota)
+                        {
+                            // Free unlock via subscription
+                            var newUnlockSub = new Domain.Entities.RecruiterUnlockedCvs
+                            {
+                                Id = Guid.NewGuid(),
+                                RecruiterId = recruiterId,
+                                CvId = dto.CvId,
+                                JobId = dto.JobId,
+                                CoinsSpent = 0,
+                                UnlockedVia = "SUBSCRIPTION",
+                                UnlockedAt = DateTime.UtcNow
+                            };
+                            _context.RecruiterUnlockedCvs.Add(newUnlockSub);
+                            await _context.SaveChangesAsync();
+
+                            var currentWallet = await _context.UserWallets.FirstOrDefaultAsync(w => w.UserId == recruiterId);
+
+                            return new ITHunterview.Service.DTOs.Cv.Matching.UnlockCandidateResponseDto
+                            {
+                                Success = true,
+                                Message = "Mở khóa hồ sơ ứng viên thành công bằng quyền Subscription!",
+                                UnlockedVia = "SUBSCRIPTION",
+                                CoinsDeducted = 0,
+                                RemainingCoins = currentWallet?.Balance ?? 0,
+                                CvId = cv.Id,
+                                CandidateId = cv.UserId,
+                                CvFileName = cv.FileName ?? "Candidate CV",
+                                FileUrl = cv.FileUrl
+                            };
+                        }
+                    }
+                }
+            }
+
+            // Pay via Coins
+            const int unlockCost = 50;
+            var wallet = await _context.UserWallets.FirstOrDefaultAsync(w => w.UserId == recruiterId);
+
+            if (wallet == null || wallet.Balance < unlockCost)
+            {
+                int currentBalance = wallet?.Balance ?? 0;
+                return new ITHunterview.Service.DTOs.Cv.Matching.UnlockCandidateResponseDto
+                {
+                    Success = false,
+                    Message = $"Số dư Coin không đủ (Hiện có: {currentBalance} Coin, Cần: {unlockCost} Coin). Vui lòng nạp thêm Coin hoặc nâng cấp gói Subscription.",
+                    RemainingCoins = currentBalance
+                };
+            }
+
+            // Deduct Coins
+            wallet.Balance -= unlockCost;
+            wallet.UpdatedAt = DateTime.UtcNow;
+            _context.UserWallets.Update(wallet);
+
+            var creditTx = new Domain.Entities.CreditTransactions
+            {
+                Id = Guid.NewGuid(),
+                WalletId = wallet.Id,
+                Amount = -unlockCost,
+                TransactionType = Domain.Enums.CreditTransactionType.DEDUCT,
+                ReferenceId = dto.CvId,
+                Description = $"Mở khóa hồ sơ CV ứng viên ({cv.FileName ?? "Candidate CV"})",
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.CreditTransactions.Add(creditTx);
+
+            var newUnlock = new Domain.Entities.RecruiterUnlockedCvs
+            {
+                Id = Guid.NewGuid(),
+                RecruiterId = recruiterId,
+                CvId = dto.CvId,
+                JobId = dto.JobId,
+                CoinsSpent = unlockCost,
+                UnlockedVia = "COINS",
+                UnlockedAt = DateTime.UtcNow
+            };
+            _context.RecruiterUnlockedCvs.Add(newUnlock);
+
+            await _context.SaveChangesAsync();
+
+            return new ITHunterview.Service.DTOs.Cv.Matching.UnlockCandidateResponseDto
+            {
+                Success = true,
+                Message = $"Mở khóa hồ sơ thành công! Đã dùng {unlockCost} Coin.",
+                UnlockedVia = "COINS",
+                CoinsDeducted = unlockCost,
+                RemainingCoins = wallet.Balance,
+                CvId = cv.Id,
+                CandidateId = cv.UserId,
+                CvFileName = cv.FileName ?? "Candidate CV",
+                FileUrl = cv.FileUrl
             };
         }
 

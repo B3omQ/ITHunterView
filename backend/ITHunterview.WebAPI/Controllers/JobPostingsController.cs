@@ -329,7 +329,7 @@ namespace ITHunterview.WebAPI.Controllers
                     return Forbid();
                 }
 
-                var result = await _cvJobMatchingUseCase.GetJobMatchHistoryAsync(id, page, pageSize);
+                var result = await _cvJobMatchingUseCase.GetJobMatchHistoryAsync(id, recruiterId, page, pageSize);
                 return Ok(new ResponseBase<PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>(result, "Job matches retrieved"));
             }
             catch (Exception ex)
@@ -344,6 +344,30 @@ namespace ITHunterview.WebAPI.Controllers
         {
             return StatusCode(StatusCodes.Status410Gone,
                 new ResponseBase<string>(null, "LEGACY_REPARSE_DISABLED: Use POST /api/JobPostings/{id}/analysis for draft jobs."));
+        }
+
+        [HttpPost("unlock-candidate")]
+        public async Task<ActionResult<ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.UnlockCandidateResponseDto>>> UnlockCandidate([FromBody] ITHunterview.Service.DTOs.Cv.Matching.UnlockCandidateRequestDto dto)
+        {
+            try
+            {
+                var userIdStr = User.FindFirstValue("userId");
+                if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+                {
+                    return Unauthorized();
+                }
+
+                var result = await _cvJobMatchingUseCase.UnlockCandidateCvAsync(userId, dto);
+                if (result.Success)
+                {
+                    return Ok(new ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.UnlockCandidateResponseDto>(result, result.Message));
+                }
+                return BadRequest(new ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.UnlockCandidateResponseDto>(result, result.Message));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.UnlockCandidateResponseDto>(null, ex.Message));
+            }
         }
 
         private Task<Guid> ResolveRecruiterIdAsync()

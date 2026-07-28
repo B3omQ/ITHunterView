@@ -74,6 +74,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         public DbSet<CreditTransactions> CreditTransactions { get; set; } = null!;
         public DbSet<CoinFeatures> CoinFeatures { get; set; } = null!;
         public DbSet<CoinPackages> CoinPackages { get; set; } = null!;
+        public DbSet<RecruiterUnlockedCvs> RecruiterUnlockedCvs { get; set; } = null!;
 
         // System Ops
         public DbSet<SystemConfigs> SystemConfigs { get; set; } = null!;
@@ -475,6 +476,12 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                       .WithMany()
                       .HasForeignKey(e => e.EffectiveAnalysisRunId)
                       .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // RecruiterUnlockedCvs
+            modelBuilder.Entity<RecruiterUnlockedCvs>(entity =>
+            {
+                entity.HasIndex(e => new { e.RecruiterId, e.CvId }).IsUnique();
             });
         }
     }

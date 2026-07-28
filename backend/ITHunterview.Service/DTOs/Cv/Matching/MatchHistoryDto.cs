@@ -15,6 +15,8 @@ namespace ITHunterview.Service.DTOs.Cv.Matching
         public string? ErrorMessage { get; set; }
         public string? MatchType { get; set; }
         public string? FileUrl { get; set; }
+        public bool IsUnlocked { get; set; } = true;
+        public int UnlockCost { get; set; } = 50;
         public DateTime UpdatedAt { get; set; }
     }
 }

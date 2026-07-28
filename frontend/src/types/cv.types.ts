@@ -50,6 +50,20 @@ export interface MatchHistoryDto {
   updatedAt: string;
   matchType?: 'AI' | 'Hardcode';
   fileUrl?: string;
+  isUnlocked?: boolean;
+  unlockCost?: number;
+}
+
+export interface UnlockCandidateResponse {
+  success: boolean;
+  message: string;
+  unlockedVia: 'SUBSCRIPTION' | 'COINS';
+  coinsDeducted: number;
+  remainingCoins: number;
+  cvId?: string;
+  candidateId?: string;
+  cvFileName?: string;
+  fileUrl?: string;
 }
 
 export interface PagedResult<T> {
