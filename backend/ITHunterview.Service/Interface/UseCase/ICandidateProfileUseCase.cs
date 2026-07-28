@@ -30,5 +30,8 @@ namespace ITHunterview.Service.Interface.UseCase
 
         /// <summary>Cập nhật thông tin profile bắt buộc từ màn hình onboarding.</summary>
         Task<ProfileCompletionStatusResponseDto> CompleteOnboardingProfileAsync(Guid userId, OnboardingProfileRequestDto request);
+
+        /// <summary>Nhận thưởng 1.500 coin tân binh khi hoàn thành 100% profile và xác thực email.</summary>
+        Task<ProfileCompletionStatusResponseDto> ClaimNewbieRewardAsync(Guid userId);
     }
 }

@@ -759,5 +759,53 @@ namespace ITHunterview.Service.UseCase
                 UpdatedAt = p.UpdatedAt
             };
         }
+
+        public async Task AddBonusCoinsAsync(Guid userId, int amount, string description)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var wallet = await _context.UserWallets
+                    .FromSqlRaw("SELECT * FROM user_wallets WHERE user_id = {0} LIMIT 1 FOR UPDATE", userId)
+                    .FirstOrDefaultAsync();
+
+                if (wallet == null)
+                {
+                    wallet = new UserWallets
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = userId,
+                        Balance = amount,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    _context.UserWallets.Add(wallet);
+                }
+                else
+                {
+                    wallet.Balance += amount;
+                    wallet.UpdatedAt = DateTime.UtcNow;
+                    _context.UserWallets.Update(wallet);
+                }
+
+                var creditTx = new CreditTransactions
+                {
+                    Id = Guid.NewGuid(),
+                    WalletId = wallet.Id,
+                    Amount = amount,
+                    TransactionType = ITHunterview.Domain.Enums.CreditTransactionType.BONUS,
+                    Description = description,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.CreditTransactions.Add(creditTx);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
     }
 }

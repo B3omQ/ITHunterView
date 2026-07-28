@@ -14,5 +14,6 @@ namespace ITHunterview.Service.Interface.UseCase
         Task ProcessWebhookAsync(long orderCode, string transactionDateTime);
         Task<ResponseBase<PagedResult<PaymentDto>>> GetPagedPaymentsAsync(int page, int pageSize);
         Task<ResponseBase<PagedResult<PaymentDto>>> GetMyPaymentsAsync(Guid userId, int page, int pageSize, string? status = null, string? targetType = null);
+        Task AddBonusCoinsAsync(Guid userId, int amount, string description);
     }
 }

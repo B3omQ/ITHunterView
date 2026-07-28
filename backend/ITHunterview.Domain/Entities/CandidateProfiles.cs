@@ -50,6 +50,9 @@ namespace ITHunterview.Domain.Entities
         [Column("profile_completed_at")]
         public DateTime? ProfileCompletedAt { get; set; }
 
+        [Column("is_newbie_reward_claimed")]
+        public bool IsNewbieRewardClaimed { get; set; } = false;
+
         // Navigation
         public User User { get; set; } = null!;
     }

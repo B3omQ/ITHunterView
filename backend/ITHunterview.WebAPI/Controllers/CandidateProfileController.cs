@@ -123,6 +123,15 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(new ResponseBase<ProfileCompletionStatusResponseDto>(result));
         }
 
+        /// <summary>POST /api/v1/candidate/profile/claim-newbie-reward — Claim 1,500 coins for verifying email & 100% profile</summary>
+        [HttpPost("claim-newbie-reward")]
+        public async Task<ActionResult<ResponseBase<ProfileCompletionStatusResponseDto>>> ClaimNewbieReward()
+        {
+            var userId = GetUserId();
+            var result = await _profileUseCase.ClaimNewbieRewardAsync(userId);
+            return Ok(new ResponseBase<ProfileCompletionStatusResponseDto>(result));
+        }
+
         // ─── Helpers ──────────────────────────────────────────────────────────
 
         private Guid GetUserId()

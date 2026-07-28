@@ -23,6 +23,7 @@ import {
 import { useGetMatchHistory } from "@/hooks/useCvMatch"
 import { useGetInterviewSessions } from "@/hooks/useInterview"
 import { useMyLearningPaths } from "@/hooks/useLearningPath"
+import { useProfileCompletionStatus, useClaimNewbieReward } from "@/hooks/useCandidateProfile"
 import { Progress } from "@/components/ui/progress"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts"
 
@@ -30,6 +31,8 @@ export default function CandidateDashboard() {
   const { user } = useAuthStore()
 
   // 1. Fetch Data
+  const { data: completionStatus } = useProfileCompletionStatus()
+  const { mutate: claimReward, isPending: isClaiming } = useClaimNewbieReward()
   const { data: matchHistoryRes, isLoading: isMatchLoading } = useGetMatchHistory(1, 10)
   const matchHistory = (matchHistoryRes?.data?.items || []).filter(m => m.matchScore !== null && m.matchScore !== undefined)
 
@@ -150,6 +153,84 @@ export default function CandidateDashboard() {
           </Link>
         </div>
       </div>
+
+      {/* Newbie Welcome Reward Banner */}
+      {completionStatus && !completionStatus.isNewbieRewardClaimed && (
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-700 p-6 sm:p-8 text-white shadow-xl shadow-purple-500/20 border border-white/10 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/30 mb-8">
+          <div className="absolute -top-24 -right-24 w-72 h-72 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            <div className="space-y-3 max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-amber-300 text-xs font-bold tracking-wide uppercase border border-white/20 shadow-sm animate-pulse">
+                <Sparkles size={14} className="text-amber-300" /> Thưởng Chào Mừng Tân Binh
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2">
+                Nhận ngay <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 font-extrabold">1.500 Coin</span> khởi tạo! 🎁
+              </h2>
+              <p className="text-purple-100 text-sm leading-relaxed">
+                Hoàn thành 2 bước xác thực cơ bản dưới đây để mở khóa <strong className="text-amber-200">1.500 Coin</strong> vào ví và trải nghiệm miễn phí các dịch vụ scan CV AI, phỏng vấn thực chiến đỉnh cao.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 text-sm">
+                  {completionStatus.isEmailVerified ? (
+                    <div className="p-1 rounded-full bg-emerald-500 text-white shadow-sm flex-shrink-0"><CheckCircle2 size={16} /></div>
+                  ) : (
+                    <div className="p-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 flex-shrink-0"><Circle size={16} /></div>
+                  )}
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-white">1. Xác thực Email</span>
+                    <span className="text-xs text-purple-200">
+                      {completionStatus.isEmailVerified ? "Đã hoàn thành ✅" : "Vui lòng kiểm tra email"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 text-sm">
+                  {completionStatus.isComplete ? (
+                    <div className="p-1 rounded-full bg-emerald-500 text-white shadow-sm flex-shrink-0"><CheckCircle2 size={16} /></div>
+                  ) : (
+                    <div className="p-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 flex-shrink-0"><Circle size={16} /></div>
+                  )}
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-white">2. Hoàn thiện 100% Hồ sơ</span>
+                    <span className="text-xs text-purple-200">
+                      {completionStatus.isComplete ? "Đã hoàn thành ✅" : `Tiến độ: ${completionStatus.completionPercentage}%`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-stretch sm:items-end w-full lg:w-auto mt-2 lg:mt-0 gap-3">
+              {completionStatus.canClaimNewbieReward ? (
+                <button
+                  onClick={() => claimReward()}
+                  disabled={isClaiming}
+                  className="relative group overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 px-8 py-4 text-slate-950 font-black text-base shadow-xl shadow-amber-500/25 hover:shadow-amber-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-60 flex items-center justify-center gap-2.5"
+                >
+                  <span className="relative z-10 flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-purple-700 animate-bounce" />
+                    {isClaiming ? "ĐANG HẠCH TOÁN..." : "NHẬN 1.500 COIN NGAY"}
+                  </span>
+                </button>
+              ) : (
+                <Link
+                  href="/candidate/profile"
+                  className="rounded-2xl bg-white/15 hover:bg-white/20 border border-white/20 px-6 py-4 text-center font-bold text-sm text-white shadow-lg backdrop-blur-md transition-all flex items-center justify-center gap-2 group"
+                >
+                  <span>Hoàn thiện điều kiện ngay</span>
+                  <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </Link>
+              )}
+              <span className="text-xs text-purple-200/80 text-center lg:text-right">
+                * Phần thưởng dành riêng cho thành viên mới (1 lần duy nhất).
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Row 1: Top-level KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
