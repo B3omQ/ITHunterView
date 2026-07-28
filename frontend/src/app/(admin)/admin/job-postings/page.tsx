@@ -11,10 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { format } from "date-fns";
 import { Ban, CheckCircle2, Search, RefreshCcw, Eye } from "lucide-react";
 import { toast } from "sonner";
-import Link from "next/link";
 import JobDetailModal from "@/components/jobs/JobDetailModal";
 
-export default function StaffJobPostingsPage() {
+export default function AdminJobPostingsPage() {
   const { data, loading, fetchJobs, banJob, unbanJob } = useStaffJobs();
   const [searchTerm, setSearchTerm] = useState("");
   const connection = useSignalR("/hubs/notification");
@@ -97,8 +96,8 @@ export default function StaffJobPostingsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Quản lý bài đăng (Job Postings)</h1>
-        <p className="text-sm text-muted-foreground">Theo dõi và hậu kiểm các bài đăng tuyển dụng trên hệ thống.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Quản lý & Kiểm duyệt Bài đăng (Admin)</h1>
+        <p className="text-sm text-muted-foreground">Theo dõi và kiểm duyệt tất cả các bài đăng tuyển dụng trên hệ thống.</p>
       </div>
 
       <div className="flex items-center justify-between gap-4">
@@ -240,7 +239,7 @@ export default function StaffJobPostingsPage() {
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
         jobId={viewJobId || undefined}
-        isCandidateMode={false} // Staff doesn't need to see "Apply" button
+        isCandidateMode={false}
       />
     </div>
   );
