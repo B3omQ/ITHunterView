@@ -30,10 +30,15 @@ namespace ITHunterview.Service.UseCase
             if (string.IsNullOrEmpty(featureKey))
                 throw new ArgumentException("Feature key không được để trống", nameof(featureKey));
 
-            using (var transaction = await _context.Database.BeginTransactionAsync())
+            var transaction = _context.Database.CurrentTransaction;
+            var ownsTransaction = transaction == null;
+            if (ownsTransaction)
             {
-                try
-                {
+                transaction = await _context.Database.BeginTransactionAsync();
+            }
+
+            try
+            {
                     // 1. Áp dụng Pessimistic Lock (SELECT FOR UPDATE) trên PostgreSQL để khóa dòng ví của người dùng ngay từ đầu
                     // Điều này đóng vai trò như một mutex per-user cho toàn bộ luồng check subscription & trừ coin
                     var wallet = await _context.UserWallets
@@ -106,7 +111,10 @@ namespace ITHunterview.Service.UseCase
                                 {
                                     await RecordFeatureUsageLogAsync(userId, featureKey, referenceId, true);
                                     await _context.SaveChangesAsync();
-                                    await transaction.CommitAsync();
+                                    if (ownsTransaction)
+                                    {
+                                        await transaction!.CommitAsync();
+                                    }
                                     return true;
                                 }
 
@@ -117,7 +125,10 @@ namespace ITHunterview.Service.UseCase
                                     {
                                         await RecordFeatureUsageLogAsync(userId, featureKey, referenceId, true);
                                         await _context.SaveChangesAsync();
-                                        await transaction.CommitAsync();
+                                        if (ownsTransaction)
+                                        {
+                                            await transaction!.CommitAsync();
+                                        }
                                         return true; // Hạn mức Subscription còn, cho phép thực hiện
                                     }
                                 }
@@ -132,7 +143,10 @@ namespace ITHunterview.Service.UseCase
                         int usedCount = await GetUsedCountInPeriodAsync(userId, featureKey, DateTime.MinValue, DateTime.MaxValue);
                         if (usedCount < defaultFreeSlotLimit)
                         {
-                            await transaction.CommitAsync();
+                            if (ownsTransaction)
+                            {
+                                await transaction!.CommitAsync();
+                            }
                             return true; // Gói Free được miễn phí 1 slot đăng việc Active
                         }
                     }
@@ -167,7 +181,10 @@ namespace ITHunterview.Service.UseCase
 
                     if (coinCost == 0)
                     {
-                        await transaction.CommitAsync();
+                        if (ownsTransaction)
+                        {
+                            await transaction!.CommitAsync();
+                        }
                         return true; // Tính năng miễn phí theo cấu hình
                     }
 
@@ -212,14 +229,26 @@ namespace ITHunterview.Service.UseCase
                     await RecordFeatureUsageLogAsync(userId, featureKey, referenceId, false);
 
                     await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
+                    if (ownsTransaction)
+                    {
+                        await transaction!.CommitAsync();
+                    }
 
                     return true;
-                }
-                catch (Exception)
+            }
+            catch (Exception)
+            {
+                if (ownsTransaction && transaction != null)
                 {
                     await transaction.RollbackAsync();
-                    throw;
+                }
+                throw;
+            }
+            finally
+            {
+                if (ownsTransaction && transaction != null)
+                {
+                    await transaction.DisposeAsync();
                 }
             }
         }

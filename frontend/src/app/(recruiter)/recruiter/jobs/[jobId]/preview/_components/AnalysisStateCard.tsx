@@ -13,9 +13,8 @@ interface AnalysisStateCardProps {
   lifecycle: JobAnalysisLifecycleState
   isLoading: boolean
   isCurrentAnalysis: boolean
-  onRequestAnalysis: () => void
+  onEditDraft: () => void
   onRetryAnalysis: () => void
-  isRequesting: boolean
   isRetrying: boolean
 }
 
@@ -24,9 +23,8 @@ export function AnalysisStateCard({
   lifecycle,
   isLoading,
   isCurrentAnalysis,
-  onRequestAnalysis,
+  onEditDraft,
   onRetryAnalysis,
-  isRequesting,
   isRetrying,
 }: AnalysisStateCardProps) {
   if (isLoading) {
@@ -44,10 +42,10 @@ export function AnalysisStateCard({
     return (
       <ActionCard
         title="Bản thảo chưa được phân tích bằng AI."
-        description="Bắt đầu phân tích để trích xuất kỹ năng và kiểm tra dữ liệu trước khi xuất bản."
-        actionLabel="Phân tích bằng AI"
-        onAction={onRequestAnalysis}
-        isPending={isRequesting}
+        description="Quay lại bản thảo và bấm Publish để bắt đầu quy trình phân tích trước khi xuất bản."
+        actionLabel="Chỉnh sửa bản thảo"
+        onAction={onEditDraft}
+        isPending={false}
       />
     )
   }
@@ -56,10 +54,10 @@ export function AnalysisStateCard({
     return (
       <ActionCard
         title="Nội dung yêu cầu công việc đã thay đổi."
-        description="Kết quả cũ không còn áp dụng cho bản thảo hiện tại. Hãy chạy phân tích lại trước khi xuất bản."
-        actionLabel="Phân tích lại AI"
-        onAction={onRequestAnalysis}
-        isPending={isRequesting}
+        description="Kết quả cũ không còn áp dụng. Quay lại bản thảo, sau đó bấm Publish để chạy phân tích cho nội dung mới."
+        actionLabel="Chỉnh sửa bản thảo"
+        onAction={onEditDraft}
+        isPending={false}
       />
     )
   }

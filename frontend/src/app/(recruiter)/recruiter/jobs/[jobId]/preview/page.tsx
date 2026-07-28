@@ -61,27 +61,8 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
     void refetchAnalysis()
   }
 
-  const requestAnalysis = (removeIntent = false) => {
-    if (!job || job.status !== "DRAFT") return
-    setActionError(null)
-    requestAnalysisMutation.mutate(
-      { expectedRevision: job.analysisRevision, idempotencyKey: createIdempotencyKey() },
-      {
-        onError: (error) => {
-          setActionError(getErrorMessage(error, "Unable to start AI analysis."))
-          refreshAuthoritativeState()
-        },
-        onSettled: () => {
-          if (removeIntent) {
-            router.replace("/recruiter/jobs/" + jobId + "/preview")
-          }
-        },
-      },
-    )
-  }
-
   useEffect(() => {
-    if (searchParams.get("analyze") !== "1" || autoStartedRef.current || !job || previewLoading || !previewLoaded) {
+    if (searchParams.get("publish") !== "1" || autoStartedRef.current || !job || previewLoading || !previewLoaded) {
       return
     }
 
@@ -214,9 +195,8 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
         lifecycle={lifecycle}
         isLoading={previewLoading}
         isCurrentAnalysis={currentAnalysis}
-        onRequestAnalysis={() => requestAnalysis(false)}
+        onEditDraft={() => router.push("/recruiter/jobs/" + jobId + "/edit")}
         onRetryAnalysis={retryAnalysis}
-        isRequesting={requestAnalysisMutation.isPending}
         isRetrying={retryAnalysisMutation.isPending}
       />
 

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { ArrowLeft, Sparkles, Loader2, Save } from "lucide-react"
+import { AlertCircle, ArrowLeft, Loader2, Save, Send } from "lucide-react"
 import { LEVELS, WORKING_MODELS, JOB_DOMAINS, VIETNAM_PROVINCES } from "@/lib/job-constants"
 import { MajorCombobox } from "@/components/shared/MajorCombobox"
 import { JobPostingRichTextEditor } from "@/components/forms/JobPostingRichTextEditor"
@@ -22,7 +22,6 @@ import {
   validateRecruiterJobPostingRichTextFields,
 } from "@/lib/recruiter-job-posting-form"
 import { JOB_POSTING_RICH_TEXT_LIMITS } from "@/lib/job-posting-markdown"
-import { recruiterService } from "@/services/recruiter.service"
 import { useWalletBalance } from "@/hooks/useWallet"
 
 export default function CreateJobPage() {
@@ -59,7 +58,7 @@ export default function CreateJobPage() {
   const { createJob, saving, error: saveError } = useJobDetails()
 
   const [searchDomain, setSearchDomain] = useState("")
-  const [submittingAction, setSubmittingAction] = useState<"DRAFT" | "PREVIEW" | null>(null)
+  const [submittingAction, setSubmittingAction] = useState<"DRAFT" | "PUBLISH" | null>(null)
 
   const loading = metadataLoading || saving || companyLoading
   const error = metadataError || saveError
@@ -126,7 +125,7 @@ export default function CreateJobPage() {
     return null
   }
 
-  const handleSubmit = async (action: "DRAFT" | "PREVIEW") => {
+  const handleSubmit = async (action: "DRAFT" | "PUBLISH") => {
     const validationError = validateForm()
     if (validationError) {
       alert(validationError)
@@ -164,9 +163,9 @@ export default function CreateJobPage() {
       const res = await createJob(payload)
       if (res.success && res.data) {
         const createdJobId = res.data.id
-        if (action === "PREVIEW") {
+        if (action === "PUBLISH") {
           const needsAnalysis = res.data.parseStatus === "NOT_REQUESTED" || res.data.parseStatus === "STALE"
-          router.push("/recruiter/jobs/" + createdJobId + "/preview" + (needsAnalysis ? "?analyze=1" : ""))
+          router.push("/recruiter/jobs/" + createdJobId + "/preview" + (needsAnalysis ? "?publish=1" : ""))
         } else {
           router.push("/recruiter/jobs")
         }
@@ -586,16 +585,16 @@ export default function CreateJobPage() {
 
           <Button
             type="button"
-            onClick={() => handleSubmit("PREVIEW")}
+            onClick={() => handleSubmit("PUBLISH")}
             disabled={loading || submittingAction !== null}
             className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-md"
           >
-            {submittingAction === "PREVIEW" ? (
+            {submittingAction === "PUBLISH" ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
-              <Sparkles className="w-4 h-4 mr-2" />
+              <Send className="w-4 h-4 mr-2" />
             )}
-            Tiếp tục xem trước AI
+            Publish
           </Button>
         </div>
       </div>
