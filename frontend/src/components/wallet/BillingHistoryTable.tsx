@@ -1,7 +1,8 @@
-"use client";
+"use client"
 
-import React, { useState } from "react";
-import { useMyPayments } from "@/hooks/useWallet";
+import React, { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
+import { useMyPayments } from "@/hooks/useWallet"
 import {
   Table,
   TableBody,
@@ -9,144 +10,459 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { format } from "date-fns";
-import { ArrowLeft, ArrowRight, Loader2, SearchX } from "lucide-react";
+} from "@/components/ui/select"
+import { format } from "date-fns"
+import {
+  Search,
+  X,
+  RotateCcw,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ChevronLeft,
+  ChevronRight,
+  SearchX,
+  Plus,
+  Coins,
+  Sparkles,
+  CreditCard,
+  Building2,
+} from "lucide-react"
 
 export function BillingHistoryTable() {
-  const [page, setPage] = useState(1);
-  const [status, setStatus] = useState<string>("ALL");
-  const [targetType, setTargetType] = useState<string>("ALL");
-  const pageSize = 10;
+  const router = useRouter()
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [status, setStatus] = useState<string>("ALL")
+  const [targetType, setTargetType] = useState<string>("ALL")
+  const [search, setSearch] = useState("")
 
+  const [sortField, setSortField] = useState<"date" | "amount">("date")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
+
+  // Data fetching hook complying with kinh-mantra.md (page -> hook -> service -> api-client -> backend)
   const { data: response, isLoading, isError } = useMyPayments({
     page,
     pageSize,
     ...(status !== "ALL" && { status }),
     ...(targetType !== "ALL" && { targetType }),
-  });
+  })
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
+  const paymentsData = response?.data?.items || []
+  const totalCount = response?.data?.totalCount || 0
+  const totalPages = response?.data?.totalPages || 1
+
+  // Handle local search & sorting
+  const filteredAndSortedPayments = useMemo(() => {
+    let result = [...paymentsData]
+
+    // Client-side search filtering by Order Code, Target Type, Gateway, or Subscription Name
+    if (search.trim()) {
+      const q = search.toLowerCase().trim()
+      result = result.filter((p) => {
+        const orderCodeStr = p.orderCode ? String(p.orderCode) : ""
+        const idStr = p.id.toLowerCase()
+        const subName = p.subscriptionName ? p.subscriptionName.toLowerCase() : ""
+        const gateway = p.paymentGateway ? p.paymentGateway.toLowerCase() : ""
+        const type = p.targetType ? p.targetType.toLowerCase() : ""
+        return (
+          orderCodeStr.includes(q) ||
+          idStr.includes(q) ||
+          subName.includes(q) ||
+          gateway.includes(q) ||
+          type.includes(q)
+        )
+      })
+    }
+
+    // Client-side sorting toggle
+    result.sort((a, b) => {
+      let comparison = 0
+      if (sortField === "date") {
+        const timeA = new Date(a.createdAt).getTime()
+        const timeB = new Date(b.createdAt).getTime()
+        comparison = timeA - timeB
+      } else if (sortField === "amount") {
+        comparison = (a.amount || 0) - (b.amount || 0)
+      }
+      return sortDirection === "asc" ? comparison : -comparison
+    })
+
+    return result
+  }, [paymentsData, search, sortField, sortDirection])
+
+  const handleSort = (field: "date" | "amount") => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))
+    } else {
+      setSortField(field)
+      setSortDirection("desc")
+    }
+  }
+
+  const renderSortIcon = (field: "date" | "amount") => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="ml-1.5 h-3.5 w-3.5 text-[#65676B]/60 dark:text-zinc-500" />
+    }
+    return sortDirection === "asc" ? (
+      <ArrowUp className="ml-1.5 h-3.5 w-3.5 text-[#1877F2] dark:text-blue-400 font-bold" />
+    ) : (
+      <ArrowDown className="ml-1.5 h-3.5 w-3.5 text-[#1877F2] dark:text-blue-400 font-bold" />
+    )
+  }
+
+  const handleResetFilters = () => {
+    setSearch("")
+    setStatus("ALL")
+    setTargetType("ALL")
+    setPage(1)
+  }
+
+  const isFilterActive = search !== "" || status !== "ALL" || targetType !== "ALL"
+
+  // Status badge with subtle semantic pastel tones according to TABLE_STANDARD.md
+  const getStatusBadge = (statusStr: string) => {
+    const s = statusStr?.toUpperCase()
+    switch (s) {
       case "SUCCESS":
       case "PAID":
-        return <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/20">Success</Badge>;
+        return (
+          <Badge className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 shrink-0" />
+            Success
+          </Badge>
+        )
       case "PENDING":
-        return <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/20">Pending</Badge>;
+        return (
+          <Badge className="bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 mr-1.5 shrink-0" />
+            Pending
+          </Badge>
+        )
       case "FAILED":
       case "CANCELLED":
-        return <Badge className="bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 border-rose-500/20">Failed/Cancelled</Badge>;
+      case "EXPIRED":
+        return (
+          <Badge className="bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none">
+            <span className="h-1.5 w-1.5 rounded-full bg-rose-500 mr-1.5 shrink-0" />
+            {s === "CANCELLED" ? "Cancelled" : "Failed"}
+          </Badge>
+        )
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return (
+          <Badge variant="outline" className="rounded-full px-2.5 py-0.5 text-xs font-medium">
+            {statusStr}
+          </Badge>
+        )
     }
-  };
+  }
 
-  const getTargetTypeLabel = (type: string, subName: string | null) => {
+  const getTargetTypeDisplay = (type: string, subName: string | null) => {
     if (type === "SUBSCRIPTION") {
-      return subName ? `Plan: ${subName}` : "Upgrade Plan";
+      return (
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-lg bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-[#1877F2] shrink-0">
+            <Sparkles className="h-3.5 w-3.5" />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-semibold text-sm text-[#050505] dark:text-zinc-100">
+              {subName ? `Plan: ${subName}` : "Subscription Plan"}
+            </span>
+            <span className="text-xs text-[#65676B] dark:text-zinc-400">Employer Plan Renewal / Upgrade</span>
+          </div>
+        </div>
+      )
     }
     if (type === "WALLET_TOPUP" || type === "COIN_PACKAGE") {
-      return "Top Up Coins";
+      return (
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-lg bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+            <Coins className="h-3.5 w-3.5" />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-semibold text-sm text-[#050505] dark:text-zinc-100">
+              Coin Top-Up
+            </span>
+            <span className="text-xs text-[#65676B] dark:text-zinc-400">Wallet balance replenishment</span>
+          </div>
+        </div>
+      )
     }
-    return type;
-  };
+    return (
+      <div className="flex items-center gap-2">
+        <div className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 shrink-0">
+          <CreditCard className="h-3.5 w-3.5" />
+        </div>
+        <span className="font-medium text-sm text-[#050505] dark:text-zinc-100">{type}</span>
+      </div>
+    )
+  }
 
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: currency || "VND",
-    }).format(amount);
-  };
+    }).format(amount)
+  }
+
+  // Pagination calculation
+  const startResult = totalCount > 0 ? (page - 1) * pageSize + 1 : 0
+  const endResult = Math.min(page * pageSize, totalCount)
 
   return (
-    <div className="space-y-6">
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Select value={status} onValueChange={(val) => { setStatus(val || "ALL"); setPage(1); }}>
-            <SelectTrigger className="w-[160px]">
+    <div className="space-y-4 w-full">
+      {/* TẦNG 1: TOOLBAR (Search, Filters, Primary Actions) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 flex-1">
+          {/* Search Bar */}
+          <div className="relative w-full sm:w-72 md:w-80">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#65676B] dark:text-zinc-400" />
+            <Input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
+              placeholder="Search by order code, gateway, type..."
+              className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
+            />
+            {search && (
+              <button
+                onClick={() => {
+                  setSearch("")
+                  setPage(1)
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#65676B] hover:text-[#050505] dark:hover:text-white transition-colors p-1 cursor-pointer"
+                title="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Status Filter */}
+          <Select
+            value={status}
+            onValueChange={(val) => {
+              if (val) setStatus(val)
+              setPage(1)
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-[160px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
               <SelectItem value="ALL">All Statuses</SelectItem>
               <SelectItem value="SUCCESS">Success</SelectItem>
               <SelectItem value="PENDING">Pending</SelectItem>
-              <SelectItem value="FAILED">Failed/Cancelled</SelectItem>
+              <SelectItem value="FAILED">Failed / Cancelled</SelectItem>
             </SelectContent>
           </Select>
 
-          <Select value={targetType} onValueChange={(val) => { setTargetType(val || "ALL"); setPage(1); }}>
-            <SelectTrigger className="w-[160px]">
+          {/* Transaction Type Filter */}
+          <Select
+            value={targetType}
+            onValueChange={(val) => {
+              if (val) setTargetType(val)
+              setPage(1)
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-[170px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
               <SelectValue placeholder="Transaction Type" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
               <SelectItem value="ALL">All Types</SelectItem>
-              <SelectItem value="SUBSCRIPTION">Subscription</SelectItem>
-              <SelectItem value="WALLET_TOPUP">Top Up Coins</SelectItem>
+              <SelectItem value="SUBSCRIPTION">Subscription Plan</SelectItem>
+              <SelectItem value="WALLET_TOPUP">Coin Top-Up</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Reset Filters Button */}
+          {isFilterActive && (
+            <Button
+              onClick={handleResetFilters}
+              variant="ghost"
+              className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
+            >
+              <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Table */}
-      <div className="border rounded-xl bg-card overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50 hover:bg-muted/50">
-              <TableHead>Order ID</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="text-center">Status</TableHead>
+      {/* TẦNG 2: MAIN TABLE CONTAINER (TABLE_STANDARD - SHADCN TABLE) */}
+      <div className="rounded-lg border border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-2xs w-full">
+        <Table className="w-full text-left border-collapse table-fixed">
+          {/* Table Header */}
+          <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
+            <TableRow className="hover:bg-transparent border-none">
+              <TableHead className="w-[16%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                ORDER CODE
+              </TableHead>
+
+              <TableHead className="w-[20%] py-3 px-3">
+                <button
+                  onClick={() => handleSort("date")}
+                  className={`flex items-center text-xs font-semibold uppercase tracking-wider ${
+                    sortField === "date"
+                      ? "text-[#1877F2] dark:text-blue-400"
+                      : "text-[#65676B] dark:text-zinc-400"
+                  } hover:text-[#050505] dark:hover:text-white transition-colors group cursor-pointer`}
+                >
+                  DATE & TIME
+                  {renderSortIcon("date")}
+                </button>
+              </TableHead>
+
+              <TableHead className="w-[26%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                DESCRIPTION / TYPE
+              </TableHead>
+
+              <TableHead className="w-[13%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                GATEWAY
+              </TableHead>
+
+              <TableHead className="w-[15%] py-3 px-3 text-right">
+                <button
+                  onClick={() => handleSort("amount")}
+                  className={`inline-flex items-center justify-end w-full text-xs font-semibold uppercase tracking-wider ${
+                    sortField === "amount"
+                      ? "text-[#1877F2] dark:text-blue-400"
+                      : "text-[#65676B] dark:text-zinc-400"
+                  } hover:text-[#050505] dark:hover:text-white transition-colors group cursor-pointer`}
+                >
+                  AMOUNT
+                  {renderSortIcon("amount")}
+                </button>
+              </TableHead>
+
+              <TableHead className="w-[10%] text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400 px-3 py-3">
+                STATUS
+              </TableHead>
             </TableRow>
           </TableHeader>
+
+          {/* Table Body */}
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-48 text-center">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-                </TableCell>
-              </TableRow>
+              // Loading Skeleton State (6 rows)
+              Array.from({ length: pageSize || 6 }).map((_, index) => (
+                <TableRow key={index} className="border-b border-[#CED0D4]/60 dark:border-zinc-800/60">
+                  <TableCell className="py-4 px-3">
+                    <Skeleton className="h-5 w-20 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                  </TableCell>
+                  <TableCell className="py-4 px-3">
+                    <Skeleton className="h-5 w-28 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                  </TableCell>
+                  <TableCell className="py-4 px-3">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-7 w-7 rounded-lg bg-slate-100 dark:bg-zinc-800 shrink-0" />
+                      <div className="space-y-1 w-full">
+                        <Skeleton className="h-4 w-3/4 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                        <Skeleton className="h-3 w-1/2 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-4 px-3">
+                    <Skeleton className="h-5 w-16 bg-slate-100 dark:bg-zinc-800 rounded-md" />
+                  </TableCell>
+                  <TableCell className="py-4 px-3 text-right">
+                    <Skeleton className="h-5 w-20 bg-slate-100 dark:bg-zinc-800 rounded-md ml-auto" />
+                  </TableCell>
+                  <TableCell className="py-4 px-3 text-center">
+                    <Skeleton className="h-6 w-16 bg-slate-100 dark:bg-zinc-800 rounded-full mx-auto" />
+                  </TableCell>
+                </TableRow>
+              ))
             ) : isError ? (
+              // Error State
               <TableRow>
-                <TableCell colSpan={5} className="h-48 text-center text-rose-500">
-                  An error occurred while loading transaction history.
+                <TableCell colSpan={6} className="h-64 text-center">
+                  <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
+                    <p className="font-semibold text-rose-600 dark:text-rose-400 text-base">Failed to load transaction history</p>
+                    <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
+                      An error occurred while fetching payment data. Please try again later.
+                    </p>
+                  </div>
                 </TableCell>
               </TableRow>
-            ) : !response?.data?.items?.length ? (
+            ) : filteredAndSortedPayments.length === 0 ? (
+              // Empty State
               <TableRow>
-                <TableCell colSpan={5} className="h-48 text-center">
-                  <div className="flex flex-col items-center justify-center text-muted-foreground">
-                    <SearchX className="h-8 w-8 mb-2 opacity-50" />
-                    <p>No matching transactions found.</p>
+                <TableCell colSpan={6} className="h-72 text-center">
+                  <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
+                    <div className="h-12 w-12 rounded-full bg-[#E7F3FF] dark:bg-blue-950/50 flex items-center justify-center text-[#1877F2] dark:text-blue-400 mb-3">
+                      <SearchX className="h-6 w-6" />
+                    </div>
+                    <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">
+                      No transaction records found
+                    </p>
+                    <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
+                      {isFilterActive
+                        ? "No records match the current filters. Try clearing or adjusting your search criteria."
+                        : "You haven't made any payment transactions yet."}
+                    </p>
+                    {isFilterActive && (
+                      <Button
+                        onClick={handleResetFilters}
+                        variant="outline"
+                        className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
+                      >
+                        <RotateCcw className="h-4 w-4 mr-2" /> Clear All Filters
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
             ) : (
-              response.data.items.map((payment) => (
-                <TableRow key={payment.id}>
-                  <TableCell className="font-medium text-muted-foreground">
-                    #{payment.orderCode || payment.id.substring(0, 8)}
+              // Actual Data Rows
+              filteredAndSortedPayments.map((payment) => (
+                <TableRow
+                  key={payment.id}
+                  className="border-b border-[#CED0D4]/60 dark:border-zinc-800/60 hover:bg-[#E7F3FF]/40 dark:hover:bg-blue-950/20 transition-colors duration-150 group"
+                >
+                  {/* Order Code */}
+                  <TableCell className="py-3.5 px-3 align-middle">
+                    <span className="font-mono text-xs font-bold text-[#050505] dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-800/80 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 inline-block">
+                      #{payment.orderCode || payment.id.substring(0, 8)}
+                    </span>
                   </TableCell>
-                  <TableCell>
-                    {format(new Date(payment.createdAt), "dd/MM/yyyy HH:mm")}
+
+                  {/* Date & Time */}
+                  <TableCell className="py-3.5 px-3 align-middle text-sm text-[#65676B] dark:text-zinc-300 font-medium">
+                    {payment.createdAt ? format(new Date(payment.createdAt), "dd/MM/yyyy HH:mm") : "N/A"}
                   </TableCell>
-                  <TableCell>
-                    {getTargetTypeLabel(payment.targetType, payment.subscriptionName)}
+
+                  {/* Description / Target Type */}
+                  <TableCell className="py-3.5 px-3 align-middle">
+                    {getTargetTypeDisplay(payment.targetType, payment.subscriptionName)}
                   </TableCell>
-                  <TableCell className="text-right font-medium">
+
+                  {/* Payment Gateway */}
+                  <TableCell className="py-3.5 px-3 align-middle">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                      {payment.paymentGateway || "PayOS"}
+                    </span>
+                  </TableCell>
+
+                  {/* Amount */}
+                  <TableCell className="py-3.5 px-3 align-middle text-right font-bold text-sm text-[#050505] dark:text-zinc-100">
                     {formatCurrency(payment.amount, payment.currency)}
                   </TableCell>
-                  <TableCell className="text-center">
+
+                  {/* Status */}
+                  <TableCell className="py-3.5 px-3 align-middle text-center">
                     {getStatusBadge(payment.status)}
                   </TableCell>
                 </TableRow>
@@ -156,34 +472,91 @@ export function BillingHistoryTable() {
         </Table>
       </div>
 
-      {/* Pagination */}
-      {response?.data && response.data.totalPages > 1 && (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="h-8 px-2 lg:px-3"
-          >
-            <ArrowLeft className="h-4 w-4 lg:mr-2" />
-            <span className="hidden lg:inline">Previous</span>
-          </Button>
-          <div className="text-sm font-medium px-2 text-muted-foreground">
-            Page {page} of {response.data.totalPages}
+      {/* TẦNG 3: PAGINATION FOOTER */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 px-1">
+        <div className="flex items-center space-x-3 text-sm text-[#65676B] dark:text-zinc-400">
+          <div>
+            Showing <span className="font-semibold text-[#050505] dark:text-zinc-200">{startResult} - {endResult}</span> of <span className="font-semibold text-[#050505] dark:text-zinc-200">{totalCount}</span> transactions
           </div>
+          <Select
+            value={String(pageSize)}
+            onValueChange={(val) => {
+              if (val) setPageSize(Number(val))
+              setPage(1)
+            }}
+          >
+            <SelectTrigger className="h-8 w-[110px] border-[#CED0D4] dark:border-zinc-800 text-xs font-medium focus:ring-[#1877F2]">
+              <SelectValue placeholder="Page size" />
+            </SelectTrigger>
+            <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
+              <SelectItem value="10">10 / page</SelectItem>
+              <SelectItem value="20">20 / page</SelectItem>
+              <SelectItem value="50">50 / page</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Page Buttons */}
+        <div className="flex items-center space-x-1.5">
           <Button
             variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => p + 1)}
-            disabled={page >= response.data.totalPages}
-            className="h-8 px-2 lg:px-3"
+            size="icon"
+            disabled={page === 1 || isLoading}
+            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            className="h-8 w-8 border-[#CED0D4] dark:border-zinc-800 text-[#65676B] dark:text-zinc-400 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 disabled:opacity-40 cursor-pointer"
           >
-            <span className="hidden lg:inline">Next</span>
-            <ArrowRight className="h-4 w-4 lg:ml-2" />
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          {Array.from({ length: totalPages }).map((_, index) => {
+            const pageNum = index + 1
+            if (
+              totalPages <= 5 ||
+              pageNum === 1 ||
+              pageNum === totalPages ||
+              Math.abs(pageNum - page) <= 1
+            ) {
+              const isCurrent = pageNum === page
+              return (
+                <Button
+                  key={pageNum}
+                  variant={isCurrent ? "default" : "outline"}
+                  disabled={isLoading}
+                  onClick={() => setPage(pageNum)}
+                  className={`h-8 w-8 text-xs font-semibold rounded-md shadow-2xs transition-all cursor-pointer ${
+                    isCurrent
+                      ? "bg-[#1877F2] hover:bg-[#166FE5] text-white border-[#1877F2]"
+                      : "border-[#CED0D4] dark:border-zinc-800 text-[#050505] dark:text-zinc-300 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
+                  }`}
+                >
+                  {pageNum}
+                </Button>
+              )
+            }
+            if (
+              (pageNum === 2 && page > 3) ||
+              (pageNum === totalPages - 1 && page < totalPages - 2)
+            ) {
+              return (
+                <span key={pageNum} className="px-1 text-xs text-[#65676B]">
+                  ...
+                </span>
+              )
+            }
+            return null
+          })}
+
+          <Button
+            variant="outline"
+            size="icon"
+            disabled={page >= totalPages || isLoading}
+            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+            className="h-8 w-8 border-[#CED0D4] dark:border-zinc-800 text-[#65676B] dark:text-zinc-400 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 disabled:opacity-40 cursor-pointer"
+          >
+            <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-      )}
+      </div>
     </div>
-  );
+  )
 }

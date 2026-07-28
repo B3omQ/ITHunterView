@@ -1,31 +1,31 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useJobs } from "@/hooks/useJobs"
 import { useSignalR } from "@/hooks/useSignalR"
 import { useWalletBalance } from "@/hooks/useWallet"
-import { recruiterService } from "@/services/recruiter.service"
 import { AiParseStatusBadge } from "@/components/shared/AiParseStatusBadge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { 
-  Search, 
-  Plus, 
-  Users, 
-  Pencil, 
-  Eye, 
-  XCircle, 
-  ChevronLeft, 
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Search,
+  Plus,
+  Users,
+  UserCheck,
+  Pencil,
+  MoreHorizontal,
+  XCircle,
+  ChevronLeft,
   ChevronRight,
   Loader2,
   Briefcase,
-  MapPin,
-  Calendar,
-  Layers,
-  Target,
-  Monitor,
   Ban,
   CalendarPlus,
   Sparkles,
@@ -33,13 +33,43 @@ import {
   AlertTriangle,
   Rocket,
   Flame,
-  TrendingUp
+  X,
+  RotateCcw,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpRight,
+  ExternalLink,
+  SearchX,
+  Lightbulb
 } from "lucide-react"
 
 export default function JobPostingsPage() {
   const router = useRouter()
-  const pageSize = 7 // Matches mockup showing 7 items
-  
+
+  // 1. TanStack Query & Service state management (Strictly following kinh-mantra: page -> hook -> service)
+  const {
+    jobs: fetchedJobs,
+    totalCount,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    search,
+    setSearch,
+    status,
+    setStatus,
+    loading,
+    closeJob,
+    extendJob,
+    pushTopJob,
+    refresh
+  } = useJobs(1, 10, "ALL")
+
+  // 2. Local UI state for sorting & modals
+  const [sortField, setSortField] = useState<"title" | "applicationCount" | "date">("date")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
+
   const { data: walletRes, refetch: refetchWallet } = useWalletBalance()
   const walletData = walletRes?.data
   const jobSlotsLimit = walletData?.jobSlotsLimit ?? 1
@@ -59,15 +89,15 @@ export default function JobPostingsPage() {
   const handleConfirmExtend = async () => {
     if (!extendingJob) return
     setExtendSubmitting(true)
-    const res = await recruiterService.extendJob(extendingJob.id)
+    const res = await extendJob(extendingJob.id)
     setExtendSubmitting(false)
     if (res.success) {
-      alert(res.message || "Đã gia hạn tin tuyển dụng thành công!")
+      alert(res.message || "Job posting extended successfully!")
       setExtendingJob(null)
       refresh()
       refetchWallet()
     } else {
-      alert(res.message || "Gia hạn không thành công.")
+      alert(res.message || "Failed to extend job posting.")
     }
   }
 
@@ -83,34 +113,19 @@ export default function JobPostingsPage() {
   const handleConfirmPushTop = async () => {
     if (!pushingTopJob) return
     setPushTopSubmitting(true)
-    const res = await recruiterService.pushTopJob(pushingTopJob.id)
+    const res = await pushTopJob(pushingTopJob.id)
     setPushTopSubmitting(false)
     if (res.success) {
-      alert(res.message || "Đã đẩy tin tuyển dụng lên Top thành công!")
+      alert(res.message || "Job posting pushed to Top successfully!")
       setPushingTopJob(null)
       refresh()
       refetchWallet()
     } else {
-      alert(res.message || "Đẩy Top không thành công.")
+      alert(res.message || "Failed to push job posting to Top.")
     }
   }
 
-  const {
-    jobs,
-    totalCount,
-    page,
-    setPage,
-    search,
-    setSearch,
-    status,
-    setStatus,
-    loading,
-    closeJob,
-    refresh
-  } = useJobs(1, pageSize)
-
   const connection = useSignalR("/hubs/notification")
-
   useEffect(() => {
     if (connection) {
       connection.on("JobStatusChanged", () => {
@@ -124,52 +139,81 @@ export default function JobPostingsPage() {
     }
   }, [connection, refresh])
 
-  // Handle Close Job Posting
+  // Handle actions
   const handleCloseJob = async (id: string) => {
-    if (!confirm("Are you sure you want to close this job posting? This action will set its status to Closed.")) return
+    if (!confirm("Are you sure you want to close this job posting? Its status will be changed to Closed.")) return
     const res = await closeJob(id)
     if (!res.success) {
-      alert(res.message || "Failed to close job posting")
+      alert(res.message || "Failed to close job posting.")
     }
   }
 
-  const openCreateModal = () => {
-    router.push("/recruiter/jobs/new")
-  }
+  const openCreateModal = () => router.push("/recruiter/jobs/new")
+  const openEditModal = (jobId: string) => router.push(`/recruiter/jobs/${jobId}/edit`)
 
-  const openEditModal = (jobId: string) => {
-    router.push(`/recruiter/jobs/${jobId}/edit`)
-  }
-
-  const openViewModal = (jobId: string) => {
-    router.push(`/recruiter/jobs/${jobId}`)
-  }
-
-  // Helpers for pagination calculations
-  const totalPages = Math.ceil(totalCount / pageSize)
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const startResult = (page - 1) * pageSize + 1
   const endResult = Math.min(page * pageSize, totalCount)
+  const isFilterActive = search !== "" || status !== "ALL"
 
-  // Format date helper (matching mockup style: "May 28, 2026")
+  const handleResetFilters = () => {
+    setSearch("")
+    setStatus("ALL")
+    setPage(1)
+  }
+
+  const handleSort = (field: "title" | "applicationCount" | "date") => {
+    if (sortField === field) {
+      setSortDirection(prev => (prev === "asc" ? "desc" : "asc"))
+    } else {
+      setSortField(field)
+      setSortDirection("desc")
+    }
+  }
+
+  // Sort displayed jobs cleanly in memory
+  const sortedJobs = useMemo(() => {
+    return [...fetchedJobs].sort((a, b) => {
+      let comparison = 0
+      if (sortField === "title") {
+        comparison = (a.title || "").localeCompare(b.title || "", "en")
+      } else if (sortField === "applicationCount") {
+        comparison = (a.applicationCount || 0) - (b.applicationCount || 0)
+      } else if (sortField === "date") {
+        const timeA = new Date(a.publishedAt || a.createdAt || 0).getTime()
+        const timeB = new Date(b.publishedAt || b.createdAt || 0).getTime()
+        comparison = timeA - timeB
+      }
+      return sortDirection === "asc" ? comparison : -comparison
+    })
+  }, [fetchedJobs, sortField, sortDirection])
+
+  const renderSortIcon = (field: "title" | "applicationCount" | "date") => {
+    if (sortField !== field) return <ArrowUpDown className="ml-1.5 h-3.5 w-3.5 text-[#65676B]/60" />
+    return sortDirection === "asc"
+      ? <ArrowUp className="ml-1.5 h-3.5 w-3.5 text-[#1877F2] dark:text-blue-400 font-bold" />
+      : <ArrowDown className="ml-1.5 h-3.5 w-3.5 text-[#1877F2] dark:text-blue-400 font-bold" />
+  }
+
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "N/A"
     return new Date(dateStr).toLocaleDateString("en-US", {
+      day: "2-digit",
       month: "short",
-      day: "numeric",
       year: "numeric",
     })
   }
 
-  // Render Status Badge
+  // Render Status Badge matching Pill style for all statuses
   const renderStatusBadge = (job: any) => {
     if (job.isBanned) {
       return (
-        <div className="flex flex-col items-center gap-1">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 border border-red-200 dark:border-red-900/50">
-            <Ban className="h-3 w-3" />
-            BANNED
-          </span>
-          <span className="text-[10px] text-red-500 max-w-[100px] truncate" title={job.banReason}>
+        <div className="flex flex-col items-center gap-0.5">
+          <div className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 text-xs font-bold shadow-none">
+            <span className="h-2 w-2 rounded-full bg-rose-600 shrink-0" />
+            <span>BANNED</span>
+          </div>
+          <span className="text-[10px] text-rose-500 max-w-[110px] truncate" title={job.banReason}>
             {job.banReason}
           </span>
         </div>
@@ -179,343 +223,518 @@ export default function JobPostingsPage() {
     switch (job.status) {
       case "PUBLISHED":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            Active
-          </span>
+          <div className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 text-xs font-semibold shadow-none">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+            <span>Active</span>
+          </div>
         )
       case "DRAFT":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-zinc-50 text-zinc-600 dark:bg-zinc-800/40 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700/50">
-            <span className="h-1.5 w-1.5 rounded-full bg-zinc-400"></span>
-            Draft
-          </span>
+          <div className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 text-xs font-semibold shadow-none">
+            <span className="h-2 w-2 rounded-full bg-zinc-400 shrink-0" />
+            <span>Draft</span>
+          </div>
         )
       case "CLOSED":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50">
-            <span className="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
-            Closed
-          </span>
+          <div className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 text-xs font-semibold shadow-none">
+            <span className="h-2 w-2 rounded-full bg-rose-500 shrink-0" />
+            <span>Closed</span>
+          </div>
         )
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-zinc-50 text-zinc-600 dark:bg-zinc-800/40 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700/50">
-            {job.status}
-          </span>
+          <div className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 text-xs font-medium shadow-none">
+            <span className="h-2 w-2 rounded-full bg-zinc-400 shrink-0" />
+            <span>{job.status}</span>
+          </div>
         )
     }
   }
 
   return (
     <div className="min-h-screen bg-background transition-colors duration-200">
-      <div className="w-full pb-8 space-y-4">
-        
-        {/* Top Header Card */}
+      <div className="w-full pb-10 space-y-5">
+
+        {/* Top Header Card & Quota Lightbulb Popover */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-2">
           <div>
-            <h1 className="text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight">Job Postings</h1>
-            <p className="text-zinc-500 dark:text-zinc-400 mt-1.5 text-sm">Manage and track your open positions</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight">Job Management</h1>
+              {walletData && (
+                <Popover>
+                  <PopoverTrigger
+                    title="Click to view job posting limits & quota info"
+                    className={`group relative flex items-center justify-center h-8 w-8 rounded-full border shadow-2xs hover:shadow-md active:scale-95 transition-all cursor-pointer ${isSlotFull
+                        ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 text-amber-800 dark:text-amber-300 hover:border-amber-400"
+                        : "bg-amber-50/80 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:border-amber-300"
+                      }`}
+                  >
+                    <div className="relative flex items-center justify-center">
+                      <Lightbulb className={`h-4.5 w-4.5 transition-transform group-hover:scale-110 ${isSlotFull ? "text-amber-500 fill-amber-400/60 dark:text-amber-400" : "text-amber-500 fill-amber-300/50 dark:text-amber-400"}`} />
+                      <Sparkles className={`h-2.5 w-2.5 absolute -top-1 -right-1 ${isSlotFull ? "text-orange-500" : "text-amber-400"}`} />
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-[380px] sm:w-[420px] p-4 rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 z-50">
+                    <div className="space-y-3.5">
+                      <div className="flex items-center justify-between border-b pb-2.5 border-zinc-100 dark:border-zinc-800">
+                        <div className="flex items-center gap-2 text-sm font-extrabold text-[#050505] dark:text-zinc-100">
+                          <Briefcase className={`h-4 w-4 ${isSlotFull ? "text-amber-600 dark:text-amber-400" : "text-[#1877F2] dark:text-blue-400"}`} />
+                          <span>Job Posting Quota</span>
+                        </div>
+                        <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${isSlotFull
+                            ? "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300"
+                            : "bg-[#E7F3FF] dark:bg-blue-950/50 text-[#1877F2] dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                          }`}>
+                          {isSlotFull ? "⚠️ Quota Full" : "✨ Quota Available"}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 text-xs text-[#65676B] dark:text-zinc-300">
+                        {/* Trạng thái hạn mức */}
+                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
+                          <span className="font-medium text-zinc-600 dark:text-zinc-400">Quota Status:</span>
+                          <span className={`font-bold text-xs px-2 py-0.5 rounded-full border ${isSlotFull
+                              ? "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300"
+                              : "bg-[#E7F3FF] text-[#1877F2] border-[#1877F2]/20"
+                            }`}>
+                            {isSlotFull ? "Quota Full (Pay-as-you-go)" : "Free Slot Available"}
+                          </span>
+                        </div>
+
+                        {/* Hạn mức gói */}
+                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
+                          <span className="font-medium text-zinc-600 dark:text-zinc-400">Plan Job Slot Limit:</span>
+                          <span className="font-extrabold text-sm text-[#050505] dark:text-zinc-100">
+                            {jobSlotsLimit === -1 ? "Unlimited" : `${jobSlotsLimit} ${jobSlotsLimit === 1 ? "free slot" : "free slots"}`}
+                          </span>
+                        </div>
+
+                        {/* Số tin đang hiển thị (Active) */}
+                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
+                          <span className="font-medium text-zinc-600 dark:text-zinc-400">Currently Active Jobs:</span>
+                          <span className={`font-extrabold text-sm ${isSlotFull ? "text-amber-600 dark:text-amber-400 font-black" : "text-[#1877F2] dark:text-blue-400"}`}>
+                            {jobSlotsUsed} {jobSlotsUsed === 1 ? "job" : "jobs"}
+                          </span>
+                        </div>
+
+                        {isSlotFull ? (
+                          <div className="bg-amber-50/70 dark:bg-amber-950/20 p-3 rounded-xl border border-amber-200/80 dark:border-amber-900/50 space-y-1">
+                            <p className="text-amber-900 dark:text-amber-300 font-medium leading-relaxed">
+                              You have reached your free plan quota ({jobSlotsLimit} slot). Posting new Active jobs beyond quota will cost <strong className="font-extrabold text-amber-950 dark:text-amber-200">20,000 Coin / job</strong>. Saving Drafts is completely free.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="bg-blue-50/60 dark:bg-blue-950/20 p-3 rounded-xl border border-blue-100 dark:border-blue-900/40">
+                            <p className="text-blue-950 dark:text-blue-200 font-medium leading-relaxed">
+                              You have <strong className="text-[#1877F2] dark:text-blue-400 font-bold">{jobSlotsLimit === -1 ? "unlimited" : Math.max(0, (jobSlotsLimit || 0) - (jobSlotsUsed || 0))} free job slots remaining</strong> in your current plan without using wallet Coins.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {isSlotFull && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => router.push("/recruiter/billing")}
+                          className="w-full border-amber-300 dark:border-amber-700 hover:bg-amber-100/70 text-amber-800 dark:text-amber-300 font-bold h-9 shadow-none cursor-pointer transition-colors"
+                        >
+                          Upgrade Plan Now
+                        </Button>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
+            <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">Track, manage, and optimize job postings in the system</p>
           </div>
-          <Button 
+          {/* Primary Action Button (#1877F2) */}
+          <Button
             onClick={openCreateModal}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md shadow-blue-500/10 hover:shadow-blue-500/20 active:scale-98 transition-all gap-2"
+            className="bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium h-10 px-4 rounded-lg shadow-sm active:scale-[0.98] transition-all gap-2 cursor-pointer"
           >
-            <Plus className="h-4.5 w-4.5" />
-            Create New Job
+            <Plus className="h-4 w-4" />
+            Add New Job
           </Button>
         </div>
 
-        {/* Job Slots & Quota Status Banner */}
-        {walletData && (
-          <div className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs transition-all ${
-            isSlotFull 
-              ? "bg-amber-50/80 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/50" 
-              : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/40"
-          }`}>
-            <div className="flex items-start sm:items-center gap-3.5">
-              <div className={`p-2.5 rounded-lg shrink-0 mt-0.5 sm:mt-0 ${isSlotFull ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" : "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"}`}>
-                <Briefcase className="h-5 w-5" />
-              </div>
-              <div className="space-y-1">
-                <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                  <span>Tin đang Active: <strong className="text-blue-600 dark:text-blue-400 font-bold">{jobSlotsUsed}</strong></span>
-                  <span className="text-zinc-300 dark:text-zinc-600">•</span>
-                  <span>Hạn mức theo gói: <strong className="text-zinc-800 dark:text-zinc-200">{jobSlotsLimit === -1 ? "Vô hạn" : jobSlotsLimit}</strong> tin</span>
-                  {walletData.activeSubscriptionName ? (
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
-                      Gói {walletData.activeSubscriptionName}
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
-                      Gói Free (Mặc định)
-                    </span>
-                  )}
-                  {isSlotFull && (
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
-                      Đã dùng hết Slot miễn phí
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                  {isSlotFull 
-                    ? `Hiện bạn đã vượt quá hạn mức ${jobSlotsLimit === -1 ? "vô hạn" : jobSlotsLimit} tin miễn phí trong gói. Khi đăng thêm tin Active mới, hệ thống sẽ sử dụng 20,000 Coin từ ví cho mỗi tin (Số dư hiện tại: ${(walletData.balance || 0).toLocaleString()} Coin). Lưu dưới dạng Draft (Bản nháp) thì hoàn toàn miễn phí.`
-                    : `Gói hiện tại cho phép bạn duy trì tối đa ${jobSlotsLimit === -1 ? "vô số" : jobSlotsLimit} việc làm Active đồng thời. Bạn có thể đăng thêm ${jobSlotsLimit === -1 ? "vô số" : (jobSlotsLimit || 0) - (jobSlotsUsed || 0)} tin miễn phí mà không mất Coin.`}
-                </p>
-              </div>
+        {/* TẦNG 1: TOOLBAR CÔNG CỤ (TABLE_STANDARD) */}
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <div className="flex flex-wrap items-center gap-2.5 flex-1">
+            {/* Search Bar */}
+            <div className="relative w-full sm:w-72 md:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#65676B]" />
+              <Input
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setPage(1)
+                }}
+                placeholder="Search by title or job code..."
+                className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
+              />
+              {search && (
+                <button
+                  onClick={() => {
+                    setSearch("")
+                    setPage(1)
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#65676B] hover:text-[#050505] dark:hover:text-white transition-colors p-1"
+                  title="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
-            {isSlotFull && (
-              <Button 
-                variant="outline"
-                size="sm"
-                onClick={() => router.push("/recruiter/billing")}
-                className="shrink-0 border-amber-300 dark:border-amber-700 hover:bg-amber-100/50 text-amber-800 dark:text-amber-300 text-xs font-medium self-end sm:self-center"
+
+            {/* Status Filter Dropdown */}
+            <Select
+              value={status}
+              onValueChange={(val) => {
+                if (val) setStatus(val)
+                setPage(1)
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[170px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
+                <SelectItem value="ALL">All Statuses</SelectItem>
+                <SelectItem value="PUBLISHED">Active</SelectItem>
+                <SelectItem value="DRAFT">Draft</SelectItem>
+                <SelectItem value="CLOSED">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Reset Filters Button */}
+            {isFilterActive && (
+              <Button
+                onClick={handleResetFilters}
+                variant="ghost"
+                className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
               >
-                Nâng cấp gói ngay
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
               </Button>
             )}
           </div>
-        )}
+        </div>
 
-        {/* Filter Card */}
-        <div className="flex flex-col sm:flex-row items-center gap-4 justify-between py-2 border-b border-zinc-200 dark:border-zinc-800 mb-4">
-            <div className="relative w-full sm:max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-              <Input
-                placeholder="Search by Title or Job Code..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 h-10 w-full bg-zinc-50/50 dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800 focus-visible:ring-blue-500"
-              />
-            </div>
-            
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400 shrink-0">Status:</span>
-              <select
-                value={status}
-                onChange={(e) => {
-                  setStatus(e.target.value)
+        {/* TẦNG 2: MAIN TABLE CONTAINER (TABLE_STANDARD - SHADCN TABLE) */}
+        <div className="rounded-lg border border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-2xs w-full">
+          <Table className="w-full text-left border-collapse table-fixed">
+            <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
+              <TableRow className="hover:bg-transparent border-none">
+                <TableHead className="w-[11%] py-3 px-2.5 sm:px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  JOB CODE
+                </TableHead>
+
+                <TableHead className="w-[32%] py-3 px-2.5 sm:px-3">
+                  <button
+                    onClick={() => handleSort("title")}
+                    className={`flex items-center text-xs font-semibold uppercase tracking-wider ${sortField === "title" ? "text-[#1877F2] dark:text-blue-400" : "text-[#65676B] dark:text-zinc-400"
+                      } hover:text-[#050505] dark:hover:text-white transition-colors group cursor-pointer`}
+                  >
+                    JOB TITLE
+                    {renderSortIcon("title")}
+                  </button>
+                </TableHead>
+
+                <TableHead className="w-[12%] py-3 px-2.5 sm:px-3">
+                  <button
+                    onClick={() => handleSort("date")}
+                    className={`flex items-center text-xs font-semibold uppercase tracking-wider ${sortField === "date" ? "text-[#1877F2] dark:text-blue-400" : "text-[#65676B] dark:text-zinc-400"
+                      } hover:text-[#050505] dark:hover:text-white transition-colors group cursor-pointer`}
+                  >
+                    POSTED DATE
+                    {renderSortIcon("date")}
+                  </button>
+                </TableHead>
+
+                <TableHead className="w-[13%] py-3 px-2.5 sm:px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  EXPIRATION DATE
+                </TableHead>
+
+                <TableHead className="w-[9%] text-center py-3 px-2.5 sm:px-3">
+                  <button
+                    onClick={() => handleSort("applicationCount")}
+                    className={`inline-flex items-center justify-center text-xs font-semibold uppercase tracking-wider ${sortField === "applicationCount" ? "text-[#1877F2] dark:text-blue-400" : "text-[#65676B] dark:text-zinc-400"
+                      } hover:text-[#050505] dark:hover:text-white transition-colors group cursor-pointer`}
+                  >
+                    APPLICANTS
+                    {renderSortIcon("applicationCount")}
+                  </button>
+                </TableHead>
+
+                <TableHead className="w-[13%] text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400 px-2.5 sm:px-3 py-3">
+                  STATUS
+                </TableHead>
+
+                <TableHead className="w-[10%] text-right text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400 px-2.5 sm:px-3 py-3">
+                  ACTIONS
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+
+            <TableBody>
+              {loading && sortedJobs.length === 0 ? (
+                // Loading Skeleton state (No overlay shift) - 7 columns
+                Array.from({ length: pageSize || 6 }).map((_, index) => (
+                  <TableRow key={index} className="border-b border-[#CED0D4]/60 dark:border-zinc-800/60">
+                    <TableCell className="py-4 px-2.5 sm:px-3"><Skeleton className="h-7 w-16 bg-slate-100 dark:bg-zinc-800 rounded-md" /></TableCell>
+                    <TableCell className="py-4 px-2.5 sm:px-3">
+                      <Skeleton className="h-5 w-4/5 bg-slate-100 dark:bg-zinc-800 rounded my-1" />
+                    </TableCell>
+                    <TableCell className="px-2.5 sm:px-3 py-4"><Skeleton className="h-4 w-16 bg-slate-100 dark:bg-zinc-800 rounded" /></TableCell>
+                    <TableCell className="px-2.5 sm:px-3 py-4"><Skeleton className="h-4 w-16 bg-slate-100 dark:bg-zinc-800 rounded" /></TableCell>
+                    <TableCell className="px-2.5 sm:px-3 py-4 text-center"><Skeleton className="h-6 w-12 bg-slate-100 dark:bg-zinc-800 rounded-full mx-auto" /></TableCell>
+                    <TableCell className="px-2.5 sm:px-3 py-4 text-center"><Skeleton className="h-6 w-20 bg-slate-100 dark:bg-zinc-800 rounded-full mx-auto" /></TableCell>
+                    <TableCell className="px-2.5 sm:px-3 py-4 text-right"><Skeleton className="h-8 w-16 bg-slate-100 dark:bg-zinc-800 rounded ml-auto" /></TableCell>
+                  </TableRow>
+                ))
+              ) : sortedJobs.length === 0 ? (
+                // Empty State
+                <TableRow>
+                  <TableCell colSpan={7} className="h-72 text-center">
+                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto py-6">
+                      <div className="h-12 w-12 rounded-full bg-[#E7F3FF] dark:bg-blue-950/60 flex items-center justify-center text-[#1877F2] dark:text-blue-400 mb-3">
+                        <SearchX className="h-6 w-6" />
+                      </div>
+                      <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">No job postings found</p>
+                      <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
+                        {isFilterActive
+                          ? "No records match the current filters. Try clearing or adjusting your search criteria."
+                          : "You don't have any job postings yet. Click Add New Job to create one!"}
+                      </p>
+                      {isFilterActive && (
+                        <Button
+                          onClick={handleResetFilters}
+                          variant="outline"
+                          className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" /> Clear All Filters
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                // Actual Job Rows
+                sortedJobs.map((job) => (
+                  <TableRow
+                    key={job.id}
+                    className="border-b border-[#CED0D4]/60 dark:border-zinc-800/60 hover:bg-[#E7F3FF]/40 dark:hover:bg-blue-950/20 transition-colors duration-150 group"
+                  >
+                    {/* Cột 1: Mã Tin */}
+                    <TableCell className="py-3 px-2.5 sm:px-3 align-top font-mono text-xs whitespace-nowrap">
+                      <div className="mt-1 font-semibold text-[#666666] dark:text-zinc-400 select-all">
+                        {job.jobCode}
+                      </div>
+                    </TableCell>
+
+                    {/* Cột 2: Tên Việc Làm */}
+                    <TableCell className="py-3 px-2.5 sm:px-3 align-top font-medium text-[#050505] dark:text-zinc-100">
+                      <div className="flex flex-col gap-1.5 mt-0.5">
+                        <Link
+                          href={`/recruiter/jobs/${job.id}`}
+                          className="font-bold text-sm text-[#050505] dark:text-zinc-100 group-hover:text-[#1877F2] dark:group-hover:text-blue-400 transition-colors block w-full line-clamp-1 truncate"
+                          title={job.title}
+                        >
+                          {job.title}
+                        </Link>
+                        {/* Subtitle row for tags */}
+                        <div className="flex items-center gap-2 min-h-[22px] overflow-hidden">
+                          <AiParseStatusBadge status={job.parseStatus} error={job.parseError} className="text-[11px] px-2 py-0.5 font-medium shadow-none shrink-0" />
+                          {job.pushedTopUntil && new Date(job.pushedTopUntil) >= new Date() && (
+                            <span
+                              title="Job is being featured in Top 24h on home page"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/50 shrink-0"
+                            >
+                              <Flame className="h-3 w-3 text-orange-500 fill-orange-500 shrink-0" />
+                              <span>Top 24h</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+
+                    {/* Cột 3: Ngày Đăng */}
+                    <TableCell className="px-2.5 sm:px-3 py-3 align-top text-xs text-[#050505] dark:text-zinc-300 font-medium font-mono whitespace-nowrap">
+                      <div className="mt-1">
+                        {formatDate(job.publishedAt || job.createdAt)}
+                      </div>
+                    </TableCell>
+
+                    {/* Cột 4: Ngày Hết Hạn */}
+                    <TableCell className="px-2.5 sm:px-3 py-3 align-top text-xs text-[#050505] dark:text-zinc-300 font-medium font-mono whitespace-nowrap">
+                      <div className="mt-1">
+                        {job.expiresAt ? (
+                          <span>{formatDate(job.expiresAt)}</span>
+                        ) : (
+                          <span className="text-[#65676B] font-sans italic">No Expiry</span>
+                        )}
+                      </div>
+                    </TableCell>
+
+                    {/* Cột 5: Ứng Viên */}
+                    <TableCell className="px-2.5 sm:px-3 py-3 align-top text-center">
+                      <div className="mt-0.5">
+                        <Link
+                          href={`/recruiter/jobs/${job.id}/applicants`}
+                          className="inline-flex items-center justify-center gap-1 text-xs font-extrabold text-[#1877F2] dark:text-blue-400 hover:text-[#166FE5] dark:hover:text-blue-300 transition-colors cursor-pointer"
+                          title="Click to view candidate list"
+                        >
+                          <span>{job.applicationCount || 0}</span>
+                          <ExternalLink className="h-3.5 w-3.5 text-[#1877F2] dark:text-blue-400 shrink-0" />
+                        </Link>
+                      </div>
+                    </TableCell>
+
+                    {/* Cột 6: Trạng Thái */}
+                    <TableCell className="px-2.5 sm:px-3 py-3 align-top text-center">
+                      <div className="mt-0.5">
+                        {renderStatusBadge(job)}
+                      </div>
+                    </TableCell>
+
+                    {/* Cột 7: Hành Động */}
+                    <TableCell className="px-2.5 sm:px-3 py-3 align-top text-right">
+                      <div className="flex items-center justify-end gap-1 mt-0.5">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEditModal(job.id)}
+                          title={job.isBanned ? "Banned jobs cannot be edited" : "Edit Job"}
+                          disabled={job.isBanned}
+                          className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 dark:hover:text-blue-400 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+
+                        <Popover>
+                          <PopoverTrigger className="inline-flex items-center justify-center h-8 w-8 rounded-md text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 dark:hover:text-blue-400 transition-colors cursor-pointer focus-visible:outline-hidden">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-52 p-1.5 rounded-xl border border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl flex flex-col gap-0.5">
+                            {!job.isBanned && (
+                              <button
+                                onClick={() => setExtendingJob(job)}
+                                className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-400 rounded-lg transition-colors cursor-pointer text-left"
+                              >
+                                <CalendarPlus className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                <span>Extend (+15 Days)</span>
+                              </button>
+                            )}
+
+                            {job.status === "PUBLISHED" && !job.isBanned && (
+                              <button
+                                onClick={() => setPushingTopJob(job)}
+                                className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 dark:hover:text-amber-400 rounded-lg transition-colors cursor-pointer text-left"
+                              >
+                                <Rocket className="h-4 w-4 text-amber-500 fill-amber-500 shrink-0" />
+                                <span>Push to Top (24 Hours)</span>
+                              </button>
+                            )}
+
+                            {job.status !== "CLOSED" && !job.isBanned && (
+                              <>
+                                <div className="h-[1px] bg-zinc-100 dark:bg-zinc-800 my-0.5" />
+                                <button
+                                  onClick={() => handleCloseJob(job.id)}
+                                  className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer text-left"
+                                >
+                                  <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                                  <span>Close Job Posting</span>
+                                </button>
+                              </>
+                            )}
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* TẦNG 3: PAGINATION FOOTER (TABLE_STANDARD) */}
+        {totalCount > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 px-1 text-sm text-[#65676B] dark:text-zinc-400">
+            <div className="flex items-center space-x-3">
+              <div>
+                Showing <span className="font-semibold text-[#050505] dark:text-zinc-200">{startResult} - {endResult}</span> of <span className="font-semibold text-[#050505] dark:text-zinc-200">{totalCount}</span> jobs
+              </div>
+              <Select
+                value={String(pageSize)}
+                onValueChange={(val) => {
+                  setPageSize(Number(val))
                   setPage(1)
                 }}
-                className="h-10 w-full sm:w-44 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-950 dark:text-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
-                <option value="ALL">All Statuses</option>
-                <option value="PUBLISHED">Active</option>
-                <option value="DRAFT">Draft</option>
-                <option value="CLOSED">Closed</option>
-              </select>
+                <SelectTrigger className="h-8 w-[110px] border-[#CED0D4] dark:border-zinc-800 text-xs font-medium focus:ring-[#1877F2] bg-white dark:bg-zinc-900">
+                  <SelectValue placeholder="Rows" />
+                </SelectTrigger>
+                <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
+                  <SelectItem value="7">7 / page</SelectItem>
+                  <SelectItem value="10">10 / page</SelectItem>
+                  <SelectItem value="20">20 / page</SelectItem>
+                  <SelectItem value="50">50 / page</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-        </div>
 
-        {/* Job Card Grid View */}
-        <div className="relative min-h-[400px]">
-          {loading && (
-            <div className="absolute inset-0 bg-white/70 dark:bg-zinc-950/70 z-10 flex items-center justify-center backdrop-blur-xs rounded-2xl">
-              <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
-            </div>
-          )}
+            <div className="flex items-center space-x-1.5">
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={page === 1 || loading}
+                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                className="h-8 w-8 border-[#CED0D4] dark:border-zinc-800 text-[#65676B] dark:text-zinc-400 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 dark:hover:text-blue-400 disabled:opacity-40"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
 
-          {jobs.length > 0 ? (
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-xl overflow-x-auto shadow-sm">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-zinc-50/80 dark:bg-zinc-950/80 border-b border-zinc-200/80 dark:border-zinc-800/80 text-zinc-500 font-semibold text-xs uppercase tracking-wider">
-                  <tr>
-                    <th className="px-5 py-4 w-1/3 min-w-[250px]">Job Details</th>
-                    <th className="px-5 py-4 min-w-[150px]">Location</th>
-                    <th className="px-5 py-4 min-w-[120px]">Dates</th>
-                    <th className="px-5 py-4 text-center min-w-[100px]">Applicants</th>
-                    <th className="px-5 py-4 text-center min-w-[120px]">Status</th>
-                    <th className="px-5 py-4 text-right min-w-[120px]">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
-                  {jobs.map((job) => (
-                    <tr key={job.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 transition-colors group">
-                      <td className="px-5 py-3 align-top">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200/50 dark:border-zinc-700/50">
-                              {job.jobCode}
-                            </span>
-                            <Link href={`/recruiter/jobs/${job.id}`} className="font-bold text-sm text-zinc-900 dark:text-zinc-50 hover:text-blue-600 dark:hover:text-blue-400 transition-colors line-clamp-2">
-                              {job.title}
-                            </Link>
-                          </div>
-                          <div className="flex flex-wrap gap-2 mt-1">
-                            {job.level && (
-                              <div className="flex items-center gap-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                                <Briefcase className="h-3 w-3 text-indigo-500" /> {job.level}
-                              </div>
-                            )}
-                            {job.workingModel && (
-                              <div className="flex items-center gap-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                                <Monitor className="h-3 w-3 text-cyan-500" /> {job.workingModel}
-                              </div>
-                            )}
-                            {job.jobExpertise && (
-                              <div className="flex items-center gap-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                                <Target className="h-3 w-3 text-rose-500" /> {job.jobExpertise}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3 align-top">
-                        <div className="flex items-center gap-1 text-sm text-zinc-600 dark:text-zinc-300">
-                          <MapPin className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
-                          <span className="line-clamp-2">{job.location}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3 align-top">
-                        <div className="flex flex-col gap-1 text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
-                          <div><span className="font-medium text-zinc-700 dark:text-zinc-300">Posted:</span> {formatDate(job.publishedAt || job.createdAt)}</div>
-                          {job.expiresAt && (
-                            <div><span className="font-medium text-zinc-700 dark:text-zinc-300">Expires:</span> {formatDate(job.expiresAt)}</div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-5 py-3 align-top text-center">
-                        <Link 
-                          href={`/recruiter/jobs/${job.id}/applicants`} 
-                          className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-full text-xs font-semibold transition-colors dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
-                        >
-                          <Users className="h-3.5 w-3.5" />
-                          {job.applicationCount}
-                        </Link>
-                      </td>
-                      <td className="px-5 py-3 align-top text-center">
-
-                        <div className="flex flex-col items-center gap-1.5">
-                          {renderStatusBadge(job)}
-                          {job.pushedTopUntil && new Date(job.pushedTopUntil) >= new Date() && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-sm animate-pulse">
-                              <Flame className="h-3 w-3 text-orange-500 fill-orange-500" />
-                              Top 24h
-                            </span>
-                          )}
-                          <AiParseStatusBadge status={job.parseStatus} error={job.parseError} />
-                        </div>
-
-                      </td>
-                      <td className="px-5 py-3 align-top text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => openEditModal(job.id)}
-                            title={job.isBanned ? "Cannot edit banned job" : "Edit Job"}
-                            disabled={job.isBanned}
-                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 disabled:opacity-30 disabled:hover:bg-transparent"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => openViewModal(job.id)}
-                            title="View Details"
-                            className="h-8 w-8 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {!job.isBanned && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => setExtendingJob(job)}
-                              title="Gia hạn tin tuyển dụng (thêm 15 ngày)"
-                              className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
-                            >
-                              <CalendarPlus className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {job.status === "PUBLISHED" && !job.isBanned && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => setPushingTopJob(job)}
-                              title="Đẩy Tin Lên Top Trang Chủ (24 Giờ)"
-                              className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-transform hover:scale-110"
-                            >
-                              <Rocket className="h-4 w-4 text-amber-500 fill-amber-500" />
-                            </Button>
-                          )}
-                          {job.status !== "CLOSED" && !job.isBanned && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => handleCloseJob(job.id)}
-                              title="Close Job"
-                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30"
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-xs border border-zinc-200/80 dark:border-zinc-800/80 p-16 text-center text-zinc-500 dark:text-zinc-400">
-              No job postings found matching the filters.
-            </div>
-          )}
-
-          {/* Pagination */}
-          {totalCount > 0 && (
-            <div className="px-6 py-4 flex flex-col sm:flex-row items-center justify-between border-t border-zinc-200 dark:border-zinc-800 gap-4 bg-zinc-50/20 dark:bg-zinc-950/10">
-              <span className="text-sm text-zinc-500 dark:text-zinc-400">
-                Showing <strong className="font-semibold text-zinc-700 dark:text-zinc-300">{startResult}</strong> to{" "}
-                <strong className="font-semibold text-zinc-700 dark:text-zinc-300">{endResult}</strong> of{" "}
-                <strong className="font-semibold text-zinc-700 dark:text-zinc-300">{totalCount}</strong> results
-              </span>
-
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                  disabled={page === 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-
-                {Array.from({ length: totalPages }).map((_, index) => {
-                  const pageNum = index + 1
-                  const isCurrent = pageNum === page
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={isCurrent ? "default" : "outline"}
-                      className={`h-8 w-8 font-medium ${
-                        isCurrent 
-                          ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                          : "text-zinc-700 dark:text-zinc-300"
+              {Array.from({ length: totalPages }).map((_, index) => {
+                const pageNum = index + 1
+                // Clean calculation to show near pages if totalPages is large
+                if (totalPages > 7 && Math.abs(pageNum - page) > 2 && pageNum !== 1 && pageNum !== totalPages) {
+                  if (pageNum === 2 || pageNum === totalPages - 1) {
+                    return <span key={pageNum} className="px-1 text-xs text-[#65676B]">...</span>
+                  }
+                  return null
+                }
+                const isCurrent = pageNum === page
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={isCurrent ? "default" : "outline"}
+                    disabled={loading}
+                    onClick={() => setPage(pageNum)}
+                    className={`h-8 w-8 text-xs font-semibold rounded-md shadow-2xs transition-all ${isCurrent
+                        ? "bg-[#1877F2] hover:bg-[#166FE5] text-white border-[#1877F2]"
+                        : "border-[#CED0D4] dark:border-zinc-800 text-[#050505] dark:text-zinc-300 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
                       }`}
-                      onClick={() => setPage(pageNum)}
-                    >
-                      {pageNum}
-                    </Button>
-                  )
-                })}
+                  >
+                    {pageNum}
+                  </Button>
+                )
+              })}
 
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                  disabled={page === totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={page === totalPages || loading}
+                onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                className="h-8 w-8 border-[#CED0D4] dark:border-zinc-800 text-[#65676B] dark:text-zinc-400 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 dark:hover:text-blue-400 disabled:opacity-40"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Extend Job Modal */}
@@ -524,15 +743,15 @@ export default function JobPostingsPage() {
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden p-6 space-y-5">
             <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-4">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                <div className="p-2.5 bg-[#E7F3FF] dark:bg-blue-950/50 text-[#1877F2] dark:text-blue-400 rounded-xl">
                   <CalendarPlus className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Gia hạn tin tuyển dụng</h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Thêm 15 ngày hiển thị active cho công việc</p>
+                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Extend Job Posting</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Add 15 active display days for this job</p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => !extendSubmitting && setExtendingJob(null)}
                 className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 rounded-lg"
               >
@@ -542,48 +761,48 @@ export default function JobPostingsPage() {
 
             <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-700/60 rounded-xl p-4 space-y-2">
               <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 line-clamp-1">
-                📌 Tin tuyển dụng: <span className="font-semibold text-emerald-600 dark:text-emerald-400">{extendingJob.title}</span>
+                📌 Job posting: <span className="font-semibold text-[#1877F2] dark:text-blue-400">{extendingJob.title}</span>
               </p>
               <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 pt-1 border-t border-zinc-200/40 dark:border-zinc-700/40">
-                <span>Hết hạn hiện tại: <strong className="text-zinc-700 dark:text-zinc-300">{formatDate(extendingJob.expiresAt)}</strong></span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">+ 15 ngày</span>
+                <span>Current Expiry: <strong className="text-zinc-700 dark:text-zinc-300">{formatDate(extendingJob.expiresAt)}</strong></span>
+                <span className="text-[#1877F2] dark:text-blue-400 font-semibold">+ 15 Days</span>
               </div>
             </div>
 
             {/* Quota & Billing Breakdown */}
             <div className="space-y-3">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-                Quyền lợi Gói & Thanh toán
+                Plan Benefits & Payment
               </h4>
-              <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-gradient-to-r from-zinc-50 to-emerald-50/20 dark:from-zinc-900 dark:to-emerald-950/20 flex flex-col gap-2">
+              <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-gradient-to-r from-zinc-50 to-blue-50/20 dark:from-zinc-900 dark:to-blue-950/20 flex flex-col gap-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-zinc-600 dark:text-zinc-400">Gói dịch vụ hiện tại:</span>
-                  <span className="font-semibold px-2.5 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
-                    {walletData?.activeSubscriptionName || "Gói Mặc định (Free)"}
+                  <span className="text-zinc-600 dark:text-zinc-400">Current Plan:</span>
+                  <span className="font-semibold px-2.5 py-0.5 rounded-full text-xs bg-[#E7F3FF] text-[#1877F2] dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                    {walletData?.activeSubscriptionName || "Default Plan (Free)"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-zinc-600 dark:text-zinc-400">Hạn mức gia hạn trong gói:</span>
+                  <span className="text-zinc-600 dark:text-zinc-400">Plan Extension Limit:</span>
                   <span className="font-medium text-zinc-900 dark:text-white">
                     {jobExtendLimit === -1 ? (
-                      <span className="text-emerald-600 font-semibold">♾️ Vô hạn (Miễn phí)</span>
+                      <span className="text-[#1877F2] font-semibold">♾️ Unlimited (Free)</span>
                     ) : jobExtendLimit === 0 ? (
-                      <span className="text-amber-600 dark:text-amber-400 font-semibold">0 lượt (Thanh toán lẻ)</span>
+                      <span className="text-amber-600 dark:text-amber-400 font-semibold">0 uses (Pay per extension)</span>
                     ) : (
-                      <span>Đã dùng <strong>{jobExtendUsed}</strong> / <strong>{jobExtendLimit}</strong> lượt</span>
+                      <span>Used <strong>{jobExtendUsed}</strong> / <strong>{jobExtendLimit}</strong> uses</span>
                     )}
                   </span>
                 </div>
-                
+
                 <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800 flex items-center justify-between text-sm font-semibold">
-                  <span className="text-zinc-700 dark:text-zinc-300">Chi phí lần gia hạn này:</span>
+                  <span className="text-zinc-700 dark:text-zinc-300">Cost for this extension:</span>
                   {!isExtendQuotaFull ? (
-                    <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                      <Sparkles className="h-4 w-4" /> 0 Coin (Miễn phí từ gói)
+                    <span className="text-[#1877F2] dark:text-blue-400 flex items-center gap-1">
+                      <Sparkles className="h-4 w-4" /> 0 Coin (Free from plan)
                     </span>
                   ) : (
                     <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                      <Coins className="h-4 w-4" /> 10,000 Coin (Ví pay-as-you-go)
+                      <Coins className="h-4 w-4" /> 10,000 Coin (Pay-as-you-go)
                     </span>
                   )}
                 </div>
@@ -595,21 +814,21 @@ export default function JobPostingsPage() {
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-semibold">Số dư Coin không đủ để thanh toán</p>
+                      <p className="font-semibold">Insufficient Coin Balance</p>
                       <p className="text-amber-700 dark:text-amber-300/80 mt-0.5">
-                        Bạn đã hết lượt gia hạn miễn phí trong gói và số dư hiện tại (<strong>{(coinBalance).toLocaleString()} Coin</strong>) không đủ 10,000 Coin.
+                        You have exhausted your free plan extensions and your current balance (<strong>{(coinBalance).toLocaleString()} Coin</strong>) is less than 10,000 Coin.
                       </p>
                     </div>
                   </div>
                   <div className="flex gap-2 justify-end">
                     <Link href="/recruiter/billing">
                       <Button size="sm" variant="outline" className="h-7 text-xs border-amber-300 dark:border-amber-700 bg-white dark:bg-zinc-900">
-                        Nâng cấp gói
+                        Upgrade Plan
                       </Button>
                     </Link>
                     <Link href="/recruiter/billing">
                       <Button size="sm" className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white">
-                        Nạp Coin ngay
+                        Top-up Coin Now
                       </Button>
                     </Link>
                   </div>
@@ -623,15 +842,15 @@ export default function JobPostingsPage() {
                 disabled={extendSubmitting}
                 onClick={() => setExtendingJob(null)}
               >
-                Hủy bỏ
+                Cancel
               </Button>
               <Button
                 disabled={extendSubmitting || (isExtendQuotaFull && !canPayWithCoins)}
                 onClick={handleConfirmExtend}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 px-5 shadow-sm"
+                className="bg-[#1877F2] hover:bg-[#166FE5] text-white gap-2 px-5 shadow-sm"
               >
                 {extendSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                {!isExtendQuotaFull ? "✨ Gia hạn ngay (Miễn phí)" : "🪙 Xác nhận (10,000 Coin)"}
+                {!isExtendQuotaFull ? "✨ Extend Now (Free)" : "🪙 Confirm (10,000 Coin)"}
               </Button>
             </div>
           </div>
@@ -641,17 +860,17 @@ export default function JobPostingsPage() {
       {/* Push Top Job Modal */}
       {pushingTopJob && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-amber-500/30 space-y-6">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#1877F2]/30 space-y-6">
             <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-4">
               <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-md shadow-amber-500/20">
+                <div className="h-11 w-11 rounded-xl bg-[#1877F2] flex items-center justify-center text-white shadow-md shadow-blue-500/20">
                   <Rocket className="h-6 w-6 fill-white animate-bounce" />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-                    Đẩy Tin Lên Top Trang Chủ <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700/50">24 Giờ</span>
+                    Push Job to Homepage Top <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#E7F3FF] dark:bg-blue-950/50 text-[#1877F2] dark:text-blue-300 border border-blue-200 dark:border-blue-800">24 Hours</span>
                   </h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Tăng đột phá lượt xem và ứng tuyển từ ứng viên</p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Boost views and applications from candidates</p>
                 </div>
               </div>
               <button
@@ -663,51 +882,51 @@ export default function JobPostingsPage() {
             </div>
 
             <div className="space-y-4 text-sm">
-              <div className="p-3.5 bg-gradient-to-r from-amber-50/80 via-orange-50/50 to-amber-50/80 dark:from-amber-950/20 dark:via-zinc-800/50 dark:to-amber-950/20 rounded-xl border border-amber-200/60 dark:border-amber-800/40 text-zinc-800 dark:text-zinc-200 flex flex-col gap-1.5">
+              <div className="p-3.5 bg-blue-50/60 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900/40 text-zinc-800 dark:text-zinc-200 flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 font-medium">
-                  <Flame className="h-4 w-4 text-orange-500 fill-orange-500 shrink-0" />
-                  <span>Tin tuyển dụng: <strong className="text-amber-700 dark:text-amber-400 font-bold">{pushingTopJob.title}</strong></span>
+                  <Flame className="h-4 w-4 text-[#1877F2] fill-[#1877F2]/20 shrink-0" />
+                  <span>Job posting: <strong className="text-[#1877F2] dark:text-blue-400 font-bold">{pushingTopJob.title}</strong></span>
                 </div>
                 <div className="text-xs text-zinc-600 dark:text-zinc-400 pl-6 space-y-1">
-                  <div>✨ Hiển thị nổi bật <strong>Dưới Hero Section</strong> của Trang chủ ITHunterview.</div>
-                  <div>✨ Trở thành tin ưu tiên hàng đầu tại Trang tìm kiếm Việc làm công khai.</div>
+                  <div>✨ Featured prominent display below the Homepage Hero Section.</div>
+                  <div>✨ Top priority placement on the public Job Search Page.</div>
                   {pushingTopJob.pushedTopUntil && new Date(pushingTopJob.pushedTopUntil) >= new Date() && (
-                    <div className="text-emerald-600 dark:text-emerald-400 font-semibold pt-1">
-                      * Tin đang trên Top đến: {new Date(pushingTopJob.pushedTopUntil).toLocaleString('vi-VN')}. Đẩy tiếp sẽ được cộng nối tiếp thêm 24 giờ!
+                    <div className="text-[#1877F2] dark:text-blue-400 font-semibold pt-1">
+                      * Job is currently on Top until: {new Date(pushingTopJob.pushedTopUntil).toLocaleString('en-US')}. Pushing again will add an extra 24 hours!
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Thông tin quota theo gói / coin */}
+              {/* Account plan & quota info */}
               <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 space-y-3">
                 <div className="flex items-center justify-between text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                  <span>Gói tài khoản hiện tại</span>
-                  <span className="font-bold text-amber-600 dark:text-amber-400 uppercase">
+                  <span>Current Account Plan</span>
+                  <span className="font-bold text-[#1877F2] dark:text-blue-400 uppercase">
                     {walletData?.activeSubscriptionName || "Free / Regular"}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-zinc-200/60 dark:border-zinc-700/60">
-                  <span className="font-medium text-zinc-700 dark:text-zinc-300">Quyền lợi Đẩy Top trong gói</span>
+                  <span className="font-medium text-zinc-700 dark:text-zinc-300">Push Top Benefits in Plan</span>
                   <div className="text-right">
                     {jobPushTopLimit === -1 ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                        <Sparkles className="h-3 w-3" /> Không giới hạn
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-[#1877F2] dark:text-blue-400 bg-[#E7F3FF] dark:bg-blue-950/50 px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
+                        <Sparkles className="h-3 w-3" /> Unlimited
                       </span>
                     ) : jobPushTopLimit === 0 ? (
-                      <span className="text-xs text-zinc-500 dark:text-zinc-400">Gói không kèm lượt đẩy Top</span>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">Plan does not include Top pushes</span>
                     ) : (
-                      <span className="text-xs font-bold">Đã dùng <strong>{jobPushTopUsed}</strong> / <strong>{jobPushTopLimit}</strong> lượt</span>
+                      <span className="text-xs font-bold">Used <strong>{jobPushTopUsed}</strong> / <strong>{jobPushTopLimit}</strong> uses</span>
                     )}
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-zinc-200/60 dark:border-zinc-700/60">
-                  <span className="font-medium text-zinc-700 dark:text-zinc-300">Chi phí Đẩy Top lần này:</span>
+                  <span className="font-medium text-zinc-700 dark:text-zinc-300">Cost for this Top push:</span>
                   {!isPushTopQuotaFull ? (
-                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                      ✨ Miễn phí <span className="text-[10px] font-normal text-zinc-500">(Trừ vào lượt trong gói)</span>
+                    <span className="text-xs font-bold text-[#1877F2] dark:text-blue-400 flex items-center gap-1">
+                      ✨ Free <span className="text-[10px] font-normal text-zinc-500">(Deducted from plan uses)</span>
                     </span>
                   ) : (
                     <div className="text-right">
@@ -715,7 +934,7 @@ export default function JobPostingsPage() {
                         <Coins className="h-4 w-4" /> 5,000 Coin
                       </span>
                       <div className="text-[11px] text-zinc-500 mt-0.5">
-                        Số dư: <strong>{coinBalance.toLocaleString()} Coin</strong>
+                        Balance: <strong>{coinBalance.toLocaleString()} Coin</strong>
                       </div>
                     </div>
                   )}
@@ -726,15 +945,15 @@ export default function JobPostingsPage() {
                 <div className="p-3 bg-red-50/90 dark:bg-red-950/40 border border-red-200 dark:border-red-800/80 rounded-xl flex items-start gap-3 text-red-800 dark:text-red-300 text-xs">
                   <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="font-bold">Không đủ lượt trong Gói và số dư Coin</p>
+                    <p className="font-bold">Insufficient Plan Uses & Coin Balance</p>
                     <p className="mt-0.5 opacity-90">
-                      Bạn đã hết lượt đẩy Top miễn phí theo gói và số dư không đủ 5,000 Coin. Vui lòng nạp thêm Coin hoặc nâng cấp gói để trải nghiệm tính năng!
+                      You have used all free Top pushes in your plan and your balance is under 5,000 Coin. Please top up Coins or upgrade your plan to continue!
                     </p>
                     <Link
                       href="/recruiter/billing"
-                      className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg text-xs shadow-sm transition-all"
+                      className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-[#1877F2] hover:bg-[#166FE5] text-white font-semibold rounded-lg text-xs shadow-sm transition-all"
                     >
-                      💳 Nạp Coin / Nâng cấp gói ngay
+                      💳 Top-up Coin / Upgrade Plan Now
                     </Link>
                   </div>
                 </div>
@@ -747,19 +966,19 @@ export default function JobPostingsPage() {
                 disabled={pushTopSubmitting}
                 onClick={() => setPushingTopJob(null)}
               >
-                Hủy bỏ
+                Cancel
               </Button>
               <Button
                 disabled={pushTopSubmitting || (isPushTopQuotaFull && !canPayPushTopWithCoins)}
                 onClick={handleConfirmPushTop}
-                className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold gap-2 px-5 shadow-md shadow-amber-500/20"
+                className="bg-[#1877F2] hover:bg-[#166FE5] text-white font-bold gap-2 px-5 shadow-md shadow-blue-500/20"
               >
                 {pushTopSubmitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Rocket className="h-4 w-4 fill-white" />
                 )}
-                {!isPushTopQuotaFull ? "✨ Đẩy Top Ngay (Miễn phí)" : "🪙 Xác nhận Đẩy (5,000 Coin)"}
+                {!isPushTopQuotaFull ? "✨ Push to Top Now (Free)" : "🪙 Confirm Push (5,000 Coin)"}
               </Button>
             </div>
           </div>

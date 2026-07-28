@@ -8,15 +8,23 @@ export const metadata: Metadata = {
 
 export default function RecruiterBillingHistoryPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Transaction History</h1>
-        <p className="text-muted-foreground mt-2">
-          Track your company's Subscription and Coin Top-up payments.
-        </p>
+    <div className="min-h-screen bg-background transition-colors duration-200">
+      <div className="w-full pb-10 space-y-5">
+        {/* Top Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-2">
+          <div>
+            <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight">
+              Transaction History
+            </h1>
+            <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
+              Track, inspect, and manage your company's Subscription and Coin Top-up payments
+            </p>
+          </div>
+        </div>
+
+        {/* Main Standardized 3-Tier Billing Table Component */}
+        <BillingHistoryTable />
       </div>
-      
-      <BillingHistoryTable />
     </div>
   );
 }

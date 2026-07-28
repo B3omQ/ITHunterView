@@ -96,7 +96,6 @@ export const ROLE_MENUS: Record<string, Array<{ label: string; href: string; ico
     { label: 'Dashboard', href: APP_ROUTES.RECRUITER.DASHBOARD, icon: 'LayoutDashboard' },
     { label: 'Company', href: APP_ROUTES.RECRUITER.COMPANY, icon: 'Building2' },
     { label: 'Job Postings', href: APP_ROUTES.RECRUITER.JOBS, icon: 'Briefcase' },
-    { label: 'Analytics', href: APP_ROUTES.RECRUITER.ANALYTICS, icon: 'BarChart3' },
     { label: 'Top Up Coin', href: APP_ROUTES.RECRUITER.TOP_UP, icon: 'Coins' },
     { label: 'Billing History', href: APP_ROUTES.RECRUITER.BILLING_HISTORY, icon: 'Receipt' },
     { label: 'Change Password', href: APP_ROUTES.RECRUITER.CHANGE_PASSWORD, icon: 'KeyRound' },
