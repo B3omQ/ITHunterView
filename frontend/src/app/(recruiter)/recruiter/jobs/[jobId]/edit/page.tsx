@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { ArrowLeft, Sparkles, Loader2, Save } from "lucide-react"
-import { LEVELS, WORKING_MODELS, JOB_DOMAINS, VIETNAM_PROVINCES } from "@/lib/job-constants"
+import { ArrowLeft, Plus, X, Sparkles, AlertCircle, Loader2, Ban } from "lucide-react"
+import { LEVELS, WORKING_MODELS, JOB_DOMAINS, JOB_EXPERTISES, VIETNAM_PROVINCES } from "@/lib/job-constants"
 import { MajorCombobox } from "@/components/shared/MajorCombobox"
 import { JobPostingRichTextEditor } from "@/components/forms/JobPostingRichTextEditor"
 import {
@@ -253,7 +253,16 @@ export default function EditJobPage() {
           </div>
         )}
 
-        {/* Main Job Information Card */}
+        {job?.isBanned && (
+          <div className="flex flex-col gap-2 text-sm font-medium text-red-700 bg-red-50 dark:bg-red-950/40 p-4 rounded-xl border border-red-200 dark:border-red-900/50">
+            <div className="flex items-center gap-2">
+              <Ban className="h-5 w-5 shrink-0" />
+              <span className="font-bold">Bài đăng này đã bị khóa và không thể chỉnh sửa.</span>
+            </div>
+            {job.banReason && <p className="text-red-600 dark:text-red-400 pl-7 text-xs">Lý do: {job.banReason}</p>}
+          </div>
+        )}
+
         <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader>
             <CardTitle className="text-lg font-bold">Thông tin vị trí tuyển dụng</CardTitle>
@@ -557,6 +566,16 @@ export default function EditJobPage() {
             )}
             Tiếp tục xem trước AI
           </Button>
+          {!job?.isBanned && (
+            <Button
+              type="button"
+              onClick={() => handleUpdate()}
+              disabled={saving}
+              className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/10"
+            >
+              {saving ? "Saving Changes..." : "Save Change"}
+            </Button>
+          )}
         </div>
       </div>
     </div>

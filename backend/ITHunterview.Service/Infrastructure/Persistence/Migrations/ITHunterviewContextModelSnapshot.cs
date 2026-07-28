@@ -320,6 +320,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("github_url");
 
+                    b.Property<bool>("IsNewbieRewardClaimed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_newbie_reward_claimed");
+
                     b.Property<bool>("IsProfileComplete")
                         .HasColumnType("boolean")
                         .HasColumnName("is_profile_complete");
@@ -498,6 +502,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("industry");
+
+                    b.Property<bool>("IsNewbieRewardClaimed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_newbie_reward_claimed");
 
                     b.Property<double?>("Latitude")
                         .HasColumnType("double precision")
@@ -1276,6 +1284,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("application_count");
 
+                    b.Property<string>("BanReason")
+                        .HasColumnType("text")
+                        .HasColumnName("ban_reason");
+
                     b.Property<string>("Benefits")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1327,6 +1339,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("income_text");
+                    b.Property<bool>("IsBanned")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_banned");
 
                     b.Property<string>("JobCode")
                         .IsRequired()
@@ -1374,6 +1389,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("PublishedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("published_at");
+
+                    b.Property<DateTime?>("PushedTopUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("pushed_top_until");
 
                     b.Property<Guid>("RecruiterId")
                         .HasColumnType("uuid")

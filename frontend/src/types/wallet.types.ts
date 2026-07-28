@@ -3,6 +3,22 @@ export interface WalletBalanceDto {
   balance: number;
   activeSubscriptionName?: string | null;
   subscriptionEndDate?: string | null;
+  mockInterviewLimit?: number | null;
+  mockInterviewUsed?: number | null;
+  cvMatchLimit?: number | null;
+  cvMatchUsed?: number | null;
+  learningPathLimit?: number | null;
+  learningPathUsed?: number | null;
+  learningPathSlotLimit?: number | null;
+  learningPathSlotUsed?: number | null;
+  jobSlotsLimit?: number | null;
+  jobSlotsUsed?: number | null;
+  unlockCvLimit?: number | null;
+  unlockCvUsed?: number | null;
+  jobExtendLimit?: number | null;
+  jobExtendUsed?: number | null;
+  pushTopLimit?: number | null;
+  pushTopUsed?: number | null;
 }
 
 export interface WalletTransactionDto {
@@ -26,6 +42,8 @@ export interface PaymentDto {
   targetType: string;
   targetId: string | null;
   subscriptionName: string | null;
+  userName?: string | null;
+  userEmail?: string | null;
   status: string;
   createdAt: string;
   updatedAt: string;

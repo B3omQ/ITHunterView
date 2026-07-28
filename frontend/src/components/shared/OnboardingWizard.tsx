@@ -76,8 +76,11 @@ export function OnboardingWizard({ missingFields }: OnboardingWizardProps) {
     updateProfile(
       { firstName, lastName, phone, location: locationStr },
       {
-        onSuccess: () => {
-          toast.success('Profile updated successfully!');
+        onSuccess: (res: any) => {
+          toast.success('Cập nhật hồ sơ thành công!');
+          if (res?.data?.isNewbieRewardClaimed || (res?.data?.isComplete && res?.data?.isEmailVerified)) {
+            toast.success('🎉 Chúc mừng! Bạn đã nhận được 1.500 Coin thưởng Tân Binh!');
+          }
         },
         onError: () => {
           toast.error('An error occurred, please try again.');
@@ -93,11 +96,11 @@ export function OnboardingWizard({ missingFields }: OnboardingWizardProps) {
       <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden [&>button]:hidden">
         <div className="p-6 border-b">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">
-              Complete your profile
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              Hoàn thiện hồ sơ Tân Binh
             </DialogTitle>
             <DialogDescription className="text-sm mt-2">
-              Help us personalize your job search and recommendations.
+              Hoàn thành thông tin và xác thực email để mở khóa <strong className="text-amber-500 font-bold">🎁 1.500 Coin miễn phí</strong> trải nghiệm hệ thống!
             </DialogDescription>
           </DialogHeader>
           

@@ -196,6 +196,42 @@ namespace ITHunterview.WebAPI.Controllers
             var finalizeDto = await _jobAnalysisUseCase.FinalizeAsync(id, recruiterId, dto, ct);
             return Ok(new ResponseBase<FinalizeJobResponseDto>(finalizeDto, "Job finalized successfully."));
         }
+        
+        [HttpPost("{id}/extend")]
+        [HttpPatch("{id}/extend")]
+        public async Task<ActionResult<ResponseBase<JobPostingDetailDto>>> ExtendJob(Guid id)
+        {
+            var recruiterId = await ResolveRecruiterIdAsync();
+            if (recruiterId == Guid.Empty)
+            {
+                return BadRequest(new ResponseBase<JobPostingDetailDto>("Could not resolve recruiter user."));
+            }
+
+            var result = await _jobPostingsUseCase.ExtendJobAsync(id, recruiterId);
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+            return Ok(result);
+        }
+
+        [HttpPost("{id}/push-top")]
+        [HttpPatch("{id}/push-top")]
+        public async Task<ActionResult<ResponseBase<JobPostingDetailDto>>> PushTopJob(Guid id)
+        {
+            var recruiterId = await ResolveRecruiterIdAsync();
+            if (recruiterId == Guid.Empty)
+            {
+                return BadRequest(new ResponseBase<JobPostingDetailDto>("Could not resolve recruiter user."));
+            }
+
+            var result = await _jobPostingsUseCase.PushTopJobAsync(id, recruiterId);
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+            return Ok(result);
+        }
 
         [HttpPost("{id:guid}/match-cvs")]
         [Authorize(Policy = "RecruiterOnly")]

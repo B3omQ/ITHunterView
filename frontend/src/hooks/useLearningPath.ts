@@ -59,7 +59,7 @@ export function useLearningPath(id: string) {
   return useQuery({
     queryKey: ['learning-paths', id],
     queryFn: () => learningPathService.getById(id),
-    enabled: !!id,
+    enabled: !!id && id !== 'new',
   });
 }
 

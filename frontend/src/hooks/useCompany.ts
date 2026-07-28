@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { companyService } from '@/services/company.service';
 import { CreateCompanyDto, UpdateCompanyDto, VerifyCompanyDto, UpdateCompanyStatusDto } from '@/types/company.types';
 
@@ -69,6 +70,23 @@ export function useUpdateCompanyStatus() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
       queryClient.invalidateQueries({ queryKey: ['my-company'] });
+    },
+  });
+}
+
+export function useClaimCompanyNewbieReward() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => companyService.claimNewbieReward(),
+    onSuccess: () => {
+      toast.success('🎉 Chúc mừng! Bạn đã nhận thành công 25.000 Coin thưởng xác thực công ty!');
+      queryClient.invalidateQueries({ queryKey: ['my-company'] });
+      queryClient.invalidateQueries({ queryKey: ['wallet-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Không thể nhận thưởng lúc này.');
     },
   });
 }

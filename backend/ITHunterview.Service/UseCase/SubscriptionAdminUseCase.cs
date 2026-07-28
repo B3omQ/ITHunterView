@@ -8,16 +8,22 @@ using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Subscription;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
+using Microsoft.AspNetCore.SignalR;
+using ITHunterview.Service.Hubs;
 
 namespace ITHunterview.Service.UseCase
 {
     public class SubscriptionAdminUseCase : ISubscriptionAdminUseCase
     {
         private readonly ISubscriptionRepository _subscriptionRepository;
+        private readonly IHubContext<NotificationHub> _hubContext;
 
-        public SubscriptionAdminUseCase(ISubscriptionRepository subscriptionRepository)
+        public SubscriptionAdminUseCase(
+            ISubscriptionRepository subscriptionRepository,
+            IHubContext<NotificationHub> hubContext)
         {
             _subscriptionRepository = subscriptionRepository;
+            _hubContext = hubContext;
         }
 
         public async Task<ResponseBase<PagedResult<SubscriptionDto>>> GetPagedSubscriptionsAsync(
@@ -124,6 +130,8 @@ namespace ITHunterview.Service.UseCase
                 IsUsed = false
             };
 
+            await _hubContext.Clients.All.SendAsync("ReceivePricingUpdate");
+
             return new ResponseBase<SubscriptionDto>(resultDto, "Tạo gói dịch vụ thành công ở trạng thái INACTIVE.");
         }
 
@@ -190,6 +198,8 @@ namespace ITHunterview.Service.UseCase
                     IsUsed = isUsed
                 };
 
+                await _hubContext.Clients.All.SendAsync("ReceivePricingUpdate");
+
                 return new ResponseBase<SubscriptionDto>(resultDto, "Cập nhật gói dịch vụ thành công.");
             }
             catch (Exception)
@@ -230,6 +240,8 @@ namespace ITHunterview.Service.UseCase
                 IsUsed = isUsed
             };
 
+            await _hubContext.Clients.All.SendAsync("ReceivePricingUpdate");
+
             return new ResponseBase<SubscriptionDto>(resultDto, $"Cập nhật trạng thái gói dịch vụ thành {status} thành công.");
         }
 
@@ -268,6 +280,8 @@ namespace ITHunterview.Service.UseCase
                 IsUsed = false
             };
 
+            await _hubContext.Clients.All.SendAsync("ReceivePricingUpdate");
+
             return new ResponseBase<SubscriptionDto>(resultDto, "Nhân bản gói dịch vụ thành công ở trạng thái INACTIVE.");
         }
 
@@ -303,9 +317,8 @@ namespace ITHunterview.Service.UseCase
             {
                 config.CvMatchLimit = null;
                 config.MockInterviewLimit = null;
+                config.LearningPathLimit = null;
                 config.LearningPathSlotLimit = null;
-                config.AiRefreshUnlimited = null;
-                config.PremiumBadge = null;
             }
         }
 
@@ -326,9 +339,8 @@ namespace ITHunterview.Service.UseCase
             return string.Equals(a.Role, b.Role, StringComparison.OrdinalIgnoreCase) &&
                    a.CvMatchLimit == b.CvMatchLimit &&
                    a.MockInterviewLimit == b.MockInterviewLimit &&
+                   a.LearningPathLimit == b.LearningPathLimit &&
                    a.LearningPathSlotLimit == b.LearningPathSlotLimit &&
-                   a.AiRefreshUnlimited == b.AiRefreshUnlimited &&
-                   a.PremiumBadge == b.PremiumBadge &&
                    a.JobSlots == b.JobSlots &&
                    a.JobExtendLimit == b.JobExtendLimit &&
                    a.UnlockCvLimit == b.UnlockCvLimit &&

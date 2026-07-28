@@ -24,6 +24,13 @@ export interface JobPostingSummary {
   skills: string[];
   parseStatus?: 'PENDING' | 'PROCESSING' | 'READY' | 'SUCCESS' | 'FAILED' | 'NOT_REQUESTED' | 'STALE';
   parseError?: string | null;
+  createdAt: string;
+  publishedAt?: string;
+  expiresAt?: string;
+  applicationCount?: number;
+  isBanned?: boolean;
+  banReason?: string;
+  pushedTopUntil?: string;
   analysisRevision: number;
 }
 
@@ -56,6 +63,9 @@ export interface JobPosting {
   parseStatus?: 'PENDING' | 'PROCESSING' | 'READY' | 'SUCCESS' | 'FAILED' | 'NOT_REQUESTED' | 'STALE';
   parseError?: string | null;
   analysisRevision: number;
+  isBanned?: boolean;
+  banReason?: string;
+  pushedTopUntil?: string;
 }
 
 export interface JobCategory {
@@ -183,6 +193,30 @@ export const recruiterService = {
       return {
         success: false,
         message: error.response?.data?.message || error.message || 'Failed to close job posting',
+      };
+    }
+  },
+
+  extendJob: async (id: string) => {
+    try {
+      const response = await api.post<ApiResponse<any>>(`/api/jobpostings/${id}/extend`);
+      return { success: true, data: response.data, message: response.data?.message || 'Gia hạn thành công' };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Gia hạn thất bại',
+      };
+    }
+  },
+
+  pushTopJob: async (id: string) => {
+    try {
+      const response = await api.post<ApiResponse<any>>(`/api/jobpostings/${id}/push-top`);
+      return { success: true, data: response.data, message: response.data?.message || 'Đẩy Top thành công!' };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Đẩy Top thất bại',
       };
     }
   },

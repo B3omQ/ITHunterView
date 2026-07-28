@@ -36,6 +36,8 @@ export interface JobCardDto {
   isSaved?: boolean;
   isApplied?: boolean;
   skills?: string[];
+  pushedTopUntil?: string;
+  isPushedTop?: boolean;
 }
 
 export interface SavedJobDto {
@@ -73,4 +75,6 @@ export interface JobDetailViewDto {
   isSaved?: boolean;
   isApplied?: boolean;
   skills: string[];
+  pushedTopUntil?: string;
+  isPushedTop?: boolean;
 }

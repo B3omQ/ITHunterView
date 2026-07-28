@@ -15,11 +15,13 @@ namespace ITHunterview.Service.UseCase
     {
         private readonly ICompanyRepository _companyRepository;
         private readonly IUserRepository _userRepository;
+        private readonly IWalletUseCase _walletUseCase;
 
-        public CompanyUseCase(ICompanyRepository companyRepository, IUserRepository userRepository)
+        public CompanyUseCase(ICompanyRepository companyRepository, IUserRepository userRepository, IWalletUseCase walletUseCase)
         {
             _companyRepository = companyRepository;
             _userRepository = userRepository;
+            _walletUseCase = walletUseCase;
         }
 
         public async Task<CompanyDto> CreateCompanyAsync(CreateCompanyDto dto, Guid userId)
@@ -93,7 +95,43 @@ namespace ITHunterview.Service.UseCase
             var company = await _companyRepository.GetByUserIdAsync(userId);
             if (company == null) return null;
 
+            await CheckAndAwardNewbieBonusAsync(company, userId);
+
             return MapToDto(company);
+        }
+
+        public async Task<CompanyDto> ClaimNewbieRewardAsync(Guid userId)
+        {
+            var company = await _companyRepository.GetByUserIdAsync(userId);
+            if (company == null)
+            {
+                throw new KeyNotFoundException("Bạn chưa tạo hồ sơ doanh nghiệp.");
+            }
+            if (company.Status != CompanyStatus.VERIFIED)
+            {
+                throw new ArgumentException("Doanh nghiệp của bạn cần được admin duyệt (VERIFIED) trước khi nhận thưởng.");
+            }
+            if (company.IsNewbieRewardClaimed)
+            {
+                throw new ArgumentException("Bạn đã nhận phần thưởng xác thực doanh nghiệp 25.000 coin trước đó rồi.");
+            }
+
+            await CheckAndAwardNewbieBonusAsync(company, userId);
+            return MapToDto(company);
+        }
+
+        private async Task CheckAndAwardNewbieBonusAsync(Companies company, Guid? fallbackUserId = null)
+        {
+            if (company.Status == CompanyStatus.VERIFIED && !company.IsNewbieRewardClaimed)
+            {
+                var targetUserId = company.CreatedBy ?? fallbackUserId;
+                if (targetUserId.HasValue)
+                {
+                    company.IsNewbieRewardClaimed = true;
+                    await _companyRepository.UpdateAsync(company);
+                    await _walletUseCase.AddBonusCoinsAsync(targetUserId.Value, 25000, "Thưởng hoàn tất & xác thực hồ sơ công ty thành công (25.000 Coin)");
+                }
+            }
         }
 
         public async Task<CompanyDto> UpdateCompanyStatusAsync(Guid companyId, UpdateCompanyStatusDto dto, Guid userId)
@@ -182,6 +220,11 @@ namespace ITHunterview.Service.UseCase
             company.UpdatedAt = DateTime.UtcNow;
 
             await _companyRepository.UpdateAsync(company);
+
+            if (company.Status == CompanyStatus.VERIFIED)
+            {
+                await CheckAndAwardNewbieBonusAsync(company);
+            }
 
             var resDto = MapToDto(company);
             if (company.CreatedBy.HasValue)
@@ -309,6 +352,7 @@ namespace ITHunterview.Service.UseCase
                 VerificationMethod = company.VerificationMethod,
                 VerificationDocumentUrl = company.VerificationDocumentUrl,
                 Status = company.Status,
+                IsNewbieRewardClaimed = company.IsNewbieRewardClaimed,
                 PendingName = company.PendingName,
                 PendingTaxCode = company.PendingTaxCode,
                 PendingHeadquartersAddress = company.PendingHeadquartersAddress,

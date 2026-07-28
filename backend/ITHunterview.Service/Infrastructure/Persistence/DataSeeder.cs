@@ -22,6 +22,17 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             await SeedJobPostingsAsync(context);
             await SeedSfiaSkillsAsync(context);
             await SeedRealisticSpecificJDsAsync(context);
+
+            // Cập nhật trạng thái ParseStatus của các Job mẫu được seed sang SUCCESS để không hiển thị kẹt ở trạng thái AI Processing
+            var pendingJobs = await context.JobPostings.Where(j => j.ParseStatus == "PENDING" || j.ParseStatus == null).ToListAsync();
+            if (pendingJobs.Any())
+            {
+                foreach (var job in pendingJobs)
+                {
+                    job.ParseStatus = "SUCCESS";
+                }
+                await context.SaveChangesAsync();
+            }
         }
 
         private static async Task SeedRolesAndPermissionsAsync(ITHunterviewContext context)
@@ -640,7 +651,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         Name = "Basic", 
                         Price = 0, 
                         DurationDays = 36500, 
-                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":5,\"mockInterviewLimit\":1,\"learningPathSlotLimit\":1,\"aiRefreshUnlimited\":false,\"premiumBadge\":false,\"coinCredit\":0}",
+                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":5,\"mockInterviewLimit\":1,\"learningPathLimit\":1,\"learningPathSlotLimit\":1,\"coinCredit\":0}",
                         Status = SubscriptionStatus.ACTIVE
                     },
                     new Subscriptions 
@@ -648,7 +659,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         Name = "Pro Career", 
                         Price = 199000, 
                         DurationDays = 30, 
-                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":30,\"mockInterviewLimit\":10,\"learningPathSlotLimit\":3,\"aiRefreshUnlimited\":true,\"premiumBadge\":false,\"coinCredit\":3500}",
+                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":30,\"mockInterviewLimit\":10,\"learningPathLimit\":5,\"learningPathSlotLimit\":3,\"coinCredit\":3500}",
                         Status = SubscriptionStatus.ACTIVE
                     },
                     new Subscriptions 
@@ -656,7 +667,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         Name = "Mastery", 
                         Price = 449000, 
                         DurationDays = 30, 
-                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":100,\"mockInterviewLimit\":20,\"learningPathSlotLimit\":3,\"aiRefreshUnlimited\":true,\"premiumBadge\":true,\"coinCredit\":10000}",
+                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":100,\"mockInterviewLimit\":20,\"learningPathLimit\":30,\"learningPathSlotLimit\":-1,\"coinCredit\":10000}",
                         Status = SubscriptionStatus.ACTIVE
                     },
                     
@@ -674,15 +685,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         Name = "Starter", 
                         Price = 399000, 
                         DurationDays = 30, 
-                        FeaturesConfig = "{\"role\":\"RECRUITER\",\"jobSlots\":3,\"jobExtendLimit\":3,\"unlockCvLimit\":15,\"pushTopLimit\":0,\"coinCredit\":2500}",
+                        FeaturesConfig = "{\"role\":\"RECRUITER\",\"jobSlots\":3,\"jobExtendLimit\":3,\"unlockCvLimit\":10,\"pushTopLimit\":1,\"coinCredit\":2000}",
                         Status = SubscriptionStatus.ACTIVE
                     },
                     new Subscriptions 
                     { 
                         Name = "Growth", 
-                        Price = 790000, 
+                        Price = 899000, 
                         DurationDays = 30, 
-                        FeaturesConfig = "{\"role\":\"RECRUITER\",\"jobSlots\":6,\"jobExtendLimit\":6,\"unlockCvLimit\":35,\"pushTopLimit\":4,\"coinCredit\":15000}",
+                        FeaturesConfig = "{\"role\":\"RECRUITER\",\"jobSlots\":8,\"jobExtendLimit\":8,\"unlockCvLimit\":35,\"pushTopLimit\":3,\"coinCredit\":6000}",
                         Status = SubscriptionStatus.ACTIVE
                     },
                     new Subscriptions 
@@ -696,6 +707,32 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 };
                 context.Subscriptions.AddRange(subs);
                 await context.SaveChangesAsync();
+            }
+            else
+            {
+                // Đồng bộ cấu hình các gói Candidate trong DB hiện hữu theo thông số quyền lợi mới
+                var basic = await context.Subscriptions.FirstOrDefaultAsync(s => s.Name == "Basic" && s.FeaturesConfig.Contains("CANDIDATE"));
+                if (basic != null && (!basic.FeaturesConfig.Contains("learningPathLimit") || !basic.FeaturesConfig.Contains("\"learningPathSlotLimit\":1") || basic.FeaturesConfig.Contains("aiRefreshUnlimited")))
+                {
+                    basic.FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":5,\"mockInterviewLimit\":1,\"learningPathLimit\":1,\"learningPathSlotLimit\":1,\"coinCredit\":0}";
+                }
+
+                var pro = await context.Subscriptions.FirstOrDefaultAsync(s => (s.Name == "Pro Career" || s.Name == "Pro") && s.FeaturesConfig.Contains("CANDIDATE"));
+                if (pro != null && (!pro.FeaturesConfig.Contains("learningPathLimit") || !pro.FeaturesConfig.Contains("\"learningPathSlotLimit\":3") || pro.FeaturesConfig.Contains("aiRefreshUnlimited")))
+                {
+                    pro.FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":30,\"mockInterviewLimit\":10,\"learningPathLimit\":5,\"learningPathSlotLimit\":3,\"coinCredit\":3500}";
+                }
+
+                var mastery = await context.Subscriptions.FirstOrDefaultAsync(s => s.Name == "Mastery" && s.FeaturesConfig.Contains("CANDIDATE"));
+                if (mastery != null && (!mastery.FeaturesConfig.Contains("learningPathLimit") || !mastery.FeaturesConfig.Contains("\"learningPathSlotLimit\":-1") || mastery.FeaturesConfig.Contains("aiRefreshUnlimited")))
+                {
+                    mastery.FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":100,\"mockInterviewLimit\":20,\"learningPathLimit\":30,\"learningPathSlotLimit\":-1,\"coinCredit\":10000}";
+                }
+
+                if (context.ChangeTracker.HasChanges())
+                {
+                    await context.SaveChangesAsync();
+                }
             }
         }
 
@@ -843,6 +880,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                             ApplicationCount = random.Next(0, 100),
                             ViewCount = random.Next(100, 5000),
                             PublishedAt = status == JobStatus.PUBLISHED ? publishedAt : null,
+                            PushedTopUntil = status == JobStatus.PUBLISHED && random.Next(0, 2) == 0 ? publishedAt.AddDays(14) : null,
                             CreatedAt = publishedAt.AddDays(-random.Next(1, 5)),
                             UpdatedAt = publishedAt
                         });
@@ -992,6 +1030,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         ApplicationCount = 0,
                         ViewCount = 10,
                         PublishedAt = System.DateTime.UtcNow,
+                        PushedTopUntil = System.DateTime.UtcNow.AddDays(7),
                         CreatedAt = System.DateTime.UtcNow,
                         UpdatedAt = System.DateTime.UtcNow
                     });

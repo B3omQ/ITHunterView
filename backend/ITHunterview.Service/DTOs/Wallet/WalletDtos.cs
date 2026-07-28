@@ -9,6 +9,22 @@ namespace ITHunterview.Service.DTOs.Wallet
         public int Balance { get; set; }
         public string? ActiveSubscriptionName { get; set; }
         public DateTime? SubscriptionEndDate { get; set; }
+        public int? MockInterviewLimit { get; set; }
+        public int? MockInterviewUsed { get; set; }
+        public int? CvMatchLimit { get; set; }
+        public int? CvMatchUsed { get; set; }
+        public int? LearningPathLimit { get; set; }
+        public int? LearningPathUsed { get; set; }
+        public int? LearningPathSlotLimit { get; set; }
+        public int? LearningPathSlotUsed { get; set; }
+        public int? JobSlotsLimit { get; set; }
+        public int? JobSlotsUsed { get; set; }
+        public int? UnlockCvLimit { get; set; }
+        public int? UnlockCvUsed { get; set; }
+        public int? JobExtendLimit { get; set; }
+        public int? JobExtendUsed { get; set; }
+        public int? PushTopLimit { get; set; }
+        public int? PushTopUsed { get; set; }
     }
 
     public class WalletTransactionDto
@@ -49,6 +65,8 @@ namespace ITHunterview.Service.DTOs.Wallet
         public string TargetType { get; set; } = null!;
         public Guid? TargetId { get; set; }
         public string? SubscriptionName { get; set; }
+        public string? UserName { get; set; }
+        public string? UserEmail { get; set; }
         public string Status { get; set; } = null!;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

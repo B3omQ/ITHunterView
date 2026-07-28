@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
@@ -20,17 +22,29 @@ namespace ITHunterview.Service.UseCase
         private readonly IJobPostingRepository _jobPostingRepository;
         private readonly ICompanyRepository _companyRepository;
         private readonly IJobAnalysisInputBuilder _inputBuilder;
+        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly INotificationUseCase _notificationUseCase;
+        private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
+        private readonly Microsoft.AspNetCore.SignalR.IHubContext<ITHunterview.Service.Hubs.NotificationHub> _hubContext;
         private readonly ILogger<JobPostingsUseCase> _logger;
 
         public JobPostingsUseCase(
             IJobPostingRepository jobPostingRepository,
             ICompanyRepository companyRepository,
             IJobAnalysisInputBuilder inputBuilder,
+            IServiceScopeFactory scopeFactory,
+            INotificationUseCase notificationUseCase,
+            ICandidateFeatureUsageUseCase featureUsageUseCase,
+            Microsoft.AspNetCore.SignalR.IHubContext<ITHunterview.Service.Hubs.NotificationHub> hubContext,
             ILogger<JobPostingsUseCase> logger)
         {
             _jobPostingRepository = jobPostingRepository;
             _companyRepository = companyRepository;
             _inputBuilder = inputBuilder;
+            _scopeFactory = scopeFactory;
+            _notificationUseCase = notificationUseCase;
+            _featureUsageUseCase = featureUsageUseCase;
+            _hubContext = hubContext;
             _logger = logger;
         }
 
@@ -67,9 +81,14 @@ namespace ITHunterview.Service.UseCase
                 JobExpertise = j.JobExpertise,
                 JobDomain = j.JobDomain,
                 Skills = jobSkills.TryGetValue(j.Id, out var skills) ? skills : new List<string>(),
+
+                IsBanned = j.IsBanned,
+                BanReason = j.BanReason,
+
                 ParseStatus = j.ParseStatus ?? "PENDING",
                 ParseError = j.ParseError,
                 AnalysisRevision = j.AnalysisRevision
+                PushedTopUntil = j.PushedTopUntil
             }).ToList();
 
             var pagedResult = new PagedResult<JobPostingSummaryDto>
@@ -104,10 +123,15 @@ namespace ITHunterview.Service.UseCase
                 return new ResponseBase<JobPostingDetailDto>("Recruiter company not found. Please link recruiter to a company first.");
             }
 
-            var company = await _companyRepository.GetByIdAsync(companyId.Value);
-            if (company?.Status != CompanyStatus.VERIFIED)
+           if (dto.Status == JobStatus.PUBLISHED)
             {
-                return new ResponseBase<JobPostingDetailDto>("Company must be VERIFIED before creating a job posting.");
+                var company = await _companyRepository.GetByIdAsync(companyId.Value);
+                if (company == null || company.Status != CompanyStatus.VERIFIED)
+                {
+                    return new ResponseBase<JobPostingDetailDto>("Your company must be verified before you can publish a job posting.");
+                }
+
+                await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "PostJob");
             }
 
             if (dto.ExpiresAt.HasValue && dto.ExpiresAt.Value > DateTime.UtcNow.AddDays(30))
@@ -160,6 +184,13 @@ namespace ITHunterview.Service.UseCase
 
             return new ResponseBase<JobPostingDetailDto>(detail, "Job posting created successfully as DRAFT.");
 
+            // Broadcast real-time update
+            if (detail.Status == JobStatus.PUBLISHED)
+            {
+                await _hubContext.Clients.All.SendAsync("JobCreated", detail);
+            }
+
+            return new ResponseBase<JobPostingDetailDto>(detail, "Job posting created successfully.");
         }
 
         public async Task<ResponseBase<JobPostingDetailDto>> UpdateJobAsync(Guid id, UpdateJobPostingDto dto, Guid recruiterId)
@@ -178,6 +209,9 @@ namespace ITHunterview.Service.UseCase
             if (job.Status == JobStatus.PUBLISHED || job.Status == JobStatus.PENDING_REVIEW)
             {
                 return new ResponseBase<JobPostingDetailDto>("Published or pending review jobs cannot be edited directly. Please clone as a new draft.");
+            if (job.IsBanned)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Job posting is banned and cannot be updated.");
             }
 
             if (dto.ExpiresAt.HasValue && dto.ExpiresAt.Value > job.CreatedAt.AddDays(30))
@@ -211,6 +245,24 @@ namespace ITHunterview.Service.UseCase
             var newSnapshot = _inputBuilder.Build(job);
             var newSemanticHash = _inputBuilder.ComputeSemanticHash(newSnapshot);
             bool semanticChanged = oldSemanticHash != newSemanticHash;
+            if (job.Status != dto.Status)
+            {
+                if (dto.Status == JobStatus.PUBLISHED)
+                {
+                    var company = await _companyRepository.GetByIdAsync(job.CompanyId);
+                    if (company == null || company.Status != CompanyStatus.VERIFIED)
+                    {
+                        return new ResponseBase<JobPostingDetailDto>("Your company must be verified before you can publish a job posting.");
+                    }
+                    if (job.PublishedAt == null)
+                    {
+                        job.PublishedAt = DateTime.UtcNow;
+                    }
+
+                    await _featureUsageUseCase.TryConsumeFeatureAsync(job.RecruiterId, "PostJob", job.Id.ToString());
+                }
+                job.Status = dto.Status;
+            }
 
             job.SemanticContentHash = newSemanticHash;
 
@@ -252,6 +304,138 @@ namespace ITHunterview.Service.UseCase
             return new ResponseBase<bool>(true, "Job posting closed successfully.");
         }
 
+        public async Task<ResponseBase<JobPostingDetailDto>> ExtendJobAsync(Guid id, Guid recruiterId)
+        {
+            var job = await _jobPostingRepository.GetByIdAsync(id);
+            if (job == null)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Không tìm thấy tin tuyển dụng.");
+            }
+
+            if (job.RecruiterId != recruiterId)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Bạn không có quyền gia hạn tin tuyển dụng này.");
+            }
+
+            if (job.IsBanned)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Không thể gia hạn tin tuyển dụng đã bị khóa.");
+            }
+
+            // Tiêu thụ slot gia hạn trong gói hoặc trừ Coin từ ví pay-as-you-go
+            await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "ExtendJob", job.Id.ToString());
+
+            DateTime baseTime = (!job.ExpiresAt.HasValue || job.ExpiresAt.Value < DateTime.UtcNow)
+                ? DateTime.UtcNow
+                : job.ExpiresAt.Value;
+
+            job.ExpiresAt = baseTime.AddDays(15);
+            job.Status = JobStatus.PUBLISHED;
+            job.UpdatedAt = DateTime.UtcNow;
+
+            await _jobPostingRepository.UpdateAsync(job);
+
+            var detail = MapToDetailDto(job);
+            detail.Skills = await _jobPostingRepository.GetSkillsByJobIdAsync(job.Id);
+
+            return new ResponseBase<JobPostingDetailDto>(detail, $"Đã gia hạn tin tuyển dụng đến {job.ExpiresAt.Value:dd/MM/yyyy} thành công.");
+        }
+
+        public async Task<ResponseBase<JobPostingDetailDto>> PushTopJobAsync(Guid id, Guid recruiterId)
+        {
+            var job = await _jobPostingRepository.GetByIdAsync(id);
+            if (job == null)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Không tìm thấy tin tuyển dụng.");
+            }
+
+            if (job.RecruiterId != recruiterId)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Bạn không có quyền đẩy Top tin tuyển dụng này.");
+            }
+
+            if (job.IsBanned)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Không thể đẩy Top tin tuyển dụng đã bị khóa.");
+            }
+
+            if (job.Status != JobStatus.PUBLISHED)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Tin tuyển dụng phải ở trạng thái Đang hiển thị (PUBLISHED) để đẩy Lên Top.");
+            }
+
+            // Tiêu thụ slot đẩy Top trong gói hoặc trừ Coin từ ví pay-as-you-go (mặc định 5,000 Coin)
+            await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "PushTop", job.Id.ToString());
+
+            DateTime baseTime = (!job.PushedTopUntil.HasValue || job.PushedTopUntil.Value < DateTime.UtcNow)
+                ? DateTime.UtcNow
+                : job.PushedTopUntil.Value;
+
+            job.PushedTopUntil = baseTime.AddHours(24);
+            job.UpdatedAt = DateTime.UtcNow;
+
+            await _jobPostingRepository.UpdateAsync(job);
+
+            var detail = MapToDetailDto(job);
+            detail.Skills = await _jobPostingRepository.GetSkillsByJobIdAsync(job.Id);
+
+            return new ResponseBase<JobPostingDetailDto>(detail, $"Đã đẩy tin tuyển dụng lên Top Trang chủ trong 24 giờ (đến {job.PushedTopUntil.Value:dd/MM/yyyy HH:mm}) thành công!");
+        }
+
+        public async Task<ResponseBase<bool>> BanJobAsync(Guid id, string reason)
+        {
+            var job = await _jobPostingRepository.GetByIdAsync(id);
+            if (job == null)
+            {
+                return new ResponseBase<bool>("Job posting not found.");
+            }
+
+            job.IsBanned = true;
+            job.BanReason = reason;
+            job.UpdatedAt = DateTime.UtcNow;
+
+            await _jobPostingRepository.UpdateAsync(job);
+
+            await _notificationUseCase.CreateNotificationAsync(new ITHunterview.Service.DTOs.Notification.CreateNotificationDto
+            {
+                UserId = job.RecruiterId,
+                Title = "Bài đăng tuyển dụng của bạn đã bị khóa",
+                Message = $"Bài đăng '{job.Title}' đã bị khóa bởi quản trị viên. Lý do: {reason}",
+                Type = NotificationType.SYSTEM
+            });
+
+            await _hubContext.Clients.All.SendAsync("JobStatusChanged", id);
+
+            return new ResponseBase<bool>(true, "Job posting banned successfully.");
+        }
+
+        public async Task<ResponseBase<bool>> UnbanJobAsync(Guid id)
+        {
+            var job = await _jobPostingRepository.GetByIdAsync(id);
+            if (job == null)
+            {
+                return new ResponseBase<bool>("Job posting not found.");
+            }
+
+            job.IsBanned = false;
+            job.BanReason = null;
+            job.UpdatedAt = DateTime.UtcNow;
+
+            await _jobPostingRepository.UpdateAsync(job);
+
+            await _notificationUseCase.CreateNotificationAsync(new ITHunterview.Service.DTOs.Notification.CreateNotificationDto
+            {
+                UserId = job.RecruiterId,
+                Title = "Bài đăng tuyển dụng đã được mở khóa",
+                Message = $"Bài đăng '{job.Title}' đã được mở khóa và hoạt động bình thường.",
+                Type = NotificationType.SYSTEM
+            });
+
+            await _hubContext.Clients.All.SendAsync("JobStatusChanged", id);
+
+            return new ResponseBase<bool>(true, "Job posting unbanned successfully.");
+        }
+
         private static JobPostingDetailDto MapToDetailDto(JobPostings j)
         {
             return new JobPostingDetailDto
@@ -282,9 +466,12 @@ namespace ITHunterview.Service.UseCase
                 PublishedAt = j.PublishedAt,
                 ExpiresAt = j.ExpiresAt,
                 CreatedAt = j.CreatedAt,
+                IsBanned = j.IsBanned,
+                BanReason = j.BanReason,
                 ParseStatus = j.ParseStatus ?? "PENDING",
                 ParseError = j.ParseError,
                 AnalysisRevision = j.AnalysisRevision
+                PushedTopUntil = j.PushedTopUntil
             };
         }
 

@@ -21,11 +21,17 @@ namespace ITHunterview.Service.DTOs.Job
         public string? Level { get; set; }
         public string? WorkingModel { get; set; }
         public string? JobExpertise { get; set; }
-        public List<string>? JobDomain { get; set; }
-        public List<string> Skills { get; set; } = new();
+        public System.Collections.Generic.List<string>? JobDomain { get; set; }
+        public System.Collections.Generic.List<string> Skills { get; set; } = new();
+
+        public bool IsBanned { get; set; }
+        public string? BanReason { get; set; }
+
         public string ParseStatus { get; set; } = "PENDING";
         public string? ParseError { get; set; }
         public int AnalysisRevision { get; set; } = 1;
+        public DateTime? PushedTopUntil { get; set; }
+        public bool IsPushedTop => PushedTopUntil.HasValue && PushedTopUntil.Value >= DateTime.UtcNow;
     }
 
     public class JobPostingDetailDto
@@ -57,11 +63,18 @@ namespace ITHunterview.Service.DTOs.Job
         public string? Level { get; set; }
         public string? WorkingModel { get; set; }
         public string? JobExpertise { get; set; }
-        public List<string>? JobDomain { get; set; }
-        public List<JobSkillRequirementDto> Skills { get; set; } = new();
+        public System.Collections.Generic.List<string>? JobDomain { get; set; }
+        public System.Collections.Generic.List<JobSkillRequirementDto> Skills { get; set; } = new();
+        public int AnalysisRevision { get; set; } = 1;
+
+        public bool IsBanned { get; set; }
+        public string? BanReason { get; set; }
+
         public string ParseStatus { get; set; } = "PENDING";
         public string? ParseError { get; set; }
-        public int AnalysisRevision { get; set; } = 1;
+
+        public DateTime? PushedTopUntil { get; set; }
+        public bool IsPushedTop => PushedTopUntil.HasValue && PushedTopUntil.Value >= DateTime.UtcNow;
     }
 
     public class CreateJobPostingDto
@@ -151,5 +164,10 @@ namespace ITHunterview.Service.DTOs.Job
     {
         public int SkillId { get; set; }
         public bool IsMandatory { get; set; }
+    }
+
+    public class BanJobRequestDto
+    {
+        public string Reason { get; set; } = string.Empty;
     }
 }

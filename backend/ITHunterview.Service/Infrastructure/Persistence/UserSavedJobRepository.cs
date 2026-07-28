@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
+using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.JobSearch;
 using ITHunterview.Service.Interface.Persistence;
@@ -23,7 +24,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             var savedJobsQuery = from usj in _context.UserSavedJobs
                                  join job in _context.JobPostings on usj.JobId equals job.Id
                                  join company in _context.Companies on job.CompanyId equals company.Id
-                                 where usj.UserId == userId
+                                 where usj.UserId == userId && job.Status == JobStatus.PUBLISHED && !job.IsBanned
                                  select new { usj, job, company };
 
             var totalItems = await savedJobsQuery.CountAsync();

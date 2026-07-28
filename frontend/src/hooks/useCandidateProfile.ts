@@ -35,7 +35,24 @@ export function useProfileCompletionStatus() {
   return useQuery({
     queryKey: CANDIDATE_PROFILE_KEYS.completionStatus,
     queryFn: () => candidateService.getCompletionStatus().then((res) => res.data),
-    staleTime: Infinity, // The gating logic will handle refetch invalidation
+    staleTime: 60000,
+  });
+}
+
+export function useClaimNewbieReward() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => candidateService.claimNewbieReward(),
+    onSuccess: () => {
+      toast.success('🎉 Bạn đã nhận thành công 1.500 coin thưởng Tân Binh!');
+      queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.completionStatus });
+      queryClient.invalidateQueries({ queryKey: ['wallet-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Không thể nhận thưởng lúc này.');
+    },
   });
 }
 
@@ -48,6 +65,8 @@ export function useUpdateOnboardingProfile() {
       queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.completionStatus });
       queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.personalInfo });
       queryClient.invalidateQueries({ queryKey: CANDIDATE_PROFILE_KEYS.summary });
+      queryClient.invalidateQueries({ queryKey: ['wallet-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
     },
   });
 }

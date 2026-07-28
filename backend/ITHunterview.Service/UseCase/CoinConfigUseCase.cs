@@ -8,16 +8,22 @@ using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.CoinConfig;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.UseCase;
+using Microsoft.AspNetCore.SignalR;
+using ITHunterview.Service.Hubs;
 
 namespace ITHunterview.Service.UseCase
 {
     public class CoinConfigUseCase : ICoinConfigUseCase
     {
         private readonly ITHunterviewContext _context;
+        private readonly IHubContext<NotificationHub> _hubContext;
 
-        public CoinConfigUseCase(ITHunterviewContext context)
+        public CoinConfigUseCase(
+            ITHunterviewContext context,
+            IHubContext<NotificationHub> hubContext)
         {
             _context = context;
+            _hubContext = hubContext;
         }
 
         public async Task<ResponseBase<UpdateCoinConfigDto>> GetCoinConfigAsync()
@@ -217,14 +223,17 @@ namespace ITHunterview.Service.UseCase
 
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
+
+                    await _hubContext.Clients.All.SendAsync("ReceivePricingUpdate");
+
+                    return new ResponseBase<UpdateCoinConfigDto>(dto, "Cập nhật cấu hình Coin thành công");
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     await transaction.RollbackAsync();
                     throw;
                 }
             }
-
             return new ResponseBase<UpdateCoinConfigDto>(dto, "Cập nhật cấu hình Coin thành công");
         }
 

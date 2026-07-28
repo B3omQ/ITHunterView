@@ -7,12 +7,16 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Wallet;
+using ITHunterview.Service.DTOs.Subscription;
+using System.Text.Json;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.UseCase;
 using PayOS;
 using PayOS.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.SignalR;
+using ITHunterview.Service.Hubs;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -21,17 +25,20 @@ namespace ITHunterview.Service.UseCase
         private readonly ITHunterviewContext _context;
         private readonly PayOSClient _payOS;
         private readonly IConfiguration _configuration;
+        private readonly IHubContext<NotificationHub> _hubContext;
         private readonly ILogger<WalletUseCase> _logger;
 
         public WalletUseCase(
             ITHunterviewContext context,
             PayOSClient payOS,
             IConfiguration configuration,
+            IHubContext<NotificationHub> hubContext,
             ILogger<WalletUseCase> logger)
         {
             _context = context;
             _payOS = payOS;
             _configuration = configuration;
+            _hubContext = hubContext;
             _logger = logger;
         }
 
@@ -71,15 +78,144 @@ namespace ITHunterview.Service.UseCase
             }
 
             var activeSub = await _context.UserSubscriptions
-                .FirstOrDefaultAsync(us => us.UserId == userId && us.Status == UserSubscriptionStatus.ACTIVE && us.EndDate >= DateTime.UtcNow);
+                .Where(us => us.UserId == userId && us.Status == UserSubscriptionStatus.ACTIVE && us.EndDate >= DateTime.UtcNow)
+                .OrderByDescending(us => us.EndDate)
+                .FirstOrDefaultAsync();
                 
             string? activeSubName = null;
+            int? mockInterviewLimit = null;
+            int? mockInterviewUsed = null;
+            int? cvMatchLimit = null;
+            int? cvMatchUsed = null;
+            int? learningPathLimit = null;
+            int? learningPathUsed = null;
+            int? learningPathSlotLimit = null;
+            int? learningPathSlotUsed = null;
+            int? jobSlotsLimit = null;
+            int? jobSlotsUsed = null;
+            int? unlockCvLimit = null;
+            int? unlockCvUsed = null;
+            int? jobExtendLimit = null;
+            int? jobExtendUsed = null;
+            int? pushTopLimit = null;
+            int? pushTopUsed = null;
+
+            var isRecruiter = await _context.RecruiterProfiles.AnyAsync(r => r.UserId == userId) || 
+                              await _context.Users.Where(u => u.Id == userId && u.Role != null && u.Role.Name != null && u.Role.Name.ToLower() == "recruiter").AnyAsync();
+
             if (activeSub != null)
             {
-                activeSubName = await _context.Subscriptions
-                    .Where(s => s.Id == activeSub.SubId)
-                    .Select(s => s.Name)
-                    .FirstOrDefaultAsync();
+                var subscription = await _context.Subscriptions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.Id == activeSub.SubId && s.Status == SubscriptionStatus.ACTIVE);
+
+                if (subscription != null)
+                {
+                    activeSubName = subscription.Name;
+
+                    if (!string.IsNullOrEmpty(subscription.FeaturesConfig))
+                    {
+                        FeaturesConfigDto? features = null;
+                        try
+                        {
+                            features = JsonSerializer.Deserialize<FeaturesConfigDto>(subscription.FeaturesConfig, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        }
+                        catch
+                        {
+                            // Bỏ qua lỗi JSON
+                        }
+
+                        var start = activeSub.StartDate;
+                        var end = activeSub.EndDate;
+
+                        if (features != null && features.Role.Equals("CANDIDATE", StringComparison.OrdinalIgnoreCase))
+                        {
+                            mockInterviewLimit = features.MockInterviewLimit;
+                            cvMatchLimit = features.CvMatchLimit;
+                            learningPathLimit = features.LearningPathLimit ?? features.LearningPathSlotLimit;
+                            learningPathSlotLimit = features.LearningPathSlotLimit;
+
+                            if (mockInterviewLimit.HasValue)
+                            {
+                                mockInterviewUsed = await _context.InterviewSessions
+                                    .Where(x => x.CandidateId == userId && x.StartedAt >= start && x.StartedAt <= end)
+                                    .CountAsync();
+                            }
+
+                            if (cvMatchLimit.HasValue)
+                            {
+                                cvMatchUsed = await _context.CvJobMatchScores
+                                    .Where(m => m.UserId == userId && m.UpdatedAt >= start && m.UpdatedAt <= end)
+                                    .CountAsync();
+                            }
+
+                            if (learningPathLimit.HasValue)
+                            {
+                                learningPathUsed = await _context.LearningPaths
+                                    .Where(x => x.CandidateId == userId && x.CreatedAt >= start && x.CreatedAt <= end)
+                                    .CountAsync();
+                            }
+
+                            if (learningPathSlotLimit.HasValue)
+                            {
+                                learningPathSlotUsed = await _context.LearningPaths
+                                    .Where(x => x.CandidateId == userId)
+                                    .CountAsync();
+                            }
+                        }
+                        else if (features != null && features.Role.Equals("RECRUITER", StringComparison.OrdinalIgnoreCase))
+                        {
+                            jobSlotsLimit = features.JobSlots ?? 1;
+                            unlockCvLimit = features.UnlockCvLimit ?? 0;
+                            jobExtendLimit = features.JobExtendLimit ?? 0;
+                            pushTopLimit = features.PushTopLimit ?? 0;
+
+                            if (unlockCvLimit != 0)
+                            {
+                                unlockCvUsed = await _context.UserActivityLogs
+                                    .Where(x => x.UserId == userId && x.Action == "ConsumeFeature:UnlockCv:Sub" && x.CreatedAt >= start && x.CreatedAt <= end)
+                                    .CountAsync();
+                            }
+
+                            if (jobExtendLimit != 0)
+                            {
+                                jobExtendUsed = await _context.UserActivityLogs
+                                    .Where(x => x.UserId == userId && x.Action == "ConsumeFeature:ExtendJob:Sub" && x.CreatedAt >= start && x.CreatedAt <= end)
+                                    .CountAsync();
+                            }
+
+                            if (pushTopLimit != 0)
+                            {
+                                pushTopUsed = await _context.UserActivityLogs
+                                    .Where(x => x.UserId == userId && x.Action == "ConsumeFeature:PushTop:Sub" && x.CreatedAt >= start && x.CreatedAt <= end)
+                                    .CountAsync();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Mặc định gói Free cho Recruiter có 1 slot đăng tin active
+            if (activeSub == null && isRecruiter)
+            {
+                jobSlotsLimit = 1;
+                unlockCvLimit = 0;
+                jobExtendLimit = 0;
+                pushTopLimit = 0;
+                unlockCvUsed = 0;
+                jobExtendUsed = 0;
+                pushTopUsed = 0;
+            }
+
+            if (jobSlotsLimit.HasValue)
+            {
+                jobSlotsUsed = await _context.JobPostings
+                    .Where(x => x.RecruiterId == userId && 
+                                x.Status == Domain.Enums.JobStatus.PUBLISHED && 
+                                !x.IsBanned &&
+                                x.DeletedAt == null &&
+                                (!x.ExpiresAt.HasValue || x.ExpiresAt.Value >= DateTime.UtcNow))
+                    .CountAsync();
             }
 
             var dto = new WalletBalanceDto
@@ -87,7 +223,23 @@ namespace ITHunterview.Service.UseCase
                 UserId = wallet.UserId,
                 Balance = wallet.Balance,
                 ActiveSubscriptionName = activeSubName,
-                SubscriptionEndDate = activeSub?.EndDate
+                SubscriptionEndDate = activeSub?.EndDate,
+                MockInterviewLimit = mockInterviewLimit,
+                MockInterviewUsed = mockInterviewUsed,
+                CvMatchLimit = cvMatchLimit,
+                CvMatchUsed = cvMatchUsed,
+                LearningPathLimit = learningPathLimit,
+                LearningPathUsed = learningPathUsed,
+                LearningPathSlotLimit = learningPathSlotLimit,
+                LearningPathSlotUsed = learningPathSlotUsed,
+                JobSlotsLimit = jobSlotsLimit,
+                JobSlotsUsed = jobSlotsUsed,
+                UnlockCvLimit = unlockCvLimit,
+                UnlockCvUsed = unlockCvUsed,
+                JobExtendLimit = jobExtendLimit,
+                JobExtendUsed = jobExtendUsed,
+                PushTopLimit = pushTopLimit,
+                PushTopUsed = pushTopUsed
             };
 
             return new ResponseBase<WalletBalanceDto>(dto, "Lấy số dư ví thành công");
@@ -437,6 +589,26 @@ namespace ITHunterview.Service.UseCase
                     }
                 }
             }
+
+            var paymentDto = MapToDto(payment);
+            
+            var user = await _context.Users
+                .Include(u => u.CandidateProfile)
+                .Include(u => u.RecruiterProfile)
+                .FirstOrDefaultAsync(u => u.Id == payment.UserId);
+                
+            if (user != null)
+            {
+                paymentDto.UserName = user.RecruiterProfile?.FullName ?? 
+                                     $"{user.CandidateProfile?.FirstName} {user.CandidateProfile?.LastName}".Trim();
+                if (string.IsNullOrWhiteSpace(paymentDto.UserName)) paymentDto.UserName = "Unknown User";
+                
+                paymentDto.UserEmail = user.Email;
+            }
+
+            await PopulateSubscriptionNamesAsync(new List<PaymentDto> { paymentDto });
+
+            await _hubContext.Clients.All.SendAsync("ReceiveNewPayment", paymentDto);
         }
 
         public async Task<ResponseBase<PagedResult<PaymentDto>>> GetPagedPaymentsAsync(int page, int pageSize)
@@ -454,6 +626,26 @@ namespace ITHunterview.Service.UseCase
 
             var dtos = items.Select(MapToDto).ToList();
             await PopulateSubscriptionNamesAsync(dtos);
+
+            var userIds = dtos.Select(d => d.UserId).Distinct().ToList();
+            var users = await _context.Users
+                .Include(u => u.CandidateProfile)
+                .Include(u => u.RecruiterProfile)
+                .Where(u => userIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => new { 
+                    Email = u.Email, 
+                    Name = u.RecruiterProfile != null ? u.RecruiterProfile.FullName : 
+                           u.CandidateProfile != null ? $"{u.CandidateProfile.FirstName} {u.CandidateProfile.LastName}".Trim() : "Unknown User"
+                });
+
+            foreach(var dto in dtos)
+            {
+                if (users.TryGetValue(dto.UserId, out var userInfo))
+                {
+                    dto.UserName = string.IsNullOrWhiteSpace(userInfo.Name) ? "Unknown User" : userInfo.Name;
+                    dto.UserEmail = userInfo.Email;
+                }
+            }
             
             var result = new PagedResult<PaymentDto>
             {
@@ -566,6 +758,54 @@ namespace ITHunterview.Service.UseCase
                 CreatedAt = p.CreatedAt,
                 UpdatedAt = p.UpdatedAt
             };
+        }
+
+        public async Task AddBonusCoinsAsync(Guid userId, int amount, string description)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var wallet = await _context.UserWallets
+                    .FromSqlRaw("SELECT * FROM user_wallets WHERE user_id = {0} LIMIT 1 FOR UPDATE", userId)
+                    .FirstOrDefaultAsync();
+
+                if (wallet == null)
+                {
+                    wallet = new UserWallets
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = userId,
+                        Balance = amount,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    _context.UserWallets.Add(wallet);
+                }
+                else
+                {
+                    wallet.Balance += amount;
+                    wallet.UpdatedAt = DateTime.UtcNow;
+                    _context.UserWallets.Update(wallet);
+                }
+
+                var creditTx = new CreditTransactions
+                {
+                    Id = Guid.NewGuid(),
+                    WalletId = wallet.Id,
+                    Amount = amount,
+                    TransactionType = ITHunterview.Domain.Enums.CreditTransactionType.BONUS,
+                    Description = description,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.CreditTransactions.Add(creditTx);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
     }
 }

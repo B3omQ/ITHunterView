@@ -23,6 +23,7 @@ import {
 import { useGetMatchHistory } from "@/hooks/useCvMatch"
 import { useGetInterviewSessions } from "@/hooks/useInterview"
 import { useMyLearningPaths } from "@/hooks/useLearningPath"
+import { useProfileCompletionStatus, useClaimNewbieReward } from "@/hooks/useCandidateProfile"
 import { Progress } from "@/components/ui/progress"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts"
 
@@ -30,6 +31,8 @@ export default function CandidateDashboard() {
   const { user } = useAuthStore()
 
   // 1. Fetch Data
+  const { data: completionStatus } = useProfileCompletionStatus()
+  const { mutate: claimReward, isPending: isClaiming } = useClaimNewbieReward()
   const { data: matchHistoryRes, isLoading: isMatchLoading } = useGetMatchHistory(1, 10)
   const matchHistory = (matchHistoryRes?.data?.items || []).filter(m => m.matchScore !== null && m.matchScore !== undefined)
 
@@ -151,6 +154,84 @@ export default function CandidateDashboard() {
         </div>
       </div>
 
+      {/* Newbie Welcome Reward Banner */}
+      {completionStatus && !completionStatus.isNewbieRewardClaimed && (
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-700 p-6 sm:p-8 text-white shadow-xl shadow-purple-500/20 border border-white/10 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/30 mb-8">
+          <div className="absolute -top-24 -right-24 w-72 h-72 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            <div className="space-y-3 max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-amber-300 text-xs font-bold tracking-wide uppercase border border-white/20 shadow-sm animate-pulse">
+                <Sparkles size={14} className="text-amber-300" /> Thưởng Chào Mừng Tân Binh
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2">
+                Nhận ngay <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 font-extrabold">1.500 Coin</span> khởi tạo! 🎁
+              </h2>
+              <p className="text-purple-100 text-sm leading-relaxed">
+                Hoàn thành 2 bước xác thực cơ bản dưới đây để mở khóa <strong className="text-amber-200">1.500 Coin</strong> vào ví và trải nghiệm miễn phí các dịch vụ scan CV AI, phỏng vấn thực chiến đỉnh cao.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 text-sm">
+                  {completionStatus.isEmailVerified ? (
+                    <div className="p-1 rounded-full bg-emerald-500 text-white shadow-sm flex-shrink-0"><CheckCircle2 size={16} /></div>
+                  ) : (
+                    <div className="p-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 flex-shrink-0"><Circle size={16} /></div>
+                  )}
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-white">1. Xác thực Email</span>
+                    <span className="text-xs text-purple-200">
+                      {completionStatus.isEmailVerified ? "Đã hoàn thành ✅" : "Vui lòng kiểm tra email"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 text-sm">
+                  {completionStatus.isComplete ? (
+                    <div className="p-1 rounded-full bg-emerald-500 text-white shadow-sm flex-shrink-0"><CheckCircle2 size={16} /></div>
+                  ) : (
+                    <div className="p-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 flex-shrink-0"><Circle size={16} /></div>
+                  )}
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-white">2. Hoàn thiện 100% Hồ sơ</span>
+                    <span className="text-xs text-purple-200">
+                      {completionStatus.isComplete ? "Đã hoàn thành ✅" : `Tiến độ: ${completionStatus.completionPercentage}%`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-stretch sm:items-end w-full lg:w-auto mt-2 lg:mt-0 gap-3">
+              {completionStatus.canClaimNewbieReward ? (
+                <button
+                  onClick={() => claimReward()}
+                  disabled={isClaiming}
+                  className="relative group overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 px-8 py-4 text-slate-950 font-black text-base shadow-xl shadow-amber-500/25 hover:shadow-amber-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-60 flex items-center justify-center gap-2.5"
+                >
+                  <span className="relative z-10 flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-purple-700 animate-bounce" />
+                    {isClaiming ? "ĐANG HẠCH TOÁN..." : "NHẬN 1.500 COIN NGAY"}
+                  </span>
+                </button>
+              ) : (
+                <Link
+                  href="/candidate/profile"
+                  className="rounded-2xl bg-white/15 hover:bg-white/20 border border-white/20 px-6 py-4 text-center font-bold text-sm text-white shadow-lg backdrop-blur-md transition-all flex items-center justify-center gap-2 group"
+                >
+                  <span>Hoàn thiện điều kiện ngay</span>
+                  <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </Link>
+              )}
+              <span className="text-xs text-purple-200/80 text-center lg:text-right">
+                * Phần thưởng dành riêng cho thành viên mới (1 lần duy nhất).
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Row 1: Top-level KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div className="bg-card border border-border rounded-2xl p-6 shadow-sm flex items-center gap-4">
@@ -234,9 +315,9 @@ export default function CandidateDashboard() {
             </h2>
             <p className="text-xs text-muted-foreground mt-1">Your competency gap across core dimensions (from active path).</p>
           </div>
-          <div className="flex-1 min-h-[250px] -mt-4">
-            {radarChartData.length > 0 ? (
-             <ResponsiveContainer width="100%" height="100%">
+          {radarChartData.length >= 3 ? (
+            <div className="flex-1 min-h-[250px] -mt-4">
+              <ResponsiveContainer width="100%" height="100%">
                 <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarChartData}>
                   <PolarGrid stroke="#e5e7eb" />
                   <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: '#4b5563', fontWeight: 500 }} />
@@ -247,13 +328,71 @@ export default function CandidateDashboard() {
                   />
                 </RadarChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center text-sm text-muted-foreground p-4">
-                <Sparkles size={24} className="text-muted-foreground/50 mb-2" />
-                <p>No skill gap data found in your current learning path.</p>
+            </div>
+          ) : radarChartData.length > 0 ? (
+            <div className="flex-1 min-h-[250px] flex flex-col justify-between py-2 space-y-6">
+              <div className="space-y-5 my-auto">
+                {radarChartData.map((item, idx) => {
+                  const current = Math.min(Math.max(0, Number(item.Current) || 0), item.fullMark || 7);
+                  const target = Math.min(Math.max(0, Number(item.Target) || 0), item.fullMark || 7);
+                  const maxLevel = item.fullMark || 7;
+                  
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-bold text-foreground truncate max-w-[70%]" title={item.subject}>{item.subject}</span>
+                        <div className="flex items-center gap-2 text-xs font-semibold">
+                          <span className="text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 dark:text-indigo-400 px-2 py-0.5 rounded-md">
+                            Current: L{current}
+                          </span>
+                          <span className="text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
+                            Target: L{target}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-7 gap-1.5 pt-1">
+                        {Array.from({ length: maxLevel }).map((_, stepIdx) => {
+                          const stepLevel = stepIdx + 1;
+                          const isCurrent = stepLevel <= current;
+                          const isTargetGap = stepLevel > current && stepLevel <= target;
+                          
+                          return (
+                            <div 
+                              key={stepIdx} 
+                              className={`h-3 rounded-sm transition-all duration-300 ${
+                                isCurrent 
+                                  ? "bg-indigo-500" 
+                                  : isTargetGap 
+                                  ? "bg-indigo-100 border border-indigo-300 dark:bg-indigo-950 dark:border-indigo-700" 
+                                  : "bg-muted/40"
+                              }`}
+                              title={`Level ${stepLevel}${isCurrent ? ' (Current)' : isTargetGap ? ' (Target Gap)' : ''}`}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          </div>
+
+              <div className="flex items-center justify-center gap-5 pt-3 text-[11px] font-medium text-muted-foreground border-t border-border/40">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500 inline-block"></span>
+                  <span>Current Level</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-indigo-100 border border-indigo-300 dark:bg-indigo-950 dark:border-indigo-700 inline-block"></span>
+                  <span>Target Gap</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 min-h-[250px] flex flex-col items-center justify-center text-center text-sm text-muted-foreground p-4">
+              <Sparkles size={24} className="text-muted-foreground/50 mb-2" />
+              <p>No skill gap data found in your current learning path.</p>
+            </div>
+          )}
         </div>
       </div>
 

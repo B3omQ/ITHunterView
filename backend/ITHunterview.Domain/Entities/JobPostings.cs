@@ -132,5 +132,13 @@ namespace ITHunterview.Domain.Entities
 
         [ForeignKey(nameof(EffectiveAnalysisRunId))]
         public virtual JobAnalysisRuns? EffectiveAnalysisRun { get; set; }
+        [Column("is_banned")]
+        public bool IsBanned { get; set; } = false;
+
+        [Column("ban_reason")]
+        public string? BanReason { get; set; }
+
+        [Column("pushed_top_until")]
+        public DateTime? PushedTopUntil { get; set; }
     }
 }

@@ -92,6 +92,7 @@ const RECRUITER_NAV: NavItem[] = [
 const STAFF_NAV: NavItem[] = [
   { label: "Dashboard", href: APP_ROUTES.STAFF.DASHBOARD, icon: "LayoutDashboard" },
   { label: "Companies", href: APP_ROUTES.STAFF.COMPANIES, icon: "Building2" },
+  { label: "Job Postings", href: APP_ROUTES.STAFF.JOB_POSTINGS, icon: "Briefcase" },
   { label: "AI Config", href: APP_ROUTES.STAFF.AI_CONFIG, icon: "BrainCircuit" },
   { label: "Prompts", href: APP_ROUTES.STAFF.PROMPTS, icon: "MessageSquare" },
   { label: "Question Bank", href: APP_ROUTES.STAFF.QUESTION_BANK, icon: "FileText" },
@@ -103,6 +104,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: "Dashboard", href: APP_ROUTES.ADMIN.DASHBOARD, icon: "LayoutDashboard" },
   { label: "Accounts", href: APP_ROUTES.ADMIN.ACCOUNTS, icon: "Users" },
   { label: "Companies", href: APP_ROUTES.ADMIN.COMPANIES, icon: "Building2" },
+  { label: "Job Postings", href: APP_ROUTES.ADMIN.JOB_POSTINGS, icon: "Briefcase" },
   { 
     label: "Master Data", 
     href: APP_ROUTES.ADMIN.MASTER_DATA, 
@@ -115,8 +117,11 @@ const ADMIN_NAV: NavItem[] = [
     ]
   },
   { label: "AI Config", href: APP_ROUTES.ADMIN.AI_CONFIG, icon: "BrainCircuit" },
+  { label: "Prompts", href: APP_ROUTES.ADMIN.PROMPTS, icon: "MessageSquare" },
+  { label: "Question Bank", href: APP_ROUTES.ADMIN.QUESTION_BANK, icon: "FileText" },
   { label: "Subscriptions", href: APP_ROUTES.ADMIN.SUBSCRIPTIONS, icon: "CreditCard" },
   { label: "Finance", href: APP_ROUTES.ADMIN.FINANCE, icon: "BarChart3" },
+  { label: "Notifications", href: APP_ROUTES.ADMIN.NOTIFICATIONS, icon: "Bell" },
   { label: "Platform Safety", href: APP_ROUTES.ADMIN.AUDIT_LOGS, icon: "Shield" },
   { label: "Change Password", href: APP_ROUTES.ADMIN.CHANGE_PASSWORD, icon: "KeyRound" },
 ]

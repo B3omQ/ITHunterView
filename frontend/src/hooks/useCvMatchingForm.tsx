@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useUploadFile } from '@/hooks/useUpload';
 import { useGetMyCvs } from '@/hooks/useCv';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { useMatchCvJd, useGetMatchResult } from '@/hooks/useCvMatch';
+import { useWalletBalance } from '@/hooks/useWallet';
+import { usePublicCoinConfig } from '@/hooks/useCoin';
 import type { MatchJdRequest, MatchingOutput } from '@/types/cv.types';
 import { toast } from 'sonner';
 import api from '@/services/api-client';
@@ -22,6 +24,19 @@ export const MATCHING_LOADING_STEPS = [
 
 export function useCvMatchingForm() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { data: walletRes } = useWalletBalance();
+  const { data: coinConfigRes } = usePublicCoinConfig();
+
+  const balance = walletRes?.data?.balance ?? 0;
+  const activeSubName = walletRes?.data?.activeSubscriptionName;
+  const cvMatchCost = coinConfigRes?.data?.featureCosts?.cvJdMatching ?? 1000;
+  
+  const matchLimit = walletRes?.data?.cvMatchLimit ?? 0;
+  const matchUsed = walletRes?.data?.cvMatchUsed ?? 0;
+  const isSubUnlimited = matchLimit === -1;
+  const subRemaining = isSubUnlimited ? -1 : Math.max(0, matchLimit - matchUsed);
+  const hasActiveSub = !!activeSubName && (isSubUnlimited || subRemaining > 0);
 
   const [step, setStep] = useState<MatchingStep>('select');
 
@@ -225,16 +240,51 @@ export function useCvMatchingForm() {
     if (jdTab === 'paste') payload.rawJdText = jdText;
     else if (jdTab === 'saved') payload.jobId = selectedJobId;
 
+    if (!hasActiveSub && balance < cvMatchCost) {
+      toast.error(
+        <div className="flex flex-col gap-1.5">
+          <span className="font-semibold text-rose-600 dark:text-rose-400">Số dư Coin không đủ!</span>
+          <span className="text-xs text-muted-foreground">
+            Bạn có {balance.toLocaleString()} Coin nhưng tính năng này yêu cầu {cvMatchCost.toLocaleString()} Coin.
+          </span>
+          <div className="flex items-center gap-2 mt-1">
+            <button 
+              onClick={() => router.push('/candidate/top-up')}
+              className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white font-medium text-xs rounded-lg shadow-sm transition"
+            >
+              Nạp ngay
+            </button>
+            <button 
+              onClick={() => router.push('/candidate/pricing')}
+              className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs rounded-lg shadow-sm transition"
+            >
+              Xem Gói cước
+            </button>
+          </div>
+        </div>,
+        { duration: 6000 }
+      );
+      return;
+    }
+
     setStep('loading');
 
     try {
       const res = await matchMutation.mutateAsync(payload);
-      if (res.data) {
+      if (res.success && res.data && res.data !== '00000000-0000-0000-0000-000000000000') {
+        toast.success(
+          hasActiveSub 
+            ? `Bắt đầu phân tích CV-JD (Miễn phí từ gói ${activeSubName}${isSubUnlimited ? "" : `, còn ${Math.max(0, subRemaining - 1)} lượt`})!`
+            : `Đã sử dụng ${cvMatchCost.toLocaleString()} Coin để phân tích độ tương thích CV-JD!`
+        );
         setPollingJobId(res.data);
         setCurrentJobId(res.data);
+      } else {
+        toast.error(res.message || 'Không thể gửi yêu cầu phân tích. Vui lòng thử lại sau.');
+        setStep('select');
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error matching CV and JD');
+      toast.error(err.response?.data?.message || err.message || 'Có lỗi xảy ra khi phân tích CV và JD.');
       setStep('select');
     }
   };
@@ -267,7 +317,15 @@ export function useCvMatchingForm() {
       matchOutput,
       matchedCvId,
       isUploading: isExtracting,
-      isSubmitDisabled: isSubmitDisabled()
+      isSubmitDisabled: isSubmitDisabled(),
+      balance,
+      activeSubName,
+      cvMatchCost,
+      matchLimit,
+      matchUsed,
+      isSubUnlimited,
+      subRemaining,
+      hasActiveSub
     },
     queries: {
       myCvs: myCvsData?.data || [],

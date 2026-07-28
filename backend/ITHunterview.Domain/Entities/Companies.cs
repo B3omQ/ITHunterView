@@ -120,6 +120,9 @@ namespace ITHunterview.Domain.Entities
         [Column("employee_benefits")]
         public string? EmployeeBenefits { get; set; }
 
+        [Column("is_newbie_reward_claimed")]
+        public bool IsNewbieRewardClaimed { get; set; } = false;
+
         [Column("created_by")]
         public Guid? CreatedBy { get; set; }
 

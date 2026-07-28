@@ -36,7 +36,6 @@ namespace ITHunterview.Service.UseCase
             _context = context;
         }
 
-        private const int MaxLearningPathsPerCandidate = 3;
 
         // ─────────────────────────────────────────────────────────────
         // Target Roles
@@ -334,12 +333,50 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
 
         private async Task EnforceMaxPathsAsync(Guid candidateId)
         {
+            var activeSub = await _context.UserSubscriptions
+                .AsNoTracking()
+                .Where(us => us.UserId == candidateId && us.Status == Domain.Enums.UserSubscriptionStatus.ACTIVE && us.EndDate >= DateTime.UtcNow)
+                .OrderByDescending(us => us.EndDate)
+                .FirstOrDefaultAsync();
+
+            int slotLimit = 1; // Mặc định gói Basic là 1 slot
+            if (activeSub != null)
+            {
+                var subscription = await _context.Subscriptions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.Id == activeSub.SubId && s.Status == Domain.Enums.SubscriptionStatus.ACTIVE);
+
+                if (subscription != null && !string.IsNullOrEmpty(subscription.FeaturesConfig))
+                {
+                    try
+                    {
+                        var features = JsonSerializer.Deserialize<DTOs.Subscription.FeaturesConfigDto>(
+                            subscription.FeaturesConfig,
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                        if (features?.LearningPathSlotLimit != null)
+                        {
+                            slotLimit = features.LearningPathSlotLimit.Value;
+                        }
+                    }
+                    catch
+                    {
+                        // Bỏ qua lỗi JSON, dùng limit mặc định
+                    }
+                }
+            }
+
+            if (slotLimit == -1 || slotLimit >= 999)
+            {
+                return; // Gói Mastery hoặc Unlimited cho phép lưu vô hạn lộ trình
+            }
+
             var existingPaths = await _learningPathRepository.GetByCandidateIdAsync(candidateId);
-            if (existingPaths.Count >= MaxLearningPathsPerCandidate)
+            if (existingPaths.Count >= slotLimit)
             {
                 throw new InvalidOperationException(
-                    $"Bạn đã đạt giới hạn tối đa {MaxLearningPathsPerCandidate} lộ trình học. " +
-                    "Vui lòng xoá một lộ trình cũ trước khi tạo lộ trình mới.");
+                    $"Bạn đã đạt giới hạn tối đa {slotLimit} lộ trình học hoạt động trên bảng điều khiển của gói hiện tại. " +
+                    "Vui lòng xoá bớt một lộ trình cũ hoặc nâng cấp gói (như Mastery với slot vô hạn) trước khi tạo lộ trình mới.");
             }
         }
 
@@ -770,11 +807,7 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
             }
 
             // Determine current status
-            bool currentTaskStatus = false;
-            if (tasksList[taskIndex].TryGetValue("completed", out var compVal) && compVal is JsonElement compElem)
-            {
-                currentTaskStatus = compElem.ValueKind == JsonValueKind.True;
-            }
+            bool currentTaskStatus = tasksList[taskIndex].TryGetValue("completed", out var compVal) && IsTrue(compVal);
 
             // Determine intended next status
             bool nextStatus = !currentTaskStatus;
@@ -785,21 +818,15 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
                 // Check previous module is completed
                 if (moduleIndex > 0)
                 {
-                    if (modules[moduleIndex - 1].TryGetValue("completed", out var prevModVal) && prevModVal is JsonElement prevModElem)
-                    {
-                        if (prevModElem.ValueKind != JsonValueKind.True)
-                            throw new ArgumentException("You must complete the previous module first.");
-                    }
+                    if (!IsModuleCompleted(modules[moduleIndex - 1]))
+                        throw new ArgumentException("You must complete the previous module first.");
                 }
 
                 // Check previous task in current module is completed
                 if (taskIndex > 0)
                 {
-                    if (tasksList[taskIndex - 1].TryGetValue("completed", out var prevTaskVal) && prevTaskVal is JsonElement prevTaskElem)
-                    {
-                        if (prevTaskElem.ValueKind != JsonValueKind.True)
-                            throw new ArgumentException("You must complete the previous task first.");
-                    }
+                    if (!tasksList[taskIndex - 1].TryGetValue("completed", out var prevTaskVal) || !IsTrue(prevTaskVal))
+                        throw new ArgumentException("You must complete the previous task first.");
                 }
             }
             else // Unchecking
@@ -807,11 +834,8 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
                 // Ensure next task in current module is not completed
                 if (taskIndex < tasksList.Count - 1)
                 {
-                    if (tasksList[taskIndex + 1].TryGetValue("completed", out var nextTaskVal) && nextTaskVal is JsonElement nextTaskElem)
-                    {
-                        if (nextTaskElem.ValueKind == JsonValueKind.True)
-                            throw new ArgumentException("Cannot uncheck task because the subsequent task is already completed.");
-                    }
+                    if (tasksList[taskIndex + 1].TryGetValue("completed", out var nextTaskVal) && IsTrue(nextTaskVal))
+                        throw new ArgumentException("Cannot uncheck task because the subsequent task is already completed.");
                 }
                 // Ensure first task of next module is not completed
                 else if (moduleIndex < modules.Count - 1)
@@ -831,9 +855,23 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
             tasksList[taskIndex]["completed"] = nextStatus;
             modules[moduleIndex]["tasks"] = tasksList;
 
-            // Update module completion status based on its tasks
-            bool isModuleCompleted = tasksList.All(t => t.TryGetValue("completed", out var cv) && cv is JsonElement ce && ce.ValueKind == JsonValueKind.True);
+            // Update module completion status based on its tasks (handling both bool and JsonElement)
+            bool isModuleCompleted = tasksList.All(t => t.TryGetValue("completed", out var cv) && IsTrue(cv));
             modules[moduleIndex]["completed"] = isModuleCompleted;
+
+            // Auto-heal completed status for all modules in case of previously saved inconsistencies
+            for (int i = 0; i < modules.Count; i++)
+            {
+                if (i == moduleIndex) continue;
+                if (modules[i].TryGetValue("tasks", out var tObj) && tObj is JsonElement tElem && tElem.ValueKind == JsonValueKind.Array)
+                {
+                    var tList = tElem.EnumerateArray().ToList();
+                    if (tList.Count > 0 && tList.All(t => t.TryGetProperty("completed", out var cv) && cv.ValueKind == JsonValueKind.True))
+                    {
+                        modules[i]["completed"] = true;
+                    }
+                }
+            }
 
             rootDict["modules"] = modules;
             path.PathData = JsonSerializer.Serialize(rootDict);
@@ -883,6 +921,43 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
                 PathData = JsonDocument.Parse(path.PathData),
                 CreatedAt = path.CreatedAt
             };
+        }
+
+        private static bool IsTrue(object? val)
+        {
+            if (val == null) return false;
+            if (val is bool b) return b;
+            if (val is JsonElement je)
+            {
+                if (je.ValueKind == JsonValueKind.True) return true;
+                if (je.ValueKind == JsonValueKind.String && bool.TryParse(je.GetString(), out var res)) return res;
+            }
+            if (val is string s && bool.TryParse(s, out bool sb)) return sb;
+            return false;
+        }
+
+        private static bool IsModuleCompleted(Dictionary<string, object> mod)
+        {
+            if (mod.TryGetValue("completed", out var val) && IsTrue(val))
+                return true;
+
+            if (mod.TryGetValue("tasks", out var tasksObj) && tasksObj is JsonElement tasksElem && tasksElem.ValueKind == JsonValueKind.Array)
+            {
+                var tasks = tasksElem.EnumerateArray().ToList();
+                if (tasks.Count > 0 && tasks.All(t => t.TryGetProperty("completed", out var cv) && cv.ValueKind == JsonValueKind.True))
+                {
+                    return true;
+                }
+            }
+            else if (mod.TryGetValue("tasks", out var listObj) && listObj is List<Dictionary<string, object>> list)
+            {
+                if (list.Count > 0 && list.All(t => t.TryGetValue("completed", out var cv) && IsTrue(cv)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }
