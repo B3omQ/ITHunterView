@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using ITHunterview.Service.DTOs.FeatureUsage;
 
 namespace ITHunterview.Service.Interface.UseCase
 {
@@ -10,7 +11,9 @@ namespace ITHunterview.Service.Interface.UseCase
         /// </summary>
         /// <param name="userId">Id của Candidate</param>
         /// <param name="featureKey">Tên tính năng ("CvJdMatching", "MockInterview", "CvOptimize")</param>
-        /// <returns>True nếu cho phép thực hiện (đã trừ quota hoặc trừ coin thành công), ngược lại quăng Exception</returns>
-        Task<bool> TryConsumeFeatureAsync(Guid userId, string featureKey, string? referenceId = null);
+        /// <returns>Thông tin phần quyền lợi đã tiêu thụ; caller dùng để hoàn lại nếu tác vụ thất bại.</returns>
+        Task<FeatureConsumptionResult> TryConsumeFeatureAsync(Guid userId, string featureKey, string? referenceId = null);
+        Task RefundFeatureUsageAsync(Guid userId, FeatureConsumptionResult consumption, string description);
+        Task RefundFeatureUsageByReferenceAsync(Guid userId, Guid referenceId, string description);
     }
 }

@@ -1,6 +1,10 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { walletService } from '@/services/wallet.service';
-import type { CreatePaymentDto } from '@/types/wallet.types';
+import type {
+  CreateCustomCoinTopupDto,
+  CreatePaymentDto,
+  CustomCoinTopupPriceDto,
+} from '@/types/wallet.types';
 
 export function useBuySubscription() {
   return useMutation({
@@ -8,6 +12,40 @@ export function useBuySubscription() {
     onSuccess: (res) => {
       if (res.success && res.data?.checkoutUrl) {
         window.location.href = res.data.checkoutUrl; // Chuyển hướng sang cổng thanh toán
+      }
+    },
+  });
+}
+
+export function useCustomCoinTopupPrice() {
+  return useQuery({
+    queryKey: ['custom-coin-topup-price'],
+    queryFn: walletService.getCustomCoinTopupPrice,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useBuyCustomCoins() {
+  return useMutation({
+    mutationFn: (data: CreateCustomCoinTopupDto) => walletService.createCustomCoinTopup(data),
+  });
+}
+
+export function useAdminCustomCoinTopupPrice() {
+  return useQuery({
+    queryKey: ['admin-custom-coin-topup-price'],
+    queryFn: walletService.getAdminCustomCoinTopupPrice,
+  });
+}
+
+export function useUpdateAdminCustomCoinTopupPrice() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CustomCoinTopupPriceDto) => walletService.updateAdminCustomCoinTopupPrice(data),
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ['admin-custom-coin-topup-price'] });
+        queryClient.invalidateQueries({ queryKey: ['custom-coin-topup-price'] });
       }
     },
   });

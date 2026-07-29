@@ -1,10 +1,11 @@
 'use client';
 
-import { useWalletBalance, useBuySubscription } from '@/hooks/useWallet';
+import { useState } from 'react';
+import { useWalletBalance, useBuyCustomCoins, useBuySubscription, useCustomCoinTopupPrice } from '@/hooks/useWallet';
 import { usePublicCoinConfig } from '@/hooks/useCoin';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import Image from 'next/image';
 import { Coins, Loader2, Wallet, Zap, Sparkles, BrainCircuit } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
@@ -13,7 +14,10 @@ import { toast } from 'sonner';
 export default function TopUpPage() {
   const { data: balanceData, isLoading: isLoadingBalance } = useWalletBalance();
   const { data: configData, isLoading: isLoadingConfig } = usePublicCoinConfig();
+  const { data: customCoinPriceData, isLoading: isLoadingCustomCoinPrice } = useCustomCoinTopupPrice();
   const { mutate: buyPackage, isPending: isBuying } = useBuySubscription();
+  const { mutate: buyCustomCoins, isPending: isBuyingCustomCoins } = useBuyCustomCoins();
+  const [customCoinAmount, setCustomCoinAmount] = useState('1');
 
   const handleBuyPackage = (packageId: string) => {
     buyPackage(
@@ -24,6 +28,38 @@ export default function TopUpPage() {
             window.location.href = res.data.checkoutUrl;
           } else {
             toast.error('Checkout link not found');
+          }
+        },
+        onError: (error) => {
+          toast.error(error.message || 'An error occurred while creating payment');
+        },
+      }
+    );
+  };
+
+  const unitPrice = customCoinPriceData?.data?.pricePerCoinVnd;
+  const parsedCustomCoinAmount = Number(customCoinAmount);
+  const isCustomCoinAmountValid = Number.isInteger(parsedCustomCoinAmount)
+    && parsedCustomCoinAmount >= 1
+    && parsedCustomCoinAmount <= 100000;
+  const customCoinTotal = isCustomCoinAmountValid && unitPrice
+    ? parsedCustomCoinAmount * unitPrice
+    : 0;
+
+  const handleBuyCustomCoins = () => {
+    if (!isCustomCoinAmountValid) {
+      toast.error('Please enter a whole number of Coins from 1 to 100,000.');
+      return;
+    }
+
+    buyCustomCoins(
+      { coinAmount: parsedCustomCoinAmount, paymentGateway: 'PAYOS' },
+      {
+        onSuccess: (res) => {
+          if (res.success && res.data?.checkoutUrl) {
+            window.location.href = res.data.checkoutUrl;
+          } else {
+            toast.error(res.message || 'Checkout link not found');
           }
         },
         onError: (error) => {
@@ -75,6 +111,62 @@ export default function TopUpPage() {
 
       {/* Tier 2: Core Action */}
       <div>
+        <Card className="mb-6 max-w-xl mx-auto border-primary/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Coins className="h-5 w-5 text-primary" />
+              Top Up Custom Coins
+            </CardTitle>
+            <CardDescription>
+              Choose the exact number of Coins you need. This price is separate from Coin packages.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isLoadingCustomCoinPrice ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading custom Coin price...
+              </div>
+            ) : unitPrice ? (
+              <>
+                <label className="space-y-2 block text-sm font-medium">
+                  Coins to top up
+                  <Input
+                    type="number"
+                    min="1"
+                    max="100000"
+                    step="1"
+                    inputMode="numeric"
+                    value={customCoinAmount}
+                    onChange={(event) => setCustomCoinAmount(event.target.value)}
+                  />
+                </label>
+                <div className="rounded-lg border bg-muted/30 p-3 text-sm space-y-1">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Unit price</span>
+                    <span>{formatCurrency(unitPrice)} / Coin</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-foreground">
+                    <span>Total payment</span>
+                    <span>{formatCurrency(customCoinTotal)}</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-destructive">Custom Coin pricing is temporarily unavailable.</p>
+            )}
+          </CardContent>
+          <CardFooter>
+            <Button
+              className="w-full"
+              onClick={handleBuyCustomCoins}
+              disabled={!unitPrice || !isCustomCoinAmountValid || isBuyingCustomCoins}
+            >
+              {isBuyingCustomCoins ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Pay for custom Coins
+            </Button>
+          </CardFooter>
+        </Card>
+
         {isLoadingConfig ? (
           <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (

@@ -19,6 +19,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             await SeedMajorsAsync(context);
             await SeedSubscriptionsAsync(context);
             await SeedCoinConfigAsync(context);
+            await SeedCustomCoinTopupPriceAsync(context);
             await SeedJobPostingsAsync(context);
             await SeedSfiaSkillsAsync(context);
             await SeedRealisticSpecificJDsAsync(context);
@@ -785,6 +786,23 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 context.CoinPackages.AddRange(packages);
                 await context.SaveChangesAsync();
             }
+        }
+
+        private static async Task SeedCustomCoinTopupPriceAsync(ITHunterviewContext context)
+        {
+            const string configKey = "candidate_custom_coin_price_vnd";
+            if (await context.SystemConfigs.AnyAsync(x => x.ConfigKey == configKey))
+            {
+                return;
+            }
+
+            context.SystemConfigs.Add(new SystemConfigs
+            {
+                ConfigKey = configKey,
+                ConfigValue = "2000",
+                Description = "Đơn giá VND cho 1 Coin khi Candidate nạp Coin lẻ."
+            });
+            await context.SaveChangesAsync();
         }
 
         private static async Task SeedJobPostingsAsync(ITHunterviewContext context)

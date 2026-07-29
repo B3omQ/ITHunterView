@@ -36,6 +36,7 @@ namespace ITHunterview.Service.UseCase
         private readonly ISystemConfigRepository _systemConfigRepository;
         private readonly IAiService _textAiService;
         private readonly IJobAnalysisExtractionService? _jobAnalysisExtractionService;
+        private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
 
         public CvJobMatchingUseCase(
             ITHunterviewContext context, 
@@ -47,6 +48,7 @@ namespace ITHunterview.Service.UseCase
             IPromptManagementService promptManagementService,
             ISystemConfigRepository systemConfigRepository,
             IAiService textAiService,
+            ICandidateFeatureUsageUseCase featureUsageUseCase,
             IJobAnalysisExtractionService? jobAnalysisExtractionService = null)
         {
             _context = context;
@@ -58,6 +60,7 @@ namespace ITHunterview.Service.UseCase
             _promptManagementService = promptManagementService;
             _systemConfigRepository = systemConfigRepository;
             _textAiService = textAiService;
+            _featureUsageUseCase = featureUsageUseCase;
             _jobAnalysisExtractionService = jobAnalysisExtractionService;
         }
 
@@ -418,10 +421,11 @@ namespace ITHunterview.Service.UseCase
             await _context.SaveChangesAsync();
         }
 
-        public async Task<Guid> SubmitMatchingJobAsync(Guid userId, MatchingRequestDto request)
+        public async Task<Guid> SubmitMatchingJobAsync(Guid userId, MatchingRequestDto request, Guid? operationId = null)
         {
             var matchScore = new CvJobMatchScores
             {
+                Id = operationId ?? Guid.NewGuid(),
                 UserId = userId,
                 CvId = request.CvId,
                 CvFileName = request.CvFileName ?? (string.IsNullOrEmpty(request.CvText) && string.IsNullOrEmpty(request.CvUrl) ? null : "Bypass CV"),
@@ -695,6 +699,10 @@ namespace ITHunterview.Service.UseCase
                     matchRecord.MatchDetails = llmResponseText;
                     matchRecord.UpdatedAt = DateTime.UtcNow;
                     await _context.SaveChangesAsync();
+                    await _featureUsageUseCase.RefundFeatureUsageByReferenceAsync(
+                        userId,
+                        matchRecord.Id,
+                        "Hoàn Coin do CV-JD matching không thể xử lý kết quả AI.");
                 }
             }
             catch (Exception ex)
@@ -703,6 +711,10 @@ namespace ITHunterview.Service.UseCase
                 matchRecord.ErrorMessage = ex.Message;
                 matchRecord.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
+                await _featureUsageUseCase.RefundFeatureUsageByReferenceAsync(
+                    userId,
+                    matchRecord.Id,
+                    "Hoàn Coin do CV-JD matching thất bại.");
             }
         }
 
