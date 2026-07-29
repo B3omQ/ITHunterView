@@ -11,10 +11,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // This index change is part of the current EF model snapshot.
-            migrationBuilder.DropIndex(
-                name: "IX_cvs_user_id",
-                table: "cvs");
+            // Use IF EXISTS to prevent failure if index does not exist in target database
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_cvs_user_id\";");
 
             migrationBuilder.RenameColumn(
                 name: "detailed_location",
@@ -73,12 +71,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                 name: "responsibilities",
                 table: "job_postings");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_cvs_user_id_is_primary",
-                table: "cvs",
-                columns: new[] { "user_id", "is_primary" },
-                unique: true,
-                filter: "\"is_primary\" = true AND \"deleted_at\" IS NULL");
+            migrationBuilder.Sql("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_cvs_user_id_is_primary\" ON cvs (user_id, is_primary) WHERE \"is_primary\" = true AND \"deleted_at\" IS NULL;");
         }
 
         /// <inheritdoc />
