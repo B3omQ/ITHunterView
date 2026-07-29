@@ -127,7 +127,10 @@ namespace ITHunterview.Service.UseCase
                             if (cvMatchLimit.HasValue)
                             {
                                 cvMatchUsed = await _context.CvJobMatchScores
-                                    .Where(m => m.UserId == userId && m.UpdatedAt >= start && m.UpdatedAt <= end)
+                                    .Where(m => m.UserId == userId &&
+                                                m.UpdatedAt >= start &&
+                                                m.UpdatedAt <= end &&
+                                                m.Status != "Failed")
                                     .CountAsync();
                             }
 
@@ -314,8 +317,19 @@ namespace ITHunterview.Service.UseCase
                     return new ResponseBase<CreatePaymentResponseDto>("Gói Subscription không tồn tại hoặc không hoạt động");
                 }
 
+                var buyer = await _context.Users
+                    .Include(u => u.Role)
+                    .FirstOrDefaultAsync(u => u.Id == userId);
+                var features = DeserializeSubscriptionFeatures(sub.FeaturesConfig);
+                if (buyer?.Role?.Name == null || features?.Role == null ||
+                    !IsSubscriptionRoleCompatible(buyer.Role.Name, features.Role))
+                {
+                    return new ResponseBase<CreatePaymentResponseDto>("Gói dịch vụ không phù hợp với vai trò tài khoản của bạn.");
+                }
+
                 amount = sub.Price;
-                creditsGranted = null;
+                // Snapshot coin bonus at purchase time so future package edits do not affect this payment.
+                creditsGranted = features.CoinCredit ?? 0;
                 // Ánh xạ int ID thành Guid: 00000000-0000-0000-0000-XXXXXXXXXXXX
                 targetIdGuid = Guid.Parse(sub.Id.ToString().PadLeft(32, '0'));
                 descriptionText = $"Mua goi {sub.Name}";
@@ -567,6 +581,8 @@ namespace ITHunterview.Service.UseCase
                             Status = UserSubscriptionStatus.ACTIVE
                         };
                         _context.UserSubscriptions.Add(userSub);
+
+                        await GrantSubscriptionCoinBonusAsync(payment, sub.Name);
                     }
                 }
             }
@@ -784,6 +800,71 @@ namespace ITHunterview.Service.UseCase
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        private static FeaturesConfigDto? DeserializeSubscriptionFeatures(string? featuresConfig)
+        {
+            if (string.IsNullOrWhiteSpace(featuresConfig))
+            {
+                return null;
+            }
+
+            try
+            {
+                return JsonSerializer.Deserialize<FeaturesConfigDto>(featuresConfig, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+        }
+
+        private static bool IsSubscriptionRoleCompatible(string userRole, string subscriptionRole)
+        {
+            return (userRole.Equals("candidate", StringComparison.OrdinalIgnoreCase) &&
+                    subscriptionRole.Equals("CANDIDATE", StringComparison.OrdinalIgnoreCase)) ||
+                   (userRole.Equals("recruiter", StringComparison.OrdinalIgnoreCase) &&
+                    subscriptionRole.Equals("RECRUITER", StringComparison.OrdinalIgnoreCase));
+        }
+
+        private async Task GrantSubscriptionCoinBonusAsync(Payments payment, string subscriptionName)
+        {
+            var bonusCoins = payment.CreditsGranted ?? 0;
+            if (bonusCoins <= 0)
+            {
+                return;
+            }
+
+            await _context.Database.ExecuteSqlRawAsync(
+                "INSERT INTO user_wallets (id, user_id, balance, updated_at) VALUES ({0}, {1}, 0, {2}) ON CONFLICT (user_id) DO NOTHING;",
+                Guid.NewGuid(), payment.UserId, DateTime.UtcNow);
+
+            var wallet = await _context.UserWallets
+                .FromSqlRaw("SELECT * FROM user_wallets WHERE user_id = {0} LIMIT 1 FOR UPDATE", payment.UserId)
+                .FirstOrDefaultAsync();
+
+            if (wallet == null)
+            {
+                throw new InvalidOperationException($"Could not acquire lock or find wallet for user {payment.UserId}");
+            }
+
+            wallet.Balance += bonusCoins;
+            wallet.UpdatedAt = DateTime.UtcNow;
+            _context.UserWallets.Update(wallet);
+
+            _context.CreditTransactions.Add(new CreditTransactions
+            {
+                Id = Guid.NewGuid(),
+                WalletId = wallet.Id,
+                Amount = bonusCoins,
+                TransactionType = CreditTransactionType.BONUS,
+                ReferenceId = payment.Id,
+                Description = $"Tặng {bonusCoins} Coin khi mua gói {subscriptionName}",
+                CreatedAt = DateTime.UtcNow
+            });
         }
     }
 }

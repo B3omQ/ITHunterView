@@ -8,6 +8,7 @@ using ITHunterview.Domain.Enums;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.DTOs.Subscription;
 using ITHunterview.Service.DTOs.CoinConfig;
+using ITHunterview.Service.DTOs.FeatureUsage;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
 
@@ -25,7 +26,7 @@ namespace ITHunterview.Service.UseCase
             _configRepository = configRepository;
         }
 
-        public async Task<bool> TryConsumeFeatureAsync(Guid userId, string featureKey, string? referenceId = null)
+        public async Task<FeatureConsumptionResult> TryConsumeFeatureAsync(Guid userId, string featureKey, string? referenceId = null)
         {
             if (string.IsNullOrEmpty(featureKey))
                 throw new ArgumentException("Feature key không được để trống", nameof(featureKey));
@@ -96,13 +97,13 @@ namespace ITHunterview.Service.UseCase
 
                                 if (limit == -1) // Không giới hạn
                                 {
-                                    await RecordFeatureUsageLogAsync(userId, featureKey, referenceId, true);
+                                    var usageLogId = await RecordFeatureUsageLogAsync(userId, featureKey, referenceId, true);
                                     await _context.SaveChangesAsync();
                                     if (ownsTransaction)
                                     {
                                         await transaction!.CommitAsync();
                                     }
-                                    return true;
+                                    return new FeatureConsumptionResult { UsageLogId = usageLogId };
                                 }
 
                                 if (limit > 0)
@@ -110,13 +111,13 @@ namespace ITHunterview.Service.UseCase
                                     int usedCount = await GetUsedCountInPeriodAsync(userId, featureKey, activeSub.StartDate, activeSub.EndDate);
                                     if (usedCount < limit)
                                     {
-                                        await RecordFeatureUsageLogAsync(userId, featureKey, referenceId, true);
+                                        var usageLogId = await RecordFeatureUsageLogAsync(userId, featureKey, referenceId, true);
                                         await _context.SaveChangesAsync();
                                         if (ownsTransaction)
                                         {
                                             await transaction!.CommitAsync();
                                         }
-                                        return true; // Hạn mức Subscription còn, cho phép thực hiện
+                                        return new FeatureConsumptionResult { UsageLogId = usageLogId }; // Hạn mức Subscription còn, cho phép thực hiện
                                     }
                                 }
                             }
@@ -134,7 +135,7 @@ namespace ITHunterview.Service.UseCase
                             {
                                 await transaction!.CommitAsync();
                             }
-                            return true; // Gói Free được miễn phí 1 slot đăng việc Active
+                            return new FeatureConsumptionResult(); // Gói Free được miễn phí 1 slot đăng việc Active
                         }
                     }
 
@@ -172,7 +173,7 @@ namespace ITHunterview.Service.UseCase
                         {
                             await transaction!.CommitAsync();
                         }
-                        return true; // Tính năng miễn phí theo cấu hình
+                        return new FeatureConsumptionResult(); // Tính năng miễn phí theo cấu hình
                     }
 
                     if (wallet.Balance < coinCost)
@@ -213,7 +214,7 @@ namespace ITHunterview.Service.UseCase
                     };
                     _context.CreditTransactions.Add(creditTx);
 
-                    await RecordFeatureUsageLogAsync(userId, featureKey, referenceId, false);
+                    var coinUsageLogId = await RecordFeatureUsageLogAsync(userId, featureKey, referenceId, false);
 
                     await _context.SaveChangesAsync();
                     if (ownsTransaction)
@@ -221,7 +222,12 @@ namespace ITHunterview.Service.UseCase
                         await transaction!.CommitAsync();
                     }
 
-                    return true;
+                    return new FeatureConsumptionResult
+                    {
+                        ChargedCoins = coinCost,
+                        DeductTransactionId = creditTx.Id,
+                        UsageLogId = coinUsageLogId
+                    };
             }
             catch (Exception)
             {
@@ -240,7 +246,116 @@ namespace ITHunterview.Service.UseCase
             }
         }
 
-        private Task RecordFeatureUsageLogAsync(Guid userId, string featureKey, string? referenceId, bool fromSubscription)
+        public async Task RefundFeatureUsageAsync(Guid userId, FeatureConsumptionResult consumption, string description)
+        {
+            if (consumption == null)
+            {
+                return;
+            }
+
+            var existingTransaction = _context.Database.CurrentTransaction;
+            var ownsTransaction = existingTransaction == null;
+            if (ownsTransaction)
+            {
+                existingTransaction = await _context.Database.BeginTransactionAsync();
+            }
+
+            try
+            {
+                if (consumption.UsageLogId.HasValue)
+                {
+                    var usageLog = await _context.UserActivityLogs
+                        .FirstOrDefaultAsync(x => x.Id == consumption.UsageLogId.Value && x.UserId == userId);
+                    if (usageLog != null)
+                    {
+                        _context.UserActivityLogs.Remove(usageLog);
+                    }
+                }
+
+                if (consumption.DeductTransactionId.HasValue)
+                {
+                    var deductTransaction = await _context.CreditTransactions
+                        .FirstOrDefaultAsync(x => x.Id == consumption.DeductTransactionId.Value && x.TransactionType == CreditTransactionType.DEDUCT);
+
+                    if (deductTransaction != null)
+                    {
+                        var alreadyRefunded = await _context.CreditTransactions.AnyAsync(x =>
+                            x.TransactionType == CreditTransactionType.REFUND &&
+                            x.ReferenceId == deductTransaction.Id);
+
+                        if (!alreadyRefunded)
+                        {
+                            var wallet = await _context.UserWallets
+                                .FromSqlRaw("SELECT * FROM user_wallets WHERE id = {0} LIMIT 1 FOR UPDATE", deductTransaction.WalletId)
+                                .FirstOrDefaultAsync();
+
+                            if (wallet == null || wallet.UserId != userId)
+                            {
+                                throw new InvalidOperationException("Không tìm thấy ví cần hoàn Coin.");
+                            }
+
+                            var amountToRefund = Math.Abs(deductTransaction.Amount);
+                            wallet.Balance += amountToRefund;
+                            wallet.UpdatedAt = DateTime.UtcNow;
+                            _context.UserWallets.Update(wallet);
+
+                            _context.CreditTransactions.Add(new CreditTransactions
+                            {
+                                Id = Guid.NewGuid(),
+                                WalletId = wallet.Id,
+                                Amount = amountToRefund,
+                                TransactionType = CreditTransactionType.REFUND,
+                                ReferenceId = deductTransaction.Id,
+                                Description = description,
+                                CreatedAt = DateTime.UtcNow
+                            });
+                        }
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                if (ownsTransaction)
+                {
+                    await existingTransaction!.CommitAsync();
+                }
+            }
+            catch
+            {
+                if (ownsTransaction && existingTransaction != null)
+                {
+                    await existingTransaction.RollbackAsync();
+                }
+                throw;
+            }
+            finally
+            {
+                if (ownsTransaction && existingTransaction != null)
+                {
+                    await existingTransaction.DisposeAsync();
+                }
+            }
+        }
+
+        public async Task RefundFeatureUsageByReferenceAsync(Guid userId, Guid referenceId, string description)
+        {
+            var deductTransaction = await _context.CreditTransactions
+                .Where(x => x.TransactionType == CreditTransactionType.DEDUCT && x.ReferenceId == referenceId)
+                .OrderByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (deductTransaction == null)
+            {
+                return;
+            }
+
+            await RefundFeatureUsageAsync(userId, new FeatureConsumptionResult
+            {
+                ChargedCoins = Math.Abs(deductTransaction.Amount),
+                DeductTransactionId = deductTransaction.Id
+            }, description);
+        }
+
+        private Task<Guid?> RecordFeatureUsageLogAsync(Guid userId, string featureKey, string? referenceId, bool fromSubscription)
         {
             if (featureKey == "ExtendJob" || featureKey == "UnlockCv" || featureKey == "PushTop")
             {
@@ -259,8 +374,9 @@ namespace ITHunterview.Service.UseCase
                     referenceId
                 );
                 _context.UserActivityLogs.Add(log);
+                return Task.FromResult<Guid?>(log.Id);
             }
-            return Task.CompletedTask;
+            return Task.FromResult<Guid?>(null);
         }
 
         private async Task<int> GetUsedCountInPeriodAsync(Guid userId, string featureKey, DateTime start, DateTime end)
@@ -269,7 +385,10 @@ namespace ITHunterview.Service.UseCase
             {
                 case "CvJdMatching":
                     return await _context.CvJobMatchScores
-                        .Where(m => m.UserId == userId && m.UpdatedAt >= start && m.UpdatedAt <= end)
+                        .Where(m => m.UserId == userId &&
+                                    m.UpdatedAt >= start &&
+                                    m.UpdatedAt <= end &&
+                                    m.Status != "Failed")
                         .CountAsync();
 
                 case "MockInterview":

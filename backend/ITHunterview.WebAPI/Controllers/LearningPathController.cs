@@ -4,6 +4,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.LearningPath;
+using ITHunterview.Service.DTOs.FeatureUsage;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Utils;
 using Microsoft.AspNetCore.Authorization;
@@ -37,9 +38,20 @@ namespace ITHunterview.WebAPI.Controllers
         public async Task<ActionResult<ResponseBase<LearningPathResponseDto>>> Generate([FromBody] GeneratePathRequestDto request)
         {
             var candidateId = GetUserId();
-            await _featureUsageUseCase.TryConsumeFeatureAsync(candidateId, "LearningPath");
-            var result = await _learningPathUseCase.GenerateLearningPathAsync(candidateId, request);
-            return new ResponseBase<LearningPathResponseDto>(result);
+            var consumption = await _featureUsageUseCase.TryConsumeFeatureAsync(candidateId, "LearningPath");
+            try
+            {
+                var result = await _learningPathUseCase.GenerateLearningPathAsync(candidateId, request);
+                return new ResponseBase<LearningPathResponseDto>(result);
+            }
+            catch
+            {
+                await _featureUsageUseCase.RefundFeatureUsageAsync(
+                    candidateId,
+                    consumption,
+                    "Hoàn Coin do không thể tạo Learning Path.");
+                throw;
+            }
         }
 
         [HttpGet("extract-cv-jd/{matchScoreId:guid}")]

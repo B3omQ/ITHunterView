@@ -4,6 +4,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Cv;
+using ITHunterview.Service.DTOs.FeatureUsage;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -116,19 +117,34 @@ namespace ITHunterview.WebAPI.Controllers
 
             try
             {
-                await _featureUsageUseCase.TryConsumeFeatureAsync(userId, "CvJdMatching");
-
-                var jobId = await _cvJobMatchingUseCase.SubmitMatchingJobAsync(userId, request);
-
-                // Chạy ngầm trong background với scope riêng biệt
-                _ = Task.Run(async () =>
+                var operationId = Guid.NewGuid();
+                FeatureConsumptionResult? consumption = null;
+                try
                 {
-                    using var scope = _serviceScopeFactory.CreateScope();
-                    var useCase = scope.ServiceProvider.GetRequiredService<ICvJobMatchingUseCase>();
-                    await useCase.ProcessMatchingJobAsync(jobId, userId, request);
-                });
+                    consumption = await _featureUsageUseCase.TryConsumeFeatureAsync(userId, "CvJdMatching", operationId.ToString());
+                    var jobId = await _cvJobMatchingUseCase.SubmitMatchingJobAsync(userId, request, operationId);
 
-                return Ok(new ResponseBase<Guid>(jobId, "Matching job submitted"));
+                    // Chạy ngầm trong background với scope riêng biệt
+                    _ = Task.Run(async () =>
+                    {
+                        using var scope = _serviceScopeFactory.CreateScope();
+                        var useCase = scope.ServiceProvider.GetRequiredService<ICvJobMatchingUseCase>();
+                        await useCase.ProcessMatchingJobAsync(jobId, userId, request);
+                    });
+
+                    return Ok(new ResponseBase<Guid>(jobId, "Matching job submitted"));
+                }
+                catch
+                {
+                    if (consumption != null)
+                    {
+                        await _featureUsageUseCase.RefundFeatureUsageAsync(
+                            userId,
+                            consumption,
+                            "Hoàn Coin do không thể tạo yêu cầu CV-JD matching.");
+                    }
+                    throw;
+                }
             }
             catch (InvalidOperationException ex)
             {
