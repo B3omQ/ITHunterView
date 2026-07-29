@@ -93,6 +93,7 @@ const STAFF_NAV: NavItem[] = [
   { label: "Dashboard", href: APP_ROUTES.STAFF.DASHBOARD, icon: "LayoutDashboard" },
   { label: "Companies", href: APP_ROUTES.STAFF.COMPANIES, icon: "Building2" },
   { label: "Job Postings", href: APP_ROUTES.STAFF.JOB_POSTINGS, icon: "Briefcase" },
+  { label: "System Notifications", href: APP_ROUTES.STAFF.NOTIFICATIONS, icon: "Bell" },
   { label: "AI Config", href: APP_ROUTES.STAFF.AI_CONFIG, icon: "BrainCircuit" },
   { label: "Prompts", href: APP_ROUTES.STAFF.PROMPTS, icon: "MessageSquare" },
   { label: "Question Bank", href: APP_ROUTES.STAFF.QUESTION_BANK, icon: "FileText" },
@@ -115,6 +116,7 @@ const ADMIN_NAV: NavItem[] = [
       { label: "Target Roles", href: `${APP_ROUTES.ADMIN.MASTER_DATA}/target-roles` }
     ]
   },
+  { label: "System Notifications", href: APP_ROUTES.ADMIN.NOTIFICATIONS, icon: "Bell" },
   { label: "AI Config", href: APP_ROUTES.ADMIN.AI_CONFIG, icon: "BrainCircuit" },
   { label: "Subscriptions", href: APP_ROUTES.ADMIN.SUBSCRIPTIONS, icon: "CreditCard" },
   { label: "Finance", href: APP_ROUTES.ADMIN.FINANCE, icon: "BarChart3" },

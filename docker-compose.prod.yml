@@ -20,6 +20,14 @@ services:
       timeout: 5s
       retries: 5
 
+  # ─── Redis Cache ─────────────────────────────────────────────────────────────
+  redis:
+    image: redis:alpine
+    container_name: ithunterview_redis
+    restart: unless-stopped
+    networks:
+      - internal
+
   # ─── .NET Backend ────────────────────────────────────────────────────────────
   backend:
     build:
@@ -56,6 +64,7 @@ services:
       - AiSettings__Providers__Gemini__Model=gemini-2.5-flash
       - AiSettings__Providers__Gemini__Endpoint=https://generativelanguage.googleapis.com/v1beta/models
       - AssemblyAi__ApiKey=${ASSEMBLY_AI_API_KEY}
+      - ConnectionStrings__Redis=redis:6379,abortConnect=false
     networks:
       - internal
       - web

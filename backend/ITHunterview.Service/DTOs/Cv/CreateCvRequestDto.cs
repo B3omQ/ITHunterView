@@ -8,5 +8,6 @@ namespace ITHunterview.Service.DTOs.Cv
         public string FileType { get; set; } = string.Empty;
         public bool IsPrimary { get; set; }
         public string ParsedData { get; set; } = string.Empty;
+        public bool IsTemporary { get; set; }
     }
 }

@@ -18,6 +18,18 @@ namespace ITHunterview.Service.Hubs
                 await Groups.AddToGroupAsync(Context.ConnectionId, userIdStr);
             }
             
+            // Add to role-based groups
+            var roles = Context.User?.FindAll(ClaimTypes.Role).ToList() ?? new List<Claim>();
+            roles.AddRange(Context.User?.FindAll("role") ?? Array.Empty<Claim>());
+            
+            foreach (var role in roles)
+            {
+                if (!string.IsNullOrEmpty(role.Value))
+                {
+                    await Groups.AddToGroupAsync(Context.ConnectionId, $"Role_{role.Value.ToLower()}");
+                }
+            }
+
             await base.OnConnectedAsync();
         }
 
@@ -29,6 +41,17 @@ namespace ITHunterview.Service.Hubs
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, userIdStr);
             }
             
+            var roles = Context.User?.FindAll(ClaimTypes.Role).ToList() ?? new List<Claim>();
+            roles.AddRange(Context.User?.FindAll("role") ?? Array.Empty<Claim>());
+            
+            foreach (var role in roles)
+            {
+                if (!string.IsNullOrEmpty(role.Value))
+                {
+                    await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"Role_{role.Value.ToLower()}");
+                }
+            }
+
             await base.OnDisconnectedAsync(exception);
         }
     }

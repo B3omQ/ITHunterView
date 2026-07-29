@@ -19,7 +19,15 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
 builder.Services.AddOpenApi();
-builder.Services.AddSignalR();
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+if (!string.IsNullOrEmpty(redisConnectionString))
+{
+    builder.Services.AddSignalR().AddStackExchangeRedis(redisConnectionString);
+}
+else
+{
+    builder.Services.AddSignalR();
+}
 builder.Services.AddHealthChecks();
 
 builder.Services.AddRateLimiter(options =>
@@ -35,6 +43,7 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITHunterview.Service.Interface.Infrastructure.IActorProvider, ITHunterview.Service.Infrastructure.Infrastructure.ActorProvider>();
 builder.Services.AddSingleton<ITHunterview.Service.Interface.Infrastructure.IAuditLogQueue, ITHunterview.Service.Infrastructure.Infrastructure.AuditLogQueue>();
+builder.Services.AddSingleton<ITHunterview.Service.Interface.Infrastructure.INotificationQueue, ITHunterview.Service.Infrastructure.Infrastructure.NotificationQueue>();
 builder.Services.AddScoped<AuditLogInterceptor>();
 
 var rawConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
@@ -84,6 +93,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.LogCleanupBackgroundService>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.AuditLogProcessor>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.NotificationCleanupBackgroundService>();
+builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.NotificationProcessorBackgroundService>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.PaymentCleanupBackgroundService>();
 
 // ─── JWT Authentication ───────────────────────────────────────────────────────

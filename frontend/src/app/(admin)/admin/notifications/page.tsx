@@ -64,7 +64,7 @@ export default function StaffNotificationsPage() {
             Manage announcements and notifications sent to candidates and recruiters.
           </p>
         </div>
-        <Link href="/staff/notifications/create">
+        <Link href="/admin/notifications/create">
           <Button className="gap-2">
             <Plus size={16} />
             Create Notification
