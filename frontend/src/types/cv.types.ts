@@ -17,10 +17,11 @@ export interface Cv {
 export interface CreateCvRequest {
   fileUrl: string;
   fileName: string;
-  fileSize: number | null;
+  fileSize?: number;
   fileType: string;
   isPrimary: boolean;
-  parsedData: string;
+  parsedData?: string;
+  isTemporary?: boolean;
 }
 
 export interface MatchJdRequest {

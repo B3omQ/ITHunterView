@@ -55,7 +55,11 @@ namespace ITHunterview.Service.UseCase
                 }
             }
             
-            if (!request.IsPrimary)
+            if (request.IsTemporary)
+            {
+                request.IsPrimary = false;
+            }
+            else if (!request.IsPrimary)
             {
                 bool hasPrimary = await _cvRepository.HasPrimaryCvAsync(userId);
                 if (!hasPrimary)
@@ -69,6 +73,10 @@ namespace ITHunterview.Service.UseCase
             try 
             {
                 extractedRawText = await _textExtractorService.ExtractTextFromUrlAsync(request.FileUrl);
+                if (!string.IsNullOrEmpty(extractedRawText))
+                {
+                    extractedRawText = extractedRawText.Replace("\0", string.Empty);
+                }
             }
             catch (Exception ex)
             {
@@ -87,7 +95,8 @@ namespace ITHunterview.Service.UseCase
                 ParseStatus = string.IsNullOrWhiteSpace(request.ParsedData) ? "PENDING" : "SUCCESS",
                 RawText = extractedRawText,
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
+                DeletedAt = request.IsTemporary ? DateTime.UtcNow : null
             };
 
             var createdCv = await _cvRepository.CreateAsync(cv);
@@ -125,6 +134,11 @@ namespace ITHunterview.Service.UseCase
                 // Note: ParseStatus is already set to PROCESSING by TryLockCvForParsingAsync before calling this background task.
 
                 var parsedJson = await textExtractor.ExtractParsedDataFromUrlAsync(fileUrl, rawTextFallback);
+
+                if (!string.IsNullOrEmpty(parsedJson))
+                {
+                    parsedJson = parsedJson.Replace("\0", string.Empty);
+                }
 
                 var freshCv = await cvRepo.GetByIdAsync(cvId);
                 if (freshCv == null) return;
@@ -252,7 +266,16 @@ namespace ITHunterview.Service.UseCase
 
         private bool CheckAndRecordPrimaryCvRateLimit(Guid userId, bool isCheckOnly)
         {
-            var vnTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            TimeZoneInfo vnTimeZone;
+            try
+            {
+                vnTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                vnTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh");
+            }
+            
             var vnTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vnTimeZone);
             string dateStr = vnTime.ToString("yyyyMMdd");
 
