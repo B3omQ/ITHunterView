@@ -110,8 +110,9 @@ export function ApplyJobModal({ isOpen, onClose, jobId, jobTitle, onSuccess }: A
             fileName: uploadFile.name,
             fileSize: uploadFile.size,
             fileType: uploadFile.type,
-            isPrimary: myCvs.length === 0,
+            isPrimary: false,
             parsedData: '',
+            isTemporary: true,
           });
           if (!cvRes.success || !cvRes.data) throw new Error('Failed to save CV record.');
           cvId = cvRes.data.id;

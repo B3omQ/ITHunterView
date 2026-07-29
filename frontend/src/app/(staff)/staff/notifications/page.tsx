@@ -160,7 +160,7 @@ export default function StaffNotificationsPage() {
           </div>
 
           {/* Pagination Controls */}
-          {meta && meta.totalPages > 1 && (
+          {meta && (
             <div className="flex items-center justify-between mt-4">
               <div className="text-sm text-muted-foreground">
                 Showing page {meta.currentPage} of {meta.totalPages} ({meta.totalItems} total)

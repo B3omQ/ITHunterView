@@ -17,47 +17,33 @@ namespace ITHunterview.Service.UseCase
         private readonly INotificationRepository _notificationRepository;
         private readonly ITHunterviewContext _context;
         private readonly IHubContext<NotificationHub> _hubContext;
+        private readonly ITHunterview.Service.Interface.Infrastructure.INotificationQueue _notificationQueue;
 
-        public NotificationUseCase(INotificationRepository notificationRepository, ITHunterviewContext context, IHubContext<NotificationHub> hubContext)
+        public NotificationUseCase(
+            INotificationRepository notificationRepository, 
+            ITHunterviewContext context, 
+            IHubContext<NotificationHub> hubContext,
+            ITHunterview.Service.Interface.Infrastructure.INotificationQueue notificationQueue)
         {
             _notificationRepository = notificationRepository;
             _context = context;
             _hubContext = hubContext;
+            _notificationQueue = notificationQueue;
         }
 
         public async Task<bool> CreateSystemWideNotificationAsync(CreateSystemNotificationDto request)
         {
-            // Only send to candidates and recruiters
-            var targetRoleIds = _context.Roles
-                .Where(r => r.Name == "candidate" || r.Name == "recruiter")
-                .Select(r => r.Id)
-                .ToList();
+            // 1. Enqueue the database insert payload to be processed in background
+            await _notificationQueue.QueueSystemNotificationAsync(request);
 
-            var targetUsers = _context.Users
-                .Where(u => u.RoleId.HasValue && targetRoleIds.Contains(u.RoleId.Value) && u.Status == UserStatus.ACTIVE)
-                .Select(u => u.Id)
-                .ToList();
+            // Give the background worker a tiny head start (500ms) to insert the first batch. 
+            // This ensures when the frontend immediately redirects and fetches the list, the notification is already in the DB.
+            await Task.Delay(500);
 
-            var now = DateTime.UtcNow;
-            var notifications = targetUsers.Select(userId => new Notifications
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Title = request.Title,
-                Message = request.Message,
-                Type = request.Type,
-                IsRead = false,
-                CreatedAt = now
-            }).ToList();
-
-            if (notifications.Any())
-            {
-                await _notificationRepository.AddNotificationsAsync(notifications);
-
-                // Broadcast to all connected clients in candidate/recruiter groups
-                var groupNames = targetUsers.Select(u => u.ToString()).ToList();
-                await _hubContext.Clients.Groups(groupNames).SendAsync("ReceiveNotification");
-            }
+            // 2. Broadcast to all connected clients in candidate/recruiter role groups
+            // Sending to two role groups is infinitely more scalable than sending to 1,000,000 individual user groups
+            var groups = new List<string> { "Role_candidate", "Role_recruiter" };
+            await _hubContext.Clients.Groups(groups).SendAsync("ReceiveNotification");
 
             return true;
         }
