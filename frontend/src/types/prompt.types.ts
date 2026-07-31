@@ -25,3 +25,13 @@ export interface CreatePromptVersionDto {
   modelConfig?: string;
   makeActive: boolean;
 }
+
+export interface CvAnalysisPromptPairDto {
+  systemPrompt: PromptDto;
+  userPrompt: PromptDto;
+}
+
+export interface ActivateCvAnalysisPromptPairDto {
+  systemVersionId: string;
+  userVersionId: string;
+}

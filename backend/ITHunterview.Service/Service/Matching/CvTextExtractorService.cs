@@ -27,19 +27,22 @@ namespace ITHunterview.Service.Service.Matching
         private readonly IOptions<AiSettings> _settings;
         private readonly IAiService _aiService;
         private readonly ISystemConfigRepository _systemConfigRepository;
+        private readonly IPromptManagementService _promptManagementService;
 
         public CvTextExtractorService(
             ILogger<CvTextExtractorService> logger, 
             IHttpClientFactory httpClientFactory,
             IOptions<AiSettings> settings,
             IAiService aiService,
-            ISystemConfigRepository systemConfigRepository)
+            ISystemConfigRepository systemConfigRepository,
+            IPromptManagementService promptManagementService)
         {
             _logger = logger;
             _httpClientFactory = httpClientFactory;
             _settings = settings;
             _aiService = aiService;
             _systemConfigRepository = systemConfigRepository;
+            _promptManagementService = promptManagementService;
         }
 
         private bool IsTextGarbage(string text)
@@ -107,14 +110,13 @@ namespace ITHunterview.Service.Service.Matching
                 if (!string.IsNullOrWhiteSpace(rawText) && !IsTextGarbage(rawText))
                 {
                     _logger.LogInformation("Successfully extracted clean text from PDF using PdfPig. Calling Gemini Text API.");
-                    var textPrompt = CvParsingPrompt.GetPrompt(rawText);
-                    return await ExtractJsonWithGeminiTextAsync(textPrompt);
+                    return await ExtractJsonWithGeminiTextAsync(rawText);
                 }
 
                 _logger.LogWarning("PdfPig extracted garbage or empty text. PDF is likely a scanned image. Falling back to Gemini Vision OCR.");
                 
                 // Mặc định ném PDF vào Gemini Vision để lấy thẳng JSON (ParsedData)
-                var prompt = CvParsingPrompt.SystemPrompt + "\n\nExtract the CV into the required JSON format directly from the provided document.";
+                var prompt = await BuildVisionPromptAsync();
                 var json = await ExtractWithGeminiVisionAsync(fileBytes, "application/pdf", prompt);
                 
                 try
@@ -138,8 +140,7 @@ namespace ITHunterview.Service.Service.Matching
                 var rawText = await ExtractTextInternalAsync(fileBytes, contentType, fileName);
                 if (string.IsNullOrWhiteSpace(rawText)) return string.Empty;
 
-                var textPrompt = CvParsingPrompt.GetPrompt(rawText);
-                return await ExtractJsonWithGeminiTextAsync(textPrompt);
+                return await ExtractJsonWithGeminiTextAsync(rawText);
             }
         }
 
@@ -151,8 +152,7 @@ namespace ITHunterview.Service.Service.Matching
             if (!string.IsNullOrWhiteSpace(rawTextFallback) && !IsTextGarbage(rawTextFallback))
             {
                 _logger.LogInformation("Fast path: Using provided RawTextFallback for {Url}. Skipping download and Vision OCR.", fileUrl);
-                var textPrompt = CvParsingPrompt.GetPrompt(rawTextFallback);
-                return await ExtractJsonWithGeminiTextAsync(textPrompt);
+                return await ExtractJsonWithGeminiTextAsync(rawTextFallback);
             }
 
             try
@@ -181,8 +181,7 @@ namespace ITHunterview.Service.Service.Matching
             // Fallback cuối cùng nếu không tải được File: Dùng RawText gọi Gemini Text
             if (!string.IsNullOrWhiteSpace(rawTextFallback))
             {
-                var textPrompt = CvParsingPrompt.GetPrompt(rawTextFallback);
-                return await ExtractJsonWithGeminiTextAsync(textPrompt);
+                return await ExtractJsonWithGeminiTextAsync(rawTextFallback);
             }
 
             return string.Empty;
@@ -193,14 +192,14 @@ namespace ITHunterview.Service.Service.Matching
             if (string.IsNullOrWhiteSpace(rawText) || IsTextGarbage(rawText))
                 return string.Empty;
 
-            var textPrompt = CvParsingPrompt.GetPrompt(rawText);
-            return await ExtractJsonWithGeminiTextAsync(textPrompt);
+            return await ExtractJsonWithGeminiTextAsync(rawText);
         }
 
-        private async Task<string> ExtractJsonWithGeminiTextAsync(string prompt)
+        private async Task<string> ExtractJsonWithGeminiTextAsync(string rawCvText)
         {
-            var systemPrompt = CvParsingPrompt.SystemPrompt;
-            var aiResponse = await _aiService.GenerateTextAsync(prompt, systemPrompt);
+            var prompts = await GetCvPromptPairAsync();
+            var userPrompt = BuildUserPrompt(prompts.User.Content, rawCvText);
+            var aiResponse = await _aiService.GenerateTextAsync(userPrompt, prompts.System.Content);
 
             string jsonString = aiResponse;
             if (jsonString.Contains("```json"))
@@ -216,6 +215,46 @@ namespace ITHunterview.Service.Service.Matching
                 if (end > start) jsonString = jsonString.Substring(start, end - start);
             }
             return jsonString.Trim();
+        }
+
+        private async Task<string> BuildVisionPromptAsync()
+        {
+            var prompts = await GetCvPromptPairAsync();
+            var userPrompt = BuildUserPrompt(
+                prompts.User.Content,
+                "The CV content is provided in the attached document.");
+
+            return $"{prompts.System.Content}\n\n{userPrompt}";
+        }
+
+        private async Task<PromptPairSnapshotDto> GetCvPromptPairAsync()
+        {
+            var prompts = await _promptManagementService.GetActivePromptPairSnapshotAsync(
+                CvAnalysisPromptContract.SystemPromptKey,
+                CvAnalysisPromptContract.UserPromptKey);
+
+            _logger.LogInformation(
+                "Using CV analysis prompt pair. System={SystemPromptKey}:{SystemVersionTag} ({SystemVersionId}); User={UserPromptKey}:{UserVersionTag} ({UserVersionId}); Contract={Contract}",
+                prompts.System.PromptKey,
+                prompts.System.VersionTag,
+                prompts.System.VersionId,
+                prompts.User.PromptKey,
+                prompts.User.VersionTag,
+                prompts.User.VersionId,
+                prompts.Contract);
+
+            return prompts;
+        }
+
+        private static string BuildUserPrompt(string userPromptTemplate, string cvText)
+        {
+            if (string.IsNullOrWhiteSpace(userPromptTemplate) ||
+                !userPromptTemplate.Contains(CvAnalysisPromptContract.UserPlaceholder, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("PROMPT_CONFIGURATION_INVALID: CV analysis user prompt is missing [CV_TEXT].");
+            }
+
+            return userPromptTemplate.Replace(CvAnalysisPromptContract.UserPlaceholder, cvText, StringComparison.Ordinal);
         }
 
         private async Task<string> ExtractTextInternalAsync(byte[] fileBytes, string contentType, string identifier)

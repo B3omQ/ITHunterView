@@ -37,6 +37,13 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 .FirstOrDefaultAsync(p => p.Id == promptId);
         }
 
+        public async Task<Prompts?> GetPromptWithHistoryByKeyAsync(string promptKey)
+        {
+            return await _context.Prompts
+                .Include(p => p.Versions)
+                .FirstOrDefaultAsync(p => p.PromptKey == promptKey);
+        }
+
         public async Task<PromptVersions?> GetPromptVersionAsync(Guid versionId)
         {
             return await _context.PromptVersions
@@ -116,6 +123,62 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 // Update Prompts UpdatedAt
                 await _context.Prompts
                     .Where(p => p.Id == promptId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(p => p.UpdatedAt, DateTime.UtcNow));
+
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
+        public async Task ActivatePromptPairAsync(Guid systemPromptId, Guid systemVersionId, Guid userPromptId, Guid userVersionId)
+        {
+            if (systemPromptId == userPromptId)
+            {
+                throw new ArgumentException("System and user prompts must be different.");
+            }
+
+            if (systemVersionId == userVersionId)
+            {
+                throw new ArgumentException("System and user prompt versions must be different.");
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var selectedVersions = await _context.PromptVersions
+                    .AsNoTracking()
+                    .Where(v => v.Id == systemVersionId || v.Id == userVersionId)
+                    .Select(v => new { v.Id, v.PromptId })
+                    .ToListAsync();
+
+                var hasExpectedSystemVersion = selectedVersions.Any(v => v.Id == systemVersionId && v.PromptId == systemPromptId);
+                var hasExpectedUserVersion = selectedVersions.Any(v => v.Id == userVersionId && v.PromptId == userPromptId);
+                if (!hasExpectedSystemVersion || !hasExpectedUserVersion)
+                {
+                    throw new KeyNotFoundException("Prompt pair version not found or does not belong to the expected prompt.");
+                }
+
+                var promptIds = new[] { systemPromptId, userPromptId };
+                await _context.PromptVersions
+                    .Where(v => promptIds.Contains(v.PromptId) && v.IsActive)
+                    .ExecuteUpdateAsync(s => s.SetProperty(v => v.IsActive, false));
+
+                var selectedVersionIds = new[] { systemVersionId, userVersionId };
+                var rowsAffected = await _context.PromptVersions
+                    .Where(v => selectedVersionIds.Contains(v.Id))
+                    .ExecuteUpdateAsync(s => s.SetProperty(v => v.IsActive, true));
+
+                if (rowsAffected != 2)
+                {
+                    throw new InvalidOperationException("Could not activate both prompt versions.");
+                }
+
+                await _context.Prompts
+                    .Where(p => promptIds.Contains(p.Id))
                     .ExecuteUpdateAsync(s => s.SetProperty(p => p.UpdatedAt, DateTime.UtcNow));
 
                 await transaction.CommitAsync();

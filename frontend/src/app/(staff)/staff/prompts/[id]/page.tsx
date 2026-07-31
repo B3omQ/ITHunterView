@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useActivatePromptVersion, useCreatePromptVersion, usePromptHistory } from '@/hooks/use-prompts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
+import { CvAnalysisPairActivationCard } from '@/components/prompts/CvAnalysisPairActivationCard';
 
 const formSchema = z.object({
   versionTag: z.string().min(1, 'Version Tag is required').max(50),
@@ -30,7 +31,6 @@ const formSchema = z.object({
 export default function PromptDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const router = useRouter();
 
   const { data: response, isLoading, isError } = usePromptHistory(id);
   const prompt = response?.data;
@@ -58,9 +58,10 @@ export default function PromptDetailPage() {
   }
 
   const selectedVersion = prompt?.versions?.find(v => v.id === selectedVersionId);
+  const isCvAnalysisPrompt = prompt?.promptKey === 'CV_ANALYSIS_SYSTEM' || prompt?.promptKey === 'CV_ANALYSIS_USER';
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    createMutation.mutate(values, {
+    createMutation.mutate({ ...values, makeActive: isCvAnalysisPrompt ? false : values.makeActive }, {
       onSuccess: () => {
         form.reset();
         setActiveTab('history');
@@ -105,6 +106,7 @@ export default function PromptDetailPage() {
         </TabsList>
 
         <TabsContent value="history" className="mt-6 space-y-6">
+          {isCvAnalysisPrompt && <CvAnalysisPairActivationCard />}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column: List of versions */}
             <Card className="lg:col-span-1 h-fit max-h-[800px] overflow-y-auto">
@@ -158,7 +160,7 @@ export default function PromptDetailPage() {
                         <Copy className="h-4 w-4 mr-2" />
                         Copy to New
                       </Button>
-                      {!selectedVersion.isActive && (
+                      {!selectedVersion.isActive && !isCvAnalysisPrompt && (
                         <Button 
                           size="sm" 
                           onClick={() => handleActivate(selectedVersion.id)}
@@ -225,26 +227,29 @@ export default function PromptDetailPage() {
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="makeActive"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">Set as Active</FormLabel>
-                            <FormDescription>
-                              Make this version active immediately after creation.
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+                    {isCvAnalysisPrompt ? (
+                      <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+                        This version is saved as a draft. Activate it from the CV analysis prompt-pair card with a compatible counterpart.
+                      </div>
+                    ) : (
+                      <FormField
+                        control={form.control}
+                        name="makeActive"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base">Set as Active</FormLabel>
+                              <FormDescription>
+                                Make this version active immediately after creation.
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    )}
                   </div>
 
                   <FormField
