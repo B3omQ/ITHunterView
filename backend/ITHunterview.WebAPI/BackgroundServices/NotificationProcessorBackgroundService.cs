@@ -43,9 +43,9 @@ namespace ITHunterview.WebAPI.BackgroundServices
                     using var scope = _serviceProvider.CreateScope();
                     var context = scope.ServiceProvider.GetRequiredService<ITHunterviewContext>();
 
-                    // 1. Fetch Target Role IDs (Send to EVERYONE: candidate, recruiter, staff, admin)
+                    // 1. Fetch Target Role IDs
                     var targetRoleIds = await context.Roles
-                        .Where(r => r.Name == "candidate" || r.Name == "recruiter" || r.Name == "staff" || r.Name == "admin")
+                        .Where(r => r.Name == "candidate" || r.Name == "recruiter")
                         .Select(r => r.Id)
                         .ToListAsync(stoppingToken);
 
