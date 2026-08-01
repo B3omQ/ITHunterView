@@ -1,8 +1,10 @@
 import apiClient from './api-client';
 import {
   ActivateCvAnalysisPromptPairDto,
+  ActivateJdAnalysisPromptPairDto,
   CreatePromptVersionDto,
   CvAnalysisPromptPairDto,
+  JdAnalysisPromptPairDto,
   PromptDto,
   PromptVersionDto,
 } from '@/types/prompt.types';
@@ -43,6 +45,16 @@ export const PromptService = {
 
   activateCvAnalysisPromptPair: async (dto: ActivateCvAnalysisPromptPairDto) => {
     const response = await apiClient.post<ApiResponse<object>>('/api/admin/prompts/cv-analysis/activate', dto);
+    return response.data;
+  },
+
+  getJdAnalysisPromptPair: async () => {
+    const response = await apiClient.get<ApiResponse<JdAnalysisPromptPairDto>>('/api/admin/prompts/jd-analysis');
+    return response.data;
+  },
+
+  activateJdAnalysisPromptPair: async (dto: ActivateJdAnalysisPromptPairDto) => {
+    const response = await apiClient.post<ApiResponse<object>>('/api/admin/prompts/jd-analysis/activate', dto);
     return response.data;
   },
 };

@@ -42,6 +42,13 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(new ResponseBase<CvAnalysisPromptPairDto>(result));
         }
 
+        [HttpGet("jd-analysis")]
+        public async Task<ActionResult<ResponseBase<JdAnalysisPromptPairDto>>> GetJdAnalysisPromptPair()
+        {
+            var result = await _promptAdminUseCase.GetJdAnalysisPromptPairAsync();
+            return Ok(new ResponseBase<JdAnalysisPromptPairDto>(result));
+        }
+
         [HttpGet("versions/{versionId:guid}")]
         public async Task<ActionResult<ResponseBase<PromptVersionDto>>> GetPromptVersion(Guid versionId)
         {
@@ -71,6 +78,14 @@ namespace ITHunterview.WebAPI.Controllers
             var adminId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             await _promptAdminUseCase.ActivateCvAnalysisPromptPairAsync(dto.SystemVersionId, dto.UserVersionId, adminId);
             return Ok(new ResponseBase<object>(null, "CV analysis prompt pair activated successfully"));
+        }
+
+        [HttpPost("jd-analysis/activate")]
+        public async Task<ActionResult<ResponseBase<object>>> ActivateJdAnalysisPromptPair([FromBody] ActivateJdAnalysisPromptPairDto dto)
+        {
+            var adminId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            await _promptAdminUseCase.ActivateJdAnalysisPromptPairAsync(dto.SystemVersionId, dto.UserVersionId, adminId);
+            return Ok(new ResponseBase<object>(null, "JD analysis prompt pair activated successfully"));
         }
     }
 }

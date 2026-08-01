@@ -742,7 +742,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         skills_normalized = acceptedSkills,
                         total_years_exp = metrics.ValueKind != JsonValueKind.Undefined && metrics.TryGetProperty("total_years_exp", out var totalYears) ? totalYears : (object)null!,
                         domains = metrics.ValueKind != JsonValueKind.Undefined && metrics.TryGetProperty("domains", out var domains) ? domains : (object)new string[0],
-                        requirements_list = metrics.ValueKind != JsonValueKind.Undefined && metrics.TryGetProperty("requirements_list", out var requirements) ? requirements : (object)new object[0]
+                        requirements_list = metrics.ValueKind != JsonValueKind.Undefined && metrics.TryGetProperty("requirements_list", out var requirements) ? requirements : (object)new object[0],
+                        requirement_groups = metrics.ValueKind != JsonValueKind.Undefined && metrics.TryGetProperty("requirement_groups", out var groups) ? groups : (object)new object[0]
                     }
                 };
 

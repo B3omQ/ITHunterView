@@ -20,6 +20,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
 import { CvAnalysisPairActivationCard } from '@/components/prompts/CvAnalysisPairActivationCard';
+import { JdAnalysisPairActivationCard } from '@/components/prompts/JdAnalysisPairActivationCard';
 
 const formSchema = z.object({
   versionTag: z.string().min(1, 'Version Tag is required').max(50),
@@ -59,9 +60,11 @@ export default function AdminPromptDetailPage() {
 
   const selectedVersion = prompt?.versions?.find(v => v.id === selectedVersionId);
   const isCvAnalysisPrompt = prompt?.promptKey === 'CV_ANALYSIS_SYSTEM' || prompt?.promptKey === 'CV_ANALYSIS_USER';
+  const isJdAnalysisPrompt = prompt?.promptKey === 'JD_ANALYSIS_V2_SYSTEM' || prompt?.promptKey === 'JD_ANALYSIS_V2_USER';
+  const isManagedAnalysisPrompt = isCvAnalysisPrompt || isJdAnalysisPrompt;
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    createMutation.mutate({ ...values, makeActive: isCvAnalysisPrompt ? false : values.makeActive }, {
+    createMutation.mutate({ ...values, makeActive: isManagedAnalysisPrompt ? false : values.makeActive }, {
       onSuccess: () => {
         form.reset();
         setActiveTab('history');
@@ -107,6 +110,7 @@ export default function AdminPromptDetailPage() {
 
         <TabsContent value="history" className="mt-6 space-y-6">
           {isCvAnalysisPrompt && <CvAnalysisPairActivationCard />}
+          {isJdAnalysisPrompt && <JdAnalysisPairActivationCard />}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column: List of versions */}
             <Card className="lg:col-span-1 h-fit max-h-[800px] overflow-y-auto">
@@ -160,7 +164,7 @@ export default function AdminPromptDetailPage() {
                         <Copy className="h-4 w-4 mr-2" />
                         Copy to New
                       </Button>
-                      {!selectedVersion.isActive && !isCvAnalysisPrompt && (
+                      {!selectedVersion.isActive && !isManagedAnalysisPrompt && (
                         <Button 
                           size="sm" 
                           onClick={() => handleActivate(selectedVersion.id)}
@@ -227,9 +231,9 @@ export default function AdminPromptDetailPage() {
                       )}
                     />
 
-                    {isCvAnalysisPrompt ? (
+                    {isManagedAnalysisPrompt ? (
                       <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-                        This version is saved as a draft. Activate it from the CV analysis prompt-pair card with a compatible counterpart.
+                        This version is saved as a draft. Activate it from the analysis prompt-pair card with a compatible counterpart.
                       </div>
                     ) : (
                       <FormField

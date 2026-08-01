@@ -604,7 +604,34 @@ namespace ITHunterview.Service.UseCase
                     var stage1Doc = JsonDocument.Parse(jdRequirementsJson);
                     if (stage1Doc.RootElement.TryGetProperty("matching_metrics", out var metrics))
                     {
-                        if (metrics.TryGetProperty("requirements_list", out var reqs) && reqs.ValueKind == JsonValueKind.Array)
+                        if (metrics.TryGetProperty("requirement_groups", out var groups) && groups.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var group in groups.EnumerateArray())
+                            {
+                                if (!group.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array) continue;
+                                var names = items.EnumerateArray()
+                                    .Where(item => item.TryGetProperty("skill_name", out var name) && name.ValueKind == JsonValueKind.String)
+                                    .Select(item => item.GetProperty("skill_name").GetString())
+                                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                                    .ToList();
+                                if (names.Count == 0) continue;
+                                var groupId = group.TryGetProperty("group_id", out var id) ? id.GetString() : null;
+                                if (string.IsNullOrWhiteSpace(groupId)) throw new InvalidOperationException("INVALID_EFFECTIVE_JD_ANALYSIS");
+                                requirementsList.Add(new ScoringRequirement
+                                {
+                                    ReqId = groupId,
+                                    NormalizedText = string.Join(" | ", names),
+                                    Category = "tech_skill",
+                                    Importance = group.TryGetProperty("importance", out var groupImportance) ? groupImportance.GetString() ?? "must_have" : "must_have",
+                                    DetailVerbatim = string.Join("; ", items.EnumerateArray().Select(item => item.TryGetProperty("detail_verbatim", out var detail) ? detail.GetString() : null).Where(detail => !string.IsNullOrWhiteSpace(detail))),
+                                    CategoryWeight = 1m,
+                                    Operator = group.TryGetProperty("operator", out var operation) ? operation.GetString() ?? "all_of" : "all_of",
+                                    MinSatisfied = group.TryGetProperty("min_satisfied", out var minimum) && minimum.TryGetInt32(out var min) ? min : names.Count,
+                                    Evidence = string.Join("; ", items.EnumerateArray().SelectMany(item => item.TryGetProperty("evidences", out var evidence) && evidence.ValueKind == JsonValueKind.Array ? evidence.EnumerateArray().Where(value => value.ValueKind == JsonValueKind.String).Select(value => value.GetString()) : Enumerable.Empty<string?>()).Where(value => !string.IsNullOrWhiteSpace(value)).Distinct())
+                                });
+                            }
+                        }
+                        else if (metrics.TryGetProperty("requirements_list", out var reqs) && reqs.ValueKind == JsonValueKind.Array)
                         {
                             foreach (var r in reqs.EnumerateArray())
                             {
@@ -637,7 +664,7 @@ namespace ITHunterview.Service.UseCase
 
                 // Serialize for Stage 2
                 var parsedJdJson = JsonSerializer.Serialize(requirementsList.Select(r => new {
-                    r.ReqId, r.NormalizedText, r.Category, r.Importance, r.DetailVerbatim
+                    r.ReqId, r.NormalizedText, r.Category, r.Importance, r.DetailVerbatim, r.Operator, r.MinSatisfied, r.Evidence
                 }), new JsonSerializerOptions { WriteIndented = true });
 
                 // Limit CV text/json intelligently to prevent breaking JSON structure
@@ -669,7 +696,7 @@ namespace ITHunterview.Service.UseCase
                 // Add instruction to minify JSON and be concise due to proxy token limits
                 prompt += "\n\n[SYSTEM CRITICAL]: Your output token limit is strictly capped. You MUST minify the JSON output (NO line breaks, NO indentation). Keep 'reasoning' under 20 words. Omit 'confidence' entirely.";
 
-                _logger.LogInformation("\n========== START LLM PROMPT FOR CV-JD MATCHING ==========\n{Prompt}\n========== END LLM PROMPT ==========\n", prompt);
+                _logger.LogInformation("Starting CV-JD AI scoring for match {MatchId} with {RequirementCount} validated JD requirements.", matchRecord.Id, requirementsList.Count);
 
                 if (string.IsNullOrWhiteSpace(prompt))
                 {
@@ -1531,6 +1558,9 @@ namespace ITHunterview.Service.UseCase
             public string Importance { get; set; }
             public string DetailVerbatim { get; set; }
             public decimal CategoryWeight { get; set; }
+            public string Operator { get; set; } = "all_of";
+            public int MinSatisfied { get; set; }
+            public string Evidence { get; set; } = string.Empty;
         }
 
         private class FinalMatchResult

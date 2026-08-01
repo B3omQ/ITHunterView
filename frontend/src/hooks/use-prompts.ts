@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PromptService } from '@/services/prompt.service';
-import { ActivateCvAnalysisPromptPairDto, CreatePromptVersionDto } from '@/types/prompt.types';
+import {
+  ActivateCvAnalysisPromptPairDto,
+  ActivateJdAnalysisPromptPairDto,
+  CreatePromptVersionDto,
+} from '@/types/prompt.types';
 import { toast } from 'sonner';
 
 const getErrorMessage = (error: unknown, fallback: string) => {
@@ -87,6 +91,30 @@ export const useActivateCvAnalysisPromptPair = () => {
     },
     onError: (error: unknown) => {
       toast.error(getErrorMessage(error, 'Failed to activate CV analysis prompt pair'));
+    },
+  });
+};
+
+export const useJdAnalysisPromptPair = () => {
+  return useQuery({
+    queryKey: ['jd-analysis-prompt-pair'],
+    queryFn: () => PromptService.getJdAnalysisPromptPair(),
+  });
+};
+
+export const useActivateJdAnalysisPromptPair = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: ActivateJdAnalysisPromptPairDto) => PromptService.activateJdAnalysisPromptPair(dto),
+    onSuccess: () => {
+      toast.success('JD analysis prompt pair activated successfully');
+      queryClient.invalidateQueries({ queryKey: ['jd-analysis-prompt-pair'] });
+      queryClient.invalidateQueries({ queryKey: ['prompt-history'] });
+      queryClient.invalidateQueries({ queryKey: ['prompts'] });
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to activate JD analysis prompt pair'));
     },
   });
 };

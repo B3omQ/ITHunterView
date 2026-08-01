@@ -35,3 +35,13 @@ export interface ActivateCvAnalysisPromptPairDto {
   systemVersionId: string;
   userVersionId: string;
 }
+
+export interface JdAnalysisPromptPairDto {
+  systemPrompt: PromptDto;
+  userPrompt: PromptDto;
+}
+
+export interface ActivateJdAnalysisPromptPairDto {
+  systemVersionId: string;
+  userVersionId: string;
+}
