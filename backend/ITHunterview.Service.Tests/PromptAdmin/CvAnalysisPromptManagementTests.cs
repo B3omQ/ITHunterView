@@ -194,4 +194,55 @@ public class CvAnalysisPromptManagementTests
                 input.SourceType == "pasted_text" &&
                 input.FileName == "resume.txt")), Times.Once);
     }
+
+    [Fact]
+    public async Task ExtractParsedDataFromRawTextAsync_WhenTypedValidationFails_PreservesFailureCode()
+    {
+        var aiService = new Mock<IAiService>();
+        aiService
+            .Setup(x => x.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync("{}");
+
+        var promptService = new Mock<IPromptManagementService>();
+        promptService
+            .Setup(x => x.GetActivePromptPairSnapshotAsync(
+                CvAnalysisPromptContract.SystemPromptKey,
+                CvAnalysisPromptContract.UserPromptKey,
+                default))
+            .ReturnsAsync(new PromptPairSnapshotDto
+            {
+                Contract = "cv-analysis/v2",
+                System = new PromptSnapshotDto
+                {
+                    PromptKey = CvAnalysisPromptContract.SystemPromptKey,
+                    VersionTag = "v2.0",
+                    Content = "system"
+                },
+                User = new PromptSnapshotDto
+                {
+                    PromptKey = CvAnalysisPromptContract.UserPromptKey,
+                    VersionTag = "v2.0",
+                    Content = $"parse {CvAnalysisPromptContract.UserPlaceholder}"
+                }
+            });
+
+        var responseValidator = new Mock<ICvAnalysisResponseValidator>();
+        responseValidator
+            .Setup(x => x.ValidateAndCanonicalize(It.IsAny<string>(), It.IsAny<ITHunterview.Service.DTOs.Cv.Matching.CvAnalysisInputSnapshot>()))
+            .Returns(ITHunterview.Service.DTOs.Cv.Matching.CvAnalysisValidationResult.Failure("CV_ANALYSIS_EVIDENCE_NOT_GROUNDED"));
+
+        var service = new CvTextExtractorService(
+            NullLogger<CvTextExtractorService>.Instance,
+            Mock.Of<System.Net.Http.IHttpClientFactory>(),
+            Options.Create(new AiSettings()),
+            aiService.Object,
+            Mock.Of<ISystemConfigRepository>(),
+            promptService.Object,
+            responseValidator.Object);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.ExtractParsedDataFromRawTextAsync("Jane Doe\nC# developer\n", "pasted_text", "resume.txt"));
+
+        Assert.Equal("CV_ANALYSIS_EVIDENCE_NOT_GROUNDED", exception.Message);
+    }
 }

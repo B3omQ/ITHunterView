@@ -1,0 +1,59 @@
+{
+  "schema_version": "jd-analysis/v3",
+  "matching_metrics": {
+    "job_titles_normalized": ["full stack engineer"],
+    "skills_normalized": [],
+    "total_years_exp": 3,
+    "domains": ["fintech"],
+    "requirement_groups": [
+      {
+        "group_id": "grp-001",
+        "operator": "one_of",
+        "min_satisfied": 1,
+        "importance": "must_have",
+        "items": [
+          { "category": "tech_skill", "skill_name": "react", "detail_verbatim": "React, Angular, or Vue", "raw_mention": "React", "source_section": "requirements", "evidences": ["React, Angular, or Vue"], "min_years": null, "max_years": null, "confidence": 0.95 },
+          { "category": "tech_skill", "skill_name": "angular", "detail_verbatim": "React, Angular, or Vue", "raw_mention": "Angular", "source_section": "requirements", "evidences": ["React, Angular, or Vue"], "min_years": null, "max_years": null, "confidence": 0.95 },
+          { "category": "tech_skill", "skill_name": "vue", "detail_verbatim": "React, Angular, or Vue", "raw_mention": "Vue", "source_section": "requirements", "evidences": ["React, Angular, or Vue"], "min_years": null, "max_years": null, "confidence": 0.95 }
+        ]
+      },
+      {
+        "group_id": "grp-002",
+        "operator": "all_of",
+        "min_satisfied": 1,
+        "importance": "must_have",
+        "items": [
+          { "category": "experience", "skill_name": "professional experience", "detail_verbatim": "3+ years of experience", "raw_mention": "3+ years", "source_section": "requirements", "evidences": ["3+ years of experience"], "min_years": 3, "max_years": null, "confidence": 0.95 }
+        ]
+      },
+      {
+        "group_id": "grp-003",
+        "operator": "all_of",
+        "min_satisfied": 1,
+        "importance": "must_have",
+        "items": [
+          { "category": "language", "skill_name": "english", "detail_verbatim": "English communication", "raw_mention": "English", "source_section": "requirements", "evidences": ["English communication"], "min_years": null, "max_years": null, "confidence": 0.95 }
+        ]
+      },
+      {
+        "group_id": "grp-004",
+        "operator": "all_of",
+        "min_satisfied": 1,
+        "importance": "nice_to_have",
+        "items": [
+          { "category": "education", "skill_name": "computer science degree", "detail_verbatim": "Degree in Computer Science", "raw_mention": "Computer Science", "source_section": "requirements", "evidences": ["Degree in Computer Science"], "min_years": null, "max_years": null, "confidence": 0.95 }
+        ]
+      },
+      {
+        "group_id": "grp-005",
+        "operator": "one_of",
+        "min_satisfied": 1,
+        "importance": "must_have",
+        "items": [
+          { "category": "tech_skill", "skill_name": "aws", "detail_verbatim": "AWS or fintech domain experience", "raw_mention": "AWS", "source_section": "requirements", "evidences": ["AWS or fintech domain experience"], "min_years": null, "max_years": null, "confidence": 0.95 },
+          { "category": "domain_knowledge", "skill_name": "fintech", "detail_verbatim": "AWS or fintech domain experience", "raw_mention": "fintech", "source_section": "requirements", "evidences": ["AWS or fintech domain experience"], "min_years": null, "max_years": null, "confidence": 0.95 }
+        ]
+      }
+    ]
+  }
+}

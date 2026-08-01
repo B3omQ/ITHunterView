@@ -208,7 +208,7 @@ namespace ITHunterview.Service.Service.Matching
             }
 
             _logger.LogWarning("CV analysis response rejected by typed validator. FailureCode={FailureCode}", validation.FailureCode);
-            return string.Empty;
+            throw new InvalidOperationException(validation.FailureCode ?? "CV_ANALYSIS_SCHEMA_INVALID");
         }
 
         private static string SerializeInput(CvAnalysisInputSnapshot input) => JsonSerializer.Serialize(new

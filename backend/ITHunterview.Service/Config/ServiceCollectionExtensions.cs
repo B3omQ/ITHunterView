@@ -89,6 +89,13 @@ namespace ITHunterview.Service.Config
             // Matching AI Services
             services.AddScoped<ICvTextExtractorService, CvTextExtractorService>();
             services.AddScoped<ICvAnalysisResponseValidator, CvAnalysisResponseValidator>();
+            services.AddScoped<IJdRequirementProjector, JdRequirementProjector>();
+            services.AddScoped<JdHardcodeRequirementEvaluator>();
+            services.AddScoped<HardcodeJdRequirementScoringService>();
+            services.AddScoped<JdStageTwoContextBuilder>();
+            services.AddScoped<JdStageTwoResponseValidator>();
+            services.AddScoped<JdFitScoreCalculator>();
+            services.AddScoped<CvStageTwoContextBuilder>();
             services.AddSingleton<IMatchingRequestValidator, MatchingRequestValidator>();
             services.AddScoped<IJdExtractionService, JdExtractionService>();
             services.AddScoped<IVectorEmbeddingService, VectorEmbeddingService>();

@@ -66,6 +66,24 @@ public class CvAnalysisResponseValidatorTests
     }
 
     [Fact]
+    public void ValidateAndCanonicalize_EvidenceWithCollapsedPdfLineBreaks_AcceptsTheResponse()
+    {
+        const string wrappedRawText = """
+            Jane Doe
+            Backend Developer
+            Acme - Backend Developer - Jan 2020 - Jan 2023
+            Built APIs in
+            C#.
+            Skills: C#
+            """;
+        var wrappedInput = Input with { RawText = wrappedRawText };
+
+        var result = _sut.ValidateAndCanonicalize(CreateValidDocument(), wrappedInput);
+
+        result.IsValid.Should().BeTrue(result.FailureCode);
+    }
+
+    [Fact]
     public void ValidateAndCanonicalize_InvalidEntryType_RejectsTheResponse()
     {
         var document = CreateValidDocument().Replace("\"entry_type\":\"professional_experience\"", "\"entry_type\":\"made_up_entry_type\"");

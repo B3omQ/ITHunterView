@@ -19,15 +19,18 @@ namespace ITHunterview.Service.UseCase
         private readonly ITHunterviewContext _context;
         private readonly ICvTextExtractorService _cvTextExtractorService;
         private readonly ILogger<HardcodeCvJobMatchingUseCase> _logger;
+        private readonly HardcodeJdRequirementScoringService _hardcodeJdRequirementScoringService;
 
         public HardcodeCvJobMatchingUseCase(
             ITHunterviewContext context,
             ICvTextExtractorService cvTextExtractorService,
-            ILogger<HardcodeCvJobMatchingUseCase> logger)
+            ILogger<HardcodeCvJobMatchingUseCase> logger,
+            HardcodeJdRequirementScoringService hardcodeJdRequirementScoringService)
         {
             _context = context;
             _cvTextExtractorService = cvTextExtractorService;
             _logger = logger;
+            _hardcodeJdRequirementScoringService = hardcodeJdRequirementScoringService;
         }
 
         private JsonElement? GetJsonElement(string? jsonString, string fieldName)
@@ -158,40 +161,6 @@ namespace ITHunterview.Service.UseCase
             };
         }
 
-        private static List<JdRequirementGroupData> ReadRequirementGroups(string? parsedData)
-        {
-            var groups = new List<JdRequirementGroupData>();
-            if (string.IsNullOrWhiteSpace(parsedData)) return groups;
-            try
-            {
-                using var document = JsonDocument.Parse(parsedData);
-                if (!document.RootElement.TryGetProperty("schema_version", out var schema) ||
-                    !string.Equals(schema.GetString(), "jd-analysis/v3", StringComparison.Ordinal) ||
-                    !document.RootElement.TryGetProperty("matching_metrics", out var metrics) ||
-                    !metrics.TryGetProperty("requirement_groups", out var groupArray) || groupArray.ValueKind != JsonValueKind.Array)
-                    return groups;
-
-                foreach (var group in groupArray.EnumerateArray())
-                {
-                    if (!group.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array) continue;
-                    var names = items.EnumerateArray()
-                        .Where(item => item.TryGetProperty("skill_name", out var name) && name.ValueKind == JsonValueKind.String)
-                        .Select(item => item.GetProperty("skill_name").GetString()!)
-                        .Where(name => !string.IsNullOrWhiteSpace(name))
-                        .ToList();
-                    if (names.Count == 0) continue;
-                    groups.Add(new JdRequirementGroupData(
-                        group.TryGetProperty("group_id", out var id) ? id.GetString() ?? string.Empty : string.Empty,
-                        group.TryGetProperty("operator", out var operation) ? operation.GetString() ?? "all_of" : "all_of",
-                        group.TryGetProperty("min_satisfied", out var minimum) && minimum.TryGetInt32(out var min) ? min : names.Count,
-                        group.TryGetProperty("importance", out var importance) ? importance.GetString() ?? "must_have" : "must_have",
-                        names));
-                }
-            }
-            catch (JsonException) { }
-            return groups;
-        }
-
         private async Task<ParsedMetrics> ExtractJobMetricsAsync(JobPostings job)
         {
             var metrics = ExtractMetrics(job.ParsedData);
@@ -221,16 +190,16 @@ namespace ITHunterview.Service.UseCase
                 return; // Do not rescan or overwrite
             }
 
-            if (existingScore != null && existingScore.Status != "Pending")
-            {
-                return; // Do not rescan or overwrite
-            }
-
             var titleScore = CalculateTitleScore(cvMetrics.Titles, jobMetrics.Titles);
-            var requirementGroups = ReadRequirementGroups(job.ParsedData);
-            var groupEvaluation = requirementGroups.Count == 0
-                ? null
-                : new JdHardcodeRequirementEvaluator().Evaluate(requirementGroups, cvMetrics.Skills);
+            var scoringDecision = _hardcodeJdRequirementScoringService.Evaluate(job.ParsedData, cvMetrics.Skills);
+            if (scoringDecision.FailureCode != null)
+            {
+                _logger.LogWarning(
+                    "Hardcode matching ignored invalid effective JD analysis for job {JobId}; using compatibility metrics.",
+                    job.Id);
+            }
+            var projection = scoringDecision.Projection;
+            var groupEvaluation = scoringDecision.Evaluation;
             var skillsScore = groupEvaluation?.SkillScore ?? CalculateSkillsScore(cvMetrics.Skills, jobMetrics.Skills);
             var expScore = CalculateExperienceScore(cvMetrics.Exp, jobMetrics.Exp);
             var domainScore = CalculateDomainScore(cvMetrics.Domains, jobMetrics.Domains);
@@ -242,8 +211,8 @@ namespace ITHunterview.Service.UseCase
 
             var details = JsonSerializer.Serialize(new 
             {
-                Method = groupEvaluation == null ? "Hardcode" : "HardcodeV2",
-                JdSchemaVersion = groupEvaluation == null ? null : "jd-analysis/v3",
+                Method = groupEvaluation == null ? "Hardcode" : "HardcodeV3",
+                JdSchemaVersion = projection?.SourceSchemaVersion,
                 TitleScore = Math.Round(titleScore, 4),
                 SkillsScore = Math.Round(skillsScore, 4),
                 ExperienceScore = Math.Round(expScore, 4),

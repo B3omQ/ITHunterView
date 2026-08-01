@@ -240,7 +240,7 @@ public sealed class CvAnalysisResponseValidator : ICvAnalysisResponseValidator
             foreach (var item in signal.Evidence)
             {
                 RequireNonEmpty(item);
-                Require(rawText.Contains(item, StringComparison.Ordinal), "CV_ANALYSIS_EVIDENCE_NOT_GROUNDED");
+                Require(IsEvidenceGrounded(item, rawText), "CV_ANALYSIS_EVIDENCE_NOT_GROUNDED");
             }
         }
 
@@ -254,7 +254,7 @@ public sealed class CvAnalysisResponseValidator : ICvAnalysisResponseValidator
             RequireString(period.Role);
             RequireString(period.TimelineRaw);
             RequireNonEmpty(period.Evidence);
-            Require(rawText.Contains(period.Evidence, StringComparison.Ordinal), "CV_ANALYSIS_EVIDENCE_NOT_GROUNDED");
+            Require(IsEvidenceGrounded(period.Evidence, rawText), "CV_ANALYSIS_EVIDENCE_NOT_GROUNDED");
             ValidatePeriodDates(period);
         }
 
@@ -264,7 +264,7 @@ public sealed class CvAnalysisResponseValidator : ICvAnalysisResponseValidator
             Require(SenioritySignalNames.Contains(Normalize(signal.Name)), "CV_ANALYSIS_SCHEMA_INVALID");
             ValidateSignalSource(signal.SourceType, signal.SourceIndex, entries);
             RequireNonEmpty(signal.Evidence);
-            Require(rawText.Contains(signal.Evidence, StringComparison.Ordinal), "CV_ANALYSIS_EVIDENCE_NOT_GROUNDED");
+            Require(IsEvidenceGrounded(signal.Evidence, rawText), "CV_ANALYSIS_EVIDENCE_NOT_GROUNDED");
         }
     }
 
@@ -421,6 +421,18 @@ public sealed class CvAnalysisResponseValidator : ICvAnalysisResponseValidator
         var compact = string.Join(" ", value.Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).ToLowerInvariant();
         return CanonicalNames.TryGetValue(compact, out var canonical) ? canonical : compact;
     }
+
+    private static bool IsEvidenceGrounded(string evidence, string rawText)
+    {
+        var normalizedEvidence = NormalizeWhitespace(evidence);
+        var normalizedRawText = NormalizeWhitespace(rawText);
+        return normalizedEvidence.Length > 0 &&
+               normalizedRawText.Contains(normalizedEvidence, StringComparison.Ordinal);
+    }
+
+    private static string NormalizeWhitespace(string value) => string.Join(
+        " ",
+        value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
     private static bool IsSupportedSourceType(string sourceType) =>
         sourceType is "pdf_text" or "docx_text" or "ocr" or "pasted_text";

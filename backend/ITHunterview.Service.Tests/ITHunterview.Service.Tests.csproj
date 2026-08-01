@@ -27,4 +27,8 @@
     <ProjectReference Include="..\ITHunterview.Service\ITHunterview.Service.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Matching\Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

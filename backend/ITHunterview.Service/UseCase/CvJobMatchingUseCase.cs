@@ -20,6 +20,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Service;
+using ITHunterview.Service.Service.Matching;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -40,6 +41,11 @@ namespace ITHunterview.Service.UseCase
         private readonly IMatchingInputPreflightUseCase _matchingInputPreflightUseCase;
         private readonly IMatchingSourceRepository _matchingSourceRepository;
         private readonly ICvAnalysisResponseValidator _cvAnalysisResponseValidator;
+        private readonly IJdRequirementProjector _jdRequirementProjector;
+        private readonly JdStageTwoContextBuilder _jdStageTwoContextBuilder;
+        private readonly JdStageTwoResponseValidator _jdStageTwoResponseValidator;
+        private readonly JdFitScoreCalculator _jdFitScoreCalculator;
+        private readonly CvStageTwoContextBuilder _cvStageTwoContextBuilder;
 
         public CvJobMatchingUseCase(
             ITHunterviewContext context, 
@@ -55,7 +61,12 @@ namespace ITHunterview.Service.UseCase
             IMatchingInputPreflightUseCase matchingInputPreflightUseCase,
             IMatchingSourceRepository matchingSourceRepository,
             ICvAnalysisResponseValidator cvAnalysisResponseValidator,
-            IJobAnalysisExtractionService? jobAnalysisExtractionService = null)
+            IJobAnalysisExtractionService? jobAnalysisExtractionService = null,
+            IJdRequirementProjector? jdRequirementProjector = null,
+            JdStageTwoContextBuilder? jdStageTwoContextBuilder = null,
+            JdStageTwoResponseValidator? jdStageTwoResponseValidator = null,
+            JdFitScoreCalculator? jdFitScoreCalculator = null,
+            CvStageTwoContextBuilder? cvStageTwoContextBuilder = null)
         {
             _context = context;
             _aiService = aiService;
@@ -71,6 +82,11 @@ namespace ITHunterview.Service.UseCase
             _matchingSourceRepository = matchingSourceRepository;
             _cvAnalysisResponseValidator = cvAnalysisResponseValidator;
             _jobAnalysisExtractionService = jobAnalysisExtractionService;
+            _jdRequirementProjector = jdRequirementProjector ?? new JdRequirementProjector();
+            _jdStageTwoContextBuilder = jdStageTwoContextBuilder ?? new JdStageTwoContextBuilder();
+            _jdStageTwoResponseValidator = jdStageTwoResponseValidator ?? new JdStageTwoResponseValidator();
+            _jdFitScoreCalculator = jdFitScoreCalculator ?? new JdFitScoreCalculator();
+            _cvStageTwoContextBuilder = cvStageTwoContextBuilder ?? new CvStageTwoContextBuilder();
         }
 
         public string ExtractJsonField(string? jsonString, string fieldName)
@@ -560,33 +576,23 @@ namespace ITHunterview.Service.UseCase
                     jdNeedsAiParse = true;
                 }
 
-                // --- Chạy song song nếu cả 2 cần gọi AI ---
-                bool runParallel = cvNeedsAiParse && jdNeedsAiParse;
-                if (runParallel)
-                    _logger.LogInformation("[INFO] Running CV extraction and JD Stage 1 parsing in PARALLEL to reduce latency.");
+                // Scoped parser dependencies share one DbContext, so stage one must be ordered.
+                if (cvNeedsAiParse && jdNeedsAiParse)
+                    _logger.LogInformation("[INFO] Running CV extraction before JD Stage 1 parsing to keep scoped services isolated.");
 
-                Task<string> cvTask = Task.FromResult(string.Empty);
-                Task<string> jdTask = Task.FromResult(string.Empty);
+                string parsedData = string.Empty;
 
                 if (cvNeedsAiParse)
                 {
                     if (savedCv != null)
-                        cvTask = _cvTextExtractorService.ExtractParsedDataFromUrlAsync(savedCv.FileUrl, savedCv.RawText);
+                        parsedData = await _cvTextExtractorService.ExtractParsedDataFromUrlAsync(savedCv.FileUrl, savedCv.RawText);
                     else
-                        cvTask = _cvTextExtractorService.ExtractParsedDataFromRawTextAsync(cvText, "pasted_text", request.CvFileName);
+                        parsedData = await _cvTextExtractorService.ExtractParsedDataFromRawTextAsync(cvText, "pasted_text", request.CvFileName);
                 }
-                if (jdNeedsAiParse)
-                {
-                    jdTask = ExtractJdWithV2Async(savedJob, request.RawJdText, request.JdTitle);
-                }
-
-                // Await cùng lúc — nếu chỉ 1 trong 2 task thực sự cần AI, cái còn lại là Task.FromResult nên chi phí ~0
-                await Task.WhenAll(cvTask, jdTask);
 
                 // --- Xử lý kết quả CV ---
                 if (cvNeedsAiParse)
                 {
-                    var parsedData = await cvTask;
                     if (!string.IsNullOrWhiteSpace(parsedData))
                     {
                         if (savedCv != null)
@@ -623,7 +629,7 @@ namespace ITHunterview.Service.UseCase
                 // --- Xử lý kết quả JD Stage 1 ---
                 if (jdNeedsAiParse)
                 {
-                    jdRequirementsJson = await jdTask;
+                    jdRequirementsJson = await ExtractJdWithV2Async(savedJob, request.RawJdText, request.JdTitle);
                 }
 
                 if (string.IsNullOrWhiteSpace(jdRequirementsJson))
@@ -631,7 +637,24 @@ namespace ITHunterview.Service.UseCase
                     throw new Exception("Cannot extract or retrieve JD requirements.");
                 }
 
-                // Parse Stage 1 output & Pre-process
+                var matchingPromptSnapshot = await _promptManagementService.GetActivePromptSnapshotAsync(
+                    ITHunterview.Service.Constant.Prompts.BypassMatchingPrompt.Key);
+                var useV3MatchingContract = ITHunterview.Service.Constant.Prompts.JdMatchingPromptContract.IsV3(
+                    matchingPromptSnapshot.ModelConfig);
+                JdRequirementProjection? stageTwoProjection = null;
+                JdStageTwoContext? stageTwoJdContext = null;
+                if (useV3MatchingContract)
+                {
+                    stageTwoProjection = _jdRequirementProjector.Project(jdRequirementsJson);
+                    if (stageTwoProjection.Groups.Count == 0)
+                    {
+                        throw new InvalidOperationException("INVALID_EFFECTIVE_JD_ANALYSIS");
+                    }
+                    stageTwoJdContext = _jdStageTwoContextBuilder.Build(stageTwoProjection);
+                }
+
+                // Legacy prompt contract: retain the existing flat request payload until
+                // the configured prompt explicitly opts into jd-matching/v3.
                 try 
                 {
                     var stage1Doc = JsonDocument.Parse(jdRequirementsJson);
@@ -690,46 +713,49 @@ namespace ITHunterview.Service.UseCase
                     throw new Exception("Failed to parse Stage 1 JD Requirements: " + ex.Message);
                 }
 
-                if (!requirementsList.Any())
+                if (!useV3MatchingContract && !requirementsList.Any())
                 {
                     throw new Exception("No requirements extracted from JD.");
                 }
 
                 // Serialize for Stage 2
-                var parsedJdJson = JsonSerializer.Serialize(requirementsList.Select(r => new {
-                    r.ReqId, r.NormalizedText, r.Category, r.Importance, r.DetailVerbatim, r.Operator, r.MinSatisfied, r.Evidence
-                }), new JsonSerializerOptions { WriteIndented = true });
+                var parsedJdJson = useV3MatchingContract
+                    ? stageTwoJdContext!.Json
+                    : JsonSerializer.Serialize(requirementsList.Select(r => new {
+                        r.ReqId, r.NormalizedText, r.Category, r.Importance, r.DetailVerbatim, r.Operator, r.MinSatisfied, r.Evidence
+                    }), new JsonSerializerOptions { WriteIndented = true });
 
-                // Limit CV text/json intelligently to prevent breaking JSON structure
-                if (cvText.Length > 8000)
+                if (!isCvTextJson)
                 {
-                    if (isCvTextJson)
-                    {
-                        // JSON is too large, we shouldn't just Substring it or it will break JSON.
-                        // Since this is CV parsed JSON, it contains many fields. 
-                        // Instead of a full parse/re-serialize which might be complex, we just try to keep it as raw text and truncate, 
-                        // but actually Stage 2 can tolerate some malformed JSON if we just provide the first 8000 chars. 
-                        // However, to be safe, we just let the LLM handle it, or string truncate.
-                        cvText = cvText.Substring(0, 8000); 
-                    }
-                    else
-                    {
-                        cvText = cvText.Substring(0, 8000);
-                    }
+                    throw new InvalidOperationException("CV_ANALYSIS_INVALID_FOR_MATCHING");
                 }
+                var stageTwoCvContext = _cvStageTwoContextBuilder.Build(cvText).Json;
+
                 // 3. Prompt Stage 2
                 var variables = new Dictionary<string, string>
                 {
-                    { "CV_TEXT", cvText },
+                    { "CV_TEXT", stageTwoCvContext },
                     { "PARSED_JD_REQUIREMENTS", parsedJdJson }
                 };
-                var prompt = await _promptManagementService.GetActivePromptContentWithVariablesAsync(
-                    ITHunterview.Service.Constant.Prompts.BypassMatchingPrompt.Key, variables);
+                var prompt = matchingPromptSnapshot.Content;
+                foreach (var variable in variables)
+                {
+                    var placeholder = $"[{variable.Key}]";
+                    if (!prompt.Contains(placeholder, StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException($"MATCHING_PROMPT_PLACEHOLDER_MISSING:{placeholder}");
+                    }
+                    prompt = prompt.Replace(placeholder, variable.Value, StringComparison.Ordinal);
+                }
 
-                // Add instruction to minify JSON and be concise due to proxy token limits
-                prompt += "\n\n[SYSTEM CRITICAL]: Your output token limit is strictly capped. You MUST minify the JSON output (NO line breaks, NO indentation). Keep 'reasoning' under 20 words. Omit 'confidence' entirely.";
+                prompt += useV3MatchingContract
+                    ? "\n\n[SYSTEM CRITICAL]: Return compact JSON only. Score every itemId exactly once; do not omit itemScores, handlerCode, or handlerScore."
+                    : "\n\n[SYSTEM CRITICAL]: Your output token limit is strictly capped. You MUST minify the JSON output (NO line breaks, NO indentation). Keep 'reasoning' under 20 words. Omit 'confidence' entirely.";
 
-                _logger.LogInformation("Starting CV-JD AI scoring for match {MatchId} with {RequirementCount} validated JD requirements.", matchRecord.Id, requirementsList.Count);
+                _logger.LogInformation("Starting CV-JD AI scoring for match {MatchId} with {RequirementCount} validated JD requirements under {MatchingContract}.",
+                    matchRecord.Id,
+                    useV3MatchingContract ? stageTwoJdContext!.RequirementItemCount : requirementsList.Count,
+                    useV3MatchingContract ? JdStageTwoContextBuilder.Contract : "jd-matching/legacy");
 
                 if (string.IsNullOrWhiteSpace(prompt))
                 {
@@ -743,7 +769,9 @@ namespace ITHunterview.Service.UseCase
                 {
                     string cleanLlmResp = ExtractJsonFromText(llmResponseText);
                     var jsonDoc = JsonDocument.Parse(cleanLlmResp);
-                    var finalResult = CalculateFinalMatchResult(requirementsList, jsonDoc);
+                    var finalResult = useV3MatchingContract
+                        ? _jdFitScoreCalculator.Calculate(stageTwoProjection!, _jdStageTwoResponseValidator.Validate(jsonDoc, stageTwoProjection!))
+                        : ToJdFitScoreCalculation(CalculateFinalMatchResult(requirementsList, jsonDoc));
                     
                     matchRecord.Status = "Completed";
                     matchRecord.MatchScore = finalResult.FinalScore;
@@ -872,7 +900,7 @@ namespace ITHunterview.Service.UseCase
             decimal poolB_Actual = 0m;
             decimal poolB_Max = 0m;
             int criticalGapsCount = 0;
-            bool ksw01Triggered = false;
+            var coreTechnicalMustHaveScores = new List<decimal>();
 
             foreach (var req in requirements)
             {
@@ -892,10 +920,9 @@ namespace ITHunterview.Service.UseCase
                     if (llmScore.TryGetProperty("flag", out var fl) && fl.ValueKind == JsonValueKind.String) flag = fl.GetString();
                 }
 
-                // Apply KSW_01 (Freeze if Must-have tech_skill is 0)
-                if (req.Importance == "must_have" && req.Category == "tech_skill" && handlerScore == 0.0m)
+                if (req.Importance == "must_have" && req.Category == "tech_skill")
                 {
-                    ksw01Triggered = true;
+                    coreTechnicalMustHaveScores.Add(handlerScore);
                 }
 
                 // Ensure flag = CRITICAL_GAP if must_have and score = 0
@@ -936,6 +963,11 @@ namespace ITHunterview.Service.UseCase
                     flag = flag
                 });
             }
+
+            // KSW_01 is a universal condition: all core technical must-haves
+            // must be absent, not merely one missing technical requirement.
+            var ksw01Triggered = coreTechnicalMustHaveScores.Count > 0 &&
+                coreTechnicalMustHaveScores.All(score => score == 0m);
 
             // Math: Calculate Pool Percentages
             decimal poolAPercentage = poolA_Max > 0 ? (poolA_Actual / poolA_Max) * 70m : 70m; // Max 70 points
@@ -1026,6 +1058,9 @@ namespace ITHunterview.Service.UseCase
                 JsonString = JsonSerializer.Serialize(finalJsonObj, options)
             };
         }
+
+        private static JdFitScoreCalculation ToJdFitScoreCalculation(FinalMatchResult legacyResult) =>
+            new(legacyResult.FinalScore, legacyResult.JsonString);
 
 
 
