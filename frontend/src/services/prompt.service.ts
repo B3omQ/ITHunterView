@@ -1,5 +1,13 @@
 import apiClient from './api-client';
-import { PromptDto, PromptVersionDto, CreatePromptVersionDto } from '@/types/prompt.types';
+import {
+  ActivateCvAnalysisPromptPairDto,
+  ActivateJdAnalysisPromptPairDto,
+  CreatePromptVersionDto,
+  CvAnalysisPromptPairDto,
+  JdAnalysisPromptPairDto,
+  PromptDto,
+  PromptVersionDto,
+} from '@/types/prompt.types';
 import { ApiResponse, PaginatedResponse } from '@/types/api.types';
 
 export const PromptService = {
@@ -27,6 +35,26 @@ export const PromptService = {
 
   activatePromptVersion: async (id: string, versionId: string) => {
     const response = await apiClient.patch<ApiResponse<{ message: string }>>(`/api/admin/prompts/${id}/versions/${versionId}/activate`);
+    return response.data;
+  },
+
+  getCvAnalysisPromptPair: async () => {
+    const response = await apiClient.get<ApiResponse<CvAnalysisPromptPairDto>>('/api/admin/prompts/cv-analysis');
+    return response.data;
+  },
+
+  activateCvAnalysisPromptPair: async (dto: ActivateCvAnalysisPromptPairDto) => {
+    const response = await apiClient.post<ApiResponse<object>>('/api/admin/prompts/cv-analysis/activate', dto);
+    return response.data;
+  },
+
+  getJdAnalysisPromptPair: async () => {
+    const response = await apiClient.get<ApiResponse<JdAnalysisPromptPairDto>>('/api/admin/prompts/jd-analysis');
+    return response.data;
+  },
+
+  activateJdAnalysisPromptPair: async (dto: ActivateJdAnalysisPromptPairDto) => {
+    const response = await apiClient.post<ApiResponse<object>>('/api/admin/prompts/jd-analysis/activate', dto);
     return response.data;
   },
 };

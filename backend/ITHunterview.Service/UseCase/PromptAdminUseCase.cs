@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using ITHunterview.Service.Constant.Prompts;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.PromptAdmin;
@@ -55,17 +56,47 @@ namespace ITHunterview.Service.UseCase
                 throw new KeyNotFoundException("Prompt not found");
             }
 
-            var activeVersion = prompt.Versions.FirstOrDefault(v => v.IsActive);
-            
-            return new PromptDto
+            return MapToPromptDto(prompt);
+        }
+
+        public async Task<CvAnalysisPromptPairDto> GetCvAnalysisPromptPairAsync()
+        {
+            // Both repository calls use the same scoped DbContext. They must be
+            // awaited sequentially because EF Core does not permit concurrent
+            // operations on a single context instance.
+            var systemPrompt = await _promptRepository.GetPromptWithHistoryByKeyAsync(
+                CvAnalysisPromptContract.SystemPromptKey);
+            var userPrompt = await _promptRepository.GetPromptWithHistoryByKeyAsync(
+                CvAnalysisPromptContract.UserPromptKey);
+
+            if (systemPrompt == null || userPrompt == null)
             {
-                Id = prompt.Id,
-                PromptKey = prompt.PromptKey,
-                Description = prompt.Description,
-                ActiveVersionTag = activeVersion?.VersionTag,
-                CreatedAt = prompt.CreatedAt,
-                UpdatedAt = prompt.UpdatedAt,
-                Versions = prompt.Versions.Select(MapToVersionDto).ToList()
+                throw new KeyNotFoundException("CV analysis prompt pair is not configured");
+            }
+
+            return new CvAnalysisPromptPairDto
+            {
+                SystemPrompt = MapToPromptDto(systemPrompt),
+                UserPrompt = MapToPromptDto(userPrompt)
+            };
+        }
+
+        public async Task<JdAnalysisPromptPairDto> GetJdAnalysisPromptPairAsync()
+        {
+            var systemPrompt = await _promptRepository.GetPromptWithHistoryByKeyAsync(
+                JdAnalysisPromptContract.SystemPromptKey);
+            var userPrompt = await _promptRepository.GetPromptWithHistoryByKeyAsync(
+                JdAnalysisPromptContract.UserPromptKey);
+
+            if (systemPrompt == null || userPrompt == null)
+            {
+                throw new KeyNotFoundException("JD analysis prompt pair is not configured");
+            }
+
+            return new JdAnalysisPromptPairDto
+            {
+                SystemPrompt = MapToPromptDto(systemPrompt),
+                UserPrompt = MapToPromptDto(userPrompt)
             };
         }
 
@@ -88,21 +119,14 @@ namespace ITHunterview.Service.UseCase
                 throw new KeyNotFoundException("Prompt not found");
             }
 
-            // Validation 1: ModelConfig must be valid JSON if provided
-            if (!string.IsNullOrWhiteSpace(dto.ModelConfig))
-            {
-                try
-                {
-                    JsonDocument.Parse(dto.ModelConfig);
-                }
-                catch (JsonException)
-                {
-                    throw new ArgumentException("ModelConfig must be a valid JSON string");
-                }
-            }
+            ValidateModelConfig(prompt.PromptKey, dto.ModelConfig);
 
-            // Validation 2: Check required placeholders based on PromptKey
             ValidatePlaceholders(prompt.PromptKey, dto.Content);
+
+            if (IsManagedAnalysisPromptKey(prompt.PromptKey) && dto.MakeActive)
+            {
+                throw new ArgumentException("Analysis prompt versions must be activated through their system/user prompt-pair activation endpoint.");
+            }
 
             var newVersion = new PromptVersions
             {
@@ -122,16 +146,88 @@ namespace ITHunterview.Service.UseCase
 
         public async Task ActivatePromptVersionAsync(Guid promptId, Guid versionId, Guid adminId)
         {
-            // Just call repository to activate, throwing KeyNotFound if invalid
+            var prompt = await _promptRepository.GetPromptWithHistoryAsync(promptId);
+            if (prompt == null)
+            {
+                throw new KeyNotFoundException("Prompt not found");
+            }
+
+            if (IsManagedAnalysisPromptKey(prompt.PromptKey))
+            {
+                throw new ArgumentException("Analysis prompt versions must be activated as a compatible system/user pair.");
+            }
+
             await _promptRepository.ActivatePromptVersionAsync(promptId, versionId);
+        }
+
+        public async Task ActivateCvAnalysisPromptPairAsync(Guid systemVersionId, Guid userVersionId, Guid adminId)
+        {
+            var systemVersion = await _promptRepository.GetPromptVersionAsync(systemVersionId);
+            var userVersion = await _promptRepository.GetPromptVersionAsync(userVersionId);
+
+            if (systemVersion == null || userVersion == null)
+            {
+                throw new KeyNotFoundException("CV analysis prompt version not found");
+            }
+
+            if (systemVersion.Prompt?.PromptKey != CvAnalysisPromptContract.SystemPromptKey ||
+                userVersion.Prompt?.PromptKey != CvAnalysisPromptContract.UserPromptKey)
+            {
+                throw new ArgumentException("The selected versions are not a CV analysis system/user prompt pair.");
+            }
+
+            var systemMetadata = ReadCvAnalysisMetadata(systemVersion.ModelConfig, CvAnalysisPromptContract.SystemRole);
+            var userMetadata = ReadCvAnalysisMetadata(userVersion.ModelConfig, CvAnalysisPromptContract.UserRole);
+            if (!string.Equals(systemMetadata.Contract, userMetadata.Contract, StringComparison.Ordinal))
+            {
+                throw new ArgumentException("CV analysis system and user prompts must have the same contract.");
+            }
+
+            await _promptRepository.ActivatePromptPairAsync(
+                systemVersion.PromptId,
+                systemVersion.Id,
+                userVersion.PromptId,
+                userVersion.Id);
+        }
+
+        public async Task ActivateJdAnalysisPromptPairAsync(Guid systemVersionId, Guid userVersionId, Guid adminId)
+        {
+            var systemVersion = await _promptRepository.GetPromptVersionAsync(systemVersionId);
+            var userVersion = await _promptRepository.GetPromptVersionAsync(userVersionId);
+
+            if (systemVersion == null || userVersion == null)
+            {
+                throw new KeyNotFoundException("JD analysis prompt version not found");
+            }
+
+            if (systemVersion.Prompt?.PromptKey != JdAnalysisPromptContract.SystemPromptKey ||
+                userVersion.Prompt?.PromptKey != JdAnalysisPromptContract.UserPromptKey)
+            {
+                throw new ArgumentException("The selected versions are not a JD analysis system/user prompt pair.");
+            }
+
+            var systemMetadata = ReadJdAnalysisMetadata(systemVersion.ModelConfig, JdAnalysisPromptContract.SystemRole);
+            var userMetadata = ReadJdAnalysisMetadata(userVersion.ModelConfig, JdAnalysisPromptContract.UserRole);
+            if (!string.Equals(systemMetadata.Contract, userMetadata.Contract, StringComparison.Ordinal))
+            {
+                throw new ArgumentException("JD analysis system and user prompts must have the same contract.");
+            }
+
+            await _promptRepository.ActivatePromptPairAsync(
+                systemVersion.PromptId,
+                systemVersion.Id,
+                userVersion.PromptId,
+                userVersion.Id);
         }
 
         private void ValidatePlaceholders(string promptKey, string content)
         {
             var requiredPlaceholders = promptKey switch
             {
-                "JD_ANALYSIS_V2_SYSTEM" => Array.Empty<string>(),
-                "JD_ANALYSIS_V2_USER" => new[] { "[JOB_INPUT_JSON]" },
+                JdAnalysisPromptContract.SystemPromptKey => Array.Empty<string>(),
+                JdAnalysisPromptContract.UserPromptKey => new[] { JdAnalysisPromptContract.UserPlaceholder },
+                "CV_ANALYSIS_SYSTEM" => Array.Empty<string>(),
+                "CV_ANALYSIS_USER" => new[] { CvAnalysisPromptContract.UserPlaceholder },
                 "JD_MATCHING_PROMPT" => new[] { "[CV_TEXT]", "[PARSED_JD_REQUIREMENTS]" },
                 "MOCK_INTERVIEW_START" => new[] { "[CV_TEXT]", "[JD_TEXT]" },
                 "MOCK_INTERVIEW_NEXT" => new[] { "[CV_TEXT]", "[JD_TEXT]", "[INTERVIEW_CONTEXT]" },
@@ -145,7 +241,157 @@ namespace ITHunterview.Service.UseCase
             {
                 throw new ArgumentException($"Missing required placeholders in prompt content: {string.Join(", ", missingPlaceholders)}");
             }
+
+            if (promptKey == CvAnalysisPromptContract.SystemPromptKey && content.Contains(CvAnalysisPromptContract.UserPlaceholder, StringComparison.Ordinal))
+            {
+                throw new ArgumentException($"{CvAnalysisPromptContract.SystemPromptKey} must not contain {CvAnalysisPromptContract.UserPlaceholder}.");
+            }
+
+            if (promptKey == CvAnalysisPromptContract.UserPromptKey &&
+                CountOccurrences(content, CvAnalysisPromptContract.UserPlaceholder) != 1)
+            {
+                throw new ArgumentException($"{CvAnalysisPromptContract.UserPromptKey} must contain exactly one {CvAnalysisPromptContract.UserPlaceholder} placeholder.");
+            }
+
+            if (promptKey == JdAnalysisPromptContract.SystemPromptKey && content.Contains(JdAnalysisPromptContract.UserPlaceholder, StringComparison.Ordinal))
+            {
+                throw new ArgumentException($"{JdAnalysisPromptContract.SystemPromptKey} must not contain {JdAnalysisPromptContract.UserPlaceholder}.");
+            }
+
+            if (promptKey == JdAnalysisPromptContract.UserPromptKey &&
+                CountOccurrences(content, JdAnalysisPromptContract.UserPlaceholder) != 1)
+            {
+                throw new ArgumentException($"{JdAnalysisPromptContract.UserPromptKey} must contain exactly one {JdAnalysisPromptContract.UserPlaceholder} placeholder.");
+            }
         }
+
+        private static int CountOccurrences(string value, string pattern)
+        {
+            var count = 0;
+            var startIndex = 0;
+            while ((startIndex = value.IndexOf(pattern, startIndex, StringComparison.Ordinal)) >= 0)
+            {
+                count++;
+                startIndex += pattern.Length;
+            }
+
+            return count;
+        }
+
+        private static void ValidateModelConfig(string promptKey, string? modelConfig)
+        {
+            if (string.IsNullOrWhiteSpace(modelConfig))
+            {
+                if (IsManagedAnalysisPromptKey(promptKey))
+                {
+                    throw new ArgumentException("Analysis prompt ModelConfig is required.");
+                }
+
+                return;
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(modelConfig);
+                if (document.RootElement.ValueKind != JsonValueKind.Object)
+                {
+                    throw new ArgumentException("ModelConfig must be a JSON object.");
+                }
+
+                if (CvAnalysisPromptContract.IsCvAnalysisPromptKey(promptKey))
+                {
+                    var expectedRole = promptKey == CvAnalysisPromptContract.SystemPromptKey
+                        ? CvAnalysisPromptContract.SystemRole
+                        : CvAnalysisPromptContract.UserRole;
+                    ReadCvAnalysisMetadata(modelConfig, expectedRole);
+                }
+
+                if (JdAnalysisPromptContract.IsJdAnalysisPromptKey(promptKey))
+                {
+                    var expectedRole = promptKey == JdAnalysisPromptContract.SystemPromptKey
+                        ? JdAnalysisPromptContract.SystemRole
+                        : JdAnalysisPromptContract.UserRole;
+                    ReadJdAnalysisMetadata(modelConfig, expectedRole);
+                }
+            }
+            catch (JsonException)
+            {
+                throw new ArgumentException("ModelConfig must be a valid JSON string");
+            }
+        }
+
+        private static CvAnalysisPromptMetadata ReadCvAnalysisMetadata(string? modelConfig, string expectedRole)
+        {
+            if (string.IsNullOrWhiteSpace(modelConfig))
+            {
+                throw new ArgumentException("CV analysis prompt ModelConfig is required.");
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(modelConfig);
+                var root = document.RootElement;
+                var contract = GetRequiredString(root, "contract");
+                var role = GetRequiredString(root, "role");
+
+                if (!string.Equals(role, expectedRole, StringComparison.Ordinal))
+                {
+                    throw new ArgumentException($"CV analysis prompt ModelConfig role must be '{expectedRole}'.");
+                }
+
+                return new CvAnalysisPromptMetadata(contract, role);
+            }
+            catch (JsonException)
+            {
+                throw new ArgumentException("CV analysis prompt ModelConfig must be valid JSON.");
+            }
+        }
+
+        private static JdAnalysisPromptMetadata ReadJdAnalysisMetadata(string? modelConfig, string expectedRole)
+        {
+            if (string.IsNullOrWhiteSpace(modelConfig))
+            {
+                throw new ArgumentException("JD analysis prompt ModelConfig is required.");
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(modelConfig);
+                var root = document.RootElement;
+                var contract = GetRequiredString(root, "contract");
+                var role = GetRequiredString(root, "role");
+
+                if (!string.Equals(role, expectedRole, StringComparison.Ordinal))
+                {
+                    throw new ArgumentException($"JD analysis prompt ModelConfig role must be '{expectedRole}'.");
+                }
+
+                return new JdAnalysisPromptMetadata(contract, role);
+            }
+            catch (JsonException)
+            {
+                throw new ArgumentException("JD analysis prompt ModelConfig must be valid JSON.");
+            }
+        }
+
+        private static bool IsManagedAnalysisPromptKey(string promptKey) =>
+            CvAnalysisPromptContract.IsCvAnalysisPromptKey(promptKey) ||
+            JdAnalysisPromptContract.IsJdAnalysisPromptKey(promptKey);
+
+        private static string GetRequiredString(JsonElement root, string propertyName)
+        {
+            if (!root.TryGetProperty(propertyName, out var property) ||
+                property.ValueKind != JsonValueKind.String ||
+                string.IsNullOrWhiteSpace(property.GetString()))
+            {
+                throw new ArgumentException($"CV analysis prompt ModelConfig requires a non-empty '{propertyName}' string.");
+            }
+
+            return property.GetString()!;
+        }
+
+        private sealed record CvAnalysisPromptMetadata(string Contract, string Role);
+        private sealed record JdAnalysisPromptMetadata(string Contract, string Role);
 
         private PromptVersionDto MapToVersionDto(PromptVersions version)
         {
@@ -159,6 +405,21 @@ namespace ITHunterview.Service.UseCase
                 IsActive = version.IsActive,
                 CreatedBy = version.CreatedBy,
                 CreatedAt = version.CreatedAt
+            };
+        }
+
+        private PromptDto MapToPromptDto(Prompts prompt)
+        {
+            var activeVersion = prompt.Versions.FirstOrDefault(v => v.IsActive);
+            return new PromptDto
+            {
+                Id = prompt.Id,
+                PromptKey = prompt.PromptKey,
+                Description = prompt.Description,
+                ActiveVersionTag = activeVersion?.VersionTag,
+                CreatedAt = prompt.CreatedAt,
+                UpdatedAt = prompt.UpdatedAt,
+                Versions = prompt.Versions.Select(MapToVersionDto).ToList()
             };
         }
     }

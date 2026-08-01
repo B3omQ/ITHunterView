@@ -1,0 +1,10 @@
+{
+  "scores": [
+    { "itemId": "grp-001:item-001", "handlerCode": "H_TECH_05", "handlerScore": 1.0, "reasoning": "Project evidence shows production React delivery.", "confidence": "high" },
+    { "itemId": "grp-001:item-002", "handlerCode": "H_TECH_01", "handlerScore": 0.0, "reasoning": "No Angular evidence in the CV.", "confidence": "high" }
+  ],
+  "criticalGaps": [],
+  "penalties": [],
+  "narrative": "Candidate has React evidence.",
+  "improvements": []
+}

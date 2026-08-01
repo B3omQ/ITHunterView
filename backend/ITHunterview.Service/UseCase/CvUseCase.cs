@@ -91,8 +91,11 @@ namespace ITHunterview.Service.UseCase
                 FileSize = request.FileSize,
                 FileType = request.FileType,
                 IsPrimary = request.IsPrimary,
-                ParsedData = request.ParsedData ?? string.Empty,
-                ParseStatus = string.IsNullOrWhiteSpace(request.ParsedData) ? "PENDING" : "SUCCESS",
+                // ParsedData is trusted output from the extraction pipeline only;
+                // a public create request can never make a CV parse-successful.
+                ParsedData = string.Empty,
+                ParseStatus = "PENDING",
+                ParseError = null,
                 RawText = extractedRawText,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,

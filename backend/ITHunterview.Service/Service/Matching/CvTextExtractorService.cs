@@ -27,19 +27,25 @@ namespace ITHunterview.Service.Service.Matching
         private readonly IOptions<AiSettings> _settings;
         private readonly IAiService _aiService;
         private readonly ISystemConfigRepository _systemConfigRepository;
+        private readonly IPromptManagementService _promptManagementService;
+        private readonly ICvAnalysisResponseValidator _cvAnalysisResponseValidator;
 
         public CvTextExtractorService(
             ILogger<CvTextExtractorService> logger, 
             IHttpClientFactory httpClientFactory,
             IOptions<AiSettings> settings,
             IAiService aiService,
-            ISystemConfigRepository systemConfigRepository)
+            ISystemConfigRepository systemConfigRepository,
+            IPromptManagementService promptManagementService,
+            ICvAnalysisResponseValidator cvAnalysisResponseValidator)
         {
             _logger = logger;
             _httpClientFactory = httpClientFactory;
             _settings = settings;
             _aiService = aiService;
             _systemConfigRepository = systemConfigRepository;
+            _promptManagementService = promptManagementService;
+            _cvAnalysisResponseValidator = cvAnalysisResponseValidator;
         }
 
         private bool IsTextGarbage(string text)
@@ -107,29 +113,21 @@ namespace ITHunterview.Service.Service.Matching
                 if (!string.IsNullOrWhiteSpace(rawText) && !IsTextGarbage(rawText))
                 {
                     _logger.LogInformation("Successfully extracted clean text from PDF using PdfPig. Calling Gemini Text API.");
-                    var textPrompt = CvParsingPrompt.GetPrompt(rawText);
-                    return await ExtractJsonWithGeminiTextAsync(textPrompt);
+                    return await ExtractJsonWithGeminiTextAsync(rawText, "pdf_text", fileName);
                 }
 
                 _logger.LogWarning("PdfPig extracted garbage or empty text. PDF is likely a scanned image. Falling back to Gemini Vision OCR.");
                 
                 // Mặc định ném PDF vào Gemini Vision để lấy thẳng JSON (ParsedData)
-                var prompt = CvParsingPrompt.SystemPrompt + "\n\nExtract the CV into the required JSON format directly from the provided document.";
-                var json = await ExtractWithGeminiVisionAsync(fileBytes, "application/pdf", prompt);
-                
-                try
+                // Vision produces OCR text only. Parsed JSON always follows the same
+                // active prompt and typed-validation path as every other CV source.
+                var ocrText = await ExtractWithGeminiVisionAsync(fileBytes, "application/pdf");
+                if (!string.IsNullOrWhiteSpace(ocrText) && !IsTextGarbage(ocrText))
                 {
-                    if (!string.IsNullOrWhiteSpace(json))
-                    {
-                        using (JsonDocument.Parse(json)) 
-                        { 
-                            return json; 
-                        }
-                    }
+                    return await ExtractJsonWithGeminiTextAsync(ocrText, "ocr", fileName);
                 }
-                catch { }
 
-                _logger.LogWarning("Gemini Vision failed to return valid JSON for Scanned PDF.");
+                _logger.LogWarning("Gemini Vision failed to return usable OCR text for scanned PDF.");
                 return string.Empty;
             }
             else // docx, image, unknown
@@ -138,8 +136,7 @@ namespace ITHunterview.Service.Service.Matching
                 var rawText = await ExtractTextInternalAsync(fileBytes, contentType, fileName);
                 if (string.IsNullOrWhiteSpace(rawText)) return string.Empty;
 
-                var textPrompt = CvParsingPrompt.GetPrompt(rawText);
-                return await ExtractJsonWithGeminiTextAsync(textPrompt);
+                return await ExtractJsonWithGeminiTextAsync(rawText, fileType == "docx" ? "docx_text" : "ocr", fileName);
             }
         }
 
@@ -151,8 +148,7 @@ namespace ITHunterview.Service.Service.Matching
             if (!string.IsNullOrWhiteSpace(rawTextFallback) && !IsTextGarbage(rawTextFallback))
             {
                 _logger.LogInformation("Fast path: Using provided RawTextFallback for {Url}. Skipping download and Vision OCR.", fileUrl);
-                var textPrompt = CvParsingPrompt.GetPrompt(rawTextFallback);
-                return await ExtractJsonWithGeminiTextAsync(textPrompt);
+                return await ExtractJsonWithGeminiTextAsync(rawTextFallback, SourceTypeFromIdentifier(fileUrl), fileUrl);
             }
 
             try
@@ -181,41 +177,105 @@ namespace ITHunterview.Service.Service.Matching
             // Fallback cuối cùng nếu không tải được File: Dùng RawText gọi Gemini Text
             if (!string.IsNullOrWhiteSpace(rawTextFallback))
             {
-                var textPrompt = CvParsingPrompt.GetPrompt(rawTextFallback);
-                return await ExtractJsonWithGeminiTextAsync(textPrompt);
+                return await ExtractJsonWithGeminiTextAsync(rawTextFallback, SourceTypeFromIdentifier(fileUrl), fileUrl);
             }
 
             return string.Empty;
         }
 
-        public async Task<string> ExtractParsedDataFromRawTextAsync(string rawText)
+        public async Task<string> ExtractParsedDataFromRawTextAsync(string rawText, string sourceType = "pasted_text", string? fileName = null)
         {
             if (string.IsNullOrWhiteSpace(rawText) || IsTextGarbage(rawText))
                 return string.Empty;
 
-            var textPrompt = CvParsingPrompt.GetPrompt(rawText);
-            return await ExtractJsonWithGeminiTextAsync(textPrompt);
+            return await ExtractJsonWithGeminiTextAsync(rawText, sourceType, fileName);
         }
 
-        private async Task<string> ExtractJsonWithGeminiTextAsync(string prompt)
+        private async Task<string> ExtractJsonWithGeminiTextAsync(string rawCvText, string sourceType, string? fileName)
         {
-            var systemPrompt = CvParsingPrompt.SystemPrompt;
-            var aiResponse = await _aiService.GenerateTextAsync(prompt, systemPrompt);
+            var prompts = await GetCvPromptPairAsync();
+            var input = new CvAnalysisInputSnapshot(
+                rawCvText,
+                sourceType,
+                fileName,
+                DateOnly.FromDateTime(DateTime.UtcNow));
+            var userPrompt = BuildUserPrompt(prompts.User.Content, SerializeInput(input));
+            var aiResponse = await _aiService.GenerateTextAsync(userPrompt, prompts.System.Content);
+            var validation = _cvAnalysisResponseValidator.ValidateAndCanonicalize(StripMarkdownFence(aiResponse), input);
+            if (validation.IsValid)
+            {
+                return validation.CanonicalJson;
+            }
 
-            string jsonString = aiResponse;
-            if (jsonString.Contains("```json"))
+            _logger.LogWarning("CV analysis response rejected by typed validator. FailureCode={FailureCode}", validation.FailureCode);
+            throw new InvalidOperationException(validation.FailureCode ?? "CV_ANALYSIS_SCHEMA_INVALID");
+        }
+
+        private static string SerializeInput(CvAnalysisInputSnapshot input) => JsonSerializer.Serialize(new
+        {
+            raw_text = input.RawText,
+            source_type = input.SourceType,
+            file_name = input.FileName ?? string.Empty,
+            analysis_date = input.AnalysisDate.ToString("yyyy-MM-dd")
+        });
+
+        private static string StripMarkdownFence(string? value)
+        {
+            var jsonString = value ?? string.Empty;
+            if (jsonString.Contains("```json", StringComparison.OrdinalIgnoreCase))
             {
-                int start = jsonString.IndexOf("```json") + 7;
-                int end = jsonString.LastIndexOf("```");
-                if (end > start) jsonString = jsonString.Substring(start, end - start);
+                var start = jsonString.IndexOf("```json", StringComparison.OrdinalIgnoreCase) + 7;
+                var end = jsonString.LastIndexOf("```", StringComparison.Ordinal);
+                if (end > start) return jsonString[start..end].Trim();
             }
-            else if (jsonString.Contains("```"))
+            else if (jsonString.Contains("```", StringComparison.Ordinal))
             {
-                int start = jsonString.IndexOf("```") + 3;
-                int end = jsonString.LastIndexOf("```");
-                if (end > start) jsonString = jsonString.Substring(start, end - start);
+                var start = jsonString.IndexOf("```", StringComparison.Ordinal) + 3;
+                var end = jsonString.LastIndexOf("```", StringComparison.Ordinal);
+                if (end > start) return jsonString[start..end].Trim();
             }
+
             return jsonString.Trim();
+        }
+
+        private string SourceTypeFromIdentifier(string identifier)
+        {
+            return DetermineFileType(string.Empty, identifier) switch
+            {
+                "pdf" => "pdf_text",
+                "docx" => "docx_text",
+                _ => "ocr"
+            };
+        }
+
+        private async Task<PromptPairSnapshotDto> GetCvPromptPairAsync()
+        {
+            var prompts = await _promptManagementService.GetActivePromptPairSnapshotAsync(
+                CvAnalysisPromptContract.SystemPromptKey,
+                CvAnalysisPromptContract.UserPromptKey);
+
+            _logger.LogInformation(
+                "Using CV analysis prompt pair. System={SystemPromptKey}:{SystemVersionTag} ({SystemVersionId}); User={UserPromptKey}:{UserVersionTag} ({UserVersionId}); Contract={Contract}",
+                prompts.System.PromptKey,
+                prompts.System.VersionTag,
+                prompts.System.VersionId,
+                prompts.User.PromptKey,
+                prompts.User.VersionTag,
+                prompts.User.VersionId,
+                prompts.Contract);
+
+            return prompts;
+        }
+
+        private static string BuildUserPrompt(string userPromptTemplate, string cvText)
+        {
+            if (string.IsNullOrWhiteSpace(userPromptTemplate) ||
+                !userPromptTemplate.Contains(CvAnalysisPromptContract.UserPlaceholder, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("PROMPT_CONFIGURATION_INVALID: CV analysis user prompt is missing [CV_TEXT].");
+            }
+
+            return userPromptTemplate.Replace(CvAnalysisPromptContract.UserPlaceholder, cvText, StringComparison.Ordinal);
         }
 
         private async Task<string> ExtractTextInternalAsync(byte[] fileBytes, string contentType, string identifier)

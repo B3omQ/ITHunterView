@@ -80,7 +80,6 @@ export default function ResumesPage() {
         fileSize: file.size,
         fileType: file.type || 'application/pdf',
         isPrimary: cvs.length === 0, // First CV is primary by default
-        parsedData: '', // Mock empty parsed data for now
       });
 
     } catch (error) {

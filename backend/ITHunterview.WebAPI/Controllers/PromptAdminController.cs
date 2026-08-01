@@ -35,6 +35,20 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(new ResponseBase<PromptDto>(result));
         }
 
+        [HttpGet("cv-analysis")]
+        public async Task<ActionResult<ResponseBase<CvAnalysisPromptPairDto>>> GetCvAnalysisPromptPair()
+        {
+            var result = await _promptAdminUseCase.GetCvAnalysisPromptPairAsync();
+            return Ok(new ResponseBase<CvAnalysisPromptPairDto>(result));
+        }
+
+        [HttpGet("jd-analysis")]
+        public async Task<ActionResult<ResponseBase<JdAnalysisPromptPairDto>>> GetJdAnalysisPromptPair()
+        {
+            var result = await _promptAdminUseCase.GetJdAnalysisPromptPairAsync();
+            return Ok(new ResponseBase<JdAnalysisPromptPairDto>(result));
+        }
+
         [HttpGet("versions/{versionId:guid}")]
         public async Task<ActionResult<ResponseBase<PromptVersionDto>>> GetPromptVersion(Guid versionId)
         {
@@ -56,6 +70,22 @@ namespace ITHunterview.WebAPI.Controllers
             var adminId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             await _promptAdminUseCase.ActivatePromptVersionAsync(id, versionId, adminId);
             return Ok(new ResponseBase<object>(null, "Prompt version activated successfully"));
+        }
+
+        [HttpPost("cv-analysis/activate")]
+        public async Task<ActionResult<ResponseBase<object>>> ActivateCvAnalysisPromptPair([FromBody] ActivateCvAnalysisPromptPairDto dto)
+        {
+            var adminId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            await _promptAdminUseCase.ActivateCvAnalysisPromptPairAsync(dto.SystemVersionId, dto.UserVersionId, adminId);
+            return Ok(new ResponseBase<object>(null, "CV analysis prompt pair activated successfully"));
+        }
+
+        [HttpPost("jd-analysis/activate")]
+        public async Task<ActionResult<ResponseBase<object>>> ActivateJdAnalysisPromptPair([FromBody] ActivateJdAnalysisPromptPairDto dto)
+        {
+            var adminId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            await _promptAdminUseCase.ActivateJdAnalysisPromptPairAsync(dto.SystemVersionId, dto.UserVersionId, adminId);
+            return Ok(new ResponseBase<object>(null, "JD analysis prompt pair activated successfully"));
         }
     }
 }

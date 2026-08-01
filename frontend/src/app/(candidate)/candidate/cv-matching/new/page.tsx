@@ -184,12 +184,12 @@ function CvMatchingContent() {
                   className="bg-primary hover:bg-primary/90 gap-2"
                   onClick={() => {
                     const queryParams = new URLSearchParams();
-                    if (state.cvUrl) queryParams.set('cvUrl', state.cvUrl);
-                    if (state.selectedCvId) queryParams.set('cvId', state.selectedCvId);
-                    else if (state.matchedCvId) queryParams.set('cvId', state.matchedCvId);
+                    const cvId = state.matchedCvId
+                      ?? (state.cvTab === 'saved' ? state.selectedCvId : null);
+                    if (cvId) queryParams.set('cvId', cvId);
                     
-                    if (!queryParams.has('cvUrl') && !queryParams.has('cvId')) {
-                      toast.error("Cannot optimize: Original CV file not found. Please start a new matching session.");
+                    if (!queryParams.has('cvId')) {
+                      toast.error("Cannot optimize a pasted or temporary CV. Save the CV first, then match again.");
                       return;
                     }
 
