@@ -6,6 +6,7 @@ using ITHunterview.Service.Constant.Prompts;
 using ITHunterview.Service.DTOs.PromptAdmin;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
+using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Service.Matching;
 using ITHunterview.Service.UseCase;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -137,6 +138,10 @@ public class CvAnalysisPromptManagementTests
             .ReturnsAsync("{}");
 
         var promptService = new Mock<IPromptManagementService>();
+        var responseValidator = new Mock<ICvAnalysisResponseValidator>();
+        responseValidator
+            .Setup(x => x.ValidateAndCanonicalize(It.IsAny<string>(), It.IsAny<ITHunterview.Service.DTOs.Cv.Matching.CvAnalysisInputSnapshot>()))
+            .Returns(ITHunterview.Service.DTOs.Cv.Matching.CvAnalysisValidationResult.Success("{\"canonical\":true}"));
         promptService
             .Setup(x => x.GetActivePromptPairSnapshotAsync(
                 CvAnalysisPromptContract.SystemPromptKey,
@@ -165,18 +170,28 @@ public class CvAnalysisPromptManagementTests
             Options.Create(new AiSettings()),
             aiService.Object,
             Mock.Of<ISystemConfigRepository>(),
-            promptService.Object);
+            promptService.Object,
+            responseValidator.Object);
 
-        var result = await service.ExtractParsedDataFromRawTextAsync("Jane Doe\nC# developer\n");
+        var result = await service.ExtractParsedDataFromRawTextAsync("Jane Doe\nC# developer\n", "pasted_text", "resume.txt");
 
-        Assert.Equal("{}", result);
+        Assert.Equal("{\"canonical\":true}", result);
         promptService.Verify(x => x.GetActivePromptPairSnapshotAsync(
             CvAnalysisPromptContract.SystemPromptKey,
             CvAnalysisPromptContract.UserPromptKey,
             default), Times.Once);
         aiService.Verify(x => x.GenerateTextAsync(
-            "user template Jane Doe\nC# developer\n",
+            It.Is<string>(prompt => prompt.StartsWith("user template {") &&
+                                    prompt.Contains("\"raw_text\":\"Jane Doe\\nC# developer\\n\"") &&
+                                    prompt.Contains("\"source_type\":\"pasted_text\"") &&
+                                    prompt.Contains("\"file_name\":\"resume.txt\"")),
             "system from database",
             It.IsAny<string>()), Times.Once);
+        responseValidator.Verify(x => x.ValidateAndCanonicalize(
+            "{}",
+            It.Is<ITHunterview.Service.DTOs.Cv.Matching.CvAnalysisInputSnapshot>(input =>
+                input.RawText == "Jane Doe\nC# developer\n" &&
+                input.SourceType == "pasted_text" &&
+                input.FileName == "resume.txt")), Times.Once);
     }
 }

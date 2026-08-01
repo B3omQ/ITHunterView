@@ -37,6 +37,9 @@ namespace ITHunterview.Service.UseCase
         private readonly IAiService _textAiService;
         private readonly IJobAnalysisExtractionService? _jobAnalysisExtractionService;
         private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
+        private readonly IMatchingInputPreflightUseCase _matchingInputPreflightUseCase;
+        private readonly IMatchingSourceRepository _matchingSourceRepository;
+        private readonly ICvAnalysisResponseValidator _cvAnalysisResponseValidator;
 
         public CvJobMatchingUseCase(
             ITHunterviewContext context, 
@@ -49,6 +52,9 @@ namespace ITHunterview.Service.UseCase
             ISystemConfigRepository systemConfigRepository,
             IAiService textAiService,
             ICandidateFeatureUsageUseCase featureUsageUseCase,
+            IMatchingInputPreflightUseCase matchingInputPreflightUseCase,
+            IMatchingSourceRepository matchingSourceRepository,
+            ICvAnalysisResponseValidator cvAnalysisResponseValidator,
             IJobAnalysisExtractionService? jobAnalysisExtractionService = null)
         {
             _context = context;
@@ -61,6 +67,9 @@ namespace ITHunterview.Service.UseCase
             _systemConfigRepository = systemConfigRepository;
             _textAiService = textAiService;
             _featureUsageUseCase = featureUsageUseCase;
+            _matchingInputPreflightUseCase = matchingInputPreflightUseCase;
+            _matchingSourceRepository = matchingSourceRepository;
+            _cvAnalysisResponseValidator = cvAnalysisResponseValidator;
             _jobAnalysisExtractionService = jobAnalysisExtractionService;
         }
 
@@ -139,6 +148,45 @@ namespace ITHunterview.Service.UseCase
                 cv.ParseStatus = "SUCCESS";
                 _context.Cvs.Update(cv);
                 await _context.SaveChangesAsync();
+            }
+        }
+
+        private bool TryCanonicalizeStoredV2Cv(Cvs cv)
+        {
+            if (!IsCvAnalysisV2(cv.ParsedData) || string.IsNullOrWhiteSpace(cv.RawText))
+            {
+                return false;
+            }
+
+            var sourceType = cv.FileName?.EndsWith(".docx", StringComparison.OrdinalIgnoreCase) == true
+                ? "docx_text"
+                : "pdf_text";
+            var result = _cvAnalysisResponseValidator.ValidateAndCanonicalize(
+                cv.ParsedData,
+                new CvAnalysisInputSnapshot(cv.RawText, sourceType, cv.FileName, DateOnly.FromDateTime(DateTime.UtcNow)));
+            if (!result.IsValid)
+            {
+                _logger.LogWarning("Stored CV analysis requires reparsing. CvId={CvId}; FailureCode={FailureCode}", cv.Id, result.FailureCode);
+                return false;
+            }
+
+            cv.ParsedData = result.CanonicalJson;
+            return true;
+        }
+
+        private static bool IsCvAnalysisV2(string? parsedData)
+        {
+            if (string.IsNullOrWhiteSpace(parsedData)) return false;
+            try
+            {
+                using var document = JsonDocument.Parse(parsedData);
+                return document.RootElement.ValueKind == JsonValueKind.Object &&
+                       document.RootElement.TryGetProperty("schema_version", out var schemaVersion) &&
+                       string.Equals(schemaVersion.GetString(), "cv-analysis/v2", StringComparison.Ordinal);
+            }
+            catch (JsonException)
+            {
+                return false;
             }
         }
 
@@ -421,16 +469,21 @@ namespace ITHunterview.Service.UseCase
             await _context.SaveChangesAsync();
         }
 
-        public async Task<Guid> SubmitMatchingJobAsync(Guid userId, MatchingRequestDto request, Guid? operationId = null)
+        public async Task<Guid> SubmitMatchingJobAsync(Guid userId, PreparedMatchingRequest request, Guid? operationId = null)
         {
+            var savedCv = request.Cv as PreparedSavedCvSource;
+            var rawCv = request.Cv as PreparedRawCvSource;
+            var savedJob = request.Jd as PreparedSavedJdSource;
+            var rawJd = request.Jd as PreparedRawJdSource;
+
             var matchScore = new CvJobMatchScores
             {
                 Id = operationId ?? Guid.NewGuid(),
                 UserId = userId,
-                CvId = request.CvId,
-                CvFileName = request.CvFileName ?? (string.IsNullOrEmpty(request.CvText) && string.IsNullOrEmpty(request.CvUrl) ? null : "Bypass CV"),
-                JobId = request.JobId,
-                JdTitle = request.JdTitle ?? (string.IsNullOrEmpty(request.RawJdText) ? null : "Bypass JD"),
+                CvId = savedCv?.CvId,
+                CvFileName = savedCv?.FileName ?? rawCv?.FileName ?? "Pasted CV",
+                JobId = savedJob?.JobId,
+                JdTitle = savedJob?.Title ?? rawJd?.Title ?? "Pasted JD",
                 RawJdText = null,
                 MatchScore = 0,
                 Status = "Pending",
@@ -442,7 +495,7 @@ namespace ITHunterview.Service.UseCase
             return matchScore.Id;
         }
 
-        public async Task ProcessMatchingJobAsync(Guid jobId, Guid userId, MatchingRequestDto request)
+        private async Task ProcessMatchingJobCoreAsync(Guid jobId, Guid userId, MatchingRequestDto request)
         {
             var matchRecord = await _context.CvJobMatchScores.FindAsync(jobId);
             if (matchRecord == null) return;
@@ -453,11 +506,7 @@ namespace ITHunterview.Service.UseCase
                 matchRecord.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
-                // === STEP 1 & 2: Quyết định trước xem có cần gọi AI không, rồi chạy song song ===
-
-                // --- Phân tích luồng CV ---
                 Cvs? savedCv = null;
-                bool cvNeedsAiExtract = false;   // Cần gọi AI extract raw text (temp upload URL)
                 bool cvNeedsAiParse = false;      // Cần gọi AI parse ParsedData (saved CV hoặc Temp raw text)
                 bool isCvTextJson = false;
 
@@ -465,24 +514,27 @@ namespace ITHunterview.Service.UseCase
                 
                 if (!string.IsNullOrWhiteSpace(cvText))
                 {
-                    try { using (JsonDocument.Parse(cvText)) { isCvTextJson = true; } } catch { }
-                    if (!isCvTextJson) cvNeedsAiParse = true; // Raw text từ Temp Upload hoặc Paste, cần parse JSON
+                    // A client can paste JSON-looking CV text. It is still raw CV
+                    // content and must pass through the trusted parser.
+                    cvNeedsAiParse = true;
+                }
+                else if (matchRecord.CvId.HasValue)
+                {
+                    savedCv = await _matchingSourceRepository.GetOwnedCvForUpdateAsync(matchRecord.CvId.Value, userId);
+                    if (savedCv is null)
+                    {
+                        throw new KeyNotFoundException("CV not found");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(savedCv.ParsedData) || savedCv.ParseStatus != "SUCCESS" || !TryCanonicalizeStoredV2Cv(savedCv))
+                        cvNeedsAiParse = true;
                 }
                 else
                 {
-                    if (!string.IsNullOrWhiteSpace(request.CvUrl))
-                    {
-                        cvNeedsAiExtract = true;
-                    }
-                    else if (matchRecord.CvId.HasValue)
-                    {
-                        savedCv = await _context.Cvs.FindAsync(matchRecord.CvId.Value);
-                        if (savedCv != null && (string.IsNullOrWhiteSpace(savedCv.ParsedData) || savedCv.ParseStatus != "SUCCESS"))
-                            cvNeedsAiParse = true;
-                    }
+                    throw new InvalidOperationException("INVALID_PREPARED_CV_SOURCE");
                 }
-                _logger.LogInformation("CV needs AI extract: {Extract}, needs AI parse: {Parse}", cvNeedsAiExtract, cvNeedsAiParse);
-                // --- Phân tích luồng JD ---
+
+                _logger.LogInformation("CV needs AI parse: {Parse}", cvNeedsAiParse);
                 string jdRequirementsJson = "";
                 List<ScoringRequirement> requirementsList = new List<ScoringRequirement>();
                 Domain.Entities.JobPostings? savedJob = null;
@@ -490,17 +542,18 @@ namespace ITHunterview.Service.UseCase
 
                 if (request.JobId.HasValue)
                 {
-                    savedJob = await _context.JobPostings.FindAsync(request.JobId.Value);
-                    if (savedJob != null)
+                    savedJob = await _matchingSourceRepository.GetAccessiblePublishedJobAsync(request.JobId.Value, DateTime.UtcNow);
+                    if (savedJob is null)
                     {
-                        if (string.IsNullOrEmpty(matchRecord.JdTitle)) matchRecord.JdTitle = savedJob.Title;
-                        if (savedJob.ParseStatus == "SUCCESS" && !string.IsNullOrWhiteSpace(savedJob.ParsedData))
-                        {
-                            _logger.LogInformation("[INFO] Stage 1 skipped. Using ParsedData from Job {JobId}", request.JobId);
-                            jdRequirementsJson = savedJob.ParsedData;
-                        }
-                        else jdNeedsAiParse = true;
+                        throw new KeyNotFoundException("Job not found");
                     }
+
+                    if (savedJob.ParseStatus == "SUCCESS" && !string.IsNullOrWhiteSpace(savedJob.ParsedData))
+                    {
+                        _logger.LogInformation("[INFO] Stage 1 skipped. Using ParsedData from Job {JobId}", request.JobId);
+                        jdRequirementsJson = savedJob.ParsedData;
+                    }
+                    else jdNeedsAiParse = true;
                 }
                 else if (!string.IsNullOrWhiteSpace(request.RawJdText))
                 {
@@ -508,21 +561,19 @@ namespace ITHunterview.Service.UseCase
                 }
 
                 // --- Chạy song song nếu cả 2 cần gọi AI ---
-                bool runParallel = (cvNeedsAiExtract || cvNeedsAiParse) && jdNeedsAiParse;
+                bool runParallel = cvNeedsAiParse && jdNeedsAiParse;
                 if (runParallel)
                     _logger.LogInformation("[INFO] Running CV extraction and JD Stage 1 parsing in PARALLEL to reduce latency.");
 
                 Task<string> cvTask = Task.FromResult(string.Empty);
                 Task<string> jdTask = Task.FromResult(string.Empty);
 
-                if (cvNeedsAiExtract)
-                    cvTask = _cvTextExtractorService.ExtractTextFromUrlAsync(request.CvUrl);
-                else if (cvNeedsAiParse)
+                if (cvNeedsAiParse)
                 {
                     if (savedCv != null)
                         cvTask = _cvTextExtractorService.ExtractParsedDataFromUrlAsync(savedCv.FileUrl, savedCv.RawText);
-                    else if (!string.IsNullOrWhiteSpace(cvText) && !isCvTextJson)
-                        cvTask = _cvTextExtractorService.ExtractParsedDataFromRawTextAsync(cvText);
+                    else
+                        cvTask = _cvTextExtractorService.ExtractParsedDataFromRawTextAsync(cvText, "pasted_text", request.CvFileName);
                 }
                 if (jdNeedsAiParse)
                 {
@@ -533,11 +584,7 @@ namespace ITHunterview.Service.UseCase
                 await Task.WhenAll(cvTask, jdTask);
 
                 // --- Xử lý kết quả CV ---
-                if (cvNeedsAiExtract)
-                {
-                    cvText = await cvTask;
-                }
-                else if (cvNeedsAiParse)
+                if (cvNeedsAiParse)
                 {
                     var parsedData = await cvTask;
                     if (!string.IsNullOrWhiteSpace(parsedData))
@@ -554,19 +601,7 @@ namespace ITHunterview.Service.UseCase
                     }
                     else
                     {
-                        _logger.LogWarning("[WARN] On-demand parse failed. Falling back to RawText.");
-                        if (savedCv != null)
-                        {
-                            if (!string.IsNullOrWhiteSpace(savedCv.RawText))
-                                cvText = savedCv.RawText;
-                            else if (!string.IsNullOrWhiteSpace(savedCv.FileUrl))
-                            {
-                                cvText = await _cvTextExtractorService.ExtractTextFromUrlAsync(savedCv.FileUrl);
-                                savedCv.RawText = cvText;
-                                _context.Cvs.Update(savedCv);
-                                await _context.SaveChangesAsync();
-                            }
-                        }
+                        throw new InvalidOperationException("CV_ANALYSIS_EMPTY_OUTPUT");
                     }
                 }
                 else if (string.IsNullOrWhiteSpace(cvText) && savedCv != null)
@@ -582,9 +617,7 @@ namespace ITHunterview.Service.UseCase
 
                 if (string.IsNullOrWhiteSpace(cvText))
                 {
-                    var cvSource = request.CvId.HasValue ? $"CV ID={request.CvId}" : "uploaded file";
-                    var urlDebug = !string.IsNullOrWhiteSpace(request.CvUrl) ? $"[URL: {request.CvUrl}] " : "";
-                    throw new Exception($"Cannot extract text from CV ({cvSource}). {urlDebug}The file URL may be an invalid PDF/DOCX or blocked by Cloudinary.");
+                    throw new InvalidOperationException("CV_ANALYSIS_EMPTY_OUTPUT");
                 }
 
                 // --- Xử lý kết quả JD Stage 1 ---
@@ -743,6 +776,48 @@ namespace ITHunterview.Service.UseCase
                     matchRecord.Id,
                     "Hoàn Coin do CV-JD matching thất bại.");
             }
+        }
+
+        public async Task ProcessMatchingJobAsync(Guid jobId, Guid userId, PreparedMatchingRequest request)
+        {
+            try
+            {
+                await _matchingInputPreflightUseCase.RecheckAccessAsync(userId, request);
+            }
+            catch (Exception ex)
+            {
+                var matchRecord = await _context.CvJobMatchScores.FindAsync(jobId);
+                if (matchRecord is null)
+                {
+                    return;
+                }
+
+                matchRecord.Status = "Failed";
+                matchRecord.ErrorMessage = "MATCHING_SOURCE_ACCESS_REVOKED";
+                matchRecord.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                await _featureUsageUseCase.RefundFeatureUsageByReferenceAsync(
+                    userId,
+                    matchRecord.Id,
+                    "Hoàn Coin do CV hoặc JD không còn khả dụng trước khi matching.");
+                _logger.LogWarning(ex, "Matching source access changed before processing match {MatchId}", jobId);
+                return;
+            }
+
+            var internalRequest = new MatchingRequestDto
+            {
+                CvId = (request.Cv as PreparedSavedCvSource)?.CvId,
+                CvText = (request.Cv as PreparedRawCvSource)?.RawText,
+                CvFileName = (request.Cv as PreparedSavedCvSource)?.FileName
+                    ?? (request.Cv as PreparedRawCvSource)?.FileName,
+                JobId = (request.Jd as PreparedSavedJdSource)?.JobId,
+                RawJdText = (request.Jd as PreparedRawJdSource)?.RawText,
+                JdTitle = (request.Jd as PreparedSavedJdSource)?.Title
+                    ?? (request.Jd as PreparedRawJdSource)?.Title,
+                Mode = request.Mode
+            };
+
+            await ProcessMatchingJobCoreAsync(jobId, userId, internalRequest);
         }
 
         private async Task<string> ExtractJdWithV2Async(JobPostings? savedJob, string? rawJdText, string? requestedTitle)

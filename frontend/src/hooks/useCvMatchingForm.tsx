@@ -44,7 +44,6 @@ export function useCvMatchingForm() {
   const [cvTab, setCvTab] = useState<string>('upload');
   const [cvText, setCvText] = useState<string>('');
   const [cvFile, setCvFile] = useState<File | null>(null);
-  const [cvUrl, setCvUrl] = useState<string>('');
   const [selectedCvId, setSelectedCvId] = useState<string>('');
   const [cvFileName, setCvFileName] = useState<string>('');
 
@@ -167,8 +166,7 @@ export function useCvMatchingForm() {
 
       if (res.data?.success && res.data?.data) {
         setCvText(res.data.data);
-        // Không tự động nhảy sang tab Paste nữa (Phương án B) vì data giờ là JSON
-        toast.success('Resume parsed successfully');
+        toast.success('Resume text extracted successfully');
       } else {
         toast.error(res.data?.message || 'Failed to parse resume');
       }
@@ -198,7 +196,7 @@ export function useCvMatchingForm() {
 
   const handleRemoveFile = () => {
     setCvFile(null);
-    setCvUrl('');
+    setCvText('');
     setCvFileName('');
   };
 
@@ -305,7 +303,6 @@ export function useCvMatchingForm() {
       cvTab,
       cvText,
       cvFile,
-      cvUrl,
       selectedCvId,
       cvFileName,
       jdTab,

@@ -9,10 +9,10 @@ namespace ITHunterview.Service.Interface.UseCase
         Task MatchJobWithAllCvsAsync(Guid jobId, Guid userId);
 
         // API Polling: Đẩy request vào background và trả về Job ID
-        Task<Guid> SubmitMatchingJobAsync(Guid userId, ITHunterview.Service.DTOs.Cv.Matching.MatchingRequestDto request, Guid? operationId = null);
+        Task<Guid> SubmitMatchingJobAsync(Guid userId, ITHunterview.Service.DTOs.Cv.Matching.PreparedMatchingRequest request, Guid? operationId = null);
         
         // Background task
-        Task ProcessMatchingJobAsync(Guid jobId, Guid userId, ITHunterview.Service.DTOs.Cv.Matching.MatchingRequestDto request);
+        Task ProcessMatchingJobAsync(Guid jobId, Guid userId, ITHunterview.Service.DTOs.Cv.Matching.PreparedMatchingRequest request);
 
         // Lấy kết quả
         Task<ITHunterview.Service.DTOs.Cv.Matching.MatchingResultDto?> GetMatchingResultAsync(Guid jobId, Guid userId);

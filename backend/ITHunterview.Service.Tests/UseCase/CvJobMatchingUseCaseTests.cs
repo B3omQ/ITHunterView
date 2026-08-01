@@ -32,9 +32,12 @@ namespace ITHunterview.Service.Tests.UseCase
             var mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<CvJobMatchingUseCase>>();
             var mockTextAiService = new Mock<IAiService>();
             var mockFeatureUsageUseCase = new Mock<ITHunterview.Service.Interface.UseCase.ICandidateFeatureUsageUseCase>();
+            var mockMatchingPreflightUseCase = new Mock<ITHunterview.Service.Interface.UseCase.IMatchingInputPreflightUseCase>();
+            var mockMatchingSourceRepository = new Mock<ITHunterview.Service.Interface.Persistence.IMatchingSourceRepository>();
+            var mockCvAnalysisResponseValidator = new Mock<ITHunterview.Service.Interface.Service.Matching.ICvAnalysisResponseValidator>();
             
             // Pass null for context since we only test methods that don't hit DB
-            _sut = new CvJobMatchingUseCase(null!, _mockAiService.Object, _mockExtractorService.Object, _mockHttpClientFactory.Object, _mockConfiguration.Object, mockLogger.Object, _mockPromptService.Object, _mockSystemConfigRepository.Object, mockTextAiService.Object, mockFeatureUsageUseCase.Object);
+            _sut = new CvJobMatchingUseCase(null!, _mockAiService.Object, _mockExtractorService.Object, _mockHttpClientFactory.Object, _mockConfiguration.Object, mockLogger.Object, _mockPromptService.Object, _mockSystemConfigRepository.Object, mockTextAiService.Object, mockFeatureUsageUseCase.Object, mockMatchingPreflightUseCase.Object, mockMatchingSourceRepository.Object, mockCvAnalysisResponseValidator.Object);
         }
 
         [Theory]
