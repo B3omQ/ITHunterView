@@ -458,6 +458,19 @@ namespace ITHunterview.Service.UseCase
             }
         }
 
+        public async Task AcquireFeatureSubmissionLockAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default)
+        {
+            if (userId == Guid.Empty)
+                throw new ArgumentException("User id is required.", nameof(userId));
+
+            if (_context.Database.CurrentTransaction == null && !IsInMemoryProvider())
+                throw new InvalidOperationException("A transaction is required before acquiring the feature lock.");
+
+            await EnsureWalletAndLockAsync(userId, cancellationToken);
+        }
+
         public async Task CaptureFeatureReservationAsync(
             Guid reservationId,
             CancellationToken cancellationToken = default)

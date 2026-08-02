@@ -28,6 +28,14 @@ namespace ITHunterview.Service.Interface.UseCase
             Guid referenceId,
             CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Acquires the per-user wallet lock inside the caller's transaction.
+        /// Matching submission uses it before the idempotency recheck.
+        /// </summary>
+        Task AcquireFeatureSubmissionLockAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default);
+
         /// <summary>Captures a previously reserved entitlement exactly once.</summary>
         Task CaptureFeatureReservationAsync(
             Guid reservationId,

@@ -5,11 +5,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Cv;
-using ITHunterview.Service.DTOs.FeatureUsage;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ITHunterview.WebAPI.Controllers
 {
@@ -21,27 +19,21 @@ namespace ITHunterview.WebAPI.Controllers
         private readonly ICvUseCase _cvUseCase;
         private readonly ICvJobMatchingUseCase _cvJobMatchingUseCase;
         private readonly IHardcodeCvJobMatchingUseCase _hardcodeCvJobMatchingUseCase;
-        private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly ICvJdMatchingSubmissionUseCase _matchingSubmissionUseCase;
         private readonly ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService _cvTextExtractorService;
-        private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
-        private readonly IMatchingInputPreflightUseCase _matchingInputPreflightUseCase;
 
         public CvController(
             ICvUseCase cvUseCase, 
             ICvJobMatchingUseCase cvJobMatchingUseCase,
             IHardcodeCvJobMatchingUseCase hardcodeCvJobMatchingUseCase,
-            IServiceScopeFactory serviceScopeFactory,
-            ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService cvTextExtractorService,
-            ICandidateFeatureUsageUseCase featureUsageUseCase,
-            IMatchingInputPreflightUseCase matchingInputPreflightUseCase)
+            ICvJdMatchingSubmissionUseCase matchingSubmissionUseCase,
+            ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService cvTextExtractorService)
         {
             _cvUseCase = cvUseCase;
             _cvJobMatchingUseCase = cvJobMatchingUseCase;
             _hardcodeCvJobMatchingUseCase = hardcodeCvJobMatchingUseCase;
-            _serviceScopeFactory = serviceScopeFactory;
+            _matchingSubmissionUseCase = matchingSubmissionUseCase;
             _cvTextExtractorService = cvTextExtractorService;
-            _featureUsageUseCase = featureUsageUseCase;
-            _matchingInputPreflightUseCase = matchingInputPreflightUseCase;
         }
 
         [HttpPost]
@@ -123,27 +115,19 @@ namespace ITHunterview.WebAPI.Controllers
                 return Unauthorized();
             }
 
-            var prepared = await _matchingInputPreflightUseCase.PrepareAsync(userId, request, ct);
-            var operationId = Guid.NewGuid();
-            FeatureConsumptionResult? consumption = null;
+            var idempotencyKey = Request.Headers["Idempotency-Key"].ToString();
             try
             {
-                consumption = await _featureUsageUseCase.TryConsumeFeatureAsync(userId, "CvJdMatching", operationId.ToString());
-                var jobId = await _cvJobMatchingUseCase.SubmitMatchingJobAsync(userId, prepared, operationId);
+                var result = await _matchingSubmissionUseCase.SubmitAsync(userId, request, idempotencyKey, ct);
 
-                // The request is already immutable and authorized. Do not flow the
-                // HTTP cancellation token into detached background work.
-                _ = Task.Run(async () =>
-                {
-                    using var scope = _serviceScopeFactory.CreateScope();
-                    var useCase = scope.ServiceProvider.GetRequiredService<ICvJobMatchingUseCase>();
-                    await useCase.ProcessMatchingJobAsync(jobId, userId, prepared);
-                });
-
-                return Ok(new ResponseBase<Guid>(jobId, "Matching job submitted"));
+                return Accepted(new ResponseBase<Guid>(result.JobId, result.IsExisting
+                    ? "Existing matching job returned"
+                    : "Matching job accepted"));
             }
-            catch
+            catch (ArgumentException ex)
             {
+                return BadRequest(new ResponseBase<Guid>(ex.Message));
+                /*
                 if (consumption != null)
                 {
                     await _featureUsageUseCase.RefundFeatureUsageAsync(
@@ -151,7 +135,15 @@ namespace ITHunterview.WebAPI.Controllers
                         consumption,
                         "Hoàn Coin do không thể tạo yêu cầu CV-JD matching.");
                 }
-                throw;
+                throw;*/
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new ResponseBase<Guid>("Matching source not found"));
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "IDEMPOTENCY_KEY_REUSED")
+            {
+                return Conflict(new ResponseBase<Guid>(ex.Message));
             }
         }
 
