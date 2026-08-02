@@ -96,6 +96,7 @@ builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.Notific
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.NotificationProcessorBackgroundService>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.PaymentCleanupBackgroundService>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.JobAnalysisWorker>();
+builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.CvJdMatchingWorker>();
 
 
 // ─── JWT Authentication ───────────────────────────────────────────────────────

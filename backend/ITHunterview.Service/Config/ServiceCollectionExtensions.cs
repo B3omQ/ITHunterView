@@ -128,6 +128,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICvJobMatchingUseCase>(sp => sp.GetRequiredService<CvJobMatchingUseCase>());
             services.AddScoped<ICvJdOneToOneMatchingEngine>(sp => sp.GetRequiredService<CvJobMatchingUseCase>());
             services.AddScoped<ICvJdOneToOneMatchingProcessor, CvJdOneToOneMatchingProcessor>();
+            services.AddScoped<ICvJdMatchingWorkerUseCase, CvJdMatchingWorkerUseCase>();
             services.AddScoped<MatchingInputSnapshotBuilder>();
             services.AddScoped<ICvJdMatchingSubmissionUseCase, CvJdMatchingSubmissionUseCase>();
             services.AddScoped<IMatchingInputPreflightUseCase, MatchingInputPreflightUseCase>();
