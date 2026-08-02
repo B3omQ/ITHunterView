@@ -50,8 +50,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         public DbSet<ApplicationHistory> ApplicationHistory { get; set; } = null!;
         public DbSet<JobPromotions> JobPromotions { get; set; } = null!;
 
-        // AI Engine
-        public DbSet<CvJobMatchScores> CvJobMatchScores { get; set; } = null!;
+            // AI Engine
+            public DbSet<CvJobMatchScores> CvJobMatchScores { get; set; } = null!;
+            public DbSet<FeatureUsageReservations> FeatureUsageReservations { get; set; } = null!;
         public DbSet<InterviewQuestionBank> InterviewQuestionBank { get; set; } = null!;
         public DbSet<InterviewSessions> InterviewSessions { get; set; } = null!;
         public DbSet<InterviewAnswers> InterviewAnswers { get; set; } = null!;
@@ -378,6 +379,63 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             modelBuilder.Entity<OptimizeSession>(entity =>
             {
                 entity.HasKey(e => e.Id);
+            });
+
+            // Durable one-CV/one-JD AI matching jobs. Legacy and hardcode/vector
+            // rows remain valid because all new runtime fields are nullable or
+            // have safe defaults, and every queue index is filtered to MatchType=AI.
+            modelBuilder.Entity<CvJobMatchScores>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.InputSnapshotJson).HasColumnType("jsonb");
+                entity.Property(e => e.InputHash).HasMaxLength(64);
+                entity.Property(e => e.IdempotencyRequestHash).HasMaxLength(64);
+                entity.Property(e => e.AttemptCount).HasDefaultValue(0);
+                entity.Property(e => e.MaxAttempts).HasDefaultValue(3);
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.ManualRetryUsed).HasDefaultValue(false);
+
+                entity.HasIndex(e => new { e.UserId, e.IdempotencyKey })
+                    .IsUnique()
+                    .HasFilter("\"match_type\" = 'AI' AND \"idempotency_key\" IS NOT NULL");
+
+                entity.HasIndex(e => new { e.Status, e.NextAttemptAt, e.CreatedAt })
+                    .HasFilter("\"match_type\" = 'AI' AND \"status\" IN ('Pending', 'RetryScheduled')");
+
+                entity.HasIndex(e => new { e.Status, e.LeaseExpiresAt })
+                    .HasFilter("\"match_type\" = 'AI' AND \"status\" = 'Processing'");
+
+                entity.HasIndex(e => e.RetryOfJobId)
+                    .IsUnique()
+                    .HasFilter("\"retry_of_job_id\" IS NOT NULL");
+
+                entity.HasOne<FeatureUsageReservations>()
+                    .WithMany()
+                    .HasForeignKey(e => e.BillingReservationId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne<CvJobMatchScores>()
+                    .WithMany()
+                    .HasForeignKey(e => e.RetryOfJobId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<FeatureUsageReservations>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.ReferenceId).IsUnique();
+                entity.HasIndex(e => new { e.UserId, e.Status, e.FeatureKey });
+                entity.Property(e => e.Status).HasMaxLength(32);
+                entity.Property(e => e.Source).HasMaxLength(32);
+                entity.Property(e => e.FeatureKey).HasMaxLength(128);
+            });
+
+            modelBuilder.Entity<CreditTransactions>(entity =>
+            {
+                entity.HasIndex(e => new { e.TransactionType, e.ReferenceId })
+                    .IsUnique()
+                    .HasFilter($"\"transaction_type\" = {(int)CreditTransactionType.REFUND} AND \"reference_id\" IS NOT NULL");
             });
 
             // UserWallets
