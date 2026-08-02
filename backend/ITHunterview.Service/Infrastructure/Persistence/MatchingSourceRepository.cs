@@ -40,9 +40,31 @@ public sealed class MatchingSourceRepository : IMatchingSourceRepository
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 job => job.Id == jobId
+                    && job.DeletedAt == null
                     && job.Status == JobStatus.PUBLISHED
                     && !job.IsBanned
                     && (!job.ExpiresAt.HasValue || job.ExpiresAt.Value >= utcNow),
+                ct);
+    }
+
+    public Task<JobPostings?> GetAccessibleJobAsync(
+        Guid jobId,
+        Guid candidateId,
+        DateTime utcNow,
+        CancellationToken ct = default)
+    {
+        return _context.JobPostings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                job => job.Id == jobId
+                    && job.DeletedAt == null
+                    && (
+                        (job.Status == JobStatus.PUBLISHED
+                         && !job.IsBanned
+                         && (!job.ExpiresAt.HasValue || job.ExpiresAt.Value >= utcNow))
+                        || _context.UserSavedJobs.Any(saved =>
+                            saved.UserId == candidateId && saved.JobId == jobId)
+                    ),
                 ct);
     }
 }
