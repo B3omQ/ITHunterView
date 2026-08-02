@@ -25,7 +25,7 @@ using ITHunterview.Service.Service.Matching;
 namespace ITHunterview.Service.UseCase
 {
 
-    public class CvJobMatchingUseCase : ICvJobMatchingUseCase
+    public class CvJobMatchingUseCase : ICvJobMatchingUseCase, ICvJdOneToOneMatchingEngine
     {
         private readonly ITHunterviewContext _context;
         private readonly IAiEmbeddingService _aiService;
@@ -511,24 +511,60 @@ namespace ITHunterview.Service.UseCase
             return matchScore.Id;
         }
 
-        private async Task ProcessMatchingJobCoreAsync(Guid jobId, Guid userId, MatchingRequestDto request)
+        public async Task<CvJdMatchingExecutionResult> ExecuteAsync(
+            Guid matchId,
+            MatchingInputSnapshotV1 snapshot,
+            CancellationToken cancellationToken = default)
         {
-            var matchRecord = await _context.CvJobMatchScores.FindAsync(jobId);
-            if (matchRecord == null) return;
+            var job = await _context.CvJobMatchScores
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == matchId && x.MatchType == "AI", cancellationToken);
+            if (job is null)
+                throw new KeyNotFoundException("MATCHING_JOB_NOT_FOUND");
+
+            return await ProcessMatchingJobCoreAsync(
+                matchId,
+                job.UserId,
+                request: null,
+                snapshot,
+                manageLifecycle: false,
+                cancellationToken);
+        }
+
+        private async Task<CvJdMatchingExecutionResult> ProcessMatchingJobCoreAsync(
+            Guid jobId,
+            Guid userId,
+            MatchingRequestDto? request,
+            MatchingInputSnapshotV1? snapshot = null,
+            bool manageLifecycle = true,
+            CancellationToken cancellationToken = default)
+        {
+            var matchRecord = await _context.CvJobMatchScores
+                .FirstOrDefaultAsync(x => x.Id == jobId && x.MatchType == "AI", cancellationToken);
+            if (matchRecord == null)
+                throw new KeyNotFoundException("MATCHING_JOB_NOT_FOUND");
 
             try
             {
-                matchRecord.Status = "Processing";
-                matchRecord.UpdatedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
+                if (manageLifecycle)
+                {
+                    matchRecord.Status = "Processing";
+                    matchRecord.UpdatedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync(cancellationToken);
+                }
 
                 Cvs? savedCv = null;
                 bool cvNeedsAiParse = false;      // Cần gọi AI parse ParsedData (saved CV hoặc Temp raw text)
                 bool isCvTextJson = false;
 
-                string cvText = request.CvText ?? string.Empty;
+                string cvText = snapshot?.Cv.AnalysisJson ?? snapshot?.Cv.OriginalText ?? request?.CvText ?? string.Empty;
                 
-                if (!string.IsNullOrWhiteSpace(cvText))
+                if (snapshot != null)
+                {
+                    cvNeedsAiParse = string.IsNullOrWhiteSpace(snapshot.Cv.AnalysisJson);
+                    isCvTextJson = !cvNeedsAiParse;
+                }
+                else if (!string.IsNullOrWhiteSpace(cvText))
                 {
                     // A client can paste JSON-looking CV text. It is still raw CV
                     // content and must pass through the trusted parser.
@@ -556,7 +592,12 @@ namespace ITHunterview.Service.UseCase
                 Domain.Entities.JobPostings? savedJob = null;
                 bool jdNeedsAiParse = false; // Cần gọi LLM Stage 1 cho JD
 
-                if (request.JobId.HasValue)
+                if (snapshot != null)
+                {
+                    jdRequirementsJson = snapshot.Jd.AnalysisJson ?? string.Empty;
+                    jdNeedsAiParse = string.IsNullOrWhiteSpace(jdRequirementsJson);
+                }
+                else if (request!.JobId.HasValue)
                 {
                     savedJob = await _matchingSourceRepository.GetAccessiblePublishedJobAsync(request.JobId.Value, DateTime.UtcNow);
                     if (savedJob is null)
@@ -571,7 +612,7 @@ namespace ITHunterview.Service.UseCase
                     }
                     else jdNeedsAiParse = true;
                 }
-                else if (!string.IsNullOrWhiteSpace(request.RawJdText))
+                else if (!string.IsNullOrWhiteSpace(request!.RawJdText))
                 {
                     jdNeedsAiParse = true;
                 }
@@ -587,7 +628,7 @@ namespace ITHunterview.Service.UseCase
                     if (savedCv != null)
                         parsedData = await _cvTextExtractorService.ExtractParsedDataFromUrlAsync(savedCv.FileUrl, savedCv.RawText);
                     else
-                        parsedData = await _cvTextExtractorService.ExtractParsedDataFromRawTextAsync(cvText, "pasted_text", request.CvFileName);
+                        parsedData = await _cvTextExtractorService.ExtractParsedDataFromRawTextAsync(cvText, "pasted_text", request?.CvFileName);
                 }
 
                 // --- Xử lý kết quả CV ---
@@ -629,7 +670,10 @@ namespace ITHunterview.Service.UseCase
                 // --- Xử lý kết quả JD Stage 1 ---
                 if (jdNeedsAiParse)
                 {
-                    jdRequirementsJson = await ExtractJdWithV2Async(savedJob, request.RawJdText, request.JdTitle);
+                    jdRequirementsJson = await ExtractJdWithV2Async(
+                        savedJob,
+                        snapshot?.Jd.OriginalText ?? request?.RawJdText,
+                        snapshot?.Jd.Title ?? request?.JdTitle);
                 }
 
                 if (string.IsNullOrWhiteSpace(jdRequirementsJson))
@@ -773,28 +817,47 @@ namespace ITHunterview.Service.UseCase
                         ? _jdFitScoreCalculator.Calculate(stageTwoProjection!, _jdStageTwoResponseValidator.Validate(jsonDoc, stageTwoProjection!))
                         : ToJdFitScoreCalculation(CalculateFinalMatchResult(requirementsList, jsonDoc));
                     
+                    if (!manageLifecycle)
+                    {
+                        return new CvJdMatchingExecutionResult(
+                            finalResult.FinalScore,
+                            finalResult.JsonString,
+                            matchRecord.SfiaExtractResult);
+                    }
+
                     matchRecord.Status = "Completed";
                     matchRecord.MatchScore = finalResult.FinalScore;
                     matchRecord.MatchDetails = finalResult.JsonString;
                     matchRecord.UpdatedAt = DateTime.UtcNow;
-                    await _context.SaveChangesAsync();
+                    await _context.SaveChangesAsync(cancellationToken);
                 }
                 catch (Exception ex)
                 {
+                    if (!manageLifecycle)
+                        throw new InvalidOperationException("MATCHING_STAGE2_OUTPUT_INVALID", ex);
+
                     _logger.LogError(ex, "JSON Parse Error in Stage 2 Output.");
                     matchRecord.Status = "Failed";
                     matchRecord.ErrorMessage = "LLM returned invalid JSON format. Backend failed to parse.";
                     matchRecord.MatchDetails = llmResponseText;
                     matchRecord.UpdatedAt = DateTime.UtcNow;
-                    await _context.SaveChangesAsync();
+                    await _context.SaveChangesAsync(cancellationToken);
                     await _featureUsageUseCase.RefundFeatureUsageByReferenceAsync(
                         userId,
                         matchRecord.Id,
                         "Hoàn Coin do CV-JD matching không thể xử lý kết quả AI.");
                 }
+
+                return new CvJdMatchingExecutionResult(
+                    matchRecord.MatchScore ?? 0m,
+                    matchRecord.MatchDetails,
+                    matchRecord.SfiaExtractResult);
             }
             catch (Exception ex)
             {
+                if (!manageLifecycle)
+                    throw;
+
                 matchRecord.Status = "Failed";
                 matchRecord.ErrorMessage = ex.Message;
                 matchRecord.UpdatedAt = DateTime.UtcNow;
@@ -804,6 +867,11 @@ namespace ITHunterview.Service.UseCase
                     matchRecord.Id,
                     "Hoàn Coin do CV-JD matching thất bại.");
             }
+
+            return new CvJdMatchingExecutionResult(
+                matchRecord.MatchScore ?? 0m,
+                matchRecord.MatchDetails,
+                matchRecord.SfiaExtractResult);
         }
 
         public async Task ProcessMatchingJobAsync(Guid jobId, Guid userId, PreparedMatchingRequest request)
