@@ -62,18 +62,41 @@ public class CvControllerMatchingTests
 
         authorization!.Policy.Should().Be("CandidateOnly");
         ((IRequestSizeLimitMetadata)requestSize!).MaxRequestBodySize.Should().Be(524288);
+
+        var resultMethod = typeof(CvController).GetMethod(nameof(CvController.GetMatchResult), BindingFlags.Instance | BindingFlags.Public)!;
+        resultMethod.GetCustomAttribute<AuthorizeAttribute>()!.Policy.Should().Be("CandidateOnly");
+    }
+
+    [Fact]
+    public async Task RetryMatch_SubmitsWithIdempotencyKeyAndReturnsAccepted()
+    {
+        var userId = Guid.NewGuid();
+        var failedJobId = Guid.NewGuid();
+        var retryId = Guid.NewGuid();
+        var retry = new Mock<ICvJdMatchingRetryUseCase>();
+        retry.Setup(x => x.RetryAsync(userId, failedJobId, "retry-123", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MatchingSubmissionResult(retryId, false));
+        var controller = CreateController(userId, Mock.Of<ICvJobMatchingUseCase>(), Mock.Of<ICvJdMatchingSubmissionUseCase>(), retry.Object);
+        controller.HttpContext.Request.Headers["Idempotency-Key"] = "retry-123";
+
+        var result = await controller.RetryMatch(failedJobId, CancellationToken.None);
+
+        Assert.IsType<AcceptedResult>(result.Result);
+        retry.Verify(x => x.RetryAsync(userId, failedJobId, "retry-123", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     private static CvController CreateController(
         Guid userId,
         ICvJobMatchingUseCase matching,
-        ICvJdMatchingSubmissionUseCase submission)
+        ICvJdMatchingSubmissionUseCase submission,
+        ICvJdMatchingRetryUseCase? retry = null)
     {
         return new CvController(
             Mock.Of<ICvUseCase>(),
             matching,
             Mock.Of<IHardcodeCvJobMatchingUseCase>(),
             submission,
+            retry ?? Mock.Of<ICvJdMatchingRetryUseCase>(),
             Mock.Of<ICvTextExtractorService>())
         {
             ControllerContext = new ControllerContext

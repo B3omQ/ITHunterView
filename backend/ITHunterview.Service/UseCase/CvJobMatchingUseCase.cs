@@ -807,7 +807,7 @@ namespace ITHunterview.Service.UseCase
                 }
 
                 // 4. Call LLM (Stage 2)
-                string llmResponseText = await CallLlmBypassAsync(prompt);
+                string llmResponseText = await CallLlmBypassAsync(prompt, cancellationToken);
 
                 try 
                 {
@@ -836,10 +836,10 @@ namespace ITHunterview.Service.UseCase
                     if (!manageLifecycle)
                         throw new InvalidOperationException("MATCHING_STAGE2_OUTPUT_INVALID", ex);
 
-                    _logger.LogError(ex, "JSON Parse Error in Stage 2 Output.");
+                    _logger.LogError("Stage 2 output rejected for match {MatchId}; code={ErrorCode}.", matchRecord.Id, "AI_OUTPUT_INVALID");
                     matchRecord.Status = "Failed";
-                    matchRecord.ErrorMessage = "LLM returned invalid JSON format. Backend failed to parse.";
-                    matchRecord.MatchDetails = llmResponseText;
+                    matchRecord.ErrorMessage = "AI_OUTPUT_INVALID";
+                    matchRecord.MatchDetails = string.Empty;
                     matchRecord.UpdatedAt = DateTime.UtcNow;
                     await _context.SaveChangesAsync(cancellationToken);
                     await _featureUsageUseCase.RefundFeatureUsageByReferenceAsync(
@@ -858,8 +858,10 @@ namespace ITHunterview.Service.UseCase
                 if (!manageLifecycle)
                     throw;
 
+                var failureCode = MatchingFailureClassifier.Classify(ex).ErrorCode;
                 matchRecord.Status = "Failed";
-                matchRecord.ErrorMessage = ex.Message;
+                matchRecord.ErrorMessage = failureCode;
+                matchRecord.MatchDetails = string.Empty;
                 matchRecord.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
                 await _featureUsageUseCase.RefundFeatureUsageByReferenceAsync(
@@ -955,6 +957,9 @@ namespace ITHunterview.Service.UseCase
 
         private FinalMatchResult CalculateFinalMatchResult(List<ScoringRequirement> requirements, JsonDocument stage2Response)
         {
+            LegacyJdStageTwoResponseValidator.Validate(
+                stage2Response,
+                requirements.Select(requirement => requirement.ReqId).ToArray());
             var root = stage2Response.RootElement;
             
             // 1. Process scores
@@ -1132,7 +1137,7 @@ namespace ITHunterview.Service.UseCase
 
 
 
-        private async Task<string> CallLlmBypassAsync(string prompt)
+        private async Task<string> CallLlmBypassAsync(string prompt, CancellationToken cancellationToken)
         {
             var provider = _configuration["AiSettings:DefaultProvider"] ?? "Gemini";
             var modelName = _configuration[$"AiSettings:Providers:{provider}:Model"] ?? "gemini-1.5-flash-latest";
@@ -1181,8 +1186,18 @@ namespace ITHunterview.Service.UseCase
                     string responseContent = "";
                     try
                     {
-                        var response = await client.PostAsJsonAsync(url, payload);
-                        responseContent = await response.Content.ReadAsStringAsync();
+                        using var request = new HttpRequestMessage(HttpMethod.Post, url)
+                        {
+                            Content = JsonContent.Create(payload)
+                        };
+                        using var response = await client.SendAsync(
+                            request,
+                            HttpCompletionOption.ResponseHeadersRead,
+                            cancellationToken);
+                        responseContent = await BoundedHttpContentReader.ReadAsStringAsync(
+                            response.Content,
+                            BoundedHttpContentReader.DefaultMaxBytes,
+                            cancellationToken);
                         
                         if (response.IsSuccessStatusCode)
                         {
@@ -1210,8 +1225,6 @@ namespace ITHunterview.Service.UseCase
                                 {
                                     var text = textElement.GetString() ?? string.Empty;
                                     
-                                    _logger.LogInformation("Gemini raw text (first 500 chars): {Text}", text.Length > 500 ? text.Substring(0, 500) : text);
-
                                     text = ExtractJsonFromText(text);
 
                                     try 
@@ -1219,10 +1232,11 @@ namespace ITHunterview.Service.UseCase
                                         using (var testParse = JsonDocument.Parse(text)) { } 
                                         return text; 
                                     }
-                                    catch (JsonException ex)
+                                    catch (JsonException)
                                     {
-                                        // Attempt to auto-repair truncated JSON
-                                        string repaired = RepairTruncatedJson(text);
+                                        // Never repair or fabricate truncated JSON; retry with a fresh provider response.
+                                        #if false
+                                        var repaired = RejectTruncatedJson(text);
                                         try 
                                         {
                                             using (var testParse = JsonDocument.Parse(repaired)) { }
@@ -1240,6 +1254,8 @@ namespace ITHunterview.Service.UseCase
                                         
                                         _logger.LogWarning("Gemini sinh JSON lỗi ở lần thử thứ {Attempt}. Sẽ retry. Text 500 chars: {Text}", attempt, text.Length > 500 ? text.Substring(0, 500) : text);
                                     }
+                                #endif
+                                    }
                                 }
                                 else
                                 {
@@ -1253,24 +1269,28 @@ namespace ITHunterview.Service.UseCase
                         }
                         else
                         {
-                            _logger.LogWarning("Gemini API Error Status: {StatusCode}, Content: {Content}", response.StatusCode, responseContent);
+                            _logger.LogWarning("Gemini API returned HTTP {StatusCode} on attempt {Attempt}.", response.StatusCode, attempt);
                         }
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
                     }
                     catch (Exception ex)
                     {
                         _logger.LogWarning(ex, "Exception during Gemini API call on attempt {Attempt}", attempt);
                         if (attempt == maxRetries)
                         {
-                            throw new Exception($"Gemini API Call failed after {maxRetries} attempts. Last error: {ex.Message}");
+                            throw new InvalidOperationException("AI_PROVIDER_REQUEST_FAILED", ex);
                         }
                     }
 
                     if (attempt == maxRetries)
                     {
-                        throw new Exception($"Gemini API Error after {maxRetries} attempts. Last response: {responseContent}");
+                        throw new InvalidOperationException("AI_PROVIDER_HTTP_ERROR");
                     }
                     
-                    await Task.Delay(2000);
+                    await Task.Delay(2000, cancellationToken);
                 }
             }
             else if (modelName.Contains("claude"))
@@ -1290,11 +1310,21 @@ namespace ITHunterview.Service.UseCase
                     }
                 };
 
-                var response = await client.PostAsJsonAsync(url, payload);
-                var responseContent = await response.Content.ReadAsStringAsync();
+                using var request = new HttpRequestMessage(HttpMethod.Post, url)
+                {
+                    Content = JsonContent.Create(payload)
+                };
+                using var response = await client.SendAsync(
+                    request,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    cancellationToken);
+                var responseContent = await BoundedHttpContentReader.ReadAsStringAsync(
+                    response.Content,
+                    BoundedHttpContentReader.DefaultMaxBytes,
+                    cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
-                    throw new Exception($"Claude API Error: {responseContent}");
+                    throw new InvalidOperationException("AI_PROVIDER_HTTP_ERROR");
 
                 var jsonDoc = JsonDocument.Parse(responseContent);
                 var text = jsonDoc.RootElement.GetProperty("content")[0].GetProperty("text").GetString();
@@ -1344,72 +1374,7 @@ namespace ITHunterview.Service.UseCase
             }
             
             // Nếu không có } ở cuối (bị truncate), lấy từ { đến cuối
-            if (startIndex >= 0)
-            {
-                return text.Substring(startIndex).Trim();
-            }
-
             return text.Trim();
-        }
-
-        private string RepairTruncatedJson(string json)
-        {
-            if (string.IsNullOrWhiteSpace(json)) return "{}";
-            json = json.Trim();
-
-            // 1. Remove trailing comma or unfinished key/value
-            if (json.EndsWith(",")) 
-            {
-                json = json.Substring(0, json.Length - 1);
-            }
-            else if (!json.EndsWith("}") && !json.EndsWith("]") && !json.EndsWith("\""))
-            {
-                // Unfinished token like "reasoning": "some te...
-                int lastQuote = json.LastIndexOf('"');
-                if (lastQuote > 0 && lastQuote == json.Length - 1)
-                {
-                    // Ends with quote, ok
-                }
-                else if (lastQuote > 0)
-                {
-                    // Append quote to close string
-                    json += "\"";
-                }
-            }
-
-            // 2. Count braces and brackets to balance them
-            int openBraces = 0;
-            int openBrackets = 0;
-            bool inString = false;
-            
-            for (int i = 0; i < json.Length; i++)
-            {
-                if (json[i] == '"' && (i == 0 || json[i - 1] != '\\'))
-                {
-                    inString = !inString;
-                }
-
-                if (!inString)
-                {
-                    if (json[i] == '{') openBraces++;
-                    if (json[i] == '}') openBraces--;
-                    if (json[i] == '[') openBrackets++;
-                    if (json[i] == ']') openBrackets--;
-                }
-            }
-
-            // Close open string
-            if (inString) json += "\"";
-
-            // If we ended up with trailing comma after closing string (unlikely but safe check)
-            if (json.EndsWith(",")) json = json.Substring(0, json.Length - 1);
-            else if (json.EndsWith(":")) json += "null";
-
-            // Append closing brackets and braces
-            for (int i = 0; i < openBrackets; i++) json += "]";
-            for (int i = 0; i < openBraces; i++) json += "}";
-
-            return json;
         }
 
         public async Task<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>> GetMatchHistoryAsync(Guid userId, int page, int pageSize, Guid? cvId = null)

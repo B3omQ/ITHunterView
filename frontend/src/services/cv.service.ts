@@ -15,8 +15,11 @@ export const cvService = {
   setPrimaryCv: (id: string) =>
     api.put<ApiResponse<string>>(`/api/cvs/${id}/primary`).then((r) => r.data),
 
-  matchCvJd: (data: import('@/types/cv.types').MatchJdRequest) =>
-    api.post<ApiResponse<string>>('/api/cvs/match-jd', data, { timeout: 15000 }).then((r) => r.data),
+  matchCvJd: (data: import('@/types/cv.types').MatchJdRequest, idempotencyKey?: string) =>
+    api.post<ApiResponse<string>>('/api/cvs/match-jd', data, {
+      timeout: 15000,
+      headers: { 'Idempotency-Key': idempotencyKey ?? crypto.randomUUID() },
+    }).then((r) => r.data),
 
   matchJobs: (id: string) =>
     api.post<ApiResponse<string>>(`/api/cvs/${id}/match-jobs`, null, { timeout: 15000 }).then((r) => r.data),
@@ -26,6 +29,12 @@ export const cvService = {
 
   getMatchResult: (jobId: string) =>
     api.get<ApiResponse<import('@/types/cv.types').MatchingResultDto>>(`/api/cvs/match-results/${jobId}`).then((r) => r.data),
+
+  retryMatch: (jobId: string, idempotencyKey?: string) =>
+    api.post<ApiResponse<string>>(`/api/cvs/match-results/${jobId}/retry`, null, {
+      timeout: 15000,
+      headers: { 'Idempotency-Key': idempotencyKey ?? crypto.randomUUID() },
+    }).then((r) => r.data),
 
   getMatchHistory: (page: number = 1, pageSize: number = 10, cvId?: string) =>
     api.get<ApiResponse<import('@/types/cv.types').PagedResult<import('@/types/cv.types').MatchHistoryDto>>>(`/api/cvs/match-history?page=${page}&pageSize=${pageSize}${cvId ? `&cvId=${cvId}` : ''}`).then((r) => r.data),

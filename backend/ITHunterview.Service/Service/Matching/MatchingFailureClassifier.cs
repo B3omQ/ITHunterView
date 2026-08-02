@@ -21,6 +21,12 @@ public static class MatchingFailureClassifier
             || exception is System.Text.Json.JsonException)
             return new MatchingFailureClassification("AI_OUTPUT_INVALID", true);
 
+        if (message is "AI_PROVIDER_TIMEOUT"
+            or "AI_PROVIDER_REQUEST_FAILED"
+            or "AI_PROVIDER_HTTP_ERROR"
+            or "AI_PROVIDER_INVALID_JSON")
+            return new MatchingFailureClassification(message, true);
+
         if (exception is TimeoutException
             || exception is OperationCanceledException
             || exception is HttpRequestException)

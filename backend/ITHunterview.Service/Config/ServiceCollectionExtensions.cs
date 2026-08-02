@@ -131,6 +131,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICvJdMatchingWorkerUseCase, CvJdMatchingWorkerUseCase>();
             services.AddScoped<MatchingInputSnapshotBuilder>();
             services.AddScoped<ICvJdMatchingSubmissionUseCase, CvJdMatchingSubmissionUseCase>();
+            services.AddScoped<ICvJdMatchingRetryUseCase, CvJdMatchingRetryUseCase>();
             services.AddScoped<IMatchingInputPreflightUseCase, MatchingInputPreflightUseCase>();
             services.AddScoped<IHardcodeCvJobMatchingUseCase, HardcodeCvJobMatchingUseCase>();
             services.AddScoped<IMajorUseCase, MajorUseCase>();

@@ -3,7 +3,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useUploadFile } from '@/hooks/useUpload';
 import { useGetMyCvs } from '@/hooks/useCv';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
-import { useMatchCvJd, useGetMatchResult } from '@/hooks/useCvMatch';
+import { useMatchCvJd, useGetMatchResult, useRetryMatch } from '@/hooks/useCvMatch';
 import { useWalletBalance } from '@/hooks/useWallet';
 import { usePublicCoinConfig } from '@/hooks/useCoin';
 import type { MatchJdRequest, MatchingOutput } from '@/types/cv.types';
@@ -57,11 +57,13 @@ export function useCvMatchingForm() {
   const { data: myCvsData, isLoading: isLoadingCvs } = useGetMyCvs();
   const { data: savedJobsData, isLoading: isLoadingJobs } = useSavedJobs(1, 100);
   const matchMutation = useMatchCvJd();
+  const retryMutation = useRetryMatch();
 
   const [pollingJobId, setPollingJobId] = useState<string | null>(null);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [matchOutput, setMatchOutput] = useState<MatchingOutput | null>(null);
   const [matchedCvId, setMatchedCvId] = useState<string | null>(null);
+  const [retryJobId, setRetryJobId] = useState<string | null>(null);
 
   const pollQuery = useGetMatchResult(pollingJobId);
 
@@ -98,6 +100,7 @@ export function useCvMatchingForm() {
       const { status, matchDetails, errorMessage } = pollQuery.data.data;
       if (status === 'Completed' && matchDetails) {
         setPollingJobId(null);
+        setRetryJobId(null);
         try {
           const parsed = JSON.parse(matchDetails) as MatchingOutput;
           setMatchOutput(parsed);
@@ -107,17 +110,18 @@ export function useCvMatchingForm() {
           setTimeout(() => setStep('result'), 600);
         } catch (err) {
           console.error("Parse error details:", err);
-          console.error("Raw matchDetails string:", matchDetails);
           toast.error("Failed to parse matching result.");
+          setRetryJobId(pollingJobId);
           setStep('select');
         }
       } else if (status === 'Failed') {
         setPollingJobId(null);
+        setRetryJobId(pollingJobId);
         toast.error(errorMessage || "Matching failed.");
         setStep('select');
       }
     }
-  }, [pollQuery.data?.data]);
+  }, [pollQuery.data?.data, pollingJobId]);
 
   // Giả lập Loading Progress
   useEffect(() => {
@@ -297,6 +301,25 @@ export function useCvMatchingForm() {
     return !hasCV || !hasJD || isExtracting || !isCvReady || !isJdReady;
   };
 
+  const handleRetry = async () => {
+    if (!retryJobId) return;
+    setStep('loading');
+    try {
+      const res = await retryMutation.mutateAsync(retryJobId);
+      if (res.success && res.data) {
+        setRetryJobId(null);
+        setPollingJobId(res.data);
+        setCurrentJobId(res.data);
+      } else {
+        toast.error(res.message || 'Retry could not be accepted.');
+        setStep('select');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Retry could not be accepted.');
+      setStep('select');
+    }
+  };
+
   return {
     state: {
       step,
@@ -313,6 +336,8 @@ export function useCvMatchingForm() {
       loadingStep,
       matchOutput,
       matchedCvId,
+      retryJobId,
+      isRetrying: retryMutation.isPending,
       isUploading: isExtracting,
       isSubmitDisabled: isSubmitDisabled(),
       balance,
@@ -344,7 +369,8 @@ export function useCvMatchingForm() {
       handleDragOver,
       handleDrop,
       handleRemoveFile,
-      handleStartAnalysis
+      handleStartAnalysis,
+      handleRetry
     }
   };
 }

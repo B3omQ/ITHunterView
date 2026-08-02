@@ -20,6 +20,7 @@ namespace ITHunterview.WebAPI.Controllers
         private readonly ICvJobMatchingUseCase _cvJobMatchingUseCase;
         private readonly IHardcodeCvJobMatchingUseCase _hardcodeCvJobMatchingUseCase;
         private readonly ICvJdMatchingSubmissionUseCase _matchingSubmissionUseCase;
+        private readonly ICvJdMatchingRetryUseCase _matchingRetryUseCase;
         private readonly ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService _cvTextExtractorService;
 
         public CvController(
@@ -27,12 +28,14 @@ namespace ITHunterview.WebAPI.Controllers
             ICvJobMatchingUseCase cvJobMatchingUseCase,
             IHardcodeCvJobMatchingUseCase hardcodeCvJobMatchingUseCase,
             ICvJdMatchingSubmissionUseCase matchingSubmissionUseCase,
+            ICvJdMatchingRetryUseCase matchingRetryUseCase,
             ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService cvTextExtractorService)
         {
             _cvUseCase = cvUseCase;
             _cvJobMatchingUseCase = cvJobMatchingUseCase;
             _hardcodeCvJobMatchingUseCase = hardcodeCvJobMatchingUseCase;
             _matchingSubmissionUseCase = matchingSubmissionUseCase;
+            _matchingRetryUseCase = matchingRetryUseCase;
             _cvTextExtractorService = cvTextExtractorService;
         }
 
@@ -127,15 +130,6 @@ namespace ITHunterview.WebAPI.Controllers
             catch (ArgumentException ex)
             {
                 return BadRequest(new ResponseBase<Guid>(ex.Message));
-                /*
-                if (consumption != null)
-                {
-                    await _featureUsageUseCase.RefundFeatureUsageAsync(
-                        userId,
-                        consumption,
-                        "Hoàn Coin do không thể tạo yêu cầu CV-JD matching.");
-                }
-                throw;*/
             }
             catch (KeyNotFoundException)
             {
@@ -167,6 +161,7 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpGet("match-results/{jobId:guid}")]
+        [Authorize(Policy = "CandidateOnly")]
         public async Task<ActionResult<ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.MatchingResultDto>>> GetMatchResult(Guid jobId)
         {
             var userIdStr = User.FindFirstValue("userId");
@@ -182,6 +177,37 @@ namespace ITHunterview.WebAPI.Controllers
             }
 
             return Ok(new ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.MatchingResultDto>(result, "Result retrieved"));
+        }
+
+        [HttpPost("match-results/{jobId:guid}/retry")]
+        [Authorize(Policy = "CandidateOnly")]
+        public async Task<ActionResult<ResponseBase<Guid>>> RetryMatch(Guid jobId, CancellationToken ct)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+                return Unauthorized();
+
+            var idempotencyKey = Request.Headers["Idempotency-Key"].ToString();
+            try
+            {
+                var result = await _matchingRetryUseCase.RetryAsync(userId, jobId, idempotencyKey, ct);
+                return Accepted(new ResponseBase<Guid>(result.JobId, result.IsExisting
+                    ? "Existing retry job returned"
+                    : "Matching retry accepted"));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ResponseBase<Guid>(ex.Message));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new ResponseBase<Guid>("Failed matching job not found"));
+            }
+            catch (InvalidOperationException ex) when (
+                ex.Message is "IDEMPOTENCY_KEY_REUSED" or "MANUAL_RETRY_ALREADY_USED" or "MATCHING_RETRY_NOT_ALLOWED" or "MATCHING_SNAPSHOT_UNAVAILABLE")
+            {
+                return Conflict(new ResponseBase<Guid>(ex.Message));
+            }
         }
 
         [HttpPost("{id:guid}/match-jobs")]

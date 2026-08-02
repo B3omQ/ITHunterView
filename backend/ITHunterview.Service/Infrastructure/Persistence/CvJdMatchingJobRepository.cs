@@ -45,6 +45,26 @@ public sealed class CvJdMatchingJobRepository : ICvJdMatchingJobRepository
         _context.CvJobMatchScores.Add(job);
     }
 
+    public async Task<CvJobMatchScores?> GetFailedJobForRetryForUpdateAsync(
+        Guid userId,
+        Guid jobId,
+        CancellationToken cancellationToken = default)
+    {
+        if (IsInMemoryProvider())
+        {
+            return await _context.CvJobMatchScores
+                .FirstOrDefaultAsync(x => x.Id == jobId
+                                          && x.UserId == userId
+                                          && x.MatchType == "AI"
+                                          && x.Status == "Failed",
+                    cancellationToken);
+        }
+
+        return await _context.CvJobMatchScores
+            .FromSqlInterpolated($"SELECT * FROM cv_job_match_scores WHERE id = {jobId} AND user_id = {userId} AND match_type = 'AI' AND status = 'Failed' FOR UPDATE")
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<ClaimedMatchingJob>> ClaimRunnableJobsAsync(
         int limit,
         string workerId,

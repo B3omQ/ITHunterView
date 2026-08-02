@@ -9,6 +9,16 @@ export const useMatchCvJd = () => {
   });
 };
 
+export const useRetryMatch = () => {
+  const queryClient = useQueryClient();
+  return useMutation<ApiResponse<string>, Error, string>({
+    mutationFn: (jobId: string) => cvService.retryMatch(jobId),
+    onSuccess: (_response, jobId) => {
+      queryClient.invalidateQueries({ queryKey: ['match-result', jobId] });
+    },
+  });
+};
+
 export const useGetMatchResult = (jobId: string | null) => {
   return useQuery<ApiResponse<MatchingResultDto>, Error>({
     queryKey: ['match-result', jobId],
@@ -17,7 +27,7 @@ export const useGetMatchResult = (jobId: string | null) => {
     refetchInterval: (query) => {
       // Poll every 2 seconds if status is still processing or pending
       const status = query.state.data?.data?.status;
-      if (status === 'Pending' || status === 'Processing') return 2000;
+      if (status === 'Pending' || status === 'Processing' || status === 'RetryScheduled') return 2000;
       return false;
     },
   });

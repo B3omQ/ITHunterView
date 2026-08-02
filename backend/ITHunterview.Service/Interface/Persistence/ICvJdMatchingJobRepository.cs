@@ -14,6 +14,11 @@ public interface ICvJdMatchingJobRepository
         string idempotencyKey,
         CancellationToken cancellationToken = default);
 
+    Task<CvJobMatchScores?> GetFailedJobForRetryForUpdateAsync(
+        Guid userId,
+        Guid jobId,
+        CancellationToken cancellationToken = default);
+
     void AddPending(CvJobMatchScores job);
 
     Task<IReadOnlyList<ClaimedMatchingJob>> ClaimRunnableJobsAsync(

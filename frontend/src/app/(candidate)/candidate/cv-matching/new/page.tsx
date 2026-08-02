@@ -131,6 +131,19 @@ function CvMatchingContent() {
 
           {/* Action Button */}
           <div className="flex justify-center pt-4">
+            {state.retryJobId && (
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={handlers.handleRetry}
+                disabled={state.isRetrying}
+                className="mr-3 gap-2 font-semibold"
+              >
+                {state.isRetrying ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+                Retry failed match
+              </Button>
+            )}
             <Button 
               size="lg" 
               onClick={handlers.handleStartAnalysis} 
