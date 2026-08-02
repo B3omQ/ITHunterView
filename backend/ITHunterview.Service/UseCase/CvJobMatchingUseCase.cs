@@ -1235,26 +1235,14 @@ namespace ITHunterview.Service.UseCase
                                     catch (JsonException)
                                     {
                                         // Never repair or fabricate truncated JSON; retry with a fresh provider response.
-                                        #if false
-                                        var repaired = RejectTruncatedJson(text);
-                                        try 
+                                        _logger.LogWarning(
+                                            "Gemini returned invalid JSON on attempt {Attempt}; retrying. ResponseLength={ResponseLength}.",
+                                            attempt,
+                                            text.Length);
+                                        if (attempt == maxRetries)
                                         {
-                                            using (var testParse = JsonDocument.Parse(repaired)) { }
-                                            _logger.LogWarning("Auto-repaired truncated JSON from Gemini. Original length: {OriginalLength}, Repaired length: {RepairedLength}", text.Length, repaired.Length);
-                                            return repaired;
+                                            throw new InvalidOperationException("AI_PROVIDER_INVALID_JSON");
                                         }
-                                        catch
-                                        {
-                                            // Fallback to retry if repair also fails
-                                            if (attempt == maxRetries)
-                                            {
-                                                throw new Exception($"Gemini trả về JSON lỗi sau {maxRetries} lần thử. Lỗi gốc: {ex.Message}");
-                                            }
-                                        }
-                                        
-                                        _logger.LogWarning("Gemini sinh JSON lỗi ở lần thử thứ {Attempt}. Sẽ retry. Text 500 chars: {Text}", attempt, text.Length > 500 ? text.Substring(0, 500) : text);
-                                    }
-                                #endif
                                     }
                                 }
                                 else
