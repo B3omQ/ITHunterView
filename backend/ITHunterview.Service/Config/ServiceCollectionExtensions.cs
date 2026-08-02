@@ -34,6 +34,7 @@ namespace ITHunterview.Service.Config
 
             services.AddScoped<ICvRepository, CvRepository>();
             services.AddScoped<IMatchingSourceRepository, MatchingSourceRepository>();
+            services.AddScoped<IFeatureUsageReservationRepository, FeatureUsageReservationRepository>();
             services.AddScoped<ICompanyRepository, CompanyRepository>();
             services.AddScoped<ISkillRepository, SkillRepository>();
             services.AddScoped<ISkillCategoryRepository, SkillCategoryRepository>();

@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using ITHunterview.Domain.Entities;
@@ -18,12 +19,17 @@ namespace ITHunterview.Service.UseCase
     {
         private readonly ITHunterviewContext _context;
         private readonly ISystemConfigRepository _configRepository;
+        private readonly IFeatureUsageReservationRepository _reservationRepository;
         private const string FeatureCostsKey = "candidate_coin_feature_costs";
 
-        public CandidateFeatureUsageUseCase(ITHunterviewContext context, ISystemConfigRepository configRepository)
+        public CandidateFeatureUsageUseCase(
+            ITHunterviewContext context,
+            ISystemConfigRepository configRepository,
+            IFeatureUsageReservationRepository reservationRepository)
         {
             _context = context;
             _configRepository = configRepository;
+            _reservationRepository = reservationRepository;
         }
 
         public async Task<FeatureConsumptionResult> TryConsumeFeatureAsync(Guid userId, string featureKey, string? referenceId = null)
@@ -354,6 +360,398 @@ namespace ITHunterview.Service.UseCase
                 DeductTransactionId = deductTransaction.Id
             }, description);
         }
+
+        public async Task<FeatureReservationResult> ReserveFeatureAsync(
+            Guid userId,
+            string featureKey,
+            Guid referenceId,
+            CancellationToken cancellationToken = default)
+        {
+            if (userId == Guid.Empty)
+                throw new ArgumentException("User id is required.", nameof(userId));
+            if (string.IsNullOrWhiteSpace(featureKey))
+                throw new ArgumentException("Feature key is required.", nameof(featureKey));
+            if (referenceId == Guid.Empty)
+                throw new ArgumentException("Reference id is required.", nameof(referenceId));
+
+            var (transaction, ownsTransaction) = await BeginReservationTransactionAsync(cancellationToken);
+            try
+            {
+                var wallet = await EnsureWalletAndLockAsync(userId, cancellationToken);
+                var existing = await _reservationRepository.GetByReferenceForUpdateAsync(referenceId, cancellationToken);
+                if (existing != null)
+                {
+                    if (existing.UserId != userId || !string.Equals(existing.FeatureKey, featureKey, StringComparison.Ordinal))
+                        throw new InvalidOperationException("The billing reference is already owned by another feature request.");
+
+                    if (ownsTransaction)
+                        await transaction!.CommitAsync(cancellationToken);
+                    return ToReservationResult(existing);
+                }
+
+                var now = DateTime.UtcNow;
+                var source = "Coin";
+                var coinAmount = 0;
+                var activeSubscription = await _context.UserSubscriptions
+                    .Where(us => us.UserId == userId
+                                 && us.Status == UserSubscriptionStatus.ACTIVE
+                                 && us.EndDate >= now)
+                    .OrderByDescending(us => us.EndDate)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (activeSubscription != null)
+                {
+                    var subscription = await _context.Subscriptions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(s => s.Id == activeSubscription.SubId && s.Status == SubscriptionStatus.ACTIVE, cancellationToken);
+                    var configuredLimit = GetFeatureLimit(featureKey, subscription);
+                    var usedCount = configuredLimit > 0
+                        ? await GetActiveMatchingUsageCountAsync(
+                            userId,
+                            featureKey,
+                            activeSubscription.StartDate,
+                            activeSubscription.EndDate,
+                            referenceId,
+                            cancellationToken)
+                        : 0;
+                    if (configuredLimit == -1 || (configuredLimit > 0 && usedCount < configuredLimit))
+                        source = "Subscription";
+                }
+
+                if (source == "Coin")
+                {
+                    coinAmount = await GetCoinCostAsync(featureKey, cancellationToken);
+                    if (coinAmount > 0 && wallet.Balance < coinAmount)
+                        throw new InvalidOperationException("Insufficient coin balance for this feature.");
+                    if (coinAmount == 0)
+                        source = "Free";
+                }
+
+                var reservation = new FeatureUsageReservations
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    FeatureKey = featureKey,
+                    ReferenceId = referenceId,
+                    Source = source,
+                    Status = "Reserved",
+                    CoinAmount = coinAmount,
+                    CreatedAt = now
+                };
+                _reservationRepository.Add(reservation);
+                await _context.SaveChangesAsync(cancellationToken);
+
+                if (ownsTransaction)
+                    await transaction!.CommitAsync(cancellationToken);
+                return ToReservationResult(reservation);
+            }
+            catch
+            {
+                if (ownsTransaction && transaction != null)
+                    await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
+            finally
+            {
+                if (ownsTransaction && transaction != null)
+                    await transaction.DisposeAsync();
+            }
+        }
+
+        public async Task CaptureFeatureReservationAsync(
+            Guid reservationId,
+            CancellationToken cancellationToken = default)
+        {
+            if (reservationId == Guid.Empty)
+                throw new ArgumentException("Reservation id is required.", nameof(reservationId));
+
+            var (transaction, ownsTransaction) = await BeginReservationTransactionAsync(cancellationToken);
+            try
+            {
+                var reservation = await _reservationRepository.GetByIdForUpdateAsync(reservationId, cancellationToken)
+                    ?? throw new InvalidOperationException("Billing reservation was not found.");
+                if (reservation.Status == "Captured")
+                {
+                    if (ownsTransaction)
+                        await transaction!.CommitAsync(cancellationToken);
+                    return;
+                }
+                if (reservation.Status == "Released" || reservation.Status == "Refunded")
+                    throw new InvalidOperationException("A released or refunded reservation cannot be captured.");
+                if (reservation.Status != "Reserved")
+                    throw new InvalidOperationException("Billing reservation is in an invalid state.");
+
+                if (reservation.Source == "Coin" && reservation.CoinAmount > 0)
+                {
+                    var wallet = await EnsureWalletAndLockAsync(reservation.UserId, cancellationToken);
+                    if (wallet.Balance < reservation.CoinAmount)
+                        throw new InvalidOperationException("Insufficient coin balance for this feature.");
+
+                    wallet.Balance -= reservation.CoinAmount;
+                    wallet.UpdatedAt = DateTime.UtcNow;
+                    var deductTransaction = new CreditTransactions
+                    {
+                        Id = Guid.NewGuid(),
+                        WalletId = wallet.Id,
+                        Amount = -reservation.CoinAmount,
+                        TransactionType = CreditTransactionType.DEDUCT,
+                        ReferenceId = reservation.ReferenceId,
+                        Description = "Feature usage reservation captured",
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.UserWallets.Update(wallet);
+                    _context.CreditTransactions.Add(deductTransaction);
+                    reservation.DeductTransactionId = deductTransaction.Id;
+                }
+
+                reservation.Status = "Captured";
+                reservation.CapturedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync(cancellationToken);
+                if (ownsTransaction)
+                    await transaction!.CommitAsync(cancellationToken);
+            }
+            catch
+            {
+                if (ownsTransaction && transaction != null)
+                    await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
+            finally
+            {
+                if (ownsTransaction && transaction != null)
+                    await transaction.DisposeAsync();
+            }
+        }
+
+        public async Task RefundFeatureReservationAsync(
+            Guid userId,
+            Guid referenceId,
+            string reasonCode,
+            CancellationToken cancellationToken = default)
+        {
+            if (userId == Guid.Empty || referenceId == Guid.Empty)
+                return;
+
+            var (transaction, ownsTransaction) = await BeginReservationTransactionAsync(cancellationToken);
+            try
+            {
+                var reservation = await _reservationRepository.GetByReferenceForUpdateAsync(referenceId, cancellationToken);
+                if (reservation == null || reservation.UserId != userId || reservation.Status == "Released" || reservation.Status == "Refunded")
+                {
+                    if (ownsTransaction)
+                        await transaction!.CommitAsync(cancellationToken);
+                    return;
+                }
+
+                if (reservation.Status == "Reserved")
+                {
+                    reservation.Status = "Released";
+                    reservation.ReleasedAt = DateTime.UtcNow;
+                }
+                else if (reservation.Status == "Captured")
+                {
+                    if (reservation.Source == "Coin" && reservation.CoinAmount > 0)
+                    {
+                        if (!reservation.DeductTransactionId.HasValue)
+                            throw new InvalidOperationException("Captured coin reservation is missing its deduction.");
+
+                        var deduction = await _context.CreditTransactions
+                            .FirstOrDefaultAsync(x => x.Id == reservation.DeductTransactionId.Value
+                                                      && x.TransactionType == CreditTransactionType.DEDUCT,
+                                cancellationToken);
+                        if (deduction == null || deduction.ReferenceId != reservation.ReferenceId)
+                            throw new InvalidOperationException("Captured coin reservation has an invalid deduction.");
+
+                        var wallet = await LockWalletByIdAsync(deduction.WalletId, cancellationToken);
+                        if (wallet == null || wallet.UserId != userId)
+                            throw new InvalidOperationException("The billing wallet could not be verified.");
+
+                        var existingRefund = await _context.CreditTransactions
+                            .FirstOrDefaultAsync(x => x.TransactionType == CreditTransactionType.REFUND
+                                                      && x.ReferenceId == deduction.Id,
+                                cancellationToken);
+                        if (existingRefund != null)
+                        {
+                            reservation.RefundTransactionId = existingRefund.Id;
+                        }
+                        else
+                        {
+                            wallet.Balance += Math.Abs(deduction.Amount);
+                            wallet.UpdatedAt = DateTime.UtcNow;
+                            _context.UserWallets.Update(wallet);
+                            var refund = new CreditTransactions
+                            {
+                                Id = Guid.NewGuid(),
+                                WalletId = wallet.Id,
+                                Amount = Math.Abs(deduction.Amount),
+                                TransactionType = CreditTransactionType.REFUND,
+                                ReferenceId = deduction.Id,
+                                Description = NormalizeReasonCode(reasonCode),
+                                CreatedAt = DateTime.UtcNow
+                            };
+                            _context.CreditTransactions.Add(refund);
+                            reservation.RefundTransactionId = refund.Id;
+                        }
+                    }
+
+                    reservation.Status = "Refunded";
+                    reservation.RefundedAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    throw new InvalidOperationException("Billing reservation is in an invalid state.");
+                }
+
+                await _context.SaveChangesAsync(cancellationToken);
+                if (ownsTransaction)
+                    await transaction!.CommitAsync(cancellationToken);
+            }
+            catch
+            {
+                if (ownsTransaction && transaction != null)
+                    await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
+            finally
+            {
+                if (ownsTransaction && transaction != null)
+                    await transaction.DisposeAsync();
+            }
+        }
+
+        private async Task<(Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? Transaction, bool OwnsTransaction)> BeginReservationTransactionAsync(CancellationToken cancellationToken)
+        {
+            var current = _context.Database.CurrentTransaction;
+            if (current != null || IsInMemoryProvider())
+                return (current, false);
+
+            return (await _context.Database.BeginTransactionAsync(cancellationToken), true);
+        }
+
+        private async Task<UserWallets> EnsureWalletAndLockAsync(Guid userId, CancellationToken cancellationToken)
+        {
+            if (IsInMemoryProvider())
+            {
+                var inMemoryWallet = await _context.UserWallets.FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken);
+                if (inMemoryWallet != null)
+                    return inMemoryWallet;
+
+                inMemoryWallet = new UserWallets { Id = Guid.NewGuid(), UserId = userId, Balance = 0, UpdatedAt = DateTime.UtcNow };
+                _context.UserWallets.Add(inMemoryWallet);
+                await _context.SaveChangesAsync(cancellationToken);
+                return inMemoryWallet;
+            }
+
+            await _context.Database.ExecuteSqlRawAsync(
+                "INSERT INTO user_wallets (id, user_id, balance, updated_at) VALUES ({0}, {1}, 0, {2}) ON CONFLICT (user_id) DO NOTHING;",
+                Guid.NewGuid(), userId, DateTime.UtcNow);
+            return await _context.UserWallets
+                .FromSqlRaw("SELECT * FROM user_wallets WHERE user_id = {0} LIMIT 1 FOR UPDATE", userId)
+                .FirstOrDefaultAsync(cancellationToken)
+                ?? throw new InvalidOperationException("Could not obtain the billing wallet lock.");
+        }
+
+        private async Task<UserWallets?> LockWalletByIdAsync(Guid walletId, CancellationToken cancellationToken)
+        {
+            if (IsInMemoryProvider())
+                return await _context.UserWallets.FirstOrDefaultAsync(x => x.Id == walletId, cancellationToken);
+
+            return await _context.UserWallets
+                .FromSqlRaw("SELECT * FROM user_wallets WHERE id = {0} LIMIT 1 FOR UPDATE", walletId)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        private async Task<int> GetActiveMatchingUsageCountAsync(
+            Guid userId,
+            string featureKey,
+            DateTime startUtc,
+            DateTime endUtc,
+            Guid referenceId,
+            CancellationToken cancellationToken)
+        {
+            var reservedCount = await _reservationRepository.CountActiveAsync(
+                userId, featureKey, startUtc, endUtc, referenceId, cancellationToken);
+            var legacyCount = await _context.CvJobMatchScores
+                .Where(m => m.UserId == userId
+                            && m.Id != referenceId
+                            && m.BillingReservationId == null
+                            && m.UpdatedAt >= startUtc
+                            && m.UpdatedAt <= endUtc
+                            && m.Status != "Failed")
+                .CountAsync(cancellationToken);
+            return reservedCount + legacyCount;
+        }
+
+        private async Task<int> GetCoinCostAsync(string featureKey, CancellationToken cancellationToken)
+        {
+            var dbFeature = await _context.CoinFeatures
+                .AsNoTracking()
+                .FirstOrDefaultAsync(cf => cf.FeatureKey == featureKey, cancellationToken);
+            if (dbFeature != null)
+                return Math.Max(0, dbFeature.CoinCost);
+
+            var defaults = GetDefaultCosts();
+            return featureKey switch
+            {
+                "CvJdMatching" => defaults.CvJdMatching,
+                "MockInterview" => defaults.MockInterview,
+                "LearningPath" => defaults.LearningPath,
+                "PostJob" => defaults.PostJob,
+                "UnlockCv" => defaults.UnlockCv,
+                "ExtendJob" => defaults.ExtendJob,
+                "PushTop" => defaults.PushTop,
+                _ => 0
+            };
+        }
+
+        private static int GetFeatureLimit(string featureKey, Subscriptions? subscription)
+        {
+            if (subscription == null || string.IsNullOrWhiteSpace(subscription.FeaturesConfig))
+                return 0;
+
+            try
+            {
+                var features = JsonSerializer.Deserialize<FeaturesConfigDto>(
+                    subscription.FeaturesConfig,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return featureKey switch
+                {
+                    "CvJdMatching" => features?.CvMatchLimit ?? 0,
+                    "MockInterview" => features?.MockInterviewLimit ?? 0,
+                    "LearningPath" => features?.LearningPathLimit ?? features?.LearningPathSlotLimit ?? 0,
+                    "PostJob" => features?.JobSlots ?? 1,
+                    "UnlockCv" => features?.UnlockCvLimit ?? 0,
+                    "ExtendJob" => features?.JobExtendLimit ?? 0,
+                    "PushTop" => features?.PushTopLimit ?? 0,
+                    _ => 0
+                };
+            }
+            catch (JsonException)
+            {
+                return 0;
+            }
+        }
+
+        private static FeatureReservationResult ToReservationResult(FeatureUsageReservations reservation)
+            => new(
+                reservation.Id,
+                reservation.ReferenceId,
+                reservation.FeatureKey,
+                reservation.Source,
+                reservation.Status,
+                reservation.CoinAmount,
+                reservation.DeductTransactionId);
+
+        private static string NormalizeReasonCode(string reasonCode)
+        {
+            if (string.IsNullOrWhiteSpace(reasonCode))
+                return "technical_failure";
+            var normalized = reasonCode.Trim();
+            return normalized.Length <= 64 ? normalized : normalized[..64];
+        }
+
+        private bool IsInMemoryProvider()
+            => string.Equals(_context.Database.ProviderName, "Microsoft.EntityFrameworkCore.InMemory", StringComparison.Ordinal);
 
         private Task<Guid?> RecordFeatureUsageLogAsync(Guid userId, string featureKey, string? referenceId, bool fromSubscription)
         {
