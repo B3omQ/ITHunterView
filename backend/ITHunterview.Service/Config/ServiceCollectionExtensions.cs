@@ -36,6 +36,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IMatchingSourceRepository, MatchingSourceRepository>();
             services.AddScoped<IFeatureUsageReservationRepository, FeatureUsageReservationRepository>();
             services.AddScoped<ICvJdMatchingJobRepository, CvJdMatchingJobRepository>();
+            services.AddScoped<ICvJdMatchingHistoryRepository, CvJdMatchingHistoryRepository>();
             services.AddScoped<ICompanyRepository, CompanyRepository>();
             services.AddScoped<ISkillRepository, SkillRepository>();
             services.AddScoped<ISkillCategoryRepository, SkillCategoryRepository>();
@@ -132,6 +133,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<MatchingInputSnapshotBuilder>();
             services.AddScoped<ICvJdMatchingSubmissionUseCase, CvJdMatchingSubmissionUseCase>();
             services.AddScoped<ICvJdMatchingRetryUseCase, CvJdMatchingRetryUseCase>();
+            services.AddScoped<ICvJdMatchingHistoryUseCase, CvJdMatchingHistoryUseCase>();
             services.AddScoped<IMatchingInputPreflightUseCase, MatchingInputPreflightUseCase>();
             services.AddScoped<IHardcodeCvJobMatchingUseCase, HardcodeCvJobMatchingUseCase>();
             services.AddScoped<IMajorUseCase, MajorUseCase>();

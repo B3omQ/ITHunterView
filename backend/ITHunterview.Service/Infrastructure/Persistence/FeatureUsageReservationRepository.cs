@@ -30,12 +30,12 @@ public sealed class FeatureUsageReservationRepository : IFeatureUsageReservation
         {
             return await _context.FeatureUsageReservations
                 .Where(x => x.ReferenceId == referenceId)
-                .FirstOrDefaultAsync(cancellationToken);
+                .SingleOrDefaultAsync(cancellationToken);
         }
 
         return await _context.FeatureUsageReservations
             .FromSqlInterpolated($"SELECT * FROM feature_usage_reservations WHERE reference_id = {referenceId} FOR UPDATE")
-            .FirstOrDefaultAsync(cancellationToken);
+            .SingleOrDefaultAsync(cancellationToken);
     }
 
     public async Task<FeatureUsageReservations?> GetByIdForUpdateAsync(
@@ -46,12 +46,12 @@ public sealed class FeatureUsageReservationRepository : IFeatureUsageReservation
         {
             return await _context.FeatureUsageReservations
                 .Where(x => x.Id == reservationId)
-                .FirstOrDefaultAsync(cancellationToken);
+                .SingleOrDefaultAsync(cancellationToken);
         }
 
         return await _context.FeatureUsageReservations
             .FromSqlInterpolated($"SELECT * FROM feature_usage_reservations WHERE id = {reservationId} FOR UPDATE")
-            .FirstOrDefaultAsync(cancellationToken);
+            .SingleOrDefaultAsync(cancellationToken);
     }
 
     public Task<int> CountActiveAsync(

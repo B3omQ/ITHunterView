@@ -98,17 +98,26 @@ public sealed class CvAnalysisResponseValidator : ICvAnalysisResponseValidator
     {
         if (string.IsNullOrWhiteSpace(input.RawText))
         {
-            return CvAnalysisValidationResult.Failure("CV_ANALYSIS_RAW_TEXT_REQUIRED");
+            return CvAnalysisValidationResult.Failure(
+                "CV_ANALYSIS_RAW_TEXT_REQUIRED",
+                "RAW_TEXT_REQUIRED",
+                "$.input.raw_text");
         }
 
         if (!IsSupportedSourceType(input.SourceType))
         {
-            return CvAnalysisValidationResult.Failure("CV_ANALYSIS_INPUT_INVALID");
+            return CvAnalysisValidationResult.Failure(
+                "CV_ANALYSIS_INPUT_INVALID",
+                "SOURCE_TYPE_UNSUPPORTED",
+                "$.input.source_type");
         }
 
         if (string.IsNullOrWhiteSpace(responseJson))
         {
-            return CvAnalysisValidationResult.Failure("CV_ANALYSIS_EMPTY_OUTPUT");
+            return CvAnalysisValidationResult.Failure(
+                "CV_ANALYSIS_EMPTY_OUTPUT",
+                "EMPTY_MODEL_OUTPUT",
+                "$");
         }
 
         try
@@ -116,12 +125,18 @@ public sealed class CvAnalysisResponseValidator : ICvAnalysisResponseValidator
             using var json = JsonDocument.Parse(responseJson);
             if (json.RootElement.ValueKind != JsonValueKind.Object)
             {
-                return CvAnalysisValidationResult.Failure("CV_ANALYSIS_SCHEMA_INVALID");
+                return CvAnalysisValidationResult.Failure(
+                    "CV_ANALYSIS_SCHEMA_INVALID",
+                    "ROOT_NOT_OBJECT",
+                    "$");
             }
         }
-        catch (JsonException)
+        catch (JsonException exception)
         {
-            return CvAnalysisValidationResult.Failure("CV_ANALYSIS_INVALID_JSON");
+            return CvAnalysisValidationResult.Failure(
+                "CV_ANALYSIS_INVALID_JSON",
+                "JSON_PARSE_FAILED",
+                exception.Path ?? "$");
         }
 
         CvAnalysisDocument? document;
@@ -129,14 +144,20 @@ public sealed class CvAnalysisResponseValidator : ICvAnalysisResponseValidator
         {
             document = JsonSerializer.Deserialize<CvAnalysisDocument>(responseJson, SerializerOptions);
         }
-        catch (JsonException)
+        catch (JsonException exception)
         {
-            return CvAnalysisValidationResult.Failure("CV_ANALYSIS_SCHEMA_INVALID");
+            return CvAnalysisValidationResult.Failure(
+                "CV_ANALYSIS_SCHEMA_INVALID",
+                "TYPED_DESERIALIZATION_FAILED",
+                exception.Path ?? "$");
         }
 
         if (document is null)
         {
-            return CvAnalysisValidationResult.Failure("CV_ANALYSIS_SCHEMA_INVALID");
+            return CvAnalysisValidationResult.Failure(
+                "CV_ANALYSIS_SCHEMA_INVALID",
+                "TYPED_DESERIALIZATION_FAILED",
+                "$");
         }
 
         try
@@ -147,19 +168,52 @@ public sealed class CvAnalysisResponseValidator : ICvAnalysisResponseValidator
         }
         catch (CvAnalysisContractException exception)
         {
-            return CvAnalysisValidationResult.Failure(exception.Code);
+            return CvAnalysisValidationResult.Failure(
+                exception.Code,
+                exception.DiagnosticCode,
+                exception.JsonPath);
         }
     }
 
     private static void ValidateDocument(CvAnalysisDocument document, string rawText)
     {
-        Require(string.Equals(document.SchemaVersion, ContractVersion, StringComparison.Ordinal), "CV_ANALYSIS_SCHEMA_INVALID");
-        Require(document.VerbatimSections is not null && document.MatchingMetrics is not null && document.MatchingEvidence is not null, "CV_ANALYSIS_SCHEMA_INVALID");
+        ValidateStage("DOCUMENT_CONTRACT_INVALID", "$", () =>
+        {
+            Require(string.Equals(document.SchemaVersion, ContractVersion, StringComparison.Ordinal), "CV_ANALYSIS_SCHEMA_INVALID");
+            Require(document.VerbatimSections is not null && document.MatchingMetrics is not null && document.MatchingEvidence is not null, "CV_ANALYSIS_SCHEMA_INVALID");
+        });
 
-        ValidateVerbatimSections(document.VerbatimSections);
-        ValidateMetrics(document.MatchingMetrics);
-        ValidateEvidence(document.MatchingEvidence, document.VerbatimSections.ProfessionalExperienceAndProjects, rawText);
-        ValidateMetricEvidenceConsistency(document.MatchingMetrics, document.MatchingEvidence.RequirementSignals);
+        ValidateStage(
+            "VERBATIM_SECTIONS_INVALID",
+            "$.verbatim_sections",
+            () => ValidateVerbatimSections(document.VerbatimSections));
+        ValidateStage(
+            "MATCHING_METRICS_INVALID",
+            "$.matching_metrics",
+            () => ValidateMetrics(document.MatchingMetrics));
+        ValidateStage(
+            "MATCHING_EVIDENCE_INVALID",
+            "$.matching_evidence",
+            () => ValidateEvidence(document.MatchingEvidence, document.VerbatimSections.ProfessionalExperienceAndProjects, rawText));
+        ValidateStage(
+            "METRIC_EVIDENCE_INCONSISTENT",
+            "$.matching_metrics",
+            () => ValidateMetricEvidenceConsistency(document.MatchingMetrics, document.MatchingEvidence.RequirementSignals));
+    }
+
+    private static void ValidateStage(string diagnosticCode, string jsonPath, Action validation)
+    {
+        try
+        {
+            validation();
+        }
+        catch (CvAnalysisContractException exception)
+        {
+            throw new CvAnalysisContractException(
+                exception.Code,
+                exception.DiagnosticCode == "UNSPECIFIED" ? diagnosticCode : exception.DiagnosticCode,
+                string.IsNullOrWhiteSpace(exception.JsonPath) ? jsonPath : exception.JsonPath);
+        }
     }
 
     private static void ValidateVerbatimSections(CvVerbatimSections sections)
@@ -217,87 +271,114 @@ public sealed class CvAnalysisResponseValidator : ICvAnalysisResponseValidator
         IReadOnlyList<CvExperienceOrProject> entries,
         string rawText)
     {
-        if (evidence.ExperienceSummary is null || evidence.RequirementSignals is null || evidence.SenioritySignals is null)
-        {
-            throw new CvAnalysisContractException("CV_ANALYSIS_SCHEMA_INVALID");
-        }
+        RequireDetailed(
+            evidence.ExperienceSummary is not null,
+            "CV_ANALYSIS_SCHEMA_INVALID",
+            "EXPERIENCE_SUMMARY_REQUIRED",
+            "$.matching_evidence.experience_summary");
+        RequireDetailed(
+            evidence.RequirementSignals is not null,
+            "CV_ANALYSIS_SCHEMA_INVALID",
+            "REQUIREMENT_SIGNALS_REQUIRED",
+            "$.matching_evidence.requirement_signals");
+        RequireDetailed(
+            evidence.SenioritySignals is not null,
+            "CV_ANALYSIS_SCHEMA_INVALID",
+            "SENIORITY_SIGNALS_REQUIRED",
+            "$.matching_evidence.seniority_signals");
 
-        var summary = evidence.ExperienceSummary;
-        RequireAtMost(evidence.RequirementSignals, 50);
-        RequireAtMost(summary.Periods, 30);
-        RequireAtMost(evidence.SenioritySignals, 20);
-        Require(summary.TotalProfessionalMonths >= 0, "CV_ANALYSIS_SCHEMA_INVALID");
-        Require(CalculationBases.Contains(summary.CalculationBasis), "CV_ANALYSIS_SCHEMA_INVALID");
+        var summary = evidence.ExperienceSummary!;
+        RequireDetailed(evidence.RequirementSignals!.Count <= 50, "CV_ANALYSIS_SCHEMA_INVALID", "REQUIREMENT_SIGNAL_LIMIT_EXCEEDED", "$.matching_evidence.requirement_signals");
+        RequireDetailed(summary.Periods is not null, "CV_ANALYSIS_SCHEMA_INVALID", "EXPERIENCE_PERIODS_REQUIRED", "$.matching_evidence.experience_summary.periods");
+        RequireDetailed(summary.Periods!.Count <= 30, "CV_ANALYSIS_SCHEMA_INVALID", "EXPERIENCE_PERIOD_LIMIT_EXCEEDED", "$.matching_evidence.experience_summary.periods");
+        RequireDetailed(evidence.SenioritySignals!.Count <= 20, "CV_ANALYSIS_SCHEMA_INVALID", "SENIORITY_SIGNAL_LIMIT_EXCEEDED", "$.matching_evidence.seniority_signals");
+        RequireDetailed(summary.TotalProfessionalMonths >= 0, "CV_ANALYSIS_SCHEMA_INVALID", "TOTAL_PROFESSIONAL_MONTHS_INVALID", "$.matching_evidence.experience_summary.total_professional_months");
+        RequireDetailed(CalculationBases.Contains(summary.CalculationBasis), "CV_ANALYSIS_SCHEMA_INVALID", "CALCULATION_BASIS_INVALID", "$.matching_evidence.experience_summary.calculation_basis");
 
-        foreach (var signal in evidence.RequirementSignals)
+        for (var signalIndex = 0; signalIndex < evidence.RequirementSignals.Count; signalIndex++)
         {
-            if (signal is null) throw new CvAnalysisContractException("CV_ANALYSIS_SCHEMA_INVALID");
-            RequireNonEmpty(signal.Name);
-            Require(SignalCategories.Contains(signal.Category), "CV_ANALYSIS_SCHEMA_INVALID");
-            Require(EvidenceStrengths.Contains(signal.EvidenceStrength), "CV_ANALYSIS_SCHEMA_INVALID");
-            ValidateSignalSource(signal.SourceType, signal.SourceIndex, entries);
-            Require(signal.Evidence is { Count: >= 1 and <= 3 }, "CV_ANALYSIS_SCHEMA_INVALID");
-            foreach (var item in signal.Evidence)
+            var signalPath = $"$.matching_evidence.requirement_signals[{signalIndex}]";
+            var signal = evidence.RequirementSignals[signalIndex];
+            RequireDetailed(signal is not null, "CV_ANALYSIS_SCHEMA_INVALID", "REQUIREMENT_SIGNAL_NULL", signalPath);
+            RequireDetailed(!string.IsNullOrWhiteSpace(signal!.Name), "CV_ANALYSIS_SCHEMA_INVALID", "REQUIREMENT_SIGNAL_NAME_REQUIRED", $"{signalPath}.name");
+            RequireDetailed(SignalCategories.Contains(signal.Category), "CV_ANALYSIS_SCHEMA_INVALID", "REQUIREMENT_SIGNAL_CATEGORY_INVALID", $"{signalPath}.category");
+            RequireDetailed(EvidenceStrengths.Contains(signal.EvidenceStrength), "CV_ANALYSIS_SCHEMA_INVALID", "EVIDENCE_STRENGTH_INVALID", $"{signalPath}.evidence_strength");
+            ValidateSignalSource(signal.SourceType, signal.SourceIndex, entries, signalPath);
+            RequireDetailed(signal.Evidence is { Count: >= 1 and <= 3 }, "CV_ANALYSIS_SCHEMA_INVALID", "EVIDENCE_COUNT_INVALID", $"{signalPath}.evidence");
+            for (var evidenceIndex = 0; evidenceIndex < signal.Evidence.Count; evidenceIndex++)
             {
-                RequireNonEmpty(item);
-                Require(IsEvidenceGrounded(item, rawText), "CV_ANALYSIS_EVIDENCE_NOT_GROUNDED");
+                var itemPath = $"{signalPath}.evidence[{evidenceIndex}]";
+                var item = signal.Evidence[evidenceIndex];
+                RequireDetailed(!string.IsNullOrWhiteSpace(item), "CV_ANALYSIS_SCHEMA_INVALID", "EVIDENCE_REQUIRED", itemPath);
+                RequireDetailed(IsEvidenceGrounded(item, rawText), "CV_ANALYSIS_EVIDENCE_NOT_GROUNDED", "EVIDENCE_NOT_GROUNDED", itemPath);
             }
         }
 
-        foreach (var period in summary.Periods)
+        for (var periodIndex = 0; periodIndex < summary.Periods.Count; periodIndex++)
         {
-            if (period is null) throw new CvAnalysisContractException("CV_ANALYSIS_SCHEMA_INVALID");
-            Require(ProfessionalEntryTypes.Contains(period.EntryType), "CV_ANALYSIS_SCHEMA_INVALID");
-            Require(period.SourceIndex >= 0 && period.SourceIndex < entries.Count, "CV_ANALYSIS_SCHEMA_INVALID");
-            Require(string.Equals(entries[period.SourceIndex].EntryType, period.EntryType, StringComparison.Ordinal), "CV_ANALYSIS_SCHEMA_INVALID");
-            RequireString(period.Organization);
-            RequireString(period.Role);
-            RequireString(period.TimelineRaw);
-            RequireNonEmpty(period.Evidence);
-            Require(IsEvidenceGrounded(period.Evidence, rawText), "CV_ANALYSIS_EVIDENCE_NOT_GROUNDED");
-            ValidatePeriodDates(period);
+            var periodPath = $"$.matching_evidence.experience_summary.periods[{periodIndex}]";
+            var period = summary.Periods[periodIndex];
+            RequireDetailed(period is not null, "CV_ANALYSIS_SCHEMA_INVALID", "EXPERIENCE_PERIOD_NULL", periodPath);
+            RequireDetailed(ProfessionalEntryTypes.Contains(period!.EntryType), "CV_ANALYSIS_SCHEMA_INVALID", "EXPERIENCE_ENTRY_TYPE_INVALID", $"{periodPath}.entry_type");
+            RequireDetailed(period.SourceIndex >= 0 && period.SourceIndex < entries.Count, "CV_ANALYSIS_SCHEMA_INVALID", "SOURCE_INDEX_OUT_OF_RANGE", $"{periodPath}.source_index");
+            RequireDetailed(string.Equals(entries[period.SourceIndex].EntryType, period.EntryType, StringComparison.Ordinal), "CV_ANALYSIS_SCHEMA_INVALID", "SOURCE_ENTRY_TYPE_MISMATCH", $"{periodPath}.source_index");
+            RequireDetailed(period.Organization is not null, "CV_ANALYSIS_SCHEMA_INVALID", "ORGANIZATION_REQUIRED", $"{periodPath}.organization");
+            RequireDetailed(period.Role is not null, "CV_ANALYSIS_SCHEMA_INVALID", "ROLE_REQUIRED", $"{periodPath}.role");
+            RequireDetailed(period.TimelineRaw is not null, "CV_ANALYSIS_SCHEMA_INVALID", "TIMELINE_REQUIRED", $"{periodPath}.timeline_raw");
+            RequireDetailed(!string.IsNullOrWhiteSpace(period.Evidence), "CV_ANALYSIS_SCHEMA_INVALID", "EVIDENCE_REQUIRED", $"{periodPath}.evidence");
+            RequireDetailed(IsEvidenceGrounded(period.Evidence, rawText), "CV_ANALYSIS_EVIDENCE_NOT_GROUNDED", "EVIDENCE_NOT_GROUNDED", $"{periodPath}.evidence");
+            ValidatePeriodDates(period, periodPath);
         }
 
-        foreach (var signal in evidence.SenioritySignals)
+        for (var signalIndex = 0; signalIndex < evidence.SenioritySignals.Count; signalIndex++)
         {
-            if (signal is null) throw new CvAnalysisContractException("CV_ANALYSIS_SCHEMA_INVALID");
-            Require(SenioritySignalNames.Contains(Normalize(signal.Name)), "CV_ANALYSIS_SCHEMA_INVALID");
-            ValidateSignalSource(signal.SourceType, signal.SourceIndex, entries);
-            RequireNonEmpty(signal.Evidence);
-            Require(IsEvidenceGrounded(signal.Evidence, rawText), "CV_ANALYSIS_EVIDENCE_NOT_GROUNDED");
+            var signalPath = $"$.matching_evidence.seniority_signals[{signalIndex}]";
+            var signal = evidence.SenioritySignals[signalIndex];
+            RequireDetailed(signal is not null, "CV_ANALYSIS_SCHEMA_INVALID", "SENIORITY_SIGNAL_NULL", signalPath);
+            RequireDetailed(!string.IsNullOrWhiteSpace(signal!.Name), "CV_ANALYSIS_SCHEMA_INVALID", "SENIORITY_SIGNAL_NAME_REQUIRED", $"{signalPath}.name");
+            RequireDetailed(SenioritySignalNames.Contains(Normalize(signal.Name)), "CV_ANALYSIS_SCHEMA_INVALID", "SENIORITY_SIGNAL_NAME_INVALID", $"{signalPath}.name");
+            ValidateSignalSource(signal.SourceType, signal.SourceIndex, entries, signalPath);
+            RequireDetailed(!string.IsNullOrWhiteSpace(signal.Evidence), "CV_ANALYSIS_SCHEMA_INVALID", "EVIDENCE_REQUIRED", $"{signalPath}.evidence");
+            RequireDetailed(IsEvidenceGrounded(signal.Evidence, rawText), "CV_ANALYSIS_EVIDENCE_NOT_GROUNDED", "EVIDENCE_NOT_GROUNDED", $"{signalPath}.evidence");
         }
     }
 
-    private static void ValidateSignalSource(string sourceType, int sourceIndex, IReadOnlyList<CvExperienceOrProject> entries)
+    private static void ValidateSignalSource(
+        string sourceType,
+        int sourceIndex,
+        IReadOnlyList<CvExperienceOrProject> entries,
+        string signalPath)
     {
-        Require(SignalSourceTypes.Contains(sourceType), "CV_ANALYSIS_SCHEMA_INVALID");
-        Require(sourceIndex >= 0, "CV_ANALYSIS_SCHEMA_INVALID");
+        RequireDetailed(SignalSourceTypes.Contains(sourceType), "CV_ANALYSIS_SCHEMA_INVALID", "SOURCE_TYPE_INVALID", $"{signalPath}.source_type");
+        RequireDetailed(sourceIndex >= 0, "CV_ANALYSIS_SCHEMA_INVALID", "SOURCE_INDEX_NEGATIVE", $"{signalPath}.source_index");
 
         if (EntryTypes.Contains(sourceType) && sourceType != "unknown")
         {
-            Require(sourceIndex < entries.Count, "CV_ANALYSIS_SCHEMA_INVALID");
-            Require(string.Equals(entries[sourceIndex].EntryType, sourceType, StringComparison.Ordinal), "CV_ANALYSIS_SCHEMA_INVALID");
+            RequireDetailed(sourceIndex < entries.Count, "CV_ANALYSIS_SCHEMA_INVALID", "SOURCE_INDEX_OUT_OF_RANGE", $"{signalPath}.source_index");
+            RequireDetailed(string.Equals(entries[sourceIndex].EntryType, sourceType, StringComparison.Ordinal), "CV_ANALYSIS_SCHEMA_INVALID", "SOURCE_ENTRY_TYPE_MISMATCH", $"{signalPath}.source_index");
             return;
         }
 
-        Require(sourceIndex == 0, "CV_ANALYSIS_SCHEMA_INVALID");
+        RequireDetailed(sourceIndex == 0, "CV_ANALYSIS_SCHEMA_INVALID", "NON_INDEXED_SOURCE_INDEX_INVALID", $"{signalPath}.source_index");
     }
 
-    private static void ValidatePeriodDates(CvExperiencePeriod period)
+    private static void ValidatePeriodDates(CvExperiencePeriod period, string periodPath)
     {
-        RequireDatePair(period.StartYear, period.StartMonth);
-        RequireDatePair(period.EndYear, period.EndMonth);
+        ValidateYearMonth(period.StartYear, period.StartMonth, $"{periodPath}.start_year", $"{periodPath}.start_month");
+        ValidateYearMonth(period.EndYear, period.EndMonth, $"{periodPath}.end_year", $"{periodPath}.end_month");
 
         if (period.IsCurrent)
         {
-            Require(period.EndYear is null && period.EndMonth is null, "CV_ANALYSIS_SCHEMA_INVALID");
+            RequireDetailed(period.EndYear is null && period.EndMonth is null, "CV_ANALYSIS_SCHEMA_INVALID", "CURRENT_PERIOD_END_DATE_PRESENT", $"{periodPath}.end_year");
         }
 
         if (period.StartYear is not null && period.EndYear is not null)
         {
-            var start = ToMonthIndex(period.StartYear.Value, period.StartMonth!.Value);
-            var end = ToMonthIndex(period.EndYear.Value, period.EndMonth!.Value);
-            Require(end >= start, "CV_ANALYSIS_SCHEMA_INVALID");
+            RequireDetailed(period.EndYear.Value >= period.StartYear.Value, "CV_ANALYSIS_SCHEMA_INVALID", "PERIOD_END_BEFORE_START", $"{periodPath}.end_year");
+            if (period.EndYear == period.StartYear && period.StartMonth is not null && period.EndMonth is not null)
+            {
+                RequireDetailed(period.EndMonth.Value >= period.StartMonth.Value, "CV_ANALYSIS_SCHEMA_INVALID", "PERIOD_END_BEFORE_START", $"{periodPath}.end_month");
+            }
         }
     }
 
@@ -439,13 +520,17 @@ public sealed class CvAnalysisResponseValidator : ICvAnalysisResponseValidator
 
     private static int ToMonthIndex(int year, int month) => checked((year * 12) + month);
 
-    private static void RequireDatePair(int? year, int? month)
+    private static void ValidateYearMonth(int? year, int? month, string yearPath, string monthPath)
     {
-        Require((year is null) == (month is null), "CV_ANALYSIS_SCHEMA_INVALID");
+        RequireDetailed(month is null || year is not null, "CV_ANALYSIS_SCHEMA_INVALID", "MONTH_WITHOUT_YEAR", monthPath);
         if (year is not null)
         {
-            Require(year is >= 1900 and <= 2200, "CV_ANALYSIS_SCHEMA_INVALID");
-            Require(month is >= 1 and <= 12, "CV_ANALYSIS_SCHEMA_INVALID");
+            RequireDetailed(year is >= 1900 and <= 2200, "CV_ANALYSIS_SCHEMA_INVALID", "YEAR_OUT_OF_RANGE", yearPath);
+        }
+
+        if (month is not null)
+        {
+            RequireDetailed(month is >= 1 and <= 12, "CV_ANALYSIS_SCHEMA_INVALID", "MONTH_OUT_OF_RANGE", monthPath);
         }
     }
 
@@ -477,10 +562,32 @@ public sealed class CvAnalysisResponseValidator : ICvAnalysisResponseValidator
         }
     }
 
+    private static void RequireDetailed(
+        bool condition,
+        string failureCode,
+        string diagnosticCode,
+        string jsonPath)
+    {
+        if (!condition)
+        {
+            throw new CvAnalysisContractException(failureCode, diagnosticCode, jsonPath);
+        }
+    }
+
     private sealed class CvAnalysisContractException : Exception
     {
-        public CvAnalysisContractException(string code) => Code = code;
+        public CvAnalysisContractException(
+            string code,
+            string diagnosticCode = "UNSPECIFIED",
+            string jsonPath = "")
+        {
+            Code = code;
+            DiagnosticCode = diagnosticCode;
+            JsonPath = jsonPath;
+        }
 
         public string Code { get; }
+        public string DiagnosticCode { get; }
+        public string JsonPath { get; }
     }
 }

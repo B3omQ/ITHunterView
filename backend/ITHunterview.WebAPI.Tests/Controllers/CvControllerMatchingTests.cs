@@ -85,11 +85,34 @@ public class CvControllerMatchingTests
         retry.Verify(x => x.RetryAsync(userId, failedJobId, "retry-123", It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task DeleteMatchHistory_ActiveJobReturnsConflictAndRequiresCandidateOnly()
+    {
+        var userId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var history = new Mock<ICvJdMatchingHistoryUseCase>();
+        history
+            .Setup(x => x.HideAsync(jobId, userId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(HideMatchHistoryResult.ActiveJob);
+        var controller = CreateController(
+            userId,
+            Mock.Of<ICvJobMatchingUseCase>(),
+            Mock.Of<ICvJdMatchingSubmissionUseCase>(),
+            history: history.Object);
+
+        var result = await controller.DeleteMatchHistory(jobId);
+
+        Assert.IsType<ConflictObjectResult>(result.Result);
+        var method = typeof(CvController).GetMethod(nameof(CvController.DeleteMatchHistory), BindingFlags.Instance | BindingFlags.Public)!;
+        method.GetCustomAttribute<AuthorizeAttribute>()!.Policy.Should().Be("CandidateOnly");
+    }
+
     private static CvController CreateController(
         Guid userId,
         ICvJobMatchingUseCase matching,
         ICvJdMatchingSubmissionUseCase submission,
-        ICvJdMatchingRetryUseCase? retry = null)
+        ICvJdMatchingRetryUseCase? retry = null,
+        ICvJdMatchingHistoryUseCase? history = null)
     {
         return new CvController(
             Mock.Of<ICvUseCase>(),
@@ -97,6 +120,7 @@ public class CvControllerMatchingTests
             Mock.Of<IHardcodeCvJobMatchingUseCase>(),
             submission,
             retry ?? Mock.Of<ICvJdMatchingRetryUseCase>(),
+            history ?? Mock.Of<ICvJdMatchingHistoryUseCase>(),
             Mock.Of<ICvTextExtractorService>())
         {
             ControllerContext = new ControllerContext

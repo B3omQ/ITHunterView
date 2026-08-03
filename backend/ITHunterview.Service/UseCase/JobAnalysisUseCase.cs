@@ -83,9 +83,13 @@ namespace ITHunterview.Service.UseCase
                 ct);
             var sysPrompt = promptPair.System;
             var userPrompt = promptPair.User;
+            if (string.IsNullOrWhiteSpace(promptPair.Contract))
+            {
+                throw new InvalidOperationException("JD_ANALYSIS_PROMPT_CONTRACT_MISSING: Active JD prompt pair must declare its analysis contract.");
+            }
 
             var snapshot = _inputBuilder.Build(job);
-            var analysisInputHash = _inputBuilder.ComputeAnalysisHash(snapshot, sysPrompt.VersionId, userPrompt.VersionId);
+            var analysisInputHash = _inputBuilder.ComputeAnalysisHash(snapshot, sysPrompt.VersionId, userPrompt.VersionId, promptPair.Contract);
 
             // Reusable run check
             var reusableRun = await _jobAnalysisRepository.FindReusableRunAsync(jobId, job.AnalysisRevision, analysisInputHash, ct);
@@ -123,7 +127,7 @@ namespace ITHunterview.Service.UseCase
                 Status = JobAnalysisStatus.PENDING,
                 SystemPromptVersionId = sysPrompt.VersionId,
                 UserPromptVersionId = userPrompt.VersionId,
-                SchemaVersion = "jd-analysis/v2",
+                SchemaVersion = promptPair.Contract,
                 RawInputSnapshot = rawSnapshotJson,
                 RequestedBy = recruiterId,
                 DecisionVersion = 0,

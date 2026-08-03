@@ -2,10 +2,12 @@ using System;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Service.Config;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.Persistence;
+using ITHunterview.Service.Service.Matching;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -39,18 +41,20 @@ namespace ITHunterview.Service.Service.AiProviders
             }
         }
         
-        private async Task<string> GetApiKeyAsync()
+        private async Task<string> GetApiKeyAsync(CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (_memoryCache.TryGetValue(CacheKey, out string cachedKey))
                 return cachedKey;
 
-            await _cacheSemaphore.WaitAsync();
+            await _cacheSemaphore.WaitAsync(cancellationToken);
             try
             {
                 // Double-check sau khi acquire semaphore
                 if (_memoryCache.TryGetValue(CacheKey, out string cachedKey2))
                     return cachedKey2;
 
+                cancellationToken.ThrowIfCancellationRequested();
                 var dbKeyConfig = await _systemConfigRepository.GetByKeyAsync("AiApiKey_Gemini");
                 var apiKey = dbKeyConfig?.ConfigValue ?? _config.ApiKey ?? string.Empty;
 
@@ -64,9 +68,20 @@ namespace ITHunterview.Service.Service.AiProviders
             }
         }
 
-        public async Task<string> GenerateTextAsync(string prompt, string systemPrompt = null)
+        public Task<string> GenerateTextAsync(string prompt, string systemPrompt = null)
+            => GenerateTextAsync(prompt, systemPrompt, CancellationToken.None);
+
+        public async Task<string> GenerateTextAsync(string prompt, string systemPrompt, CancellationToken cancellationToken)
+            => await GenerateTextAsync(prompt, systemPrompt, null, cancellationToken);
+
+        public async Task<string> GenerateTextAsync(
+            string prompt,
+            string systemPrompt,
+            AiGenerationOptions? options,
+            CancellationToken cancellationToken)
         {
-            var apiKey = await GetApiKeyAsync();
+            var apiKey = await GetApiKeyAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
 
             if (string.IsNullOrEmpty(apiKey) || apiKey == "YOUR_GEMINI_API_KEY")
             {
@@ -95,27 +110,32 @@ namespace ITHunterview.Service.Service.AiProviders
                 }
             };
 
-            object payload;
+            var payload = new System.Collections.Generic.Dictionary<string, object?>
+            {
+                ["contents"] = contents
+            };
             if (!string.IsNullOrEmpty(systemPrompt))
             {
-                payload = new
+                payload["systemInstruction"] = new
                 {
-                    contents = contents,
-                    systemInstruction = new
+                    parts = new[]
                     {
-                        parts = new[]
-                        {
-                            new { text = systemPrompt }
-                        }
+                        new { text = systemPrompt }
                     }
                 };
             }
-            else
+
+            if (options is not null)
             {
-                payload = new
+                var generationConfig = new System.Collections.Generic.Dictionary<string, object?>();
+                if (options.Temperature is decimal temperature) generationConfig["temperature"] = temperature;
+                if (options.TopP is decimal topP) generationConfig["topP"] = topP;
+                if (options.MaxOutputTokens is int maxOutputTokens) generationConfig["maxOutputTokens"] = maxOutputTokens;
+                if (!string.IsNullOrWhiteSpace(options.ResponseMimeType)) generationConfig["responseMimeType"] = options.ResponseMimeType;
+                if (generationConfig.Count > 0)
                 {
-                    contents = contents
-                };
+                    payload["generationConfig"] = generationConfig;
+                }
             }
 
             var jsonPayload = JsonSerializer.Serialize(payload);
@@ -131,13 +151,19 @@ namespace ITHunterview.Service.Service.AiProviders
                 
                 try
                 {
-                    response = await _httpClient.SendAsync(requestMessage);
+                    response = await _httpClient.SendAsync(
+                        requestMessage,
+                        HttpCompletionOption.ResponseHeadersRead,
+                        cancellationToken);
                     if (response.IsSuccessStatusCode)
                     {
                         break;
                     }
                     
-                    errorContent = await response.Content.ReadAsStringAsync();
+                    errorContent = await BoundedHttpContentReader.ReadAsStringAsync(
+                        response.Content,
+                        BoundedHttpContentReader.DefaultMaxBytes,
+                        cancellationToken);
                     
                     // If it is NOT a transient error, do not retry
                     if (response.StatusCode != System.Net.HttpStatusCode.ServiceUnavailable && // 503
@@ -149,6 +175,14 @@ namespace ITHunterview.Service.Service.AiProviders
                         break;
                     }
                 }
+                catch (InvalidOperationException ex) when (ex.Message == "AI_RESPONSE_TOO_LARGE")
+                {
+                    throw;
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     errorContent = ex.Message;
@@ -157,16 +191,19 @@ namespace ITHunterview.Service.Service.AiProviders
                 if (i < maxRetries - 1)
                 {
                     Console.WriteLine($"[WARNING] Gemini API call returned transient status {response?.StatusCode} or threw exception. Retrying in 2 seconds... (Attempt {i + 1} of {maxRetries})");
-                    await Task.Delay(2000);
+                    await Task.Delay(2000, cancellationToken);
                 }
             }
 
             if (response == null || !response.IsSuccessStatusCode)
             {
-                throw new HttpRequestException($"Gemini API call failed after {maxRetries} attempts. Status: {response?.StatusCode}, Error: {errorContent}");
+                throw new HttpRequestException($"Gemini API call failed after {maxRetries} attempts. Status: {response?.StatusCode}; ErrorBodyLength: {errorContent.Length}");
             }
 
-            var responseContent = await response.Content.ReadAsStringAsync();
+            var responseContent = await BoundedHttpContentReader.ReadAsStringAsync(
+                response.Content,
+                BoundedHttpContentReader.DefaultMaxBytes,
+                cancellationToken);
             using var doc = JsonDocument.Parse(responseContent);
 
             // Extract candidate text content

@@ -3,14 +3,17 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using ITHunterview.Service.Config;
 using ITHunterview.Service.Constant.Prompts;
 using ITHunterview.Service.DTOs.Cv.Matching;
+using ITHunterview.Service.Exceptions;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Interface.Persistence;
@@ -57,15 +60,19 @@ namespace ITHunterview.Service.Service.Matching
             return false;
         }
 
-        public async Task<string> ExtractTextFromUrlAsync(string fileUrl)
+        public Task<string> ExtractTextFromUrlAsync(string fileUrl)
+            => ExtractTextFromUrlAsync(fileUrl, CancellationToken.None);
+
+        public async Task<string> ExtractTextFromUrlAsync(string fileUrl, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (string.IsNullOrWhiteSpace(fileUrl)) return string.Empty;
 
             try
             {
                 using var client = _httpClientFactory.CreateClient();
                 client.Timeout = TimeSpan.FromSeconds(30);
-                using var response = await client.GetAsync(fileUrl);
+                using var response = await client.GetAsync(fileUrl, cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -73,34 +80,48 @@ namespace ITHunterview.Service.Service.Matching
                 }
 
                 var contentType = response.Content.Headers.ContentType?.MediaType?.ToLowerInvariant() ?? "";
-                var fileBytes = await response.Content.ReadAsByteArrayAsync();
+                var fileBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
 
-                return await ExtractTextInternalAsync(fileBytes, contentType, fileUrl);
+                return await ExtractTextInternalAsync(fileBytes, contentType, fileUrl, cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to extract text from URL: {Url}", fileUrl);
+                _logger.LogError(
+                    "Failed to extract text from CV source. SourceHash={SourceHash}; ErrorType={ErrorType}",
+                    HashIdentifier(fileUrl),
+                    ex.GetType().Name);
                 throw; 
             }
         }
 
-        public async Task<string> ExtractTextFromBytesAsync(byte[] fileBytes, string contentType, string fileName)
+        public Task<string> ExtractTextFromBytesAsync(byte[] fileBytes, string contentType, string fileName)
+            => ExtractTextFromBytesAsync(fileBytes, contentType, fileName, CancellationToken.None);
+
+        public async Task<string> ExtractTextFromBytesAsync(byte[] fileBytes, string contentType, string fileName, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (fileBytes == null || fileBytes.Length == 0) return string.Empty;
             
             try
             {
-                return await ExtractTextInternalAsync(fileBytes, contentType, fileName);
+                return await ExtractTextInternalAsync(fileBytes, contentType, fileName, cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to extract text from file bytes: {FileName}", fileName);
+                _logger.LogError(
+                    "Failed to extract text from file bytes. SourceHash={SourceHash}; ErrorType={ErrorType}",
+                    HashIdentifier(fileName),
+                    ex.GetType().Name);
                 throw;
             }
         }
 
-        public async Task<string> ExtractParsedDataFromBytesAsync(byte[] fileBytes, string contentType, string fileName)
+        public Task<string> ExtractParsedDataFromBytesAsync(byte[] fileBytes, string contentType, string fileName)
+            => ExtractParsedDataFromBytesAsync(fileBytes, contentType, fileName, CancellationToken.None);
+
+        public async Task<string> ExtractParsedDataFromBytesAsync(byte[] fileBytes, string contentType, string fileName, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (fileBytes == null || fileBytes.Length == 0) return string.Empty;
 
             var fileType = DetermineFileType(contentType, fileName);
@@ -113,7 +134,7 @@ namespace ITHunterview.Service.Service.Matching
                 if (!string.IsNullOrWhiteSpace(rawText) && !IsTextGarbage(rawText))
                 {
                     _logger.LogInformation("Successfully extracted clean text from PDF using PdfPig. Calling Gemini Text API.");
-                    return await ExtractJsonWithGeminiTextAsync(rawText, "pdf_text", fileName);
+                    return await ExtractJsonWithGeminiTextAsync(rawText, "pdf_text", fileName, cancellationToken);
                 }
 
                 _logger.LogWarning("PdfPig extracted garbage or empty text. PDF is likely a scanned image. Falling back to Gemini Vision OCR.");
@@ -121,10 +142,10 @@ namespace ITHunterview.Service.Service.Matching
                 // Mặc định ném PDF vào Gemini Vision để lấy thẳng JSON (ParsedData)
                 // Vision produces OCR text only. Parsed JSON always follows the same
                 // active prompt and typed-validation path as every other CV source.
-                var ocrText = await ExtractWithGeminiVisionAsync(fileBytes, "application/pdf");
+                var ocrText = await ExtractWithGeminiVisionAsync(fileBytes, "application/pdf", cancellationToken: cancellationToken);
                 if (!string.IsNullOrWhiteSpace(ocrText) && !IsTextGarbage(ocrText))
                 {
-                    return await ExtractJsonWithGeminiTextAsync(ocrText, "ocr", fileName);
+                    return await ExtractJsonWithGeminiTextAsync(ocrText, "ocr", fileName, cancellationToken);
                 }
 
                 _logger.LogWarning("Gemini Vision failed to return usable OCR text for scanned PDF.");
@@ -133,65 +154,99 @@ namespace ITHunterview.Service.Service.Matching
             else // docx, image, unknown
             {
                 // Vẫn dùng C# lấy RawText trước vì Vision không hoạt động với DOCX
-                var rawText = await ExtractTextInternalAsync(fileBytes, contentType, fileName);
+                var rawText = await ExtractTextInternalAsync(fileBytes, contentType, fileName, cancellationToken);
                 if (string.IsNullOrWhiteSpace(rawText)) return string.Empty;
 
-                return await ExtractJsonWithGeminiTextAsync(rawText, fileType == "docx" ? "docx_text" : "ocr", fileName);
+                return await ExtractJsonWithGeminiTextAsync(rawText, fileType == "docx" ? "docx_text" : "ocr", fileName, cancellationToken);
             }
         }
 
-        public async Task<string> ExtractParsedDataFromUrlAsync(string fileUrl, string rawTextFallback)
+        public Task<string> ExtractParsedDataFromUrlAsync(string fileUrl, string rawTextFallback)
+            => ExtractParsedDataFromUrlAsync(fileUrl, rawTextFallback, CancellationToken.None);
+
+        public async Task<string> ExtractParsedDataFromUrlAsync(string fileUrl, string rawTextFallback, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (string.IsNullOrWhiteSpace(fileUrl)) return string.Empty;
 
             // FAST PATH: Nếu đã có Text sạch từ quá trình Upload, gọi Gemini Text ngay lập tức!
             if (!string.IsNullOrWhiteSpace(rawTextFallback) && !IsTextGarbage(rawTextFallback))
             {
-                _logger.LogInformation("Fast path: Using provided RawTextFallback for {Url}. Skipping download and Vision OCR.", fileUrl);
-                return await ExtractJsonWithGeminiTextAsync(rawTextFallback, SourceTypeFromIdentifier(fileUrl), fileUrl);
+                _logger.LogInformation("Fast path: Using provided RawTextFallback. SourceHash={SourceHash}; skipping download and Vision OCR.", HashIdentifier(fileUrl));
+                return await ExtractJsonWithGeminiTextAsync(rawTextFallback, SourceTypeFromIdentifier(fileUrl), fileUrl, cancellationToken);
             }
+
+            byte[]? fileBytes = null;
+            var contentType = string.Empty;
 
             try
             {
                 using var client = _httpClientFactory.CreateClient();
                 client.Timeout = TimeSpan.FromSeconds(30);
-                using var response = await client.GetAsync(fileUrl);
+                using var response = await client.GetAsync(fileUrl, cancellationToken);
 
                 if (response.IsSuccessStatusCode)
                 {
-                    var contentType = response.Content.Headers.ContentType?.MediaType?.ToLowerInvariant() ?? "";
-                    var fileBytes = await response.Content.ReadAsByteArrayAsync();
-                    
-                    return await ExtractParsedDataFromBytesAsync(fileBytes, contentType, fileUrl);
+                    contentType = response.Content.Headers.ContentType?.MediaType?.ToLowerInvariant() ?? string.Empty;
+                    fileBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to download file from URL for background parsing. Falling back to RawText.");
+                    _logger.LogWarning(
+                        "CV source download rejected. SourceHash={SourceHash}; StatusCode={StatusCode}",
+                        HashIdentifier(fileUrl),
+                        (int)response.StatusCode);
                 }
             }
-            catch (Exception ex)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogWarning(ex, "Error downloading file from URL. Falling back to RawText.");
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning(
+                    "CV source download timed out. SourceHash={SourceHash}",
+                    HashIdentifier(fileUrl));
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogWarning(
+                    "CV source download failed. SourceHash={SourceHash}; ErrorType={ErrorType}",
+                    HashIdentifier(fileUrl),
+                    ex.GetType().Name);
             }
 
-            // Fallback cuối cùng nếu không tải được File: Dùng RawText gọi Gemini Text
-            if (!string.IsNullOrWhiteSpace(rawTextFallback))
+            if (fileBytes is { Length: > 0 })
             {
-                return await ExtractJsonWithGeminiTextAsync(rawTextFallback, SourceTypeFromIdentifier(fileUrl), fileUrl);
+                var parsed = await ExtractParsedDataFromBytesAsync(
+                    fileBytes,
+                    contentType,
+                    fileUrl,
+                    cancellationToken);
+                if (!string.IsNullOrWhiteSpace(parsed)) return parsed;
+            }
+
+            if (!string.IsNullOrWhiteSpace(rawTextFallback) && !IsTextGarbage(rawTextFallback))
+            {
+                return await ExtractJsonWithGeminiTextAsync(rawTextFallback, SourceTypeFromIdentifier(fileUrl), fileUrl, cancellationToken);
             }
 
             return string.Empty;
         }
 
-        public async Task<string> ExtractParsedDataFromRawTextAsync(string rawText, string sourceType = "pasted_text", string? fileName = null)
+        public Task<string> ExtractParsedDataFromRawTextAsync(string rawText, string sourceType = "pasted_text", string? fileName = null)
+            => ExtractParsedDataFromRawTextAsync(rawText, sourceType, fileName, CancellationToken.None);
+
+        public async Task<string> ExtractParsedDataFromRawTextAsync(string rawText, string sourceType, string? fileName, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (string.IsNullOrWhiteSpace(rawText) || IsTextGarbage(rawText))
                 return string.Empty;
 
-            return await ExtractJsonWithGeminiTextAsync(rawText, sourceType, fileName);
+            return await ExtractJsonWithGeminiTextAsync(rawText, sourceType, fileName, cancellationToken);
         }
 
-        private async Task<string> ExtractJsonWithGeminiTextAsync(string rawCvText, string sourceType, string? fileName)
+        private async Task<string> ExtractJsonWithGeminiTextAsync(string rawCvText, string sourceType, string? fileName, CancellationToken cancellationToken)
         {
             var prompts = await GetCvPromptPairAsync();
             var input = new CvAnalysisInputSnapshot(
@@ -200,15 +255,32 @@ namespace ITHunterview.Service.Service.Matching
                 fileName,
                 DateOnly.FromDateTime(DateTime.UtcNow));
             var userPrompt = BuildUserPrompt(prompts.User.Content, SerializeInput(input));
-            var aiResponse = await _aiService.GenerateTextAsync(userPrompt, prompts.System.Content);
-            var validation = _cvAnalysisResponseValidator.ValidateAndCanonicalize(StripMarkdownFence(aiResponse), input);
+            var provider = await _aiService.GetActiveProviderNameAsync();
+            var aiResponse = await _aiService.GenerateTextAsync(
+                userPrompt,
+                prompts.System.Content,
+                provider,
+                AiGenerationOptions.CvAnalysisJsonExtraction,
+                cancellationToken);
+            var validation = _cvAnalysisResponseValidator.ValidateAndCanonicalize(NormalizeJsonResponse(aiResponse), input);
             if (validation.IsValid)
             {
                 return validation.CanonicalJson;
             }
 
-            _logger.LogWarning("CV analysis response rejected by typed validator. FailureCode={FailureCode}", validation.FailureCode);
-            throw new InvalidOperationException(validation.FailureCode ?? "CV_ANALYSIS_SCHEMA_INVALID");
+            _logger.LogWarning(
+                "CV analysis response rejected. Provider={Provider}; SourceType={SourceType}; InputLength={InputLength}; " +
+                "ResponseLength={ResponseLength}; ResponseHash={ResponseHash}; FailureCode={FailureCode}; " +
+                "DiagnosticCode={DiagnosticCode}; JsonPath={JsonPath}",
+                provider,
+                sourceType,
+                rawCvText.Length,
+                aiResponse?.Length ?? 0,
+                HashIdentifier(aiResponse),
+                validation.FailureCode,
+                validation.DiagnosticCode,
+                validation.JsonPath);
+            throw new CvAnalysisValidationException(validation);
         }
 
         private static string SerializeInput(CvAnalysisInputSnapshot input) => JsonSerializer.Serialize(new
@@ -238,6 +310,68 @@ namespace ITHunterview.Service.Service.Matching
             return jsonString.Trim();
         }
 
+        private static string NormalizeJsonResponse(string? value)
+        {
+            var candidate = StripMarkdownFence(value);
+            if (candidate.Length == 0 || candidate[0] is '{' or '[')
+            {
+                return candidate;
+            }
+
+            return TryExtractBalancedJsonObject(candidate, out var jsonObject)
+                ? jsonObject
+                : candidate;
+        }
+
+        private static bool TryExtractBalancedJsonObject(string value, out string jsonObject)
+        {
+            jsonObject = string.Empty;
+            var start = value.IndexOf('{');
+            if (start < 0) return false;
+
+            var depth = 0;
+            var inString = false;
+            var escaping = false;
+
+            for (var index = start; index < value.Length; index++)
+            {
+                var current = value[index];
+                if (inString)
+                {
+                    if (escaping)
+                    {
+                        escaping = false;
+                    }
+                    else if (current == '\\')
+                    {
+                        escaping = true;
+                    }
+                    else if (current == '"')
+                    {
+                        inString = false;
+                    }
+
+                    continue;
+                }
+
+                if (current == '"')
+                {
+                    inString = true;
+                }
+                else if (current == '{')
+                {
+                    depth++;
+                }
+                else if (current == '}' && --depth == 0)
+                {
+                    jsonObject = value[start..(index + 1)];
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private string SourceTypeFromIdentifier(string identifier)
         {
             return DetermineFileType(string.Empty, identifier) switch
@@ -246,6 +380,12 @@ namespace ITHunterview.Service.Service.Matching
                 "docx" => "docx_text",
                 _ => "ocr"
             };
+        }
+
+        private static string HashIdentifier(string? value)
+        {
+            var bytes = Encoding.UTF8.GetBytes(value ?? string.Empty);
+            return Convert.ToHexString(SHA256.HashData(bytes))[..16].ToLowerInvariant();
         }
 
         private async Task<PromptPairSnapshotDto> GetCvPromptPairAsync()
@@ -278,10 +418,15 @@ namespace ITHunterview.Service.Service.Matching
             return userPromptTemplate.Replace(CvAnalysisPromptContract.UserPlaceholder, cvText, StringComparison.Ordinal);
         }
 
-        private async Task<string> ExtractTextInternalAsync(byte[] fileBytes, string contentType, string identifier)
+        private async Task<string> ExtractTextInternalAsync(
+            byte[] fileBytes,
+            string contentType,
+            string identifier,
+            CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var fileType = DetermineFileType(contentType, identifier);
-            _logger.LogInformation("Bắt đầu ExtractTextInternalAsync cho {Identifier}. ContentType: {ContentType}. Nhận diện loại file: {FileType}", identifier, contentType, fileType);
+            _logger.LogInformation("Bắt đầu ExtractTextInternalAsync. SourceHash={SourceHash}; ContentType={ContentType}; FileType={FileType}", HashIdentifier(identifier), contentType, fileType);
             
             var extracted = string.Empty;
 
@@ -289,13 +434,13 @@ namespace ITHunterview.Service.Service.Matching
             {
                 if (fileType == "pdf")
                 {
-                    _logger.LogInformation("Gọi SafeExtractPdf cho {Identifier}...", identifier);
+                    _logger.LogInformation("Gọi SafeExtractPdf cho SourceHash={SourceHash}...", HashIdentifier(identifier));
                     extracted = SafeExtractPdf(fileBytes, identifier);
                     _logger.LogInformation("SafeExtractPdf hoàn thành. Độ dài raw text: {Length}", extracted?.Length ?? 0);
                 }
                 else if (fileType == "docx")
                 {
-                    _logger.LogInformation("Gọi SafeExtractDocx cho {Identifier}...", identifier);
+                    _logger.LogInformation("Gọi SafeExtractDocx cho SourceHash={SourceHash}...", HashIdentifier(identifier));
                     extracted = SafeExtractDocx(fileBytes, identifier);
                     _logger.LogInformation("SafeExtractDocx hoàn thành. Độ dài raw text: {Length}", extracted?.Length ?? 0);
                 }
@@ -306,16 +451,19 @@ namespace ITHunterview.Service.Service.Matching
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Lỗi khi dùng thư viện C# extract cho file {Identifier}. Error: {Message}", identifier, ex.Message);
+                _logger.LogWarning(
+                    "Lỗi khi dùng thư viện C# extract cho file SourceHash={SourceHash}. ErrorType={ErrorType}",
+                    HashIdentifier(identifier),
+                    ex.GetType().Name);
             }
 
             if (string.IsNullOrWhiteSpace(extracted) || IsTextGarbage(extracted))
             {
-                _logger.LogWarning("Kết quả extract bị rỗng hoặc là rác cho identifier {Identifier}. Trả về chuỗi rỗng.", identifier);
+                _logger.LogWarning("Kết quả extract bị rỗng hoặc là rác cho SourceHash={SourceHash}. Trả về chuỗi rỗng.", HashIdentifier(identifier));
                 return string.Empty;
             }
 
-            _logger.LogInformation("ExtractTextInternalAsync thành công cho {Identifier}. Trả về {Length} ký tự.", identifier, extracted.Length);
+            _logger.LogInformation("ExtractTextInternalAsync thành công cho SourceHash={SourceHash}. Trả về {Length} ký tự.", HashIdentifier(identifier), extracted.Length);
             return extracted ?? string.Empty;
         }
 
@@ -341,7 +489,10 @@ namespace ITHunterview.Service.Service.Matching
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to determine file type from URL: {Url}", fileUrl);
+                _logger.LogWarning(
+                    "Failed to determine CV file type. SourceHash={SourceHash}; ErrorType={ErrorType}",
+                    HashIdentifier(fileUrl),
+                    ex.GetType().Name);
             }
 
             return "unknown";
@@ -351,7 +502,9 @@ namespace ITHunterview.Service.Service.Matching
         {
             if (fileBytes.Length < 4 || fileBytes[0] != 0x25 || fileBytes[1] != 0x50 || fileBytes[2] != 0x44 || fileBytes[3] != 0x46)
             {
-                _logger.LogWarning("File does not appear to be a valid PDF (missing magic bytes). URL: {Url}", fileUrl);
+                _logger.LogWarning(
+                    "File does not appear to be a valid PDF (missing magic bytes). SourceHash={SourceHash}",
+                    HashIdentifier(fileUrl));
                 return string.Empty;
             }
             
@@ -368,7 +521,10 @@ namespace ITHunterview.Service.Service.Matching
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "PdfPig failed to extract PDF content. Falling back to OCR. URL: {Url}", fileUrl);
+                _logger.LogWarning(
+                    "PdfPig failed to extract PDF content. Falling back to OCR. SourceHash={SourceHash}; ErrorType={ErrorType}",
+                    HashIdentifier(fileUrl),
+                    ex.GetType().Name);
                 return string.Empty;
             }
         }
@@ -392,15 +548,23 @@ namespace ITHunterview.Service.Service.Matching
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to extract DOCX content. URL: {Url}", fileUrl);
+                _logger.LogWarning(
+                    "Failed to extract DOCX content. SourceHash={SourceHash}; ErrorType={ErrorType}",
+                    HashIdentifier(fileUrl),
+                    ex.GetType().Name);
                 return string.Empty;
             }
         }
 
-        private async Task<string> ExtractWithGeminiVisionAsync(byte[] fileBytes, string mimeType, string customPrompt = null)
+        private async Task<string> ExtractWithGeminiVisionAsync(
+            byte[] fileBytes,
+            string mimeType,
+            string customPrompt = null,
+            CancellationToken cancellationToken = default)
         {
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var config = _settings.Value.Providers.TryGetValue("Gemini", out var c) ? c : new ProviderConfig();
                 var dbKeyConfig = await _systemConfigRepository.GetByKeyAsync("AiApiKey_Gemini");
                 var apiKey = dbKeyConfig?.ConfigValue ?? config.ApiKey;
@@ -450,15 +614,27 @@ namespace ITHunterview.Service.Service.Matching
                 var jsonPayload = JsonSerializer.Serialize(payload);
                 requestMessage.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-                var response = await client.SendAsync(requestMessage);
+                using var response = await client.SendAsync(
+                    requestMessage,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    cancellationToken);
                 if (!response.IsSuccessStatusCode)
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogError("Gemini Vision API call failed: {StatusCode} {Error}", response.StatusCode, errorContent);
+                    var errorContent = await BoundedHttpContentReader.ReadAsStringAsync(
+                        response.Content,
+                        BoundedHttpContentReader.DefaultMaxBytes,
+                        cancellationToken);
+                    _logger.LogError(
+                        "Gemini Vision API call failed: StatusCode={StatusCode}; ErrorBodyLength={ErrorBodyLength}",
+                        response.StatusCode,
+                        errorContent.Length);
                     return string.Empty;
                 }
 
-                var responseContent = await response.Content.ReadAsStringAsync();
+                var responseContent = await BoundedHttpContentReader.ReadAsStringAsync(
+                    response.Content,
+                    BoundedHttpContentReader.DefaultMaxBytes,
+                    cancellationToken);
                 using var doc = JsonDocument.Parse(responseContent);
 
                 if (doc.RootElement.TryGetProperty("candidates", out var candidates) &&
@@ -489,9 +665,19 @@ namespace ITHunterview.Service.Service.Matching
 
                 return string.Empty;
             }
+            catch (InvalidOperationException ex) when (ex.Message == "AI_RESPONSE_TOO_LARGE")
+            {
+                throw;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Exception in ExtractWithGeminiVisionAsync");
+                _logger.LogError(
+                    "Exception in ExtractWithGeminiVisionAsync. ErrorType={ErrorType}",
+                    ex.GetType().Name);
                 return string.Empty;
             }
         }

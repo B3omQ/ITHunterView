@@ -19,7 +19,8 @@ public sealed class JdRequirementProjectorTests
         Assert.Equal("one_of", alternatives.Operator);
         Assert.Equal(1, alternatives.MinSatisfied);
         Assert.Equal(new[] { "tech_skill", "tech_skill", "tech_skill" }, alternatives.Items.Select(item => item.Category));
-        Assert.Equal(new[] { "grp-001:item-001", "grp-001:item-002", "grp-001:item-003" }, alternatives.Items.Select(item => item.ItemId));
+        Assert.All(alternatives.Items, item => Assert.StartsWith("grp-001:itm-", item.ItemId, StringComparison.Ordinal));
+        Assert.Equal(3, alternatives.Items.Select(item => item.ItemId).Distinct(StringComparer.Ordinal).Count());
     }
 
     [Fact]

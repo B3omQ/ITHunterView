@@ -4,6 +4,7 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Service.Config;
 using ITHunterview.Service.Constant.Prompts;
 using ITHunterview.Service.DTOs.PromptAdmin;
+using ITHunterview.Service.Exceptions;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.Service.Matching;
@@ -133,8 +134,14 @@ public class CvAnalysisPromptManagementTests
     public async Task ExtractParsedDataFromRawTextAsync_UsesActiveCvPromptPair()
     {
         var aiService = new Mock<IAiService>();
+        aiService.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("Gemini");
         aiService
-            .Setup(x => x.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Setup(x => x.GenerateTextAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<AiGenerationOptions>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync("{}");
 
         var promptService = new Mock<IPromptManagementService>();
@@ -186,7 +193,11 @@ public class CvAnalysisPromptManagementTests
                                     prompt.Contains("\"source_type\":\"pasted_text\"") &&
                                     prompt.Contains("\"file_name\":\"resume.txt\"")),
             "system from database",
-            It.IsAny<string>()), Times.Once);
+            "Gemini",
+            It.Is<AiGenerationOptions>(options =>
+                options.ProfileId == "cv-analysis-json/v1" &&
+                options.ResponseMimeType == "application/json"),
+            It.IsAny<CancellationToken>()), Times.Once);
         responseValidator.Verify(x => x.ValidateAndCanonicalize(
             "{}",
             It.Is<ITHunterview.Service.DTOs.Cv.Matching.CvAnalysisInputSnapshot>(input =>
@@ -199,8 +210,14 @@ public class CvAnalysisPromptManagementTests
     public async Task ExtractParsedDataFromRawTextAsync_WhenTypedValidationFails_PreservesFailureCode()
     {
         var aiService = new Mock<IAiService>();
+        aiService.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("Gemini");
         aiService
-            .Setup(x => x.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Setup(x => x.GenerateTextAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<AiGenerationOptions>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync("{}");
 
         var promptService = new Mock<IPromptManagementService>();
@@ -240,9 +257,9 @@ public class CvAnalysisPromptManagementTests
             promptService.Object,
             responseValidator.Object);
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var exception = await Assert.ThrowsAsync<CvAnalysisValidationException>(() =>
             service.ExtractParsedDataFromRawTextAsync("Jane Doe\nC# developer\n", "pasted_text", "resume.txt"));
 
-        Assert.Equal("CV_ANALYSIS_EVIDENCE_NOT_GROUNDED", exception.Message);
+        Assert.Equal("CV_ANALYSIS_EVIDENCE_NOT_GROUNDED", exception.FailureCode);
     }
 }

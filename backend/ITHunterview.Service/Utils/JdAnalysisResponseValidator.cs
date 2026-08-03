@@ -226,6 +226,10 @@ namespace ITHunterview.Service.Utils
                 if (schemaVersion == "jd-analysis/v3")
                 {
                     if (!ParseV3Groups(groupsProp, fullInputText, validated, result)) return result;
+                    if (!JdRequirementSemanticNormalizer.TryNormalize(validated, input, out var failureCode, out var failureMessage))
+                    {
+                        return Invalid(result, failureCode, failureMessage);
+                    }
                 }
                 else foreach (var rElem in reqsProp.EnumerateArray())
                 {
@@ -267,7 +271,14 @@ namespace ITHunterview.Service.Utils
                     });
                 }
 
-                Canonicalize(validated);
+                try
+                {
+                    Canonicalize(validated);
+                }
+                catch (InvalidOperationException exception) when (exception.Message == "JD_ANALYSIS_GROUP_ID_COLLISION")
+                {
+                    return Invalid(result, "JD_ANALYSIS_DUPLICATE_REQUIREMENT_GROUP", "JD analysis contains duplicate semantic requirement groups.");
+                }
 
                 result.IsValid = true;
                 result.Data = validated;
@@ -478,9 +489,27 @@ namespace ITHunterview.Service.Utils
                     .ThenBy(group => string.Join("|", group.Items.Select(item => item.SkillName)), StringComparer.Ordinal)
                     .ToList();
 
-                for (var index = 0; index < validated.RequirementGroups.Count; index++)
+                var assignedIds = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var requirementGroup in validated.RequirementGroups)
                 {
-                    validated.RequirementGroups[index].GroupId = $"grp-{index + 1:000}";
+                    var itemTokens = requirementGroup.Items
+                        .Select(item => JdRequirementSemanticNormalizer.CreateItemToken(
+                            item.Category,
+                            item.SkillName,
+                            item.MinYears,
+                            item.MaxYears))
+                        .ToList();
+                    var groupId = JdRequirementSemanticNormalizer.CreateGroupId(
+                        requirementGroup.Importance,
+                        requirementGroup.Operator,
+                        requirementGroup.MinSatisfied,
+                        itemTokens);
+                    if (!assignedIds.Add(groupId))
+                    {
+                        throw new InvalidOperationException("JD_ANALYSIS_GROUP_ID_COLLISION");
+                    }
+
+                    requirementGroup.GroupId = groupId;
                 }
 
                 validated.RequirementsList = validated.RequirementGroups

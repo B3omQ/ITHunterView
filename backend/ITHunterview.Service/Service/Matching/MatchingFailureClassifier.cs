@@ -1,5 +1,6 @@
 using System;
 using System.Net.Http;
+using ITHunterview.Service.Exceptions;
 
 namespace ITHunterview.Service.Service.Matching;
 
@@ -16,16 +17,33 @@ public static class MatchingFailureClassifier
         ArgumentNullException.ThrowIfNull(exception);
         var message = exception.Message ?? string.Empty;
 
+        if (exception is CvAnalysisValidationException cvAnalysisFailure)
+        {
+            if (cvAnalysisFailure.FailureCode is "CV_ANALYSIS_RAW_TEXT_REQUIRED"
+                or "CV_ANALYSIS_INPUT_INVALID")
+            {
+                return new MatchingFailureClassification("MATCHING_INPUT_INVALID", false);
+            }
+
+            // A typed CV validation failure means the provider already returned
+            // a response and repeating the same request cannot repair its contract.
+            return new MatchingFailureClassification("AI_OUTPUT_INVALID", false);
+        }
+
         if (message.StartsWith("MATCHING_STAGE2_OUTPUT_INVALID", StringComparison.Ordinal)
             || exception is FormatException
             || exception is System.Text.Json.JsonException)
-            return new MatchingFailureClassification("AI_OUTPUT_INVALID", true);
+            return new MatchingFailureClassification("AI_OUTPUT_INVALID", false);
 
         if (message is "AI_PROVIDER_TIMEOUT"
             or "AI_PROVIDER_REQUEST_FAILED"
             or "AI_PROVIDER_HTTP_ERROR"
             or "AI_PROVIDER_INVALID_JSON")
             return new MatchingFailureClassification(message, true);
+
+        if (message is "AI_RESPONSE_TOO_LARGE"
+            or "SNAPSHOT_HASH_MISMATCH")
+            return new MatchingFailureClassification(message, false);
 
         if (exception is TimeoutException
             || exception is OperationCanceledException
@@ -40,6 +58,8 @@ public static class MatchingFailureClassifier
             return new MatchingFailureClassification("MATCHING_INPUT_INVALID", false);
 
         if (message.StartsWith("MATCHING_PROMPT_PLACEHOLDER_MISSING", StringComparison.Ordinal)
+            || message.StartsWith("PROMPT_CONFIGURATION_INVALID", StringComparison.Ordinal)
+            || message is "MATCHING_LEGACY_CONTRACT_UNREPRESENTABLE"
             || message.StartsWith("INVALID_JD_ANALYSIS", StringComparison.Ordinal))
             return new MatchingFailureClassification("MATCHING_CONFIGURATION_INVALID", false);
 

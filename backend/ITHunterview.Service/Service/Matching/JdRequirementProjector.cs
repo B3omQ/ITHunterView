@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Interface.Service.Matching;
+using ITHunterview.Service.Utils;
 
 namespace ITHunterview.Service.Service.Matching;
 
@@ -88,16 +89,17 @@ public sealed class JdRequirementProjector : IJdRequirementProjector
 
             var items = new List<ProjectedJdRequirementItem>();
             var itemKeys = new HashSet<string>(StringComparer.Ordinal);
-            var itemIndex = 0;
             foreach (var itemElement in itemArray.EnumerateArray())
             {
-                itemIndex++;
-                var item = ReadItem(itemElement, $"{groupId}:item-{itemIndex:000}");
+                var item = ReadItem(itemElement, string.Empty);
                 if (!itemKeys.Add($"{item.Category}|{item.SkillName}|{item.MinYears}|{item.MaxYears}"))
                 {
                     throw Invalid();
                 }
-                items.Add(item);
+                items.Add(item with
+                {
+                    ItemId = $"{groupId}:{JdRequirementSemanticNormalizer.CreateItemToken(item.Category, item.SkillName, item.MinYears, item.MaxYears)}"
+                });
             }
 
             groups.Add(new ProjectedJdRequirementGroup(groupId, @operator, minSatisfied, importance, items));

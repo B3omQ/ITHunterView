@@ -105,5 +105,8 @@ namespace ITHunterview.Domain.Entities
         [Column("retry_of_job_id")]
         public Guid? RetryOfJobId { get; set; }
 
+        [Column("history_hidden_at")]
+        public DateTime? HistoryHiddenAt { get; set; }
+
     }
 }

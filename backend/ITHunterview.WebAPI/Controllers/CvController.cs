@@ -21,6 +21,7 @@ namespace ITHunterview.WebAPI.Controllers
         private readonly IHardcodeCvJobMatchingUseCase _hardcodeCvJobMatchingUseCase;
         private readonly ICvJdMatchingSubmissionUseCase _matchingSubmissionUseCase;
         private readonly ICvJdMatchingRetryUseCase _matchingRetryUseCase;
+        private readonly ICvJdMatchingHistoryUseCase _matchingHistoryUseCase;
         private readonly ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService _cvTextExtractorService;
 
         public CvController(
@@ -29,6 +30,7 @@ namespace ITHunterview.WebAPI.Controllers
             IHardcodeCvJobMatchingUseCase hardcodeCvJobMatchingUseCase,
             ICvJdMatchingSubmissionUseCase matchingSubmissionUseCase,
             ICvJdMatchingRetryUseCase matchingRetryUseCase,
+            ICvJdMatchingHistoryUseCase matchingHistoryUseCase,
             ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService cvTextExtractorService)
         {
             _cvUseCase = cvUseCase;
@@ -36,6 +38,7 @@ namespace ITHunterview.WebAPI.Controllers
             _hardcodeCvJobMatchingUseCase = hardcodeCvJobMatchingUseCase;
             _matchingSubmissionUseCase = matchingSubmissionUseCase;
             _matchingRetryUseCase = matchingRetryUseCase;
+            _matchingHistoryUseCase = matchingHistoryUseCase;
             _cvTextExtractorService = cvTextExtractorService;
         }
 
@@ -250,6 +253,7 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpDelete("match-history/{jobId:guid}")]
+        [Authorize(Policy = "CandidateOnly")]
         public async Task<ActionResult<ResponseBase<string>>> DeleteMatchHistory(Guid jobId)
         {
             var userIdStr = User.FindFirstValue("userId");
@@ -258,19 +262,17 @@ namespace ITHunterview.WebAPI.Controllers
                 return Unauthorized();
             }
 
-            try
+            var result = await _matchingHistoryUseCase.HideAsync(jobId, userId, DateTime.UtcNow, HttpContext.RequestAborted);
+            return result switch
             {
-                await _cvJobMatchingUseCase.DeleteMatchHistoryAsync(jobId, userId);
-                return Ok(new ResponseBase<string>("Match history deleted successfully", "Match history deleted successfully"));
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound(new ResponseBase<string>("Match history not found"));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ResponseBase<string>(null, ex.Message));
-            }
+                ITHunterview.Service.DTOs.Cv.Matching.HideMatchHistoryResult.Hidden =>
+                    Ok(new ResponseBase<string>("Match history hidden successfully", "Match history hidden successfully")),
+                ITHunterview.Service.DTOs.Cv.Matching.HideMatchHistoryResult.NotFound =>
+                    NotFound(new ResponseBase<string>("Match history not found")),
+                ITHunterview.Service.DTOs.Cv.Matching.HideMatchHistoryResult.ActiveJob =>
+                    Conflict(new ResponseBase<string>("MATCH_HISTORY_ACTIVE")),
+                _ => throw new InvalidOperationException("MATCH_HISTORY_RESULT_INVALID")
+            };
         }
         [HttpPost("{id:guid}/match-jobs-hardcode")]
         public async Task<ActionResult<ResponseBase<string>>> MatchJobsHardcode(Guid id)

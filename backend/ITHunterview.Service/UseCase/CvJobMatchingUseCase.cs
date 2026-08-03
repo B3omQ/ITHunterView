@@ -46,6 +46,7 @@ namespace ITHunterview.Service.UseCase
         private readonly JdStageTwoResponseValidator _jdStageTwoResponseValidator;
         private readonly JdFitScoreCalculator _jdFitScoreCalculator;
         private readonly CvStageTwoContextBuilder _cvStageTwoContextBuilder;
+        private readonly IJobAnalysisInputBuilder _jobAnalysisInputBuilder;
 
         public CvJobMatchingUseCase(
             ITHunterviewContext context, 
@@ -66,7 +67,8 @@ namespace ITHunterview.Service.UseCase
             JdStageTwoContextBuilder? jdStageTwoContextBuilder = null,
             JdStageTwoResponseValidator? jdStageTwoResponseValidator = null,
             JdFitScoreCalculator? jdFitScoreCalculator = null,
-            CvStageTwoContextBuilder? cvStageTwoContextBuilder = null)
+            CvStageTwoContextBuilder? cvStageTwoContextBuilder = null,
+            IJobAnalysisInputBuilder? jobAnalysisInputBuilder = null)
         {
             _context = context;
             _aiService = aiService;
@@ -87,6 +89,7 @@ namespace ITHunterview.Service.UseCase
             _jdStageTwoResponseValidator = jdStageTwoResponseValidator ?? new JdStageTwoResponseValidator();
             _jdFitScoreCalculator = jdFitScoreCalculator ?? new JdFitScoreCalculator();
             _cvStageTwoContextBuilder = cvStageTwoContextBuilder ?? new CvStageTwoContextBuilder();
+            _jobAnalysisInputBuilder = jobAnalysisInputBuilder ?? new JobAnalysisInputBuilder();
         }
 
         public string ExtractJsonField(string? jsonString, string fieldName)
@@ -518,7 +521,7 @@ namespace ITHunterview.Service.UseCase
         {
             var job = await _context.CvJobMatchScores
                 .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == matchId && x.MatchType == "AI", cancellationToken);
+                .SingleOrDefaultAsync(x => x.Id == matchId && x.MatchType == "AI", cancellationToken);
             if (job is null)
                 throw new KeyNotFoundException("MATCHING_JOB_NOT_FOUND");
 
@@ -540,7 +543,7 @@ namespace ITHunterview.Service.UseCase
             CancellationToken cancellationToken = default)
         {
             var matchRecord = await _context.CvJobMatchScores
-                .FirstOrDefaultAsync(x => x.Id == jobId && x.MatchType == "AI", cancellationToken);
+                .SingleOrDefaultAsync(x => x.Id == jobId && x.MatchType == "AI", cancellationToken);
             if (matchRecord == null)
                 throw new KeyNotFoundException("MATCHING_JOB_NOT_FOUND");
 
@@ -557,7 +560,10 @@ namespace ITHunterview.Service.UseCase
                 bool cvNeedsAiParse = false;      // Cần gọi AI parse ParsedData (saved CV hoặc Temp raw text)
                 bool isCvTextJson = false;
 
-                string cvText = snapshot?.Cv.AnalysisJson ?? snapshot?.Cv.OriginalText ?? request?.CvText ?? string.Empty;
+                var snapshotCvAnalysisJson = snapshot?.Cv.AnalysisJson;
+                string cvText = !string.IsNullOrWhiteSpace(snapshotCvAnalysisJson)
+                    ? snapshotCvAnalysisJson
+                    : snapshot?.Cv.OriginalText ?? request?.CvText ?? string.Empty;
                 
                 if (snapshot != null)
                 {
@@ -588,7 +594,7 @@ namespace ITHunterview.Service.UseCase
 
                 _logger.LogInformation("CV needs AI parse: {Parse}", cvNeedsAiParse);
                 string jdRequirementsJson = "";
-                List<ScoringRequirement> requirementsList = new List<ScoringRequirement>();
+                IReadOnlyList<LegacyStageTwoRequirement> requirementsList = Array.Empty<LegacyStageTwoRequirement>();
                 Domain.Entities.JobPostings? savedJob = null;
                 bool jdNeedsAiParse = false; // Cần gọi LLM Stage 1 cho JD
 
@@ -626,9 +632,13 @@ namespace ITHunterview.Service.UseCase
                 if (cvNeedsAiParse)
                 {
                     if (savedCv != null)
-                        parsedData = await _cvTextExtractorService.ExtractParsedDataFromUrlAsync(savedCv.FileUrl, savedCv.RawText);
+                        parsedData = cancellationToken.CanBeCanceled
+                            ? await _cvTextExtractorService.ExtractParsedDataFromUrlAsync(savedCv.FileUrl, savedCv.RawText ?? string.Empty, cancellationToken)
+                            : await _cvTextExtractorService.ExtractParsedDataFromUrlAsync(savedCv.FileUrl, savedCv.RawText ?? string.Empty);
                     else
-                        parsedData = await _cvTextExtractorService.ExtractParsedDataFromRawTextAsync(cvText, "pasted_text", request?.CvFileName);
+                        parsedData = cancellationToken.CanBeCanceled
+                            ? await _cvTextExtractorService.ExtractParsedDataFromRawTextAsync(cvText, "pasted_text", request?.CvFileName, cancellationToken)
+                            : await _cvTextExtractorService.ExtractParsedDataFromRawTextAsync(cvText, "pasted_text", request?.CvFileName);
                 }
 
                 // --- Xử lý kết quả CV ---
@@ -641,7 +651,7 @@ namespace ITHunterview.Service.UseCase
                             savedCv.ParsedData = parsedData;
                             savedCv.ParseStatus = "SUCCESS";
                             _context.Cvs.Update(savedCv);
-                            await _context.SaveChangesAsync();
+                            await _context.SaveChangesAsync(cancellationToken);
                         }
                         cvText = parsedData;
                         isCvTextJson = true;
@@ -673,7 +683,8 @@ namespace ITHunterview.Service.UseCase
                     jdRequirementsJson = await ExtractJdWithV2Async(
                         savedJob,
                         snapshot?.Jd.OriginalText ?? request?.RawJdText,
-                        snapshot?.Jd.Title ?? request?.JdTitle);
+                        snapshot?.Jd.Title ?? request?.JdTitle,
+                        cancellationToken);
                 }
 
                 if (string.IsNullOrWhiteSpace(jdRequirementsJson))
@@ -685,76 +696,19 @@ namespace ITHunterview.Service.UseCase
                     ITHunterview.Service.Constant.Prompts.BypassMatchingPrompt.Key);
                 var useV3MatchingContract = ITHunterview.Service.Constant.Prompts.JdMatchingPromptContract.IsV3(
                     matchingPromptSnapshot.ModelConfig);
-                JdRequirementProjection? stageTwoProjection = null;
+                var stageTwoProjection = _jdRequirementProjector.Project(jdRequirementsJson);
+                if (stageTwoProjection.Groups.Count == 0)
+                {
+                    throw new InvalidOperationException("INVALID_EFFECTIVE_JD_ANALYSIS");
+                }
                 JdStageTwoContext? stageTwoJdContext = null;
                 if (useV3MatchingContract)
                 {
-                    stageTwoProjection = _jdRequirementProjector.Project(jdRequirementsJson);
-                    if (stageTwoProjection.Groups.Count == 0)
-                    {
-                        throw new InvalidOperationException("INVALID_EFFECTIVE_JD_ANALYSIS");
-                    }
                     stageTwoJdContext = _jdStageTwoContextBuilder.Build(stageTwoProjection);
                 }
-
-                // Legacy prompt contract: retain the existing flat request payload until
-                // the configured prompt explicitly opts into jd-matching/v3.
-                try 
+                else
                 {
-                    var stage1Doc = JsonDocument.Parse(jdRequirementsJson);
-                    if (stage1Doc.RootElement.TryGetProperty("matching_metrics", out var metrics))
-                    {
-                        if (metrics.TryGetProperty("requirement_groups", out var groups) && groups.ValueKind == JsonValueKind.Array)
-                        {
-                            foreach (var group in groups.EnumerateArray())
-                            {
-                                if (!group.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array) continue;
-                                var names = items.EnumerateArray()
-                                    .Where(item => item.TryGetProperty("skill_name", out var name) && name.ValueKind == JsonValueKind.String)
-                                    .Select(item => item.GetProperty("skill_name").GetString())
-                                    .Where(name => !string.IsNullOrWhiteSpace(name))
-                                    .ToList();
-                                if (names.Count == 0) continue;
-                                var groupId = group.TryGetProperty("group_id", out var id) ? id.GetString() : null;
-                                if (string.IsNullOrWhiteSpace(groupId)) throw new InvalidOperationException("INVALID_EFFECTIVE_JD_ANALYSIS");
-                                requirementsList.Add(new ScoringRequirement
-                                {
-                                    ReqId = groupId,
-                                    NormalizedText = string.Join(" | ", names),
-                                    Category = "tech_skill",
-                                    Importance = group.TryGetProperty("importance", out var groupImportance) ? groupImportance.GetString() ?? "must_have" : "must_have",
-                                    DetailVerbatim = string.Join("; ", items.EnumerateArray().Select(item => item.TryGetProperty("detail_verbatim", out var detail) ? detail.GetString() : null).Where(detail => !string.IsNullOrWhiteSpace(detail))),
-                                    CategoryWeight = 1m,
-                                    Operator = group.TryGetProperty("operator", out var operation) ? operation.GetString() ?? "all_of" : "all_of",
-                                    MinSatisfied = group.TryGetProperty("min_satisfied", out var minimum) && minimum.TryGetInt32(out var min) ? min : names.Count,
-                                    Evidence = string.Join("; ", items.EnumerateArray().SelectMany(item => item.TryGetProperty("evidences", out var evidence) && evidence.ValueKind == JsonValueKind.Array ? evidence.EnumerateArray().Where(value => value.ValueKind == JsonValueKind.String).Select(value => value.GetString()) : Enumerable.Empty<string?>()).Where(value => !string.IsNullOrWhiteSpace(value)).Distinct())
-                                });
-                            }
-                        }
-                        else if (metrics.TryGetProperty("requirements_list", out var reqs) && reqs.ValueKind == JsonValueKind.Array)
-                        {
-                            foreach (var r in reqs.EnumerateArray())
-                            {
-                                string category = r.TryGetProperty("category", out var cat) ? cat.GetString() : "tech_skill";
-                                if (category == "seniority_fit") continue; // remove explicitly if any
-
-                                requirementsList.Add(new ScoringRequirement
-                                {
-                                    ReqId = Guid.NewGuid().ToString("N").Substring(0, 8),
-                                    NormalizedText = r.TryGetProperty("skill_name", out var sn) ? sn.GetString() : "",
-                                    Category = category,
-                                    Importance = r.TryGetProperty("importance", out var imp) ? imp.GetString() : "nice_to_have",
-                                    DetailVerbatim = r.TryGetProperty("detail_verbatim", out var dv) ? dv.GetString() : "",
-                                    CategoryWeight = GetCategoryWeight(category)
-                                });
-                            }
-                        }
-
-                    }
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception("Failed to parse Stage 1 JD Requirements: " + ex.Message);
+                    requirementsList = LegacyJdStageTwoProjectionAdapter.Adapt(stageTwoProjection);
                 }
 
                 if (!useV3MatchingContract && !requirementsList.Any())
@@ -806,6 +760,12 @@ namespace ITHunterview.Service.UseCase
                     throw new Exception("Active Prompt for JD_MATCHING_PROMPT not found.");
                 }
 
+                _logger.LogWarning(
+                    "FULL_MATCHING_PROMPT MatchId={MatchId}; PromptLength={PromptLength}; Prompt={Prompt}",
+                    matchRecord.Id,
+                    prompt.Length,
+                    prompt);
+
                 // 4. Call LLM (Stage 2)
                 string llmResponseText = await CallLlmBypassAsync(prompt, cancellationToken);
 
@@ -834,7 +794,7 @@ namespace ITHunterview.Service.UseCase
                 catch (Exception ex)
                 {
                     if (!manageLifecycle)
-                        throw new InvalidOperationException("MATCHING_STAGE2_OUTPUT_INVALID", ex);
+                        throw new InvalidOperationException("MATCHING_STAGE2_OUTPUT_INVALID");
 
                     _logger.LogError("Stage 2 output rejected for match {MatchId}; code={ErrorCode}.", matchRecord.Id, "AI_OUTPUT_INVALID");
                     matchRecord.Status = "Failed";
@@ -898,7 +858,10 @@ namespace ITHunterview.Service.UseCase
                     userId,
                     matchRecord.Id,
                     "Hoàn Coin do CV hoặc JD không còn khả dụng trước khi matching.");
-                _logger.LogWarning(ex, "Matching source access changed before processing match {MatchId}", jobId);
+                _logger.LogWarning(
+                    "Matching source access changed before processing match {MatchId}. ErrorType={ErrorType}",
+                    jobId,
+                    ex.GetType().Name);
                 return;
             }
 
@@ -918,7 +881,11 @@ namespace ITHunterview.Service.UseCase
             await ProcessMatchingJobCoreAsync(jobId, userId, internalRequest);
         }
 
-        private async Task<string> ExtractJdWithV2Async(JobPostings? savedJob, string? rawJdText, string? requestedTitle)
+        private async Task<string> ExtractJdWithV2Async(
+            JobPostings? savedJob,
+            string? rawJdText,
+            string? requestedTitle,
+            CancellationToken cancellationToken)
         {
             if (_jobAnalysisExtractionService == null)
             {
@@ -926,40 +893,26 @@ namespace ITHunterview.Service.UseCase
             }
 
             var snapshot = savedJob == null
-                ? new JobAnalysisInputBuilder().Build(new JobPostings
-                {
-                    Title = requestedTitle ?? string.Empty,
-                    Description = JobPostingRichText.ToPlainText(rawJdText),
-                    Requirements = string.Empty
-                })
-                : new JobAnalysisInputBuilder().Build(savedJob);
+                ? _jobAnalysisInputBuilder.BuildFromPastedText(requestedTitle, rawJdText)
+                : _jobAnalysisInputBuilder.Build(savedJob);
 
-            var extraction = await _jobAnalysisExtractionService.ExtractWithActivePromptsAsync(snapshot);
+            var extraction = cancellationToken.CanBeCanceled
+                ? await _jobAnalysisExtractionService.ExtractWithActivePromptsAsync(snapshot, cancellationToken)
+                : await _jobAnalysisExtractionService.ExtractWithActivePromptsAsync(snapshot);
             if (!extraction.Validation.IsValid || extraction.Validation.Data == null)
             {
-                throw new InvalidOperationException($"INVALID_JD_ANALYSIS: {string.Join("; ", extraction.Validation.Errors)}");
+                throw new InvalidOperationException("INVALID_JD_ANALYSIS");
             }
 
             return _jobAnalysisExtractionService.SerializeEffectiveAnalysis(extraction.Validation.Data);
         }
 
-        private static decimal GetCategoryWeight(string category) => category switch
-        {
-            "tech_skill" => 1.0m,
-            "experience" => 0.9m,
-            "seniority_fit" => 0.9m,
-            "domain_knowledge" => 0.7m,
-            "language" => 0.6m,
-            "education" => 0.5m,
-            "soft_skill" => 0.4m,
-            _ => 0.5m
-        };
-
-        private FinalMatchResult CalculateFinalMatchResult(List<ScoringRequirement> requirements, JsonDocument stage2Response)
+        private FinalMatchResult CalculateFinalMatchResult(IReadOnlyList<LegacyStageTwoRequirement> requirements, JsonDocument stage2Response)
         {
             LegacyJdStageTwoResponseValidator.Validate(
                 stage2Response,
-                requirements.Select(requirement => requirement.ReqId).ToArray());
+                requirements.Select(requirement => requirement.ReqId).ToArray(),
+                requirements.ToDictionary(requirement => requirement.ReqId, requirement => requirement.Category, StringComparer.Ordinal));
             var root = stage2Response.RootElement;
             
             // 1. Process scores
@@ -1062,22 +1015,6 @@ namespace ITHunterview.Service.UseCase
             if (poolACapped)
             {
                 penaltiesOutput.Add(new { code = "RULE_TC1_02", triggered = true, deduction = 0, evidence = ">= 2 CRITICAL GAPs found. Pool A capped at 28 points." });
-            }
-
-            // LLM Penalties
-            if (root.TryGetProperty("penalties", out var llmPenalties) && llmPenalties.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var p in llmPenalties.EnumerateArray())
-                {
-                    if (p.TryGetProperty("triggered", out var triggered) && triggered.GetBoolean())
-                    {
-                        decimal deduction = 15m; // Default for PNL_TC1_01
-                        totalDeduction += deduction;
-                        string code = p.TryGetProperty("code", out var cd) ? cd.GetString() : "UNKNOWN";
-                        string evidence = p.TryGetProperty("evidence", out var ev) ? ev.GetString() : "";
-                        penaltiesOutput.Add(new { code = code, triggered = true, deduction = deduction, evidence = evidence });
-                    }
-                }
             }
 
             // Add KSW_01 Penalty output
@@ -1260,16 +1197,23 @@ namespace ITHunterview.Service.UseCase
                             _logger.LogWarning("Gemini API returned HTTP {StatusCode} on attempt {Attempt}.", response.StatusCode, attempt);
                         }
                     }
+                    catch (InvalidOperationException ex) when (ex.Message is "AI_RESPONSE_TOO_LARGE" or "AI_PROVIDER_INVALID_JSON")
+                    {
+                        throw;
+                    }
                     catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
                         throw;
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Exception during Gemini API call on attempt {Attempt}", attempt);
+                        _logger.LogWarning(
+                            "Exception during Gemini API call on attempt {Attempt}. ErrorType={ErrorType}",
+                            attempt,
+                            ex.GetType().Name);
                         if (attempt == maxRetries)
                         {
-                            throw new InvalidOperationException("AI_PROVIDER_REQUEST_FAILED", ex);
+                            throw new InvalidOperationException("AI_PROVIDER_REQUEST_FAILED");
                         }
                     }
 
@@ -1325,7 +1269,7 @@ namespace ITHunterview.Service.UseCase
         public async Task<MatchingResultDto?> GetMatchingResultAsync(Guid jobId, Guid userId)
         {
             var matchRecord = await _context.CvJobMatchScores
-                .FirstOrDefaultAsync(m => m.Id == jobId && m.UserId == userId);
+                .SingleOrDefaultAsync(m => m.Id == jobId && m.UserId == userId && m.HistoryHiddenAt == null);
                 
             if (matchRecord == null) return null;
 
@@ -1337,7 +1281,10 @@ namespace ITHunterview.Service.UseCase
                 JobId = matchRecord.JobId,
                 JdTitle = matchRecord.JdTitle,
                 Status = matchRecord.Status,
+                ErrorCode = matchRecord.ErrorCode,
                 ErrorMessage = matchRecord.ErrorMessage,
+                CanRetry = string.Equals(matchRecord.Status, "Failed", StringComparison.Ordinal)
+                    && MatchingRetryPolicy.IsManualRetryAllowed(matchRecord.ErrorCode),
                 MatchDetails = matchRecord.MatchDetails,
                 JdFit = new JdFitResultDto { Score = matchRecord.MatchScore ?? 0m }
             };
@@ -1372,7 +1319,7 @@ namespace ITHunterview.Service.UseCase
                         from c in cvs.DefaultIfEmpty()
                         join j in _context.JobPostings on s.JobId equals j.Id into jobs
                         from j in jobs.DefaultIfEmpty()
-                        where s.UserId == userId
+                        where s.UserId == userId && s.HistoryHiddenAt == null
                         select new { Score = s, Cv = c, Job = j };
 
             if (cvId.HasValue)
@@ -1665,33 +1612,6 @@ namespace ITHunterview.Service.UseCase
                 CvFileName = cv.FileName ?? "Candidate CV",
                 FileUrl = cv.FileUrl
             };
-        }
-
-        public async Task DeleteMatchHistoryAsync(Guid jobId, Guid userId)
-        {
-            var matchRecord = await _context.CvJobMatchScores
-                .FirstOrDefaultAsync(m => m.Id == jobId && m.UserId == userId);
-
-            if (matchRecord == null)
-            {
-                throw new KeyNotFoundException("Match history not found or you do not have permission to delete it.");
-            }
-
-            _context.CvJobMatchScores.Remove(matchRecord);
-            await _context.SaveChangesAsync();
-        }
-
-        private class ScoringRequirement
-        {
-            public string ReqId { get; set; }
-            public string NormalizedText { get; set; }
-            public string Category { get; set; }
-            public string Importance { get; set; }
-            public string DetailVerbatim { get; set; }
-            public decimal CategoryWeight { get; set; }
-            public string Operator { get; set; } = "all_of";
-            public int MinSatisfied { get; set; }
-            public string Evidence { get; set; } = string.Empty;
         }
 
         private class FinalMatchResult

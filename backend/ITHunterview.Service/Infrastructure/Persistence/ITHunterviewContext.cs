@@ -396,6 +396,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(e => e.ManualRetryUsed).HasDefaultValue(false);
 
+                entity.HasIndex(e => new { e.UserId, e.HistoryHiddenAt, e.UpdatedAt });
+
                 entity.HasIndex(e => new { e.UserId, e.IdempotencyKey })
                     .IsUnique()
                     .HasFilter("\"match_type\" = 'AI' AND \"idempotency_key\" IS NOT NULL");

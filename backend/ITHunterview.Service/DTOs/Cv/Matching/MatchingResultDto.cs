@@ -14,7 +14,9 @@ namespace ITHunterview.Service.DTOs.Cv.Matching
         public int ProcessingTimeMs { get; set; }
         
         public string Status { get; set; } = "Pending";
+        public string? ErrorCode { get; set; }
         public string? ErrorMessage { get; set; }
+        public bool CanRetry { get; set; }
         public string? MatchDetails { get; set; }
 
         public JdFitResultDto? JdFit { get; set; }

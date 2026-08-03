@@ -76,6 +76,25 @@ public sealed class CvJdMatchingRetryUseCaseTests
         context.CvJobMatchScores.Count().Should().Be(1);
     }
 
+    [Fact]
+    public async Task RetryAsync_RejectsDeterministicAiOutputFailureWithoutCreatingAnotherCharge()
+    {
+        await using var context = CreateContext();
+        var original = CreateFailedJob("AI_OUTPUT_INVALID");
+        context.CvJobMatchScores.Add(original);
+        await context.SaveChangesAsync();
+        var featureUsage = CreateFeatureUsageMock();
+        var retry = CreateRetry(context, featureUsage.Object);
+
+        var action = () => retry.RetryAsync(original.UserId, original.Id, "retry-output-invalid");
+
+        await action.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("MATCHING_RETRY_NOT_ALLOWED");
+        context.CvJobMatchScores.Count().Should().Be(1);
+        featureUsage.Verify(x => x.ReserveFeatureAsync(
+            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private static CvJdMatchingRetryUseCase CreateRetry(
         ITHunterviewContext context,
         ICandidateFeatureUsageUseCase featureUsage)

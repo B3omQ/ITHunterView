@@ -1,14 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useUploadFile } from '@/hooks/useUpload';
 import { useGetMyCvs } from '@/hooks/useCv';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { useMatchCvJd, useGetMatchResult, useRetryMatch } from '@/hooks/useCvMatch';
 import { useWalletBalance } from '@/hooks/useWallet';
 import { usePublicCoinConfig } from '@/hooks/useCoin';
-import type { MatchJdRequest, MatchingOutput } from '@/types/cv.types';
+import type { MatchJdRequest, MatchingOutput, MatchingResultDto } from '@/types/cv.types';
 import { toast } from 'sonner';
 import api from '@/services/api-client';
+import {
+  createMatchingIdempotencyKey,
+  getMatchingErrorMessage,
+  isAmbiguousMatchingError,
+  matchingRequestFingerprint,
+  type MatchingAttempt,
+} from '@/lib/matching-idempotency';
+import {
+  getMatchingFailureMessage,
+  shouldOfferMatchingRetry,
+} from '@/lib/matching-failure';
 
 export type MatchingStep = 'select' | 'loading' | 'result';
 
@@ -25,6 +35,8 @@ export const MATCHING_LOADING_STEPS = [
 export function useCvMatchingForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const initialJobId = searchParams.get('jobId');
+  const initialPrefillJobId = searchParams.get('prefillJobId');
   const { data: walletRes } = useWalletBalance();
   const { data: coinConfigRes } = usePublicCoinConfig();
 
@@ -38,7 +50,7 @@ export function useCvMatchingForm() {
   const subRemaining = isSubUnlimited ? -1 : Math.max(0, matchLimit - matchUsed);
   const hasActiveSub = !!activeSubName && (isSubUnlimited || subRemaining > 0);
 
-  const [step, setStep] = useState<MatchingStep>('select');
+  const [step, setStep] = useState<MatchingStep>(initialJobId ? 'loading' : 'select');
 
   // State CV
   const [cvTab, setCvTab] = useState<string>('upload');
@@ -48,9 +60,9 @@ export function useCvMatchingForm() {
   const [cvFileName, setCvFileName] = useState<string>('');
 
   // State JD
-  const [jdTab, setJdTab] = useState<string>('paste');
+  const [jdTab, setJdTab] = useState<string>(initialPrefillJobId ? 'saved' : 'paste');
   const [jdText, setJdText] = useState<string>('');
-  const [selectedJobId, setSelectedJobId] = useState<string>('');
+  const [selectedJobId, setSelectedJobId] = useState<string>(initialPrefillJobId ?? '');
 
   // Queries & Mutations
   const [isExtracting, setIsExtracting] = useState(false);
@@ -59,77 +71,90 @@ export function useCvMatchingForm() {
   const matchMutation = useMatchCvJd();
   const retryMutation = useRetryMatch();
 
-  const [pollingJobId, setPollingJobId] = useState<string | null>(null);
-  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [pollingJobId, setPollingJobId] = useState<string | null>(initialJobId);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(initialJobId);
   const [matchOutput, setMatchOutput] = useState<MatchingOutput | null>(null);
   const [matchedCvId, setMatchedCvId] = useState<string | null>(null);
   const [retryJobId, setRetryJobId] = useState<string | null>(null);
+  const [resultError, setResultError] = useState<string | null>(null);
+  const submitAttemptRef = useRef<MatchingAttempt | null>(null);
+  const retryAttemptRef = useRef<MatchingAttempt | null>(null);
+  const submitInFlightRef = useRef(false);
+  const retryInFlightRef = useRef(false);
+
+  const clearPendingAttempts = () => {
+    submitAttemptRef.current = null;
+    retryAttemptRef.current = null;
+  };
 
   const pollQuery = useGetMatchResult(pollingJobId);
+
+  const defaultCvId = myCvsData?.data?.find((cv) => cv.isPrimary)?.id
+    ?? myCvsData?.data?.[0]?.id
+    ?? '';
+  const effectiveSelectedCvId = selectedCvId || defaultCvId;
 
   // States cho loading progress
   const [progressPercent, setProgressPercent] = useState(0);
   const [loadingStep, setLoadingStep] = useState(0);
 
-  useEffect(() => {
-    const urlJobId = searchParams.get('jobId');
-    if (urlJobId && !pollingJobId && step === 'select') {
-      setPollingJobId(urlJobId);
-      setCurrentJobId(urlJobId);
-      setStep('loading');
-    }
+  const resolvePollingResult = useCallback((result: MatchingResultDto, jobId: string) => {
+    if (result.status === 'Completed') {
+      setPollingJobId(null);
+      setRetryJobId(null);
+      setResultError(null);
+      if (!result.matchDetails) {
+        const message = 'The completed matching result is empty. Please refresh or contact support.';
+        console.error('Matching completed result is empty', { jobId });
+        setResultError(message);
+        toast.error(message);
+        setStep('select');
+        return;
+      }
 
-    const prefill = searchParams.get('prefillJobId');
-    if (prefill && step === 'select') {
-      setJdTab('saved');
-      setSelectedJobId(prefill);
-    }
-  }, [searchParams, pollingJobId, step]);
-
-  useEffect(() => {
-    if (myCvsData?.data && myCvsData.data.length > 0 && !selectedCvId) {
-      const primary = myCvsData.data.find((c: any) => c.isPrimary) || myCvsData.data[0];
-      setSelectedCvId(primary.id);
-    }
-  }, [myCvsData, selectedCvId]);
-
-
-
-  useEffect(() => {
-    if (pollQuery.data?.data) {
-      const { status, matchDetails, errorMessage } = pollQuery.data.data;
-      if (status === 'Completed' && matchDetails) {
-        setPollingJobId(null);
-        setRetryJobId(null);
-        try {
-          const parsed = JSON.parse(matchDetails) as MatchingOutput;
-          setMatchOutput(parsed);
-          setMatchedCvId(pollQuery.data.data.cvId || null);
-          setProgressPercent(100);
-          setLoadingStep(MATCHING_LOADING_STEPS.length - 1);
-          setTimeout(() => setStep('result'), 600);
-        } catch (err) {
-          console.error("Parse error details:", err);
-          toast.error("Failed to parse matching result.");
-          setRetryJobId(pollingJobId);
-          setStep('select');
-        }
-      } else if (status === 'Failed') {
-        setPollingJobId(null);
-        setRetryJobId(pollingJobId);
-        toast.error(errorMessage || "Matching failed.");
+      try {
+        const parsed = JSON.parse(result.matchDetails) as MatchingOutput;
+        setMatchOutput(parsed);
+        setMatchedCvId(result.cvId || null);
+        setProgressPercent(100);
+        setLoadingStep(MATCHING_LOADING_STEPS.length - 1);
+        setTimeout(() => setStep('result'), 600);
+      } catch (err) {
+        console.error('Matching result parse failed', {
+          jobId,
+          detail: err instanceof Error ? err.message : 'invalid JSON',
+        });
+        const message = 'The matching result is invalid. Please refresh or contact support.';
+        setResultError(message);
+        toast.error(message);
         setStep('select');
       }
+      return;
     }
-  }, [pollQuery.data?.data, pollingJobId]);
+
+    if (result.status === 'Failed') {
+      setPollingJobId(null);
+      setRetryJobId(shouldOfferMatchingRetry(result) ? jobId : null);
+      const message = getMatchingFailureMessage(result.errorCode, result.errorMessage || 'Matching failed.');
+      setResultError(message);
+      toast.error(message);
+      setStep('select');
+    }
+  }, []);
+
+  useEffect(() => {
+    const result = pollQuery.data?.data;
+    if (result && pollingJobId) {
+      const jobId = pollingJobId;
+      const timer = setTimeout(() => resolvePollingResult(result, jobId), 0);
+      return () => clearTimeout(timer);
+    }
+  }, [pollQuery.data?.data, pollingJobId, resolvePollingResult]);
 
   // Giả lập Loading Progress
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (step === 'loading') {
-      setProgressPercent(0);
-      setLoadingStep(0);
-
       interval = setInterval(() => {
         setProgressPercent((prev) => {
           if (prev >= 98) {
@@ -154,6 +179,7 @@ export function useCvMatchingForm() {
       toast.error('File size exceeds the limit of 5MB');
       return;
     }
+    clearPendingAttempts();
     setCvFile(file);
     setCvFileName(file.name);
     setIsExtracting(true);
@@ -174,8 +200,8 @@ export function useCvMatchingForm() {
       } else {
         toast.error(res.data?.message || 'Failed to parse resume');
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error extracting file text');
+    } catch (err: unknown) {
+      toast.error(getMatchingErrorMessage(err, 'Error extracting file text'));
     } finally {
       setIsExtracting(false);
     }
@@ -199,6 +225,7 @@ export function useCvMatchingForm() {
   };
 
   const handleRemoveFile = () => {
+    clearPendingAttempts();
     setCvFile(null);
     setCvText('');
     setCvFileName('');
@@ -206,7 +233,7 @@ export function useCvMatchingForm() {
 
   const handleStartAnalysis = async () => {
     // Nếu upload thành công (JSON được lưu trong cvText), cho phép qua vòng gửi xe
-    const hasCV = (cvTab === 'upload' && cvText.trim()) || (cvTab === 'paste' && cvText.trim()) || (cvTab === 'saved' && selectedCvId);
+    const hasCV = (cvTab === 'upload' && cvText.trim()) || (cvTab === 'paste' && cvText.trim()) || (cvTab === 'saved' && effectiveSelectedCvId);
     const hasJD = (jdTab === 'paste' && jdText.trim()) || (jdTab === 'saved' && selectedJobId);
 
     if (!hasCV) {
@@ -236,7 +263,7 @@ export function useCvMatchingForm() {
         payload.cvFileName = cvFileName;
       }
     } else if (cvTab === 'saved') {
-      payload.cvId = selectedCvId;
+      payload.cvId = effectiveSelectedCvId;
     }
 
     if (jdTab === 'paste') payload.rawJdText = jdText;
@@ -269,11 +296,29 @@ export function useCvMatchingForm() {
       return;
     }
 
+    if (submitInFlightRef.current) return;
+
+    const fingerprint = matchingRequestFingerprint(payload);
+    if (submitAttemptRef.current?.fingerprint !== fingerprint) {
+      submitAttemptRef.current = {
+        key: createMatchingIdempotencyKey('submit'),
+        fingerprint,
+      };
+    }
+
+    submitInFlightRef.current = true;
+    setResultError(null);
+    setProgressPercent(0);
+    setLoadingStep(0);
     setStep('loading');
 
     try {
-      const res = await matchMutation.mutateAsync(payload);
+      const res = await matchMutation.mutateAsync({
+        data: payload,
+        idempotencyKey: submitAttemptRef.current.key,
+      });
       if (res.success && res.data && res.data !== '00000000-0000-0000-0000-000000000000') {
+        submitAttemptRef.current = null;
         toast.success(
           hasActiveSub 
             ? `Bắt đầu phân tích CV-JD (Miễn phí từ gói ${activeSubName}${isSubUnlimited ? "" : `, còn ${Math.max(0, subRemaining - 1)} lượt`})!`
@@ -282,42 +327,93 @@ export function useCvMatchingForm() {
         setPollingJobId(res.data);
         setCurrentJobId(res.data);
       } else {
+        submitAttemptRef.current = null;
         toast.error(res.message || 'Không thể gửi yêu cầu phân tích. Vui lòng thử lại sau.');
         setStep('select');
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || 'Có lỗi xảy ra khi phân tích CV và JD.');
+    } catch (err: unknown) {
+      if (!isAmbiguousMatchingError(err)) submitAttemptRef.current = null;
+      toast.error(getMatchingErrorMessage(err, 'Có lỗi xảy ra khi phân tích CV và JD.'));
       setStep('select');
+    } finally {
+      submitInFlightRef.current = false;
     }
   };
 
   const isSubmitDisabled = () => {
-    const hasCV = (cvTab === 'upload' && cvText.trim()) || (cvTab === 'paste' && cvText.trim()) || (cvTab === 'saved' && selectedCvId);
+    const hasCV = (cvTab === 'upload' && cvText.trim()) || (cvTab === 'paste' && cvText.trim()) || (cvTab === 'saved' && effectiveSelectedCvId);
     const hasJD = (jdTab === 'paste' && jdText.trim()) || (jdTab === 'saved' && selectedJobId);
 
-    let isCvReady = true;
-    let isJdReady = true;
-
-    return !hasCV || !hasJD || isExtracting || !isCvReady || !isJdReady;
+    return !hasCV || !hasJD || isExtracting;
   };
 
   const handleRetry = async () => {
     if (!retryJobId) return;
+    if (retryInFlightRef.current) return;
+
+    const fingerprint = `retry:${retryJobId}`;
+    if (retryAttemptRef.current?.fingerprint !== fingerprint) {
+      retryAttemptRef.current = {
+        key: createMatchingIdempotencyKey('retry'),
+        fingerprint,
+      };
+    }
+
+    retryInFlightRef.current = true;
+    setProgressPercent(0);
+    setLoadingStep(0);
     setStep('loading');
     try {
-      const res = await retryMutation.mutateAsync(retryJobId);
+      const res = await retryMutation.mutateAsync({
+        jobId: retryJobId,
+        idempotencyKey: retryAttemptRef.current.key,
+      });
       if (res.success && res.data) {
+        retryAttemptRef.current = null;
+        setResultError(null);
         setRetryJobId(null);
         setPollingJobId(res.data);
         setCurrentJobId(res.data);
       } else {
+        retryAttemptRef.current = null;
+        setResultError(res.message || 'Retry could not be accepted.');
         toast.error(res.message || 'Retry could not be accepted.');
         setStep('select');
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || 'Retry could not be accepted.');
+    } catch (err: unknown) {
+      if (!isAmbiguousMatchingError(err)) retryAttemptRef.current = null;
+      const message = getMatchingErrorMessage(err, 'Retry could not be accepted.');
+      setResultError(message);
+      toast.error(message);
       setStep('select');
+    } finally {
+      retryInFlightRef.current = false;
     }
+  };
+
+  const updateCvTab = (value: string) => {
+    clearPendingAttempts();
+    setCvTab(value);
+  };
+  const updateCvText = (value: string) => {
+    clearPendingAttempts();
+    setCvText(value);
+  };
+  const updateSelectedCvId = (value: string) => {
+    clearPendingAttempts();
+    setSelectedCvId(value);
+  };
+  const updateJdTab = (value: string) => {
+    clearPendingAttempts();
+    setJdTab(value);
+  };
+  const updateJdText = (value: string) => {
+    clearPendingAttempts();
+    setJdText(value);
+  };
+  const updateSelectedJobId = (value: string) => {
+    clearPendingAttempts();
+    setSelectedJobId(value);
   };
 
   return {
@@ -326,7 +422,7 @@ export function useCvMatchingForm() {
       cvTab,
       cvText,
       cvFile,
-      selectedCvId,
+      selectedCvId: effectiveSelectedCvId,
       cvFileName,
       jdTab,
       jdText,
@@ -337,6 +433,7 @@ export function useCvMatchingForm() {
       matchOutput,
       matchedCvId,
       retryJobId,
+      resultError,
       isRetrying: retryMutation.isPending,
       isUploading: isExtracting,
       isSubmitDisabled: isSubmitDisabled(),
@@ -357,12 +454,12 @@ export function useCvMatchingForm() {
     },
     setters: {
       setStep,
-      setCvTab,
-      setCvText,
-      setSelectedCvId,
-      setJdTab,
-      setJdText,
-      setSelectedJobId
+      setCvTab: updateCvTab,
+      setCvText: updateCvText,
+      setSelectedCvId: updateSelectedCvId,
+      setJdTab: updateJdTab,
+      setJdText: updateJdText,
+      setSelectedJobId: updateSelectedJobId
     },
     handlers: {
       handleFileChange,

@@ -47,9 +47,9 @@ public sealed class MatchingTransportValidationTests
     public void LegacyValidator_RejectsMissingDuplicateAndOutOfRangeScores()
     {
         var requirements = new[] { "r1", "r2" };
-        var missing = Parse("{\"scores\":[{\"reqId\":\"r1\",\"handlerCode\":\"H\",\"handlerScore\":1}]}");
-        var duplicate = Parse("{\"scores\":[{\"reqId\":\"r1\",\"handlerCode\":\"H\",\"handlerScore\":1},{\"reqId\":\"r1\",\"handlerCode\":\"H\",\"handlerScore\":0},{\"reqId\":\"r2\",\"handlerCode\":\"H\",\"handlerScore\":1}]}");
-        var outOfRange = Parse("{\"scores\":[{\"reqId\":\"r1\",\"handlerCode\":\"H\",\"handlerScore\":2},{\"reqId\":\"r2\",\"handlerCode\":\"H\",\"handlerScore\":1}]}");
+        var missing = Parse("{\"scores\":[{\"reqId\":\"r1\",\"handlerCode\":\"H_TECH_05\",\"handlerScore\":1}]}");
+        var duplicate = Parse("{\"scores\":[{\"reqId\":\"r1\",\"handlerCode\":\"H_TECH_05\",\"handlerScore\":1},{\"reqId\":\"r1\",\"handlerCode\":\"H_TECH_01\",\"handlerScore\":0},{\"reqId\":\"r2\",\"handlerCode\":\"H_LANG_06\",\"handlerScore\":1}]}");
+        var outOfRange = Parse("{\"scores\":[{\"reqId\":\"r1\",\"handlerCode\":\"H_TECH_05\",\"handlerScore\":2},{\"reqId\":\"r2\",\"handlerCode\":\"H_LANG_06\",\"handlerScore\":1}]}");
 
         Action missingAction = () => LegacyJdStageTwoResponseValidator.Validate(missing, requirements);
         Action duplicateAction = () => LegacyJdStageTwoResponseValidator.Validate(duplicate, requirements);
@@ -64,11 +64,22 @@ public sealed class MatchingTransportValidationTests
     public void LegacyValidator_AcceptsExactlyOneBoundedScorePerRequirement()
     {
         var requirements = new[] { "r1", "r2" };
-        using var response = Parse("{\"scores\":[{\"reqId\":\"r1\",\"handlerCode\":\"H_TECH\",\"handlerScore\":0.5},{\"reqId\":\"r2\",\"handlerCode\":\"H_LANG\",\"handlerScore\":0,\"flag\":\"CRITICAL_GAP\"}]}");
+        using var response = Parse("{\"scores\":[{\"reqId\":\"r1\",\"handlerCode\":\"H_TECH_04\",\"handlerScore\":0.5},{\"reqId\":\"r2\",\"handlerCode\":\"H_LANG_01\",\"handlerScore\":0,\"flag\":\"CRITICAL_GAP\"}]}");
 
         var action = () => LegacyJdStageTwoResponseValidator.Validate(response, requirements);
 
         action.Should().NotThrow();
+    }
+
+    [Fact]
+    public void LegacyValidator_RejectsUnknownHandlerCode()
+    {
+        var requirements = new[] { "r1" };
+        using var response = Parse("{\"scores\":[{\"reqId\":\"r1\",\"handlerCode\":\"INJECTED\",\"handlerScore\":1}]}");
+
+        var action = () => LegacyJdStageTwoResponseValidator.Validate(response, requirements);
+
+        action.Should().Throw<InvalidOperationException>().WithMessage("INVALID_STAGE_TWO_RESPONSE");
     }
 
     private static JsonDocument Parse(string json) => JsonDocument.Parse(json);

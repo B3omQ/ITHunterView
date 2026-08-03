@@ -4,6 +4,7 @@ using System.Text.Json;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Service;
 using ITHunterview.Service.Utils;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace ITHunterview.Service.Tests.JobAnalysis;
@@ -16,7 +17,8 @@ public class JobAnalysisEffectiveAnalysisTests
         var service = new JobAnalysisExtractionService(
             Mock.Of<IAiService>(),
             Mock.Of<IPromptManagementService>(),
-            Mock.Of<IJdAnalysisResponseValidator>());
+            Mock.Of<IJdAnalysisResponseValidator>(),
+            NullLogger<JobAnalysisExtractionService>.Instance);
 
         var analysis = new ValidatedJobAnalysis
         {
@@ -51,7 +53,11 @@ public class JobAnalysisEffectiveAnalysisTests
     [Fact]
     public void SerializeEffectiveAnalysis_WithV3Groups_PreservesGroupLogicAndEvidence()
     {
-        var service = new JobAnalysisExtractionService(Mock.Of<IAiService>(), Mock.Of<IPromptManagementService>(), Mock.Of<IJdAnalysisResponseValidator>());
+        var service = new JobAnalysisExtractionService(
+            Mock.Of<IAiService>(),
+            Mock.Of<IPromptManagementService>(),
+            Mock.Of<IJdAnalysisResponseValidator>(),
+            NullLogger<JobAnalysisExtractionService>.Instance);
         var analysis = new ValidatedJobAnalysis
         {
             SchemaVersion = "jd-analysis/v3",

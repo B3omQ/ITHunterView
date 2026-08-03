@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using FluentAssertions;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Service.DTOs.Cv.Matching;
+using ITHunterview.Service.Exceptions;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Interface.UseCase;
@@ -92,6 +93,83 @@ public sealed class CvJdMatchingWorkerUseCaseTests
     }
 
     [Fact]
+    public async Task ProcessClaimedJob_InvalidStageTwoContractFailsFirstAttemptAndRefunds()
+    {
+        await using var context = CreateContext();
+        var job = CreateJob();
+        context.CvJobMatchScores.Add(job);
+        await context.SaveChangesAsync();
+
+        var processor = new Mock<ICvJdOneToOneMatchingProcessor>(MockBehavior.Strict);
+        processor.Setup(x => x.ExecuteAsync(job.Id, It.IsAny<MatchingInputSnapshotV1>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("MATCHING_STAGE2_OUTPUT_INVALID"));
+        var featureUsage = CreateFeatureUsageMock();
+        var worker = CreateWorker(context, processor.Object, featureUsage.Object);
+        var repository = new CvJdMatchingJobRepository(context);
+        var claimed = (await repository.ClaimRunnableJobsAsync(
+            1,
+            "worker-a",
+            UtcNow,
+            CvJdMatchingWorkerUseCase.LeaseDuration))[0];
+
+        await worker.ProcessClaimedJobAsync(job.Id, "worker-a", claimed.LeaseToken);
+
+        job.AttemptCount.Should().Be(1);
+        job.Status.Should().Be("Failed");
+        job.ErrorCode.Should().Be("AI_OUTPUT_INVALID");
+        job.NextAttemptAt.Should().BeNull();
+        featureUsage.Verify(x => x.RefundFeatureReservationAsync(
+            job.UserId,
+            job.Id,
+            "ai_output_invalid",
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ProcessClaimedJob_CvSchemaFailureFailsFirstAttemptAndRefunds()
+    {
+        await using var context = CreateContext();
+        var job = CreateJob();
+        context.CvJobMatchScores.Add(job);
+        await context.SaveChangesAsync();
+
+        var validationFailure = CvAnalysisValidationResult.Failure(
+            "CV_ANALYSIS_SCHEMA_INVALID",
+            "TYPED_DESERIALIZATION_FAILED",
+            "$.matching_metrics");
+        var processor = new Mock<ICvJdOneToOneMatchingProcessor>(MockBehavior.Strict);
+        processor.Setup(x => x.ExecuteAsync(job.Id, It.IsAny<MatchingInputSnapshotV1>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new CvAnalysisValidationException(validationFailure));
+        var featureUsage = CreateFeatureUsageMock();
+        var worker = CreateWorker(context, processor.Object, featureUsage.Object);
+        var repository = new CvJdMatchingJobRepository(context);
+        var claimed = (await repository.ClaimRunnableJobsAsync(
+            1,
+            "worker-a",
+            UtcNow,
+            CvJdMatchingWorkerUseCase.LeaseDuration))[0];
+
+        await worker.ProcessClaimedJobAsync(job.Id, "worker-a", claimed.LeaseToken);
+
+        job.AttemptCount.Should().Be(1);
+        job.Status.Should().Be("Failed");
+        job.ErrorCode.Should().Be("AI_OUTPUT_INVALID");
+        job.NextAttemptAt.Should().BeNull();
+        featureUsage.Verify(x => x.RefundFeatureReservationAsync(
+            job.UserId,
+            job.Id,
+            "ai_output_invalid",
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        var laterClaims = await repository.ClaimRunnableJobsAsync(
+            1,
+            "worker-b",
+            UtcNow.AddHours(1),
+            CvJdMatchingWorkerUseCase.LeaseDuration);
+        laterClaims.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task ProcessClaimedJob_InvalidSnapshotFailsAndRefundsReservation()
     {
         await using var context = CreateContext();
@@ -116,6 +194,34 @@ public sealed class CvJdMatchingWorkerUseCaseTests
             job.UserId,
             job.Id,
             "snapshot_invalid",
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ProcessClaimedJob_WhenSnapshotHashChanges_FailsWithIntegrityCode()
+    {
+        await using var context = CreateContext();
+        var job = CreateJob();
+        job.InputHash = new string('0', 64);
+        context.CvJobMatchScores.Add(job);
+        await context.SaveChangesAsync();
+
+        var featureUsage = CreateFeatureUsageMock();
+        var worker = CreateWorker(
+            context,
+            new Mock<ICvJdOneToOneMatchingProcessor>(MockBehavior.Strict).Object,
+            featureUsage.Object);
+        var repository = new CvJdMatchingJobRepository(context);
+        var claimed = (await repository.ClaimRunnableJobsAsync(1, "worker-a", UtcNow, CvJdMatchingWorkerUseCase.LeaseDuration))[0];
+
+        await worker.ProcessClaimedJobAsync(job.Id, "worker-a", claimed.LeaseToken);
+
+        job.Status.Should().Be("Failed");
+        job.ErrorCode.Should().Be("SNAPSHOT_HASH_MISMATCH");
+        featureUsage.Verify(x => x.RefundFeatureReservationAsync(
+            job.UserId,
+            job.Id,
+            "snapshot_hash_mismatch",
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -161,6 +267,34 @@ public sealed class CvJdMatchingWorkerUseCaseTests
             first.Id,
             It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RecoverExpiredLease_RecoversLegacyProcessingRowWithoutLease()
+    {
+        await using var context = CreateContext();
+        var job = CreateJob();
+        job.Status = "Processing";
+        job.LeaseOwner = null;
+        job.LeaseToken = null;
+        job.LeaseExpiresAt = null;
+        job.AttemptCount = 1;
+        context.CvJobMatchScores.Add(job);
+        await context.SaveChangesAsync();
+
+        var featureUsage = CreateFeatureUsageMock();
+        var worker = CreateWorker(
+            context,
+            new Mock<ICvJdOneToOneMatchingProcessor>(MockBehavior.Strict).Object,
+            featureUsage.Object);
+
+        await worker.RecoverExpiredLeasesAsync(UtcNow);
+
+        job.Status.Should().Be("RetryScheduled");
+        job.ErrorCode.Should().Be("LEASE_EXPIRED");
+        job.LeaseOwner.Should().BeNull();
+        featureUsage.Verify(x => x.RefundFeatureReservationAsync(
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -226,22 +360,27 @@ public sealed class CvJdMatchingWorkerUseCaseTests
             CreatedAt = now,
             UpdatedAt = now,
             MaxAttempts = 3,
-            InputSnapshotJson = SnapshotJson()
+            InputSnapshotJson = SnapshotJson(),
+            InputHash = MatchingInputSnapshotIntegrity.ComputeHash(CreateSnapshot())
         };
     }
 
     private static string SnapshotJson()
     {
-        var snapshot = new MatchingInputSnapshotV1(
+        return JsonSerializer.Serialize(CreateSnapshot(), new JsonSerializerOptions
+        {
+            Converters = { new JsonStringEnumConverter() }
+        });
+    }
+
+    private static MatchingInputSnapshotV1 CreateSnapshot()
+    {
+        return new MatchingInputSnapshotV1(
             MatchingInputSnapshotBuilder.SchemaVersion,
             MatchingMode.JdFit,
             new MatchingCvSnapshot("raw", null, "cv.pdf", "candidate text", null, null),
             new MatchingJdSnapshot("raw", null, "Engineer", "job text", null, null),
             UtcNow);
-        return JsonSerializer.Serialize(snapshot, new JsonSerializerOptions
-        {
-            Converters = { new JsonStringEnumConverter() }
-        });
     }
 
     private static DateTime UtcNow => new(2026, 8, 2, 8, 0, 0, DateTimeKind.Utc);

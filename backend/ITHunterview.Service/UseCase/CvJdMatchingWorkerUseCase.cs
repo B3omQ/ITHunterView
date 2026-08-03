@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
@@ -20,12 +18,6 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
 {
     public static readonly TimeSpan LeaseDuration = TimeSpan.FromMinutes(4);
     public static readonly TimeSpan AttemptTimeout = TimeSpan.FromMinutes(3);
-
-    private static readonly JsonSerializerOptions SnapshotJsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        Converters = { new JsonStringEnumConverter() }
-    };
 
     private readonly ITHunterviewContext _context;
     private readonly ICvJdMatchingJobRepository _jobRepository;
@@ -68,11 +60,15 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
         MatchingInputSnapshotV1 snapshot;
         try
         {
-            snapshot = DeserializeSnapshot(job.InputSnapshotJson);
+            snapshot = MatchingInputSnapshotIntegrity.Deserialize(job.InputSnapshotJson!);
+            if (!MatchingInputSnapshotIntegrity.IsValid(snapshot, job.InputHash))
+            {
+                throw new InvalidOperationException("SNAPSHOT_HASH_MISMATCH");
+            }
         }
-        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
+        catch (InvalidOperationException ex) when (ex.Message is "SNAPSHOT_INVALID" or "SNAPSHOT_HASH_MISMATCH")
         {
-            await FailOrRetryAsync(job, workerId, leaseToken, new MatchingFailureClassification("SNAPSHOT_INVALID", false), cancellationToken);
+            await FailOrRetryAsync(job, workerId, leaseToken, new MatchingFailureClassification(ex.Message, false), cancellationToken);
             return;
         }
 
@@ -96,6 +92,13 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             await FailOrRetryAsync(job, workerId, leaseToken, new MatchingFailureClassification("AI_PROVIDER_TIMEOUT", true), cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Host shutdown/caller cancellation must leave the lease for the
+            // recovery loop; do not attempt a database transition with a
+            // canceled token.
+            throw;
         }
         catch (Exception ex)
         {
@@ -216,17 +219,6 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
             if (transaction != null)
                 await transaction.DisposeAsync();
         }
-    }
-
-    private static MatchingInputSnapshotV1 DeserializeSnapshot(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json))
-            throw new InvalidOperationException("SNAPSHOT_INVALID");
-        var snapshot = JsonSerializer.Deserialize<MatchingInputSnapshotV1>(json, SnapshotJsonOptions)
-            ?? throw new InvalidOperationException("SNAPSHOT_INVALID");
-        if (!string.Equals(snapshot.SchemaVersion, MatchingInputSnapshotBuilder.SchemaVersion, StringComparison.Ordinal))
-            throw new InvalidOperationException("SNAPSHOT_INVALID");
-        return snapshot;
     }
 
     public static TimeSpan GetRetryDelay(int attemptCount)

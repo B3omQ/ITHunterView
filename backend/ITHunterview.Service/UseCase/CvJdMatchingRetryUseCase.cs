@@ -7,6 +7,7 @@ using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
+using ITHunterview.Service.Service.Matching;
 using Microsoft.EntityFrameworkCore;
 
 namespace ITHunterview.Service.UseCase;
@@ -17,17 +18,6 @@ namespace ITHunterview.Service.UseCase;
 /// </summary>
 public sealed class CvJdMatchingRetryUseCase : ICvJdMatchingRetryUseCase
 {
-    private static readonly string[] RetryableErrorCodes =
-    {
-        "AI_PROVIDER_TIMEOUT",
-        "AI_PROVIDER_REQUEST_FAILED",
-        "AI_PROVIDER_HTTP_ERROR",
-        "AI_PROVIDER_INVALID_JSON",
-        "AI_OUTPUT_INVALID",
-        "MATCHING_TECHNICAL_ERROR",
-        "LEASE_EXPIRED"
-    };
-
     private readonly ITHunterviewContext _context;
     private readonly ICvJdMatchingJobRepository _jobRepository;
     private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
@@ -78,7 +68,7 @@ public sealed class CvJdMatchingRetryUseCase : ICvJdMatchingRetryUseCase
                 throw new KeyNotFoundException("MATCHING_FAILED_JOB_NOT_FOUND");
             if (failedJob.ManualRetryUsed)
                 throw new InvalidOperationException("MANUAL_RETRY_ALREADY_USED");
-            if (!IsRetryable(failedJob.ErrorCode))
+            if (!MatchingRetryPolicy.IsManualRetryAllowed(failedJob.ErrorCode))
                 throw new InvalidOperationException("MATCHING_RETRY_NOT_ALLOWED");
             if (string.IsNullOrWhiteSpace(failedJob.InputSnapshotJson) || string.IsNullOrWhiteSpace(failedJob.InputHash))
                 throw new InvalidOperationException("MATCHING_SNAPSHOT_UNAVAILABLE");
@@ -145,10 +135,6 @@ public sealed class CvJdMatchingRetryUseCase : ICvJdMatchingRetryUseCase
                 await transaction.DisposeAsync();
         }
     }
-
-    private static bool IsRetryable(string? errorCode)
-        => !string.IsNullOrWhiteSpace(errorCode)
-           && RetryableErrorCodes.Contains(errorCode, StringComparer.Ordinal);
 
     private static string NormalizeIdempotencyKey(string idempotencyKey)
     {

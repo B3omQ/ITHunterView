@@ -6,9 +6,9 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Service.Constant.Prompts;
-using ITHunterview.Service.Utils;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace ITHunterview.Service.Service
 {
@@ -33,12 +33,18 @@ namespace ITHunterview.Service.Service
         private readonly IAiService _aiService;
         private readonly IPromptManagementService _promptService;
         private readonly IJdAnalysisResponseValidator _validator;
+        private readonly ILogger<JobAnalysisExtractionService> _logger;
 
-        public JobAnalysisExtractionService(IAiService aiService, IPromptManagementService promptService, IJdAnalysisResponseValidator validator)
+        public JobAnalysisExtractionService(
+            IAiService aiService,
+            IPromptManagementService promptService,
+            IJdAnalysisResponseValidator validator,
+            ILogger<JobAnalysisExtractionService> logger)
         {
             _aiService = aiService;
             _promptService = promptService;
             _validator = validator;
+            _logger = logger;
         }
 
         public async Task<JobAnalysisExtractionResult> ExtractWithActivePromptsAsync(JobAnalysisInputSnapshot input, CancellationToken ct = default)
@@ -55,7 +61,17 @@ namespace ITHunterview.Service.Service
             var payload = JsonSerializer.Serialize(input);
             var userPrompt = userPromptTemplate.Replace("[JOB_INPUT_JSON]", payload);
             var provider = await _aiService.GetActiveProviderNameAsync();
-            var response = await _aiService.GenerateTextAsync(userPrompt, systemPrompt, provider);
+            var response = await _aiService.GenerateTextAsync(
+                userPrompt,
+                systemPrompt,
+                provider,
+                AiGenerationOptions.StrictJsonExtraction,
+                ct) ?? string.Empty;
+            _logger.LogInformation(
+                "FULL_JD_ANALYSIS_AI_RESPONSE Provider={Provider}; ResponseLength={ResponseLength}; Response={Response}",
+                provider,
+                response.Length,
+                response);
             var rawJson = CleanJsonFence(response);
             return new JobAnalysisExtractionResult
             {

@@ -4,17 +4,17 @@ import type { MatchJdRequest, MatchingResultDto } from '@/types/cv.types';
 import type { ApiResponse } from '@/types/api.types';
 
 export const useMatchCvJd = () => {
-  return useMutation<ApiResponse<string>, Error, MatchJdRequest>({
-    mutationFn: (data: MatchJdRequest) => cvService.matchCvJd(data),
+  return useMutation<ApiResponse<string>, Error, { data: MatchJdRequest; idempotencyKey: string }>({
+    mutationFn: ({ data, idempotencyKey }) => cvService.matchCvJd(data, idempotencyKey),
   });
 };
 
 export const useRetryMatch = () => {
   const queryClient = useQueryClient();
-  return useMutation<ApiResponse<string>, Error, string>({
-    mutationFn: (jobId: string) => cvService.retryMatch(jobId),
-    onSuccess: (_response, jobId) => {
-      queryClient.invalidateQueries({ queryKey: ['match-result', jobId] });
+  return useMutation<ApiResponse<string>, Error, { jobId: string; idempotencyKey: string }>({
+    mutationFn: ({ jobId, idempotencyKey }) => cvService.retryMatch(jobId, idempotencyKey),
+    onSuccess: (_response, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['match-result', variables.jobId] });
     },
   });
 };

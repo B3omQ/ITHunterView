@@ -194,6 +194,14 @@ namespace ITHunterview.Service.UseCase
             var scoringDecision = _hardcodeJdRequirementScoringService.Evaluate(job.ParsedData, cvMetrics.Skills);
             if (scoringDecision.FailureCode != null)
             {
+                if (!scoringDecision.CanUseLegacyCompatibilityFallback)
+                {
+                    _logger.LogError(
+                        "Hardcode matching skipped job {JobId}: its JD declares v3 but its effective analysis is invalid.",
+                        job.Id);
+                    return;
+                }
+
                 _logger.LogWarning(
                     "Hardcode matching ignored invalid effective JD analysis for job {JobId}; using compatibility metrics.",
                     job.Id);

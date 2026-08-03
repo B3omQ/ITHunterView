@@ -79,7 +79,9 @@ export interface MatchingResultDto {
   jobId?: string;
   jdTitle?: string;
   status: string;
+  errorCode?: string;
   errorMessage?: string;
+  canRetry: boolean;
   matchDetails?: string; // The raw JSON string from LLM
 }
 
@@ -100,7 +102,7 @@ export interface MatchingOutput {
   cvQuality?: {
     score: number;
     result: "Excellent" | "Good" | "Fair" | "Poor";
-    breakdown: any;
+    breakdown: Record<string, unknown>;
     penalties: Penalty[];
   };
   improvements: ImprovementSuggestion[];
@@ -116,13 +118,18 @@ export type RequirementCategory =
   | "education"
   | "soft_skill";
 
+export interface RequirementEntities {
+  skill_name?: string;
+  [key: string]: unknown;
+}
+
 export interface RequirementScore {
   reqId: string;
   normalizedText: string;
   importance: "must_have" | "nice_to_have";
   category: RequirementCategory;
   categoryWeight: number;
-  entities: any;
+  entities: RequirementEntities;
   handlerUsed: string;
   handlerCode: string;
   handlerScore: number;

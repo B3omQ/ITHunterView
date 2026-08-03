@@ -1,8 +1,4 @@
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Utils;
@@ -12,15 +8,6 @@ namespace ITHunterview.Service.Service.Matching;
 public sealed class MatchingInputSnapshotBuilder
 {
     public const string SchemaVersion = "matching-context/v1";
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-        WriteIndented = false,
-        DefaultIgnoreCondition = JsonIgnoreCondition.Never,
-        Converters = { new JsonStringEnumConverter() }
-    };
 
     private readonly IMatchingSourceRepository _sourceRepository;
 
@@ -45,17 +32,8 @@ public sealed class MatchingInputSnapshotBuilder
             jd,
             DateTime.UtcNow);
 
-        var json = JsonSerializer.Serialize(snapshot, JsonOptions);
-        var hashPayload = new
-        {
-            snapshot.SchemaVersion,
-            snapshot.Mode,
-            snapshot.Cv,
-            snapshot.Jd
-        };
-        var canonicalForHash = JsonSerializer.Serialize(hashPayload, JsonOptions);
-        var hash = Convert.ToHexStringLower(
-            SHA256.HashData(Encoding.UTF8.GetBytes(canonicalForHash)));
+        var json = MatchingInputSnapshotIntegrity.Serialize(snapshot);
+        var hash = MatchingInputSnapshotIntegrity.ComputeHash(snapshot);
 
         return new MatchingSnapshotResult(snapshot, json, hash);
     }

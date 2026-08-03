@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Service.Config;
@@ -40,10 +41,27 @@ namespace ITHunterview.Service.Service
         }
 
         public async Task<string> GenerateTextAsync(string prompt, string systemPrompt = null, string providerName = null)
+            => await GenerateTextAsync(prompt, systemPrompt, providerName, CancellationToken.None);
+
+        public async Task<string> GenerateTextAsync(
+            string prompt,
+            string systemPrompt,
+            string providerName,
+            CancellationToken cancellationToken)
+            => await GenerateTextAsync(prompt, systemPrompt, providerName, null, cancellationToken);
+
+        public async Task<string> GenerateTextAsync(
+            string prompt,
+            string systemPrompt,
+            string providerName,
+            AiGenerationOptions? options,
+            CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var activeProviderName = string.IsNullOrWhiteSpace(providerName)
                 ? await GetActiveProviderNameAsync()
                 : providerName;
+            cancellationToken.ThrowIfCancellationRequested();
             var provider = _providerFactory.GetProvider(activeProviderName);
 
             string result = null;
@@ -51,7 +69,9 @@ namespace ITHunterview.Service.Service
 
             try
             {
-                result = await provider.GenerateTextAsync(prompt, systemPrompt);
+                result = options is null
+                    ? await provider.GenerateTextAsync(prompt, systemPrompt, cancellationToken)
+                    : await provider.GenerateTextAsync(prompt, systemPrompt, options, cancellationToken);
                 return result;
             }
             finally

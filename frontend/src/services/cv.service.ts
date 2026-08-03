@@ -15,10 +15,10 @@ export const cvService = {
   setPrimaryCv: (id: string) =>
     api.put<ApiResponse<string>>(`/api/cvs/${id}/primary`).then((r) => r.data),
 
-  matchCvJd: (data: import('@/types/cv.types').MatchJdRequest, idempotencyKey?: string) =>
+  matchCvJd: (data: import('@/types/cv.types').MatchJdRequest, idempotencyKey: string) =>
     api.post<ApiResponse<string>>('/api/cvs/match-jd', data, {
       timeout: 15000,
-      headers: { 'Idempotency-Key': idempotencyKey ?? crypto.randomUUID() },
+      headers: { 'Idempotency-Key': idempotencyKey },
     }).then((r) => r.data),
 
   matchJobs: (id: string) =>
@@ -30,10 +30,10 @@ export const cvService = {
   getMatchResult: (jobId: string) =>
     api.get<ApiResponse<import('@/types/cv.types').MatchingResultDto>>(`/api/cvs/match-results/${jobId}`).then((r) => r.data),
 
-  retryMatch: (jobId: string, idempotencyKey?: string) =>
+  retryMatch: (jobId: string, idempotencyKey: string) =>
     api.post<ApiResponse<string>>(`/api/cvs/match-results/${jobId}/retry`, null, {
       timeout: 15000,
-      headers: { 'Idempotency-Key': idempotencyKey ?? crypto.randomUUID() },
+      headers: { 'Idempotency-Key': idempotencyKey },
     }).then((r) => r.data),
 
   getMatchHistory: (page: number = 1, pageSize: number = 10, cvId?: string) =>

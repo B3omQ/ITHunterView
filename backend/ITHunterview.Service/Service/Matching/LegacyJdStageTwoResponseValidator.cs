@@ -10,7 +10,10 @@ public static class LegacyJdStageTwoResponseValidator
 {
     public const string InvalidStageTwoResponse = "INVALID_STAGE_TWO_RESPONSE";
 
-    public static void Validate(JsonDocument response, IReadOnlyCollection<string> requirementIds)
+    public static void Validate(
+        JsonDocument response,
+        IReadOnlyCollection<string> requirementIds,
+        IReadOnlyDictionary<string, string>? categoryByRequirement = null)
     {
         ArgumentNullException.ThrowIfNull(response);
         ArgumentNullException.ThrowIfNull(requirementIds);
@@ -47,8 +50,17 @@ public static class LegacyJdStageTwoResponseValidator
             }
 
             var id = reqId.GetString()!.Trim();
+            var code = handlerCode.GetString()!.Trim();
             if (!expectedIds.Contains(id) || !actualIds.Add(id))
                 throw Invalid();
+            if (!MatchingHandlerCodePolicy.IsKnown(code))
+                throw Invalid();
+            if (categoryByRequirement is not null &&
+                (!categoryByRequirement.TryGetValue(id, out var category) ||
+                 !MatchingHandlerCodePolicy.IsValid(category, code)))
+            {
+                throw Invalid();
+            }
 
             if (score.TryGetProperty("flag", out var flag) &&
                 flag.ValueKind != JsonValueKind.Null &&

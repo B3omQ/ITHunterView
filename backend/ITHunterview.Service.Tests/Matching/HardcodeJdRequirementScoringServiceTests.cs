@@ -58,4 +58,22 @@ public class HardcodeJdRequirementScoringServiceTests
         Assert.Equal(JdRequirementProjector.InvalidEffectiveJdAnalysis, result.FailureCode);
         Assert.Null(result.Evaluation);
     }
+
+    [Fact]
+    public void Evaluate_InvalidV3Analysis_DoesNotAllowLegacyCompatibilityFallback()
+    {
+        var service = new HardcodeJdRequirementScoringService(
+            new JdRequirementProjector(),
+            new JdHardcodeRequirementEvaluator());
+
+        var result = service.Evaluate(
+            """
+            { "schema_version": "jd-analysis/v3", "matching_metrics": { "requirement_groups": "invalid" } }
+            """,
+            new[] { "React" });
+
+        Assert.False(result.HasRequirementGroups);
+        Assert.False(result.CanUseLegacyCompatibilityFallback);
+        Assert.Equal(JdRequirementProjector.InvalidEffectiveJdAnalysis, result.FailureCode);
+    }
 }

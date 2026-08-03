@@ -13,11 +13,18 @@ public sealed record CvAnalysisInputSnapshot(
 public sealed record CvAnalysisValidationResult(
     bool IsValid,
     string CanonicalJson,
-    string FailureCode)
+    string FailureCode,
+    string DiagnosticCode,
+    string JsonPath)
 {
-    public static CvAnalysisValidationResult Success(string canonicalJson) => new(true, canonicalJson, string.Empty);
+    public static CvAnalysisValidationResult Success(string canonicalJson) =>
+        new(true, canonicalJson, string.Empty, string.Empty, string.Empty);
 
-    public static CvAnalysisValidationResult Failure(string failureCode) => new(false, string.Empty, failureCode);
+    public static CvAnalysisValidationResult Failure(
+        string failureCode,
+        string diagnosticCode = "UNSPECIFIED",
+        string jsonPath = "") =>
+        new(false, string.Empty, failureCode, diagnosticCode, jsonPath);
 }
 
 public sealed class CvAnalysisDocument

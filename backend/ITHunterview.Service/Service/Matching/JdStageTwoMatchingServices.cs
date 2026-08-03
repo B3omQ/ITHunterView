@@ -74,6 +74,10 @@ public sealed class JdStageTwoResponseValidator
 {
     public const string InvalidStageTwoResponse = "INVALID_STAGE_TWO_RESPONSE";
     private const string CredibilityPenaltyCode = "PNL_TC1_01";
+    private const int MaxReasoningLength = 1000;
+    private const int MaxEvidenceItems = 5;
+    private const int MaxEvidenceLength = 500;
+    private const int MaxPenaltyEvidenceLength = 1000;
 
     public JdStageTwoValidatedResponse Validate(JsonDocument response, JdRequirementProjection projection)
     {
@@ -110,14 +114,27 @@ public sealed class JdStageTwoResponseValidator
                 var itemId = RequiredString(itemScore, "itemId");
                 var handlerCode = RequiredString(itemScore, "handlerCode");
                 var score = RequiredDecimal(itemScore, "handlerScore");
+                var category = projection.Groups
+                    .SelectMany(group => group.Items)
+                    .FirstOrDefault(item => item.ItemId == itemId)?.Category;
                 if (score is < 0m or > 1m || !expectedIds.Contains(itemId) || !scores.TryAdd(itemId,
                     new JdStageTwoItemScore(
                         itemId,
                         handlerCode,
                         score,
-                        OptionalString(itemScore, "reasoning"),
+                        RequiredBoundedString(itemScore, "reasoning", MaxReasoningLength),
                         OptionalString(itemScore, "confidence", "unknown"),
                         ReadStrings(itemScore, "evidence"))))
+                {
+                    throw Invalid();
+                }
+                if (!MatchingHandlerCodePolicy.IsValid(category, handlerCode))
+                {
+                    throw Invalid();
+                }
+
+                var confidence = scores[itemId].Confidence;
+                if (confidence is not ("high" or "medium" or "low" or "unknown"))
                 {
                     throw Invalid();
                 }
@@ -160,19 +177,36 @@ public sealed class JdStageTwoResponseValidator
         }
 
         var penalties = new List<JdStageTwoPenalty>();
+        var seenCodes = new HashSet<string>(StringComparer.Ordinal);
         foreach (var penalty in penaltiesElement.EnumerateArray())
         {
+            var code = RequiredString(penalty, "code");
             if (penalty.ValueKind != JsonValueKind.Object ||
-                !string.Equals(RequiredString(penalty, "code"), CredibilityPenaltyCode, StringComparison.Ordinal) ||
+                !string.Equals(code, CredibilityPenaltyCode, StringComparison.Ordinal) ||
+                !seenCodes.Add(code) ||
                 !penalty.TryGetProperty("triggered", out var triggered) ||
                 (triggered.ValueKind is not JsonValueKind.True and not JsonValueKind.False))
+            {
+                throw Invalid();
+            }
+
+            if (penalty.TryGetProperty("deduction", out var deduction) &&
+                (deduction.ValueKind != JsonValueKind.Number ||
+                 !deduction.TryGetDecimal(out var numericDeduction) ||
+                 numericDeduction is < 0m or > 100m))
+            {
+                throw Invalid();
+            }
+
+            var evidence = OptionalString(penalty, "evidence");
+            if (triggered.GetBoolean() && evidence.Length == 0 || evidence.Length > MaxPenaltyEvidenceLength)
             {
                 throw Invalid();
             }
             penalties.Add(new JdStageTwoPenalty(
                 CredibilityPenaltyCode,
                 triggered.GetBoolean(),
-                OptionalString(penalty, "evidence")));
+                evidence));
         }
 
         return penalties;
@@ -185,9 +219,22 @@ public sealed class JdStageTwoResponseValidator
     }
 
     private static string OptionalString(JsonElement element, string property, string fallback = "") =>
-        element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString()?.Trim() ?? fallback
-            : fallback;
+        !element.TryGetProperty(property, out var value)
+            ? fallback
+            : value.ValueKind == JsonValueKind.String
+                ? value.GetString()?.Trim() ?? fallback
+                : throw Invalid();
+
+    private static string RequiredBoundedString(JsonElement element, string property, int maximumLength)
+    {
+        var value = OptionalString(element, property);
+        if (value.Length == 0 || value.Length > maximumLength)
+        {
+            throw Invalid();
+        }
+
+        return value;
+    }
 
     private static decimal RequiredDecimal(JsonElement element, string property)
     {
@@ -202,13 +249,27 @@ public sealed class JdStageTwoResponseValidator
     {
         if (!element.TryGetProperty(property, out var values)) return Array.Empty<string>();
         if (values.ValueKind != JsonValueKind.Array) throw Invalid();
-        return values.EnumerateArray()
-            .Where(value => value.ValueKind == JsonValueKind.String)
-            .Select(value => value.GetString()?.Trim())
-            .Where(value => !string.IsNullOrWhiteSpace(value))
-            .Select(value => value!)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
+        var items = values.EnumerateArray().ToList();
+        if (items.Count > MaxEvidenceItems) throw Invalid();
+
+        var result = new List<string>(items.Count);
+        foreach (var value in items)
+        {
+            if (value.ValueKind != JsonValueKind.String)
+            {
+                throw Invalid();
+            }
+
+            var text = value.GetString()?.Trim() ?? string.Empty;
+            if (text.Length == 0 || text.Length > MaxEvidenceLength)
+            {
+                throw Invalid();
+            }
+
+            result.Add(text);
+        }
+
+        return result.Distinct(StringComparer.Ordinal).ToList();
     }
 
     private static JsonElement EmptyArray()
@@ -225,7 +286,6 @@ public sealed class JdFitScoreCalculator
 {
     private const decimal PoolAMaximum = 70m;
     private const decimal PoolBMaximum = 30m;
-    private const decimal CredibilityDeduction = 15m;
 
     public JdFitScoreCalculation Calculate(JdRequirementProjection projection, JdStageTwoValidatedResponse response)
     {
@@ -291,17 +351,8 @@ public sealed class JdFitScoreCalculator
             });
         }
 
-        var credibilityTriggered = response.Penalties.Any(penalty => penalty.Code == "PNL_TC1_01" && penalty.Triggered);
-        if (credibilityTriggered)
-        {
-            penalties.Add(new
-            {
-                code = "PNL_TC1_01",
-                triggered = true,
-                deduction = CredibilityDeduction,
-                evidence = response.Penalties.First(penalty => penalty.Code == "PNL_TC1_01" && penalty.Triggered).Evidence
-            });
-        }
+        // Penalties are backend decisions. The model may return evidence, but a
+        // model-controlled `triggered` flag must never deduct points by itself.
         if (ksw01Triggered)
         {
             penalties.Add(new
@@ -313,7 +364,7 @@ public sealed class JdFitScoreCalculator
             });
         }
 
-        var finalScore = Math.Clamp(poolA + poolB - (credibilityTriggered ? CredibilityDeduction : 0m), 0m, 100m);
+        var finalScore = Math.Clamp(poolA + poolB, 0m, 100m);
         if (ksw01Triggered)
         {
             finalScore = 15m;

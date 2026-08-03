@@ -742,6 +742,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("error_message");
 
+                    b.Property<DateTime?>("HistoryHiddenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("history_hidden_at");
+
                     b.Property<string>("IdempotencyKey")
                         .HasColumnType("text")
                         .HasColumnName("idempotency_key");
@@ -860,6 +864,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
                         .HasFilter("\"match_type\" = 'AI' AND \"status\" IN ('Pending', 'RetryScheduled')");
+
+                    b.HasIndex("UserId", "HistoryHiddenAt", "UpdatedAt");
 
                     b.ToTable("cv_job_match_scores");
                 });

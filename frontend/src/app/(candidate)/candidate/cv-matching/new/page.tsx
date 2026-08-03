@@ -4,7 +4,6 @@ import React, { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { APP_ROUTES } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Sparkles, ArrowRight, Info, History, Coins, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -50,6 +49,11 @@ function CvMatchingContent() {
 
       {state.step === 'select' && (
         <div className="space-y-8">
+          {state.resultError && (
+            <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {state.resultError}
+            </div>
+          )}
           {/* Feature Cost & Wallet Balance Banner */}
           <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500/10 via-amber-500/10 to-transparent border border-purple-500/20 shadow-sm flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
