@@ -173,6 +173,103 @@ namespace ITHunterview.Service.Tests.UseCase
             jdStarted.Task.IsCompleted.Should().BeTrue();
         }
 
+        [Fact]
+        public async Task GetJobMatchHistoryAsync_ShouldMaskCandidateDetails_WhenNotUnlocked()
+        {
+            // Arrange
+            var options = new DbContextOptionsBuilder<ITHunterviewContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+            await using var context = new MatchingTestContext(options);
+
+            var jobId = Guid.NewGuid();
+            var cvId = Guid.NewGuid();
+            var candidateUserId = Guid.NewGuid();
+            var recruiterId = Guid.NewGuid();
+
+            context.Cvs.Add(new Cvs
+            {
+                Id = cvId,
+                UserId = candidateUserId,
+                FileName = "original_cv.pdf",
+                FileUrl = "https://storage.local/original_cv.pdf",
+                FileType = "pdf",
+                ParsedData = "{}"
+            });
+
+            context.CvJobMatchScores.Add(new CvJobMatchScores
+            {
+                Id = Guid.NewGuid(),
+                JobId = jobId,
+                CvId = cvId,
+                MatchScore = 85.5m
+            });
+
+            await context.SaveChangesAsync();
+
+            var sut = new CvJobMatchingUseCase(
+                context,
+                Mock.Of<IAiEmbeddingService>(),
+                Mock.Of<ICvTextExtractorService>(),
+                Mock.Of<System.Net.Http.IHttpClientFactory>(),
+                Mock.Of<Microsoft.Extensions.Configuration.IConfiguration>(),
+                NullLogger<CvJobMatchingUseCase>.Instance,
+                Mock.Of<IPromptManagementService>(),
+                Mock.Of<ISystemConfigRepository>(),
+                Mock.Of<IAiService>(),
+                Mock.Of<ICandidateFeatureUsageUseCase>(),
+                Mock.Of<IMatchingInputPreflightUseCase>(),
+                Mock.Of<IMatchingSourceRepository>(),
+                Mock.Of<ICvAnalysisResponseValidator>());
+
+            // Act
+            var result = await sut.GetJobMatchHistoryAsync(jobId, recruiterId, 1, 10);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Items.Should().HaveCount(1);
+            var item = result.Items[0];
+            item.IsUnlocked.Should().BeFalse();
+            item.CandidateId.Should().BeNull("CandidateId must be masked when locked");
+            item.FileUrl.Should().BeNull("FileUrl must be masked when locked");
+            item.CvFileName.Should().Be("Ứng viên #1", "FileName must be masked when locked");
+        }
+
+        [Fact]
+        public async Task UnlockCandidateCvAsync_ShouldReturnFail_WhenCvNotFound()
+        {
+            // Arrange
+            var options = new DbContextOptionsBuilder<ITHunterviewContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+            await using var context = new MatchingTestContext(options);
+
+            var sut = new CvJobMatchingUseCase(
+                context,
+                Mock.Of<IAiEmbeddingService>(),
+                Mock.Of<ICvTextExtractorService>(),
+                Mock.Of<System.Net.Http.IHttpClientFactory>(),
+                Mock.Of<Microsoft.Extensions.Configuration.IConfiguration>(),
+                NullLogger<CvJobMatchingUseCase>.Instance,
+                Mock.Of<IPromptManagementService>(),
+                Mock.Of<ISystemConfigRepository>(),
+                Mock.Of<IAiService>(),
+                Mock.Of<ICandidateFeatureUsageUseCase>(),
+                Mock.Of<IMatchingInputPreflightUseCase>(),
+                Mock.Of<IMatchingSourceRepository>(),
+                Mock.Of<ICvAnalysisResponseValidator>());
+
+            var request = new UnlockCandidateRequestDto { CvId = Guid.NewGuid() };
+
+            // Act
+            var result = await sut.UnlockCandidateCvAsync(Guid.NewGuid(), request);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Success.Should().BeFalse();
+            result.Message.Should().Contain("Không tìm thấy hồ sơ CV");
+        }
+
         private sealed class MatchingTestContext : ITHunterviewContext
         {
             public MatchingTestContext(DbContextOptions<ITHunterviewContext> options)

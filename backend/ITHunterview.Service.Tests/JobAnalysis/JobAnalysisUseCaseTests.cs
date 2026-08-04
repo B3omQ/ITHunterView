@@ -77,6 +77,64 @@ public class JobAnalysisUseCaseTests
         Assert.Equal("SUCCESS", result.ParseStatus);
     }
 
+    [Fact]
+    public async Task RequestAnalysisAsync_WhenJobNotFound_ThrowsKeyNotFoundException()
+    {
+        var repository = new Mock<IJobAnalysisRepository>();
+        repository
+            .Setup(x => x.GetRequestContextAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), default))
+            .ReturnsAsync((JobAnalysisRequestContext?)null);
+
+        var useCase = CreateUseCase(repository.Object);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => useCase.RequestAnalysisAsync(
+            Guid.NewGuid(), Guid.NewGuid(), new AnalyzeJobRequestDto { ExpectedRevision = 1 }));
+    }
+
+    [Fact]
+    public async Task RequestAnalysisAsync_WhenJobIsNotDraft_ThrowsInvalidOperationException()
+    {
+        var jobId = Guid.NewGuid();
+        var recruiterId = Guid.NewGuid();
+        var repository = new Mock<IJobAnalysisRepository>();
+        repository
+            .Setup(x => x.GetRequestContextAsync(jobId, recruiterId, default))
+            .ReturnsAsync(new JobAnalysisRequestContext
+            {
+                Job = new JobPostings { Id = jobId, Status = JobStatus.PUBLISHED },
+                IsCompanyVerified = true
+            });
+
+        var useCase = CreateUseCase(repository.Object);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => useCase.RequestAnalysisAsync(
+            jobId, recruiterId, new AnalyzeJobRequestDto { ExpectedRevision = 1 }));
+
+        Assert.Contains("ONLY_DRAFT_JOB_CAN_BE_ANALYZED", ex.Message);
+    }
+
+    [Fact]
+    public async Task RequestAnalysisAsync_WhenCompanyNotVerified_ThrowsInvalidOperationException()
+    {
+        var jobId = Guid.NewGuid();
+        var recruiterId = Guid.NewGuid();
+        var repository = new Mock<IJobAnalysisRepository>();
+        repository
+            .Setup(x => x.GetRequestContextAsync(jobId, recruiterId, default))
+            .ReturnsAsync(new JobAnalysisRequestContext
+            {
+                Job = new JobPostings { Id = jobId, Status = JobStatus.DRAFT },
+                IsCompanyVerified = false
+            });
+
+        var useCase = CreateUseCase(repository.Object);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => useCase.RequestAnalysisAsync(
+            jobId, recruiterId, new AnalyzeJobRequestDto { ExpectedRevision = 1 }));
+
+        Assert.Contains("UNVERIFIED_COMPANY", ex.Message);
+    }
+
     private static JobAnalysisUseCase CreateUseCase(IJobAnalysisRepository repository)
     {
         return new JobAnalysisUseCase(
