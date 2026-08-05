@@ -67,11 +67,18 @@ namespace ITHunterview.Service.Service
         private async Task SendEmailAsync(string toEmail, string subject, string htmlBody)
         {
             var smtp = _configuration.GetSection("SmtpSettings");
+            var host = smtp["Host"] ?? "smtp.gmail.com";
+            var portStr = smtp["Port"] ?? "587";
+            int.TryParse(portStr, out int port);
+            if (port <= 0) port = 587;
+
+            var username = (smtp["Username"] ?? "").Trim();
+            var password = (smtp["Password"] ?? "").Trim('"').Trim();
 
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(
                 smtp["FromName"] ?? "ITHunterView",
-                smtp["FromEmail"] ?? smtp["Username"]));
+                smtp["FromEmail"] ?? username));
             message.To.Add(MailboxAddress.Parse(toEmail));
             message.Subject = subject;
 
@@ -79,13 +86,29 @@ namespace ITHunterview.Service.Service
             message.Body = bodyBuilder.ToMessageBody();
 
             using var client = new SmtpClient();
-            await client.ConnectAsync(
-                smtp["Host"],
-                int.Parse(smtp["Port"] ?? "587"),
-                SecureSocketOptions.StartTls);
-            await client.AuthenticateAsync(smtp["Username"], smtp["Password"]);
-            await client.SendAsync(message);
-            await client.DisconnectAsync(true);
+            // Thiết lập Timeout 10 giây thay vì 100 giây mặc định để tránh treo HTTP Request khi Port bị chặn
+            client.Timeout = 10000;
+
+            // Xác định SecureSocketOptions dựa trên Port (Port 465 = SslOnConnect, Port 587 = StartTls)
+            var socketOption = port == 465 
+                ? SecureSocketOptions.SslOnConnect 
+                : (port == 587 ? SecureSocketOptions.StartTls : SecureSocketOptions.Auto);
+
+            try
+            {
+                await client.ConnectAsync(host, port, socketOption);
+                if (!string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password))
+                {
+                    await client.AuthenticateAsync(username, password);
+                }
+                await client.SendAsync(message);
+                await client.DisconnectAsync(true);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] SMTP SendEmailAsync failed to {toEmail} via {host}:{port}: {ex.Message}");
+                throw new InvalidOperationException($"Không thể gửi email qua SMTP ({host}:{port}): {ex.Message}", ex);
+            }
         }
     }
 }
