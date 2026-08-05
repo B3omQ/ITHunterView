@@ -67,10 +67,11 @@ namespace ITHunterview.Service.Service
         private async Task SendEmailAsync(string toEmail, string subject, string htmlBody)
         {
             var resendApiKey = (_configuration["ResendApiKey"] ?? _configuration["ResendSettings:ApiKey"] ?? _configuration["Resend__ApiKey"] ?? "").Trim();
+            var brevoApiKey = (_configuration["BrevoApiKey"] ?? _configuration["BrevoSettings:ApiKey"] ?? _configuration["Brevo__ApiKey"] ?? "").Trim();
             var fromName = _configuration["SmtpSettings:FromName"] ?? "ITHunterView";
-            var fromEmail = _configuration["SmtpSettings:FromEmail"] ?? _configuration["SmtpSettings:Username"] ?? "onboarding@resend.dev";
+            var fromEmail = _configuration["SmtpSettings:FromEmail"] ?? _configuration["SmtpSettings:Username"] ?? "hainam1402004@gmail.com";
 
-            // 1. Ưu tiên gửi qua Resend HTTP API (Port 443 - Không bao giờ bị Render/Cloud chặn)
+            // 1. Ưu tiên 1: Gửi qua Resend HTTP API (Port 443)
             if (!string.IsNullOrWhiteSpace(resendApiKey))
             {
                 try
@@ -78,9 +79,10 @@ namespace ITHunterview.Service.Service
                     using var httpClient = new System.Net.Http.HttpClient();
                     httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", resendApiKey);
                     
+                    var resendFromEmail = _configuration["ResendFromEmail"] ?? "onboarding@resend.dev";
                     var payload = new
                     {
-                        from = $"{fromName} <{fromEmail}>",
+                        from = $"{fromName} <{resendFromEmail}>",
                         to = new[] { toEmail },
                         subject = subject,
                         html = htmlBody
@@ -100,11 +102,49 @@ namespace ITHunterview.Service.Service
                     }
 
                     var errBody = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine($"[WARNING] Resend HTTP API returned status {response.StatusCode}: {errBody}. Falling back to SMTP.");
+                    Console.WriteLine($"[WARNING] Resend HTTP API returned status {response.StatusCode}: {errBody}. Falling back.");
                 }
                 catch (Exception resendEx)
                 {
-                    Console.WriteLine($"[WARNING] Resend HTTP API failed: {resendEx.Message}. Falling back to SMTP.");
+                    Console.WriteLine($"[WARNING] Resend HTTP API failed: {resendEx.Message}. Falling back.");
+                }
+            }
+
+            // 2. Ưu tiên 2: Gửi qua Brevo (Sendinblue) HTTP API (Port 443 - Cho phép gửi tới MỌI email người dùng miễn phí)
+            if (!string.IsNullOrWhiteSpace(brevoApiKey))
+            {
+                try
+                {
+                    using var httpClient = new System.Net.Http.HttpClient();
+                    httpClient.DefaultRequestHeaders.Add("api-key", brevoApiKey);
+
+                    var payload = new
+                    {
+                        sender = new { name = fromName, email = fromEmail },
+                        to = new[] { new { email = toEmail } },
+                        subject = subject,
+                        htmlContent = htmlBody
+                    };
+
+                    var jsonContent = new System.Net.Http.StringContent(
+                        System.Text.Json.JsonSerializer.Serialize(payload),
+                        System.Text.Encoding.UTF8,
+                        "application/json"
+                    );
+
+                    var response = await httpClient.PostAsync("https://api.brevo.com/v3/smtp/email", jsonContent);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Console.WriteLine($"[INFO] Email sent successfully via Brevo HTTP API to {toEmail}");
+                        return;
+                    }
+
+                    var errBody = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"[WARNING] Brevo HTTP API returned status {response.StatusCode}: {errBody}. Falling back to SMTP.");
+                }
+                catch (Exception brevoEx)
+                {
+                    Console.WriteLine($"[WARNING] Brevo HTTP API failed: {brevoEx.Message}. Falling back to SMTP.");
                 }
             }
 
