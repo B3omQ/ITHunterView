@@ -66,6 +66,49 @@ namespace ITHunterview.Service.Service
 
         private async Task SendEmailAsync(string toEmail, string subject, string htmlBody)
         {
+            var resendApiKey = (_configuration["ResendApiKey"] ?? _configuration["ResendSettings:ApiKey"] ?? _configuration["Resend__ApiKey"] ?? "").Trim();
+            var fromName = _configuration["SmtpSettings:FromName"] ?? "ITHunterView";
+            var fromEmail = _configuration["SmtpSettings:FromEmail"] ?? _configuration["SmtpSettings:Username"] ?? "onboarding@resend.dev";
+
+            // 1. Ưu tiên gửi qua Resend HTTP API (Port 443 - Không bao giờ bị Render/Cloud chặn)
+            if (!string.IsNullOrWhiteSpace(resendApiKey))
+            {
+                try
+                {
+                    using var httpClient = new System.Net.Http.HttpClient();
+                    httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", resendApiKey);
+                    
+                    var payload = new
+                    {
+                        from = $"{fromName} <{fromEmail}>",
+                        to = new[] { toEmail },
+                        subject = subject,
+                        html = htmlBody
+                    };
+
+                    var jsonContent = new System.Net.Http.StringContent(
+                        System.Text.Json.JsonSerializer.Serialize(payload),
+                        System.Text.Encoding.UTF8,
+                        "application/json"
+                    );
+
+                    var response = await httpClient.PostAsync("https://api.resend.com/emails", jsonContent);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Console.WriteLine($"[INFO] Email sent successfully via Resend HTTP API to {toEmail}");
+                        return;
+                    }
+
+                    var errBody = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"[WARNING] Resend HTTP API returned status {response.StatusCode}: {errBody}. Falling back to SMTP.");
+                }
+                catch (Exception resendEx)
+                {
+                    Console.WriteLine($"[WARNING] Resend HTTP API failed: {resendEx.Message}. Falling back to SMTP.");
+                }
+            }
+
+            // 2. Dự phòng gửi qua SMTP (MailKit)
             var smtp = _configuration.GetSection("SmtpSettings");
             var host = smtp["Host"] ?? "smtp.gmail.com";
             var portStr = smtp["Port"] ?? "587";
@@ -76,9 +119,7 @@ namespace ITHunterview.Service.Service
             var password = (smtp["Password"] ?? "").Trim('"').Trim();
 
             var message = new MimeMessage();
-            message.From.Add(new MailboxAddress(
-                smtp["FromName"] ?? "ITHunterView",
-                smtp["FromEmail"] ?? username));
+            message.From.Add(new MailboxAddress(fromName, fromEmail));
             message.To.Add(MailboxAddress.Parse(toEmail));
             message.Subject = subject;
 
@@ -86,10 +127,8 @@ namespace ITHunterview.Service.Service
             message.Body = bodyBuilder.ToMessageBody();
 
             using var client = new SmtpClient();
-            // Thiết lập Timeout 10 giây thay vì 100 giây mặc định để tránh treo HTTP Request khi Port bị chặn
             client.Timeout = 10000;
 
-            // Xác định SecureSocketOptions dựa trên Port (Port 465 = SslOnConnect, Port 587 = StartTls)
             var socketOption = port == 465 
                 ? SecureSocketOptions.SslOnConnect 
                 : (port == 587 ? SecureSocketOptions.StartTls : SecureSocketOptions.Auto);
@@ -107,7 +146,7 @@ namespace ITHunterview.Service.Service
             catch (Exception ex)
             {
                 Console.WriteLine($"[ERROR] SMTP SendEmailAsync failed to {toEmail} via {host}:{port}: {ex.Message}");
-                throw new InvalidOperationException($"Không thể gửi email qua SMTP ({host}:{port}): {ex.Message}", ex);
+                throw new InvalidOperationException($"Không thể gửi email qua SMTP ({host}:{port}): {ex.Message}. Render.com chặn cổng SMTP 25/465/587. Khuyên dùng Resend HTTP API (thêm ResendApiKey vào Environment Variables).", ex);
             }
         }
     }
