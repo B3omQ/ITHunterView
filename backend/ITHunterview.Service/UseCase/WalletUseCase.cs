@@ -320,14 +320,24 @@ namespace ITHunterview.Service.UseCase
                     return new ResponseBase<CreatePaymentResponseDto>("Gói Subscription không tồn tại hoặc không hoạt động");
                 }
 
-                var buyer = await _context.Users
-                    .Include(u => u.Role)
-                    .FirstOrDefaultAsync(u => u.Id == userId);
-                var features = DeserializeSubscriptionFeatures(sub.FeaturesConfig);
-                if (buyer?.Role?.Name == null || features?.Role == null ||
-                    !IsSubscriptionRoleCompatible(buyer.Role.Name, features.Role))
+                // Check active subscription hierarchy
+                var activeSub = await _context.UserSubscriptions
+                    .Where(us => us.UserId == userId && us.Status == UserSubscriptionStatus.ACTIVE && us.EndDate >= DateTime.UtcNow)
+                    .OrderByDescending(us => us.StartDate)
+                    .FirstOrDefaultAsync();
+
+                if (activeSub != null)
                 {
-                    return new ResponseBase<CreatePaymentResponseDto>("Gói dịch vụ không phù hợp với vai trò tài khoản của bạn.");
+                    if (activeSub.SubId == subId)
+                    {
+                        return new ResponseBase<CreatePaymentResponseDto>("Gói hiện tại đang sử dụng, không thể mua lại.");
+                    }
+
+                    var currentSubDetails = await _context.Subscriptions.FirstOrDefaultAsync(s => s.Id == activeSub.SubId);
+                    if (currentSubDetails != null && sub.Price <= currentSubDetails.Price)
+                    {
+                        return new ResponseBase<CreatePaymentResponseDto>("Chỉ được mua gói cao hơn gói hiện tại.");
+                    }
                 }
 
                 amount = sub.Price;
