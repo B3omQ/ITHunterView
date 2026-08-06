@@ -12,9 +12,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             // This index change is part of the current EF model snapshot.
-            migrationBuilder.DropIndex(
-                name: "IX_cvs_user_id",
-                table: "cvs");
+            // migrationBuilder.DropIndex(
+            //     name: "IX_cvs_user_id",
+            //     table: "cvs");
 
             migrationBuilder.RenameColumn(
                 name: "detailed_location",
@@ -73,12 +73,12 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                 name: "responsibilities",
                 table: "job_postings");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_cvs_user_id_is_primary",
-                table: "cvs",
-                columns: new[] { "user_id", "is_primary" },
-                unique: true,
-                filter: "\"is_primary\" = true AND \"deleted_at\" IS NULL");
+            // migrationBuilder.CreateIndex(
+            //     name: "IX_cvs_user_id_is_primary",
+            //     table: "cvs",
+            //     columns: new[] { "user_id", "is_primary" },
+            //     unique: true,
+            //     filter: "\"is_primary\" = true AND \"deleted_at\" IS NULL");
         }
 
         /// <inheritdoc />

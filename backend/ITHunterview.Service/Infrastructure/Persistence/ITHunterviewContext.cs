@@ -11,77 +11,77 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         }
 
         // IAM
-        public DbSet<Roles> Roles { get; set; } = null!;
-        public DbSet<Permissions> Permissions { get; set; } = null!;
-        public DbSet<RolePermissions> RolePermissions { get; set; } = null!;
-        public DbSet<User> Users { get; set; } = null!;
-        public DbSet<CandidateProfiles> CandidateProfiles { get; set; } = null!;
-        public DbSet<RecruiterProfiles> RecruiterProfiles { get; set; } = null!;
-        public DbSet<EmailVerificationTokens> EmailVerificationTokens { get; set; } = null!;
-        public DbSet<PasswordResets> PasswordResets { get; set; } = null!;
-        public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
-        public DbSet<UserActivityLogs> UserActivityLogs { get; set; } = null!;
+        public virtual DbSet<Roles> Roles { get; set; } = null!;
+        public virtual DbSet<Permissions> Permissions { get; set; } = null!;
+        public virtual DbSet<RolePermissions> RolePermissions { get; set; } = null!;
+        public virtual DbSet<User> Users { get; set; } = null!;
+        public virtual DbSet<CandidateProfiles> CandidateProfiles { get; set; } = null!;
+        public virtual DbSet<RecruiterProfiles> RecruiterProfiles { get; set; } = null!;
+        public virtual DbSet<EmailVerificationTokens> EmailVerificationTokens { get; set; } = null!;
+        public virtual DbSet<PasswordResets> PasswordResets { get; set; } = null!;
+        public virtual DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+        public virtual DbSet<UserActivityLogs> UserActivityLogs { get; set; } = null!;
 
         // Master data & Companies
-        public DbSet<Companies> Companies { get; set; } = null!;
-        public DbSet<CompanyReviews> CompanyReviews { get; set; } = null!;
-        public DbSet<JobCategories> JobCategories { get; set; } = null!;
-        public DbSet<Majors> Majors { get; set; } = null!;
-        public DbSet<SkillCategories> SkillCategories { get; set; } = null!;
-        public DbSet<Skills> Skills { get; set; } = null!;
-        public DbSet<SkillAliases> SkillAliases { get; set; } = null!;
+        public virtual DbSet<Companies> Companies { get; set; } = null!;
+        public virtual DbSet<CompanyReviews> CompanyReviews { get; set; } = null!;
+        public virtual DbSet<JobCategories> JobCategories { get; set; } = null!;
+        public virtual DbSet<Majors> Majors { get; set; } = null!;
+        public virtual DbSet<SkillCategories> SkillCategories { get; set; } = null!;
+        public virtual DbSet<Skills> Skills { get; set; } = null!;
+        public virtual DbSet<SkillAliases> SkillAliases { get; set; } = null!;
 
         // Candidate Portfolio
-        public DbSet<Cvs> Cvs { get; set; } = null!;
-        public DbSet<UserSkills> UserSkills { get; set; } = null!;
-        public DbSet<CandidateExperiences> CandidateExperiences { get; set; } = null!;
-        public DbSet<CandidateEducations> CandidateEducations { get; set; } = null!;
-        public DbSet<CandidateCertifications> CandidateCertifications { get; set; } = null!;
+        public virtual DbSet<Cvs> Cvs { get; set; } = null!;
+        public virtual DbSet<UserSkills> UserSkills { get; set; } = null!;
+        public virtual DbSet<CandidateExperiences> CandidateExperiences { get; set; } = null!;
+        public virtual DbSet<CandidateEducations> CandidateEducations { get; set; } = null!;
+        public virtual DbSet<CandidateCertifications> CandidateCertifications { get; set; } = null!;
 
         // ATS & Jobs
-        public DbSet<JobPostings> JobPostings { get; set; } = null!;
-        public DbSet<JobSkillRequirements> JobSkillRequirements { get; set; } = null!;
-        public DbSet<JobAnalysisRuns> JobAnalysisRuns { get; set; } = null!;
-        public DbSet<JobSkillDecisions> JobSkillDecisions { get; set; } = null!;
-        public DbSet<JobReviews> JobReviews { get; set; } = null!;
+        public virtual DbSet<JobPostings> JobPostings { get; set; } = null!;
+        public virtual DbSet<JobSkillRequirements> JobSkillRequirements { get; set; } = null!;
+        public virtual DbSet<JobAnalysisRuns> JobAnalysisRuns { get; set; } = null!;
+        public virtual DbSet<JobSkillDecisions> JobSkillDecisions { get; set; } = null!;
+        public virtual DbSet<JobReviews> JobReviews { get; set; } = null!;
 
-        public DbSet<UserSavedJobs> UserSavedJobs { get; set; } = null!;
-        public DbSet<JobApplications> JobApplications { get; set; } = null!;
-        public DbSet<ApplicationHistory> ApplicationHistory { get; set; } = null!;
-        public DbSet<JobPromotions> JobPromotions { get; set; } = null!;
+        public virtual DbSet<UserSavedJobs> UserSavedJobs { get; set; } = null!;
+        public virtual DbSet<JobApplications> JobApplications { get; set; } = null!;
+        public virtual DbSet<ApplicationHistory> ApplicationHistory { get; set; } = null!;
+        public virtual DbSet<JobPromotions> JobPromotions { get; set; } = null!;
 
         // AI Engine
-        public DbSet<CvJobMatchScores> CvJobMatchScores { get; set; } = null!;
-        public DbSet<InterviewQuestionBank> InterviewQuestionBank { get; set; } = null!;
-        public DbSet<InterviewSessions> InterviewSessions { get; set; } = null!;
-        public DbSet<InterviewAnswers> InterviewAnswers { get; set; } = null!;
-        public DbSet<InterviewReports> InterviewReports { get; set; } = null!;
-        public DbSet<LearningPaths> LearningPaths { get; set; } = null!;
-        public DbSet<AiApiUsageLogs> AiApiUsageLogs { get; set; } = null!;
-        public DbSet<OptimizeSession> OptimizeSessions { get; set; } = null!;
+        public virtual DbSet<CvJobMatchScores> CvJobMatchScores { get; set; } = null!;
+        public virtual DbSet<InterviewQuestionBank> InterviewQuestionBank { get; set; } = null!;
+        public virtual DbSet<InterviewSessions> InterviewSessions { get; set; } = null!;
+        public virtual DbSet<InterviewAnswers> InterviewAnswers { get; set; } = null!;
+        public virtual DbSet<InterviewReports> InterviewReports { get; set; } = null!;
+        public virtual DbSet<LearningPaths> LearningPaths { get; set; } = null!;
+        public virtual DbSet<AiApiUsageLogs> AiApiUsageLogs { get; set; } = null!;
+        public virtual DbSet<OptimizeSession> OptimizeSessions { get; set; } = null!;
 
         // SFIA & Learning Paths
-        public DbSet<SfiaSkill> SfiaSkills { get; set; } = null!;
-        public DbSet<SfiaSkillLevel> SfiaSkillLevels { get; set; } = null!;
-        public DbSet<TargetRoleTemplate> TargetRoleTemplates { get; set; } = null!;
-        public DbSet<TargetRoleSkill> TargetRoleSkills { get; set; } = null!;
+        public virtual DbSet<SfiaSkill> SfiaSkills { get; set; } = null!;
+        public virtual DbSet<SfiaSkillLevel> SfiaSkillLevels { get; set; } = null!;
+        public virtual DbSet<TargetRoleTemplate> TargetRoleTemplates { get; set; } = null!;
+        public virtual DbSet<TargetRoleSkill> TargetRoleSkills { get; set; } = null!;
 
         // Finance & Billing
-        public DbSet<Subscriptions> Subscriptions { get; set; } = null!;
-        public DbSet<UserSubscriptions> UserSubscriptions { get; set; } = null!;
-        public DbSet<UserWallets> UserWallets { get; set; } = null!;
-        public DbSet<Payments> Payments { get; set; } = null!;
-        public DbSet<CreditTransactions> CreditTransactions { get; set; } = null!;
-        public DbSet<CoinFeatures> CoinFeatures { get; set; } = null!;
-        public DbSet<CoinPackages> CoinPackages { get; set; } = null!;
-        public DbSet<RecruiterUnlockedCvs> RecruiterUnlockedCvs { get; set; } = null!;
+        public virtual DbSet<Subscriptions> Subscriptions { get; set; } = null!;
+        public virtual DbSet<UserSubscriptions> UserSubscriptions { get; set; } = null!;
+        public virtual DbSet<UserWallets> UserWallets { get; set; } = null!;
+        public virtual DbSet<Payments> Payments { get; set; } = null!;
+        public virtual DbSet<CreditTransactions> CreditTransactions { get; set; } = null!;
+        public virtual DbSet<CoinFeatures> CoinFeatures { get; set; } = null!;
+        public virtual DbSet<CoinPackages> CoinPackages { get; set; } = null!;
+        public virtual DbSet<RecruiterUnlockedCvs> RecruiterUnlockedCvs { get; set; } = null!;
 
         // System Ops
-        public DbSet<SystemConfigs> SystemConfigs { get; set; } = null!;
-        public DbSet<Prompts> Prompts { get; set; } = null!;
-        public DbSet<PromptVersions> PromptVersions { get; set; } = null!;
-        public DbSet<Notifications> Notifications { get; set; } = null!;
-        public DbSet<SysEmailLogs> SysEmailLogs { get; set; } = null!;
+        public virtual DbSet<SystemConfigs> SystemConfigs { get; set; } = null!;
+        public virtual DbSet<Prompts> Prompts { get; set; } = null!;
+        public virtual DbSet<PromptVersions> PromptVersions { get; set; } = null!;
+        public virtual DbSet<Notifications> Notifications { get; set; } = null!;
+        public virtual DbSet<SysEmailLogs> SysEmailLogs { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
