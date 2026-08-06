@@ -15,7 +15,8 @@ export function LanguageSwitcher() {
   const locale = useLocale()
   const router = useRouter()
 
-  const handleLanguageChange = (value: string) => {
+  const handleLanguageChange = (value: string | null) => {
+    if (!value) return;
     document.cookie = `locale=${value}; path=/; max-age=31536000`
     router.refresh()
   }
