@@ -69,9 +69,11 @@ import type { DifficultyLevel } from '@/types/interview.types';
 
 import { Suspense } from 'react';
 import { PageLoader } from '@/components/shared/PageLoader';
+import { useTranslations } from 'next-intl';
 
 function CandidateInterviewContent() {
   const router = useRouter();
+  const t = useTranslations("CandidateInterview");
   const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('MEDIUM');
@@ -150,22 +152,22 @@ function CandidateInterviewContent() {
     if (!hasActiveSub && balance < mockInterviewCost) {
       toast.error(
         <div className="flex flex-col gap-1.5">
-          <span className="font-semibold text-rose-600 dark:text-rose-400">Số dư Coin không đủ!</span>
+          <span className="font-semibold text-rose-600 dark:text-rose-400">{t('notEnoughCoinTitle')}</span>
           <span className="text-xs text-muted-foreground">
-            Bạn có {balance.toLocaleString()} Coin nhưng tính năng này yêu cầu {mockInterviewCost.toLocaleString()} Coin.
+            {t('notEnoughCoinDesc', { balance: balance.toLocaleString(), cost: mockInterviewCost.toLocaleString() })}
           </span>
           <div className="flex items-center gap-2 mt-1">
             <button 
               onClick={() => { setIsOpen(false); router.push('/candidate/top-up'); }}
               className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white font-medium text-xs rounded-lg shadow-sm transition"
             >
-              Nạp ngay
+              {t('topUpNow')}
             </button>
             <button 
               onClick={() => { setIsOpen(false); router.push('/candidate/pricing'); }}
               className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs rounded-lg shadow-sm transition"
             >
-              Xem Gói cước
+              {t('viewPricing')}
             </button>
           </div>
         </div>,
@@ -187,16 +189,16 @@ function CandidateInterviewContent() {
         setIsOpen(false);
         toast.success(
           hasActiveSub 
-            ? `Bắt đầu phỏng vấn AI (Miễn phí từ gói ${activeSubName}${isSubUnlimited ? "" : `, còn ${Math.max(0, subRemaining - 1)} lượt`})!`
-            : `Đã sử dụng ${mockInterviewCost.toLocaleString()} Coin để tạo phòng phỏng vấn AI!`
+            ? (isSubUnlimited ? t('startSuccessUnlimited', { subName: activeSubName }) : t('startSuccessSub', { subName: activeSubName, remaining: Math.max(0, subRemaining - 1) }))
+            : t('startSuccessCoin', { cost: mockInterviewCost.toLocaleString() })
         );
         router.push(`/candidate/interview/${res.data.id}`);
       } else {
-        toast.error(res.message || 'Không thể tạo phòng phỏng vấn. Vui lòng thử lại sau.');
+        toast.error(res.message || t('startError'));
       }
     } catch (err: any) {
       console.error(err);
-      toast.error(err?.response?.data?.message || err.message || 'Có lỗi xảy ra khi tạo phòng phỏng vấn.');
+      toast.error(err?.response?.data?.message || err.message || t('generalError'));
     }
   };
 
@@ -219,7 +221,7 @@ function CandidateInterviewContent() {
     const activeCv = cvs.find(c => c.id === selectedCv);
     if (!activeCv) return (
       <div className="flex items-center justify-center h-full text-sm text-muted-foreground bg-card">
-        CV data not found
+        {t('cvDataNotFound')}
       </div>
     );
 
@@ -238,7 +240,7 @@ function CandidateInterviewContent() {
               {activeCv.fileName}
             </span>
             <span className="text-[10px] text-muted-foreground">
-              Size: {formatSize(activeCv.fileSize)}
+              {t('size', { size: formatSize(activeCv.fileSize) })}
             </span>
           </div>
           <a
@@ -248,7 +250,7 @@ function CandidateInterviewContent() {
             className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-muted transition-colors"
           >
             <ExternalLink className="h-3 w-3" />
-            <span>Open in new tab</span>
+            <span>{t('openInNewTab')}</span>
           </a>
         </div>
 
@@ -282,7 +284,7 @@ function CandidateInterviewContent() {
     if (!jobDetail) {
       return (
         <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-          Job details not found
+          {t('jdNotFound')}
         </div>
       );
     }
@@ -291,7 +293,7 @@ function CandidateInterviewContent() {
       if (min && max) return `${min.toLocaleString()} - ${max.toLocaleString()} ${curr}`;
       if (min) return `From ${min.toLocaleString()} ${curr}`;
       if (max) return `Up to ${max.toLocaleString()} ${curr}`;
-      return 'Negotiable';
+      return t('negotiable');
     };
 
     return (
@@ -347,7 +349,7 @@ function CandidateInterviewContent() {
         <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs leading-relaxed">
           {jobDetail.skills && jobDetail.skills.length > 0 && (
             <div className="space-y-1">
-              <h5 className="font-bold text-foreground">Required Skills:</h5>
+              <h5 className="font-bold text-foreground">{t('reqSkills')}</h5>
               <div className="flex flex-wrap gap-1">
                 {jobDetail.skills.map((s) => (
                   <Badge key={s} variant="secondary" className="text-[10px] py-0 px-1.5 bg-muted font-normal text-muted-foreground">
@@ -360,7 +362,7 @@ function CandidateInterviewContent() {
 
           {jobDetail.requirements && (
             <div className="space-y-1">
-              <h5 className="font-bold text-foreground">Job Requirements:</h5>
+              <h5 className="font-bold text-foreground">{t('jobReqs')}</h5>
               <div className="text-muted-foreground whitespace-pre-line text-[11px] bg-muted/20 p-2.5 rounded-lg border border-border/40">
                 {jobDetail.requirements}
               </div>
@@ -369,7 +371,7 @@ function CandidateInterviewContent() {
 
           {jobDetail.description && (
             <div className="space-y-1">
-              <h5 className="font-bold text-foreground">Job Description:</h5>
+              <h5 className="font-bold text-foreground">{t('jobDesc')}</h5>
               <div className="text-muted-foreground whitespace-pre-line text-[11px] bg-muted/20 p-2.5 rounded-lg border border-border/40">
                 {jobDetail.description}
               </div>
@@ -378,7 +380,7 @@ function CandidateInterviewContent() {
 
           {jobDetail.benefits && (
             <div className="space-y-1">
-              <h5 className="font-bold text-foreground">Benefits & Perks:</h5>
+              <h5 className="font-bold text-foreground">{t('benefits')}</h5>
               <div className="text-muted-foreground whitespace-pre-line text-[11px] bg-muted/20 p-2.5 rounded-lg border border-border/40">
                 {jobDetail.benefits}
               </div>
@@ -393,15 +395,15 @@ function CandidateInterviewContent() {
     <div className="w-full pb-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">AI Mock Interview</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground mt-2 max-w-2xl">
-            Master your interview skills with personalized AI sessions.
+            {t('desc')}
           </p>
         </div>
         {sessions.length > 0 && (
           <Button onClick={() => setIsOpen(true)} className="bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">
             <Plus className="mr-1 h-4 w-4" />
-            Start Mock Interview
+            {t('startInterview')}
             <Sparkles className="mr-2 h-4 w-4 ml-1" />
           </Button>
         )}
@@ -415,13 +417,13 @@ function CandidateInterviewContent() {
           </div>
         ) : sessions.length === 0 ? (
           <EmptyState
-            title="No mock interview sessions yet"
-            description="Start your first session to level up your interview skills and get detailed AI feedback."
+            title={t('noSessionsTitle')}
+            description={t('noSessionsDesc')}
             imageUrl="/images/emptyInterview.png"
           >
             <Button onClick={() => setIsOpen(true)} className="mt-4 bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">
               <Plus className="mr-1 h-4 w-4" />
-              Start Mock Interview
+              {t('startInterview')}
               <Sparkles className="mr-2 h-4 w-4 ml-1" />
             </Button>
           </EmptyState>
@@ -447,7 +449,7 @@ function CandidateInterviewContent() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="font-medium text-base text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug">
-                              {session.jobTitle || 'Free Mock Interview'}
+                              {session.jobTitle || t('freeMockInterview')}
                             </span>
                           </div>
                           <div className="flex items-center gap-4 flex-wrap mt-1 text-sm text-slate-600">
@@ -458,7 +460,7 @@ function CandidateInterviewContent() {
                                     : 'bg-emerald-500/10 text-emerald-700'
                                   }`}
                               >
-                                {session.status === 'IN_PROGRESS' ? 'In Progress' : 'Completed'}
+                                {session.status === 'IN_PROGRESS' ? t('inProgress') : t('completed')}
                               </Badge>
                             </div>
                             <span className="flex items-center gap-1.5">
@@ -479,9 +481,9 @@ function CandidateInterviewContent() {
                       <div className="flex items-center gap-2 shrink-0">
                         <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={(e) => { e.stopPropagation(); router.push(`/candidate/interview/${session.id}`); }}>
                           {session.status === 'IN_PROGRESS' ? (
-                            <><Play className="w-4 h-4 fill-current" /> Resume</>
+                            <><Play className="w-4 h-4 fill-current" /> {t('resume')}</>
                           ) : (
-                            <><Eye className="w-4 h-4" /> Review</>
+                            <><Eye className="w-4 h-4" /> {t('review')}</>
                           )}
                         </Button>
 
@@ -497,7 +499,7 @@ function CandidateInterviewContent() {
                                 onClick={(e) => handleDeleteSession(e, session.id)}
                               >
                                 <Trash2 className="h-4 w-4" />
-                                <span>Delete Session</span>
+                                <span>{t('deleteSession')}</span>
                               </Button>
                             </div>
                           </PopoverContent>
@@ -523,10 +525,10 @@ function CandidateInterviewContent() {
             <div className="space-y-6">
               <DialogHeader>
                 <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
-                  <BrainCircuit className="h-5 w-5 text-primary" /> Mock Interview Setup
+                  <BrainCircuit className="h-5 w-5 text-primary" /> {t('setupTitle')}
                 </DialogTitle>
                 <DialogDescription className="text-muted-foreground text-sm">
-                  Customize parameters for your best mock interview experience.
+                  {t('setupDesc')}
                 </DialogDescription>
               </DialogHeader>
 
@@ -538,30 +540,30 @@ function CandidateInterviewContent() {
                   </div>
                   <div className="flex flex-col">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Phí dịch vụ:</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('serviceFee')}</span>
                       {hasActiveSub ? (
                         <>
                           <Badge className="bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 shadow-sm">
-                            FREE ({activeSubName})
+                            {t('freeSub', { subName: activeSubName })}
                           </Badge>
                           <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
-                            {isSubUnlimited ? "• Vô hạn lượt" : `• Còn ${subRemaining}/${mockLimit} lượt`}
+                            {isSubUnlimited ? t('unlimitedMatches') : t('remainingMatches', { remaining: subRemaining, limit: mockLimit })}
                           </span>
                         </>
                       ) : (
                         <span className="text-sm font-black text-amber-600 dark:text-amber-400">
-                          {mockInterviewCost.toLocaleString()} Coin / Lượt
+                          {t('coinPerMatch', { coin: mockInterviewCost.toLocaleString() })}
                         </span>
                       )}
                     </div>
                     {!!activeSubName && !hasActiveSub && (
                       <span className="text-xs text-rose-500 mt-0.5 font-medium">
-                        Gói {activeSubName} đã hết lượt miễn phí. Chuyển sang trừ Coin:
+                        {t('subExpired', { subName: activeSubName })}
                       </span>
                     )}
                     {!hasActiveSub && (
                       <span className="text-xs text-muted-foreground mt-0.5 font-medium">
-                        Số dư hiện tại: <strong className={balance < mockInterviewCost ? "text-rose-500 font-bold" : "text-emerald-600 font-bold"}>{balance.toLocaleString()} Coin</strong>
+                        {t('currentBalance')} <strong className={balance < mockInterviewCost ? "text-rose-500 font-bold" : "text-emerald-600 font-bold"}>{balance.toLocaleString()} Coin</strong>
                       </span>
                     )}
                   </div>
@@ -577,7 +579,7 @@ function CandidateInterviewContent() {
                     }}
                     className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold px-3 py-1.5 text-xs rounded-lg shadow-md hover:shadow-amber-500/25 transition-all shrink-0"
                   >
-                    Nạp Coin
+                    {t('topUpCoin')}
                   </Button>
                 )}
               </div>
@@ -586,16 +588,16 @@ function CandidateInterviewContent() {
                 {/* Choose CV */}
                 <div className="space-y-2">
                   <label className="text-sm font-semibold flex items-center gap-2 text-foreground">
-                    <FileText className="h-4 w-4 text-primary" /> Use CV Information (Optional)
+                    <FileText className="h-4 w-4 text-primary" /> {t('useCv')}
                   </label>
                   <Select value={selectedCv} onValueChange={(val) => setSelectedCv(val ?? 'none')}>
                     <SelectTrigger className="w-full h-11 px-3 bg-card border-border hover:border-primary/50 focus:ring-primary/20 hover:bg-muted/10 transition-all rounded-xl shadow-sm text-sm font-medium">
-                      <SelectValue placeholder="Select CV">
+                      <SelectValue placeholder={t('selectCv')}>
                         {selectedCv === 'none'
                           ? (
                             <div className="flex items-center gap-2 text-muted-foreground font-medium">
                               <X className="h-4 w-4 shrink-0" />
-                              <span>No CV (General Knowledge)</span>
+                              <span>{t('noCv')}</span>
                             </div>
                           )
                           : (
@@ -612,7 +614,7 @@ function CandidateInterviewContent() {
                       <SelectItem value="none">
                         <div className="flex items-center gap-2 text-muted-foreground font-medium">
                           <X className="h-4 w-4 shrink-0" />
-                          <span>No CV (General Knowledge)</span>
+                          <span>{t('noCv')}</span>
                         </div>
                       </SelectItem>
                       {cvs.map((cv) => (
@@ -630,7 +632,7 @@ function CandidateInterviewContent() {
                 {/* Choose Job Description (Searchable Popover + Command) */}
                 <div className="space-y-2">
                   <label className="text-sm font-semibold flex items-center gap-2 text-foreground">
-                    <Briefcase className="h-4 w-4 text-indigo-500" /> Interview based on Job Description (Optional)
+                    <Briefcase className="h-4 w-4 text-indigo-500" /> {t('useJd')}
                   </label>
                   <Popover open={isJdPopoverOpen} onOpenChange={setIsJdPopoverOpen}>
                     <PopoverTrigger render={
@@ -643,7 +645,7 @@ function CandidateInterviewContent() {
                         <span className="truncate flex items-center gap-2">
                           <Briefcase className="h-4 w-4 text-indigo-500 shrink-0" />
                           {selectedJob === 'none' ? (
-                            <span className="text-muted-foreground font-normal">No JD (Freeform Questions)</span>
+                            <span className="text-muted-foreground font-normal">{t('noJd')}</span>
                           ) : (
                             <span className="font-semibold text-foreground truncate max-w-[220px]">
                               {jobs.find((job) => job.id === selectedJob)?.title || jobDetail?.title || selectedJob}
@@ -655,9 +657,9 @@ function CandidateInterviewContent() {
                     } />
                     <PopoverContent className="w-(--anchor-width) p-0 gap-0" align="start">
                       <Command className="bg-popover text-popover-foreground">
-                        <CommandInput placeholder="Search job descriptions..." className="h-9" />
+                        <CommandInput placeholder={t('searchJd')} className="h-9" />
                         <CommandList>
-                          <CommandEmpty>No job descriptions found.</CommandEmpty>
+                          <CommandEmpty>{t('noJdFound')}</CommandEmpty>
                           <CommandGroup>
                             <ScrollArea className="h-48">
                               <CommandItem
@@ -670,7 +672,7 @@ function CandidateInterviewContent() {
                               >
                                 <div className="flex items-center gap-2 text-muted-foreground font-medium">
                                   <X className="h-4 w-4 shrink-0" />
-                                  <span>No JD (Freeform Questions)</span>
+                                  <span>{t('noJd')}</span>
                                 </div>
                                 {selectedJob === 'none' && <Check className="h-4 w-4 text-primary shrink-0" />}
                               </CommandItem>
@@ -708,16 +710,16 @@ function CandidateInterviewContent() {
                 {selectedJob === 'none' && (
                   <div className="space-y-2">
                     <label className="text-sm font-semibold flex items-center gap-2 text-foreground">
-                      <Layers className="h-4 w-4 text-indigo-500" /> Select Level
+                      <Layers className="h-4 w-4 text-indigo-500" /> {t('selectLevel')}
                     </label>
                     <Select value={difficulty} onValueChange={(val) => setDifficulty(val as DifficultyLevel)}>
                       <SelectTrigger className="w-full h-11 px-3 bg-card border-border hover:border-primary/50 focus:ring-primary/20 hover:bg-muted/10 transition-all rounded-xl shadow-sm text-sm font-medium">
-                        <SelectValue placeholder="Select Level" />
+                        <SelectValue placeholder={t('selectLevel')} />
                       </SelectTrigger>
                       <SelectContent alignItemWithTrigger={false} className="bg-popover border-border text-popover-foreground">
-                        <SelectItem value="EASY">Intern / Fresher</SelectItem>
-                        <SelectItem value="MEDIUM">Middle / Junior</SelectItem>
-                        <SelectItem value="HARD">Senior</SelectItem>
+                        <SelectItem value="EASY">{t('intern')}</SelectItem>
+                        <SelectItem value="MEDIUM">{t('middle')}</SelectItem>
+                        <SelectItem value="HARD">{t('senior')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -726,21 +728,21 @@ function CandidateInterviewContent() {
                 {/* Interview Language */}
                 <div className="space-y-2">
                   <label className="text-sm font-semibold flex items-center gap-2 text-foreground">
-                    <Globe className="h-4 w-4 text-emerald-500" /> Interview Language / Ngôn ngữ phỏng vấn
+                    <Globe className="h-4 w-4 text-emerald-500" /> {t('interviewLang')}
                   </label>
                   <Select value={language} onValueChange={(val) => setLanguage((val ?? 'vi') as 'vi' | 'en')}>
                     <SelectTrigger className="w-full h-11 px-3 bg-card border-border hover:border-primary/50 focus:ring-primary/20 hover:bg-muted/10 transition-all rounded-xl shadow-sm text-sm font-medium">
-                      <SelectValue placeholder="Select Language" />
+                      <SelectValue placeholder={t('selectLang')} />
                     </SelectTrigger>
                     <SelectContent alignItemWithTrigger={false} className="bg-popover border-border text-popover-foreground">
                       <SelectItem value="vi">
                         <div className="flex items-center gap-2 font-medium">
-                          <span>🇻🇳 Tiếng Việt (Vietnamese)</span>
+                          <span>{t('vi')}</span>
                         </div>
                       </SelectItem>
                       <SelectItem value="en">
                         <div className="flex items-center gap-2 font-medium">
-                          <span>🇬🇧 Tiếng Anh (English)</span>
+                          <span>{t('en')}</span>
                         </div>
                       </SelectItem>
                     </SelectContent>
@@ -755,7 +757,7 @@ function CandidateInterviewContent() {
                 onClick={() => setIsOpen(false)}
                 className="w-full h-10 border-border text-muted-foreground hover:bg-muted font-medium"
               >
-                Cancel
+                {t('cancel')}
               </Button>
               <Button
                 onClick={handleStartInterview}
@@ -767,12 +769,12 @@ function CandidateInterviewContent() {
                 }`}
               >
                 {startSessionMutation.isPending ? (
-                  <>Initializing interview...</>
+                  <>{t('initializing')}</>
                 ) : !hasActiveSub && balance < mockInterviewCost ? (
-                  <>Không đủ Coin ({balance.toLocaleString()}/{mockInterviewCost.toLocaleString()})</>
+                  <>{t('notEnoughCoinBtn', { balance: balance.toLocaleString(), cost: mockInterviewCost.toLocaleString() })}</>
                 ) : (
                   <>
-                    <Play className="h-4 w-4 fill-current" /> Start Now {hasActiveSub ? "(Free)" : `(-${mockInterviewCost.toLocaleString()} Coin)`}
+                    <Play className="h-4 w-4 fill-current" /> {hasActiveSub ? t('startNowFree') : t('startNowCoin', { coin: mockInterviewCost.toLocaleString() })}
                   </>
                 )}
               </Button>
@@ -786,17 +788,17 @@ function CandidateInterviewContent() {
                 <div className="bg-primary/10 p-4 rounded-full text-primary">
                   <BrainCircuit className="h-10 w-10 animate-pulse" />
                 </div>
-                <h3 className="text-lg font-bold text-foreground">Ready for your interview?</h3>
+                <h3 className="text-lg font-bold text-foreground">{t('readyForInterview')}</h3>
                 <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
-                  Select a CV or Job Description on the left to preview the document and let AI prepare the best questions for you.
+                  {t('readyDesc')}
                 </p>
                 <div className="bg-card border border-border rounded-xl p-4 text-left text-[11px] text-muted-foreground w-full max-w-xs space-y-2">
                   <p className="font-semibold text-foreground flex items-center gap-1.5">
-                    <Info className="h-3.5 w-3.5 text-primary" /> Preparation Tips:
+                    <Info className="h-3.5 w-3.5 text-primary" /> {t('prepTips')}
                   </p>
                   <ul className="list-disc pl-4 space-y-1">
-                    <li>Use your CV to let AI dive deep into your experience.</li>
-                    <li>Use a Job Description to align with your target role.</li>
+                    <li>{t('prepTip1')}</li>
+                    <li>{t('prepTip2')}</li>
                   </ul>
                 </div>
               </div>
@@ -807,14 +809,14 @@ function CandidateInterviewContent() {
                     <div className="border-b border-border bg-card px-4 py-2 flex items-center justify-between shrink-0 pr-10">
                       <TabsList className="bg-muted">
                         <TabsTrigger value="cv" className="text-xs font-semibold py-1.5 px-3">
-                          <FileText className="h-3.5 w-3.5 mr-1.5" /> View CV
+                          <FileText className="h-3.5 w-3.5 mr-1.5" /> {t('viewCv')}
                         </TabsTrigger>
                         <TabsTrigger value="jd" className="text-xs font-semibold py-1.5 px-3">
-                          <Briefcase className="h-3.5 w-3.5 mr-1.5" /> JD Details
+                          <Briefcase className="h-3.5 w-3.5 mr-1.5" /> {t('jdDetails')}
                         </TabsTrigger>
                       </TabsList>
                       <div className="text-[10px] text-muted-foreground font-medium hidden lg:block">
-                        CV & JD Combined Mode
+                        {t('cvJdCombinedMode')}
                       </div>
                     </div>
                     <TabsContent value="cv" className="flex-1 h-full min-h-0 overflow-hidden m-0 data-[state=inactive]:hidden flex flex-col">
@@ -828,10 +830,10 @@ function CandidateInterviewContent() {
                   <div className="flex-1 flex flex-col h-full overflow-hidden">
                     <div className="border-b border-border bg-card px-4 py-3 shrink-0 flex justify-between items-center pr-10">
                       <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                        <FileText className="h-4 w-4 text-primary" /> Preview Selected CV
+                        <FileText className="h-4 w-4 text-primary" /> {t('previewSelectedCv')}
                       </h3>
                       <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-semibold">
-                        CV Only
+                        {t('cvOnly')}
                       </span>
                     </div>
                     <div className="flex-1 min-h-0 overflow-hidden">
@@ -842,10 +844,10 @@ function CandidateInterviewContent() {
                   <div className="flex-1 flex flex-col h-full overflow-hidden">
                     <div className="border-b border-border bg-card px-4 py-3 shrink-0 flex justify-between items-center pr-10">
                       <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                        <Briefcase className="h-4 w-4 text-indigo-500" /> Job Description Details
+                        <Briefcase className="h-4 w-4 text-indigo-500" /> {t('jdDetails')}
                       </h3>
                       <span className="text-[10px] bg-indigo-500/10 text-indigo-600 px-2 py-0.5 rounded-full font-semibold">
-                        JD Only
+                        {t('jdOnly')}
                       </span>
                     </div>
                     <div className="flex-1 min-h-0 overflow-hidden">
@@ -863,17 +865,17 @@ function CandidateInterviewContent() {
       <Dialog open={!!sessionToDelete} onOpenChange={(open) => !open && setSessionToDelete(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Mock Interview Session?</DialogTitle>
+            <DialogTitle>{t('deleteHistoryTitle')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this mock interview session? This action cannot be undone.
+              {t('deleteHistoryConfirm')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4 flex flex-col sm:flex-row gap-2 justify-end">
             <Button variant="outline" onClick={() => setSessionToDelete(null)} disabled={deleteSessionMutation.isPending}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button variant="destructive" onClick={handleConfirmDelete} disabled={deleteSessionMutation.isPending}>
-              {deleteSessionMutation.isPending ? 'Deleting...' : 'Delete'}
+              {deleteSessionMutation.isPending ? t('deleting') : t('delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -8,10 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AlignLeft, Edit2, X, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 export function AboutSection() {
   const { data: info, isLoading } = usePersonalInfo();
   const { mutate: updateAboutMe, isPending } = useUpdateAboutMe();
+  const t = useTranslations("CandidateProfile");
 
   const [isEditing, setIsEditing] = useState(false);
   const [aboutMe, setAboutMe] = useState('');
@@ -30,10 +32,10 @@ export function AboutSection() {
       aboutMe: aboutMe || null,
     }, {
       onSuccess: () => {
-        toast.success('Bio updated successfully');
+        toast.success(t('aboutUpdateSuccess'));
         setIsEditing(false);
       },
-      onError: () => toast.error('Failed to update bio. Please try again.')
+      onError: () => toast.error(t('errorOccurred'))
     });
   };
 
@@ -64,7 +66,7 @@ export function AboutSection() {
       <div className="flex flex-row items-center justify-between pb-3">
         <div className="flex items-center gap-3">
           <div>
-            <h3 className="text-sm font-bold">About Me</h3>
+            <h3 className="text-sm font-bold">{t('aboutMe')}</h3>
           </div>
         </div>
         <Button 
@@ -82,7 +84,7 @@ export function AboutSection() {
           <div className="relative border border-border/40 rounded-xl overflow-hidden bg-muted/10 focus-within:bg-muted/20 focus-within:border-primary/40 transition-colors">
             <Textarea
               id="aboutMe"
-              placeholder="Write a brief introduction about your career background, skills, and goals..."
+              placeholder={t('writeSummary')}
               value={aboutMe}
               onChange={(e) => setAboutMe(e.target.value.slice(0, 500))}
               rows={Math.max(3, aboutMe.split('\n').length)}
@@ -95,11 +97,11 @@ export function AboutSection() {
               </span>
               <div className="flex gap-1.5">
                 <Button type="button" variant="ghost" size="sm" onClick={handleCancel} disabled={isPending} className="h-7 text-xs hover:bg-muted font-medium">
-                  Cancel
+                  {t('cancel')}
                 </Button>
                 <Button type="submit" size="sm" disabled={isPending || aboutMe === (info?.aboutMe || '')} className="h-7 text-xs font-medium px-3">
                   {isPending && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
-                  Save
+                  {t('save')}
                 </Button>
               </div>
             </div>
@@ -111,9 +113,9 @@ export function AboutSection() {
             <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed text-left">{info.aboutMe}</p>
           ) : (
             <div className="text-center py-4 border-2 border-dashed border-border rounded-xl bg-muted/10">
-              <p className="text-xs text-muted-foreground mb-2">No introduction provided yet.</p>
+              <p className="text-xs text-muted-foreground mb-2">{t('noSummary')}</p>
               <Button onClick={() => setIsEditing(true)} variant="outline" size="sm" className="font-semibold text-xs h-8">
-                <Edit2 className="w-3.5 h-3.5 mr-2" /> Add Bio
+                <Edit2 className="w-3.5 h-3.5 mr-2" /> {t('addSummary')}
               </Button>
             </div>
           )}

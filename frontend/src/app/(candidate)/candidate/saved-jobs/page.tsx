@@ -10,6 +10,7 @@ import { CardSkeleton } from '@/components/shared/CardSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Bookmark, Sparkles } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export default function SavedJobsPage() {
   const [page, setPage] = useState(1);
@@ -17,13 +18,14 @@ export default function SavedJobsPage() {
   
   const { data, isLoading, isError } = useSavedJobs(page, pageSize);
   const { unsaveJob, isUnsaving } = useJobActions();
+  const t = useTranslations("CandidateSavedJobs");
 
   if (isLoading) return (
     <div className="w-full pb-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Saved Jobs</h1>
-          <p className="text-muted-foreground mt-2 max-w-2xl">Loading saved jobs...</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('savedJobs')}</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">{t('loadingSavedJobs')}</p>
         </div>
       </div>
       <div className="flex flex-col gap-3">
@@ -31,7 +33,7 @@ export default function SavedJobsPage() {
       </div>
     </div>
   );
-  if (isError) return <EmptyState title="Failed to load saved jobs" description="Please try again later." />;
+  if (isError) return <EmptyState title={t('failedToLoadSavedJobs')} description={t('pleaseTryAgainLater')} />;
 
   const jobs = data?.data || [];
   const meta = data?.meta;
@@ -41,18 +43,18 @@ export default function SavedJobsPage() {
     <div className="w-full pb-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Saved Jobs</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('savedJobs')}</h1>
           <p className="text-muted-foreground mt-2 max-w-2xl">
-            Keep track of your favorite job opportunities and easily access them to apply later.
+            {t('keepTrackOfFavorite')}
           </p>
         </div>
       </div>
         <EmptyState 
-          title="No saved jobs yet" 
-          description="Keep track of jobs you're interested in by clicking the save icon."
+          title={t('noSavedJobsYet')} 
+          description={t('keepTrackByClicking')}
         >
           <Link href="/candidate/jobs">
-            <Button className="mt-4">Browse Jobs</Button>
+            <Button className="mt-4">{t('browseJobs')}</Button>
           </Link>
         </EmptyState>
       </div>
@@ -63,9 +65,9 @@ export default function SavedJobsPage() {
     <div className="w-full pb-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Saved Jobs</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('savedJobs')}</h1>
           <p className="text-muted-foreground mt-2 max-w-2xl">
-            Keep track of your favorite job opportunities and easily access them to apply later.
+            {t('keepTrackOfFavorite')}
           </p>
         </div>
       </div>

@@ -13,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
 import { ChevronLeft, ChevronRight, Briefcase, Building2, Calendar, CheckCircle, Clock, Eye, XCircle, ArrowRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export default function AppliedJobsPage() {
   const [page, setPage] = useState(1);
@@ -22,6 +23,7 @@ export default function AppliedJobsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
+  const t = useTranslations("CandidateApplications");
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -47,11 +49,11 @@ export default function AppliedJobsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'APPLIED':
-        return <Badge className="shrink-0 text-xs px-2 py-0.5 border-none font-medium bg-emerald-500/10 text-emerald-700">Applied</Badge>;
+        return <Badge className="shrink-0 text-xs px-2 py-0.5 border-none font-medium bg-emerald-500/10 text-emerald-700">{t('applied')}</Badge>;
       case 'VIEWED':
-        return <Badge className="shrink-0 text-xs px-2 py-0.5 border-none font-medium bg-blue-500/10 text-blue-700">Viewed by Recruiter</Badge>;
+        return <Badge className="shrink-0 text-xs px-2 py-0.5 border-none font-medium bg-blue-500/10 text-blue-700">{t('viewedByRecruiter')}</Badge>;
       case 'REJECTED':
-        return <Badge className="shrink-0 text-xs px-2 py-0.5 border-none font-medium bg-rose-500/10 text-rose-700">Rejected</Badge>;
+        return <Badge className="shrink-0 text-xs px-2 py-0.5 border-none font-medium bg-rose-500/10 text-rose-700">{t('rejected')}</Badge>;
       default:
         return <Badge className="shrink-0 text-xs px-2 py-0.5 border-none font-medium bg-muted text-muted-foreground">{status}</Badge>;
     }
@@ -74,8 +76,8 @@ export default function AppliedJobsPage() {
     <div className="w-full pb-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Applied Jobs</h1>
-          <p className="text-muted-foreground mt-2 max-w-2xl">Loading your applications...</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('appliedJobs')}</h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl">{t('loadingApplications')}</p>
         </div>
       </div>
       <div className="flex flex-col gap-3">
@@ -83,7 +85,7 @@ export default function AppliedJobsPage() {
       </div>
     </div>
   );
-  if (isError && jobs.length === 0) return <EmptyState title="Failed to load applied jobs" description="Please try again later." />;
+  if (isError && jobs.length === 0) return <EmptyState title={t('failedToLoadApplications')} description={t('pleaseTryAgainLater')} />;
 
   if (jobs.length === 0) {
     return (
@@ -97,11 +99,11 @@ export default function AppliedJobsPage() {
         </div>
       </div>
         <EmptyState 
-          title="No applications yet" 
-          description="You haven't applied to any jobs. Start searching and applying to land your dream job!"
+          title={t('noApplicationsYet')} 
+          description={t('startSearchingAndApplying')}
         >
           <Link href="/jobs">
-            <Button className="mt-4">Browse Jobs</Button>
+            <Button className="mt-4">{t('browseJobs')}</Button>
           </Link>
         </EmptyState>
       </div>
@@ -141,7 +143,7 @@ export default function AppliedJobsPage() {
                       <div className="flex items-center gap-4 flex-wrap mt-1 text-sm text-slate-600">
                         <span className="flex items-center gap-1.5">
                           <Calendar className="h-4 w-4 shrink-0 text-slate-400" />
-                          Applied {getRelativeTime(job.applyDate)}
+                          {t('appliedDate', { date: getRelativeTime(job.applyDate) })}
                         </span>
                         <div className="flex items-center">
                           {getStatusBadge(job.status)}
@@ -154,7 +156,7 @@ export default function AppliedJobsPage() {
                   <div className="flex items-center gap-2 shrink-0">
                     <Link href={`/jobs/${job.jobId}`}>
                       <Button size="sm" variant="outline" className="gap-1.5 h-9">
-                        <Eye className="w-4 h-4" /> View Job
+                        <Eye className="w-4 h-4" /> {t('viewJob')}
                       </Button>
                     </Link>
                   </div>
