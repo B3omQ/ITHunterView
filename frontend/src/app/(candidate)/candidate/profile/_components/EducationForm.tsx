@@ -30,21 +30,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
-
-const MONTHS = [
-  { value: '01', label: 'January' },
-  { value: '02', label: 'February' },
-  { value: '03', label: 'March' },
-  { value: '04', label: 'April' },
-  { value: '05', label: 'May' },
-  { value: '06', label: 'June' },
-  { value: '07', label: 'July' },
-  { value: '08', label: 'August' },
-  { value: '09', label: 'September' },
-  { value: '10', label: 'October' },
-  { value: '11', label: 'November' },
-  { value: '12', label: 'December' },
-];
+import { useTranslations } from 'next-intl';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 50 }, (_, i) => CURRENT_YEAR - i + 5); // +5 for future graduations
@@ -70,6 +56,22 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
   const { data: majors } = useMajors();
   const { mutate: createEducation, isPending: isCreating } = useCreateEducation();
   const { mutate: updateEducation, isPending: isUpdating } = useUpdateEducation();
+  const t = useTranslations("CandidateProfile");
+
+  const MONTHS = [
+    { value: '01', label: '01' },
+    { value: '02', label: '02' },
+    { value: '03', label: '03' },
+    { value: '04', label: '04' },
+    { value: '05', label: '05' },
+    { value: '06', label: '06' },
+    { value: '07', label: '07' },
+    { value: '08', label: '08' },
+    { value: '09', label: '09' },
+    { value: '10', label: '10' },
+    { value: '11', label: '11' },
+    { value: '12', label: '12' },
+  ];
 
   // Form states
   const [degree, setDegree] = useState(initialData?.degree || '');
@@ -124,11 +126,11 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
     e.preventDefault();
 
     const newErrors: { degree?: string; institutionName?: string; gpa?: string } = {};
-    if (!degree.trim()) newErrors.degree = 'Degree is required';
-    if (!institutionName.trim()) newErrors.institutionName = 'Institution is required';
+    if (!degree.trim()) newErrors.degree = t('degreeRequired');
+    if (!institutionName.trim()) newErrors.institutionName = t('institutionRequired');
     
     if (gpa && maxGpa && parseFloat(gpa) > parseFloat(maxGpa)) {
-      newErrors.gpa = 'GPA cannot be greater than Max GPA';
+      newErrors.gpa = t('gpaError');
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -155,7 +157,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
         {
           onSuccess: () => onSuccess(),
           onError: (error: any) => {
-            toast.error(error?.response?.data?.message || 'Failed to update education. Please try again.');
+            toast.error(error?.response?.data?.message || t('eduUpdateError'));
           }
         }
       );
@@ -163,7 +165,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
       createEducation(payload, {
         onSuccess: () => onSuccess(),
         onError: (error: any) => {
-          toast.error(error?.response?.data?.message || 'Failed to save education. Please try again.');
+          toast.error(error?.response?.data?.message || t('eduSaveError'));
         }
       });
     }
@@ -175,7 +177,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className={cn("sm:col-span-2 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm", errors.institutionName && "border-destructive focus-within:border-destructive focus-within:ring-destructive/30")}>
-              <Label htmlFor="institutionName" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Institution Name <span className="text-destructive">*</span></Label>
+              <Label htmlFor="institutionName" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('institutionName')} <span className="text-destructive">*</span></Label>
               <input
                 id="institutionName"
                 placeholder="e.g. Stanford University"
@@ -191,7 +193,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
             </div>
 
             <div className={cn("border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm", errors.degree && "border-destructive focus-within:border-destructive focus-within:ring-destructive/30")}>
-              <Label htmlFor="degree" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Degree <span className="text-destructive">*</span></Label>
+              <Label htmlFor="degree" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('degree')} <span className="text-destructive">*</span></Label>
               <input
                 id="degree"
                 placeholder="e.g. Bachelor of Science"
@@ -206,13 +208,13 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
             </div>
 
             <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
-              <Label htmlFor="majorId" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Field of Study</Label>
+              <Label htmlFor="majorId" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('fieldOfStudy')}</Label>
               <Select value={majorId} onValueChange={(val) => setMajorId(val || '')}>
                 <SelectTrigger id="majorId" className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
-                  <SelectValue placeholder="Select a major" />
+                  <SelectValue placeholder={t('selectMajor')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None / Other</SelectItem>
+                  <SelectItem value="none">{t('noneOther')}</SelectItem>
                   {majors?.map((major) => (
                     <SelectItem key={major.id} value={String(major.id)}>
                       {major.name}
@@ -223,7 +225,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
             </div>
 
             <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
-              <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Start Date</Label>
+              <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('startDate')}</Label>
               <div className="flex gap-2">
                 <div className="w-1/2 border-r border-border/50 pr-2">
                   <Select
@@ -231,7 +233,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
                     onValueChange={(val) => setStartDate(buildDateString(parseDateString(startDate).year || '', val || ''))}
                   >
                     <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
-                      <SelectValue placeholder="Month" />
+                      <SelectValue placeholder={t('month')} />
                     </SelectTrigger>
                     <SelectContent>
                       {MONTHS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
@@ -244,7 +246,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
                     onValueChange={(val) => setStartDate(buildDateString(val || '', parseDateString(startDate).month || ''))}
                   >
                     <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
-                      <SelectValue placeholder="Year" />
+                      <SelectValue placeholder={t('year')} />
                     </SelectTrigger>
                     <SelectContent>
                       {YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
@@ -255,7 +257,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
             </div>
 
             <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
-              <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">End Date (or Expected)</Label>
+              <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('endDateExpected')}</Label>
               <div className="flex gap-2">
                 <div className="w-1/2 border-r border-border/50 pr-2">
                   <Select
@@ -263,7 +265,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
                     onValueChange={(val) => setEndDate(buildDateString(parseDateString(endDate).year || '', val || ''))}
                   >
                     <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
-                      <SelectValue placeholder="Month" />
+                      <SelectValue placeholder={t('month')} />
                     </SelectTrigger>
                     <SelectContent>
                       {MONTHS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
@@ -276,7 +278,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
                     onValueChange={(val) => setEndDate(buildDateString(val || '', parseDateString(endDate).month || ''))}
                   >
                     <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
-                      <SelectValue placeholder="Year" />
+                      <SelectValue placeholder={t('year')} />
                     </SelectTrigger>
                     <SelectContent>
                       {YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
@@ -287,7 +289,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
             </div>
             
             <div className={cn("sm:col-span-2 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm", errors.gpa && "border-destructive focus-within:border-destructive focus-within:ring-destructive/30")}>
-              <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Grade / GPA</Label>
+              <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('gradeGpa')}</Label>
               <div className="flex items-center gap-3">
                 <input
                   type="number"
@@ -300,7 +302,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
                   }}
                   className="w-16 bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 text-center"
                 />
-                <span className="text-[11px] text-muted-foreground font-semibold uppercase">out of</span>
+                <span className="text-[11px] text-muted-foreground font-semibold uppercase">{t('outOf')}</span>
                 <input
                   type="number"
                   step="0.1"
@@ -317,10 +319,10 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
             </div>
 
             <div className="sm:col-span-2 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
-              <Label htmlFor="description" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Description</Label>
+              <Label htmlFor="description" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('description')}</Label>
               <textarea
                 id="description"
-                placeholder="Activities and societies, coursework, achievements..."
+                placeholder={t('eduDescPlaceholder')}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
@@ -337,7 +339,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
               disabled={isCreating || isUpdating}
               className="text-muted-foreground hover:text-foreground hover:bg-muted font-semibold rounded-lg"
             >
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               type="submit"
@@ -345,7 +347,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
               className="bg-primary hover:bg-primary/95 transition-all text-primary-foreground font-semibold px-6 shadow-md shadow-primary/10 rounded-lg flex items-center gap-2"
             >
               {(isCreating || isUpdating) && <Loader2 className="w-4 h-4 animate-spin" />}
-              Save
+              {t('save')}
             </Button>
           </div>
         </form>
@@ -358,9 +360,9 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
             <div className="w-12 h-12 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center mb-4">
               <AlertTriangle className="w-6 h-6" />
             </div>
-            <DialogTitle className="text-lg font-bold">Discard Unsaved Changes?</DialogTitle>
+            <DialogTitle className="text-lg font-bold">{t('discardChanges')}</DialogTitle>
             <DialogDescription className="text-xs">
-              You have unsaved changes. Are you sure you want to discard them? This action cannot be undone.
+              {t('discardChangesDesc')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="pt-2">
@@ -369,7 +371,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
               onClick={() => setShowConfirmCancel(false)}
               className="border-border/60 hover:bg-muted/40 transition-all font-semibold rounded-lg"
             >
-              Continue Editing
+              {t('continueEditing')}
             </Button>
             <Button
               onClick={() => {
@@ -378,7 +380,7 @@ export function EducationForm({ initialData, onCancel, onSuccess }: EducationFor
               }}
               className="bg-destructive hover:bg-destructive/95 transition-all text-destructive-foreground font-semibold px-6 shadow-md shadow-destructive/10 rounded-lg"
             >
-              Discard Changes
+              {t('discardChangesBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>

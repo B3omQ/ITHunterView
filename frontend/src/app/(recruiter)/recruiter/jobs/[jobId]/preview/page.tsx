@@ -29,6 +29,7 @@ import {
 import { CandidateJobPreview } from "./_components/CandidateJobPreview"
 import { AnalysisStateCard } from "./_components/AnalysisStateCard"
 import { SkillAnalysisSummaryCard } from "./_components/SkillAnalysisSummaryCard"
+import { useTranslations } from "next-intl"
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback
@@ -47,6 +48,7 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
   const autoStartedRef = useRef(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [confirmNoSkillsOpen, setConfirmNoSkillsOpen] = useState(false)
+  const t = useTranslations("RecruiterJobPreview")
 
   const { job, loading: jobLoading, error: jobError, refresh: refreshJob } = useJobDetails(jobId)
   const { data: preview, isLoading: previewLoading, isSuccess: previewLoaded, refetch: refetchAnalysis } = useJobAnalysis(jobId)
@@ -74,7 +76,7 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
           { expectedRevision: job.analysisRevision, idempotencyKey: createIdempotencyKey() },
           {
             onError: (error) => {
-              setActionError(getErrorMessage(error, "Unable to start AI analysis."))
+              setActionError(getErrorMessage(error, t("startAiError")))
               void refreshJob()
               void refetchAnalysis()
             },
@@ -95,7 +97,7 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
       { expectedRevision: job.analysisRevision, idempotencyKey: createIdempotencyKey() },
       {
         onError: (error) => {
-          setActionError(getErrorMessage(error, "Unable to retry AI analysis."))
+          setActionError(getErrorMessage(error, t("retryAiError")))
           refreshAuthoritativeState()
         },
       },
@@ -115,7 +117,7 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
       {
         onSuccess: () => router.push("/recruiter/jobs"),
         onError: (error) => {
-          setActionError(getErrorMessage(error, "Unable to publish this job posting."))
+          setActionError(getErrorMessage(error, t("publishError")))
           refreshAuthoritativeState()
         },
       },
@@ -135,7 +137,7 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
   }
 
   if (jobLoading) {
-    return <div className="container mx-auto flex min-h-[400px] max-w-6xl items-center justify-center py-8 text-muted-foreground">Đang tải thông tin tin tuyển dụng...</div>
+    return <div className="container mx-auto flex min-h-[400px] max-w-6xl items-center justify-center py-8 text-muted-foreground">{t("loading")}</div>
   }
 
   if (jobError || !job) {
@@ -143,8 +145,8 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
       <div className="container mx-auto max-w-6xl py-8">
         <Card className="border-destructive/40 bg-destructive/5">
           <CardContent className="p-6">
-            <p className="font-medium text-destructive">{jobError || "Không tìm thấy tin tuyển dụng hoặc đã xảy ra lỗi."}</p>
-            <Button className="mt-4" onClick={() => router.push("/recruiter/jobs")}>Quay lại danh sách</Button>
+            <p className="font-medium text-destructive">{jobError || t("notFound")}</p>
+            <Button className="mt-4" onClick={() => router.push("/recruiter/jobs")}>{t("goBackList")}</Button>
           </CardContent>
         </Card>
       </div>
@@ -159,19 +161,19 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
       <div className="flex flex-col justify-between gap-4 border-b pb-4 sm:flex-row sm:items-center">
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={() => router.push("/recruiter/jobs")}>
-            <ArrowLeft className="mr-1 size-4" />Danh sách tin
+            <ArrowLeft className="mr-1 size-4" />{t("goBackList")}
           </Button>
           <div>
-            <h1 className="text-xl font-bold">Xem trước và xuất bản tin tuyển dụng</h1>
-            <p className="text-xs text-muted-foreground">Mã tin: {job.jobCode} · Lượt sửa #{job.analysisRevision}</p>
+            <h1 className="text-xl font-bold">{t("pageTitle")}</h1>
+            <p className="text-xs text-muted-foreground">{t("pageDesc", { code: job.jobCode, rev: job.analysisRevision })}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => router.push("/recruiter/jobs/" + job.id + "/edit")}>
-            <Edit className="mr-1 size-4" />Chỉnh sửa bản thảo
+            <Edit className="mr-1 size-4" />{t("editDraft")}
           </Button>
           <Button size="sm" onClick={handleFinalize} disabled={!canPublish || finalizeJobMutation.isPending}>
-            <Send className="mr-1.5 size-4" />{preview?.finalActionLabel || "Xuất bản tin tuyển dụng"}
+            <Send className="mr-1.5 size-4" />{preview?.finalActionLabel || t("publishBtn")}
           </Button>
         </div>
       </div>
@@ -181,7 +183,7 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
           <CardContent className="flex items-start gap-3 p-4">
             <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600" />
             <div>
-              <p className="text-sm font-semibold text-amber-900">Chưa thể xuất bản tin tuyển dụng:</p>
+              <p className="text-sm font-semibold text-amber-900">{t("publishBlock")}</p>
               <ul className="mt-1 list-inside list-disc space-y-0.5 text-xs text-amber-800">
                 {preview.blockingReasons.map((reason, index) => <li key={index}>{reason}</li>)}
               </ul>
@@ -209,14 +211,14 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
       <AlertDialog open={confirmNoSkillsOpen} onOpenChange={setConfirmNoSkillsOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xuất bản khi chưa có skill tag chuẩn?</AlertDialogTitle>
+            <AlertDialogTitle>{t("noSkillsTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              AI vẫn đã lưu các yêu cầu để matching chi tiết. Tuy nhiên, chưa có kỹ năng nào khớp từ điển chuẩn nên tin này sẽ không có tag hoặc bộ lọc theo kỹ năng.
+              {t("noSkillsDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Quay lại</AlertDialogCancel>
-            <AlertDialogAction onClick={() => finalize(true)}>Vẫn xuất bản</AlertDialogAction>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => finalize(true)}>{t("publishAnyway")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

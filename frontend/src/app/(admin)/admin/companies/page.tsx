@@ -51,16 +51,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-
-const STATUS_FILTERS = [
-  { value: 'ALL', label: 'All Statuses' },
-  { value: 'PENDING', label: 'Pending Review' },
-  { value: 'PENDING_UPDATE', label: 'Pending Update' },
-  { value: 'VERIFIED', label: 'Verified' },
-  { value: 'REJECTED', label: 'Rejected' },
-];
+import { useTranslations } from 'next-intl';
 
 export default function AdminCompaniesPage() {
+  const t = useTranslations('AdminCompanies');
+
+  const STATUS_FILTERS = [
+    { value: 'ALL', label: t("allStatuses") },
+    { value: 'PENDING', label: t("pending") },
+    { value: 'PENDING_UPDATE', label: t("pendingUpdate") },
+    { value: 'VERIFIED', label: t("verified") },
+    { value: 'REJECTED', label: t("rejected") },
+  ];
+
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('PENDING'); // Default to PENDING for action items
@@ -113,7 +116,7 @@ export default function AdminCompaniesPage() {
 
   const handleStatusUpdate = async (companyId: string, status: 'VERIFIED' | 'REJECTED') => {
     if (status === 'REJECTED' && !rejectReasonInput.trim()) {
-      toast.error('Please provide a reason for the rejection.');
+      toast.error(t("toastRejectEmpty"));
       return;
     }
 
@@ -127,8 +130,8 @@ export default function AdminCompaniesPage() {
       });
       toast.success(
         status === 'VERIFIED'
-          ? 'Company verified successfully!'
-          : 'Company rejected successfully!'
+          ? t("toastVerifySuccess")
+          : t("toastRejectSuccess")
       );
 
       // Update selected company status in detail modal if open
@@ -174,7 +177,7 @@ export default function AdminCompaniesPage() {
       setConfirmAction(null);
       setRejectReasonInput('');
     } catch (err) {
-      toast.error('An error occurred while updating the company verification status.');
+      toast.error(t("toastError"));
     }
   };
 
@@ -200,10 +203,10 @@ export default function AdminCompaniesPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
               <Building className="text-[#1877F2] shrink-0 h-8 w-8" />
-              Company Verification Portal
+              {t("title")}
             </h1>
             <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
-              Review legal registration documents and verify recruiter company accounts across the platform.
+              {t("desc")}
             </p>
           </div>
         </div>
@@ -217,14 +220,14 @@ export default function AdminCompaniesPage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by company name, tax code, address..."
+                placeholder={t("searchPlaceholder")}
                 className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
               />
               {search && (
                 <button
                   onClick={() => setSearch('')}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#65676B] hover:text-[#050505] dark:hover:text-white transition-colors p-1 cursor-pointer"
-                  title="Clear search"
+                  title={t("clearSearch")}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -240,7 +243,7 @@ export default function AdminCompaniesPage() {
               }}
             >
               <SelectTrigger className="w-full sm:w-[180px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
-                <SelectValue placeholder="Status Filter" />
+                <SelectValue placeholder={t("statusFilter")} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
                 {STATUS_FILTERS.map((item) => (
@@ -258,7 +261,7 @@ export default function AdminCompaniesPage() {
                 variant="ghost"
                 className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
               >
-                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> {t("clearFilters")}
               </Button>
             )}
           </div>
@@ -271,31 +274,31 @@ export default function AdminCompaniesPage() {
             <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
               <TableRow className="hover:bg-transparent border-none">
                 <TableHead className="w-[6%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  LOGO
+                  {t("colLogo")}
                 </TableHead>
 
                 <TableHead className="w-[23%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  COMPANY NAME
+                  {t("colName")}
                 </TableHead>
 
                 <TableHead className="w-[12%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  TAX CODE
+                  {t("colTax")}
                 </TableHead>
 
                 <TableHead className="w-[18%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  INDUSTRY
+                  {t("colIndustry")}
                 </TableHead>
 
                 <TableHead className="w-[21%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  HEADQUARTERS
+                  {t("colHq")}
                 </TableHead>
 
                 <TableHead className="w-[12%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  STATUS
+                  {t("colStatus")}
                 </TableHead>
 
                 <TableHead className="w-[8%] py-3 px-2 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  ACTIONS
+                  {t("colActions")}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -335,10 +338,10 @@ export default function AdminCompaniesPage() {
                   <TableCell colSpan={7} className="h-64 text-center">
                     <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
                       <p className="font-semibold text-rose-600 dark:text-rose-400 text-base">
-                        Failed to load company data
+                        {t("loadError")}
                       </p>
                       <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
-                        An error occurred while fetching company data. Please try again.
+                        {t("loadErrorDesc")}
                       </p>
                     </div>
                   </TableCell>
@@ -352,12 +355,10 @@ export default function AdminCompaniesPage() {
                         <SearchX className="h-6 w-6" />
                       </div>
                       <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">
-                        No companies found
+                        {t("noData")}
                       </p>
                       <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
-                        {isFilterActive
-                          ? 'No companies match the current filters. Try clearing or adjusting your search criteria.'
-                          : 'No companies registered yet.'}
+                        {isFilterActive ? t("noDataFilter") : t("noDataEmpty")}
                       </p>
                       {isFilterActive && (
                         <Button
@@ -365,7 +366,7 @@ export default function AdminCompaniesPage() {
                           variant="outline"
                           className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
                         >
-                          <RotateCcw className="h-4 w-4 mr-2" /> Clear All Filters
+                          <RotateCcw className="h-4 w-4 mr-2" /> {t("clearAllFilters")}
                         </Button>
                       )}
                     </div>
@@ -402,7 +403,7 @@ export default function AdminCompaniesPage() {
                         {company.createdByName && (
                           <span className="text-[11px] text-[#65676B] dark:text-zinc-400 mt-0.5 flex items-center gap-1">
                             <User size={10} className="text-[#1877F2]" />
-                            <span>By: {company.createdByName}</span>
+                            <span>{t("byUser", { name: company.createdByName })}</span>
                           </span>
                         )}
                         {company.website && (
@@ -412,7 +413,7 @@ export default function AdminCompaniesPage() {
                             rel="noopener noreferrer"
                             className="text-xs text-[#1877F2] dark:text-blue-400 hover:underline inline-flex items-center gap-1 mt-0.5 font-medium"
                           >
-                            <span>Website</span>
+                            <span>{t("website")}</span>
                             <ExternalLink size={10} />
                           </a>
                         )}
@@ -421,20 +422,20 @@ export default function AdminCompaniesPage() {
 
                     {/* Tax Code */}
                     <TableCell className="py-3.5 px-3 align-middle font-mono text-xs text-[#65676B] dark:text-zinc-300">
-                      {company.taxCode || 'N/A'}
+                      {company.taxCode || t("na")}
                     </TableCell>
 
                     {/* Industry */}
                     <TableCell
                       className="py-3.5 px-3 align-middle text-sm text-[#65676B] dark:text-zinc-300 max-w-[180px] truncate"
-                      title={company.industry || 'N/A'}
+                      title={company.industry || t("na")}
                     >
-                      {company.industry || 'N/A'}
+                      {company.industry || t("na")}
                     </TableCell>
 
                     {/* Headquarters */}
                     <TableCell className="py-3.5 px-3 align-middle text-sm text-[#65676B] dark:text-zinc-300 max-w-[200px] truncate" title={company.headquartersAddress}>
-                      {company.headquartersAddress || 'N/A'}
+                      {company.headquartersAddress || t("na")}
                     </TableCell>
 
                     {/* Status */}
@@ -453,7 +454,7 @@ export default function AdminCompaniesPage() {
                             setIsDetailOpen(true);
                           }}
                           className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
-                          title="View Verification Details"
+                          title={t("viewDetails")}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -465,7 +466,7 @@ export default function AdminCompaniesPage() {
                               size="icon"
                               onClick={() => setConfirmAction({ company, targetStatus: 'VERIFIED' })}
                               className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
-                              title="Approve / Verify"
+                              title={t("approve")}
                             >
                               <Check className="h-4 w-4" />
                             </Button>
@@ -474,7 +475,7 @@ export default function AdminCompaniesPage() {
                               size="icon"
                               onClick={() => setConfirmAction({ company, targetStatus: 'REJECTED' })}
                               className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
-                              title="Reject Verification"
+                              title={t("reject")}
                             >
                               <Ban className="h-4 w-4" />
                             </Button>
@@ -492,9 +493,7 @@ export default function AdminCompaniesPage() {
         {/* TẦNG 3: PAGINATION FOOTER */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 px-1">
           <div className="flex items-center space-x-3 text-sm text-[#65676B] dark:text-zinc-400">
-            <div>
-              Showing <span className="font-semibold text-[#050505] dark:text-zinc-200">{startResult} - {endResult}</span> of <span className="font-semibold text-[#050505] dark:text-zinc-200">{totalItems}</span> companies
-            </div>
+            <div dangerouslySetInnerHTML={{ __html: t.raw("showingText").replace('{start}', startResult.toString()).replace('{end}', endResult.toString()).replace('{total}', totalItems.toString()) }} />
             <Select
               value={String(pageSize)}
               onValueChange={(val) => {
@@ -503,12 +502,12 @@ export default function AdminCompaniesPage() {
               }}
             >
               <SelectTrigger className="h-8 w-[110px] border-[#CED0D4] dark:border-zinc-800 text-xs font-medium focus:ring-[#1877F2]">
-                <SelectValue placeholder="Page size" />
+                <SelectValue placeholder={t("pageSize")} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
-                <SelectItem value="10">10 / page</SelectItem>
-                <SelectItem value="20">20 / page</SelectItem>
-                <SelectItem value="50">50 / page</SelectItem>
+                <SelectItem value="10">{t("perPage", { size: 10 })}</SelectItem>
+                <SelectItem value="20">{t("perPage", { size: 20 })}</SelectItem>
+                <SelectItem value="50">{t("perPage", { size: 50 })}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -587,7 +586,7 @@ export default function AdminCompaniesPage() {
                   {selectedCompany.name}
                 </DialogTitle>
                 <DialogDescription>
-                  Detailed company verification information and legal documents.
+                  {t("detailDesc")}
                 </DialogDescription>
               </DialogHeader>
 
@@ -606,7 +605,7 @@ export default function AdminCompaniesPage() {
                     <h3 className="font-bold text-base text-foreground truncate">{selectedCompany.name}</h3>
                     <div className="flex items-center gap-2 mt-1">
                       <CompanyStatusBadge status={selectedCompany.status} hasPendingChange={selectedCompany.hasPendingChange} />
-                      <span className="text-xs text-muted-foreground font-mono">Tax: {selectedCompany.taxCode || 'N/A'}</span>
+                      <span className="text-xs text-muted-foreground font-mono">{t("taxLabel", { code: selectedCompany.taxCode || t("na") })}</span>
                     </div>
                   </div>
                 </div>
@@ -616,7 +615,7 @@ export default function AdminCompaniesPage() {
                   <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-sm">
                     <div className="font-bold flex items-center gap-1.5 mb-1">
                       <XCircle size={16} />
-                      <span>Rejection Reason</span>
+                      <span>{t("rejectReasonTitle")}</span>
                     </div>
                     <p className="text-xs leading-relaxed">{selectedCompany.rejectReason}</p>
                   </div>
@@ -627,10 +626,10 @@ export default function AdminCompaniesPage() {
                   <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-300 text-sm">
                     <div className="font-bold flex items-center gap-1.5 mb-1">
                       <Clock size={16} />
-                      <span>Pending Information Update Request</span>
+                      <span>{t("pendingInfoReq")}</span>
                     </div>
                     <p className="text-xs leading-relaxed">
-                      The recruiter has submitted new company details for re-verification. Compare current vs pending info below.
+                      {t("pendingInfoReqDesc")}
                     </p>
                   </div>
                 )}
@@ -638,31 +637,31 @@ export default function AdminCompaniesPage() {
                 {/* Information Comparison or Display */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="p-3.5 rounded-xl border border-[#CED0D4] dark:border-zinc-800 space-y-2 bg-card">
-                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Company Name</h4>
+                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("compNameLabel")}</h4>
                     <p className="text-sm font-semibold text-foreground">{selectedCompany.name}</p>
                     {selectedCompany.hasPendingChange && selectedCompany.pendingName && selectedCompany.pendingName !== selectedCompany.name && (
                       <div className="text-xs text-amber-600 dark:text-amber-400 font-medium pt-1 border-t border-dashed border-amber-500/30">
-                        New: <span className="font-bold">{selectedCompany.pendingName}</span>
+                        <div dangerouslySetInnerHTML={{ __html: t.raw("newLabel").replace('{value}', selectedCompany.pendingName) }} />
                       </div>
                     )}
                   </div>
 
                   <div className="p-3.5 rounded-xl border border-[#CED0D4] dark:border-zinc-800 space-y-2 bg-card">
-                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Tax Identification Code</h4>
-                    <p className="text-sm font-semibold font-mono text-foreground">{selectedCompany.taxCode || 'N/A'}</p>
+                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("taxCodeLabel")}</h4>
+                    <p className="text-sm font-semibold font-mono text-foreground">{selectedCompany.taxCode || t("na")}</p>
                     {selectedCompany.hasPendingChange && selectedCompany.pendingTaxCode && selectedCompany.pendingTaxCode !== selectedCompany.taxCode && (
                       <div className="text-xs text-amber-600 dark:text-amber-400 font-mono font-medium pt-1 border-t border-dashed border-amber-500/30">
-                        New: <span className="font-bold">{selectedCompany.pendingTaxCode}</span>
+                        <div dangerouslySetInnerHTML={{ __html: t.raw("newLabel").replace('{value}', selectedCompany.pendingTaxCode) }} />
                       </div>
                     )}
                   </div>
 
                   <div className="p-3.5 rounded-xl border border-[#CED0D4] dark:border-zinc-800 space-y-2 bg-card md:col-span-2">
-                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Headquarters Address</h4>
-                    <p className="text-sm font-semibold text-foreground">{selectedCompany.headquartersAddress || 'N/A'}</p>
+                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("hqAddressLabel")}</h4>
+                    <p className="text-sm font-semibold text-foreground">{selectedCompany.headquartersAddress || t("na")}</p>
                     {selectedCompany.hasPendingChange && selectedCompany.pendingHeadquartersAddress && selectedCompany.pendingHeadquartersAddress !== selectedCompany.headquartersAddress && (
                       <div className="text-xs text-amber-600 dark:text-amber-400 font-medium pt-1 border-t border-dashed border-amber-500/30">
-                        New: <span className="font-bold">{selectedCompany.pendingHeadquartersAddress}</span>
+                        <div dangerouslySetInnerHTML={{ __html: t.raw("newLabel").replace('{value}', selectedCompany.pendingHeadquartersAddress) }} />
                       </div>
                     )}
                   </div>
@@ -672,7 +671,7 @@ export default function AdminCompaniesPage() {
                 <div className="p-4 rounded-xl border border-[#CED0D4] dark:border-zinc-800 space-y-3 bg-slate-50/50 dark:bg-zinc-900/50">
                   <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                     <FileText size={14} className="text-[#1877F2]" />
-                    <span>Legal Verification Document</span>
+                    <span>{t("legalDocLabel")}</span>
                   </h4>
 
                   {(() => {
@@ -684,20 +683,22 @@ export default function AdminCompaniesPage() {
                       : selectedCompany.verificationMethod;
 
                     if (!docUrl) {
-                      return <p className="text-xs text-muted-foreground italic">No verification document submitted.</p>;
+                      return <p className="text-xs text-muted-foreground italic">{t("noDoc")}</p>;
                     }
 
                     return (
                       <div className="space-y-3">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground">Verification Method: <strong className="text-foreground capitalize">{method || 'Business License'}</strong></span>
+                          <span className="text-muted-foreground">
+                            <span dangerouslySetInnerHTML={{ __html: t.raw("verMethod").replace('{method}', method || 'Business License') }} />
+                          </span>
                           <a
                             href={docUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-[#1877F2] font-bold hover:underline inline-flex items-center gap-1"
                           >
-                            <span>Open Full Document</span>
+                            <span>{t("openDoc")}</span>
                             <ExternalLink size={12} />
                           </a>
                         </div>
@@ -709,7 +710,7 @@ export default function AdminCompaniesPage() {
                           ) : (
                             <div className="p-8 text-center space-y-2">
                               <FileText size={40} className="mx-auto text-[#1877F2] opacity-60" />
-                              <p className="text-xs text-muted-foreground font-medium">Document attached (PDF or external file format)</p>
+                              <p className="text-xs text-muted-foreground font-medium">{t("docAttached")}</p>
                             </div>
                           )}
                         </div>
@@ -721,7 +722,7 @@ export default function AdminCompaniesPage() {
 
               <DialogFooter className="flex-col sm:flex-row gap-2">
                 <Button variant="outline" onClick={() => setIsDetailOpen(false)} className="w-full sm:w-auto">
-                  Close
+                  {t("close")}
                 </Button>
 
                 {(selectedCompany.status === 'PENDING' || selectedCompany.hasPendingChange) && (
@@ -735,7 +736,7 @@ export default function AdminCompaniesPage() {
                       className="w-full sm:w-auto gap-1.5"
                     >
                       <Ban size={16} />
-                      <span>Reject</span>
+                      <span>{t("rejectBtn")}</span>
                     </Button>
                     <Button
                       onClick={() => {
@@ -745,7 +746,7 @@ export default function AdminCompaniesPage() {
                       className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
                     >
                       <Check size={16} />
-                      <span>Approve</span>
+                      <span>{t("approveBtn")}</span>
                     </Button>
                   </div>
                 )}
@@ -768,27 +769,27 @@ export default function AdminCompaniesPage() {
                     <XCircle className="text-rose-500" size={24} />
                   )}
                   <span>
-                    {confirmAction.targetStatus === 'VERIFIED' ? 'Approve Verification' : 'Reject Verification'}
+                    {confirmAction.targetStatus === 'VERIFIED' ? t("approveTitle") : t("rejectTitle")}
                   </span>
                 </DialogTitle>
                 <DialogDescription>
-                  Company: <strong className="text-foreground">{confirmAction.company.name}</strong>
+                  <span dangerouslySetInnerHTML={{ __html: t.raw("companyLabel").replace('{name}', confirmAction.company.name) }} />
                 </DialogDescription>
               </DialogHeader>
 
               <div className="py-3 space-y-4">
                 {confirmAction.targetStatus === 'VERIFIED' ? (
                   <p className="text-sm text-muted-foreground">
-                    Are you sure you want to verify this company? Once verified, the recruiter will be granted posting privileges and verified company badge.
+                    {t("approveConfirmDesc")}
                   </p>
                 ) : (
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-foreground uppercase tracking-wider">
-                      Rejection Reason <span className="text-rose-500">*</span>
+                      <span dangerouslySetInnerHTML={{ __html: t.raw("rejectReasonLabel") }} />
                     </label>
                     <textarea
                       rows={3}
-                      placeholder="Enter the specific reason for rejecting verification (e.g. Invalid tax code, blurred business license)..."
+                      placeholder={t("rejectReasonPlaceholder")}
                       value={rejectReasonInput}
                       onChange={(e) => setRejectReasonInput(e.target.value)}
                       className="w-full p-3 border border-[#CED0D4] dark:border-zinc-800 rounded-xl bg-background text-sm outline-none focus:border-[#1877F2] focus:ring-2 focus:ring-[#1877F2]/20 transition-all placeholder:text-muted-foreground"
@@ -798,16 +799,17 @@ export default function AdminCompaniesPage() {
               </div>
 
               <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={() => setConfirmAction(null)} disabled={isUpdating}>
-                  Cancel
+                <Button variant="outline" onClick={() => setConfirmAction(null)}>
+                  {t("cancel")}
                 </Button>
                 <Button
+                  variant={confirmAction.targetStatus === 'VERIFIED' ? 'default' : 'destructive'}
+                  className={confirmAction.targetStatus === 'VERIFIED' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}
                   onClick={() => handleStatusUpdate(confirmAction.company.id, confirmAction.targetStatus)}
                   disabled={isUpdating}
-                  className={confirmAction.targetStatus === 'VERIFIED' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-rose-600 hover:bg-rose-700 text-white'}
                 >
-                  {isUpdating ? <Loader2 className="animate-spin mr-1.5" size={16} /> : null}
-                  <span>Confirm {confirmAction.targetStatus === 'VERIFIED' ? 'Approve' : 'Reject'}</span>
+                  {isUpdating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  {t("confirmBtn")}
                 </Button>
               </DialogFooter>
             </>

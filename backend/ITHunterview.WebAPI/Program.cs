@@ -183,6 +183,13 @@ if (!app.Environment.IsEnvironment("Testing"))
 // ─── Middleware Pipeline ──────────────────────────────────────────────────────
 app.UseMiddleware<ITHunterview.WebAPI.Middlewares.ExceptionMiddleware>();
 
+var supportedCultures = new[] { "en", "vi" };
+var localizationOptions = new RequestLocalizationOptions()
+    .SetDefaultCulture(supportedCultures[0])
+    .AddSupportedCultures(supportedCultures)
+    .AddSupportedUICultures(supportedCultures);
+app.UseRequestLocalization(localizationOptions);
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

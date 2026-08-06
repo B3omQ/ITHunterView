@@ -24,8 +24,10 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { useTranslations } from 'next-intl';
 
 export default function AiConfigPage() {
+  const t = useTranslations('AiConfig');
   const [config, setConfig] = useState<AiConfigResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -56,7 +58,7 @@ export default function AiConfigPage() {
         setValue('requestsPerMinute', res.data.requestsPerMinute);
       }
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to load AI config');
+      toast.error(error?.response?.data?.message || t('loadError'));
     } finally {
       setIsLoading(false);
     }
@@ -70,12 +72,12 @@ export default function AiConfigPage() {
     setIsSaving(true);
     try {
       await aiConfigService.updateConfig(data);
-      toast.success('AI Configuration saved successfully!');
+      toast.success(t('saveSuccess'));
       // clear api key field after saving
       setValue('apiKey', '');
       await loadConfig();
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to save AI config');
+      toast.error(error?.response?.data?.message || t('saveError'));
     } finally {
       setIsSaving(false);
     }
@@ -88,21 +90,21 @@ export default function AiConfigPage() {
       const res = await aiConfigService.testConnection({ providerName: activeProvider });
       setTestResult({
         success: res.data?.success ?? false,
-        message: res.data?.message || 'Success',
+        message: res.data?.message || t('testSuccess'),
         ms: res.data?.responseTimeMs ?? 0,
       });
       if (res.data?.success) {
-        toast.success('Test connection successful!');
+        toast.success(t('testConnectionSuccessMsg'));
       } else {
-        toast.error('Test connection failed!');
+        toast.error(t('testConnectionFailedMsg'));
       }
     } catch (error: any) {
       setTestResult({
         success: false,
-        message: error?.response?.data?.message || 'Test connection failed due to an error.',
+        message: error?.response?.data?.message || t('testConnectionError'),
         ms: 0,
       });
-      toast.error('Test connection failed!');
+      toast.error(t('testConnectionFailedMsg'));
     } finally {
       setIsTesting(false);
     }
@@ -124,10 +126,10 @@ export default function AiConfigPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
               <Cpu className="text-[#1877F2] shrink-0 h-8 w-8" />
-              AI Configuration
+              {t('title')}
             </h1>
             <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
-              Manage the active AI model, API keys, and rate limits for platform intelligence features.
+              {t('desc')}
             </p>
           </div>
         </div>
@@ -139,10 +141,10 @@ export default function AiConfigPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-lg font-bold text-[#050505] dark:text-zinc-50 flex items-center gap-2">
                 <Cpu className="h-5 w-5 text-[#1877F2]" />
-                Active Provider Selection
+                {t('card1Title')}
               </CardTitle>
               <CardDescription className="text-xs text-[#65676B] dark:text-zinc-400">
-                Choose the primary Large Language Model (LLM) engine powering AI features across the application.
+                {t('card1Desc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -181,16 +183,16 @@ export default function AiConfigPage() {
 
                       <div className="mt-3 space-y-1.5">
                         <p className="text-xs text-[#65676B] dark:text-zinc-400">
-                          Model: <span className="font-semibold text-[#050505] dark:text-zinc-200">{provider.model || 'Default'}</span>
+                          {t('modelLabel')}<span className="font-semibold text-[#050505] dark:text-zinc-200">{provider.model || t('defaultModel')}</span>
                         </p>
                         <div>
                           {provider.isConfigured ? (
                             <Badge className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-none">
-                              Configured ({provider.apiKeyPreview})
+                              {t('configured').replace('{apiKeyPreview}', provider.apiKeyPreview || '')}
                             </Badge>
                           ) : (
                             <Badge className="bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-none">
-                              Not Configured
+                              {t('notConfigured')}
                             </Badge>
                           )}
                         </div>
@@ -207,10 +209,10 @@ export default function AiConfigPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-lg font-bold text-[#050505] dark:text-zinc-50 flex items-center gap-2">
                 <Key className="h-5 w-5 text-[#1877F2]" />
-                Provider Settings ({activeProvider})
+                {t('card2Title').replace('{activeProvider}', activeProvider)}
               </CardTitle>
               <CardDescription className="text-xs text-[#65676B] dark:text-zinc-400">
-                Configure authentication keys and rate limits for {activeProvider}.
+                {t('card2Desc').replace('{activeProvider}', activeProvider)}
               </CardDescription>
             </CardHeader>
 
@@ -218,17 +220,17 @@ export default function AiConfigPage() {
               {/* API Key */}
               <div className="space-y-1.5">
                 <Label htmlFor="apiKey" className="text-sm font-semibold text-[#050505] dark:text-zinc-200">
-                  API Key
+                  {t('apiKeyLabel')}
                 </Label>
                 <Input
                   type="password"
                   id="apiKey"
                   {...register('apiKey')}
-                  placeholder="Leave blank to keep existing configured key (sk-...)"
+                  placeholder={t('apiKeyPlaceholder')}
                   className="!h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2]"
                 />
                 <p className="text-xs text-[#65676B] dark:text-zinc-400">
-                  This key will be securely saved in the encrypted database and used for {activeProvider} requests.
+                  {t('apiKeyHelp').replace('{activeProvider}', activeProvider)}
                 </p>
               </div>
 
@@ -236,7 +238,7 @@ export default function AiConfigPage() {
               <div className="space-y-1.5">
                 <Label htmlFor="requestsPerMinute" className="text-sm font-semibold text-[#050505] dark:text-zinc-200 flex items-center gap-1.5">
                   <Gauge className="h-4 w-4 text-[#1877F2]" />
-                  Global Rate Limit (Requests per minute per user)
+                  {t('rateLimitLabel')}
                 </Label>
                 <Input
                   type="number"
@@ -245,7 +247,7 @@ export default function AiConfigPage() {
                   className="!h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] max-w-xs"
                 />
                 <p className="text-xs text-[#65676B] dark:text-zinc-400">
-                  Limits the maximum number of AI requests a single IP or user account can issue in 1 minute to protect quota limits.
+                  {t('rateLimitHelp')}
                 </p>
               </div>
 
@@ -264,7 +266,7 @@ export default function AiConfigPage() {
                     ) : (
                       <Activity className="h-4 w-4 text-[#1877F2]" />
                     )}
-                    Test Connection
+                    {t('testConnectionBtn')}
                   </Button>
 
                   {testResult && (
@@ -280,7 +282,7 @@ export default function AiConfigPage() {
                       ) : (
                         <XCircle className="h-4 w-4 mr-1 shrink-0" />
                       )}
-                      {testResult.success ? `Connected (${testResult.ms}ms)` : 'Connection Failed'}
+                      {testResult.success ? t('connectedStatus').replace('{ms}', testResult.ms.toString()) : t('failedStatus')}
                     </div>
                   )}
                 </div>
@@ -295,7 +297,7 @@ export default function AiConfigPage() {
                   ) : (
                     <Save className="h-4 w-4" />
                   )}
-                  Save Configuration
+                  {t('saveConfigBtn')}
                 </Button>
               </div>
             </CardContent>
@@ -309,7 +311,7 @@ export default function AiConfigPage() {
               <XCircle className="h-5 w-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
               <div>
                 <h3 className="text-sm font-bold text-rose-800 dark:text-rose-300">
-                  Connection Error Details
+                  {t('errorDetailsTitle')}
                 </h3>
                 <p className="text-xs text-rose-700 dark:text-rose-400 mt-1 font-mono">
                   {testResult.message}

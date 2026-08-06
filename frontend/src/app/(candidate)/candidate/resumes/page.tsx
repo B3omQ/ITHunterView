@@ -7,12 +7,14 @@ import { CvCard } from '@/components/shared/CvCard';
 import { CloudUpload, ExternalLink, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Cv } from '@/types/cv.types';
+import { useTranslations } from 'next-intl';
 
 export default function ResumesPage() {
   const { data: cvsResponse, isLoading: isLoadingCvs } = useGetMyCvs();
   const { mutateAsync: uploadFile } = useUploadFile();
   const { mutateAsync: createCv } = useCreateCv();
   const { mutate: deleteCv, isPending: isDeleting } = useDeleteCv();
+  const t = useTranslations("CandidateResumes");
 
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -48,7 +50,7 @@ export default function ResumesPage() {
 
   const handleFile = async (file: File) => {
     if (file.size > 5 * 1024 * 1024) {
-      alert('File is too large. Max 5MB allowed.');
+      alert(t('fileTooLarge'));
       return;
     }
 
@@ -84,7 +86,7 @@ export default function ResumesPage() {
 
     } catch (error) {
       console.error('Failed to upload CV:', error);
-      alert('Failed to upload CV. Please try again.');
+      alert(t('uploadFailed'));
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -120,9 +122,9 @@ export default function ResumesPage() {
   return (
     <div className="w-full pb-8 flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">My Resumes</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('myResumes')}</h1>
         <p className="text-base text-muted-foreground">
-          Manage and optimize your resumes for ATS compatibility
+          {t('myResumesDesc')}
         </p>
       </div>
 
@@ -152,10 +154,10 @@ export default function ResumesPage() {
               <CloudUpload className="h-6 w-6" />
             </div>
             <p className="mb-1 text-sm font-semibold text-foreground">
-              {isUploading ? 'Uploading...' : 'Drag & drop your resume here'}
+              {isUploading ? t('uploading') : t('dragDrop')}
             </p>
             <p className="text-xs text-muted-foreground">
-              or click to browse · PDF, DOC, DOCX · Max 5 MB
+              {t('uploadHint')}
             </p>
           </div>
 
@@ -195,7 +197,7 @@ export default function ResumesPage() {
                     {selectedCv.fileName}
                   </span>
                   <span className="text-sm text-muted-foreground mt-0.5">
-                    Live Preview
+                    {t('livePreview')}
                   </span>
                 </div>
                 <a
@@ -205,7 +207,7 @@ export default function ResumesPage() {
                   className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted/50 transition-colors"
                 >
                   <ExternalLink className="h-4 w-4" />
-                  <span>Open in new tab</span>
+                  <span>{t('openNewTab')}</span>
                 </a>
               </div>
               <div className="flex-1 w-full h-full min-h-0 bg-muted/10">
@@ -219,7 +221,7 @@ export default function ResumesPage() {
           ) : (
             <div className="flex flex-col items-center justify-center h-[650px] border border-dashed border-border rounded-xl bg-muted/10 text-muted-foreground gap-3">
               <FileText className="h-12 w-12 opacity-50 animate-pulse" />
-              <p className="text-base font-medium">Select a resume from the list to view its preview</p>
+              <p className="text-base font-medium">{t('selectResume')}</p>
             </div>
           )}
         </div>

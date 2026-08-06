@@ -4,12 +4,15 @@ import { CheckCircle2, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { JobSkillDecisionDto } from "@/types/job-analysis.types"
+import { useTranslations } from "next-intl"
 
 interface SkillAnalysisSummaryCardProps {
   suggestions: JobSkillDecisionDto[]
 }
 
 export function SkillAnalysisSummaryCard({ suggestions }: SkillAnalysisSummaryCardProps) {
+  const t = useTranslations("RecruiterJobPreviewComp.SkillAnalysisSummaryCard")
+  
   const standardizedSkills = suggestions.filter(
     (suggestion) => suggestion.decisionStatus === "ACCEPTED" && suggestion.resolvedSkillId != null,
   )
@@ -19,10 +22,10 @@ export function SkillAnalysisSummaryCard({ suggestions }: SkillAnalysisSummaryCa
       <CardHeader className="border-b pb-4">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Sparkles className="size-5 text-muted-foreground" />
-          Kỹ năng đã chuẩn hóa
+          {t("title")}
         </CardTitle>
         <CardDescription>
-          Các tag này sẽ hiển thị cho ứng viên và được dùng cho bộ lọc kỹ năng.
+          {t("desc")}
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-5">
@@ -35,7 +38,7 @@ export function SkillAnalysisSummaryCard({ suggestions }: SkillAnalysisSummaryCa
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Chưa có kỹ năng nào khớp từ điển chuẩn để hiển thị thành tag.
+            {t("empty")}
           </p>
         )}
       </CardContent>

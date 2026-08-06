@@ -43,9 +43,11 @@ import {
   SearchX,
   Lightbulb
 } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 export default function JobPostingsPage() {
   const router = useRouter()
+  const t = useTranslations("RecruiterJobs")
 
   // 1. TanStack Query & Service state management (Strictly following kinh-mantra: page -> hook -> service)
   const {
@@ -92,12 +94,12 @@ export default function JobPostingsPage() {
     const res = await extendJob(extendingJob.id)
     setExtendSubmitting(false)
     if (res.success) {
-      alert(res.message || "Job posting extended successfully!")
+      alert(res.message || t("extendSuccess"))
       setExtendingJob(null)
       refresh()
       refetchWallet()
     } else {
-      alert(res.message || "Failed to extend job posting.")
+      alert(res.message || t("extendFail"))
     }
   }
 
@@ -116,12 +118,12 @@ export default function JobPostingsPage() {
     const res = await pushTopJob(pushingTopJob.id)
     setPushTopSubmitting(false)
     if (res.success) {
-      alert(res.message || "Job posting pushed to Top successfully!")
+      alert(res.message || t("pushTopSuccess"))
       setPushingTopJob(null)
       refresh()
       refetchWallet()
     } else {
-      alert(res.message || "Failed to push job posting to Top.")
+      alert(res.message || t("pushTopFail"))
     }
   }
 
@@ -141,10 +143,10 @@ export default function JobPostingsPage() {
 
   // Handle actions
   const handleCloseJob = async (id: string) => {
-    if (!confirm("Are you sure you want to close this job posting? Its status will be changed to Closed.")) return
+    if (!confirm(t("closeConfirm"))) return
     const res = await closeJob(id)
     if (!res.success) {
-      alert(res.message || "Failed to close job posting.")
+      alert(res.message || t("closeFail"))
     }
   }
 
@@ -211,7 +213,7 @@ export default function JobPostingsPage() {
         <div className="flex flex-col items-center gap-0.5">
           <div className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 text-xs font-bold shadow-none">
             <span className="h-2 w-2 rounded-full bg-rose-600 shrink-0" />
-            <span>BANNED</span>
+            <span>{t("banned")}</span>
           </div>
           <span className="text-[10px] text-rose-500 max-w-[110px] truncate" title={job.banReason}>
             {job.banReason}
@@ -225,21 +227,21 @@ export default function JobPostingsPage() {
         return (
           <div className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 text-xs font-semibold shadow-none">
             <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
-            <span>Active</span>
+            <span>{t("active")}</span>
           </div>
         )
       case "DRAFT":
         return (
           <div className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 text-xs font-semibold shadow-none">
             <span className="h-2 w-2 rounded-full bg-zinc-400 shrink-0" />
-            <span>Draft</span>
+            <span>{t("draft")}</span>
           </div>
         )
       case "CLOSED":
         return (
           <div className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 text-xs font-semibold shadow-none">
             <span className="h-2 w-2 rounded-full bg-rose-500 shrink-0" />
-            <span>Closed</span>
+            <span>{t("closed")}</span>
           </div>
         )
       default:
@@ -260,7 +262,7 @@ export default function JobPostingsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-2">
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight">Job Management</h1>
+              <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight">{t("pageTitle")}</h1>
               {walletData && (
                 <Popover>
                   <PopoverTrigger
@@ -280,55 +282,51 @@ export default function JobPostingsPage() {
                       <div className="flex items-center justify-between border-b pb-2.5 border-zinc-100 dark:border-zinc-800">
                         <div className="flex items-center gap-2 text-sm font-extrabold text-[#050505] dark:text-zinc-100">
                           <Briefcase className={`h-4 w-4 ${isSlotFull ? "text-amber-600 dark:text-amber-400" : "text-[#1877F2] dark:text-blue-400"}`} />
-                          <span>Job Posting Quota</span>
+                          <span>{t("quotaTitle")}</span>
                         </div>
                         <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${isSlotFull
                             ? "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300"
                             : "bg-[#E7F3FF] dark:bg-blue-950/50 text-[#1877F2] dark:text-blue-300 border-blue-200 dark:border-blue-800"
                           }`}>
-                          {isSlotFull ? "⚠️ Quota Full" : "✨ Quota Available"}
+                          {isSlotFull ? t("quotaFullAlert") : t("quotaAvailAlert")}
                         </span>
                       </div>
 
                       <div className="space-y-2 text-xs text-[#65676B] dark:text-zinc-300">
                         {/* Trạng thái hạn mức */}
                         <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
-                          <span className="font-medium text-zinc-600 dark:text-zinc-400">Quota Status:</span>
+                          <span className="font-medium text-zinc-600 dark:text-zinc-400">{t("quotaStatus")}</span>
                           <span className={`font-bold text-xs px-2 py-0.5 rounded-full border ${isSlotFull
                               ? "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300"
                               : "bg-[#E7F3FF] text-[#1877F2] border-[#1877F2]/20"
                             }`}>
-                            {isSlotFull ? "Quota Full (Pay-as-you-go)" : "Free Slot Available"}
+                            {isSlotFull ? t("quotaFullPay") : t("quotaFreeAvail")}
                           </span>
                         </div>
 
                         {/* Hạn mức gói */}
                         <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
-                          <span className="font-medium text-zinc-600 dark:text-zinc-400">Plan Job Slot Limit:</span>
+                          <span className="font-medium text-zinc-600 dark:text-zinc-400">{t("planLimit")}</span>
                           <span className="font-extrabold text-sm text-[#050505] dark:text-zinc-100">
-                            {jobSlotsLimit === -1 ? "Unlimited" : `${jobSlotsLimit} ${jobSlotsLimit === 1 ? "free slot" : "free slots"}`}
+                            {jobSlotsLimit === -1 ? t("unlimited") : (jobSlotsLimit === 1 ? t("freeSlot", { count: 1 }) : t("freeSlots", { count: jobSlotsLimit }))}
                           </span>
                         </div>
 
                         {/* Số tin đang hiển thị (Active) */}
                         <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
-                          <span className="font-medium text-zinc-600 dark:text-zinc-400">Currently Active Jobs:</span>
+                          <span className="font-medium text-zinc-600 dark:text-zinc-400">{t("activeJobs")}</span>
                           <span className={`font-extrabold text-sm ${isSlotFull ? "text-amber-600 dark:text-amber-400 font-black" : "text-[#1877F2] dark:text-blue-400"}`}>
-                            {jobSlotsUsed} {jobSlotsUsed === 1 ? "job" : "jobs"}
+                            {jobSlotsUsed === 1 ? t("jobCount", { count: 1 }) : t("jobsCount", { count: jobSlotsUsed })}
                           </span>
                         </div>
 
                         {isSlotFull ? (
                           <div className="bg-amber-50/70 dark:bg-amber-950/20 p-3 rounded-xl border border-amber-200/80 dark:border-amber-900/50 space-y-1">
-                            <p className="text-amber-900 dark:text-amber-300 font-medium leading-relaxed">
-                              You have reached your free plan quota ({jobSlotsLimit} slot). Posting new Active jobs beyond quota will cost <strong className="font-extrabold text-amber-950 dark:text-amber-200">20,000 Coin / job</strong>. Saving Drafts is completely free.
-                            </p>
+                            <p className="text-amber-900 dark:text-amber-300 font-medium leading-relaxed" dangerouslySetInnerHTML={{ __html: t.raw("quotaFullMsg").replace('{limit}', jobSlotsLimit) }} />
                           </div>
                         ) : (
                           <div className="bg-blue-50/60 dark:bg-blue-950/20 p-3 rounded-xl border border-blue-100 dark:border-blue-900/40">
-                            <p className="text-blue-950 dark:text-blue-200 font-medium leading-relaxed">
-                              You have <strong className="text-[#1877F2] dark:text-blue-400 font-bold">{jobSlotsLimit === -1 ? "unlimited" : Math.max(0, (jobSlotsLimit || 0) - (jobSlotsUsed || 0))} free job slots remaining</strong> in your current plan without using wallet Coins.
-                            </p>
+                            <p className="text-blue-950 dark:text-blue-200 font-medium leading-relaxed" dangerouslySetInnerHTML={{ __html: t.raw("quotaAvailMsg").replace('{remaining}', jobSlotsLimit === -1 ? t('unlimited') : Math.max(0, (jobSlotsLimit || 0) - (jobSlotsUsed || 0))) }} />
                           </div>
                         )}
                       </div>
@@ -340,7 +338,7 @@ export default function JobPostingsPage() {
                           onClick={() => router.push("/recruiter/billing")}
                           className="w-full border-amber-300 dark:border-amber-700 hover:bg-amber-100/70 text-amber-800 dark:text-amber-300 font-bold h-9 shadow-none cursor-pointer transition-colors"
                         >
-                          Upgrade Plan Now
+                          {t("upgradePlan")}
                         </Button>
                       )}
                     </div>
@@ -348,7 +346,7 @@ export default function JobPostingsPage() {
                 </Popover>
               )}
             </div>
-            <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">Track, manage, and optimize job postings in the system</p>
+            <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">{t("pageDesc")}</p>
           </div>
           {/* Primary Action Button (#1877F2) */}
           <Button
@@ -356,7 +354,7 @@ export default function JobPostingsPage() {
             className="bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium h-10 px-4 rounded-lg shadow-sm active:scale-[0.98] transition-all gap-2 cursor-pointer"
           >
             <Plus className="h-4 w-4" />
-            Add New Job
+            {t("addNewJob")}
           </Button>
         </div>
 
@@ -372,7 +370,7 @@ export default function JobPostingsPage() {
                   setSearch(e.target.value)
                   setPage(1)
                 }}
-                placeholder="Search by title or job code..."
+                placeholder={t("searchPlaceholder")}
                 className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
               />
               {search && (
@@ -398,13 +396,13 @@ export default function JobPostingsPage() {
               }}
             >
               <SelectTrigger className="w-full sm:w-[170px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={t("allStatuses")} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
-                <SelectItem value="ALL">All Statuses</SelectItem>
-                <SelectItem value="PUBLISHED">Active</SelectItem>
-                <SelectItem value="DRAFT">Draft</SelectItem>
-                <SelectItem value="CLOSED">Closed</SelectItem>
+                <SelectItem value="ALL">{t("allStatuses")}</SelectItem>
+                <SelectItem value="PUBLISHED">{t("statusActive")}</SelectItem>
+                <SelectItem value="DRAFT">{t("statusDraft")}</SelectItem>
+                <SelectItem value="CLOSED">{t("statusClosed")}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -415,7 +413,7 @@ export default function JobPostingsPage() {
                 variant="ghost"
                 className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
               >
-                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> {t("clearFilters")}
               </Button>
             )}
           </div>
@@ -427,7 +425,7 @@ export default function JobPostingsPage() {
             <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
               <TableRow className="hover:bg-transparent border-none">
                 <TableHead className="w-[11%] py-3 px-2.5 sm:px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  JOB CODE
+                  {t("colJobCode")}
                 </TableHead>
 
                 <TableHead className="w-[32%] py-3 px-2.5 sm:px-3">
@@ -436,7 +434,7 @@ export default function JobPostingsPage() {
                     className={`flex items-center text-xs font-semibold uppercase tracking-wider ${sortField === "title" ? "text-[#1877F2] dark:text-blue-400" : "text-[#65676B] dark:text-zinc-400"
                       } hover:text-[#050505] dark:hover:text-white transition-colors group cursor-pointer`}
                   >
-                    JOB TITLE
+                    {t("colJobTitle")}
                     {renderSortIcon("title")}
                   </button>
                 </TableHead>
@@ -447,13 +445,13 @@ export default function JobPostingsPage() {
                     className={`flex items-center text-xs font-semibold uppercase tracking-wider ${sortField === "date" ? "text-[#1877F2] dark:text-blue-400" : "text-[#65676B] dark:text-zinc-400"
                       } hover:text-[#050505] dark:hover:text-white transition-colors group cursor-pointer`}
                   >
-                    POSTED DATE
+                    {t("colPostedDate")}
                     {renderSortIcon("date")}
                   </button>
                 </TableHead>
 
                 <TableHead className="w-[13%] py-3 px-2.5 sm:px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  EXPIRATION DATE
+                  {t("colExpirationDate")}
                 </TableHead>
 
                 <TableHead className="w-[9%] text-center py-3 px-2.5 sm:px-3">
@@ -462,17 +460,17 @@ export default function JobPostingsPage() {
                     className={`inline-flex items-center justify-center text-xs font-semibold uppercase tracking-wider ${sortField === "applicationCount" ? "text-[#1877F2] dark:text-blue-400" : "text-[#65676B] dark:text-zinc-400"
                       } hover:text-[#050505] dark:hover:text-white transition-colors group cursor-pointer`}
                   >
-                    APPLICANTS
+                    {t("colApplicants")}
                     {renderSortIcon("applicationCount")}
                   </button>
                 </TableHead>
 
                 <TableHead className="w-[13%] text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400 px-2.5 sm:px-3 py-3">
-                  STATUS
+                  {t("colStatus")}
                 </TableHead>
 
                 <TableHead className="w-[10%] text-right text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400 px-2.5 sm:px-3 py-3">
-                  ACTIONS
+                  {t("colActions")}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -501,11 +499,11 @@ export default function JobPostingsPage() {
                       <div className="h-12 w-12 rounded-full bg-[#E7F3FF] dark:bg-blue-950/60 flex items-center justify-center text-[#1877F2] dark:text-blue-400 mb-3">
                         <SearchX className="h-6 w-6" />
                       </div>
-                      <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">No job postings found</p>
-                      <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
+                      <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">{t("noJobsFound")}</p>
+                      <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4 text-center px-4">
                         {isFilterActive
-                          ? "No records match the current filters. Try clearing or adjusting your search criteria."
-                          : "You don't have any job postings yet. Click Add New Job to create one!"}
+                          ? t("noJobsMatch")
+                          : t("noJobsYet")}
                       </p>
                       {isFilterActive && (
                         <Button
@@ -513,7 +511,7 @@ export default function JobPostingsPage() {
                           variant="outline"
                           className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
                         >
-                          <RotateCcw className="h-4 w-4 mr-2" /> Clear All Filters
+                          <RotateCcw className="h-4 w-4 mr-2" /> {t("clearAllFilters")}
                         </Button>
                       )}
                     </div>
@@ -572,7 +570,7 @@ export default function JobPostingsPage() {
                         {job.expiresAt ? (
                           <span>{formatDate(job.expiresAt)}</span>
                         ) : (
-                          <span className="text-[#65676B] font-sans italic">No Expiry</span>
+                          <span className="text-[#65676B] font-sans italic">{t("noExpiry")}</span>
                         )}
                       </div>
                     </TableCell>
@@ -623,7 +621,7 @@ export default function JobPostingsPage() {
                                 className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-400 rounded-lg transition-colors cursor-pointer text-left"
                               >
                                 <CalendarPlus className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                <span>Extend (+15 Days)</span>
+                                <span>{t("extend15Days")}</span>
                               </button>
                             )}
 
@@ -633,7 +631,7 @@ export default function JobPostingsPage() {
                                 className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 dark:hover:text-amber-400 rounded-lg transition-colors cursor-pointer text-left"
                               >
                                 <Rocket className="h-4 w-4 text-amber-500 fill-amber-500 shrink-0" />
-                                <span>Push to Top (24 Hours)</span>
+                                <span>{t("pushTop24h")}</span>
                               </button>
                             )}
 
@@ -645,7 +643,7 @@ export default function JobPostingsPage() {
                                   className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer text-left"
                                 >
                                   <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0" />
-                                  <span>Close Job Posting</span>
+                                  <span>{t("closeJob")}</span>
                                 </button>
                               </>
                             )}
@@ -664,9 +662,7 @@ export default function JobPostingsPage() {
         {totalCount > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 px-1 text-sm text-[#65676B] dark:text-zinc-400">
             <div className="flex items-center space-x-3">
-              <div>
-                Showing <span className="font-semibold text-[#050505] dark:text-zinc-200">{startResult} - {endResult}</span> of <span className="font-semibold text-[#050505] dark:text-zinc-200">{totalCount}</span> jobs
-              </div>
+              <div dangerouslySetInnerHTML={{ __html: t.raw("showing").replace('{start}', `<span class="font-semibold text-[#050505] dark:text-zinc-200">${startResult}</span>`).replace('{end}', `<span class="font-semibold text-[#050505] dark:text-zinc-200">${endResult}</span>`).replace('{total}', `<span class="font-semibold text-[#050505] dark:text-zinc-200">${totalCount}</span>`) }} />
               <Select
                 value={String(pageSize)}
                 onValueChange={(val) => {
@@ -675,13 +671,13 @@ export default function JobPostingsPage() {
                 }}
               >
                 <SelectTrigger className="h-8 w-[110px] border-[#CED0D4] dark:border-zinc-800 text-xs font-medium focus:ring-[#1877F2] bg-white dark:bg-zinc-900">
-                  <SelectValue placeholder="Rows" />
+                  <SelectValue placeholder={t("rowsPerPage")} />
                 </SelectTrigger>
                 <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
-                  <SelectItem value="7">7 / page</SelectItem>
-                  <SelectItem value="10">10 / page</SelectItem>
-                  <SelectItem value="20">20 / page</SelectItem>
-                  <SelectItem value="50">50 / page</SelectItem>
+                  <SelectItem value="7">{t("perPage", { count: 7 })}</SelectItem>
+                  <SelectItem value="10">{t("perPage", { count: 10 })}</SelectItem>
+                  <SelectItem value="20">{t("perPage", { count: 20 })}</SelectItem>
+                  <SelectItem value="50">{t("perPage", { count: 50 })}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -747,8 +743,8 @@ export default function JobPostingsPage() {
                   <CalendarPlus className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Extend Job Posting</h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Add 15 active display days for this job</p>
+                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{t("extendJobTitle")}</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">{t("extendJobDesc")}</p>
                 </div>
               </div>
               <button
@@ -761,48 +757,48 @@ export default function JobPostingsPage() {
 
             <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-700/60 rounded-xl p-4 space-y-2">
               <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 line-clamp-1">
-                📌 Job posting: <span className="font-semibold text-[#1877F2] dark:text-blue-400">{extendingJob.title}</span>
+                📌 {t("jobPosting")}<span className="font-semibold text-[#1877F2] dark:text-blue-400">{extendingJob.title}</span>
               </p>
               <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 pt-1 border-t border-zinc-200/40 dark:border-zinc-700/40">
-                <span>Current Expiry: <strong className="text-zinc-700 dark:text-zinc-300">{formatDate(extendingJob.expiresAt)}</strong></span>
-                <span className="text-[#1877F2] dark:text-blue-400 font-semibold">+ 15 Days</span>
+                <span>{t("currentExpiry")} <strong className="text-zinc-700 dark:text-zinc-300">{formatDate(extendingJob.expiresAt)}</strong></span>
+                <span className="text-[#1877F2] dark:text-blue-400 font-semibold">{t("plus15Days")}</span>
               </div>
             </div>
 
             {/* Quota & Billing Breakdown */}
             <div className="space-y-3">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-                Plan Benefits & Payment
+                {t("planBenefits")}
               </h4>
               <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-gradient-to-r from-zinc-50 to-blue-50/20 dark:from-zinc-900 dark:to-blue-950/20 flex flex-col gap-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-zinc-600 dark:text-zinc-400">Current Plan:</span>
+                  <span className="text-zinc-600 dark:text-zinc-400">{t("currentPlan")}</span>
                   <span className="font-semibold px-2.5 py-0.5 rounded-full text-xs bg-[#E7F3FF] text-[#1877F2] dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                    {walletData?.activeSubscriptionName || "Default Plan (Free)"}
+                    {walletData?.activeSubscriptionName || t("defaultPlan")}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-zinc-600 dark:text-zinc-400">Plan Extension Limit:</span>
+                  <span className="text-zinc-600 dark:text-zinc-400">{t("extendLimit")}</span>
                   <span className="font-medium text-zinc-900 dark:text-white">
                     {jobExtendLimit === -1 ? (
-                      <span className="text-[#1877F2] font-semibold">♾️ Unlimited (Free)</span>
+                      <span className="text-[#1877F2] font-semibold">{t("unlimitedFree")}</span>
                     ) : jobExtendLimit === 0 ? (
-                      <span className="text-amber-600 dark:text-amber-400 font-semibold">0 uses (Pay per extension)</span>
+                      <span className="text-amber-600 dark:text-amber-400 font-semibold">{t("zeroUsesPay")}</span>
                     ) : (
-                      <span>Used <strong>{jobExtendUsed}</strong> / <strong>{jobExtendLimit}</strong> uses</span>
+                      <span dangerouslySetInnerHTML={{ __html: t.raw("usedUses").replace('{used}', jobExtendUsed.toString()).replace('{limit}', jobExtendLimit.toString()) }} />
                     )}
                   </span>
                 </div>
 
                 <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800 flex items-center justify-between text-sm font-semibold">
-                  <span className="text-zinc-700 dark:text-zinc-300">Cost for this extension:</span>
+                  <span className="text-zinc-700 dark:text-zinc-300">{t("costExtension")}</span>
                   {!isExtendQuotaFull ? (
                     <span className="text-[#1877F2] dark:text-blue-400 flex items-center gap-1">
-                      <Sparkles className="h-4 w-4" /> 0 Coin (Free from plan)
+                      <Sparkles className="h-4 w-4" /> {t("freeFromPlan")}
                     </span>
                   ) : (
                     <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                      <Coins className="h-4 w-4" /> 10,000 Coin (Pay-as-you-go)
+                      <Coins className="h-4 w-4" /> {t("payAsYouGo")}
                     </span>
                   )}
                 </div>
@@ -814,21 +810,19 @@ export default function JobPostingsPage() {
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-semibold">Insufficient Coin Balance</p>
-                      <p className="text-amber-700 dark:text-amber-300/80 mt-0.5">
-                        You have exhausted your free plan extensions and your current balance (<strong>{(coinBalance).toLocaleString()} Coin</strong>) is less than 10,000 Coin.
-                      </p>
+                      <p className="font-semibold">{t("insufficientCoin")}</p>
+                      <p className="text-amber-700 dark:text-amber-300/80 mt-0.5" dangerouslySetInnerHTML={{ __html: t.raw("insufficientExtendMsg").replace('{balance}', coinBalance.toLocaleString()) }} />
                     </div>
                   </div>
                   <div className="flex gap-2 justify-end">
                     <Link href="/recruiter/billing">
                       <Button size="sm" variant="outline" className="h-7 text-xs border-amber-300 dark:border-amber-700 bg-white dark:bg-zinc-900">
-                        Upgrade Plan
+                        {t("upgradePlan")}
                       </Button>
                     </Link>
                     <Link href="/recruiter/billing">
                       <Button size="sm" className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white">
-                        Top-up Coin Now
+                        {t("topupNow")}
                       </Button>
                     </Link>
                   </div>
@@ -842,7 +836,7 @@ export default function JobPostingsPage() {
                 disabled={extendSubmitting}
                 onClick={() => setExtendingJob(null)}
               >
-                Cancel
+                {t("cancel")}
               </Button>
               <Button
                 disabled={extendSubmitting || (isExtendQuotaFull && !canPayWithCoins)}
@@ -850,7 +844,7 @@ export default function JobPostingsPage() {
                 className="bg-[#1877F2] hover:bg-[#166FE5] text-white gap-2 px-5 shadow-sm"
               >
                 {extendSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                {!isExtendQuotaFull ? "✨ Extend Now (Free)" : "🪙 Confirm (10,000 Coin)"}
+                {!isExtendQuotaFull ? t("extendNowFree") : t("confirmCoin10k")}
               </Button>
             </div>
           </div>
@@ -868,9 +862,9 @@ export default function JobPostingsPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-                    Push Job to Homepage Top <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#E7F3FF] dark:bg-blue-950/50 text-[#1877F2] dark:text-blue-300 border border-blue-200 dark:border-blue-800">24 Hours</span>
+                    {t("pushTopTitle")} <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#E7F3FF] dark:bg-blue-950/50 text-[#1877F2] dark:text-blue-300 border border-blue-200 dark:border-blue-800">{t("pushTopDuration")}</span>
                   </h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Boost views and applications from candidates</p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">{t("pushTopDesc")}</p>
                 </div>
               </div>
               <button
@@ -885,14 +879,14 @@ export default function JobPostingsPage() {
               <div className="p-3.5 bg-blue-50/60 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900/40 text-zinc-800 dark:text-zinc-200 flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 font-medium">
                   <Flame className="h-4 w-4 text-[#1877F2] fill-[#1877F2]/20 shrink-0" />
-                  <span>Job posting: <strong className="text-[#1877F2] dark:text-blue-400 font-bold">{pushingTopJob.title}</strong></span>
+                  <span>{t("jobPosting")} <strong className="text-[#1877F2] dark:text-blue-400 font-bold">{pushingTopJob.title}</strong></span>
                 </div>
                 <div className="text-xs text-zinc-600 dark:text-zinc-400 pl-6 space-y-1">
-                  <div>✨ Featured prominent display below the Homepage Hero Section.</div>
-                  <div>✨ Top priority placement on the public Job Search Page.</div>
+                  <div>{t("pushBenefit1")}</div>
+                  <div>{t("pushBenefit2")}</div>
                   {pushingTopJob.pushedTopUntil && new Date(pushingTopJob.pushedTopUntil) >= new Date() && (
                     <div className="text-[#1877F2] dark:text-blue-400 font-semibold pt-1">
-                      * Job is currently on Top until: {new Date(pushingTopJob.pushedTopUntil).toLocaleString('en-US')}. Pushing again will add an extra 24 hours!
+                      {t("pushAlreadyTop", { date: new Date(pushingTopJob.pushedTopUntil).toLocaleString('en-US') })}
                     </div>
                   )}
                 </div>
@@ -901,33 +895,31 @@ export default function JobPostingsPage() {
               {/* Account plan & quota info */}
               <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 space-y-3">
                 <div className="flex items-center justify-between text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                  <span>Current Account Plan</span>
+                  <span>{t("currentPlan")}</span>
                   <span className="font-bold text-[#1877F2] dark:text-blue-400 uppercase">
-                    {walletData?.activeSubscriptionName || "Free / Regular"}
+                    {walletData?.activeSubscriptionName || t("defaultPlan")}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-zinc-200/60 dark:border-zinc-700/60">
-                  <span className="font-medium text-zinc-700 dark:text-zinc-300">Push Top Benefits in Plan</span>
+                  <span className="font-medium text-zinc-700 dark:text-zinc-300">{t("pushTopLimit")}</span>
                   <div className="text-right">
                     {jobPushTopLimit === -1 ? (
                       <span className="inline-flex items-center gap-1 text-xs font-bold text-[#1877F2] dark:text-blue-400 bg-[#E7F3FF] dark:bg-blue-950/50 px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
-                        <Sparkles className="h-3 w-3" /> Unlimited
+                        <Sparkles className="h-3 w-3" /> {t("unlimited")}
                       </span>
                     ) : jobPushTopLimit === 0 ? (
-                      <span className="text-xs text-zinc-500 dark:text-zinc-400">Plan does not include Top pushes</span>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">{t("noTopPushes")}</span>
                     ) : (
-                      <span className="text-xs font-bold">Used <strong>{jobPushTopUsed}</strong> / <strong>{jobPushTopLimit}</strong> uses</span>
+                      <span className="text-xs font-bold" dangerouslySetInnerHTML={{ __html: t.raw("usedUses").replace('{used}', jobPushTopUsed.toString()).replace('{limit}', jobPushTopLimit.toString()) }} />
                     )}
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-zinc-200/60 dark:border-zinc-700/60">
-                  <span className="font-medium text-zinc-700 dark:text-zinc-300">Cost for this Top push:</span>
+                  <span className="font-medium text-zinc-700 dark:text-zinc-300">{t("costPush")}</span>
                   {!isPushTopQuotaFull ? (
-                    <span className="text-xs font-bold text-[#1877F2] dark:text-blue-400 flex items-center gap-1">
-                      ✨ Free <span className="text-[10px] font-normal text-zinc-500">(Deducted from plan uses)</span>
-                    </span>
+                    <span className="text-xs font-bold text-[#1877F2] dark:text-blue-400 flex items-center gap-1" dangerouslySetInnerHTML={{ __html: t.raw("freeDeducted") }} />
                   ) : (
                     <div className="text-right">
                       <span className="text-sm font-bold text-amber-600 dark:text-amber-400 flex items-center justify-end gap-1">
@@ -945,15 +937,15 @@ export default function JobPostingsPage() {
                 <div className="p-3 bg-red-50/90 dark:bg-red-950/40 border border-red-200 dark:border-red-800/80 rounded-xl flex items-start gap-3 text-red-800 dark:text-red-300 text-xs">
                   <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="font-bold">Insufficient Plan Uses & Coin Balance</p>
+                    <p className="font-bold">{t("insufficientCoin")}</p>
                     <p className="mt-0.5 opacity-90">
-                      You have used all free Top pushes in your plan and your balance is under 5,000 Coin. Please top up Coins or upgrade your plan to continue!
+                      {t("insufficientPushMsg")}
                     </p>
                     <Link
                       href="/recruiter/billing"
                       className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-[#1877F2] hover:bg-[#166FE5] text-white font-semibold rounded-lg text-xs shadow-sm transition-all"
                     >
-                      💳 Top-up Coin / Upgrade Plan Now
+                      {t("topupUpgrade")}
                     </Link>
                   </div>
                 </div>
@@ -966,7 +958,7 @@ export default function JobPostingsPage() {
                 disabled={pushTopSubmitting}
                 onClick={() => setPushingTopJob(null)}
               >
-                Cancel
+                {t("cancel")}
               </Button>
               <Button
                 disabled={pushTopSubmitting || (isPushTopQuotaFull && !canPayPushTopWithCoins)}
@@ -978,7 +970,7 @@ export default function JobPostingsPage() {
                 ) : (
                   <Rocket className="h-4 w-4 fill-white" />
                 )}
-                {!isPushTopQuotaFull ? "✨ Push to Top Now (Free)" : "🪙 Confirm Push (5,000 Coin)"}
+                {!isPushTopQuotaFull ? t("pushNowFree") : t("confirmPush5k")}
               </Button>
             </div>
           </div>

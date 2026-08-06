@@ -7,9 +7,11 @@ import { Eye, EyeOff, Loader2, AlertCircle, CheckCircle2, ChevronDown } from "lu
 import { authService } from "@/services/auth.service"
 import { getDashboardPath } from "@/lib/constants"
 import { Logo } from "@/components/layout/Logo"
+import { useTranslations } from "next-intl"
 
 export default function RegisterPage() {
   const router = useRouter()
+  const t = useTranslations("Auth.register")
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -27,11 +29,11 @@ export default function RegisterPage() {
     setSuccess("")
 
     if (password !== confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp.")
+      setError(t('passwordMismatch'))
       return
     }
     if (password.length < 6) {
-      setError("Mật khẩu phải có ít nhất 6 ký tự.")
+      setError(t('passwordTooShort'))
       return
     }
 
@@ -46,7 +48,7 @@ export default function RegisterPage() {
       }
 
       if (!res.success) {
-        setError(res.message ?? "Đăng ký thất bại")
+        setError(res.message ?? t('registerFailed'))
         return
       }
 
@@ -54,7 +56,7 @@ export default function RegisterPage() {
       router.push(`/verify-email?email=${encodeURIComponent(email)}&registered=1`)
     } catch (err: any) {
       console.error("Register error:", err)
-      setError(`Lỗi kết nối: ${err.message || "Không thể kết nối đến máy chủ."}`)
+      setError(`${t('registerFailed')}: ${err.message || "Could not connect to server."}`)
     } finally {
       setLoading(false)
     }
@@ -63,7 +65,7 @@ export default function RegisterPage() {
   const handleGoogle = () => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
     if (!clientId) {
-      setError("Chưa cấu hình Google Client ID. Vui lòng kiểm tra file môi trường.")
+      setError("Google Client ID is not configured. Please check your environment variables.")
       return
     }
     setError("")
@@ -90,9 +92,9 @@ export default function RegisterPage() {
 
         <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
           <div className="mb-7">
-            <h1 className="text-2xl font-bold text-foreground mb-1">Create your account</h1>
+            <h1 className="text-2xl font-bold text-foreground mb-1">{t('title')}</h1>
             <p className="text-sm text-muted-foreground">
-              Join thousands of professionals on ITHunterView
+              {t('subtitle')}
             </p>
           </div>
 
@@ -116,11 +118,11 @@ export default function RegisterPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Role selector */}
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">I am a</label>
+                <label className="text-sm font-medium text-foreground">{t('iAmA')}</label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { value: "candidate", label: "Job Seeker", icon: "👤" },
-                    { value: "recruiter", label: "Recruiter", icon: "🏢" },
+                    { value: "candidate", label: t('jobSeeker'), icon: "👤" },
+                    { value: "recruiter", label: t('recruiter'), icon: "🏢" },
                   ].map((r) => (
                     <button
                       key={r.value}
@@ -141,13 +143,13 @@ export default function RegisterPage() {
               {/* Email */}
               <div className="space-y-1.5">
                 <label htmlFor="reg-email" className="text-sm font-medium text-foreground">
-                  Email address
+                  {t('email')}
                 </label>
                 <input
                   id="reg-email"
                   type="email"
                   autoComplete="email"
-                  placeholder="you@example.com"
+                  placeholder={t('emailPlaceholder')}
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -158,14 +160,14 @@ export default function RegisterPage() {
               {/* Password */}
               <div className="space-y-1.5">
                 <label htmlFor="reg-password" className="text-sm font-medium text-foreground">
-                  Password
+                  {t('password')}
                 </label>
                 <div className="relative">
                   <input
                     id="reg-password"
                     type={showPwd ? "text" : "password"}
                     autoComplete="new-password"
-                    placeholder="At least 6 characters"
+                    placeholder={t('passwordPlaceholder')}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -185,14 +187,14 @@ export default function RegisterPage() {
               {/* Confirm password */}
               <div className="space-y-1.5">
                 <label htmlFor="reg-confirm" className="text-sm font-medium text-foreground">
-                  Confirm password
+                  {t('confirmPassword')}
                 </label>
                 <div className="relative">
                   <input
                     id="reg-confirm"
                     type={showConfirm ? "text" : "password"}
                     autoComplete="new-password"
-                    placeholder="Repeat your password"
+                    placeholder={t('confirmPasswordPlaceholder')}
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -217,9 +219,9 @@ export default function RegisterPage() {
                 className="w-full h-11 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none mt-1 transition-all"
               >
                 {loading ? (
-                  <><Loader2 size={16} className="animate-spin" /> Creating account…</>
+                  <><Loader2 size={16} className="animate-spin" /> {t('creatingAccount')}</>
                 ) : (
-                  "Create Account"
+                  t('createAccount')
                 )}
               </button>
             </form>
@@ -228,7 +230,7 @@ export default function RegisterPage() {
           {/* Divider */}
           <div className="my-5 flex items-center gap-3">
             <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-muted-foreground">or</span>
+            <span className="text-xs text-muted-foreground">{t('or')}</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
@@ -240,13 +242,13 @@ export default function RegisterPage() {
             className="w-full h-11 rounded-xl border border-border bg-muted hover:bg-muted/80 text-foreground font-medium text-sm flex items-center justify-center gap-2.5 transition-all hover:border-primary"
           >
             <GoogleIcon />
-            Continue with Google
+            {t('continueWithGoogle')}
           </button>
 
           <p className="mt-5 text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
+            {t('hasAccount')}{" "}
             <Link href="/login" className="text-primary hover:text-primary/80 font-medium transition-colors">
-              Sign in
+              {t('signIn')}
             </Link>
           </p>
         </div>

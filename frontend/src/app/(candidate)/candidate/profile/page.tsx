@@ -8,14 +8,16 @@ import { ProfileHeader } from './_components/ProfileHeader';
 import { SkillsTab } from './_components/SkillsTab';
 import { ExperienceTab } from './_components/ExperienceTab';
 import { EducationTab } from './_components/EducationTab';
+import { useTranslations } from 'next-intl';
 
 export default function ProfilePage() {
   const { data: summary, isLoading, isError } = useProfileSummary();
+  const t = useTranslations("CandidateProfile");
 
   if (isLoading) {
     return (
       <div className="w-full pb-8 space-y-8">
-        <PageLoader message="Loading profile..." />
+        <PageLoader message={t('loading')} />
       </div>
     );
   }
@@ -24,8 +26,8 @@ export default function ProfilePage() {
     return (
       <div className="w-full pb-8 space-y-8">
         <EmptyState
-          title="Could not load profile"
-          description="Please check your connection and try again."
+          title={t('errorTitle')}
+          description={t('errorDesc')}
         />
       </div>
     );

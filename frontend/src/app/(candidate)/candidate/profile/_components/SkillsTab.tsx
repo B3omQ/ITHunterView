@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useTranslations } from 'next-intl';
 
 import { Award, Plus, Search, Loader2, X } from 'lucide-react';
 
@@ -31,6 +32,7 @@ export function SkillsTab() {
   const { data: allMasterSkills, isLoading: isLoadingMasterSkills } = useAllMasterSkills();
   const { mutate: addSkill, isPending: isAddingSkill } = useAddSkill();
   const { mutate: removeSkill, isPending: isRemovingSkill } = useRemoveSkill();
+  const t = useTranslations("CandidateProfile");
 
   // Search autocomplete states
   const [keyword, setKeyword] = useState('');
@@ -70,13 +72,13 @@ export function SkillsTab() {
   }, []);
 
   if (isLoadingSkills || isLoadingMasterSkills) {
-    return <PageLoader message="Loading skills..." />;
+    return <PageLoader message={t('loadingSkills')} />;
   }
 
   if (isErrorSkills || !skills) {
     return (
       <div className="p-8 border rounded-xl bg-card text-center text-muted-foreground">
-        Failed to load skills. Please try again.
+        {t('skillsError')}
       </div>
     );
   }
@@ -105,9 +107,9 @@ export function SkillsTab() {
       <Card>
         <CardHeader className="border-b pb-4 flex flex-row items-start justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <CardTitle className="text-xl font-bold mt-1">Skills</CardTitle>
+            <CardTitle className="text-xl font-bold mt-1">{t('skills')}</CardTitle>
             {skills.length === 0 && (
-              <CardDescription className="text-sm">Add your professional skills and expertise</CardDescription>
+              <CardDescription className="text-sm">{t('addSkillsDesc')}</CardDescription>
             )}
           </div>
           <Button
@@ -124,7 +126,7 @@ export function SkillsTab() {
           {/* User Skills Chips List */}
           {skills.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Added Skills</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('addedSkills')}</h3>
               <div className="flex flex-wrap gap-2">
                 {skills.map((s) => (
                   <SkillChip
@@ -144,9 +146,9 @@ export function SkillsTab() {
       <Dialog disablePointerDismissal open={isAdding} onOpenChange={setIsAdding}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle className="text-xl">Add Skills</DialogTitle>
+            <DialogTitle className="text-xl">{t('addSkills')}</DialogTitle>
             <DialogDescription>
-              Search and select skills to add to your profile.
+              {t('searchSkillsDesc')}
             </DialogDescription>
           </DialogHeader>
           
@@ -154,7 +156,7 @@ export function SkillsTab() {
             <div className="border border-border/60 rounded-lg px-3 py-2.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm flex items-center">
               <Search className="w-4 h-4 text-muted-foreground mr-2 shrink-0" />
               <input
-                placeholder="Type a skill (e.g. React, Docker...)"
+                placeholder={t('typeSkillPlaceholder')}
                 value={keyword}
                 autoFocus
                 onChange={(e) => {
@@ -188,7 +190,7 @@ export function SkillsTab() {
               <div className="absolute left-0 right-0 mt-1.5 z-20 border bg-popover text-popover-foreground shadow-md max-h-60 overflow-y-auto rounded-md p-1">
                 {searchResults.length === 0 ? (
                   <div className="py-3 px-4 text-sm text-muted-foreground text-center">
-                    No matching skills found
+                    {t('noMatchingSkills')}
                   </div>
                 ) : (
                   <ul className="space-y-0.5">
@@ -216,7 +218,7 @@ export function SkillsTab() {
           
           {skills.length > 0 && (
             <div className="space-y-3 mt-6">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Added Skills</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('addedSkills')}</h3>
               <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto pr-2 pb-2">
                 {skills.map((s) => (
                   <SkillChip
@@ -232,7 +234,7 @@ export function SkillsTab() {
           )}
           
           <div className="flex justify-end pt-4 mt-2 border-t">
-            <Button onClick={() => setIsAdding(false)}>Done</Button>
+            <Button onClick={() => setIsAdding(false)}>{t('done')}</Button>
           </div>
         </DialogContent>
       </Dialog>

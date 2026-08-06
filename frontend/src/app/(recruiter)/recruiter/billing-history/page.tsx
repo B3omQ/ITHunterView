@@ -1,12 +1,17 @@
 import { Metadata } from "next";
 import { BillingHistoryTable } from "@/components/wallet/BillingHistoryTable";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Transaction History | ITHunterview",
-  description: "Employer payment transaction history",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("RecruiterBillingHistory");
+  return {
+    title: `${t("pageTitle")} | ITHunterview`,
+    description: t("pageDesc"),
+  };
+}
 
-export default function RecruiterBillingHistoryPage() {
+export default async function RecruiterBillingHistoryPage() {
+  const t = await getTranslations("RecruiterBillingHistory");
   return (
     <div className="min-h-screen bg-background transition-colors duration-200">
       <div className="w-full pb-10 space-y-5">
@@ -14,10 +19,10 @@ export default function RecruiterBillingHistoryPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-2">
           <div>
             <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight">
-              Transaction History
+              {t("pageTitle")}
             </h1>
             <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
-              Track, inspect, and manage your company's Subscription and Coin Top-up payments
+              {t("pageDesc")}
             </p>
           </div>
         </div>

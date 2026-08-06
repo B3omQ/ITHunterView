@@ -28,9 +28,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useTranslations } from 'next-intl';
 
 export default function LearningPathDashboard() {
   const { data: myPathsData, isLoading } = useMyLearningPaths();
+  const t = useTranslations("CandidateLearningPath");
   const { data: walletRes } = useWalletBalance();
   const deleteMutation = useDeleteLearningPath();
   const [pathToDelete, setPathToDelete] = useState<string | null>(null);
@@ -51,9 +53,9 @@ export default function LearningPathDashboard() {
     <div className="w-full pb-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Learning Paths</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground mt-2">
-            Manage your AI-generated learning journeys.
+            {t('desc')}
           </p>
         </div>
         {paths.length > 0 && (
@@ -63,19 +65,19 @@ export default function LearningPathDashboard() {
                 <span className="pointer-events-none">
                   <Button disabled className="bg-muted text-muted-foreground cursor-not-allowed border-none shadow-none hover:bg-muted">
                     <Plus className="mr-1 h-4 w-4" />
-                    Create New Path
+                    {t('createNewPath')}
                     <Sparkles className="mr-2 h-4 w-4 ml-1" />
                   </Button>
                 </span>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Bạn đã đạt giới hạn tối đa {slotLimit} slot lưu trữ lộ trình của gói hiện tại. Vui lòng xoá bớt lộ trình hoặc nâng cấp gói!</p>
+                <p>{t('slotLimitReached', { slotLimit })}</p>
               </TooltipContent>
             </Tooltip>
           ) : (
             <Link href="/candidate/learning-path/new" className={buttonVariants({ variant: 'default', className: "bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all" })}>
               <Plus className="mr-1 h-4 w-4" />
-              Create New Path
+              {t('createNewPath')}
               <Sparkles className="mr-2 h-4 w-4 ml-1" />
             </Link>
           )
@@ -135,16 +137,16 @@ export default function LearningPathDashboard() {
                                   ? 'bg-blue-500/10 text-blue-700'
                                   : 'bg-slate-200/70 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
                             }`}>
-                              {path.status}
+                              {path.status === 'Completed' ? t('completed') : path.status === 'In Progress' ? t('inProgress') : path.status}
                             </Badge>
                           </div>
                           <span className="flex items-center gap-1.5">
                             <BookOpen className="h-4 w-4 shrink-0 text-slate-400" />
-                            {modules.length} module{modules.length !== 1 ? 's' : ''}
+                            {t('modules', { count: modules.length })}
                           </span>
                           <span className="flex items-center gap-1.5">
                             <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
-                            {completedTasks}/{totalTasks} tasks
+                            {t('tasks', { completed: completedTasks, total: totalTasks })}
                           </span>
                         </div>
                       </div>
@@ -169,9 +171,9 @@ export default function LearningPathDashboard() {
                         className={buttonVariants({ variant: 'outline', size: 'sm', className: 'gap-1.5 h-9' })}
                       >
                         {path.status === 'In Progress' ? (
-                          <><Play className="w-4 h-4 fill-current" /> Continue</>
+                          <><Play className="w-4 h-4 fill-current" /> {t('continue')}</>
                         ) : (
-                          <><Eye className="w-4 h-4" /> View Path</>
+                          <><Eye className="w-4 h-4" /> {t('viewPath')}</>
                         )}
                       </Link>
 
@@ -181,14 +183,14 @@ export default function LearningPathDashboard() {
                         </PopoverTrigger>
                         <PopoverContent align="end" className="w-48 p-1">
                           <div className="flex flex-col">
-                            <Button 
-                              variant="ghost" 
-                              className="w-full justify-start gap-2 h-9 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                              onClick={() => setPathToDelete(path.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span>Delete Path</span>
-                            </Button>
+                              <Button 
+                                variant="ghost" 
+                                className="w-full justify-start gap-2 h-9 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                                onClick={() => setPathToDelete(path.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span>{t('deletePath')}</span>
+                              </Button>
                           </div>
                         </PopoverContent>
                       </Popover>
@@ -202,14 +204,14 @@ export default function LearningPathDashboard() {
         </div>
       ) : (
         <EmptyState 
-          title="No learning paths yet" 
-          description="Let our AI analyze your CV, mock interviews, or manual goals to generate a personalized step-by-step career path."
+          title={t('noPathsTitle')} 
+          description={t('noPathsDesc')}
           imageUrl="/images/emptyLearningPath.png"
         >
           <Link href="/candidate/learning-path/new">
             <Button className="mt-4 bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 text-white shadow-lg shadow-blue-500/25 transition-all">
               <Plus className="mr-1 h-4 w-4" />
-              Create Your First Path
+              {t('createFirstPath')}
               <Sparkles className="mr-2 h-4 w-4 ml-1" />
             </Button>
           </Link>
@@ -220,17 +222,17 @@ export default function LearningPathDashboard() {
       <Dialog open={!!pathToDelete} onOpenChange={(open) => !open && setPathToDelete(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Learning Path?</DialogTitle>
+            <DialogTitle>{t('deleteHistoryTitle')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this learning path? This action cannot be undone.
+              {t('deleteHistoryConfirm')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4 flex flex-col sm:flex-row gap-2 justify-end">
             <Button variant="outline" onClick={() => setPathToDelete(null)} disabled={deleteMutation.isPending}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button variant="destructive" onClick={handleConfirmDelete} disabled={deleteMutation.isPending}>
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              {deleteMutation.isPending ? t('deleting') : t('delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

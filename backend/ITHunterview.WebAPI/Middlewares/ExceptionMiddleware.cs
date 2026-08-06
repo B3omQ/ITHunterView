@@ -8,6 +8,8 @@ using ITHunterview.Service.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Localization;
+using ITHunterview.Service.Resources;
 
 namespace ITHunterview.WebAPI.Middlewares
 {
@@ -16,12 +18,14 @@ namespace ITHunterview.WebAPI.Middlewares
         private readonly RequestDelegate _next;
         private readonly ILogger<ExceptionMiddleware> _logger;
         private readonly IHostEnvironment _env;
+        private readonly IStringLocalizer<SharedResource> _localizer;
 
-        public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger, IHostEnvironment env)
+        public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger, IHostEnvironment env, IStringLocalizer<SharedResource> localizer)
         {
             _next = next;
             _logger = logger;
             _env = env;
+            _localizer = localizer;
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -42,7 +46,7 @@ namespace ITHunterview.WebAPI.Middlewares
             context.Response.ContentType = "application/json";
 
             var statusCode = HttpStatusCode.InternalServerError;
-            string message = "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.";
+            string message = _localizer["SystemError"];
 
             switch (exception)
             {
@@ -52,19 +56,19 @@ namespace ITHunterview.WebAPI.Middlewares
                     break;
                 case KeyNotFoundException:
                     statusCode = HttpStatusCode.NotFound;
-                    message = exception.Message;
+                    message = _localizer[exception.Message];
                     break;
                 case ArgumentException:
                     statusCode = HttpStatusCode.BadRequest;
-                    message = exception.Message;
+                    message = _localizer[exception.Message];
                     break;
                 case UnauthorizedAccessException:
                     statusCode = HttpStatusCode.Unauthorized;
-                    message = exception.Message;
+                    message = _localizer[exception.Message];
                     break;
                 case InvalidOperationException:
                     statusCode = HttpStatusCode.Conflict; // 409 — business rule violation
-                    message = exception.Message;
+                    message = _localizer[exception.Message];
                     break;
                 default:
                     // Trong môi trường phát triển (Development), trả về chi tiết Exception để dễ debug

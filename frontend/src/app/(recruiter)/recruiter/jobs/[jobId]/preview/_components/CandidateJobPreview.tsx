@@ -2,15 +2,19 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import type { JobPosting } from "@/services/recruiter.service"
 import { JobPostingMarkdownContent } from "@/components/jobs/JobPostingMarkdownContent"
 import { WorkLocationScheduleContent } from "@/components/jobs/WorkLocationScheduleContent"
+import { useTranslations } from "next-intl"
+
+import type { JobPosting } from "@/services/recruiter.service"
 
 interface CandidateJobPreviewProps {
   job: JobPosting
 }
 
 export function CandidateJobPreview({ job }: CandidateJobPreviewProps) {
+  const t = useTranslations("RecruiterJobPreviewComp.CandidateJobPreview")
+
   return (
     <Card>
       <CardHeader className="border-b">
@@ -23,38 +27,38 @@ export function CandidateJobPreview({ job }: CandidateJobPreviewProps) {
               {job.location && <span>{job.location}</span>}
             </div>
           </div>
-          <Badge variant="secondary">Candidate preview</Badge>
+          <Badge variant="secondary">{t("preview")}</Badge>
         </div>
       </CardHeader>
 
       <CardContent className="space-y-8 pt-6">
         <div>
-          <h3 className="mb-3 text-base font-semibold">Job Description</h3>
-          <JobPostingMarkdownContent value={job.description} legacyMode="bullet" emptyFallback="No job description provided." />
+          <h3 className="mb-3 text-base font-semibold">{t("descTitle")}</h3>
+          <JobPostingMarkdownContent value={job.description} legacyMode="bullet" emptyFallback={t("noDesc")} />
         </div>
 
         {job.incomeText && (
           <div>
-            <h3 className="mb-3 text-base font-semibold">Income</h3>
+            <h3 className="mb-3 text-base font-semibold">{t("incomeTitle")}</h3>
             <JobPostingMarkdownContent value={job.incomeText} legacyMode="lines" />
           </div>
         )}
 
         {job.workLocationText && (
           <div>
-            <h3 className="mb-3 text-base font-semibold">Work Location & Schedule</h3>
+            <h3 className="mb-3 text-base font-semibold">{t("workLocTitle")}</h3>
             <WorkLocationScheduleContent workLocationText={job.workLocationText} />
           </div>
         )}
 
         <div>
-          <h3 className="mb-3 text-base font-semibold">Requirements</h3>
-          <JobPostingMarkdownContent value={job.requirements} legacyMode="bullet" emptyFallback="No requirements provided." />
+          <h3 className="mb-3 text-base font-semibold">{t("reqTitle")}</h3>
+          <JobPostingMarkdownContent value={job.requirements} legacyMode="bullet" emptyFallback={t("noReq")} />
         </div>
 
         {job.benefits && (
           <div>
-            <h3 className="mb-3 text-base font-semibold">Benefits</h3>
+            <h3 className="mb-3 text-base font-semibold">{t("benTitle")}</h3>
             <JobPostingMarkdownContent value={job.benefits} legacyMode="bullet" />
           </div>
         )}

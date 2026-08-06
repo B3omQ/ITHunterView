@@ -21,6 +21,8 @@ namespace ITHunterview.Service.Config
     {
         public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
         {
+            services.AddLocalization();
+            
             // Repositories — Auth
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<ITokenRepository, TokenRepository>();
