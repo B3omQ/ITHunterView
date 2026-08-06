@@ -86,6 +86,7 @@ public class JobPostingsUseCaseRichTextTests
             Mock.Of<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(),
             Mock.Of<ITHunterview.Service.Interface.UseCase.INotificationUseCase>(),
             Mock.Of<ITHunterview.Service.Interface.UseCase.ICandidateFeatureUsageUseCase>(),
+            null!, // UpdateJobAsync does not access the DbContext used by Extend/Push Top transactions.
             Mock.Of<Microsoft.AspNetCore.SignalR.IHubContext<ITHunterview.Service.Hubs.NotificationHub>>(),
             NullLogger<JobPostingsUseCase>.Instance);
     }

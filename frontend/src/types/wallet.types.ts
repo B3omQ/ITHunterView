@@ -55,6 +55,15 @@ export interface CreatePaymentDto {
   paymentGateway: 'PAYOS' | 'MOMO' | 'VNPAY';
 }
 
+export interface CustomCoinTopupPriceDto {
+  pricePerCoinVnd: number;
+}
+
+export interface CreateCustomCoinTopupDto {
+  coinAmount: number;
+  paymentGateway: 'PAYOS';
+}
+
 export interface CreatePaymentResponseDto {
   paymentId: string;
   orderCode: number;

@@ -29,6 +29,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { SubscriptionForm } from './components/SubscriptionForm';
 import { CoinConfigTab } from './components/CoinConfigTab';
+import { CustomCoinTopupPriceTab } from './components/CustomCoinTopupPriceTab';
 import type { SubscriptionDto, SubscriptionStatus } from '@/types/subscription.types';
 import {
   Table,
@@ -211,6 +212,13 @@ export default function SubscriptionsAdminPage() {
             >
               <Coins className="h-4 w-4" />
               Coin Configuration
+            </TabsTrigger>
+            <TabsTrigger
+              value="custom-coin-price"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#1877F2] data-[state=active]:text-[#1877F2] data-[state=active]:bg-transparent px-4 py-2 font-bold text-sm transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <Coins className="h-4 w-4" />
+              Custom Coin Price
             </TabsTrigger>
           </TabsList>
 
@@ -571,6 +579,10 @@ export default function SubscriptionsAdminPage() {
 
           <TabsContent value="coin-config">
             <CoinConfigTab />
+          </TabsContent>
+
+          <TabsContent value="custom-coin-price">
+            <CustomCoinTopupPriceTab />
           </TabsContent>
         </Tabs>
       </div>

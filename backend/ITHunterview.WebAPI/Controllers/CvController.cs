@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;
+using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Cv;
+using ITHunterview.Service.DTOs.FeatureUsage;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,6 +24,7 @@ namespace ITHunterview.WebAPI.Controllers
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService _cvTextExtractorService;
         private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
+        private readonly IMatchingInputPreflightUseCase _matchingInputPreflightUseCase;
 
         public CvController(
             ICvUseCase cvUseCase, 
@@ -29,7 +32,8 @@ namespace ITHunterview.WebAPI.Controllers
             IHardcodeCvJobMatchingUseCase hardcodeCvJobMatchingUseCase,
             IServiceScopeFactory serviceScopeFactory,
             ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService cvTextExtractorService,
-            ICandidateFeatureUsageUseCase featureUsageUseCase)
+            ICandidateFeatureUsageUseCase featureUsageUseCase,
+            IMatchingInputPreflightUseCase matchingInputPreflightUseCase)
         {
             _cvUseCase = cvUseCase;
             _cvJobMatchingUseCase = cvJobMatchingUseCase;
@@ -37,6 +41,7 @@ namespace ITHunterview.WebAPI.Controllers
             _serviceScopeFactory = serviceScopeFactory;
             _cvTextExtractorService = cvTextExtractorService;
             _featureUsageUseCase = featureUsageUseCase;
+            _matchingInputPreflightUseCase = matchingInputPreflightUseCase;
         }
 
         [HttpPost]
@@ -106,7 +111,11 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpPost("match-jd")]
-        public async Task<ActionResult<ResponseBase<Guid>>> MatchJd([FromBody] ITHunterview.Service.DTOs.Cv.Matching.MatchingRequestDto request)
+        [Authorize(Policy = "CandidateOnly")]
+        [RequestSizeLimit(524288)]
+        public async Task<ActionResult<ResponseBase<Guid>>> MatchJd(
+            [FromBody] ITHunterview.Service.DTOs.Cv.Matching.MatchingRequestDto request,
+            CancellationToken ct)
         {
             var userIdStr = User.FindFirstValue("userId");
             if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
@@ -114,34 +123,40 @@ namespace ITHunterview.WebAPI.Controllers
                 return Unauthorized();
             }
 
+            var prepared = await _matchingInputPreflightUseCase.PrepareAsync(userId, request, ct);
+            var operationId = Guid.NewGuid();
+            FeatureConsumptionResult? consumption = null;
             try
             {
-                await _featureUsageUseCase.TryConsumeFeatureAsync(userId, "CvJdMatching");
+                consumption = await _featureUsageUseCase.TryConsumeFeatureAsync(userId, "CvJdMatching", operationId.ToString());
+                var jobId = await _cvJobMatchingUseCase.SubmitMatchingJobAsync(userId, prepared, operationId);
 
-                var jobId = await _cvJobMatchingUseCase.SubmitMatchingJobAsync(userId, request);
-
-                // Chạy ngầm trong background với scope riêng biệt
+                // The request is already immutable and authorized. Do not flow the
+                // HTTP cancellation token into detached background work.
                 _ = Task.Run(async () =>
                 {
                     using var scope = _serviceScopeFactory.CreateScope();
                     var useCase = scope.ServiceProvider.GetRequiredService<ICvJobMatchingUseCase>();
-                    await useCase.ProcessMatchingJobAsync(jobId, userId, request);
+                    await useCase.ProcessMatchingJobAsync(jobId, userId, prepared);
                 });
 
                 return Ok(new ResponseBase<Guid>(jobId, "Matching job submitted"));
             }
-            catch (InvalidOperationException ex)
+            catch
             {
-                // Not enough coin
-                return Ok(new ResponseBase<Guid>(ex.Message));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ResponseBase<Guid>(Guid.Empty, ex.Message));
+                if (consumption != null)
+                {
+                    await _featureUsageUseCase.RefundFeatureUsageAsync(
+                        userId,
+                        consumption,
+                        "Hoàn Coin do không thể tạo yêu cầu CV-JD matching.");
+                }
+                throw;
             }
         }
 
         [HttpPost("extract-text")]
+        [Authorize(Policy = "CandidateOnly")]
         public async Task<ActionResult<ResponseBase<string>>> ExtractText(Microsoft.AspNetCore.Http.IFormFile file)
         {
             if (file == null || file.Length == 0) return BadRequest(new ResponseBase<string>("", "No file provided"));

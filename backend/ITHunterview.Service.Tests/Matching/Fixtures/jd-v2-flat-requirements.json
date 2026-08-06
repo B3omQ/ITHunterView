@@ -1,0 +1,13 @@
+{
+  "schema_version": "jd-analysis/v2",
+  "matching_metrics": {
+    "job_titles_normalized": ["backend engineer"],
+    "skills_normalized": [],
+    "total_years_exp": 2,
+    "domains": [],
+    "requirements_list": [
+      { "category": "tech_skill", "importance": "must_have", "skill_name": "dotnet", "detail_verbatim": ".NET required", "raw_mention": ".NET", "source_section": "requirements", "evidence": ".NET required", "confidence": 0.95 },
+      { "category": "experience", "importance": "must_have", "skill_name": "professional experience", "detail_verbatim": "2 years experience", "raw_mention": "2 years", "source_section": "requirements", "evidence": "2 years experience", "confidence": 0.95 }
+    ]
+  }
+}

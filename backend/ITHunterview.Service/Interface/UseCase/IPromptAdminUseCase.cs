@@ -9,8 +9,12 @@ namespace ITHunterview.Service.Interface.UseCase
     {
         Task<PagedResult<PromptDto>> GetPagedPromptsAsync(int page, int size);
         Task<PromptDto> GetPromptHistoryAsync(Guid promptId);
+        Task<CvAnalysisPromptPairDto> GetCvAnalysisPromptPairAsync();
+        Task<JdAnalysisPromptPairDto> GetJdAnalysisPromptPairAsync();
         Task<PromptVersionDto> GetPromptVersionAsync(Guid versionId);
         Task<PromptVersionDto> CreatePromptVersionAsync(Guid promptId, CreatePromptVersionDto dto, Guid adminId);
         Task ActivatePromptVersionAsync(Guid promptId, Guid versionId, Guid adminId);
+        Task ActivateCvAnalysisPromptPairAsync(Guid systemVersionId, Guid userVersionId, Guid adminId);
+        Task ActivateJdAnalysisPromptPairAsync(Guid systemVersionId, Guid userVersionId, Guid adminId);
     }
 }

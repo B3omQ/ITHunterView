@@ -167,12 +167,16 @@ export function Sidebar() {
 
   const navItems = getNavItems(user?.role?.name ?? "candidate")
 
-  const handleLogout = async () => {
+  const handleLogout = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
     await logout()
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('dismissedCompanyReminder')
+      window.location.href = "/login"
     }
-    router.push("/login")
   }
 
   const isActive = (href: string) => {
@@ -405,8 +409,9 @@ export function Sidebar() {
 
               {/* Contextual Logout Action */}
               <button
-                onClick={handleLogout}
-                className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all md:opacity-0 group-hover:opacity-100"
+                type="button"
+                onClick={(e) => handleLogout(e)}
+                className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all flex-shrink-0"
                 title="Log Out"
                 aria-label="Log Out"
               >

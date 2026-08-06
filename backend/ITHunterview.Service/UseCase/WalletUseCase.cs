@@ -22,6 +22,9 @@ namespace ITHunterview.Service.UseCase
 {
     public class WalletUseCase : IWalletUseCase
     {
+        private const string CustomCoinTopupPriceConfigKey = "candidate_custom_coin_price_vnd";
+        private const int MaximumCustomCoinAmount = 100_000;
+
         private readonly ITHunterviewContext _context;
         private readonly PayOSClient _payOS;
         private readonly IConfiguration _configuration;
@@ -127,7 +130,10 @@ namespace ITHunterview.Service.UseCase
                             if (cvMatchLimit.HasValue)
                             {
                                 cvMatchUsed = await _context.CvJobMatchScores
-                                    .Where(m => m.UserId == userId && m.UpdatedAt >= start && m.UpdatedAt <= end)
+                                    .Where(m => m.UserId == userId &&
+                                                m.UpdatedAt >= start &&
+                                                m.UpdatedAt <= end &&
+                                                m.Status != "Failed")
                                     .CountAsync();
                             }
 
@@ -314,8 +320,19 @@ namespace ITHunterview.Service.UseCase
                     return new ResponseBase<CreatePaymentResponseDto>("Gói Subscription không tồn tại hoặc không hoạt động");
                 }
 
+                var buyer = await _context.Users
+                    .Include(u => u.Role)
+                    .FirstOrDefaultAsync(u => u.Id == userId);
+                var features = DeserializeSubscriptionFeatures(sub.FeaturesConfig);
+                if (buyer?.Role?.Name == null || features?.Role == null ||
+                    !IsSubscriptionRoleCompatible(buyer.Role.Name, features.Role))
+                {
+                    return new ResponseBase<CreatePaymentResponseDto>("Gói dịch vụ không phù hợp với vai trò tài khoản của bạn.");
+                }
+
                 amount = sub.Price;
-                creditsGranted = null;
+                // Snapshot coin bonus at purchase time so future package edits do not affect this payment.
+                creditsGranted = features.CoinCredit ?? 0;
                 // Ánh xạ int ID thành Guid: 00000000-0000-0000-0000-XXXXXXXXXXXX
                 targetIdGuid = Guid.Parse(sub.Id.ToString().PadLeft(32, '0'));
                 descriptionText = $"Mua goi {sub.Name}";
@@ -412,6 +429,181 @@ namespace ITHunterview.Service.UseCase
             };
 
             return new ResponseBase<CreatePaymentResponseDto>(responseDto, "Tạo yêu cầu thanh toán thành công");
+        }
+
+        public async Task<ResponseBase<CustomCoinTopupPriceDto>> GetCustomCoinTopupPriceAsync()
+        {
+            try
+            {
+                var price = await GetConfiguredCustomCoinTopupPriceAsync();
+                return new ResponseBase<CustomCoinTopupPriceDto>(
+                    new CustomCoinTopupPriceDto { PricePerCoinVnd = price },
+                    "Lấy giá nạp Coin lẻ thành công");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return new ResponseBase<CustomCoinTopupPriceDto>(ex.Message);
+            }
+        }
+
+        public async Task<ResponseBase<CustomCoinTopupPriceDto>> UpdateCustomCoinTopupPriceAsync(
+            CustomCoinTopupPriceDto dto,
+            Guid actorUserId)
+        {
+            if (dto.PricePerCoinVnd <= 0)
+            {
+                return new ResponseBase<CustomCoinTopupPriceDto>("Giá nạp Coin lẻ phải lớn hơn 0 VND.");
+            }
+
+            var config = await _context.SystemConfigs
+                .FirstOrDefaultAsync(x => x.ConfigKey == CustomCoinTopupPriceConfigKey);
+
+            if (config == null)
+            {
+                _context.SystemConfigs.Add(new SystemConfigs
+                {
+                    ConfigKey = CustomCoinTopupPriceConfigKey,
+                    ConfigValue = dto.PricePerCoinVnd.ToString(),
+                    Description = "Đơn giá VND cho 1 Coin khi Candidate nạp Coin lẻ.",
+                    UpdatedBy = actorUserId
+                });
+            }
+            else
+            {
+                config.ConfigValue = dto.PricePerCoinVnd.ToString();
+                config.Description = "Đơn giá VND cho 1 Coin khi Candidate nạp Coin lẻ.";
+                config.UpdatedBy = actorUserId;
+                _context.SystemConfigs.Update(config);
+            }
+
+            await _context.SaveChangesAsync();
+            await _hubContext.Clients.All.SendAsync("ReceivePricingUpdate");
+            return new ResponseBase<CustomCoinTopupPriceDto>(dto, "Cập nhật giá nạp Coin lẻ thành công");
+        }
+
+        public async Task<ResponseBase<CreatePaymentResponseDto>> CreateCustomCoinTopupPaymentAsync(
+            Guid userId,
+            CreateCustomCoinTopupDto dto)
+        {
+            if (dto.CoinAmount < 1 || dto.CoinAmount > MaximumCustomCoinAmount)
+            {
+                return new ResponseBase<CreatePaymentResponseDto>(
+                    $"Số Coin nạp lẻ phải từ 1 đến {MaximumCustomCoinAmount:N0}.");
+            }
+
+            if (dto.PaymentGateway != PaymentGateway.PAYOS)
+            {
+                return new ResponseBase<CreatePaymentResponseDto>("Nạp Coin lẻ hiện chỉ hỗ trợ PayOS.");
+            }
+
+            var candidate = await _context.Users
+                .Include(x => x.Role)
+                .FirstOrDefaultAsync(x => x.Id == userId);
+            if (!string.Equals(candidate?.Role?.Name, "candidate", StringComparison.OrdinalIgnoreCase))
+            {
+                return new ResponseBase<CreatePaymentResponseDto>("Chỉ Candidate được nạp Coin lẻ.");
+            }
+
+            int pricePerCoin;
+            try
+            {
+                pricePerCoin = await GetConfiguredCustomCoinTopupPriceAsync();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return new ResponseBase<CreatePaymentResponseDto>(ex.Message);
+            }
+
+            var amount = (decimal)dto.CoinAmount * pricePerCoin;
+            var descriptionText = $"Nap le {dto.CoinAmount} coin";
+            var orderCode = await CreateUniqueOrderCodeAsync();
+            var frontendUrl = _configuration["FrontendUrl"] ?? "http://localhost:3000";
+
+            try
+            {
+                var item = new PayOS.Models.V2.PaymentRequests.PaymentLinkItem
+                {
+                    Name = descriptionText,
+                    Quantity = 1,
+                    Price = (long)amount
+                };
+                var paymentRequest = new PayOS.Models.V2.PaymentRequests.CreatePaymentLinkRequest
+                {
+                    OrderCode = orderCode,
+                    Amount = (long)amount,
+                    Description = descriptionText,
+                    CancelUrl = $"{frontendUrl}/payment/cancel",
+                    ReturnUrl = $"{frontendUrl}/payment/success",
+                    Items = new List<PayOS.Models.V2.PaymentRequests.PaymentLinkItem> { item }
+                };
+
+                var paymentLink = await _payOS.PaymentRequests.CreateAsync(paymentRequest);
+                var payment = new Payments
+                {
+                    Id = Guid.NewGuid(),
+                    OrderCode = orderCode,
+                    UserId = userId,
+                    Amount = amount,
+                    Currency = "VND",
+                    CreditsGranted = dto.CoinAmount,
+                    PaymentGateway = dto.PaymentGateway,
+                    GatewayTransactionId = string.Empty,
+                    TargetType = PaymentTargetType.WALLET_TOPUP,
+                    TargetId = null,
+                    Status = PaymentStatus.PENDING,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.Payments.Add(payment);
+                await _context.SaveChangesAsync();
+
+                return new ResponseBase<CreatePaymentResponseDto>(new CreatePaymentResponseDto
+                {
+                    PaymentId = payment.Id,
+                    OrderCode = orderCode,
+                    CheckoutUrl = paymentLink.CheckoutUrl,
+                    QrCode = paymentLink.QrCode
+                }, "Tạo yêu cầu nạp Coin lẻ thành công");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi tạo payment nạp Coin lẻ qua PayOS");
+                return new ResponseBase<CreatePaymentResponseDto>("Lỗi khi kết nối với cổng thanh toán PayOS");
+            }
+        }
+
+        private async Task<int> GetConfiguredCustomCoinTopupPriceAsync()
+        {
+            var config = await _context.SystemConfigs
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.ConfigKey == CustomCoinTopupPriceConfigKey);
+
+            if (config == null)
+            {
+                throw new InvalidOperationException("Chưa cấu hình giá nạp Coin lẻ. Vui lòng liên hệ quản trị viên.");
+            }
+
+            if (!int.TryParse(config.ConfigValue, out var price) || price <= 0)
+            {
+                throw new InvalidOperationException("Giá nạp Coin lẻ hiện không hợp lệ. Vui lòng liên hệ quản trị viên.");
+            }
+
+            return price;
+        }
+
+        private async Task<long> CreateUniqueOrderCodeAsync()
+        {
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                var orderCode = Random.Shared.NextInt64(1_000_000_000L, 9_999_999_999L);
+                if (!await _context.Payments.AnyAsync(p => p.OrderCode == orderCode))
+                {
+                    return orderCode;
+                }
+            }
+
+            throw new InvalidOperationException("Không thể tạo OrderCode duy nhất sau 3 lần thử");
         }
 
         public async Task<ResponseBase<PaymentDto>> ProcessPaymentCallbackAsync(Guid actorUserId, PaymentSimulationDto simulationDto)
@@ -567,6 +759,8 @@ namespace ITHunterview.Service.UseCase
                             Status = UserSubscriptionStatus.ACTIVE
                         };
                         _context.UserSubscriptions.Add(userSub);
+
+                        await GrantSubscriptionCoinBonusAsync(payment, sub.Name);
                     }
                 }
             }
@@ -784,6 +978,71 @@ namespace ITHunterview.Service.UseCase
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        private static FeaturesConfigDto? DeserializeSubscriptionFeatures(string? featuresConfig)
+        {
+            if (string.IsNullOrWhiteSpace(featuresConfig))
+            {
+                return null;
+            }
+
+            try
+            {
+                return JsonSerializer.Deserialize<FeaturesConfigDto>(featuresConfig, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+        }
+
+        private static bool IsSubscriptionRoleCompatible(string userRole, string subscriptionRole)
+        {
+            return (userRole.Equals("candidate", StringComparison.OrdinalIgnoreCase) &&
+                    subscriptionRole.Equals("CANDIDATE", StringComparison.OrdinalIgnoreCase)) ||
+                   (userRole.Equals("recruiter", StringComparison.OrdinalIgnoreCase) &&
+                    subscriptionRole.Equals("RECRUITER", StringComparison.OrdinalIgnoreCase));
+        }
+
+        private async Task GrantSubscriptionCoinBonusAsync(Payments payment, string subscriptionName)
+        {
+            var bonusCoins = payment.CreditsGranted ?? 0;
+            if (bonusCoins <= 0)
+            {
+                return;
+            }
+
+            await _context.Database.ExecuteSqlRawAsync(
+                "INSERT INTO user_wallets (id, user_id, balance, updated_at) VALUES ({0}, {1}, 0, {2}) ON CONFLICT (user_id) DO NOTHING;",
+                Guid.NewGuid(), payment.UserId, DateTime.UtcNow);
+
+            var wallet = await _context.UserWallets
+                .FromSqlRaw("SELECT * FROM user_wallets WHERE user_id = {0} LIMIT 1 FOR UPDATE", payment.UserId)
+                .FirstOrDefaultAsync();
+
+            if (wallet == null)
+            {
+                throw new InvalidOperationException($"Could not acquire lock or find wallet for user {payment.UserId}");
+            }
+
+            wallet.Balance += bonusCoins;
+            wallet.UpdatedAt = DateTime.UtcNow;
+            _context.UserWallets.Update(wallet);
+
+            _context.CreditTransactions.Add(new CreditTransactions
+            {
+                Id = Guid.NewGuid(),
+                WalletId = wallet.Id,
+                Amount = bonusCoins,
+                TransactionType = CreditTransactionType.BONUS,
+                ReferenceId = payment.Id,
+                Description = $"Tặng {bonusCoins} Coin khi mua gói {subscriptionName}",
+                CreatedAt = DateTime.UtcNow
+            });
         }
     }
 }

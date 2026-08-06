@@ -47,4 +47,32 @@ public class JobAnalysisEffectiveAnalysisTests
         Assert.Contains(requirements, item => item.GetProperty("skill_name").GetString() == "Kubernetes");
         Assert.Contains(requirements, item => item.GetProperty("skill_name").GetString() == "3 years experience");
     }
+
+    [Fact]
+    public void SerializeEffectiveAnalysis_WithV3Groups_PreservesGroupLogicAndEvidence()
+    {
+        var service = new JobAnalysisExtractionService(Mock.Of<IAiService>(), Mock.Of<IPromptManagementService>(), Mock.Of<IJdAnalysisResponseValidator>());
+        var analysis = new ValidatedJobAnalysis
+        {
+            SchemaVersion = "jd-analysis/v3",
+            RequirementGroups = new List<ValidatedRequirementGroup>
+            {
+                new()
+                {
+                    GroupId = "grp-001", Operator = "one_of", MinSatisfied = 1, Importance = "must_have",
+                    Items = new List<ValidatedRequirementItem>
+                    {
+                        new() { SkillName = "react", Category = "tech_skill", Evidences = new List<string> { "React, Angular, or Vue" } }
+                    }
+                }
+            }
+        };
+
+        using var document = JsonDocument.Parse(service.SerializeEffectiveAnalysis(analysis));
+        var group = document.RootElement.GetProperty("matching_metrics").GetProperty("requirement_groups")[0];
+
+        Assert.Equal("one_of", group.GetProperty("operator").GetString());
+        Assert.Equal(1, group.GetProperty("min_satisfied").GetInt32());
+        Assert.Equal("React, Angular, or Vue", group.GetProperty("items")[0].GetProperty("evidences")[0].GetString());
+    }
 }

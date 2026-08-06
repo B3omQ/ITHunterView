@@ -14,6 +14,7 @@ using ITHunterview.Service.Utils;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Interface.Service;
+using ITHunterview.Service.Infrastructure.Persistence;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -25,6 +26,7 @@ namespace ITHunterview.Service.UseCase
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly INotificationUseCase _notificationUseCase;
         private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
+        private readonly ITHunterviewContext _context;
         private readonly Microsoft.AspNetCore.SignalR.IHubContext<ITHunterview.Service.Hubs.NotificationHub> _hubContext;
         private readonly ILogger<JobPostingsUseCase> _logger;
 
@@ -35,6 +37,7 @@ namespace ITHunterview.Service.UseCase
             IServiceScopeFactory scopeFactory,
             INotificationUseCase notificationUseCase,
             ICandidateFeatureUsageUseCase featureUsageUseCase,
+            ITHunterviewContext context,
             Microsoft.AspNetCore.SignalR.IHubContext<ITHunterview.Service.Hubs.NotificationHub> hubContext,
             ILogger<JobPostingsUseCase> logger)
         {
@@ -44,6 +47,7 @@ namespace ITHunterview.Service.UseCase
             _scopeFactory = scopeFactory;
             _notificationUseCase = notificationUseCase;
             _featureUsageUseCase = featureUsageUseCase;
+            _context = context;
             _hubContext = hubContext;
             _logger = logger;
         }
@@ -294,18 +298,29 @@ namespace ITHunterview.Service.UseCase
                 return new ResponseBase<JobPostingDetailDto>("Không thể gia hạn tin tuyển dụng đã bị khóa.");
             }
 
-            // Tiêu thụ slot gia hạn trong gói hoặc trừ Coin từ ví pay-as-you-go
-            await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "ExtendJob", job.Id.ToString());
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Consume and update run in one transaction. If saving the job fails,
+                // the wallet deduction and usage log are rolled back together.
+                await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "ExtendJob", job.Id.ToString());
 
-            DateTime baseTime = (!job.ExpiresAt.HasValue || job.ExpiresAt.Value < DateTime.UtcNow)
-                ? DateTime.UtcNow
-                : job.ExpiresAt.Value;
+                DateTime baseTime = (!job.ExpiresAt.HasValue || job.ExpiresAt.Value < DateTime.UtcNow)
+                    ? DateTime.UtcNow
+                    : job.ExpiresAt.Value;
 
-            job.ExpiresAt = baseTime.AddDays(15);
-            job.Status = JobStatus.PUBLISHED;
-            job.UpdatedAt = DateTime.UtcNow;
+                job.ExpiresAt = baseTime.AddDays(15);
+                job.Status = JobStatus.PUBLISHED;
+                job.UpdatedAt = DateTime.UtcNow;
 
-            await _jobPostingRepository.UpdateAsync(job);
+                await _jobPostingRepository.UpdateAsync(job);
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
 
             var detail = MapToDetailDto(job);
             detail.Skills = await _jobPostingRepository.GetSkillsByJobIdAsync(job.Id);
@@ -336,17 +351,28 @@ namespace ITHunterview.Service.UseCase
                 return new ResponseBase<JobPostingDetailDto>("Tin tuyển dụng phải ở trạng thái Đang hiển thị (PUBLISHED) để đẩy Lên Top.");
             }
 
-            // Tiêu thụ slot đẩy Top trong gói hoặc trừ Coin từ ví pay-as-you-go (mặc định 5,000 Coin)
-            await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "PushTop", job.Id.ToString());
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Consume and update run in one transaction. If saving the job fails,
+                // the wallet deduction and usage log are rolled back together.
+                await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "PushTop", job.Id.ToString());
 
-            DateTime baseTime = (!job.PushedTopUntil.HasValue || job.PushedTopUntil.Value < DateTime.UtcNow)
-                ? DateTime.UtcNow
-                : job.PushedTopUntil.Value;
+                DateTime baseTime = (!job.PushedTopUntil.HasValue || job.PushedTopUntil.Value < DateTime.UtcNow)
+                    ? DateTime.UtcNow
+                    : job.PushedTopUntil.Value;
 
-            job.PushedTopUntil = baseTime.AddHours(24);
-            job.UpdatedAt = DateTime.UtcNow;
+                job.PushedTopUntil = baseTime.AddHours(24);
+                job.UpdatedAt = DateTime.UtcNow;
 
-            await _jobPostingRepository.UpdateAsync(job);
+                await _jobPostingRepository.UpdateAsync(job);
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
 
             var detail = MapToDetailDto(job);
             detail.Skills = await _jobPostingRepository.GetSkillsByJobIdAsync(job.Id);

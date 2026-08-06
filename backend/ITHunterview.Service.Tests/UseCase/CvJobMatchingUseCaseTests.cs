@@ -3,7 +3,15 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using ITHunterview.Service.UseCase;
 using ITHunterview.Service.Interface.Service;
+using ITHunterview.Service.DTOs.Cv.Matching;
+using ITHunterview.Service.Interface.Persistence;
+using ITHunterview.Service.Interface.Service.Matching;
+using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Infrastructure.Persistence;
+using ITHunterview.Service.Service;
+using ITHunterview.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Pgvector;
 using Xunit;
@@ -31,9 +39,13 @@ namespace ITHunterview.Service.Tests.UseCase
             _mockSystemConfigRepository = new Mock<ITHunterview.Service.Interface.Persistence.ISystemConfigRepository>();
             var mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<CvJobMatchingUseCase>>();
             var mockTextAiService = new Mock<IAiService>();
+            var mockFeatureUsageUseCase = new Mock<ITHunterview.Service.Interface.UseCase.ICandidateFeatureUsageUseCase>();
+            var mockMatchingPreflightUseCase = new Mock<ITHunterview.Service.Interface.UseCase.IMatchingInputPreflightUseCase>();
+            var mockMatchingSourceRepository = new Mock<ITHunterview.Service.Interface.Persistence.IMatchingSourceRepository>();
+            var mockCvAnalysisResponseValidator = new Mock<ITHunterview.Service.Interface.Service.Matching.ICvAnalysisResponseValidator>();
             
             // Pass null for context since we only test methods that don't hit DB
-            _sut = new CvJobMatchingUseCase(null!, _mockAiService.Object, _mockExtractorService.Object, _mockHttpClientFactory.Object, _mockConfiguration.Object, mockLogger.Object, _mockPromptService.Object, _mockSystemConfigRepository.Object, mockTextAiService.Object);
+            _sut = new CvJobMatchingUseCase(null!, _mockAiService.Object, _mockExtractorService.Object, _mockHttpClientFactory.Object, _mockConfiguration.Object, mockLogger.Object, _mockPromptService.Object, _mockSystemConfigRepository.Object, mockTextAiService.Object, mockFeatureUsageUseCase.Object, mockMatchingPreflightUseCase.Object, mockMatchingSourceRepository.Object, mockCvAnalysisResponseValidator.Object);
         }
 
         [Theory]
@@ -86,6 +98,198 @@ namespace ITHunterview.Service.Tests.UseCase
             score1.Should().Be(0m);
             score2.Should().Be(0m);
             score3.Should().Be(0m);
+        }
+
+        [Fact]
+        public async Task ProcessMatchingJobAsync_WhenBothParsersNeedScopedServices_DoesNotStartThemConcurrently()
+        {
+            var options = new DbContextOptionsBuilder<ITHunterviewContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+            await using var context = new MatchingTestContext(options);
+            var matchId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            context.CvJobMatchScores.Add(new CvJobMatchScores
+            {
+                Id = matchId,
+                UserId = userId,
+                Status = "Pending",
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var cvCompletion = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var jdStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var extractor = new Mock<ICvTextExtractorService>();
+            extractor
+                .Setup(x => x.ExtractParsedDataFromRawTextAsync("raw cv", "pasted_text", null))
+                .Returns(cvCompletion.Task);
+
+            var jobExtraction = new Mock<IJobAnalysisExtractionService>();
+            jobExtraction
+                .Setup(x => x.ExtractWithActivePromptsAsync(It.IsAny<ITHunterview.Service.Utils.JobAnalysisInputSnapshot>(), default))
+                .Returns(() =>
+                {
+                    jdStarted.TrySetResult();
+                    return Task.FromException<JobAnalysisExtractionResult>(new InvalidOperationException("STOP_AFTER_ORDER_CHECK"));
+                });
+
+            var preflight = new Mock<IMatchingInputPreflightUseCase>();
+            preflight
+                .Setup(x => x.RecheckAccessAsync(userId, It.IsAny<PreparedMatchingRequest>(), default))
+                .Returns(Task.CompletedTask);
+            var featureUsage = new Mock<ICandidateFeatureUsageUseCase>();
+            featureUsage
+                .Setup(x => x.RefundFeatureUsageByReferenceAsync(userId, matchId, It.IsAny<string>()))
+                .Returns(Task.CompletedTask);
+
+            var sut = new CvJobMatchingUseCase(
+                context,
+                Mock.Of<IAiEmbeddingService>(),
+                extractor.Object,
+                Mock.Of<System.Net.Http.IHttpClientFactory>(),
+                Mock.Of<Microsoft.Extensions.Configuration.IConfiguration>(),
+                NullLogger<CvJobMatchingUseCase>.Instance,
+                Mock.Of<IPromptManagementService>(),
+                Mock.Of<ISystemConfigRepository>(),
+                Mock.Of<IAiService>(),
+                featureUsage.Object,
+                preflight.Object,
+                Mock.Of<IMatchingSourceRepository>(),
+                Mock.Of<ICvAnalysisResponseValidator>(),
+                jobExtraction.Object);
+            var request = new PreparedMatchingRequest(
+                new PreparedRawCvSource("raw cv", null),
+                new PreparedRawJdSource("raw jd", null),
+                MatchingMode.Both);
+
+            var processing = sut.ProcessMatchingJobAsync(matchId, userId, request);
+            await Task.Yield();
+
+            jdStarted.Task.IsCompleted.Should().BeFalse("the two parsers share scoped EF-backed services");
+
+            cvCompletion.SetResult("{}");
+            await processing;
+            jdStarted.Task.IsCompleted.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task GetJobMatchHistoryAsync_ShouldMaskCandidateDetails_WhenNotUnlocked()
+        {
+            // Arrange
+            var options = new DbContextOptionsBuilder<ITHunterviewContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+            await using var context = new MatchingTestContext(options);
+
+            var jobId = Guid.NewGuid();
+            var cvId = Guid.NewGuid();
+            var candidateUserId = Guid.NewGuid();
+            var recruiterId = Guid.NewGuid();
+
+            context.Cvs.Add(new Cvs
+            {
+                Id = cvId,
+                UserId = candidateUserId,
+                FileName = "original_cv.pdf",
+                FileUrl = "https://storage.local/original_cv.pdf",
+                FileType = "pdf",
+                ParsedData = "{}"
+            });
+
+            context.CvJobMatchScores.Add(new CvJobMatchScores
+            {
+                Id = Guid.NewGuid(),
+                JobId = jobId,
+                CvId = cvId,
+                MatchScore = 85.5m
+            });
+
+            await context.SaveChangesAsync();
+
+            var sut = new CvJobMatchingUseCase(
+                context,
+                Mock.Of<IAiEmbeddingService>(),
+                Mock.Of<ICvTextExtractorService>(),
+                Mock.Of<System.Net.Http.IHttpClientFactory>(),
+                Mock.Of<Microsoft.Extensions.Configuration.IConfiguration>(),
+                NullLogger<CvJobMatchingUseCase>.Instance,
+                Mock.Of<IPromptManagementService>(),
+                Mock.Of<ISystemConfigRepository>(),
+                Mock.Of<IAiService>(),
+                Mock.Of<ICandidateFeatureUsageUseCase>(),
+                Mock.Of<IMatchingInputPreflightUseCase>(),
+                Mock.Of<IMatchingSourceRepository>(),
+                Mock.Of<ICvAnalysisResponseValidator>());
+
+            // Act
+            var result = await sut.GetJobMatchHistoryAsync(jobId, recruiterId, 1, 10);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Items.Should().HaveCount(1);
+            var item = result.Items[0];
+            item.IsUnlocked.Should().BeFalse();
+            item.CandidateId.Should().BeNull("CandidateId must be masked when locked");
+            item.FileUrl.Should().BeNull("FileUrl must be masked when locked");
+            item.CvFileName.Should().Be("Ứng viên #1", "FileName must be masked when locked");
+        }
+
+        [Fact]
+        public async Task UnlockCandidateCvAsync_ShouldReturnFail_WhenCvNotFound()
+        {
+            // Arrange
+            var options = new DbContextOptionsBuilder<ITHunterviewContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+            await using var context = new MatchingTestContext(options);
+
+            var sut = new CvJobMatchingUseCase(
+                context,
+                Mock.Of<IAiEmbeddingService>(),
+                Mock.Of<ICvTextExtractorService>(),
+                Mock.Of<System.Net.Http.IHttpClientFactory>(),
+                Mock.Of<Microsoft.Extensions.Configuration.IConfiguration>(),
+                NullLogger<CvJobMatchingUseCase>.Instance,
+                Mock.Of<IPromptManagementService>(),
+                Mock.Of<ISystemConfigRepository>(),
+                Mock.Of<IAiService>(),
+                Mock.Of<ICandidateFeatureUsageUseCase>(),
+                Mock.Of<IMatchingInputPreflightUseCase>(),
+                Mock.Of<IMatchingSourceRepository>(),
+                Mock.Of<ICvAnalysisResponseValidator>());
+
+            var request = new UnlockCandidateRequestDto { CvId = Guid.NewGuid() };
+
+            // Act
+            var result = await sut.UnlockCandidateCvAsync(Guid.NewGuid(), request);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Success.Should().BeFalse();
+            result.Message.Should().Contain("Không tìm thấy hồ sơ CV");
+        }
+
+        private sealed class MatchingTestContext : ITHunterviewContext
+        {
+            public MatchingTestContext(DbContextOptions<ITHunterviewContext> options)
+                : base(options)
+            {
+            }
+
+            protected override void OnModelCreating(ModelBuilder modelBuilder)
+            {
+                base.OnModelCreating(modelBuilder);
+                modelBuilder.Entity<Cvs>().Ignore(x => x.TitleEmbedding);
+                modelBuilder.Entity<Cvs>().Ignore(x => x.SkillsEmbedding);
+                modelBuilder.Entity<Cvs>().Ignore(x => x.ExperienceEmbedding);
+                modelBuilder.Entity<Cvs>().Ignore(x => x.DomainEmbedding);
+                modelBuilder.Entity<JobPostings>().Ignore(x => x.TitleEmbedding);
+                modelBuilder.Entity<JobPostings>().Ignore(x => x.SkillsEmbedding);
+                modelBuilder.Entity<JobPostings>().Ignore(x => x.ExperienceEmbedding);
+                modelBuilder.Entity<JobPostings>().Ignore(x => x.DomainEmbedding);
+                modelBuilder.Entity<OptimizeSession>().Ignore(x => x.CvDocument);
+            }
         }
     }
 }

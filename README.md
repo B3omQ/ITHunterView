@@ -85,7 +85,7 @@ Tests use:
 - [Moq](https://github.com/moq/moq4) - Mocking library
 - [FluentAssertions](https://fluentassertions.com/) - Assertion syntax
 
-### Frontend Tests (TypeScript with Jest)
+### Frontend Tests (TypeScript with Vitest)
 
 - **unit/**: Component and utility function tests
 - **integration/**: Cross-component feature tests (auth flows, etc.)
@@ -93,9 +93,35 @@ Tests use:
 - **fixtures/**: Mock data and test utilities
 
 Tests use:
-- [Jest](https://jestjs.io/) - Testing framework
+- [Vitest](https://vitest.dev/) - Testing framework
 - [React Testing Library](https://testing-library.com/react) - Component testing
 - [Playwright or Cypress](https://playwright.dev/) - E2E testing (optional)
+
+## Reproducible Setup
+
+The repository includes a coding-agent/developer harness that restores locked
+dependencies, checks runtimes, runs the verified baseline, and records work
+state between sessions.
+
+On Windows:
+
+```powershell
+.\init.ps1 -Install
+.\scripts\verify.ps1
+.\scripts\verify.ps1 -Mode Full
+```
+
+On Bash:
+
+```bash
+bash ./init.sh --install
+bash ./scripts/verify.sh quick all
+bash ./scripts/verify.sh full all
+```
+
+Read `AGENTS.md`, `agent-progress.md`, and `feature_list.json` before beginning
+long-running work. Detailed verification behavior is documented in
+`docs/verification.md`.
 
 ## Getting Started
 
@@ -108,8 +134,8 @@ dotnet test
 
 ### Frontend
 ```bash
-cd Frontend
-npm install
+cd frontend
+npm ci
 npm test
 ```
 

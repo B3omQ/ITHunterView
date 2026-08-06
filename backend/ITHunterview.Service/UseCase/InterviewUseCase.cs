@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Interview;
+using ITHunterview.Service.Exceptions;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.Service.Matching;
@@ -171,6 +172,9 @@ namespace ITHunterview.Service.UseCase
 
         public async Task<InterviewSessionDto> CreateSessionAsync(Guid candidateId, CreateInterviewSessionDto dto)
         {
+            var sessionPersisted = false;
+            try
+            {
             // Determine active provider
             var provider = string.IsNullOrWhiteSpace(dto.AiProvider)
                 ? await _aiService.GetActiveProviderNameAsync()
@@ -245,6 +249,7 @@ namespace ITHunterview.Service.UseCase
 
             await _sessionRepository.AddAsync(session);
             await _sessionRepository.SaveChangesAsync();
+            sessionPersisted = true;
 
             // Fetch context CV details to inject in prompt
             string cvContext = "Chưa có thông tin CV.";
@@ -412,6 +417,11 @@ namespace ITHunterview.Service.UseCase
                 AiProvider = session.AiProvider,
                 Language = session.Language
             };
+            }
+            catch (Exception ex)
+            {
+                throw new InterviewSessionCreationException("Could not create interview session.", sessionPersisted, ex);
+            }
         }
 
         public async Task<InterviewAnswerDto> SubmitReplyAsync(Guid sessionId, Guid candidateId, SubmitReplyDto dto)

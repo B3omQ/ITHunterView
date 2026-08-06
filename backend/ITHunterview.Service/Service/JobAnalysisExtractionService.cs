@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using ITHunterview.Service.Constant.Prompts;
 using ITHunterview.Service.Utils;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Utils;
@@ -42,9 +43,11 @@ namespace ITHunterview.Service.Service
 
         public async Task<JobAnalysisExtractionResult> ExtractWithActivePromptsAsync(JobAnalysisInputSnapshot input, CancellationToken ct = default)
         {
-            var system = await _promptService.GetActivePromptSnapshotAsync("JD_ANALYSIS_V2_SYSTEM", ct);
-            var user = await _promptService.GetActivePromptSnapshotAsync("JD_ANALYSIS_V2_USER", ct);
-            return await ExtractAsync(input, system.Content, user.Content, ct);
+            var pair = await _promptService.GetActivePromptPairSnapshotAsync(
+                JdAnalysisPromptContract.SystemPromptKey,
+                JdAnalysisPromptContract.UserPromptKey,
+                ct);
+            return await ExtractAsync(input, pair.System.Content, pair.User.Content, ct);
         }
 
         public async Task<JobAnalysisExtractionResult> ExtractAsync(JobAnalysisInputSnapshot input, string systemPrompt, string userPromptTemplate, CancellationToken ct = default)
@@ -108,6 +111,25 @@ namespace ITHunterview.Service.Service
                         source_section = r.SourceSection,
                         evidence = r.Evidence,
                         confidence = r.Confidence
+                    }),
+                    requirement_groups = analysis.RequirementGroups.ConvertAll(group => new
+                    {
+                        group_id = group.GroupId,
+                        @operator = group.Operator,
+                        min_satisfied = group.MinSatisfied,
+                        importance = group.Importance,
+                        items = group.Items.ConvertAll(item => new
+                        {
+                            category = item.Category,
+                            skill_name = item.SkillName,
+                            detail_verbatim = item.DetailVerbatim,
+                            raw_mention = item.RawMention,
+                            source_section = item.SourceSection,
+                            evidences = item.Evidences,
+                            min_years = item.MinYears,
+                            max_years = item.MaxYears,
+                            confidence = item.Confidence
+                        })
                     })
                 }
             });

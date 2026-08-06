@@ -100,6 +100,25 @@ namespace ITHunterview.WebAPI.Controllers
         /// <summary>
         /// Candidate hoặc Recruiter tạo yêu cầu thanh toán mua coin hoặc mua subscription
         /// </summary>
+        [HttpGet("custom-coin-price")]
+        [Authorize(Policy = "CandidateOnly")]
+        public async Task<IActionResult> GetCustomCoinTopupPrice()
+        {
+            var result = await _walletUseCase.GetCustomCoinTopupPriceAsync();
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpPost("custom-coin-pay")]
+        [Authorize(Policy = "CandidateOnly")]
+        public async Task<IActionResult> CreateCustomCoinTopupPayment([FromBody] CreateCustomCoinTopupDto dto)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            var result = await _walletUseCase.CreateCustomCoinTopupPaymentAsync(userId.Value, dto);
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
         [HttpPost("pay")]
         [Authorize(Policy = "CandidateOrRecruiter")]
         public async Task<IActionResult> CreatePaymentRequest([FromBody] CreatePaymentDto dto)

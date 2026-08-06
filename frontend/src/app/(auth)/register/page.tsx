@@ -75,7 +75,7 @@ export default function RegisterPage() {
       clientId
     )}&redirect_uri=${encodeURIComponent(
       redirectUri
-    )}&response_type=id_token&scope=openid%20profile%20email&nonce=${nonce}&state=${encodeURIComponent(roleType)}`
+    )}&response_type=id_token&scope=openid%20profile%20email&nonce=${nonce}&state=${encodeURIComponent(roleType)}&prompt=select_account`
 
     window.location.href = oauthUrl
   }

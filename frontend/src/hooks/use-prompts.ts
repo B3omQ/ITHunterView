@@ -1,7 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PromptService } from '@/services/prompt.service';
-import { CreatePromptVersionDto } from '@/types/prompt.types';
+import {
+  ActivateCvAnalysisPromptPairDto,
+  ActivateJdAnalysisPromptPairDto,
+  CreatePromptVersionDto,
+} from '@/types/prompt.types';
 import { toast } from 'sonner';
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (typeof error !== 'object' || error === null || !('response' in error)) {
+    return fallback;
+  }
+
+  const response = error.response as { data?: { message?: unknown } } | undefined;
+  return typeof response?.data?.message === 'string' ? response.data.message : fallback;
+};
 
 export const usePrompts = (page: number = 1, size: number = 10) => {
   return useQuery({
@@ -36,9 +49,8 @@ export const useCreatePromptVersion = (promptId: string) => {
       queryClient.invalidateQueries({ queryKey: ['prompt-history', promptId] });
       queryClient.invalidateQueries({ queryKey: ['prompts'] });
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Failed to create prompt version';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to create prompt version'));
     },
   });
 };
@@ -53,9 +65,56 @@ export const useActivatePromptVersion = (promptId: string) => {
       queryClient.invalidateQueries({ queryKey: ['prompt-history', promptId] });
       queryClient.invalidateQueries({ queryKey: ['prompts'] });
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Failed to activate prompt version';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to activate prompt version'));
+    },
+  });
+};
+
+export const useCvAnalysisPromptPair = () => {
+  return useQuery({
+    queryKey: ['cv-analysis-prompt-pair'],
+    queryFn: () => PromptService.getCvAnalysisPromptPair(),
+  });
+};
+
+export const useActivateCvAnalysisPromptPair = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: ActivateCvAnalysisPromptPairDto) => PromptService.activateCvAnalysisPromptPair(dto),
+    onSuccess: () => {
+      toast.success('CV analysis prompt pair activated successfully');
+      queryClient.invalidateQueries({ queryKey: ['cv-analysis-prompt-pair'] });
+      queryClient.invalidateQueries({ queryKey: ['prompt-history'] });
+      queryClient.invalidateQueries({ queryKey: ['prompts'] });
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to activate CV analysis prompt pair'));
+    },
+  });
+};
+
+export const useJdAnalysisPromptPair = () => {
+  return useQuery({
+    queryKey: ['jd-analysis-prompt-pair'],
+    queryFn: () => PromptService.getJdAnalysisPromptPair(),
+  });
+};
+
+export const useActivateJdAnalysisPromptPair = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: ActivateJdAnalysisPromptPairDto) => PromptService.activateJdAnalysisPromptPair(dto),
+    onSuccess: () => {
+      toast.success('JD analysis prompt pair activated successfully');
+      queryClient.invalidateQueries({ queryKey: ['jd-analysis-prompt-pair'] });
+      queryClient.invalidateQueries({ queryKey: ['prompt-history'] });
+      queryClient.invalidateQueries({ queryKey: ['prompts'] });
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to activate JD analysis prompt pair'));
     },
   });
 };

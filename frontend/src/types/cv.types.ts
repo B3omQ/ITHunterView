@@ -20,13 +20,11 @@ export interface CreateCvRequest {
   fileSize?: number;
   fileType: string;
   isPrimary: boolean;
-  parsedData?: string;
   isTemporary?: boolean;
 }
 
 export interface MatchJdRequest {
   cvId?: string;
-  cvUrl?: string;
   cvText?: string;
   jobId?: string;
   rawJdText?: string;

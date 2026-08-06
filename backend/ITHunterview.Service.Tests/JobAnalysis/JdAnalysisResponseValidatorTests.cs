@@ -163,5 +163,38 @@ namespace ITHunterview.Service.Tests.JobAnalysis
             Assert.False(result.IsValid);
             Assert.Equal("MISSING_REQUIRED_ARRAY", result.FailureCode);
         }
+
+        [Fact]
+        public void Validate_V3OneOfGroup_PreservesAlternativeSemantics()
+        {
+            const string json = """
+            {
+              "schema_version":"jd-analysis/v3",
+              "matching_metrics":{
+                "job_titles_normalized":["frontend developer"],
+                "skills_normalized":[],
+                "total_years_exp":0,
+                "domains":[],
+                "requirement_groups":[{
+                  "operator":"one_of",
+                  "min_satisfied":1,
+                  "importance":"must_have",
+                  "items":[
+                    {"category":"tech_skill","skill_name":"react","detail_verbatim":"React, Angular, or Vue","raw_mention":"React","source_section":"requirements","evidences":["React, Angular, or Vue"]},
+                    {"category":"tech_skill","skill_name":"angular","detail_verbatim":"React, Angular, or Vue","raw_mention":"Angular","source_section":"requirements","evidences":["React, Angular, or Vue"]},
+                    {"category":"tech_skill","skill_name":"vue","detail_verbatim":"React, Angular, or Vue","raw_mention":"Vue","source_section":"requirements","evidences":["React, Angular, or Vue"]}
+                  ]
+                }]
+              }
+            }
+            """;
+
+            var result = _validator.Validate(json, new JobAnalysisInputSnapshot
+            {
+                Requirements = "Candidates need React, Angular, or Vue."
+            });
+
+            Assert.True(result.IsValid);
+        }
     }
 }
