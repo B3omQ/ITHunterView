@@ -21,11 +21,16 @@ export function LanguageSwitcher() {
     router.refresh()
   }
 
+  const LOCALE_LABELS: Record<string, string> = {
+    en: "English",
+    vi: "Tiếng Việt",
+  }
+
   return (
     <Select value={locale} onValueChange={handleLanguageChange}>
-      <SelectTrigger className="w-[140px] h-9 flex gap-2 bg-transparent border-transparent hover:bg-accent hover:text-accent-foreground">
+      <SelectTrigger className="w-full h-10 px-3 gap-3 bg-transparent border-transparent rounded-xl text-sm font-medium text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-all [&>svg:last-child]:ml-auto">
         <Globe className="w-4 h-4 text-muted-foreground" />
-        <SelectValue placeholder="Language" />
+        <span>{LOCALE_LABELS[locale] ?? locale}</span>
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="en">English</SelectItem>

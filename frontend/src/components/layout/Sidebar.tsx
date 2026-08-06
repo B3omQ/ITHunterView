@@ -286,9 +286,7 @@ export function Sidebar() {
 
       {/* 3. Bottom Actions & User Profile Footer */}
       <div className="p-3 flex flex-col gap-0.5 border-t border-border/40">
-        <div className="px-3 pb-2 flex justify-center">
-          <LanguageSwitcher />
-        </div>
+        <LanguageSwitcher />
 
         {/* Global Actions (e.g., Notifications) */}
         <div
