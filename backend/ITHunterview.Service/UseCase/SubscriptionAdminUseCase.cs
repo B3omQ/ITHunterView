@@ -285,6 +285,31 @@ namespace ITHunterview.Service.UseCase
             return new ResponseBase<SubscriptionDto>(resultDto, "Nhân bản gói dịch vụ thành công ở trạng thái INACTIVE.");
         }
 
+        public async Task<ResponseBase<bool>> DeleteSubscriptionAsync(int id, Guid userId)
+        {
+            var subscription = await _subscriptionRepository.GetByIdAsync(id);
+            if (subscription == null)
+            {
+                return new ResponseBase<bool>("Gói dịch vụ không tồn tại.");
+            }
+
+            if (subscription.Status != SubscriptionStatus.INACTIVE)
+            {
+                return new ResponseBase<bool>("Chỉ có thể xoá gói dịch vụ ở trạng thái INACTIVE (đã deactive).");
+            }
+
+            var isUsed = await _subscriptionRepository.IsSubscriptionUsedAsync(id);
+            if (isUsed)
+            {
+                return new ResponseBase<bool>("Không thể xoá gói dịch vụ đã có người sử dụng. Hãy giữ trạng thái INACTIVE.");
+            }
+
+            await _subscriptionRepository.DeleteAsync(subscription);
+            await _hubContext.Clients.All.SendAsync("ReceivePricingUpdate");
+
+            return new ResponseBase<bool>(true, "Xoá gói dịch vụ thành công.");
+        }
+
         private FeaturesConfigDto DeserializeConfig(string? json)
         {
             if (string.IsNullOrEmpty(json)) return new FeaturesConfigDto();
