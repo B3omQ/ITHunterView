@@ -9,6 +9,7 @@ using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Utils;
+using ITHunterview.Service.Service.Matching;
 using Microsoft.Extensions.Logging;
 
 namespace ITHunterview.Service.UseCase
@@ -18,15 +19,18 @@ namespace ITHunterview.Service.UseCase
         private readonly ITHunterviewContext _context;
         private readonly ICvTextExtractorService _cvTextExtractorService;
         private readonly ILogger<HardcodeCvJobMatchingUseCase> _logger;
+        private readonly HardcodeJdRequirementScoringService _hardcodeJdRequirementScoringService;
 
         public HardcodeCvJobMatchingUseCase(
             ITHunterviewContext context,
             ICvTextExtractorService cvTextExtractorService,
-            ILogger<HardcodeCvJobMatchingUseCase> logger)
+            ILogger<HardcodeCvJobMatchingUseCase> logger,
+            HardcodeJdRequirementScoringService hardcodeJdRequirementScoringService)
         {
             _context = context;
             _cvTextExtractorService = cvTextExtractorService;
             _logger = logger;
+            _hardcodeJdRequirementScoringService = hardcodeJdRequirementScoringService;
         }
 
         private JsonElement? GetJsonElement(string? jsonString, string fieldName)
@@ -186,13 +190,17 @@ namespace ITHunterview.Service.UseCase
                 return; // Do not rescan or overwrite
             }
 
-            if (existingScore != null && existingScore.Status != "Pending")
-            {
-                return; // Do not rescan or overwrite
-            }
-
             var titleScore = CalculateTitleScore(cvMetrics.Titles, jobMetrics.Titles);
-            var skillsScore = CalculateSkillsScore(cvMetrics.Skills, jobMetrics.Skills);
+            var scoringDecision = _hardcodeJdRequirementScoringService.Evaluate(job.ParsedData, cvMetrics.Skills);
+            if (scoringDecision.FailureCode != null)
+            {
+                _logger.LogWarning(
+                    "Hardcode matching ignored invalid effective JD analysis for job {JobId}; using compatibility metrics.",
+                    job.Id);
+            }
+            var projection = scoringDecision.Projection;
+            var groupEvaluation = scoringDecision.Evaluation;
+            var skillsScore = groupEvaluation?.SkillScore ?? CalculateSkillsScore(cvMetrics.Skills, jobMetrics.Skills);
             var expScore = CalculateExperienceScore(cvMetrics.Exp, jobMetrics.Exp);
             var domainScore = CalculateDomainScore(cvMetrics.Domains, jobMetrics.Domains);
 
@@ -203,13 +211,15 @@ namespace ITHunterview.Service.UseCase
 
             var details = JsonSerializer.Serialize(new 
             {
-                Method = "Hardcode",
+                Method = groupEvaluation == null ? "Hardcode" : "HardcodeV3",
+                JdSchemaVersion = projection?.SourceSchemaVersion,
                 TitleScore = Math.Round(titleScore, 4),
                 SkillsScore = Math.Round(skillsScore, 4),
                 ExperienceScore = Math.Round(expScore, 4),
                 DomainScore = Math.Round(domainScore, 4),
                 FinalScore = Math.Round(finalScore, 4),
-                Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m }
+                Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m },
+                GroupOutcomes = groupEvaluation?.Outcomes
             });
 
             if (existingScore != null)

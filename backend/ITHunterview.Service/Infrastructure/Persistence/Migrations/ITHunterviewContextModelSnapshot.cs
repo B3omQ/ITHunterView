@@ -1339,6 +1339,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("income_text");
+
                     b.Property<bool>("IsBanned")
                         .HasColumnType("boolean")
                         .HasColumnName("is_banned");
@@ -2007,6 +2008,46 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("recruiter_profiles");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.RecruiterUnlockedCvs", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("CoinsSpent")
+                        .HasColumnType("integer")
+                        .HasColumnName("coins_spent");
+
+                    b.Property<Guid>("CvId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cv_id");
+
+                    b.Property<Guid?>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<Guid>("RecruiterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recruiter_id");
+
+                    b.Property<DateTime>("UnlockedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("unlocked_at");
+
+                    b.Property<string>("UnlockedVia")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("unlocked_via");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecruiterId", "CvId")
+                        .IsUnique();
+
+                    b.ToTable("recruiter_unlocked_cvs");
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.RefreshToken", b =>

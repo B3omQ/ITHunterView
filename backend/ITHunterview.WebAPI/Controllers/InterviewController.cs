@@ -4,6 +4,8 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Interview;
+using ITHunterview.Service.DTOs.FeatureUsage;
+using ITHunterview.Service.Exceptions;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Interface.Service;
 using Microsoft.AspNetCore.Authorization;
@@ -91,10 +93,29 @@ namespace ITHunterview.WebAPI.Controllers
 
             try
             {
-                await _featureUsageUseCase.TryConsumeFeatureAsync(userId, "MockInterview");
+                var consumption = await _featureUsageUseCase.TryConsumeFeatureAsync(userId, "MockInterview");
 
-                var session = await _interviewUseCase.CreateSessionAsync(userId, dto);
-                return Ok(new ResponseBase<InterviewSessionDto>(session, "Interview session created successfully."));
+                try
+                {
+                    var session = await _interviewUseCase.CreateSessionAsync(userId, dto);
+                    return Ok(new ResponseBase<InterviewSessionDto>(session, "Interview session created successfully."));
+                }
+                catch (InterviewSessionCreationException ex)
+                {
+                    if (!ex.SessionPersisted)
+                    {
+                        await _featureUsageUseCase.RefundFeatureUsageAsync(userId, consumption,
+                            "Hoàn Coin vì không thể khởi tạo Mock Interview.");
+                    }
+
+                    throw;
+                }
+                catch
+                {
+                    await _featureUsageUseCase.RefundFeatureUsageAsync(userId, consumption,
+                        "Hoàn Coin vì không thể khởi tạo Mock Interview.");
+                    throw;
+                }
             }
             catch (InvalidOperationException ex)
             {

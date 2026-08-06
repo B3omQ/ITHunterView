@@ -108,7 +108,7 @@ function LoginForm() {
       clientId
     )}&redirect_uri=${encodeURIComponent(
       redirectUri
-    )}&response_type=id_token&scope=openid%20profile%20email&nonce=${nonce}&state=candidate`
+    )}&response_type=id_token&scope=openid%20profile%20email&nonce=${nonce}&state=candidate&prompt=select_account`
     
     window.location.href = oauthUrl
   }

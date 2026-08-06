@@ -33,6 +33,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IJobApplicationRepository, JobApplicationRepository>();
 
             services.AddScoped<ICvRepository, CvRepository>();
+            services.AddScoped<IMatchingSourceRepository, MatchingSourceRepository>();
             services.AddScoped<ICompanyRepository, CompanyRepository>();
             services.AddScoped<ISkillRepository, SkillRepository>();
             services.AddScoped<ISkillCategoryRepository, SkillCategoryRepository>();
@@ -87,6 +88,15 @@ namespace ITHunterview.Service.Config
 
             // Matching AI Services
             services.AddScoped<ICvTextExtractorService, CvTextExtractorService>();
+            services.AddScoped<ICvAnalysisResponseValidator, CvAnalysisResponseValidator>();
+            services.AddScoped<IJdRequirementProjector, JdRequirementProjector>();
+            services.AddScoped<JdHardcodeRequirementEvaluator>();
+            services.AddScoped<HardcodeJdRequirementScoringService>();
+            services.AddScoped<JdStageTwoContextBuilder>();
+            services.AddScoped<JdStageTwoResponseValidator>();
+            services.AddScoped<JdFitScoreCalculator>();
+            services.AddScoped<CvStageTwoContextBuilder>();
+            services.AddSingleton<IMatchingRequestValidator, MatchingRequestValidator>();
             services.AddScoped<IJdExtractionService, JdExtractionService>();
             services.AddScoped<IVectorEmbeddingService, VectorEmbeddingService>();
             services.AddScoped<IVectorSearchService, VectorSearchService>();
@@ -113,6 +123,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICompanyUseCase, CompanyUseCase>();
             services.AddScoped<ISkillUseCase, SkillUseCase>();
             services.AddScoped<ICvJobMatchingUseCase, CvJobMatchingUseCase>();
+            services.AddScoped<IMatchingInputPreflightUseCase, MatchingInputPreflightUseCase>();
             services.AddScoped<IHardcodeCvJobMatchingUseCase, HardcodeCvJobMatchingUseCase>();
             services.AddScoped<IMajorUseCase, MajorUseCase>();
             services.AddScoped<IUserGovernanceUseCase, UserGovernanceUseCase>();

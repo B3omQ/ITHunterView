@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using ITHunterview.Service.Constant.Prompts;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.JobAnalysis;
@@ -76,8 +77,12 @@ namespace ITHunterview.Service.UseCase
                 }
             }
 
-            var sysPrompt = await _promptService.GetActivePromptSnapshotAsync("JD_ANALYSIS_V2_SYSTEM", ct);
-            var userPrompt = await _promptService.GetActivePromptSnapshotAsync("JD_ANALYSIS_V2_USER", ct);
+            var promptPair = await _promptService.GetActivePromptPairSnapshotAsync(
+                JdAnalysisPromptContract.SystemPromptKey,
+                JdAnalysisPromptContract.UserPromptKey,
+                ct);
+            var sysPrompt = promptPair.System;
+            var userPrompt = promptPair.User;
 
             var snapshot = _inputBuilder.Build(job);
             var analysisInputHash = _inputBuilder.ComputeAnalysisHash(snapshot, sysPrompt.VersionId, userPrompt.VersionId);

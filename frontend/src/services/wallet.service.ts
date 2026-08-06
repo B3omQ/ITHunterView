@@ -3,6 +3,8 @@ import type { ApiResponse, PaginatedResponse } from '@/types/api.types';
 import type {
   CreatePaymentDto,
   CreatePaymentResponseDto,
+  CreateCustomCoinTopupDto,
+  CustomCoinTopupPriceDto,
   WalletBalanceDto,
   WalletTransactionDto,
   PaymentDto,
@@ -18,6 +20,26 @@ export const walletService = {
   createPayment: (data: CreatePaymentDto) =>
     api
       .post<ApiResponse<CreatePaymentResponseDto>>('/api/v1/wallet/pay', data)
+      .then((res) => res.data),
+
+  getCustomCoinTopupPrice: () =>
+    api
+      .get<ApiResponse<CustomCoinTopupPriceDto>>('/api/v1/wallet/custom-coin-price')
+      .then((res) => res.data),
+
+  createCustomCoinTopup: (data: CreateCustomCoinTopupDto) =>
+    api
+      .post<ApiResponse<CreatePaymentResponseDto>>('/api/v1/wallet/custom-coin-pay', data)
+      .then((res) => res.data),
+
+  getAdminCustomCoinTopupPrice: () =>
+    api
+      .get<ApiResponse<CustomCoinTopupPriceDto>>('/api/admin/wallet/custom-coin-price')
+      .then((res) => res.data),
+
+  updateAdminCustomCoinTopupPrice: (data: CustomCoinTopupPriceDto) =>
+    api
+      .put<ApiResponse<CustomCoinTopupPriceDto>>('/api/admin/wallet/custom-coin-price', data)
       .then((res) => res.data),
 
   getBalance: () =>

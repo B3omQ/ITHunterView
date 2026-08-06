@@ -15,6 +15,7 @@ namespace ITHunterview.Service.Utils
         public int TotalYearsExp { get; set; }
         public List<string> Domains { get; set; } = new();
         public List<ValidatedRequirementItem> RequirementsList { get; set; } = new();
+        public List<ValidatedRequirementGroup> RequirementGroups { get; set; } = new();
     }
 
         public sealed class ValidatedSkillMention
@@ -37,7 +38,19 @@ namespace ITHunterview.Service.Utils
         public string RawMention { get; set; } = string.Empty;
         public string SourceSection { get; set; } = "requirements";
         public string Evidence { get; set; } = string.Empty;
+        public List<string> Evidences { get; set; } = new();
+        public int? MinYears { get; set; }
+        public int? MaxYears { get; set; }
         public decimal Confidence { get; set; } = 1.0m;
+    }
+
+    public sealed class ValidatedRequirementGroup
+    {
+        public string GroupId { get; set; } = string.Empty;
+        public string Operator { get; set; } = "all_of";
+        public int MinSatisfied { get; set; }
+        public string Importance { get; set; } = "must_have";
+        public List<ValidatedRequirementItem> Items { get; set; } = new();
     }
 
     public sealed class ValidationResult<T>
@@ -74,6 +87,11 @@ namespace ITHunterview.Service.Utils
             {
                 "tech_skill", "domain_knowledge", "language"
             };
+
+        private static readonly HashSet<string> AllowedGroupOperators = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "all_of", "one_of", "at_least_n"
+        };
 
         public ValidationResult<ValidatedJobAnalysis> Validate(string providerOutput, JobAnalysisInputSnapshot input)
         {
@@ -120,11 +138,11 @@ namespace ITHunterview.Service.Utils
                 }
 
                 if (!root.TryGetProperty("schema_version", out var schemaProp) ||
-                    schemaProp.GetString() != "jd-analysis/v2")
+                    (schemaProp.GetString() != "jd-analysis/v2" && schemaProp.GetString() != "jd-analysis/v3"))
                 {
                     result.IsValid = false;
-                    result.FailureCode = "SCHEMA_VERSION_MISMATCH";
-                    result.Errors.Add("Missing or invalid schema_version. Expected 'jd-analysis/v2'.");
+                    result.FailureCode = "UNSUPPORTED_SCHEMA_VERSION";
+                    result.Errors.Add("Missing or invalid schema_version. Expected 'jd-analysis/v2' or 'jd-analysis/v3'.");
                     return result;
                 }
 
@@ -137,13 +155,13 @@ namespace ITHunterview.Service.Utils
                     return result;
                 }
 
-                var validated = new ValidatedJobAnalysis();
+                var schemaVersion = schemaProp.GetString()!;
+                var validated = new ValidatedJobAnalysis { SchemaVersion = schemaVersion };
                 string fullInputText = CombineInputText(input);
 
                 if (!TryGetRequiredArray(metricsProp, "job_titles_normalized", result, out var titlesProp) ||
                     !TryGetRequiredArray(metricsProp, "skills_normalized", result, out var skillsProp) ||
                     !TryGetRequiredArray(metricsProp, "domains", result, out var domProp) ||
-                    !TryGetRequiredArray(metricsProp, "requirements_list", result, out var reqsProp) ||
                     !metricsProp.TryGetProperty("total_years_exp", out var expProp) ||
                     expProp.ValueKind != JsonValueKind.Number || !expProp.TryGetInt32(out var years))
                 {
@@ -153,6 +171,13 @@ namespace ITHunterview.Service.Utils
                     else if (result.Errors.Count == 0) result.Errors.Add("'total_years_exp' must be an integer.");
                     return result;
                 }
+
+                var hasRequirementsList = TryGetRequiredArray(metricsProp, "requirements_list", result, out var reqsProp);
+                var hasRequirementGroups = TryGetRequiredArray(metricsProp, "requirement_groups", result, out var groupsProp);
+                if (schemaVersion == "jd-analysis/v2" && !hasRequirementsList) return result;
+                if (schemaVersion == "jd-analysis/v3" && !hasRequirementGroups) return result;
+                result.FailureCode = null;
+                result.Errors.Clear();
 
                 foreach (var titleElem in titlesProp.EnumerateArray())
                 {
@@ -198,7 +223,11 @@ namespace ITHunterview.Service.Utils
                     }
                 }
 
-                foreach (var rElem in reqsProp.EnumerateArray())
+                if (schemaVersion == "jd-analysis/v3")
+                {
+                    if (!ParseV3Groups(groupsProp, fullInputText, validated, result)) return result;
+                }
+                else foreach (var rElem in reqsProp.EnumerateArray())
                 {
                     if (validated.RequirementsList.Count >= 50) break;
                     if (rElem.ValueKind != JsonValueKind.Object) return Invalid(result, "INVALID_REQUIREMENT", "Every requirement must be an object.");
@@ -246,6 +275,137 @@ namespace ITHunterview.Service.Utils
             }
         }
 
+        private static bool ParseV3Groups(
+            JsonElement groupsProp,
+            string fullInputText,
+            ValidatedJobAnalysis validated,
+            ValidationResult<ValidatedJobAnalysis> result)
+        {
+            if (groupsProp.GetArrayLength() > 50)
+            {
+                Invalid(result, "TOO_MANY_REQUIREMENT_GROUPS", "At most 50 requirement groups are allowed.");
+                return false;
+            }
+
+            var itemCount = 0;
+            foreach (var groupElement in groupsProp.EnumerateArray())
+            {
+                if (groupElement.ValueKind != JsonValueKind.Object)
+                {
+                    Invalid(result, "INVALID_REQUIREMENT_GROUP", "Every requirement group must be an object.");
+                    return false;
+                }
+
+                var operation = ReadString(groupElement, "operator").ToLowerInvariant();
+                var importance = ReadString(groupElement, "importance").ToLowerInvariant();
+                if (!AllowedGroupOperators.Contains(operation) || !AllowedImportances.Contains(importance) ||
+                    !TryGetRequiredArray(groupElement, "items", result, out var items))
+                {
+                    if (result.FailureCode == null) Invalid(result, "INVALID_REQUIREMENT_GROUP", "Group operator, importance, or items is invalid.");
+                    return false;
+                }
+
+                if (items.GetArrayLength() == 0)
+                {
+                    Invalid(result, "INVALID_GROUP_CARDINALITY", "A requirement group must contain at least one item.");
+                    return false;
+                }
+
+                int minSatisfied = groupElement.TryGetProperty("min_satisfied", out var minSatisfiedProp) &&
+                    minSatisfiedProp.ValueKind == JsonValueKind.Number && minSatisfiedProp.TryGetInt32(out var min)
+                    ? min : operation == "all_of" ? items.GetArrayLength() : 1;
+
+                if ((operation == "all_of" && minSatisfied != items.GetArrayLength()) ||
+                    (operation == "one_of" && minSatisfied != 1) ||
+                    (operation == "at_least_n" && (minSatisfied < 1 || minSatisfied > items.GetArrayLength())))
+                {
+                    Invalid(result, "INVALID_GROUP_CARDINALITY", "Group operator and min_satisfied are inconsistent.");
+                    return false;
+                }
+
+                var group = new ValidatedRequirementGroup
+                {
+                    Operator = operation,
+                    MinSatisfied = minSatisfied,
+                    Importance = importance
+                };
+
+                foreach (var item in items.EnumerateArray())
+                {
+                    itemCount++;
+                    if (itemCount > 100)
+                    {
+                        Invalid(result, "TOO_MANY_REQUIREMENT_ITEMS", "At most 100 requirement items are allowed.");
+                        return false;
+                    }
+                    if (item.ValueKind != JsonValueKind.Object)
+                    {
+                        Invalid(result, "INVALID_REQUIREMENT", "Every requirement item must be an object.");
+                        return false;
+                    }
+
+                    var evidences = ReadStringArray(item, "evidences");
+                    var category = ReadString(item, "category").ToLowerInvariant();
+                    var skillName = NormalizeToken(ReadString(item, "skill_name"));
+                    var detail = ReadString(item, "detail_verbatim");
+                    var rawMention = ReadString(item, "raw_mention");
+                    var section = ReadString(item, "source_section").ToLowerInvariant();
+                    int? minYears = ReadOptionalNonNegativeInt(item, "min_years", result);
+                    int? maxYears = ReadOptionalNonNegativeInt(item, "max_years", result);
+                    if (result.FailureCode != null || !AllowedCategories.Contains(category) ||
+                        !AllowedSourceSections.Contains(section) || string.IsNullOrWhiteSpace(skillName) ||
+                        string.IsNullOrWhiteSpace(detail) || string.IsNullOrWhiteSpace(rawMention) || evidences.Count == 0 ||
+                        (minYears.HasValue && maxYears.HasValue && minYears > maxYears) ||
+                        !IsEvidencePresent(detail, fullInputText) || evidences.Any(e => !IsEvidencePresent(e, fullInputText)))
+                    {
+                        if (result.FailureCode == null) Invalid(result, "MISSING_REQUIREMENT_EVIDENCE", "Every v3 item needs valid evidence and fields from the JD input.");
+                        return false;
+                    }
+
+                    group.Items.Add(new ValidatedRequirementItem
+                    {
+                        Category = category,
+                        Importance = importance,
+                        SkillName = skillName,
+                        DetailVerbatim = detail,
+                        RawMention = rawMention,
+                        SourceSection = section,
+                        Evidence = evidences[0],
+                        Evidences = evidences,
+                        MinYears = minYears,
+                        MaxYears = maxYears,
+                        Confidence = ReadConfidence(item)
+                    });
+                }
+
+                validated.RequirementGroups.Add(group);
+            }
+
+            return true;
+        }
+
+        private static List<string> ReadStringArray(JsonElement item, string property)
+        {
+            if (!item.TryGetProperty(property, out var value) || value.ValueKind != JsonValueKind.Array) return new List<string>();
+            var values = new List<string>();
+            foreach (var element in value.EnumerateArray())
+            {
+                if (element.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(element.GetString())) values.Add(element.GetString()!.Trim());
+            }
+            return values.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value, StringComparer.Ordinal).ToList();
+        }
+
+        private static int? ReadOptionalNonNegativeInt(JsonElement item, string property, ValidationResult<ValidatedJobAnalysis> result)
+        {
+            if (!item.TryGetProperty(property, out var value) || value.ValueKind == JsonValueKind.Null) return null;
+            if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out var years) || years < 0)
+            {
+                Invalid(result, "INVALID_DURATION_CONSTRAINT", $"'{property}' must be a non-negative integer or null.");
+                return null;
+            }
+            return years;
+        }
+
         private static bool TryGetRequiredArray(JsonElement metrics, string property, ValidationResult<ValidatedJobAnalysis> result, out JsonElement value)
         {
             value = default;
@@ -287,6 +447,46 @@ namespace ITHunterview.Service.Utils
         {
             validated.JobTitlesNormalized = validated.JobTitlesNormalized.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x, StringComparer.Ordinal).ToList();
             validated.Domains = validated.Domains.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x, StringComparer.Ordinal).ToList();
+
+            if (validated.RequirementGroups.Count > 0)
+            {
+                validated.RequirementGroups = validated.RequirementGroups
+                    .GroupBy(group => $"{group.Operator}|{group.MinSatisfied}|{group.Importance}|{string.Join(",", group.Items.OrderBy(item => item.SkillName, StringComparer.Ordinal).Select(item => $"{item.Category}:{item.SkillName}:{item.MinYears}:{item.MaxYears}"))}", StringComparer.OrdinalIgnoreCase)
+                    .Select(group =>
+                    {
+                        var merged = group.First();
+                        merged.Items = group.SelectMany(candidate => candidate.Items)
+                            .GroupBy(item => $"{item.Category}|{item.SkillName}|{item.MinYears}|{item.MaxYears}", StringComparer.OrdinalIgnoreCase)
+                            .Select(items =>
+                            {
+                                var item = items.First();
+                                item.Evidences = items.SelectMany(value => value.Evidences.DefaultIfEmpty(value.Evidence))
+                                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                                    .OrderBy(value => value, StringComparer.Ordinal)
+                                    .ToList();
+                                item.Evidence = item.Evidences.FirstOrDefault() ?? string.Empty;
+                                return item;
+                            })
+                            .OrderBy(item => item.Category, StringComparer.Ordinal)
+                            .ThenBy(item => item.SkillName, StringComparer.Ordinal)
+                            .ToList();
+                        return merged;
+                    })
+                    .OrderBy(group => group.Importance, StringComparer.Ordinal)
+                    .ThenBy(group => group.Operator, StringComparer.Ordinal)
+                    .ThenBy(group => string.Join("|", group.Items.Select(item => item.SkillName)), StringComparer.Ordinal)
+                    .ToList();
+
+                for (var index = 0; index < validated.RequirementGroups.Count; index++)
+                {
+                    validated.RequirementGroups[index].GroupId = $"grp-{index + 1:000}";
+                }
+
+                validated.RequirementsList = validated.RequirementGroups
+                    .SelectMany(group => group.Items)
+                    .ToList();
+            }
 
             validated.RequirementsList = validated.RequirementsList
                 .GroupBy(r => $"{r.Category}|{r.Importance}|{r.SkillName}|{r.Evidence}", StringComparer.OrdinalIgnoreCase)

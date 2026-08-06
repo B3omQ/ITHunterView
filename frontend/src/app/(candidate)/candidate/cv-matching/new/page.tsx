@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { APP_ROUTES } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Sparkles, ArrowRight, CheckCircle2, Info, History, Coins, Zap } from 'lucide-react';
+import { Loader2, Sparkles, ArrowRight, Info, History, Coins, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 import { ResultOverviewCard } from '../components/ResultOverviewCard';
@@ -184,12 +184,12 @@ function CvMatchingContent() {
                   className="bg-primary hover:bg-primary/90 gap-2"
                   onClick={() => {
                     const queryParams = new URLSearchParams();
-                    if (state.cvUrl) queryParams.set('cvUrl', state.cvUrl);
-                    if (state.selectedCvId) queryParams.set('cvId', state.selectedCvId);
-                    else if (state.matchedCvId) queryParams.set('cvId', state.matchedCvId);
+                    const cvId = state.matchedCvId
+                      ?? (state.cvTab === 'saved' ? state.selectedCvId : null);
+                    if (cvId) queryParams.set('cvId', cvId);
                     
-                    if (!queryParams.has('cvUrl') && !queryParams.has('cvId')) {
-                      toast.error("Cannot optimize: Original CV file not found. Please start a new matching session.");
+                    if (!queryParams.has('cvId')) {
+                      toast.error("Cannot optimize a pasted or temporary CV. Save the CV first, then match again.");
                       return;
                     }
 
@@ -226,23 +226,7 @@ function CvMatchingContent() {
                   penalties={state.matchOutput.jdFit.penalties} 
                 />
               )}
-              <Card className="bg-muted/30 border-muted">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    How is this calculated?
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-xs text-muted-foreground leading-relaxed space-y-2">
-                  <p>Our AI evaluates your CV against the JD using a 4-tier processing algorithm:</p>
-                  <ul className="list-disc pl-4 space-y-1">
-                    <li>Extracts requirements into <span className="font-semibold text-foreground">Must-have</span> (70%) and <span className="font-semibold text-foreground">Nice-to-have</span> (30%).</li>
-                    <li>Performs embedding matching to locate relevant experience.</li>
-                    <li>Analyzes evidence quality and assigns a score from 0.0 to 1.0.</li>
-                    <li>Applies penalties for weak evidence or missing critical skills.</li>
-                  </ul>
-                </CardContent>
-              </Card>
+
             </div>
           </div>
         </div>

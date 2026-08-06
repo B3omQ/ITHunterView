@@ -6,6 +6,7 @@ namespace ITHunterview.Service.DTOs.Cv.Matching
     public class MatchingRequestDto
     {
         public Guid? CvId { get; set; }
+        [Obsolete("Public CV URL sources are not supported. Use CvId or CvText.")]
         public string? CvUrl { get; set; }
         public string? CvText { get; set; }
 
