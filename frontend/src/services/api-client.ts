@@ -30,6 +30,10 @@ api.interceptors.request.use((config) => {
       localStorage.setItem('X-Device-Fingerprint', fingerprint);
     }
     config.headers['X-Device-Fingerprint'] = fingerprint;
+
+    const match = document.cookie.match(new RegExp('(^| )locale=([^;]+)'));
+    const locale = match ? match[2] : 'en';
+    config.headers['Accept-Language'] = locale;
   }
   return config;
 });

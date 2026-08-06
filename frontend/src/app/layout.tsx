@@ -4,6 +4,8 @@ import "./globals.css"
 import ReactQueryProvider from "@/lib/ReactQueryProvider"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { NextIntlClientProvider } from "next-intl"
+import { getMessages, getLocale } from "next-intl/server"
 
 const inter = Inter({
   variable: "--font-inter",
@@ -19,15 +21,20 @@ export const metadata: Metadata = {
 }
 
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const locale = await getLocale()
+  const messages = await getMessages()
+
   return (
-    <html lang="en" className={`${inter.variable} h-full`}>
+    <html lang={locale} className={`${inter.variable} h-full`}>
       <body className="min-h-full flex flex-col antialiased">
-        <ReactQueryProvider>
-          <TooltipProvider>{children}</TooltipProvider>
-        </ReactQueryProvider>
+        <NextIntlClientProvider messages={messages}>
+          <ReactQueryProvider>
+            <TooltipProvider>{children}</TooltipProvider>
+          </ReactQueryProvider>
+        </NextIntlClientProvider>
         <Toaster position="bottom-right" richColors />
       </body>
     </html>

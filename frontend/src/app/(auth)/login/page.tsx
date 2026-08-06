@@ -8,12 +8,14 @@ import { authService } from "@/services/auth.service"
 import { useAuthStore } from "@/store/auth.store"
 import { getDashboardPath } from "@/lib/constants"
 import { Logo } from "@/components/layout/Logo"
+import { useTranslations } from "next-intl"
 
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect')
   const { setAuth } = useAuthStore()
+  const t = useTranslations("Auth.login")
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -39,7 +41,7 @@ function LoginForm() {
           .googleAuth(idToken, state)
           .then((res) => {
             if (!res.success || !res.data) {
-              setError(res.message ?? "Đăng nhập Google thất bại")
+              setError(res.message ?? t('googleAuthError'))
               return
             }
             const payload = res.data
@@ -55,7 +57,7 @@ function LoginForm() {
           })
           .catch((err: any) => {
             console.error("Google auth error:", err)
-            setError(`Lỗi xác thực Google: ${err.message || "Không thể kết nối đến máy chủ."}`)
+            setError(`${t('googleAuthError')}: ${err.message || t('serverError')}`)
           })
           .finally(() => {
             setLoading(false)
@@ -71,7 +73,7 @@ function LoginForm() {
     try {
       const res = await authService.login({ email, password })
       if (!res.success || !res.data) {
-        setError(res.message ?? "Đăng nhập thất bại")
+        setError(res.message ?? t('loginFailed'))
         return
       }
       
@@ -87,7 +89,7 @@ function LoginForm() {
       router.push(redirectTo || getDashboardPath(user.role.name));
     } catch (err: any) {
       console.error("Login error details:", err)
-      setError(err.response?.data?.message || err.response?.data?.Message || `Lỗi kết nối: ${err.message || "Không thể kết nối đến máy chủ."}`)
+      setError(err.response?.data?.message || err.response?.data?.Message || `${t('loginFailed')}: ${err.message || t('serverError')}`)
     } finally {
       setLoading(false)
     }
@@ -96,7 +98,7 @@ function LoginForm() {
   const handleGoogle = () => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
     if (!clientId) {
-      setError("Chưa cấu hình Google Client ID. Vui lòng kiểm tra file môi trường.")
+      setError(t('missingGoogleClientId'))
       return
     }
     setError("")
@@ -125,9 +127,9 @@ function LoginForm() {
         <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
           {/* Header */}
           <div className="mb-7">
-            <h1 className="text-2xl font-bold text-foreground mb-1">Welcome back</h1>
+            <h1 className="text-2xl font-bold text-foreground mb-1">{t('title')}</h1>
             <p className="text-sm text-muted-foreground">
-              Sign in to your ITHunterView account
+              {t('subtitle')}
             </p>
           </div>
 
@@ -143,13 +145,13 @@ function LoginForm() {
             {/* Email */}
             <div className="space-y-1.5">
               <label htmlFor="login-email" className="text-sm font-medium text-foreground">
-                Email address
+                {t('email')}
               </label>
               <input
                 id="login-email"
                 type="email"
                 autoComplete="email"
-                placeholder="you@example.com"
+                placeholder={t('emailPlaceholder')}
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -161,13 +163,13 @@ function LoginForm() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label htmlFor="login-password" className="text-sm font-medium text-foreground">
-                  Password
+                  {t('password')}
                 </label>
                 <Link
                   href="/forgot-password"
                   className="text-xs text-primary hover:text-primary/80 transition-colors"
                 >
-                  Forgot password?
+                  {t('forgotPassword')}
                 </Link>
               </div>
               <div className="relative">
@@ -175,7 +177,7 @@ function LoginForm() {
                   id="login-password"
                   type={showPwd ? "text" : "password"}
                   autoComplete="current-password"
-                  placeholder="••••••••"
+                  placeholder={t('passwordPlaceholder')}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -201,9 +203,9 @@ function LoginForm() {
               className="w-full h-11 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none transition-all"
             >
               {loading ? (
-                <><Loader2 size={16} className="animate-spin" /> Signing in…</>
+                <><Loader2 size={16} className="animate-spin" /> {t('signingIn')}</>
               ) : (
-                "Sign In"
+                t('signIn')
               )}
             </button>
           </form>
@@ -211,7 +213,7 @@ function LoginForm() {
           {/* Divider */}
           <div className="my-6 flex items-center gap-3">
             <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-muted-foreground">or</span>
+            <span className="text-xs text-muted-foreground">{t('or')}</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
@@ -223,14 +225,14 @@ function LoginForm() {
             className="w-full h-11 rounded-xl border border-border bg-muted hover:bg-muted/80 text-foreground font-medium text-sm flex items-center justify-center gap-2.5 transition-all hover:border-primary"
           >
             <GoogleIcon />
-            Continue with Google
+            {t('continueWithGoogle')}
           </button>
 
           {/* Footer */}
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
+            {t('noAccount')}{" "}
             <Link href="/register" className="text-primary hover:text-primary/80 font-medium transition-colors">
-              Sign up
+              {t('signUp')}
             </Link>
           </p>
         </div>
