@@ -79,9 +79,12 @@ namespace ITHunterview.Service.Service
                     using var httpClient = new System.Net.Http.HttpClient();
                     httpClient.DefaultRequestHeaders.Add("api-key", brevoApiKey);
 
+                    // Sử dụng BrevoFromEmail hoặc AdminFallbackEmail nếu có, mặc định là fromEmail
+                    var brevoSenderEmail = _configuration["BrevoFromEmail"] ?? _configuration["SmtpSettings:AdminFallbackEmail"] ?? fromEmail;
+
                     var payload = new
                     {
-                        sender = new { name = fromName, email = fromEmail },
+                        sender = new { name = fromName, email = brevoSenderEmail },
                         to = new[] { new { email = toEmail } },
                         subject = subject,
                         htmlContent = htmlBody
