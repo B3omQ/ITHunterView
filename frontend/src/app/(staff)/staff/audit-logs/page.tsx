@@ -36,8 +36,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useTranslations } from 'next-intl';
 
 export default function StaffAuditLogsPage() {
+  const t = useTranslations('StaffAuditLogs');
   // Audit Logs Filters
   const [auditSearch, setAuditSearch] = useState('');
   const [debouncedAuditSearch, setDebouncedAuditSearch] = useState('');
@@ -154,10 +156,10 @@ export default function StaffAuditLogsPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
               <ClipboardList className="text-[#1877F2] shrink-0 h-8 w-8" />
-              Audit & Surveillance Logs
+              {t('staffTitle')}
             </h1>
             <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
-              Track system activities, user authentication, data mutations, and security events across the platform.
+              {t('staffDesc')}
             </p>
           </div>
         </div>
@@ -171,14 +173,14 @@ export default function StaffAuditLogsPage() {
               <Input
                 value={auditSearch}
                 onChange={(e) => setAuditSearch(e.target.value)}
-                placeholder="Search by actor email, action, IP..."
+                placeholder={t('searchPlaceholder')}
                 className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
               />
               {auditSearch && (
                 <button
                   onClick={() => setAuditSearch('')}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#65676B] hover:text-[#050505] dark:hover:text-white transition-colors p-1 cursor-pointer"
-                  title="Clear search"
+                  title={t('clearSearch')}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -194,10 +196,10 @@ export default function StaffAuditLogsPage() {
               }}
             >
               <SelectTrigger className="w-full sm:w-[160px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
-                <SelectValue placeholder="Operation" />
+                <SelectValue placeholder={t('operationPlaceholder')} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
-                <SelectItem value="ALL">All Operations</SelectItem>
+                <SelectItem value="ALL">{t('allOperations')}</SelectItem>
                 <SelectItem value="CREATE">CREATE</SelectItem>
                 <SelectItem value="UPDATE">UPDATE</SelectItem>
                 <SelectItem value="DELETE">DELETE</SelectItem>
@@ -213,14 +215,14 @@ export default function StaffAuditLogsPage() {
               }}
             >
               <SelectTrigger className="w-full sm:w-[160px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
-                <SelectValue placeholder="Category" />
+                <SelectValue placeholder={t('categoryPlaceholder')} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
-                <SelectItem value="ALL">All Categories</SelectItem>
-                <SelectItem value="AUTH">Authentication</SelectItem>
-                <SelectItem value="DATA_MUTATION">Data Mutation</SelectItem>
-                <SelectItem value="SECURITY">Security</SelectItem>
-                <SelectItem value="SYSTEM">System</SelectItem>
+                <SelectItem value="ALL">{t('allCategories')}</SelectItem>
+                <SelectItem value="AUTH">{t('catAuthentication')}</SelectItem>
+                <SelectItem value="DATA_MUTATION">{t('catDataMutation')}</SelectItem>
+                <SelectItem value="SECURITY">{t('catSecurity')}</SelectItem>
+                <SelectItem value="SYSTEM">{t('catSystem')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -233,12 +235,12 @@ export default function StaffAuditLogsPage() {
               }}
             >
               <SelectTrigger className="w-full sm:w-[150px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={t('statusPlaceholder')} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
-                <SelectItem value="ALL">All Statuses</SelectItem>
-                <SelectItem value="SUCCESS">Success</SelectItem>
-                <SelectItem value="FAIL">Fail</SelectItem>
+                <SelectItem value="ALL">{t('allStatuses')}</SelectItem>
+                <SelectItem value="SUCCESS">{t('statusSuccess')}</SelectItem>
+                <SelectItem value="FAIL">{t('statusFail')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -249,7 +251,7 @@ export default function StaffAuditLogsPage() {
                 variant="ghost"
                 className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
               >
-                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> {t('clearFilters')}
               </Button>
             )}
           </div>
@@ -262,31 +264,31 @@ export default function StaffAuditLogsPage() {
             <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
               <TableRow className="hover:bg-transparent border-none">
                 <TableHead className="w-[12%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  TIMESTAMP
+                  {t('colTimestamp')}
                 </TableHead>
 
                 <TableHead className="w-[9%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  ACTOR
+                  {t('colActor')}
                 </TableHead>
 
                 <TableHead className="w-[33%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  ACTION & CATEGORY
+                  {t('colActionCategory')}
                 </TableHead>
 
                 <TableHead className="w-[12%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  OPERATION
+                  {t('colOperation')}
                 </TableHead>
 
                 <TableHead className="w-[13%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  TARGET (TABLE)
+                  {t('colTarget')}
                 </TableHead>
 
                 <TableHead className="w-[12%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  STATUS
+                  {t('colStatus')}
                 </TableHead>
 
                 <TableHead className="w-[9%] py-3 px-2 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  ACTIONS
+                  {t('colActions')}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -332,10 +334,10 @@ export default function StaffAuditLogsPage() {
                   <TableCell colSpan={7} className="h-64 text-center">
                     <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
                       <p className="font-semibold text-rose-600 dark:text-rose-400 text-base">
-                        Failed to load audit logs
+                        {t('loadFailTitle')}
                       </p>
                       <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
-                        An error occurred while fetching system surveillance data. Please try again.
+                        {t('loadFailDesc')}
                       </p>
                     </div>
                   </TableCell>
@@ -349,12 +351,12 @@ export default function StaffAuditLogsPage() {
                         <SearchX className="h-6 w-6" />
                       </div>
                       <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">
-                        No audit logs found
+                        {t('noLogsTitle')}
                       </p>
                       <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
                         {isFilterActive
-                          ? 'No audit log entries match the current filters. Try clearing or adjusting your search criteria.'
-                          : 'No system audit logs recorded yet.'}
+                          ? t('noLogsFilterDesc')
+                          : t('noLogsEmptyDesc')}
                       </p>
                       {isFilterActive && (
                         <Button
@@ -362,7 +364,7 @@ export default function StaffAuditLogsPage() {
                           variant="outline"
                           className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
                         >
-                          <RotateCcw className="h-4 w-4 mr-2" /> Clear All Filters
+                          <RotateCcw className="h-4 w-4 mr-2" /> {t('clearAllFilters')}
                         </Button>
                       )}
                     </div>
@@ -462,7 +464,7 @@ export default function StaffAuditLogsPage() {
                           size="icon"
                           onClick={() => setSelectedLog(log)}
                           className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
-                          title="View Log Details"
+                          title={t('viewDetailsTitle')}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -478,9 +480,7 @@ export default function StaffAuditLogsPage() {
         {/* TẦNG 3: PAGINATION FOOTER */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 px-1">
           <div className="flex items-center space-x-3 text-sm text-[#65676B] dark:text-zinc-400">
-            <div>
-              Showing <span className="font-semibold text-[#050505] dark:text-zinc-200">{startResult} - {endResult}</span> of <span className="font-semibold text-[#050505] dark:text-zinc-200">{auditTotal}</span> audit logs
-            </div>
+            <div dangerouslySetInnerHTML={{ __html: t.raw('showingText').replace('{start}', startResult.toString()).replace('{end}', endResult.toString()).replace('{total}', auditTotal.toString()) }} />
             <Select
               value={String(auditPageSize)}
               onValueChange={(val) => {
@@ -489,7 +489,7 @@ export default function StaffAuditLogsPage() {
               }}
             >
               <SelectTrigger className="h-8 w-[110px] border-[#CED0D4] dark:border-zinc-800 text-xs font-medium focus:ring-[#1877F2]">
-                <SelectValue placeholder="Page size" />
+                <SelectValue placeholder={t('pageSize')} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
                 <SelectItem value="10">10 / page</SelectItem>
