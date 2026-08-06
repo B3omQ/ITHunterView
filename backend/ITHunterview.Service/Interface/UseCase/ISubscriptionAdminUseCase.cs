@@ -14,5 +14,6 @@ namespace ITHunterview.Service.Interface.UseCase
         Task<ResponseBase<SubscriptionDto>> UpdateSubscriptionAsync(int id, UpdateSubscriptionDto dto, Guid userId);
         Task<ResponseBase<SubscriptionDto>> UpdateStatusAsync(int id, SubscriptionStatus status, Guid userId);
         Task<ResponseBase<SubscriptionDto>> DuplicateSubscriptionAsync(int id, Guid userId);
+        Task<ResponseBase<bool>> DeleteSubscriptionAsync(int id, Guid userId);
     }
 }

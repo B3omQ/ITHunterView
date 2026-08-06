@@ -160,5 +160,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     .SetProperty(p => p.DurationDays, subscription.DurationDays)
                     .SetProperty(p => p.FeaturesConfig, subscription.FeaturesConfig));
         }
+
+        public async Task DeleteAsync(Subscriptions subscription)
+        {
+            _context.Subscriptions.Remove(subscription);
+            await _context.SaveChangesAsync();
+        }
     }
 }
