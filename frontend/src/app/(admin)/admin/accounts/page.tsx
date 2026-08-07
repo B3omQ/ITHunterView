@@ -46,8 +46,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { format } from 'date-fns';
+import { useTranslations } from 'next-intl';
 
 export default function AdminAccountsPage() {
+  const t = useTranslations('AdminAccounts');
   // Accounts Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -114,28 +116,28 @@ export default function AdminAccountsPage() {
         return (
           <Badge className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none inline-flex items-center gap-1">
             <CheckCircle size={11} />
-            <span>Active</span>
+            <span>{t('statusActive')}</span>
           </Badge>
         );
       case 'INACTIVE':
         return (
           <Badge className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 rounded-full px-2.5 py-0.5 text-xs font-medium inline-flex items-center gap-1">
             <Clock size={11} />
-            <span>Inactive</span>
+            <span>{t('statusInactive')}</span>
           </Badge>
         );
       case 'BANNED':
         return (
           <Badge className="bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none inline-flex items-center gap-1">
             <Ban size={11} />
-            <span>Banned</span>
+            <span>{t('statusBanned')}</span>
           </Badge>
         );
       case 'PENDING_VERIFICATION':
         return (
           <Badge className="bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none inline-flex items-center gap-1">
             <AlertTriangle size={11} />
-            <span>Pending</span>
+            <span>{t('statusPending')}</span>
           </Badge>
         );
       default:
@@ -153,28 +155,28 @@ export default function AdminAccountsPage() {
       return (
         <Badge className="bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none inline-flex items-center gap-1">
           <Shield size={11} />
-          <span>Admin</span>
+          <span>{t('roleAdmin')}</span>
         </Badge>
       );
     } else if (name.includes('staff')) {
       return (
         <Badge className="bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none inline-flex items-center gap-1">
           <User size={11} />
-          <span>Staff</span>
+          <span>{t('roleStaff')}</span>
         </Badge>
       );
     } else if (name.includes('recruiter')) {
       return (
         <Badge className="bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none inline-flex items-center gap-1">
           <Building size={11} />
-          <span>Recruiter</span>
+          <span>{t('roleRecruiter')}</span>
         </Badge>
       );
     } else {
       return (
         <Badge className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 rounded-full px-2.5 py-0.5 text-xs font-medium inline-flex items-center gap-1">
           <User size={11} />
-          <span>Candidate</span>
+          <span>{t('roleCandidate')}</span>
         </Badge>
       );
     }
@@ -195,17 +197,17 @@ export default function AdminAccountsPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
               <Users className="text-[#1877F2] shrink-0 h-8 w-8" />
-              User Governance
+              {t('pageTitle')}
             </h1>
             <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
-              Manage user accounts, review access status, and suspend policy-violating users across the platform.
+              {t('pageDesc')}
             </p>
           </div>
 
           <CreateStaffModal onSuccess={(msg) => showToast(msg, 'success')}>
             <Button className="bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium h-10 px-4 rounded-lg shadow-2xs active:scale-[0.98] transition-all gap-2 cursor-pointer w-full sm:w-auto">
               <UserPlus className="h-4 w-4" />
-              Create Staff Account
+              {t('createStaffBtn')}
             </Button>
           </CreateStaffModal>
         </div>
@@ -219,14 +221,14 @@ export default function AdminAccountsPage() {
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by email, name, company..."
+                placeholder={t('searchPlaceholder')}
                 className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#65676B] hover:text-[#050505] dark:hover:text-white transition-colors p-1 cursor-pointer"
-                  title="Clear search"
+                  title={t('clearSearch')}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -242,14 +244,14 @@ export default function AdminAccountsPage() {
               }}
             >
               <SelectTrigger className="w-full sm:w-[150px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
-                <SelectValue placeholder="Role Filter" />
+                <SelectValue placeholder={t('roleFilterLabel')} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
-                <SelectItem value="ALL">All Roles</SelectItem>
-                <SelectItem value={String(SystemRole.Admin)}>Admin</SelectItem>
-                <SelectItem value={String(SystemRole.Staff)}>Staff</SelectItem>
-                <SelectItem value={String(SystemRole.Recruiter)}>Recruiter</SelectItem>
-                <SelectItem value={String(SystemRole.Candidate)}>Candidate</SelectItem>
+                <SelectItem value="ALL">{t('allRoles')}</SelectItem>
+                <SelectItem value={String(SystemRole.Admin)}>{t('roleAdmin')}</SelectItem>
+                <SelectItem value={String(SystemRole.Staff)}>{t('roleStaff')}</SelectItem>
+                <SelectItem value={String(SystemRole.Recruiter)}>{t('roleRecruiter')}</SelectItem>
+                <SelectItem value={String(SystemRole.Candidate)}>{t('roleCandidate')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -262,14 +264,14 @@ export default function AdminAccountsPage() {
               }}
             >
               <SelectTrigger className="w-full sm:w-[170px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
-                <SelectValue placeholder="Status Filter" />
+                <SelectValue placeholder={t('statusFilterLabel')} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
-                <SelectItem value="ALL">All Statuses</SelectItem>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="INACTIVE">Inactive</SelectItem>
-                <SelectItem value="BANNED">Banned</SelectItem>
-                <SelectItem value="PENDING_VERIFICATION">Pending Verification</SelectItem>
+                <SelectItem value="ALL">{t('allStatuses')}</SelectItem>
+                <SelectItem value="ACTIVE">{t('statusActive')}</SelectItem>
+                <SelectItem value="INACTIVE">{t('statusInactive')}</SelectItem>
+                <SelectItem value="BANNED">{t('statusBanned')}</SelectItem>
+                <SelectItem value="PENDING_VERIFICATION">{t('statusPending')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -280,7 +282,7 @@ export default function AdminAccountsPage() {
                 variant="ghost"
                 className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
               >
-                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> {t('clearFilters')}
               </Button>
             )}
           </div>
@@ -293,27 +295,27 @@ export default function AdminAccountsPage() {
             <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
               <TableRow className="hover:bg-transparent border-none">
                 <TableHead className="w-[22%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  FULL NAME
+                  {t('colName')}
                 </TableHead>
 
                 <TableHead className="w-[26%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  EMAIL
+                  {t('colEmail')}
                 </TableHead>
 
                 <TableHead className="w-[12%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  ROLE
+                  {t('colRole')}
                 </TableHead>
 
                 <TableHead className="w-[15%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  STATUS
+                  {t('colStatus')}
                 </TableHead>
 
                 <TableHead className="w-[17%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  CREATED DATE
+                  {t('colCreatedDate')}
                 </TableHead>
 
                 <TableHead className="w-[8%] py-3 px-2 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  ACTIONS
+                  {t('colActions')}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -350,10 +352,10 @@ export default function AdminAccountsPage() {
                   <TableCell colSpan={6} className="h-64 text-center">
                     <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
                       <p className="font-semibold text-rose-600 dark:text-rose-400 text-base">
-                        Failed to load user accounts
+                        {t('loadFailTitle')}
                       </p>
                       <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
-                        An error occurred while fetching user accounts data. Please try again.
+                        {t('loadFailDesc')}
                       </p>
                     </div>
                   </TableCell>
@@ -367,12 +369,12 @@ export default function AdminAccountsPage() {
                         <SearchX className="h-6 w-6" />
                       </div>
                       <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">
-                        No user accounts found
+                        {t('noAccountsTitle')}
                       </p>
                       <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
                         {isFilterActive
-                          ? 'No user accounts match the current filters. Try clearing or adjusting your search criteria.'
-                          : 'No user accounts recorded yet.'}
+                          ? t('noAccountsFilterDesc')
+                          : t('noAccountsEmptyDesc')}
                       </p>
                       {isFilterActive && (
                         <Button
@@ -380,7 +382,7 @@ export default function AdminAccountsPage() {
                           variant="outline"
                           className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
                         >
-                          <RotateCcw className="h-4 w-4 mr-2" /> Clear All Filters
+                          <RotateCcw className="h-4 w-4 mr-2" /> {t('clearAllFilters')}
                         </Button>
                       )}
                     </div>
@@ -395,7 +397,7 @@ export default function AdminAccountsPage() {
                   >
                     {/* Full Name */}
                     <TableCell className="py-3.5 px-3 align-middle font-bold text-sm text-[#050505] dark:text-zinc-100 group-hover:text-[#1877F2] dark:group-hover:text-blue-400 transition-colors">
-                      {user.fullName || (user.roleName?.toLowerCase() === 'staff' ? user.email : <span className="text-[#65676B] dark:text-zinc-400 italic font-normal">Not updated</span>)}
+                      {user.fullName || (user.roleName?.toLowerCase() === 'staff' ? user.email : <span className="text-[#65676B] dark:text-zinc-400 italic font-normal">{t('notUpdated')}</span>)}
                     </TableCell>
 
                     {/* Email */}
@@ -430,7 +432,7 @@ export default function AdminAccountsPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
-                            title="View Account Details"
+                            title={t('viewAccountTitle')}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -444,7 +446,7 @@ export default function AdminAccountsPage() {
                               setIsStatusModalOpen(true);
                             }}
                             className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
-                            title="Change User Status"
+                            title={t('changeStatusTitle')}
                           >
                             <Edit2 className="h-4 w-4" />
                           </Button>
@@ -461,9 +463,7 @@ export default function AdminAccountsPage() {
         {/* TẦNG 3: PAGINATION FOOTER */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 px-1">
           <div className="flex items-center space-x-3 text-sm text-[#65676B] dark:text-zinc-400">
-            <div>
-              Showing <span className="font-semibold text-[#050505] dark:text-zinc-200">{startResult} - {endResult}</span> of <span className="font-semibold text-[#050505] dark:text-zinc-200">{accountsTotal}</span> user accounts
-            </div>
+            <div dangerouslySetInnerHTML={{ __html: t.raw('showingText').replace('{start}', startResult.toString()).replace('{end}', endResult.toString()).replace('{total}', accountsTotal.toString()) }} />
             <Select
               value={String(accountsPageSize)}
               onValueChange={(val) => {
@@ -472,7 +472,7 @@ export default function AdminAccountsPage() {
               }}
             >
               <SelectTrigger className="h-8 w-[110px] border-[#CED0D4] dark:border-zinc-800 text-xs font-medium focus:ring-[#1877F2]">
-                <SelectValue placeholder="Page size" />
+                <SelectValue placeholder={t('pageSize')} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
                 <SelectItem value="10">10 / page</SelectItem>

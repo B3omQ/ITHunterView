@@ -8,6 +8,7 @@ import {
 import { Loader2, XCircle } from 'lucide-react';
 import { useUpdateUserStatus } from '@/hooks/useUserGovernance';
 import { UserStatus } from '@/types/user-governance.types';
+import { useTranslations } from 'next-intl';
 
 interface UpdateStatusModalProps {
   open: boolean;
@@ -17,6 +18,7 @@ interface UpdateStatusModalProps {
 }
 
 export function UpdateStatusModal({ open, onOpenChange, targetUser, onSuccess }: UpdateStatusModalProps) {
+  const t = useTranslations('AdminAccounts');
   const [newStatus, setNewStatus] = useState<UserStatus>('ACTIVE');
   const [statusReason, setStatusReason] = useState('');
   const [error, setError] = useState('');
@@ -35,11 +37,11 @@ export function UpdateStatusModal({ open, onOpenChange, targetUser, onSuccess }:
     e.preventDefault();
     if (!targetUser) return;
     if (!statusReason.trim()) {
-      setError('Please enter the reason for updating the status.');
+      setError(t('updateStatusModal.reasonRequired'));
       return;
     }
     if (statusReason.trim().length < 5) {
-      setError('Reason must be at least 5 characters.');
+      setError(t('updateStatusModal.reasonLength'));
       return;
     }
 
@@ -55,14 +57,14 @@ export function UpdateStatusModal({ open, onOpenChange, targetUser, onSuccess }:
       {
         onSuccess: (res) => {
           if (res.success) {
-            onSuccess?.('User status updated successfully!');
+            onSuccess?.(t('updateStatusModal.successMsg'));
             onOpenChange(false);
           } else {
-            setError(res.message || 'Failed to update status.');
+            setError(res.message || t('updateStatusModal.failMsg'));
           }
         },
         onError: (err: any) => {
-          setError(err.response?.data?.message || 'An error occurred while updating.');
+          setError(err.response?.data?.message || t('updateStatusModal.defaultErrorMsg'));
         },
       }
     );
@@ -72,44 +74,44 @@ export function UpdateStatusModal({ open, onOpenChange, targetUser, onSuccess }:
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Update Account Status</DialogTitle>
+          <DialogTitle>{t('updateStatusModal.title')}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div className="space-y-1">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Account</label>
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('updateStatusModal.accountLabel')}</label>
             <p className="text-sm font-mono font-semibold text-foreground bg-muted p-2 rounded-lg border border-border">
               {targetUser?.email}
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">New Status</label>
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('updateStatusModal.newStatusLabel')}</label>
             <select
               value={newStatus}
               onChange={(e) => setNewStatus(e.target.value as UserStatus)}
               className="w-full py-2 px-3 border border-border rounded-xl bg-background text-sm text-foreground outline-none focus:border-primary transition-all"
             >
-              <option value="ACTIVE">Active (ACTIVE)</option>
-              <option value="INACTIVE">Inactive (INACTIVE)</option>
-              <option value="BANNED">Banned (BANNED)</option>
-              <option value="PENDING_VERIFICATION">Pending Verification (PENDING_VERIFICATION)</option>
+              <option value="ACTIVE">{t('updateStatusModal.activeOpt')}</option>
+              <option value="INACTIVE">{t('updateStatusModal.inactiveOpt')}</option>
+              <option value="BANNED">{t('updateStatusModal.bannedOpt')}</option>
+              <option value="PENDING_VERIFICATION">{t('updateStatusModal.pendingOpt')}</option>
             </select>
           </div>
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              Reason for Change <span className="text-rose-500">*</span>
+              {t('updateStatusModal.reasonLabel')} <span className="text-rose-500">*</span>
             </label>
             <textarea
-              placeholder="Enter detailed reason for the audit log (minimum 5 characters)..."
+              placeholder={t('updateStatusModal.reasonPlaceholder')}
               value={statusReason}
               onChange={(e) => setStatusReason(e.target.value)}
               rows={3}
               className="w-full p-3 border border-border rounded-xl bg-background text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground resize-none"
             />
             <span className="text-xs text-muted-foreground">
-              This reason will be recorded in the audit history and cannot be edited.
+              {t('updateStatusModal.reasonNote')}
             </span>
           </div>
 
@@ -126,7 +128,7 @@ export function UpdateStatusModal({ open, onOpenChange, targetUser, onSuccess }:
               onClick={() => onOpenChange(false)}
               className="px-4 py-2 border border-border hover:bg-muted text-foreground font-semibold text-sm rounded-xl transition-colors"
             >
-              Cancel
+              {t('updateStatusModal.cancelBtn')}
             </button>
             <button
               type="submit"
@@ -134,7 +136,7 @@ export function UpdateStatusModal({ open, onOpenChange, targetUser, onSuccess }:
               className="px-4 py-2 bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm rounded-xl shadow-xs transition-colors flex items-center gap-1.5 disabled:opacity-50"
             >
               {updateStatusMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-              <span>Confirm</span>
+              <span>{t('updateStatusModal.confirmBtn')}</span>
             </button>
           </div>
         </form>
