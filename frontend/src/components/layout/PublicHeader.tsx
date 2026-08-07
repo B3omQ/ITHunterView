@@ -43,9 +43,9 @@ export function PublicHeader() {
             <>
               <Link
                 href={getDashboardPath(user.role?.name)}
-                className="flex items-center gap-1.5 h-10 px-4 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-all"
+                className="flex items-center whitespace-nowrap gap-1.5 h-10 px-4 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-all"
               >
-                <LayoutDashboard size={16} className="text-muted-foreground" />
+                <LayoutDashboard size={16} className="shrink-0 text-muted-foreground" />
                 <span>{t('dashboard')}</span>
               </Link>
               <button

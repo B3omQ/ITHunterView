@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { useDeleteSkillCategory } from "@/hooks/useSkill";
 import type { SkillCategoryDto } from "@/types/master-data.types";
+import { useTranslations } from 'next-intl';
 
 interface CategoryDeleteDialogProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export function CategoryDeleteDialog({
   onSuccess,
   onError,
 }: CategoryDeleteDialogProps) {
+  const t = useTranslations('AdminMasterData');
   const deleteMutation = useDeleteSkillCategory();
 
   const handleConfirm = () => {
@@ -54,20 +56,16 @@ export function CategoryDeleteDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <AlertTriangle size={20} />
-            <span>Confirm Deletion</span>
+            <span>{t('categoryDeleteConfirmTitle')}</span>
           </DialogTitle>
         </DialogHeader>
 
         <div className="py-4 text-sm text-muted-foreground">
           <p>
-            Are you sure you want to delete the category{" "}
-            <strong className="text-foreground">
-              "{categoryToDelete?.name}"
-            </strong>
-            ?
+            {t('categoryDeleteConfirmDesc').replace('{name}', categoryToDelete?.name || '')}
           </p>
           <p className="mt-2">
-            Skills belonging to this category will become "Uncategorized".
+            {t('categoryDeleteWarning')}
           </p>
         </div>
 
@@ -77,7 +75,7 @@ export function CategoryDeleteDialog({
             disabled={deleteMutation.isPending}
             className="px-4 py-2 border border-border hover:bg-muted text-foreground font-medium text-sm rounded-xl transition-colors disabled:opacity-50"
           >
-            Cancel
+            {t('cancelBtn')}
           </button>
           <button
             onClick={handleConfirm}
@@ -87,7 +85,7 @@ export function CategoryDeleteDialog({
             {deleteMutation.isPending && (
               <Loader2 size={14} className="animate-spin" />
             )}
-            <span>Yes, Delete</span>
+            <span>{t('categoryDeleteBtn')}</span>
           </button>
         </div>
       </DialogContent>

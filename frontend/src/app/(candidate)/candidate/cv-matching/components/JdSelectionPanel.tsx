@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
+import { useTranslations } from "next-intl";
 
 interface JdSelectionPanelProps {
   jdTab: string;
@@ -26,19 +27,21 @@ export function JdSelectionPanel({
   savedJobs,
   isLoadingJobs,
 }: JdSelectionPanelProps) {
+  const t = useTranslations("CandidateCVMatching");
+
   return (
     <div className="flex flex-col space-y-3">
-      <Label className="text-base font-semibold">Select Job Description (JD)</Label>
+      <Label className="text-base font-semibold">{t("jdSelectionTitle")}</Label>
       <Tabs value={jdTab} onValueChange={setJdTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="paste">Paste JD Text</TabsTrigger>
-          <TabsTrigger value="saved">From Saved Jobs</TabsTrigger>
+          <TabsTrigger value="paste">{t("jdSelectionPasteTab")}</TabsTrigger>
+          <TabsTrigger value="saved">{t("jdSelectionSavedTab")}</TabsTrigger>
         </TabsList>
 
         {/* Tab: Paste JD Text */}
         <TabsContent value="paste" className="mt-4">
           <Textarea
-            placeholder="Paste the Job Description requirements here..."
+            placeholder={t("jdSelectionPastePlaceholder")}
             className="min-h-[220px] font-sans resize-none"
             value={jdText}
             onChange={(e) => setJdText(e.target.value)}
@@ -48,19 +51,19 @@ export function JdSelectionPanel({
         {/* Tab: Saved Jobs */}
         <TabsContent value="saved" className="mt-4">
           <div className="space-y-4">
-            <Label className="text-xs text-muted-foreground">Select one of your bookmarked job postings</Label>
+            <Label className="text-xs text-muted-foreground">{t("jdSelectionSavedLabel")}</Label>
             {isLoadingJobs ? (
               <div className="flex items-center justify-center p-8 border rounded-lg bg-muted/10">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : savedJobs.length === 0 ? (
               <div className="text-center p-8 border border-dashed rounded-lg">
-                <p className="text-sm text-muted-foreground">No saved jobs found.</p>
+                <p className="text-sm text-muted-foreground">{t("jdSelectionNoSaved")}</p>
               </div>
             ) : (
               <Select value={selectedJobId} onValueChange={(val) => setSelectedJobId(val || '')}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a job">
+                  <SelectValue placeholder={t("jdSelectionSelectPlaceholder")}>
                     {selectedJobId 
                       ? (() => {
                           const matched = savedJobs.find(j => j.jobId === selectedJobId);

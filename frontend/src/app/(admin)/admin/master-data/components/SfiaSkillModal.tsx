@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { X, Save, AlertCircle } from "lucide-react";
 import { SfiaSkillDto } from "@/types/master-data.types";
 import { useCreateSfiaSkill, useUpdateSfiaSkill } from "@/hooks/useSfiaSkill";
+import { useTranslations } from 'next-intl';
 
 interface SfiaSkillModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export function SfiaSkillModal({
   initialData,
   onSuccess,
 }: SfiaSkillModalProps) {
+  const t = useTranslations('AdminMasterData');
   const [skillCode, setSkillCode] = useState("");
   const [skillName, setSkillName] = useState("");
   const [category, setCategory] = useState("");
@@ -128,7 +130,7 @@ export function SfiaSkillModal({
       <div className="bg-card w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border border-border flex flex-col max-h-[90vh]">
         <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted/10 shrink-0">
           <h2 className="text-lg font-semibold text-foreground">
-            {mode === "create" ? "Add SFIA Skill" : "Edit SFIA Skill"}
+            {mode === "create" ? t('sfiaFormTitleCreate') : t('sfiaFormTitleEdit')}
           </h2>
           <button
             onClick={onClose}
@@ -149,7 +151,7 @@ export function SfiaSkillModal({
           <form id="sfia-skill-form" onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Skill Code <span className="text-destructive">*</span>
+                {t('sfiaFormCode')} <span className="text-destructive">*</span>
               </label>
               <input
                 type="text"
@@ -164,7 +166,7 @@ export function SfiaSkillModal({
             
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Skill Name <span className="text-destructive">*</span>
+                {t('sfiaFormName')} <span className="text-destructive">*</span>
               </label>
               <input
                 type="text"
@@ -179,7 +181,7 @@ export function SfiaSkillModal({
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Category <span className="text-destructive">*</span>
+                {t('sfiaFormCategory')} <span className="text-destructive">*</span>
               </label>
               <input
                 type="text"
@@ -194,7 +196,7 @@ export function SfiaSkillModal({
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Subcategory
+                {t('sfiaFormSubcategory')}
               </label>
               <input
                 type="text"
@@ -208,7 +210,7 @@ export function SfiaSkillModal({
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Description
+                {t('sfiaFormDesc')}
               </label>
               <textarea
                 value={description}
@@ -222,7 +224,7 @@ export function SfiaSkillModal({
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                Available Levels
+                {t('sfiaFormLevels')}
               </label>
               <div className="flex flex-wrap gap-2">
                 {[1, 2, 3, 4, 5, 6, 7].map((level) => (
@@ -254,7 +256,7 @@ export function SfiaSkillModal({
 
               {selectedLevels.length > 0 && (
                 <div className="space-y-3 mt-4 p-4 bg-muted/20 rounded-xl border border-border">
-                  <h3 className="text-sm font-medium text-foreground">Level Descriptions</h3>
+                  <h3 className="text-sm font-medium text-foreground">{t('sfiaFormLevelDesc')}</h3>
                   {selectedLevels.sort((a, b) => a - b).map((level) => (
                     <div key={level}>
                       <label className="block text-xs font-medium text-muted-foreground mb-1">
@@ -283,7 +285,7 @@ export function SfiaSkillModal({
             disabled={isPending}
             className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl transition-colors disabled:opacity-50"
           >
-            Cancel
+            {t('cancelBtn')}
           </button>
           <button
             type="submit"
@@ -296,7 +298,7 @@ export function SfiaSkillModal({
             ) : (
               <Save size={16} />
             )}
-            <span>{mode === "create" ? "Save Skill" : "Update Skill"}</span>
+            <span>{mode === "create" ? t('saveBtn') : t('saveBtn')}</span>
           </button>
         </div>
       </div>

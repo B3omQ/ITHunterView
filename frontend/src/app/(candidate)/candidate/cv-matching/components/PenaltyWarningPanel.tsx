@@ -2,12 +2,14 @@
 
 import { Penalty } from "@/types/cv.types";
 import { AlertTriangle, XOctagon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface PenaltyWarningPanelProps {
   penalties: Penalty[];
 }
 
 export function PenaltyWarningPanel({ penalties }: PenaltyWarningPanelProps) {
+  const t = useTranslations("CandidateCVMatching");
   const triggeredPenalties = penalties?.filter(p => p.triggered) || [];
 
   if (triggeredPenalties.length === 0) return null;
@@ -15,23 +17,23 @@ export function PenaltyWarningPanel({ penalties }: PenaltyWarningPanelProps) {
   return (
     <div className="space-y-3 mb-6">
       {triggeredPenalties.map((penalty, idx) => {
-        let title = "Penalty Applied";
+        let title = t("penaltyApplied");
         let isSevere = false;
 
         switch (penalty.code) {
           case "RULE_TC1_01":
-            title = "Must-have Missing Asset (Critical Gap)";
+            title = t("mustHaveMissing");
             break;
           case "RULE_TC1_02":
-            title = "Multiple Critical Assets Missing (Pool A Capped)";
+            title = t("multipleCriticalMissing");
             isSevere = true;
             break;
           case "PNL_TC1_01":
-            title = `Core Skill Credibility Gap (-${penalty.deduction} points)`;
+            title = t("coreSkillGap", { points: penalty.deduction });
             isSevere = true;
             break;
           case "KSW_01":
-            title = "Kill-Switch Activated";
+            title = t("killSwitchActivated");
             isSevere = true;
             break;
           default:

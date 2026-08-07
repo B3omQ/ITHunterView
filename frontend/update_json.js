@@ -89,6 +89,18 @@ const auditLogsEn = {
     tableLabel: 'Table:',
     payloadDiffLabel: 'Payload Diff',
     closeBtn: 'Close',
+  },
+
+  // Snapshot diff
+  snapshotDiff: {
+    noChanges: 'No structural/data changes recorded or no payload diff.',
+    jsonError: 'Invalid JSON payload.',
+    noFieldsModified: 'No fields had modified values.',
+    colField: 'Field',
+    colOldValue: 'Old Value',
+    colNewValue: 'New Value',
+    colRecordedValue: 'Recorded Value',
+    valNull: 'null',
   }
 };
 
@@ -177,8 +189,20 @@ const auditLogsVi = {
     uaLabel: 'UA:',
     actionLabel: 'Hành Động',
     tableLabel: 'Bảng:',
-    payloadDiffLabel: 'So Sánh Dữ Liệu',
+    payloadDiffLabel: 'Chênh Lệch Dữ Liệu',
     closeBtn: 'Đóng',
+  },
+
+  // Snapshot diff
+  snapshotDiff: {
+    noChanges: 'Không có thay đổi cấu trúc/dữ liệu nào được ghi nhận hoặc không có chênh lệch dữ liệu.',
+    jsonError: 'Dữ liệu JSON không hợp lệ.',
+    noFieldsModified: 'Không có trường nào bị sửa đổi giá trị.',
+    colField: 'Trường Dữ Liệu',
+    colOldValue: 'Giá Trị Cũ',
+    colNewValue: 'Giá Trị Mới',
+    colRecordedValue: 'Giá Trị Được Ghi Nhận',
+    valNull: 'null',
   }
 };
 

@@ -6,8 +6,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { useAdminCustomCoinTopupPrice, useUpdateAdminCustomCoinTopupPrice } from '@/hooks/useWallet';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 export function CustomCoinTopupPriceTab() {
+  const t = useTranslations('AdminSubscriptions');
   const { data, isLoading } = useAdminCustomCoinTopupPrice();
   const updateMutation = useUpdateAdminCustomCoinTopupPrice();
   const [editedPricePerCoinVnd, setEditedPricePerCoinVnd] = useState<string | null>(null);
@@ -18,7 +20,7 @@ export function CustomCoinTopupPriceTab() {
 
   const handleSave = () => {
     if (!isValidPrice) {
-      toast.error('Enter a positive whole-number price in VND.');
+      toast.error(t('customCoinToastValid'));
       return;
     }
 
@@ -27,7 +29,7 @@ export function CustomCoinTopupPriceTab() {
       {
         onSuccess: (res) => {
           if (res.success) {
-            toast.success('Custom Coin price updated successfully');
+            toast.success(t('customCoinToastSuccess'));
           } else {
             toast.error(res.message || 'Unable to update custom Coin price');
           }
@@ -42,17 +44,17 @@ export function CustomCoinTopupPriceTab() {
   return (
     <Card className="max-w-xl">
       <CardHeader>
-        <CardTitle>Custom Coin Top-up Price</CardTitle>
+        <CardTitle>{t('customCoinTitle')}</CardTitle>
         <CardDescription>
-          This is the price Candidate pays for one individually purchased Coin. It does not affect Coin packages or feature costs.
+          {t('customCoinDesc')}
         </CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading custom Coin price...</p>
+          <p className="text-sm text-muted-foreground">{t('customCoinLoading')}</p>
         ) : (
           <label className="block space-y-2 text-sm font-medium">
-            Price per Coin (VND)
+            {t('customCoinLabel')}
             <Input
               type="number"
               min="1"
@@ -66,7 +68,7 @@ export function CustomCoinTopupPriceTab() {
       </CardContent>
       <CardFooter>
         <Button onClick={handleSave} disabled={isLoading || !isValidPrice || updateMutation.isPending}>
-          {updateMutation.isPending ? 'Saving...' : 'Save custom Coin price'}
+          {updateMutation.isPending ? t('customCoinSavingBtn') : t('customCoinSaveBtn')}
         </Button>
       </CardFooter>
     </Card>

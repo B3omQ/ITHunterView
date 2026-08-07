@@ -7,6 +7,7 @@ import {
   CreateTargetRoleSkillDto
 } from "@/types/master-data.types";
 import { useCreateTargetRole, useUpdateTargetRole, useAllSfiaSkills } from "@/hooks/useTargetRole";
+import { useTranslations } from 'next-intl';
 
 interface TargetRoleModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export function TargetRoleModal({
   initialData,
   onSuccess,
 }: TargetRoleModalProps) {
+  const t = useTranslations('AdminMasterData');
   const [roleName, setRoleName] = useState("");
   const [description, setDescription] = useState("");
   const [skills, setSkills] = useState<CreateTargetRoleSkillDto[]>([]);
@@ -171,7 +173,7 @@ export function TargetRoleModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div>
             <h2 className="text-lg font-bold text-foreground">
-              {mode === "create" ? "Create Target Role" : "Edit Target Role"}
+              {mode === "create" ? t('targetRoleFormTitleCreate') : t('targetRoleFormTitleEdit')}
             </h2>
             <p className="text-xs text-muted-foreground mt-1">
               Configure the role and its required SFIA skills.
@@ -199,7 +201,7 @@ export function TargetRoleModal({
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-foreground">
-                    Role Name <span className="text-destructive">*</span>
+                    {t('targetRoleFormNameEn')} <span className="text-destructive">*</span>
                   </label>
                   <input
                     type="text"
@@ -213,7 +215,7 @@ export function TargetRoleModal({
 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-foreground">
-                    Description
+                    {t('targetRoleFormDescEn')}
                   </label>
                   <textarea
                     value={description}
@@ -229,7 +231,7 @@ export function TargetRoleModal({
               {/* Skills Section */}
               <div className="space-y-4 border-l border-border pl-0 md:pl-6">
                 <label className="text-sm font-semibold text-foreground flex items-center justify-between">
-                  <span>Required Skills <span className="text-destructive">*</span></span>
+                  <span>{t('targetRoleFormRequiredSkills')} <span className="text-destructive">*</span></span>
                   <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{skills.length} added</span>
                 </label>
 
@@ -283,8 +285,7 @@ export function TargetRoleModal({
                 <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                   {skills.length === 0 ? (
                     <div className="text-center py-8 border-2 border-dashed border-border rounded-xl bg-muted/10">
-                      <p className="text-xs text-muted-foreground">No skills added yet.</p>
-                      <p className="text-[10px] text-muted-foreground mt-1">Search above to add SFIA skills.</p>
+                      <p className="text-xs text-muted-foreground">{t('targetRoleFormNoSkills')}</p>
                     </div>
                   ) : (
                     skills.map((skill, index) => {
@@ -341,7 +342,7 @@ export function TargetRoleModal({
             disabled={isPending}
             className="px-5 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground bg-transparent hover:bg-muted rounded-xl transition-colors disabled:opacity-50"
           >
-            Cancel
+            {t('cancelBtn')}
           </button>
           <button
             type="submit"
@@ -354,7 +355,7 @@ export function TargetRoleModal({
             ) : (
               <Check size={16} />
             )}
-            <span>{mode === "create" ? "Create Role" : "Save Changes"}</span>
+            <span>{mode === "create" ? t('saveBtn') : t('saveBtn')}</span>
           </button>
         </div>
       </div>
