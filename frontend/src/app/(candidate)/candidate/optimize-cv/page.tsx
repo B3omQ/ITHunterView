@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useGetMyCvs } from '@/hooks/useCv';
 import { useUploadFile } from '@/hooks/useUpload';
 import { useCreateOptimizeSession, useGetOptimizeHistory, useDeleteOptimizeHistory } from '@/hooks/useOptimizeCv';
+import { useWalletBalance } from '@/hooks/useWallet';
+import { usePublicCoinConfig } from '@/hooks/useCoin';
 import { optimizeService } from '@/services/optimize.service';
 import { cvService } from '@/services/cv.service';
 import { CvOptimizationResult } from '@/types/optimize.types';
@@ -33,7 +35,9 @@ import {
   History,
   Calendar,
   Eye,
-  Trash2
+  Trash2,
+  Zap,
+  Coins
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -44,6 +48,20 @@ export default function StandaloneCvOptimizePage() {
   const createSessionMutation = useCreateOptimizeSession();
 
   const myCvs = myCvsRes?.data || [];
+
+  // Wallet & Coin State
+  const { data: walletRes } = useWalletBalance();
+  const { data: coinConfigRes } = usePublicCoinConfig();
+
+  const balance = walletRes?.data?.balance ?? 0;
+  const activeSubName = walletRes?.data?.activeSubscriptionName;
+  const optimizeCost = coinConfigRes?.data?.featureCosts?.cvOptimize ?? 500;
+  
+  const optimizeLimit = walletRes?.data?.cvOptimizeLimit ?? 0;
+  const optimizeUsed = walletRes?.data?.cvOptimizeUsed ?? 0;
+  const isSubUnlimited = optimizeLimit === -1;
+  const subRemaining = isSubUnlimited ? -1 : Math.max(0, optimizeLimit - optimizeUsed);
+  const hasActiveSub = !!activeSubName && (isSubUnlimited || subRemaining > 0);
 
   // Form State
   const [cvSourceTab, setCvSourceTab] = useState<'saved' | 'upload'>('saved');
@@ -94,6 +112,11 @@ export default function StandaloneCvOptimizePage() {
   };
 
   const handleStartAnalysis = async () => {
+    if (!hasActiveSub && balance < optimizeCost) {
+      toast.error(`Bạn không đủ Coin. Cần ${optimizeCost.toLocaleString()} Coin để tiếp tục.`);
+      return;
+    }
+
     setIsAnalyzing(true);
     try {
       if (cvSourceTab === 'saved') {
@@ -277,7 +300,44 @@ export default function StandaloneCvOptimizePage() {
 
       {/* Input Step: Select CV when no result yet */}
       {!isAnalyzing && !analysisResult && (
-        <Card className="shadow-sm border-border/80">
+        <div className="space-y-6">
+          {/* Feature Cost & Wallet Balance Banner */}
+          <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500/10 via-amber-500/10 to-transparent border border-purple-500/20 shadow-sm flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-500 shadow-inner">
+                {hasActiveSub ? <Zap className="h-5 w-5 text-purple-600 dark:text-purple-400 fill-purple-600/20" /> : <Coins className="h-5 w-5 text-amber-500 fill-amber-500/20" />}
+              </div>
+              <div>
+                <h4 className="font-bold text-foreground text-sm">Phí sử dụng:</h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {hasActiveSub 
+                    ? <span className="text-purple-600 dark:text-purple-400 font-medium">Miễn phí (Gói {activeSubName} - Còn {isSubUnlimited ? 'Vô hạn' : subRemaining} lượt)</span>
+                    : <span>{optimizeCost.toLocaleString()} Coin / lượt</span>}
+                </p>
+              </div>
+            </div>
+            
+            <div className="text-right flex items-center gap-4">
+              <div className="hidden sm:block">
+                <p className="text-xs text-muted-foreground">Số dư hiện tại:</p>
+                <p className="text-sm font-bold text-foreground">
+                  <strong className={(!hasActiveSub && balance < optimizeCost) ? "text-rose-500" : "text-emerald-600"}>
+                    {balance.toLocaleString()} Coin
+                  </strong>
+                </p>
+              </div>
+              <Button 
+                variant={(!hasActiveSub && balance < optimizeCost) ? "default" : "outline"}
+                size="sm"
+                className={(!hasActiveSub && balance < optimizeCost) ? "bg-amber-500 hover:bg-amber-600 text-white" : "border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"}
+                onClick={() => router.push('/candidate/billing')}
+              >
+                Nạp thêm
+              </Button>
+            </div>
+          </div>
+
+          <Card className="shadow-sm border-border/80">
           <CardHeader>
             <CardTitle className="text-xl font-bold flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" /> Chọn CV cần đánh giá
@@ -403,6 +463,7 @@ export default function StandaloneCvOptimizePage() {
             </div>
           </CardContent>
         </Card>
+        </div>
       )}
 
       {/* Analysis Results View */}

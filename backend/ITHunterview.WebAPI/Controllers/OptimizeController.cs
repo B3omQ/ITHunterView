@@ -40,7 +40,7 @@ public class OptimizeController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return Ok(new ResponseBase<CvOptimizationResultDto>(null!, ex.Message));
+            return BadRequest(new ResponseBase<CvOptimizationResultDto>(ex.Message));
         }
         catch (Exception ex)
         {

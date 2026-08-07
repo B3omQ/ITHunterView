@@ -7,6 +7,8 @@ export interface WalletBalanceDto {
   mockInterviewUsed?: number | null;
   cvMatchLimit?: number | null;
   cvMatchUsed?: number | null;
+  cvOptimizeLimit?: number | null;
+  cvOptimizeUsed?: number | null;
   learningPathLimit?: number | null;
   learningPathUsed?: number | null;
   learningPathSlotLimit?: number | null;

@@ -652,7 +652,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         Name = "Basic", 
                         Price = 0, 
                         DurationDays = 36500, 
-                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":5,\"mockInterviewLimit\":1,\"learningPathLimit\":1,\"learningPathSlotLimit\":1,\"coinCredit\":0}",
+                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":5,\"cvOptimizeLimit\":1,\"mockInterviewLimit\":1,\"learningPathLimit\":1,\"learningPathSlotLimit\":1,\"coinCredit\":0}",
                         Status = SubscriptionStatus.ACTIVE
                     },
                     new Subscriptions 
@@ -660,7 +660,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         Name = "Pro Career", 
                         Price = 199000, 
                         DurationDays = 30, 
-                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":30,\"mockInterviewLimit\":10,\"learningPathLimit\":5,\"learningPathSlotLimit\":3,\"coinCredit\":3500}",
+                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":30,\"cvOptimizeLimit\":5,\"mockInterviewLimit\":10,\"learningPathLimit\":5,\"learningPathSlotLimit\":3,\"coinCredit\":3500}",
                         Status = SubscriptionStatus.ACTIVE
                     },
                     new Subscriptions 
@@ -668,7 +668,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                         Name = "Mastery", 
                         Price = 449000, 
                         DurationDays = 30, 
-                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":100,\"mockInterviewLimit\":20,\"learningPathLimit\":30,\"learningPathSlotLimit\":-1,\"coinCredit\":10000}",
+                        FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":100,\"cvOptimizeLimit\":10,\"mockInterviewLimit\":20,\"learningPathLimit\":30,\"learningPathSlotLimit\":-1,\"coinCredit\":10000}",
                         Status = SubscriptionStatus.ACTIVE
                     },
                     
@@ -716,21 +716,21 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 var existingSubs = await context.Subscriptions.ToListAsync();
 
                 var basic = existingSubs.FirstOrDefault(s => s.Name == "Basic" && (s.FeaturesConfig?.Contains("CANDIDATE") == true));
-                if (basic != null && (!basic.FeaturesConfig.Contains("learningPathLimit") || !basic.FeaturesConfig.Contains("\"learningPathSlotLimit\":1") || basic.FeaturesConfig.Contains("aiRefreshUnlimited")))
+                if (basic != null && (!basic.FeaturesConfig.Contains("learningPathLimit") || !basic.FeaturesConfig.Contains("\"learningPathSlotLimit\":1") || !basic.FeaturesConfig.Contains("cvOptimizeLimit") || basic.FeaturesConfig.Contains("aiRefreshUnlimited")))
                 {
-                    basic.FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":5,\"mockInterviewLimit\":1,\"learningPathLimit\":1,\"learningPathSlotLimit\":1,\"coinCredit\":0}";
+                    basic.FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":5,\"cvOptimizeLimit\":1,\"mockInterviewLimit\":1,\"learningPathLimit\":1,\"learningPathSlotLimit\":1,\"coinCredit\":0}";
                 }
 
                 var pro = existingSubs.FirstOrDefault(s => (s.Name == "Pro Career" || s.Name == "Pro") && (s.FeaturesConfig?.Contains("CANDIDATE") == true));
-                if (pro != null && (!pro.FeaturesConfig.Contains("learningPathLimit") || !pro.FeaturesConfig.Contains("\"learningPathSlotLimit\":3") || pro.FeaturesConfig.Contains("aiRefreshUnlimited")))
+                if (pro != null && (!pro.FeaturesConfig.Contains("learningPathLimit") || !pro.FeaturesConfig.Contains("\"learningPathSlotLimit\":3") || !pro.FeaturesConfig.Contains("cvOptimizeLimit") || pro.FeaturesConfig.Contains("aiRefreshUnlimited")))
                 {
-                    pro.FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":30,\"mockInterviewLimit\":10,\"learningPathLimit\":5,\"learningPathSlotLimit\":3,\"coinCredit\":3500}";
+                    pro.FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":30,\"cvOptimizeLimit\":5,\"mockInterviewLimit\":10,\"learningPathLimit\":5,\"learningPathSlotLimit\":3,\"coinCredit\":3500}";
                 }
 
                 var mastery = existingSubs.FirstOrDefault(s => s.Name == "Mastery" && (s.FeaturesConfig?.Contains("CANDIDATE") == true));
-                if (mastery != null && (!mastery.FeaturesConfig.Contains("learningPathLimit") || !mastery.FeaturesConfig.Contains("\"learningPathSlotLimit\":-1") || mastery.FeaturesConfig.Contains("aiRefreshUnlimited")))
+                if (mastery != null && (!mastery.FeaturesConfig.Contains("learningPathLimit") || !mastery.FeaturesConfig.Contains("\"learningPathSlotLimit\":-1") || !mastery.FeaturesConfig.Contains("cvOptimizeLimit") || mastery.FeaturesConfig.Contains("aiRefreshUnlimited")))
                 {
-                    mastery.FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":100,\"mockInterviewLimit\":20,\"learningPathLimit\":30,\"learningPathSlotLimit\":-1,\"coinCredit\":10000}";
+                    mastery.FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":100,\"cvOptimizeLimit\":10,\"mockInterviewLimit\":20,\"learningPathLimit\":30,\"learningPathSlotLimit\":-1,\"coinCredit\":10000}";
                 }
 
                 if (context.ChangeTracker.HasChanges())
@@ -750,6 +750,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     // Candidate Features
                     new CoinFeatures { FeatureKey = "LearningPath", CoinCost = 500, Description = "Create Learning Path" },
                     new CoinFeatures { FeatureKey = "CvJdMatching", CoinCost = 1000, Description = "AI CV-JD Matching" },
+                    new CoinFeatures { FeatureKey = "CvOptimize", CoinCost = 500, Description = "AI CV Optimization" },
                     new CoinFeatures { FeatureKey = "MockInterview", CoinCost = 2000, Description = "AI Mock Interview" },
                     
                     // Recruiter Features
@@ -760,6 +761,14 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 };
                 context.CoinFeatures.AddRange(features);
                 await context.SaveChangesAsync();
+            }
+            else
+            {
+                if (!context.CoinFeatures.Any(x => x.FeatureKey == "CvOptimize"))
+                {
+                    context.CoinFeatures.Add(new CoinFeatures { FeatureKey = "CvOptimize", CoinCost = 500, Description = "AI CV Optimization" });
+                    await context.SaveChangesAsync();
+                }
             }
 
             // Seed CoinPackages
