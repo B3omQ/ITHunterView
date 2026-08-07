@@ -92,9 +92,9 @@ export default function AppliedJobsPage() {
     <div className="w-full pb-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Applied Jobs</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('appliedJobs')}</h1>
           <p className="text-muted-foreground mt-2 max-w-2xl">
-            Track the status of your job applications and stay on top of your career journey.
+            {t('trackStatus')}
           </p>
         </div>
       </div>
@@ -114,9 +114,9 @@ export default function AppliedJobsPage() {
     <div className="w-full pb-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Applied Jobs</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('appliedJobs')}</h1>
           <p className="text-muted-foreground mt-2 max-w-2xl">
-            Track the status of your job applications and stay on top of your career journey.
+            {t('trackStatus')}
           </p>
         </div>
       </div>

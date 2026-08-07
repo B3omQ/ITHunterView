@@ -42,7 +42,7 @@ const ICONS: Record<string, React.ReactNode> = {
 }
 
 // ---- Nav definitions per role ----
-type NavItem = { labelKey: string; href: string; icon: string; badge?: number; children?: { labelKey: string; href: string }[] }
+export interface NavItem { labelKey: string; href: string; icon: string; badge?: number; children?: { labelKey: string; href: string }[] }
 
 const CANDIDATE_NAV: NavItem[] = [
   { labelKey: "dashboard", href: APP_ROUTES.CANDIDATE.DASHBOARD, icon: "LayoutDashboard" },
@@ -99,7 +99,7 @@ const ADMIN_NAV: NavItem[] = [
   { labelKey: "platformSafety", href: APP_ROUTES.ADMIN.AUDIT_LOGS, icon: "Shield" }
 ]
 
-function getNavItems(role: string): NavItem[] {
+export function getNavItems(role: string): NavItem[] {
   switch (role.toLowerCase()) {
     case "admin": return ADMIN_NAV
     case "staff": return STAFF_NAV
