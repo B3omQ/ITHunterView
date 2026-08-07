@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ITHunterview.Service.Service.Matching;
+using ITHunterview.Domain.Enums;
 
 namespace ITHunterview.Service.Tests.Matching;
 
@@ -29,6 +30,8 @@ public class CvStageTwoContextBuilderTests
         Assert.True(result.Json.Length < source.Length);
         Assert.Equal("Engineer", output.RootElement.GetProperty("candidate").GetProperty("title").GetString());
         Assert.Equal("C#", output.RootElement.GetProperty("matching_metrics").GetProperty("skills_normalized")[0].GetString());
+        Assert.Equal(CvAnalysisQuality.PARTIAL, result.Quality);
+        Assert.Equal("PARTIAL", output.RootElement.GetProperty("cv_analysis").GetProperty("quality").GetString());
     }
 
     [Fact]
@@ -37,5 +40,23 @@ public class CvStageTwoContextBuilderTests
         var exception = Assert.Throws<InvalidOperationException>(() => new CvStageTwoContextBuilder().Build("{not-json"));
 
         Assert.Equal(CvStageTwoContextBuilder.InvalidCvMatchingContext, exception.Message);
+    }
+
+    [Fact]
+    public void Build_CanonicalPartial_PreservesResultAndWarningMetadata()
+    {
+        var validator = new CvAnalysisResponseValidator();
+        var malformedMetric = CvAnalysisResponseValidatorTests.CreateValidDocument()
+            .Replace("\"total_years_exp\":7", "\"total_years_exp\":\"unknown\"");
+        var canonical = validator.ValidateAndCanonicalize(malformedMetric);
+
+        var result = new CvStageTwoContextBuilder().Build(canonical.CanonicalJson);
+
+        Assert.Equal(CvAnalysisQuality.PARTIAL, result.Quality);
+        Assert.Contains(result.Diagnostics, value => value.Code == "INTEGER_INVALID");
+        using var output = JsonDocument.Parse(result.Json);
+        Assert.False(output.RootElement.GetProperty("cv_analysis").GetProperty("experience_metric_available").GetBoolean());
+        Assert.Contains("INTEGER_INVALID", output.RootElement.GetProperty("cv_analysis").GetProperty("warning_codes")
+            .EnumerateArray().Select(value => value.GetString()));
     }
 }

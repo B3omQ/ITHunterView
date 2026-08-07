@@ -41,6 +41,8 @@ public sealed class JdStageTwoContextBuilder
             @operator = group.Operator,
             minSatisfied = group.MinSatisfied,
             importance = group.Importance,
+            sourceSection = group.SourceSection,
+            requirementVerbatim = group.RequirementVerbatim,
             items = group.Items.Select(item => new
             {
                 itemId = item.ItemId,
@@ -420,6 +422,16 @@ public sealed class JdFitScoreCalculator
             mode = "jd_fit",
             contract = JdStageTwoContextBuilder.Contract,
             sourceJdSchemaVersion = projection.SourceSchemaVersion,
+            jdAnalysis = new
+            {
+                quality = projection.AnalysisQuality,
+                scoreBasis = projection.RequirementSetComplete
+                    ? "complete_requirement_set"
+                    : "accepted_requirements_only",
+                requirementSetComplete = projection.RequirementSetComplete,
+                coverage = projection.Coverage,
+                warningCodes = projection.WarningCodes ?? Array.Empty<string>()
+            },
             jdFit = new
             {
                 score = Math.Round(finalScore, 1),

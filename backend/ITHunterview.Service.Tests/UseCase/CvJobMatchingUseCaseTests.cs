@@ -16,6 +16,8 @@ using Moq;
 using Pgvector;
 using Xunit;
 using FluentAssertions;
+using ITHunterview.Domain.Enums;
+using ITHunterview.Service.Utils;
 
 namespace ITHunterview.Service.Tests.UseCase
 {
@@ -101,6 +103,46 @@ namespace ITHunterview.Service.Tests.UseCase
         }
 
         [Fact]
+        public async Task GetMatchingResultAsync_MapsPartialCvAnalysisWithoutChangingCompletedStatus()
+        {
+            var options = new DbContextOptionsBuilder<ITHunterviewContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+            await using var context = new MatchingTestContext(options);
+            var matchId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var coverage = new CvAnalysisCoverage(
+                2, 1, 1,
+                3, 2, 1,
+                1, 1, 0,
+                true, true, true, false);
+            context.CvJobMatchScores.Add(new CvJobMatchScores
+            {
+                Id = matchId,
+                UserId = userId,
+                Status = "Completed",
+                MatchScore = .75m,
+                MatchDetails = "{\"scoreBasis\":\"available_cv_metrics\"}",
+                CvAnalysisQuality = CvAnalysisQuality.PARTIAL,
+                CvAnalysisCoverageJson = CvAnalysisMetadataReader.SerializeCoverage(coverage),
+                CvAnalysisDiagnosticsJson = CvAnalysisMetadataReader.SerializeDiagnostics(
+                    [new CvAnalysisDiagnostic("DOMAIN_METRIC_MISSING", "$.matching_metrics.domains")]),
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var sut = CreateDatabaseUseCase(context);
+            var result = await sut.GetMatchingResultAsync(matchId, userId);
+
+            result.Should().NotBeNull();
+            result!.Status.Should().Be("Completed");
+            result.CvAnalysis.Should().NotBeNull();
+            result.CvAnalysis!.Quality.Should().Be("PARTIAL");
+            result.CvAnalysis.ScoreBasis.Should().Be("available_cv_metrics");
+            result.CvAnalysis.WarningCodes.Should().Equal("DOMAIN_METRIC_MISSING");
+        }
+
+        [Fact]
         public async Task ProcessMatchingJobAsync_WhenBothParsersNeedScopedServices_DoesNotStartThemConcurrently()
         {
             var options = new DbContextOptionsBuilder<ITHunterviewContext>()
@@ -142,6 +184,16 @@ namespace ITHunterview.Service.Tests.UseCase
             featureUsage
                 .Setup(x => x.RefundFeatureUsageByReferenceAsync(userId, matchId, It.IsAny<string>()))
                 .Returns(Task.CompletedTask);
+            var cvValidator = new Mock<ICvAnalysisResponseValidator>();
+            cvValidator
+                .Setup(x => x.ValidateAndCanonicalize("{}"))
+                .Returns(CvAnalysisValidationResult.Complete(
+                    "{}",
+                    new CvAnalysisCoverage(
+                        0, 0, 0,
+                        0, 0, 0,
+                        0, 0, 0,
+                        true, true, true, true)));
 
             var sut = new CvJobMatchingUseCase(
                 context,
@@ -156,7 +208,7 @@ namespace ITHunterview.Service.Tests.UseCase
                 featureUsage.Object,
                 preflight.Object,
                 Mock.Of<IMatchingSourceRepository>(),
-                Mock.Of<ICvAnalysisResponseValidator>(),
+                cvValidator.Object,
                 jobExtraction.Object);
             var request = new PreparedMatchingRequest(
                 new PreparedRawCvSource("raw cv", null),
@@ -194,5 +246,20 @@ namespace ITHunterview.Service.Tests.UseCase
                 modelBuilder.Entity<OptimizeSession>().Ignore(x => x.CvDocument);
             }
         }
+
+        private static CvJobMatchingUseCase CreateDatabaseUseCase(ITHunterviewContext context) => new(
+            context,
+            Mock.Of<IAiEmbeddingService>(),
+            Mock.Of<ICvTextExtractorService>(),
+            Mock.Of<System.Net.Http.IHttpClientFactory>(),
+            Mock.Of<Microsoft.Extensions.Configuration.IConfiguration>(),
+            NullLogger<CvJobMatchingUseCase>.Instance,
+            Mock.Of<IPromptManagementService>(),
+            Mock.Of<ISystemConfigRepository>(),
+            Mock.Of<IAiService>(),
+            Mock.Of<ICandidateFeatureUsageUseCase>(),
+            Mock.Of<IMatchingInputPreflightUseCase>(),
+            Mock.Of<IMatchingSourceRepository>(),
+            Mock.Of<ICvAnalysisResponseValidator>());
     }
 }

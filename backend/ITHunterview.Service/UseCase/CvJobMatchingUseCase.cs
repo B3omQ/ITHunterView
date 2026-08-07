@@ -21,6 +21,9 @@ using Microsoft.Extensions.Logging;
 using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Service;
 using ITHunterview.Service.Service.Matching;
+using ITHunterview.Service.Exceptions;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -150,63 +153,57 @@ namespace ITHunterview.Service.UseCase
 
         private async Task EnsureCvIsParsedAsync(Cvs cv)
         {
-            if (string.IsNullOrWhiteSpace(cv.ParsedData) || cv.ParseStatus != "SUCCESS")
+            if (!string.IsNullOrWhiteSpace(cv.ParsedData) && cv.ParseStatus == "SUCCESS")
             {
-                _logger.LogInformation("[INFO] On-demand parsing CV {CvId} in AI Matching.", cv.Id);
-                var parsedData = await _cvTextExtractorService.ExtractParsedDataFromUrlAsync(cv.FileUrl, cv.RawText);
-                
-                if (string.IsNullOrWhiteSpace(parsedData))
+                var stored = ValidateAndCanonicalizeStoredCv(cv);
+                if (stored.IsUsable)
                 {
-                    cv.ParseStatus = "FAILED";
-                    _context.Cvs.Update(cv);
                     await _context.SaveChangesAsync();
-                    throw new Exception($"Cannot parse CV data on-demand for CV {cv.Id}.");
+                    return;
                 }
-                
-                cv.ParsedData = parsedData;
-                cv.ParseStatus = "SUCCESS";
-                _context.Cvs.Update(cv);
-                await _context.SaveChangesAsync();
             }
+
+            _logger.LogInformation("On-demand parsing CV {CvId} in AI matching.", cv.Id);
+            var parsedData = await _cvTextExtractorService.ExtractParsedDataFromUrlAsync(cv.FileUrl, cv.RawText);
+            var validation = _cvAnalysisResponseValidator.ValidateAndCanonicalize(parsedData);
+            if (!validation.IsUsable) throw new CvAnalysisValidationException(validation);
+
+            cv.ParsedData = validation.CanonicalJson;
+            ApplyCvAnalysisMetadata(cv, validation);
+            _context.Cvs.Update(cv);
+            await _context.SaveChangesAsync();
         }
 
-        private bool TryCanonicalizeStoredV2Cv(Cvs cv)
+        private CvAnalysisValidationResult ValidateAndCanonicalizeStoredCv(Cvs cv)
         {
-            if (!IsCvAnalysisV2(cv.ParsedData) || string.IsNullOrWhiteSpace(cv.RawText))
+            if (string.IsNullOrWhiteSpace(cv.ParsedData))
             {
-                return false;
+                return CvAnalysisValidationResult.Invalid(
+                    "CV_ANALYSIS_EMPTY_OUTPUT",
+                    "EMPTY_STORED_ANALYSIS",
+                    "$");
             }
 
-            var sourceType = cv.FileName?.EndsWith(".docx", StringComparison.OrdinalIgnoreCase) == true
-                ? "docx_text"
-                : "pdf_text";
-            var result = _cvAnalysisResponseValidator.ValidateAndCanonicalize(
-                cv.ParsedData,
-                new CvAnalysisInputSnapshot(cv.RawText, sourceType, cv.FileName, DateOnly.FromDateTime(DateTime.UtcNow)));
-            if (!result.IsValid)
+            var result = _cvAnalysisResponseValidator.ValidateAndCanonicalize(cv.ParsedData);
+            if (!result.IsUsable)
             {
                 _logger.LogWarning("Stored CV analysis requires reparsing. CvId={CvId}; FailureCode={FailureCode}", cv.Id, result.FailureCode);
-                return false;
+                return result;
             }
 
             cv.ParsedData = result.CanonicalJson;
-            return true;
+            ApplyCvAnalysisMetadata(cv, result);
+            return result;
         }
 
-        private static bool IsCvAnalysisV2(string? parsedData)
+        private static void ApplyCvAnalysisMetadata(Cvs cv, CvAnalysisValidationResult validation)
         {
-            if (string.IsNullOrWhiteSpace(parsedData)) return false;
-            try
-            {
-                using var document = JsonDocument.Parse(parsedData);
-                return document.RootElement.ValueKind == JsonValueKind.Object &&
-                       document.RootElement.TryGetProperty("schema_version", out var schemaVersion) &&
-                       string.Equals(schemaVersion.GetString(), "cv-analysis/v2", StringComparison.Ordinal);
-            }
-            catch (JsonException)
-            {
-                return false;
-            }
+            cv.AnalysisQuality = validation.Quality;
+            cv.AnalysisCoverageJson = CvAnalysisMetadataReader.SerializeCoverage(validation.Coverage);
+            cv.AnalysisDiagnosticsJson = CvAnalysisMetadataReader.SerializeDiagnostics(validation.Diagnostics);
+            cv.ParseStatus = "SUCCESS";
+            cv.ParseError = null;
+            cv.UpdatedAt = DateTime.UtcNow;
         }
 
         private async Task GenerateEmbeddingsForCvAsync(Cvs cv)
@@ -559,6 +556,7 @@ namespace ITHunterview.Service.UseCase
                 Cvs? savedCv = null;
                 bool cvNeedsAiParse = false;      // Cần gọi AI parse ParsedData (saved CV hoặc Temp raw text)
                 bool isCvTextJson = false;
+                CvAnalysisValidationResult? cvAnalysis = null;
 
                 var snapshotCvAnalysisJson = snapshot?.Cv.AnalysisJson;
                 string cvText = !string.IsNullOrWhiteSpace(snapshotCvAnalysisJson)
@@ -567,8 +565,24 @@ namespace ITHunterview.Service.UseCase
                 
                 if (snapshot != null)
                 {
-                    cvNeedsAiParse = string.IsNullOrWhiteSpace(snapshot.Cv.AnalysisJson);
-                    isCvTextJson = !cvNeedsAiParse;
+                    if (!string.IsNullOrWhiteSpace(snapshot.Cv.AnalysisJson))
+                    {
+                        cvAnalysis = _cvAnalysisResponseValidator.ValidateAndCanonicalize(snapshot.Cv.AnalysisJson);
+                        if (cvAnalysis.IsUsable)
+                        {
+                            cvText = cvAnalysis.CanonicalJson;
+                            isCvTextJson = true;
+                        }
+                        else
+                        {
+                            cvText = snapshot.Cv.OriginalText ?? string.Empty;
+                            cvNeedsAiParse = true;
+                        }
+                    }
+                    else
+                    {
+                        cvNeedsAiParse = true;
+                    }
                 }
                 else if (!string.IsNullOrWhiteSpace(cvText))
                 {
@@ -584,8 +598,21 @@ namespace ITHunterview.Service.UseCase
                         throw new KeyNotFoundException("CV not found");
                     }
 
-                    if (string.IsNullOrWhiteSpace(savedCv.ParsedData) || savedCv.ParseStatus != "SUCCESS" || !TryCanonicalizeStoredV2Cv(savedCv))
+                    cvAnalysis = savedCv.ParseStatus == "SUCCESS"
+                        ? ValidateAndCanonicalizeStoredCv(savedCv)
+                        : CvAnalysisValidationResult.Invalid(
+                            "CV_ANALYSIS_EMPTY_OUTPUT",
+                            "STORED_ANALYSIS_NOT_READY",
+                            "$");
+                    if (cvAnalysis.IsUsable)
+                    {
+                        cvText = cvAnalysis.CanonicalJson;
+                        isCvTextJson = true;
+                    }
+                    else
+                    {
                         cvNeedsAiParse = true;
+                    }
                 }
                 else
                 {
@@ -646,14 +673,19 @@ namespace ITHunterview.Service.UseCase
                 {
                     if (!string.IsNullOrWhiteSpace(parsedData))
                     {
+                        cvAnalysis = _cvAnalysisResponseValidator.ValidateAndCanonicalize(parsedData);
+                        if (!cvAnalysis.IsUsable)
+                        {
+                            throw new CvAnalysisValidationException(cvAnalysis);
+                        }
                         if (savedCv != null)
                         {
-                            savedCv.ParsedData = parsedData;
-                            savedCv.ParseStatus = "SUCCESS";
+                            savedCv.ParsedData = cvAnalysis.CanonicalJson;
+                            ApplyCvAnalysisMetadata(savedCv, cvAnalysis);
                             _context.Cvs.Update(savedCv);
                             await _context.SaveChangesAsync(cancellationToken);
                         }
-                        cvText = parsedData;
+                        cvText = cvAnalysis.CanonicalJson;
                         isCvTextJson = true;
                     }
                     else
@@ -727,7 +759,13 @@ namespace ITHunterview.Service.UseCase
                 {
                     throw new InvalidOperationException("CV_ANALYSIS_INVALID_FOR_MATCHING");
                 }
-                var stageTwoCvContext = _cvStageTwoContextBuilder.Build(cvText).Json;
+                var stageTwoCv = _cvStageTwoContextBuilder.Build(cvText);
+                cvAnalysis ??= _cvAnalysisResponseValidator.ValidateAndCanonicalize(cvText);
+                if (!cvAnalysis.IsUsable)
+                {
+                    throw new CvAnalysisValidationException(cvAnalysis);
+                }
+                var stageTwoCvContext = stageTwoCv.Json;
 
                 // 3. Prompt Stage 2
                 var variables = new Dictionary<string, string>
@@ -760,11 +798,13 @@ namespace ITHunterview.Service.UseCase
                     throw new Exception("Active Prompt for JD_MATCHING_PROMPT not found.");
                 }
 
-                _logger.LogWarning(
-                    "FULL_MATCHING_PROMPT MatchId={MatchId}; PromptLength={PromptLength}; Prompt={Prompt}",
+                var promptHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(prompt)))[..16]
+                    .ToLowerInvariant();
+                _logger.LogInformation(
+                    "Matching prompt prepared. MatchId={MatchId}; PromptLength={PromptLength}; PromptHash={PromptHash}",
                     matchRecord.Id,
                     prompt.Length,
-                    prompt);
+                    promptHash);
 
                 // 4. Call LLM (Stage 2)
                 string llmResponseText = await CallLlmBypassAsync(prompt, cancellationToken);
@@ -782,12 +822,18 @@ namespace ITHunterview.Service.UseCase
                         return new CvJdMatchingExecutionResult(
                             finalResult.FinalScore,
                             finalResult.JsonString,
-                            matchRecord.SfiaExtractResult);
+                            matchRecord.SfiaExtractResult,
+                            stageTwoCv.Quality,
+                            stageTwoCv.Coverage,
+                            stageTwoCv.Diagnostics);
                     }
 
                     matchRecord.Status = "Completed";
                     matchRecord.MatchScore = finalResult.FinalScore;
                     matchRecord.MatchDetails = finalResult.JsonString;
+                    matchRecord.CvAnalysisQuality = stageTwoCv.Quality;
+                    matchRecord.CvAnalysisCoverageJson = CvAnalysisMetadataReader.SerializeCoverage(stageTwoCv.Coverage);
+                    matchRecord.CvAnalysisDiagnosticsJson = CvAnalysisMetadataReader.SerializeDiagnostics(stageTwoCv.Diagnostics);
                     matchRecord.UpdatedAt = DateTime.UtcNow;
                     await _context.SaveChangesAsync(cancellationToken);
                 }
@@ -811,7 +857,10 @@ namespace ITHunterview.Service.UseCase
                 return new CvJdMatchingExecutionResult(
                     matchRecord.MatchScore ?? 0m,
                     matchRecord.MatchDetails,
-                    matchRecord.SfiaExtractResult);
+                    matchRecord.SfiaExtractResult,
+                    matchRecord.CvAnalysisQuality,
+                    CvAnalysisMetadataReader.ReadCoverageJson(matchRecord.CvAnalysisCoverageJson),
+                    CvAnalysisMetadataReader.ReadDiagnosticsJson(matchRecord.CvAnalysisDiagnosticsJson));
             }
             catch (Exception ex)
             {
@@ -833,7 +882,10 @@ namespace ITHunterview.Service.UseCase
             return new CvJdMatchingExecutionResult(
                 matchRecord.MatchScore ?? 0m,
                 matchRecord.MatchDetails,
-                matchRecord.SfiaExtractResult);
+                matchRecord.SfiaExtractResult,
+                matchRecord.CvAnalysisQuality,
+                CvAnalysisMetadataReader.ReadCoverageJson(matchRecord.CvAnalysisCoverageJson),
+                CvAnalysisMetadataReader.ReadDiagnosticsJson(matchRecord.CvAnalysisDiagnosticsJson));
         }
 
         public async Task ProcessMatchingJobAsync(Guid jobId, Guid userId, PreparedMatchingRequest request)
@@ -899,7 +951,7 @@ namespace ITHunterview.Service.UseCase
             var extraction = cancellationToken.CanBeCanceled
                 ? await _jobAnalysisExtractionService.ExtractWithActivePromptsAsync(snapshot, cancellationToken)
                 : await _jobAnalysisExtractionService.ExtractWithActivePromptsAsync(snapshot);
-            if (!extraction.Validation.IsValid || extraction.Validation.Data == null)
+            if (!extraction.Validation.IsUsable || extraction.Validation.Data == null)
             {
                 throw new InvalidOperationException("INVALID_JD_ANALYSIS");
             }
@@ -1286,8 +1338,53 @@ namespace ITHunterview.Service.UseCase
                 CanRetry = string.Equals(matchRecord.Status, "Failed", StringComparison.Ordinal)
                     && MatchingRetryPolicy.IsManualRetryAllowed(matchRecord.ErrorCode),
                 MatchDetails = matchRecord.MatchDetails,
-                JdFit = new JdFitResultDto { Score = matchRecord.MatchScore ?? 0m }
+                JdFit = new JdFitResultDto { Score = matchRecord.MatchScore ?? 0m },
+                CvAnalysis = BuildCvAnalysisResult(matchRecord)
             };
+        }
+
+        private static CvAnalysisResultDto? BuildCvAnalysisResult(CvJobMatchScores score)
+        {
+            if (!score.CvAnalysisQuality.HasValue) return null;
+            return new CvAnalysisResultDto
+            {
+                Quality = score.CvAnalysisQuality.Value.ToString(),
+                ScoreBasis = ReadScoreBasis(score.MatchDetails)
+                    ?? (score.CvAnalysisQuality.Value == Domain.Enums.CvAnalysisQuality.COMPLETE
+                        ? "complete_cv_analysis"
+                        : "available_cv_analysis"),
+                Coverage = CvAnalysisMetadataReader.ReadCoverageJson(score.CvAnalysisCoverageJson),
+                WarningCodes = CvAnalysisMetadataReader.ReadDiagnosticsJson(score.CvAnalysisDiagnosticsJson)
+                    .Select(item => item.Code)
+                    .Distinct(StringComparer.Ordinal)
+                    .Take(100)
+                    .ToList()
+            };
+        }
+
+        private static string? ReadScoreBasis(string? matchDetails)
+        {
+            if (string.IsNullOrWhiteSpace(matchDetails)) return null;
+            try
+            {
+                using var document = JsonDocument.Parse(matchDetails);
+                if (document.RootElement.ValueKind != JsonValueKind.Object) return null;
+                foreach (var name in new[] { "scoreBasis", "ScoreBasis" })
+                {
+                    if (document.RootElement.TryGetProperty(name, out var value)
+                        && value.ValueKind == JsonValueKind.String)
+                    {
+                        var result = value.GetString()?.Trim();
+                        return string.IsNullOrWhiteSpace(result) || result.Length > 64 ? null : result;
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+                // Match details from older rows can be non-JSON. Quality metadata
+                // remains independently usable.
+            }
+            return null;
         }
 
         private string ExtractJsonFromText(string text)
@@ -1345,7 +1442,10 @@ namespace ITHunterview.Service.UseCase
                 Status = x.Score.Status,
                 ErrorMessage = x.Score.ErrorMessage,
                 UpdatedAt = x.Score.UpdatedAt,
-                MatchType = x.Score.MatchType
+                MatchType = x.Score.MatchType,
+                CvAnalysisQuality = x.Score.CvAnalysisQuality,
+                CvAnalysisScoreBasis = ReadScoreBasis(x.Score.MatchDetails),
+                CvAnalysisCoverage = CvAnalysisMetadataReader.ReadCoverageJson(x.Score.CvAnalysisCoverageJson)
             }).ToList();
 
             return new ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>
@@ -1445,6 +1545,9 @@ namespace ITHunterview.Service.UseCase
                     ErrorMessage = x.Score.ErrorMessage,
                     UpdatedAt = x.Score.UpdatedAt,
                     MatchType = x.Score.MatchType,
+                    CvAnalysisQuality = x.Score.CvAnalysisQuality,
+                    CvAnalysisScoreBasis = ReadScoreBasis(x.Score.MatchDetails),
+                    CvAnalysisCoverage = CvAnalysisMetadataReader.ReadCoverageJson(x.Score.CvAnalysisCoverageJson),
                     IsUnlocked = isUnlocked,
                     UnlockCost = 50
                 };

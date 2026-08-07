@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using FluentAssertions;
 using ITHunterview.Domain.Entities;
+using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Exceptions;
 using ITHunterview.Service.Infrastructure.Persistence;
@@ -49,8 +50,20 @@ public sealed class CvJdMatchingWorkerUseCaseTests
         await context.SaveChangesAsync();
 
         var processor = new Mock<ICvJdOneToOneMatchingProcessor>(MockBehavior.Strict);
+        var coverage = new CvAnalysisCoverage(
+            2, 1, 1,
+            4, 3, 1,
+            2, 2, 0,
+            true, true, true, false);
+        var diagnostics = new[] { new CvAnalysisDiagnostic("DOMAIN_METRIC_MISSING", "$.matching_metrics.domains") };
         processor.Setup(x => x.ExecuteAsync(job.Id, It.IsAny<MatchingInputSnapshotV1>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CvJdMatchingExecutionResult(0.82m, "details", "sfia"));
+            .ReturnsAsync(new CvJdMatchingExecutionResult(
+                0.82m,
+                "details",
+                "sfia",
+                CvAnalysisQuality.PARTIAL,
+                coverage,
+                diagnostics));
         var featureUsage = CreateFeatureUsageMock();
         var worker = CreateWorker(context, processor.Object, featureUsage.Object);
         var repository = new CvJdMatchingJobRepository(context);
@@ -62,6 +75,9 @@ public sealed class CvJdMatchingWorkerUseCaseTests
         job.MatchScore.Should().Be(0.82m);
         job.MatchDetails.Should().Be("details");
         job.SfiaExtractResult.Should().Be("sfia");
+        job.CvAnalysisQuality.Should().Be(CvAnalysisQuality.PARTIAL);
+        job.CvAnalysisCoverageJson.Should().Contain("accepted_experience_entry_count");
+        job.CvAnalysisDiagnosticsJson.Should().Contain("DOMAIN_METRIC_MISSING");
         job.LeaseToken.Should().BeNull();
         featureUsage.Verify(x => x.RefundFeatureReservationAsync(
             It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -117,6 +133,7 @@ public sealed class CvJdMatchingWorkerUseCaseTests
         job.AttemptCount.Should().Be(1);
         job.Status.Should().Be("Failed");
         job.ErrorCode.Should().Be("AI_OUTPUT_INVALID");
+        job.CvAnalysisQuality.Should().BeNull();
         job.NextAttemptAt.Should().BeNull();
         featureUsage.Verify(x => x.RefundFeatureReservationAsync(
             job.UserId,
@@ -133,7 +150,7 @@ public sealed class CvJdMatchingWorkerUseCaseTests
         context.CvJobMatchScores.Add(job);
         await context.SaveChangesAsync();
 
-        var validationFailure = CvAnalysisValidationResult.Failure(
+        var validationFailure = CvAnalysisValidationResult.Invalid(
             "CV_ANALYSIS_SCHEMA_INVALID",
             "TYPED_DESERIALIZATION_FAILED",
             "$.matching_metrics");
@@ -154,6 +171,7 @@ public sealed class CvJdMatchingWorkerUseCaseTests
         job.AttemptCount.Should().Be(1);
         job.Status.Should().Be("Failed");
         job.ErrorCode.Should().Be("AI_OUTPUT_INVALID");
+        job.CvAnalysisQuality.Should().Be(CvAnalysisQuality.INVALID);
         job.NextAttemptAt.Should().BeNull();
         featureUsage.Verify(x => x.RefundFeatureReservationAsync(
             job.UserId,
@@ -316,6 +334,9 @@ public sealed class CvJdMatchingWorkerUseCaseTests
             Guid.NewGuid(),
             0.5m,
             "should not write",
+            null,
+            null,
+            null,
             null,
             UtcNow);
 

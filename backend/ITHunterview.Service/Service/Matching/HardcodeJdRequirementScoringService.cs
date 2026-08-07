@@ -11,7 +11,10 @@ public sealed record HardcodeJdRequirementScoreDecision(
     JdRequirementProjection? Projection,
     JdHardcodeRequirementEvaluation? Evaluation,
     string? FailureCode,
-    bool CanUseLegacyCompatibilityFallback);
+    bool CanUseLegacyCompatibilityFallback)
+{
+    public string? AnalysisQuality => Projection?.AnalysisQuality;
+}
 
 /// <summary>
 /// Projects the effective JD once, then delegates only technical groups to the

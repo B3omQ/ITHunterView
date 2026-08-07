@@ -10,7 +10,6 @@ using ITHunterview.Service.Utils;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
-using ITHunterview.Service.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace ITHunterview.Service.Service
@@ -68,7 +67,7 @@ namespace ITHunterview.Service.Service
 
                 var extraction = await _extractionService.ExtractAsync(inputSnapshot, systemPromptSnapshot.Content, userPromptSnapshot.Content, ct);
                 var validation = extraction.Validation;
-                if (!validation.IsValid || validation.Data == null)
+                if (!validation.IsUsable || validation.Data == null)
                 {
                     string failureCode = validation.FailureCode ?? "INVALID_MODEL_OUTPUT";
                     string errJson = JsonSerializer.Serialize(validation.Errors);

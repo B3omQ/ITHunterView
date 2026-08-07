@@ -16,6 +16,10 @@ namespace ITHunterview.Service.Utils
         public List<string> Skills { get; init; } = new();
         public List<string> Domains { get; init; } = new();
         public int TotalYearsExperience { get; init; }
+        public bool TitleAvailable { get; init; }
+        public bool SkillsAvailable { get; init; }
+        public bool ExperienceAvailable { get; init; }
+        public bool DomainsAvailable { get; init; }
     }
 
     public static class JobAnalysisMetricsReader
@@ -32,6 +36,8 @@ namespace ITHunterview.Service.Utils
                     return new JobAnalysisMetrics();
                 }
 
+                var hasCoverage = TryGetPath(document.RootElement, "analysis_coverage", out var coverage)
+                                  && coverage.ValueKind == JsonValueKind.Object;
                 return new JobAnalysisMetrics
                 {
                     Titles = ReadStringArray(metrics, "job_titles_normalized"),
@@ -41,7 +47,31 @@ namespace ITHunterview.Service.Utils
                         && years.ValueKind == JsonValueKind.Number
                         && years.TryGetInt32(out var value)
                         ? Math.Max(0, value)
-                        : 0
+                        : 0,
+                    TitleAvailable = ReadAvailability(
+                        hasCoverage ? coverage : default,
+                        "title_metrics_available",
+                        metrics,
+                        "job_titles_normalized",
+                        JsonValueKind.Array),
+                    SkillsAvailable = ReadAvailability(
+                        hasCoverage ? coverage : default,
+                        "skill_metrics_available",
+                        metrics,
+                        "skills_normalized",
+                        JsonValueKind.Array),
+                    ExperienceAvailable = ReadAvailability(
+                        hasCoverage ? coverage : default,
+                        "experience_metric_available",
+                        metrics,
+                        "total_years_exp",
+                        JsonValueKind.Number),
+                    DomainsAvailable = ReadAvailability(
+                        hasCoverage ? coverage : default,
+                        "domain_metrics_available",
+                        metrics,
+                        "domains",
+                        JsonValueKind.Array)
                 };
             }
             catch (JsonException)
@@ -88,6 +118,24 @@ namespace ITHunterview.Service.Utils
         {
             value = default;
             return root.ValueKind == JsonValueKind.Object && root.TryGetProperty(property, out value);
+        }
+
+        private static bool ReadAvailability(
+            JsonElement coverage,
+            string coverageProperty,
+            JsonElement metrics,
+            string metricProperty,
+            JsonValueKind requiredKind)
+        {
+            if (coverage.ValueKind == JsonValueKind.Object
+                && coverage.TryGetProperty(coverageProperty, out var availability)
+                && availability.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            {
+                return availability.GetBoolean();
+            }
+
+            return metrics.TryGetProperty(metricProperty, out var metric)
+                   && metric.ValueKind == requiredKind;
         }
     }
 }

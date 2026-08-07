@@ -1,10 +1,15 @@
 using System;
 using System.Net.Http;
+using ITHunterview.Domain.Enums;
 using ITHunterview.Service.Exceptions;
 
 namespace ITHunterview.Service.Service.Matching;
 
-public sealed record MatchingFailureClassification(string ErrorCode, bool Retryable);
+public sealed record MatchingFailureClassification(
+    string ErrorCode,
+    bool Retryable,
+    JdAnalysisQuality? JdAnalysisQuality = null,
+    CvAnalysisQuality? CvAnalysisQuality = null);
 
 /// <summary>
 /// Converts provider/parser exceptions to bounded codes suitable for storage
@@ -27,7 +32,18 @@ public static class MatchingFailureClassifier
 
             // A typed CV validation failure means the provider already returned
             // a response and repeating the same request cannot repair its contract.
-            return new MatchingFailureClassification("AI_OUTPUT_INVALID", false);
+            return new MatchingFailureClassification(
+                "AI_OUTPUT_INVALID",
+                false,
+                CvAnalysisQuality: CvAnalysisQuality.INVALID);
+        }
+
+        if (exception is JdAnalysisValidationException)
+        {
+            return new MatchingFailureClassification(
+                "AI_OUTPUT_INVALID",
+                false,
+                JdAnalysisQuality: JdAnalysisQuality.INVALID);
         }
 
         if (message.StartsWith("MATCHING_STAGE2_OUTPUT_INVALID", StringComparison.Ordinal)

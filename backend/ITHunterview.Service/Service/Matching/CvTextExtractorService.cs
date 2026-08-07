@@ -262,9 +262,30 @@ namespace ITHunterview.Service.Service.Matching
                 provider,
                 AiGenerationOptions.CvAnalysisJsonExtraction,
                 cancellationToken);
-            var validation = _cvAnalysisResponseValidator.ValidateAndCanonicalize(NormalizeJsonResponse(aiResponse), input);
-            if (validation.IsValid)
+            var validation = _cvAnalysisResponseValidator.ValidateAndCanonicalize(NormalizeJsonResponse(aiResponse));
+            if (validation.IsUsable)
             {
+                var warningCodes = validation.Diagnostics
+                    .Select(diagnostic => diagnostic.Code)
+                    .Distinct(StringComparer.Ordinal)
+                    .Take(20)
+                    .ToArray();
+                _logger.LogInformation(
+                    "CV analysis response accepted. Provider={Provider}; SourceType={SourceType}; InputLength={InputLength}; " +
+                    "ResponseLength={ResponseLength}; ResponseHash={ResponseHash}; Quality={Quality}; " +
+                    "AcceptedExperienceEntries={AcceptedExperienceEntries}; DiscardedExperienceEntries={DiscardedExperienceEntries}; " +
+                    "AcceptedSignals={AcceptedSignals}; DiscardedSignals={DiscardedSignals}; WarningCodes={WarningCodes}",
+                    provider,
+                    sourceType,
+                    rawCvText.Length,
+                    aiResponse?.Length ?? 0,
+                    HashIdentifier(aiResponse),
+                    validation.Quality,
+                    validation.Coverage?.AcceptedExperienceEntryCount ?? 0,
+                    validation.Coverage?.DiscardedExperienceEntryCount ?? 0,
+                    validation.Coverage?.AcceptedRequirementSignalCount ?? 0,
+                    validation.Coverage?.DiscardedRequirementSignalCount ?? 0,
+                    warningCodes);
                 return validation.CanonicalJson;
             }
 

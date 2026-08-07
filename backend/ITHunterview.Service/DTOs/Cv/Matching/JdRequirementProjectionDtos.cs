@@ -1,19 +1,35 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using ITHunterview.Domain.Enums;
+using ITHunterview.Service.DTOs.JobAnalysis;
 
 namespace ITHunterview.Service.DTOs.Cv.Matching;
 
 public sealed record JdRequirementProjection(
     string SourceSchemaVersion,
     IReadOnlyList<ProjectedJdRequirementGroup> Groups,
-    bool UsesLegacySemantics);
+    bool UsesLegacySemantics,
+    JdAnalysisQuality Quality = JdAnalysisQuality.COMPLETE,
+    JdAnalysisCoverage? Coverage = null,
+    IReadOnlyList<JdAnalysisDiagnostic>? Diagnostics = null)
+{
+    public string AnalysisQuality => Quality.ToString();
+    public bool RequirementSetComplete => Coverage?.RequirementSetComplete ?? true;
+    public IReadOnlyList<string>? WarningCodes => Diagnostics?
+        .Select(diagnostic => diagnostic.Code)
+        .Distinct(StringComparer.Ordinal)
+        .ToList();
+}
 
 public sealed record ProjectedJdRequirementGroup(
     string GroupId,
     string Operator,
     int MinSatisfied,
     string Importance,
-    IReadOnlyList<ProjectedJdRequirementItem> Items);
+    IReadOnlyList<ProjectedJdRequirementItem> Items,
+    string SourceSection = "",
+    string RequirementVerbatim = "");
 
 public sealed record ProjectedJdRequirementItem(
     string ItemId,

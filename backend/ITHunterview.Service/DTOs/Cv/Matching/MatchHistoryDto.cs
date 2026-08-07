@@ -1,4 +1,6 @@
 using System;
+using ITHunterview.Service.DTOs.JobAnalysis;
+using ITHunterview.Domain.Enums;
 
 namespace ITHunterview.Service.DTOs.Cv.Matching
 {
@@ -14,6 +16,12 @@ namespace ITHunterview.Service.DTOs.Cv.Matching
         public string Status { get; set; } = string.Empty;
         public string? ErrorMessage { get; set; }
         public string? MatchType { get; set; }
+        public string? JdAnalysisQuality { get; set; }
+        public string? JdAnalysisScoreBasis { get; set; }
+        public JdAnalysisCoverage? JdAnalysisCoverage { get; set; }
+        public CvAnalysisQuality? CvAnalysisQuality { get; set; }
+        public string? CvAnalysisScoreBasis { get; set; }
+        public CvAnalysisCoverage? CvAnalysisCoverage { get; set; }
         public string? FileUrl { get; set; }
         public bool IsUnlocked { get; set; } = true;
         public int UnlockCost { get; set; } = 50;

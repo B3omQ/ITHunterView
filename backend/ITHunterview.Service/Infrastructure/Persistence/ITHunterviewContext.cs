@@ -143,6 +143,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             // Cvs
             modelBuilder.Entity<Cvs>(entity =>
             {
+                entity.Property(e => e.AnalysisQuality)
+                      .HasConversion<string>()
+                      .HasMaxLength(16);
+                entity.Property(e => e.AnalysisCoverageJson).HasColumnType("jsonb");
+                entity.Property(e => e.AnalysisDiagnosticsJson).HasColumnType("jsonb");
+                entity.ToTable(table => table.HasCheckConstraint(
+                    "ck_cvs_analysis_quality",
+                    "\"analysis_quality\" IS NULL OR \"analysis_quality\" IN ('COMPLETE', 'PARTIAL', 'INVALID')"));
+
                 entity.HasOne(c => c.User)
                       .WithMany(u => u.Cvs)
                       .HasForeignKey(c => c.UserId)
@@ -387,6 +396,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             modelBuilder.Entity<CvJobMatchScores>(entity =>
             {
                 entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.CvAnalysisQuality)
+                      .HasConversion<string>()
+                      .HasMaxLength(16);
+                entity.Property(e => e.CvAnalysisCoverageJson).HasColumnType("jsonb");
+                entity.Property(e => e.CvAnalysisDiagnosticsJson).HasColumnType("jsonb");
+                entity.ToTable(table => table.HasCheckConstraint(
+                    "ck_cv_job_match_scores_cv_analysis_quality",
+                    "\"cv_analysis_quality\" IS NULL OR \"cv_analysis_quality\" IN ('COMPLETE', 'PARTIAL', 'INVALID')"));
 
                 entity.Property(e => e.InputSnapshotJson).HasColumnType("jsonb");
                 entity.Property(e => e.InputHash).HasMaxLength(64);

@@ -32,10 +32,8 @@ public sealed class CvTextExtractorServiceTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync("{}");
         var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
-        validator.Setup(x => x.ValidateAndCanonicalize(
-                "{}",
-                It.IsAny<CvAnalysisInputSnapshot>()))
-            .Returns(CvAnalysisValidationResult.Success("{\"canonical\":true}"));
+        validator.Setup(x => x.ValidateAndCanonicalize("{}"))
+            .Returns(CvAnalysisValidationResult.Complete("{\"canonical\":true}", EmptyCoverage()));
         var service = CreateService(aiService, validator);
 
         var result = await service.ExtractParsedDataFromRawTextAsync(
@@ -68,10 +66,8 @@ public sealed class CvTextExtractorServiceTests
         var aiService = CreateAiServiceReturning(
             "I extracted the CV below.\n{\"schema_version\":\"cv-analysis/v2\"}\nEnd of response.");
         var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
-        validator.Setup(x => x.ValidateAndCanonicalize(
-                "{\"schema_version\":\"cv-analysis/v2\"}",
-                It.IsAny<CvAnalysisInputSnapshot>()))
-            .Returns(CvAnalysisValidationResult.Success("{\"canonical\":true}"));
+        validator.Setup(x => x.ValidateAndCanonicalize("{\"schema_version\":\"cv-analysis/v2\"}"))
+            .Returns(CvAnalysisValidationResult.Complete("{\"canonical\":true}", EmptyCoverage()));
         var service = CreateService(aiService, validator);
 
         var result = await service.ExtractParsedDataFromRawTextAsync(
@@ -88,10 +84,8 @@ public sealed class CvTextExtractorServiceTests
     {
         var aiService = CreateAiServiceReturning("{}");
         var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
-        validator.Setup(x => x.ValidateAndCanonicalize(
-                "{}",
-                It.IsAny<CvAnalysisInputSnapshot>()))
-            .Returns(CvAnalysisValidationResult.Failure(
+        validator.Setup(x => x.ValidateAndCanonicalize("{}"))
+            .Returns(CvAnalysisValidationResult.Invalid(
                 "CV_ANALYSIS_SCHEMA_INVALID",
                 "TYPED_DESERIALIZATION_FAILED",
                 "$.matching_evidence"));
@@ -171,10 +165,8 @@ public sealed class CvTextExtractorServiceTests
     {
         var aiService = CreateAiServiceReturning("{}");
         var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
-        validator.Setup(x => x.ValidateAndCanonicalize(
-                "{}",
-                It.IsAny<CvAnalysisInputSnapshot>()))
-            .Returns(CvAnalysisValidationResult.Success("{\"canonical\":true}"));
+        validator.Setup(x => x.ValidateAndCanonicalize("{}"))
+            .Returns(CvAnalysisValidationResult.Complete("{\"canonical\":true}", EmptyCoverage()));
         var handler = CreateDocxHandler();
         var service = CreateService(aiService, validator, CreateHttpClientFactory(handler));
 
@@ -212,6 +204,35 @@ public sealed class CvTextExtractorServiceTests
         await action.Should().ThrowAsync<OperationCanceledException>();
         handler.CallCount.Should().Be(1);
         aiService.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task ExtractParsedDataFromRawTextAsync_WhenPartial_ReturnsCanonicalJsonWithoutSecondCall()
+    {
+        var aiService = CreateAiServiceReturning("{}");
+        var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
+        var coverage = new CvAnalysisCoverage(1, 1, 0, 1, 1, 0, 1, 1, 0, true, true, false, true);
+        validator.Setup(x => x.ValidateAndCanonicalize("{}"))
+            .Returns(CvAnalysisValidationResult.Partial(
+                "{\"analysis_quality\":\"PARTIAL\"}",
+                coverage,
+                new[] { new CvAnalysisDiagnostic("INTEGER_INVALID", "$.matching_metrics.total_years_exp") }));
+        var service = CreateService(aiService, validator);
+
+        var result = await service.ExtractParsedDataFromRawTextAsync(
+            "Jane Doe\nBackend developer with C# experience\n",
+            "pasted_text",
+            "resume.txt",
+            CancellationToken.None);
+
+        result.Should().Be("{\"analysis_quality\":\"PARTIAL\"}");
+        aiService.Verify(x => x.GenerateTextAsync(
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            "Gemini",
+            It.IsAny<AiGenerationOptions>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        validator.Verify(x => x.ValidateAndCanonicalize("{}"), Times.Once);
     }
 
     private static CvTextExtractorService CreateService(
@@ -293,6 +314,12 @@ public sealed class CvTextExtractorServiceTests
 
         return stream.ToArray();
     }
+
+    private static CvAnalysisCoverage EmptyCoverage() => new(
+        0, 0, 0,
+        0, 0, 0,
+        0, 0, 0,
+        false, false, false, false);
 
     private static PromptPairSnapshotDto CreatePromptPair() => new()
     {

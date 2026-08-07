@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Utils;
@@ -46,12 +47,15 @@ public sealed class JdRequirementProjector : IJdRequirementProjector
             }
 
             var sourceSchemaVersion = ReadOptionalString(root, "schema_version") ?? "legacy";
+            var quality = ReadQuality(root);
+            var coverage = JdAnalysisMetadataReader.ReadCoverage(effectiveJdJson);
+            var diagnostics = JdAnalysisMetadataReader.ReadDiagnostics(effectiveJdJson);
             if (string.Equals(sourceSchemaVersion, "jd-analysis/v3", StringComparison.Ordinal))
             {
-                return new JdRequirementProjection(sourceSchemaVersion, ReadV3Groups(metrics), false);
+                return new JdRequirementProjection(sourceSchemaVersion, ReadV3Groups(metrics), false, quality, coverage, diagnostics);
             }
 
-            return new JdRequirementProjection(sourceSchemaVersion, ReadLegacyGroups(metrics), true);
+            return new JdRequirementProjection(sourceSchemaVersion, ReadLegacyGroups(metrics), true, quality, coverage, diagnostics);
         }
         catch (JsonException)
         {
@@ -102,7 +106,14 @@ public sealed class JdRequirementProjector : IJdRequirementProjector
                 });
             }
 
-            groups.Add(new ProjectedJdRequirementGroup(groupId, @operator, minSatisfied, importance, items));
+            groups.Add(new ProjectedJdRequirementGroup(
+                groupId,
+                @operator,
+                minSatisfied,
+                importance,
+                items,
+                ReadOptionalString(groupElement, "source_section") ?? string.Empty,
+                ReadOptionalString(groupElement, "requirement_verbatim") ?? string.Empty));
         }
 
         return groups;
@@ -233,6 +244,15 @@ public sealed class JdRequirementProjector : IJdRequirementProjector
             throw Invalid();
         }
         return result;
+    }
+
+    private static JdAnalysisQuality ReadQuality(JsonElement root)
+    {
+        var value = ReadOptionalString(root, "analysis_quality");
+        return Enum.TryParse<JdAnalysisQuality>(value, ignoreCase: false, out var quality) &&
+               quality is JdAnalysisQuality.COMPLETE or JdAnalysisQuality.PARTIAL
+            ? quality
+            : JdAnalysisQuality.COMPLETE;
     }
 
     private static InvalidOperationException Invalid() => new(InvalidEffectiveJdAnalysis);

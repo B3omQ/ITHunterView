@@ -121,7 +121,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         public async Task<bool> TryLockCvForParsingAsync(Guid id)
         {
             var rowsAffected = await _context.Database.ExecuteSqlRawAsync(
-                "UPDATE cvs SET parse_status = 'PROCESSING', updated_at = {0} WHERE id = {1} AND parse_status = 'PENDING' AND deleted_at IS NULL", 
+                "UPDATE cvs SET parse_status = 'PROCESSING', parse_error = NULL, analysis_quality = NULL, " +
+                "analysis_coverage_json = NULL, analysis_diagnostics_json = NULL, updated_at = {0} " +
+                "WHERE id = {1} AND parse_status = 'PENDING' AND deleted_at IS NULL",
                 DateTime.UtcNow, id);
             return rowsAffected > 0;
         }

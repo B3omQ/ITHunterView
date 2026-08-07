@@ -726,6 +726,19 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<string>("CvAnalysisCoverageJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("cv_analysis_coverage_json");
+
+                    b.Property<string>("CvAnalysisDiagnosticsJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("cv_analysis_diagnostics_json");
+
+                    b.Property<string>("CvAnalysisQuality")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("cv_analysis_quality");
+
                     b.Property<string>("CvFileName")
                         .HasColumnType("text")
                         .HasColumnName("cv_file_name");
@@ -867,7 +880,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("UserId", "HistoryHiddenAt", "UpdatedAt");
 
-                    b.ToTable("cv_job_match_scores");
+                    b.ToTable("cv_job_match_scores", t =>
+                        {
+                            t.HasCheckConstraint("ck_cv_job_match_scores_cv_analysis_quality", "\"cv_analysis_quality\" IS NULL OR \"cv_analysis_quality\" IN ('COMPLETE', 'PARTIAL', 'INVALID')");
+                        });
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.Cvs", b =>
@@ -876,6 +892,19 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<string>("AnalysisCoverageJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("analysis_coverage_json");
+
+                    b.Property<string>("AnalysisDiagnosticsJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("analysis_diagnostics_json");
+
+                    b.Property<string>("AnalysisQuality")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("analysis_quality");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -956,7 +985,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("\"is_primary\" = true AND \"deleted_at\" IS NULL");
 
-                    b.ToTable("cvs");
+                    b.ToTable("cvs", t =>
+                        {
+                            t.HasCheckConstraint("ck_cvs_analysis_quality", "\"analysis_quality\" IS NULL OR \"analysis_quality\" IN ('COMPLETE', 'PARTIAL', 'INVALID')");
+                        });
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.EmailVerificationTokens", b =>

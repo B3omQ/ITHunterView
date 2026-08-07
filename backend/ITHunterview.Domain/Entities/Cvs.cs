@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Pgvector;
+using ITHunterview.Domain.Enums;
 
 namespace ITHunterview.Domain.Entities
 {
@@ -51,6 +52,15 @@ namespace ITHunterview.Domain.Entities
 
         [Column("parse_error")]
         public string? ParseError { get; set; }
+
+        [Column("analysis_quality")]
+        public CvAnalysisQuality? AnalysisQuality { get; set; }
+
+        [Column("analysis_coverage_json", TypeName = "jsonb")]
+        public string? AnalysisCoverageJson { get; set; }
+
+        [Column("analysis_diagnostics_json", TypeName = "jsonb")]
+        public string? AnalysisDiagnosticsJson { get; set; }
 
         [Column("raw_text")]
         public string? RawText { get; set; }

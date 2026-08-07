@@ -55,6 +55,15 @@ public class JobAnalysisExtractionServiceTests
             JdAnalysisPromptContract.UserPromptKey,
             default), Times.Once);
         promptService.Verify(x => x.GetActivePromptSnapshotAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>()), Times.Never);
+        aiService.Verify(x => x.GenerateTextAsync(
+            It.IsAny<string>(),
+            It.Is<string>(system =>
+                system.Contains("system from database", StringComparison.Ordinal) &&
+                system.Contains(JdAnalysisOutputSchema.BeginMarker, StringComparison.Ordinal) &&
+                system.Contains("\"schema_version\": \"jd-analysis/v4\"", StringComparison.Ordinal)),
+            "test-provider",
+            AiGenerationOptions.StrictJsonExtraction,
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

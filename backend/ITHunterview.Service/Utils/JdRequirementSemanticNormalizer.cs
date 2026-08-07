@@ -37,7 +37,7 @@ public static class JdRequirementSemanticNormalizer
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     private static readonly Regex AlternativeLanguage = new(
-        @"\b(?:or|ho\u1eb7c)\b",
+        @"\b(?:or(?!\s+similar\b)|ho\u1eb7c)\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     private static readonly Regex ExampleLanguage = new(

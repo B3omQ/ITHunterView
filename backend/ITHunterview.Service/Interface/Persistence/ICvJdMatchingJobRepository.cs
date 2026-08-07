@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
+using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Cv.Matching;
 
 namespace ITHunterview.Service.Interface.Persistence;
@@ -41,6 +42,9 @@ public interface ICvJdMatchingJobRepository
         decimal score,
         string matchDetails,
         string? sfiaExtractResult,
+        CvAnalysisQuality? cvAnalysisQuality,
+        string? cvAnalysisCoverageJson,
+        string? cvAnalysisDiagnosticsJson,
         DateTime utcNow,
         CancellationToken cancellationToken = default);
 
@@ -58,6 +62,7 @@ public interface ICvJdMatchingJobRepository
         string workerId,
         Guid leaseToken,
         string errorCode,
+        CvAnalysisQuality? cvAnalysisQuality,
         DateTime utcNow,
         CancellationToken cancellationToken = default);
 

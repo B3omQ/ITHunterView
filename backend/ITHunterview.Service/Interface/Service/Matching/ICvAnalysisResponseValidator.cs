@@ -4,5 +4,5 @@ namespace ITHunterview.Service.Interface.Service.Matching;
 
 public interface ICvAnalysisResponseValidator
 {
-    CvAnalysisValidationResult ValidateAndCanonicalize(string responseJson, CvAnalysisInputSnapshot input);
+    CvAnalysisValidationResult ValidateAndCanonicalize(string responseJson);
 }

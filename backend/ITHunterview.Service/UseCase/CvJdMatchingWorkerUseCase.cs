@@ -9,6 +9,7 @@ using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Service.Matching;
+using ITHunterview.Service.Utils;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -84,6 +85,9 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
                 result.Score,
                 result.MatchDetails,
                 result.SfiaExtractResult,
+                result.CvAnalysisQuality,
+                CvAnalysisMetadataReader.SerializeCoverage(result.CvAnalysisCoverage),
+                CvAnalysisMetadataReader.SerializeDiagnostics(result.CvAnalysisDiagnostics),
                 DateTime.UtcNow,
                 cancellationToken);
             if (!completed)
@@ -194,6 +198,7 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
                 workerId,
                 leaseToken,
                 classification.ErrorCode,
+                classification.CvAnalysisQuality,
                 DateTime.UtcNow,
                 cancellationToken);
             if (failed)

@@ -32,6 +32,44 @@ namespace ITHunterview.Service.Tests.JobAnalysis
             Assert.Equal(new[] { "asp.net core", "c#" }, metrics.Skills);
             Assert.Equal(3, metrics.TotalYearsExperience);
             Assert.Equal(new[] { "fintech" }, metrics.Domains);
+            Assert.True(metrics.TitleAvailable);
+            Assert.True(metrics.SkillsAvailable);
+            Assert.True(metrics.ExperienceAvailable);
+            Assert.True(metrics.DomainsAvailable);
+        }
+
+        [Fact]
+        public void Read_MissingMetric_IsUnavailableButPresentEmptyArrayRemainsAvailable()
+        {
+            const string partial = """
+                {"schema_version":"cv-analysis/v2","matching_metrics":{"job_titles_normalized":[],"skills_normalized":["c#"],"total_years_exp":3}}
+                """;
+
+            var metrics = JobAnalysisMetricsReader.Read(partial);
+
+            Assert.True(metrics.TitleAvailable);
+            Assert.True(metrics.SkillsAvailable);
+            Assert.True(metrics.ExperienceAvailable);
+            Assert.False(metrics.DomainsAvailable);
+        }
+
+        [Fact]
+        public void Read_AnalysisCoverage_OverridesCanonicalPropertyPresence()
+        {
+            const string partial = """
+                {
+                  "schema_version":"cv-analysis/v2",
+                  "matching_metrics":{"job_titles_normalized":[],"skills_normalized":[],"total_years_exp":0,"domains":[]},
+                  "analysis_coverage":{"title_metrics_available":true,"skill_metrics_available":false,"experience_metric_available":true,"domain_metrics_available":false}
+                }
+                """;
+
+            var metrics = JobAnalysisMetricsReader.Read(partial);
+
+            Assert.True(metrics.TitleAvailable);
+            Assert.False(metrics.SkillsAvailable);
+            Assert.True(metrics.ExperienceAvailable);
+            Assert.False(metrics.DomainsAvailable);
         }
     }
 }

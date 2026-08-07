@@ -18,6 +18,7 @@ import { JdSelectionPanel } from '../components/JdSelectionPanel';
 import { MatchingLoadingState } from '../components/MatchingLoadingState';
 import { useCvMatchingForm } from '@/hooks/useCvMatchingForm';
 import { toast } from 'sonner';
+import { CvAnalysisQualityNotice } from '@/components/shared/CvAnalysisQualityNotice';
 
 function CvMatchingContent() {
   const router = useRouter();
@@ -187,6 +188,7 @@ function CvMatchingContent() {
       {/* 3. Giao diện Kết quả (Sử dụng Sub-Components) */}
       {state.step === 'result' && (
         <div className="space-y-6 animate-in fade-in duration-500">
+          <CvAnalysisQualityNotice analysis={state.cvAnalysis} />
           <div className="flex flex-col sm:flex-row justify-between items-center bg-muted/20 p-4 rounded-lg border gap-4">
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <Info className="h-5 w-5 text-primary/70" />

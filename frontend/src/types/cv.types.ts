@@ -9,6 +9,9 @@ export interface Cv {
   parsedData: string;
   parseStatus?: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED';
   parseError?: string | null;
+  analysisQuality?: CvAnalysisQuality | null;
+  analysisCoverage?: CvAnalysisCoverage | null;
+  analysisWarningCodes?: string[];
   warningMessage?: string;
   createdAt: string;
   updatedAt: string;
@@ -36,6 +39,42 @@ export interface MatchJdResponse {
   id: string; // JobId for polling
 }
 
+export type JdAnalysisQuality = 'COMPLETE' | 'PARTIAL' | 'INVALID';
+export type CvAnalysisQuality = 'COMPLETE' | 'PARTIAL' | 'INVALID';
+
+export interface CvAnalysisCoverage {
+  inputExperienceEntryCount: number;
+  acceptedExperienceEntryCount: number;
+  discardedExperienceEntryCount: number;
+  inputRequirementSignalCount: number;
+  acceptedRequirementSignalCount: number;
+  discardedRequirementSignalCount: number;
+  inputExperiencePeriodCount: number;
+  acceptedExperiencePeriodCount: number;
+  discardedExperiencePeriodCount: number;
+  titleMetricsAvailable: boolean;
+  skillMetricsAvailable: boolean;
+  experienceMetricAvailable: boolean;
+  domainMetricsAvailable: boolean;
+}
+
+export interface CvAnalysisResult {
+  quality: CvAnalysisQuality;
+  scoreBasis: string;
+  coverage?: CvAnalysisCoverage | null;
+  warningCodes: string[];
+}
+
+export interface JdAnalysisCoverage {
+  inputGroupCount: number;
+  acceptedGroupCount: number;
+  discardedGroupCount: number;
+  inputItemCount: number;
+  acceptedItemCount: number;
+  discardedItemCount: number;
+  requirementSetComplete: boolean;
+}
+
 export interface MatchHistoryDto {
   jobId: string;
   cvId?: string;
@@ -48,6 +87,12 @@ export interface MatchHistoryDto {
   errorMessage?: string;
   updatedAt: string;
   matchType?: 'AI' | 'Hardcode';
+  jdAnalysisQuality?: JdAnalysisQuality | null;
+  jdAnalysisScoreBasis?: string | null;
+  jdAnalysisCoverage?: JdAnalysisCoverage | null;
+  cvAnalysisQuality?: CvAnalysisQuality | null;
+  cvAnalysisScoreBasis?: string | null;
+  cvAnalysisCoverage?: CvAnalysisCoverage | null;
   fileUrl?: string;
   isUnlocked?: boolean;
   unlockCost?: number;
@@ -83,6 +128,7 @@ export interface MatchingResultDto {
   errorMessage?: string;
   canRetry: boolean;
   matchDetails?: string; // The raw JSON string from LLM
+  cvAnalysis?: CvAnalysisResult | null;
 }
 
 export interface MatchingOutput {

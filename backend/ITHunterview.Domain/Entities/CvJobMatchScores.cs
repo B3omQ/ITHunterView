@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ITHunterview.Domain.Enums;
 
 namespace ITHunterview.Domain.Entities
 {
@@ -98,6 +99,15 @@ namespace ITHunterview.Domain.Entities
 
         [Column("error_code")]
         public string? ErrorCode { get; set; }
+
+        [Column("cv_analysis_quality")]
+        public CvAnalysisQuality? CvAnalysisQuality { get; set; }
+
+        [Column("cv_analysis_coverage_json", TypeName = "jsonb")]
+        public string? CvAnalysisCoverageJson { get; set; }
+
+        [Column("cv_analysis_diagnostics_json", TypeName = "jsonb")]
+        public string? CvAnalysisDiagnosticsJson { get; set; }
 
         [Column("manual_retry_used")]
         public bool ManualRetryUsed { get; set; }

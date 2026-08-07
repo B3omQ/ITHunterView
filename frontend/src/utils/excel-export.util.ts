@@ -28,6 +28,8 @@ export function exportMatchingResultsToExcel(jobTitle: string, matches: MatchHis
 
     return {
       'STT': index + 1,
+      'JD analysis quality': formatJdAnalysisQuality(match.jdAnalysisQuality),
+      'JD scoring scope': formatJdAnalysisScope(match),
       'Tên ứng viên / File CV': match.cvFileName || 'Ứng viên ẩn danh',
       'Vị trí tuyển dụng (JD)': match.jdTitle || jobTitle,
       'Điểm phù hợp tổng thể': scorePercent,
@@ -43,6 +45,8 @@ export function exportMatchingResultsToExcel(jobTitle: string, matches: MatchHis
   // Set column widths for better readability
   const columnWidths = [
     { wch: 6 },  // STT
+    { wch: 22 }, // JD analysis quality
+    { wch: 34 }, // JD scoring scope
     { wch: 30 }, // Tên ứng viên / File CV
     { wch: 32 }, // Vị trí tuyển dụng
     { wch: 22 }, // Điểm phù hợp tổng thể
@@ -60,6 +64,28 @@ export function exportMatchingResultsToExcel(jobTitle: string, matches: MatchHis
   const fileName = `Danh_Sach_Ung_Vien_Phu_Hop_${cleanTitle}_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
   XLSX.writeFile(workbook, fileName);
+}
+
+function formatJdAnalysisQuality(quality?: MatchHistoryDto['jdAnalysisQuality']): string {
+  switch (quality) {
+    case 'COMPLETE': return 'Complete';
+    case 'PARTIAL': return 'Partial';
+    case 'INVALID': return 'Invalid';
+    default: return 'Legacy / unavailable';
+  }
+}
+
+function formatJdAnalysisScope(match: MatchHistoryDto): string {
+  const coverage = match.jdAnalysisCoverage;
+  if (match.jdAnalysisScoreBasis === 'accepted_requirements_only') {
+    return coverage
+      ? `${coverage.acceptedGroupCount}/${coverage.inputGroupCount} groups accepted`
+      : 'Accepted requirements only';
+  }
+  if (match.jdAnalysisScoreBasis === 'complete_requirement_set') {
+    return 'Complete requirement set';
+  }
+  return 'Not available';
 }
 
 /**

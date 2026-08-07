@@ -1,4 +1,5 @@
 using FluentAssertions;
+using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Exceptions;
 using ITHunterview.Service.Service.Matching;
@@ -20,6 +21,7 @@ public sealed class MatchingFailureClassifierTests
 
         result.ErrorCode.Should().Be("AI_OUTPUT_INVALID");
         result.Retryable.Should().BeFalse();
+        result.CvAnalysisQuality.Should().Be(CvAnalysisQuality.INVALID);
     }
 
     [Theory]
@@ -33,6 +35,7 @@ public sealed class MatchingFailureClassifierTests
 
         result.ErrorCode.Should().Be("MATCHING_INPUT_INVALID");
         result.Retryable.Should().BeFalse();
+        result.CvAnalysisQuality.Should().BeNull();
     }
 
     [Fact]
@@ -70,7 +73,7 @@ public sealed class MatchingFailureClassifierTests
     };
 
     private static CvAnalysisValidationException ValidationException(string failureCode) =>
-        new(CvAnalysisValidationResult.Failure(
+        new(CvAnalysisValidationResult.Invalid(
             failureCode,
             "TEST_DIAGNOSTIC",
             "$.matching_metrics"));

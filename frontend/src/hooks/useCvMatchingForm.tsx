@@ -5,7 +5,7 @@ import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { useMatchCvJd, useGetMatchResult, useRetryMatch } from '@/hooks/useCvMatch';
 import { useWalletBalance } from '@/hooks/useWallet';
 import { usePublicCoinConfig } from '@/hooks/useCoin';
-import type { MatchJdRequest, MatchingOutput, MatchingResultDto } from '@/types/cv.types';
+import type { CvAnalysisResult, MatchJdRequest, MatchingOutput, MatchingResultDto } from '@/types/cv.types';
 import { toast } from 'sonner';
 import api from '@/services/api-client';
 import {
@@ -74,6 +74,7 @@ export function useCvMatchingForm() {
   const [pollingJobId, setPollingJobId] = useState<string | null>(initialJobId);
   const [currentJobId, setCurrentJobId] = useState<string | null>(initialJobId);
   const [matchOutput, setMatchOutput] = useState<MatchingOutput | null>(null);
+  const [cvAnalysis, setCvAnalysis] = useState<CvAnalysisResult | null>(null);
   const [matchedCvId, setMatchedCvId] = useState<string | null>(null);
   const [retryJobId, setRetryJobId] = useState<string | null>(null);
   const [resultError, setResultError] = useState<string | null>(null);
@@ -115,6 +116,7 @@ export function useCvMatchingForm() {
       try {
         const parsed = JSON.parse(result.matchDetails) as MatchingOutput;
         setMatchOutput(parsed);
+        setCvAnalysis(result.cvAnalysis ?? null);
         setMatchedCvId(result.cvId || null);
         setProgressPercent(100);
         setLoadingStep(MATCHING_LOADING_STEPS.length - 1);
@@ -308,7 +310,9 @@ export function useCvMatchingForm() {
 
     submitInFlightRef.current = true;
     setResultError(null);
+    setCvAnalysis(null);
     setProgressPercent(0);
+    setCvAnalysis(null);
     setLoadingStep(0);
     setStep('loading');
 
@@ -431,6 +435,7 @@ export function useCvMatchingForm() {
       progressPercent,
       loadingStep,
       matchOutput,
+      cvAnalysis,
       matchedCvId,
       retryJobId,
       resultError,

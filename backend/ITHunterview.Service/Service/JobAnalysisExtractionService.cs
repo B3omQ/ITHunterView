@@ -61,9 +61,10 @@ namespace ITHunterview.Service.Service
             var payload = JsonSerializer.Serialize(input);
             var userPrompt = userPromptTemplate.Replace("[JOB_INPUT_JSON]", payload);
             var provider = await _aiService.GetActiveProviderNameAsync();
+            var composedSystemPrompt = JdAnalysisOutputSchema.ComposeSystemPrompt(systemPrompt);
             var response = await _aiService.GenerateTextAsync(
                 userPrompt,
-                systemPrompt,
+                composedSystemPrompt,
                 provider,
                 AiGenerationOptions.StrictJsonExtraction,
                 ct) ?? string.Empty;
@@ -101,7 +102,25 @@ namespace ITHunterview.Service.Service
 
             return JsonSerializer.Serialize(new
             {
-                schema_version = analysis.SchemaVersion,
+                // Provider v4 is intentionally compact. Projector, hardcode and
+                // Stage 2 consume the stable expanded v3 shape.
+                schema_version = JdAnalysisPromptContract.ContractV3,
+                analysis_quality = analysis.Quality.ToString(),
+                analysis_coverage = new
+                {
+                    input_group_count = analysis.Coverage.InputGroupCount,
+                    accepted_group_count = analysis.Coverage.AcceptedGroupCount,
+                    discarded_group_count = analysis.Coverage.DiscardedGroupCount,
+                    input_item_count = analysis.Coverage.InputItemCount,
+                    accepted_item_count = analysis.Coverage.AcceptedItemCount,
+                    discarded_item_count = analysis.Coverage.DiscardedItemCount,
+                    requirement_set_complete = analysis.Coverage.RequirementSetComplete
+                },
+                analysis_diagnostics = analysis.Diagnostics.Take(100).Select(diagnostic => new
+                {
+                    code = diagnostic.Code,
+                    json_path = diagnostic.JsonPath
+                }),
                 matching_metrics = new
                 {
                     job_titles_normalized = analysis.JobTitlesNormalized,
@@ -134,6 +153,8 @@ namespace ITHunterview.Service.Service
                         @operator = group.Operator,
                         min_satisfied = group.MinSatisfied,
                         importance = group.Importance,
+                        source_section = group.SourceSection,
+                        requirement_verbatim = group.RequirementVerbatim,
                         items = group.Items.ConvertAll(item => new
                         {
                             category = item.Category,
