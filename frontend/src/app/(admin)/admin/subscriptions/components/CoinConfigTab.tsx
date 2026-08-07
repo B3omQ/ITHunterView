@@ -101,6 +101,7 @@ export function CoinConfigTab() {
   const [postJob, setPostJob] = useState<number>(20000);
   const [extendJob, setExtendJob] = useState<number>(10000);
   const [pushTop, setPushTop] = useState<number>(5000);
+  const [cvOptimize, setCvOptimize] = useState<number>(500);
 
   // State danh sách các gói nạp coin
   const [packages, setPackages] = useState<CoinPackageDto[]>([]);
@@ -116,6 +117,7 @@ export function CoinConfigTab() {
       setPostJob(config.featureCosts?.postJob ?? 20000);
       setExtendJob(config.featureCosts?.extendJob ?? 10000);
       setPushTop(config.featureCosts?.pushTop ?? 5000);
+      setCvOptimize(config.featureCosts?.cvOptimize ?? 500);
       setPackages(config.packages || []);
     }
   }, [data]);
@@ -152,7 +154,7 @@ export function CoinConfigTab() {
   // Xử lý submit lưu cấu hình lên API
   const handleSave = () => {
     // Validate cơ bản
-    if (cvJdMatching < 0 || mockInterview < 0 || learningPath < 0 || unlockCv < 0 || postJob < 0 || extendJob < 0 || pushTop < 0) {
+    if (cvJdMatching < 0 || mockInterview < 0 || learningPath < 0 || unlockCv < 0 || postJob < 0 || extendJob < 0 || pushTop < 0 || cvOptimize < 0) {
       toast.error('AI feature cost cannot be negative');
       return;
     }
@@ -186,6 +188,7 @@ export function CoinConfigTab() {
         postJob: postJob,
         extendJob: extendJob,
         pushTop: pushTop,
+        cvOptimize: cvOptimize,
       },
       packages: packages.map(p => ({
         id: p.id,

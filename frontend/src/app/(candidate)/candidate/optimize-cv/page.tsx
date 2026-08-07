@@ -40,8 +40,10 @@ import {
   Coins
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 export default function StandaloneCvOptimizePage() {
+  const t = useTranslations('CandidateOptimizeCv');
   const router = useRouter();
   const { data: myCvsRes, isLoading: isLoadingCvs } = useGetMyCvs();
   const { mutateAsync: uploadFile } = useUploadFile();
@@ -92,7 +94,7 @@ export default function StandaloneCvOptimizePage() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err) {
-      toast.error('Không thể tải chi tiết báo cáo.');
+      toast.error(t('toastLoadDetailFail'));
     } finally {
       setIsLoadingHistoryDetail(null);
     }
@@ -104,7 +106,7 @@ export default function StandaloneCvOptimizePage() {
       const selectedFile = e.target.files[0];
       const ext = selectedFile.name.split('.').pop()?.toLowerCase();
       if (ext !== 'pdf' && ext !== 'docx') {
-        toast.error('Chỉ hỗ trợ các định dạng file PDF (.pdf) hoặc Word (.docx)');
+        toast.error(t('toastInvalidFormat'));
         return;
       }
       setFile(selectedFile);
@@ -113,7 +115,7 @@ export default function StandaloneCvOptimizePage() {
 
   const handleStartAnalysis = async () => {
     if (!hasActiveSub && balance < optimizeCost) {
-      toast.error(`Bạn không đủ Coin. Cần ${optimizeCost.toLocaleString()} Coin để tiếp tục.`);
+      toast.error(t('toastNotEnoughCoin', { cost: optimizeCost.toLocaleString() }));
       return;
     }
 
@@ -121,18 +123,18 @@ export default function StandaloneCvOptimizePage() {
     try {
       if (cvSourceTab === 'saved') {
         if (!selectedCvId) {
-          toast.error('Vui lòng chọn một CV từ danh sách của bạn');
+          toast.error(t('toastSelectSavedCv'));
           setIsAnalyzing(false);
           return;
         }
         const res = await createSessionMutation.mutateAsync({ cvId: selectedCvId });
         if (res.data) {
           setAnalysisResult(res.data);
-          toast.success('Phân tích CV hoàn tất!');
+          toast.success(t('toastAnalysisComplete'));
         }
       } else {
         if (!file) {
-          toast.error('Vui lòng chọn file CV để tải lên');
+          toast.error(t('toastSelectFileToUpload'));
           setIsAnalyzing(false);
           return;
         }
@@ -147,7 +149,7 @@ export default function StandaloneCvOptimizePage() {
             toast.success('Phân tích CV hoàn tất!');
           }
         } else {
-          toast.error('Tải CV lên không thành công');
+          toast.error(t('toastUploadFail'));
         }
       }
     } catch (err) {
@@ -230,19 +232,19 @@ export default function StandaloneCvOptimizePage() {
       case 'Good':
         return (
           <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20 gap-1 font-medium">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Đạt chuẩn
+            <CheckCircle2 className="w-3.5 h-3.5" /> {t('statusGood')}
           </Badge>
         );
       case 'Warning':
         return (
           <Badge className="bg-amber-500/10 text-amber-700 border-amber-500/20 gap-1 font-medium">
-            <AlertTriangle className="w-3.5 h-3.5" /> Cần chú ý
+            <AlertTriangle className="w-3.5 h-3.5" /> {t('statusWarning')}
           </Badge>
         );
       case 'Missing':
         return (
           <Badge className="bg-rose-500/10 text-rose-700 border-rose-500/20 gap-1 font-medium">
-            <XCircle className="w-3.5 h-3.5" /> Còn thiếu
+            <XCircle className="w-3.5 h-3.5" /> {t('statusMissing')}
           </Badge>
         );
     }
@@ -251,11 +253,11 @@ export default function StandaloneCvOptimizePage() {
   const getPriorityBadge = (priority: string) => {
     switch (priority.toLowerCase()) {
       case 'high':
-        return <Badge className="bg-rose-500/15 text-rose-700 font-bold border-rose-200">Ưu tiên cao</Badge>;
+        return <Badge className="bg-rose-500/15 text-rose-700 font-bold border-rose-200">{t('priorityHigh')}</Badge>;
       case 'medium':
-        return <Badge className="bg-amber-500/15 text-amber-700 font-bold border-amber-200">Ưu tiên vừa</Badge>;
+        return <Badge className="bg-amber-500/15 text-amber-700 font-bold border-amber-200">{t('priorityMedium')}</Badge>;
       default:
-        return <Badge className="bg-blue-500/15 text-blue-700 font-bold border-blue-200">Khuyến nghị</Badge>;
+        return <Badge className="bg-blue-500/15 text-blue-700 font-bold border-blue-200">{t('priorityRecommended')}</Badge>;
     }
   };
 
@@ -266,10 +268,10 @@ export default function StandaloneCvOptimizePage() {
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-2.5">
             <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-            Tối ưu hóa Bố cục & Cấu trúc CV
+            {t('pageTitle')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm max-w-3xl">
-            Đánh giá độ đầy đủ của các phần chuẩn trong CV và phân tích thứ tự ưu tiên bố cục (dành cho Sinh viên/Fresher hoặc Người đã đi làm) mà không chỉnh sửa văn bản của bạn.
+            {t('pageDesc')}
           </p>
         </div>
         {analysisResult && (
@@ -278,7 +280,7 @@ export default function StandaloneCvOptimizePage() {
             onClick={() => setAnalysisResult(null)}
             className="gap-2 shrink-0 self-start md:self-auto"
           >
-            <RefreshCw className="h-4 w-4" /> Đánh giá CV khác
+            <RefreshCw className="h-4 w-4" /> {t('evaluateAnotherBtn')}
           </Button>
         )}
       </div>
@@ -291,9 +293,9 @@ export default function StandaloneCvOptimizePage() {
               <Sparkles className="w-8 h-8 text-primary" />
             </div>
           </div>
-          <h2 className="text-xl font-bold tracking-tight">Hệ thống AI đang phân tích CV của bạn...</h2>
+          <h2 className="text-xl font-bold tracking-tight">{t('analyzingTitle')}</h2>
           <p className="text-muted-foreground text-sm max-w-md">
-            Đang kiểm tra các Section tiêu chuẩn, đánh giá thứ tự ưu tiên theo kinh nghiệm làm việc và tổng hợp giải pháp cải thiện.
+            {t('analyzingDesc')}
           </p>
         </div>
       )}
@@ -308,18 +310,18 @@ export default function StandaloneCvOptimizePage() {
                 {hasActiveSub ? <Zap className="h-5 w-5 text-purple-600 dark:text-purple-400 fill-purple-600/20" /> : <Coins className="h-5 w-5 text-amber-500 fill-amber-500/20" />}
               </div>
               <div>
-                <h4 className="font-bold text-foreground text-sm">Phí sử dụng:</h4>
+                <h4 className="font-bold text-foreground text-sm">{t('costLabel')}</h4>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {hasActiveSub 
-                    ? <span className="text-purple-600 dark:text-purple-400 font-medium">Miễn phí (Gói {activeSubName} - Còn {isSubUnlimited ? 'Vô hạn' : subRemaining} lượt)</span>
-                    : <span>{optimizeCost.toLocaleString()} Coin / lượt</span>}
+                    ? <span className="text-purple-600 dark:text-purple-400 font-medium">{isSubUnlimited ? t('freeSubUnlimited', { subName: activeSubName }) : t('freeSubRemaining', { subName: activeSubName, remaining: subRemaining })}</span>
+                    : <span>{t('costPerTime', { cost: optimizeCost.toLocaleString() })}</span>}
                 </p>
               </div>
             </div>
             
             <div className="text-right flex items-center gap-4">
               <div className="hidden sm:block">
-                <p className="text-xs text-muted-foreground">Số dư hiện tại:</p>
+                <p className="text-xs text-muted-foreground">{t('currentBalanceLabel')}</p>
                 <p className="text-sm font-bold text-foreground">
                   <strong className={(!hasActiveSub && balance < optimizeCost) ? "text-rose-500" : "text-emerald-600"}>
                     {balance.toLocaleString()} Coin
@@ -332,7 +334,7 @@ export default function StandaloneCvOptimizePage() {
                 className={(!hasActiveSub && balance < optimizeCost) ? "bg-amber-500 hover:bg-amber-600 text-white" : "border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"}
                 onClick={() => router.push('/candidate/billing')}
               >
-                Nạp thêm
+                {t('topUpBtn')}
               </Button>
             </div>
           </div>
@@ -340,10 +342,10 @@ export default function StandaloneCvOptimizePage() {
           <Card className="shadow-sm border-border/80">
           <CardHeader>
             <CardTitle className="text-xl font-bold flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary" /> Chọn CV cần đánh giá
+              <FileText className="w-5 h-5 text-primary" /> {t('selectCvTitle')}
             </CardTitle>
             <CardDescription>
-              Vui lòng chọn CV đã lưu trong tài khoản của bạn hoặc tải lên một file CV mới (.pdf, .docx).
+              {t('selectCvDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -355,7 +357,7 @@ export default function StandaloneCvOptimizePage() {
                 onClick={() => setCvSourceTab('saved')}
                 className="gap-2"
               >
-                <FileText className="w-4 h-4" /> CV đã lưu ({myCvs.length})
+                <FileText className="w-4 h-4" /> {t('tabSavedCv', { count: myCvs.length })}
               </Button>
               <Button
                 type="button"
@@ -363,7 +365,7 @@ export default function StandaloneCvOptimizePage() {
                 onClick={() => setCvSourceTab('upload')}
                 className="gap-2"
               >
-                <Upload className="w-4 h-4" /> Tải lên CV mới
+                <Upload className="w-4 h-4" /> {t('tabUploadCv')}
               </Button>
             </div>
 
@@ -372,13 +374,13 @@ export default function StandaloneCvOptimizePage() {
               <div className="space-y-4">
                 {isLoadingCvs ? (
                   <div className="flex items-center justify-center p-8 text-muted-foreground gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" /> Đang tải danh sách CV...
+                    <Loader2 className="w-5 h-5 animate-spin" /> {t('loadingCvList')}
                   </div>
                 ) : myCvs.length === 0 ? (
                   <div className="p-6 text-center border border-dashed rounded-xl space-y-3">
-                    <p className="text-muted-foreground text-sm">Bạn chưa có CV nào được lưu trong hệ thống.</p>
+                    <p className="text-muted-foreground text-sm">{t('noSavedCv')}</p>
                     <Button variant="outline" size="sm" onClick={() => setCvSourceTab('upload')}>
-                      <Upload className="w-4 h-4 mr-1.5" /> Tải lên CV đầu tiên
+                      <Upload className="w-4 h-4 mr-1.5" /> {t('uploadFirstCvBtn')}
                     </Button>
                   </div>
                 ) : (
@@ -399,7 +401,7 @@ export default function StandaloneCvOptimizePage() {
                           <div className="flex items-center gap-2 mt-1">
                             {cv.isPrimary && (
                               <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary font-bold">
-                                CV Chính
+                                {t('primaryCvBadge')}
                               </Badge>
                             )}
                             <span className="text-xs text-muted-foreground uppercase">{cv.fileType}</span>
@@ -429,9 +431,9 @@ export default function StandaloneCvOptimizePage() {
                     </div>
                     <div>
                       <span className="font-semibold text-base text-foreground">
-                        {file ? file.name : 'Nhấp để chọn file hoặc kéo thả vào đây'}
+                        {file ? file.name : t('uploadDragDrop')}
                       </span>
-                      <p className="text-xs text-muted-foreground mt-1">Hỗ trợ định dạng PDF hoặc DOCX (tối đa 10MB)</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t('uploadFormatSupport')}</p>
                     </div>
                   </label>
                 </div>
@@ -452,11 +454,11 @@ export default function StandaloneCvOptimizePage() {
               >
                 {isUploading ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" /> Đang tải CV lên...
+                    <Loader2 className="w-5 h-5 animate-spin" /> {t('btnUploading')}
                   </>
                 ) : (
                   <>
-                    Phân tích & Tối ưu CV <ArrowRight className="w-5 h-5" />
+                    {t('btnAnalyzeOptimize')} <ArrowRight className="w-5 h-5" />
                   </>
                 )}
               </Button>
@@ -475,7 +477,7 @@ export default function StandaloneCvOptimizePage() {
             <Card className="bg-gradient-to-br from-primary/10 via-card to-card border-primary/20 shadow-sm flex flex-col justify-between">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-                  Điểm Đánh giá Cấu trúc
+                  {t('scoreTitle')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex items-center justify-between pt-0">
@@ -485,7 +487,7 @@ export default function StandaloneCvOptimizePage() {
                     <span className="text-2xl text-muted-foreground font-normal">/100</span>
                   </div>
                   <p className="text-xs text-muted-foreground font-medium mt-1">
-                    {analysisResult.overallScore >= 80 ? 'Cấu trúc rất tốt' : analysisResult.overallScore >= 60 ? 'Khá đầy đủ, cần hoàn thiện' : 'Cần bổ sung thêm section'}
+                    {analysisResult.overallScore >= 80 ? t('scoreExcellent') : analysisResult.overallScore >= 60 ? t('scoreGood') : t('scoreNeedsWork')}
                   </p>
                 </div>
                 <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
@@ -498,7 +500,7 @@ export default function StandaloneCvOptimizePage() {
             <Card className="lg:col-span-2 shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <Info className="w-5 h-5 text-primary" /> Nhận xét Tổng quan của AI
+                  <Info className="w-5 h-5 text-primary" /> {t('overviewTitle')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -507,7 +509,7 @@ export default function StandaloneCvOptimizePage() {
                 </p>
                 <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground font-medium">
                   <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-                  File CV: <strong className="text-foreground">{analysisResult.cvFileName || 'CV đã chọn'}</strong>
+                  {t('cvFileLabel')} <strong className="text-foreground">{analysisResult.cvFileName || t('defaultCvName')}</strong>
                 </div>
               </CardContent>
             </Card>
@@ -517,10 +519,10 @@ export default function StandaloneCvOptimizePage() {
           <Card className="shadow-sm">
             <CardHeader className="border-b bg-muted/20">
               <CardTitle className="text-lg font-bold flex items-center gap-2.5">
-                <Layers className="w-5 h-5 text-primary" /> 1. Kiểm tra Độ đầy đủ của các Section chuẩn
+                <Layers className="w-5 h-5 text-primary" /> {t('section1Title')}
               </CardTitle>
               <CardDescription>
-                Đánh giá sự hiện diện của các danh mục bắt buộc và bổ sung trong bố cục CV.
+                {t('section1Desc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
@@ -547,14 +549,14 @@ export default function StandaloneCvOptimizePage() {
             <CardHeader className="border-b bg-muted/20">
               <CardTitle className="text-lg font-bold flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-2.5">
-                  <ListOrdered className="w-5 h-5 text-primary" /> 2. Phân tích Thứ tự Ưu tiên Bố cục (Layout Order)
+                  <ListOrdered className="w-5 h-5 text-primary" /> {t('section2Title')}
                 </div>
                 <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 font-semibold px-3 py-1">
-                  <UserCheck className="w-3.5 h-3.5 mr-1" /> Đánh giá đối tượng: {analysisResult.priorityOrder.candidateLevel}
+                  <UserCheck className="w-3.5 h-3.5 mr-1" /> {t('targetAudience', { level: analysisResult.priorityOrder.candidateLevel })}
                 </Badge>
               </CardTitle>
               <CardDescription>
-                Quy tắc: Đối với Sinh viên/Mới đi làm ➔ Ưu tiên Học vấn & Kỹ năng lên trước; Đối với Người đã đi làm ➔ Ưu tiên Kinh nghiệm lên trước.
+                {t('section2Rule')}
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
@@ -572,8 +574,8 @@ export default function StandaloneCvOptimizePage() {
                 <div>
                   <h4 className="font-bold text-base">
                     {analysisResult.priorityOrder.isOrderOptimal 
-                      ? 'Bố cục thứ tự sắp xếp hiện tại là TỐI ƯU' 
-                      : 'Bố cục thứ tự sắp xếp CẦN ĐIỀU CHỈNH'}
+                      ? t('orderOptimal') 
+                      : t('orderNeedsAdjustment')}
                   </h4>
                   <p className="text-sm mt-1 opacity-90 leading-relaxed">
                     {analysisResult.priorityOrder.advice}
@@ -585,7 +587,7 @@ export default function StandaloneCvOptimizePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                 <div className="p-4 rounded-xl border bg-muted/20 space-y-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                    Thứ tự hiện tại trong CV:
+                    {t('currentOrderLabel')}
                   </span>
                   <div className="text-sm font-medium text-foreground bg-card p-3 rounded-lg border">
                     {analysisResult.priorityOrder.currentOrderDescription}
@@ -594,7 +596,7 @@ export default function StandaloneCvOptimizePage() {
 
                 <div className="p-4 rounded-xl border bg-primary/5 border-primary/20 space-y-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-primary block">
-                    Thứ tự khuyến nghị tối ưu:
+                    {t('recommendedOrderLabel')}
                   </span>
                   <div className="text-sm font-bold text-primary bg-card p-3 rounded-lg border border-primary/30">
                     {analysisResult.priorityOrder.recommendedOrderDescription}
@@ -608,16 +610,16 @@ export default function StandaloneCvOptimizePage() {
           <Card className="shadow-sm">
             <CardHeader className="border-b bg-muted/20">
               <CardTitle className="text-lg font-bold flex items-center gap-2.5">
-                <Sparkles className="w-5 h-5 text-primary" /> 3. Danh sách Giải pháp & Khuyến nghị Cải thiện
+                <Sparkles className="w-5 h-5 text-primary" /> {t('section3Title')}
               </CardTitle>
               <CardDescription>
-                Các đề xuất cụ thể giúp nâng cao tính chuyên nghiệp và thu hút nhà tuyển dụng mà không làm biến đổi nội dung gốc.
+                {t('section3Desc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
               {analysisResult.recommendations.length === 0 ? (
                 <div className="p-6 text-center text-muted-foreground text-sm">
-                  Không có khuyến nghị bổ sung nào. CV của bạn đã tuân thủ rất tốt các chuẩn bố cục!
+                  {t('noRecommendations')}
                 </div>
               ) : (
                 analysisResult.recommendations.map((rec, idx) => (
@@ -641,7 +643,7 @@ export default function StandaloneCvOptimizePage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                         {rec.exampleBefore && (
                           <div className="p-3.5 rounded-xl bg-rose-500/5 border border-rose-200 dark:border-rose-900/40 text-xs space-y-1.5">
-                            <span className="font-bold text-rose-700 dark:text-rose-400 block">Ví dụ Trước (Hiện tại):</span>
+                            <span className="font-bold text-rose-700 dark:text-rose-400 block">{t('exampleBefore')}</span>
                             <p className="text-rose-950 dark:text-rose-200 font-medium text-xs leading-relaxed break-words">
                               {formatExampleText(rec.exampleBefore)}
                             </p>
@@ -649,7 +651,7 @@ export default function StandaloneCvOptimizePage() {
                         )}
                         {rec.exampleAfter && (
                           <div className="p-3.5 rounded-xl bg-emerald-500/5 border border-emerald-200 dark:border-emerald-900/40 text-xs space-y-1.5">
-                            <span className="font-bold text-emerald-700 dark:text-emerald-400 block">Ví dụ Sau (Khuyến nghị):</span>
+                            <span className="font-bold text-emerald-700 dark:text-emerald-400 block">{t('exampleAfter')}</span>
                             <p className="text-emerald-950 dark:text-emerald-200 font-medium text-xs leading-relaxed break-words">
                               {formatExampleText(rec.exampleAfter)}
                             </p>
@@ -670,28 +672,28 @@ export default function StandaloneCvOptimizePage() {
         <CardHeader>
           <CardTitle className="text-xl font-bold flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <History className="w-5 h-5 text-primary" /> Lịch sử Tối ưu hóa CV
+              <History className="w-5 h-5 text-primary" /> {t('historyTitle')}
             </div>
             {historyData && historyData.totalCount > 0 && (
               <Badge variant="secondary" className="font-semibold text-xs">
-                Tổng cộng: {historyData.totalCount} lần đánh giá
+                {t('historyTotal', { count: historyData.totalCount })}
               </Badge>
             )}
           </CardTitle>
           <CardDescription>
-            Xem lại các kết quả đánh giá và đề xuất tối ưu hóa cấu trúc CV trước đây của bạn.
+            {t('historyDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {isLoadingHistory ? (
             <div className="flex items-center justify-center p-8 text-muted-foreground gap-2">
-              <Loader2 className="w-5 h-5 animate-spin" /> Đang tải lịch sử phân tích...
+              <Loader2 className="w-5 h-5 animate-spin" /> {t('loadingHistory')}
             </div>
           ) : historyItems.length === 0 ? (
             <div className="p-8 text-center border border-dashed rounded-xl space-y-2">
               <History className="w-10 h-10 text-muted-foreground mx-auto opacity-40" />
-              <p className="font-medium text-foreground text-sm">Chưa có lịch sử phân tích CV nào.</p>
-              <p className="text-xs text-muted-foreground">Các lần đánh giá CV mới sẽ tự động hiển thị tại đây.</p>
+              <p className="font-medium text-foreground text-sm">{t('noHistoryTitle')}</p>
+              <p className="text-xs text-muted-foreground">{t('noHistoryDesc')}</p>
             </div>
           ) : (
             <>
@@ -716,7 +718,7 @@ export default function StandaloneCvOptimizePage() {
                       <div className="space-y-2">
                         <div className="flex items-start justify-between gap-2">
                           <span className="font-bold text-base text-foreground line-clamp-1 truncate" title={item.cvFileName || 'CV'}>
-                            {item.cvFileName || 'Hồ sơ CV'}
+                            {item.cvFileName || t('defaultHistoryName')}
                           </span>
                           <Badge
                             className={`shrink-0 font-extrabold ${
@@ -749,14 +751,14 @@ export default function StandaloneCvOptimizePage() {
                           ) : (
                             <Eye className="w-3.5 h-3.5" />
                           )}
-                          Xem báo cáo
+                          {t('viewReportBtn')}
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => deleteHistoryMutation.mutate(item.sessionId)}
                           className="h-8 w-8 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                          title="Xóa lịch sử"
+                          title="{t('deleteHistoryBtn')}"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
