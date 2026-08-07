@@ -2132,5 +2132,33 @@
       "staffDesc": "This is an internal system Staff account. Staff members can monitor candidate and recruiter activities, inspect applications, review job postings, and handle standard support operations.",
       "adminDesc": "This is the master Administrator account. The administrator has full permissions over system configurations, user governance, audit log tracking, and security parameters."
     }
+  },
+  "AdminFinance": {
+    "pageTitle": "Financial Management & Transactions",
+    "pageDesc": "Monitor, track, and audit payment transactions and financial records across the platform.",
+    "searchPlaceholder": "Search by user name, email...",
+    "clearSearch": "Clear search",
+    "statusFilterLabel": "Status Filter",
+    "allStatuses": "All Statuses",
+    "statusSuccess": "Success",
+    "statusPending": "Pending",
+    "statusFailed": "Failed",
+    "clearFilters": "Clear Filters",
+    "clearAllFilters": "Clear All Filters",
+    "colUserName": "USER NAME",
+    "colEmail": "EMAIL",
+    "colAmount": "AMOUNT",
+    "colStatus": "STATUS",
+    "colTime": "TRANSACTION TIME",
+    "loadFailTitle": "Failed to load transaction history",
+    "loadFailDesc": "An error occurred while fetching payment records. Please try again.",
+    "retryBtn": "Retry Loading",
+    "noDataTitle": "No transactions found",
+    "noDataFilterDesc": "No transactions match the current filters. Try clearing or adjusting your search criteria.",
+    "noDataEmptyDesc": "No payment transactions recorded yet.",
+    "unknownUser": "Unknown",
+    "notAvailable": "N/A",
+    "showingText": "Showing <span class=\"font-semibold text-[#050505] dark:text-zinc-200\">{start} - {end}</span> of <span class=\"font-semibold text-[#050505] dark:text-zinc-200\">{total}</span> transactions",
+    "pageSize": "Page size"
   }
 }
