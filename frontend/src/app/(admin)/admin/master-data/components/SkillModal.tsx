@@ -81,14 +81,14 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
         {
           onSuccess: (res) => {
             if (res.success) {
-              onSuccess('New skill added successfully!');
+              onSuccess(t('toastSkillCreateSuccess'));
               onClose();
             } else {
-              setSkillFormError(res.message || 'An error occurred.');
+              setSkillFormError(res.message || t('toastErrorOccurred'));
             }
           },
           onError: (err: any) => {
-            setSkillFormError(err.response?.data?.message || 'An error occurred while creating skill.');
+            setSkillFormError(err.response?.data?.message || t('toastSkillCreateError'));
           },
         }
       );
@@ -106,14 +106,14 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
         {
           onSuccess: (res) => {
             if (res.success) {
-              onSuccess('Skill updated successfully!');
+              onSuccess(t('toastSkillUpdateSuccess'));
               onClose();
             } else {
-              setSkillFormError(res.message || 'An error occurred.');
+              setSkillFormError(res.message || t('toastErrorOccurred'));
             }
           },
           onError: (err: any) => {
-            setSkillFormError(err.response?.data?.message || 'An error occurred while updating.');
+            setSkillFormError(err.response?.data?.message || t('toastSkillUpdateError'));
           },
         }
       );

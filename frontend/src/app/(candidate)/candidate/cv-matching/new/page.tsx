@@ -23,7 +23,7 @@ import { useTranslations } from 'next-intl';
 
 function CvMatchingContent() {
   const router = useRouter();
-  const t = useTranslations('CandidateCvMatching');
+  const t = useTranslations('CandidateCVMatching');
   const { state, queries, setters, handlers } = useCvMatchingForm();
 
   return (

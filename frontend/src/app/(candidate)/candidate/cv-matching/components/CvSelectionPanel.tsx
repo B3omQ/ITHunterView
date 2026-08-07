@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { UploadCloud, FileText, Trash2, Loader2, Check } from 'lucide-react';
+import { useTranslations } from "next-intl";
 
 interface CvSelectionPanelProps {
   cvTab: string;
@@ -41,14 +42,16 @@ export function CvSelectionPanel({
   handleDrop,
   handleRemoveFile,
 }: CvSelectionPanelProps) {
+  const t = useTranslations("CandidateCVMatching");
+
   return (
     <div className="flex flex-col space-y-3">
-      <Label className="text-base font-semibold">Select Your Resume (CV)</Label>
+      <Label className="text-base font-semibold">{t("cvSelectionTitle")}</Label>
       <Tabs value={cvTab} onValueChange={setCvTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="upload">Upload File</TabsTrigger>
-          <TabsTrigger value="paste">Paste Text</TabsTrigger>
-          <TabsTrigger value="saved">My Saved</TabsTrigger>
+          <TabsTrigger value="upload">{t("cvSelectionUploadTab")}</TabsTrigger>
+          <TabsTrigger value="paste">{t("cvSelectionPasteTab")}</TabsTrigger>
+          <TabsTrigger value="saved">{t("cvSelectionSavedTab")}</TabsTrigger>
         </TabsList>
 
         {/* Tab: Upload File */}
@@ -68,8 +71,8 @@ export function CvSelectionPanel({
               />
               <label htmlFor="cv-upload-input" className="cursor-pointer flex flex-col items-center justify-center w-full h-full">
                 <UploadCloud className="h-10 w-10 text-muted-foreground mb-4" />
-                <span className="text-sm font-medium">Drag & drop your file here, or <span className="text-primary underline">browse</span></span>
-                <span className="text-xs text-muted-foreground mt-2">Supports PDF, DOCX, TXT up to 5MB</span>
+                <span className="text-sm font-medium" dangerouslySetInnerHTML={{ __html: t.raw("cvSelectionDragDrop") }}></span>
+                <span className="text-xs text-muted-foreground mt-2">{t("cvSelectionFileSupport")}</span>
               </label>
             </div>
           ) : (
@@ -83,12 +86,12 @@ export function CvSelectionPanel({
                   {isUploading ? (
                     <span className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
                       <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                      Extracting text from resume...
+                      {t("cvSelectionExtracting")}
                     </span>
                   ) : (
                     <span className="text-xs text-emerald-600 font-medium flex items-center gap-1.5 mt-1">
                       <Check className="h-3.5 w-3.5" />
-                      Uploaded successfully
+                      {t("cvSelectionUploadSuccess")}
                     </span>
                   )}
                 </div>
@@ -109,7 +112,7 @@ export function CvSelectionPanel({
         {/* Tab: Paste Text */}
         <TabsContent value="paste" className="mt-4">
           <Textarea
-            placeholder="Paste the raw text of your resume here..."
+            placeholder={t("cvSelectionPastePlaceholder")}
             className="min-h-[220px] font-sans resize-none"
             value={cvText}
             onChange={(e) => setCvText(e.target.value)}
@@ -119,19 +122,19 @@ export function CvSelectionPanel({
         {/* Tab: My Saved CVs */}
         <TabsContent value="saved" className="mt-4">
           <div className="space-y-4">
-            <Label className="text-xs text-muted-foreground">Choose a resume saved in your profile</Label>
+            <Label className="text-xs text-muted-foreground">{t("cvSelectionSavedLabel")}</Label>
             {isLoadingCvs ? (
               <div className="flex items-center justify-center p-8 border rounded-lg bg-muted/10">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : myCvs.length === 0 ? (
               <div className="text-center p-8 border border-dashed rounded-lg">
-                <p className="text-sm text-muted-foreground">No saved resumes found.</p>
+                <p className="text-sm text-muted-foreground">{t("cvSelectionNoSaved")}</p>
               </div>
             ) : (
               <Select value={selectedCvId} onValueChange={(val) => setSelectedCvId(val || '')}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a resume">
+                  <SelectValue placeholder={t("cvSelectionSelectPlaceholder")}>
                     {selectedCvId 
                       ? (myCvs.find((c) => c.id === selectedCvId)?.fileName || 
                          (myCvs.find((c) => c.id === selectedCvId) 

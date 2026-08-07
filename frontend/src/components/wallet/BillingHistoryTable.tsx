@@ -479,9 +479,9 @@ export function BillingHistoryTable() {
         <div className="flex items-center space-x-3 text-sm text-[#65676B] dark:text-zinc-400">
           <div>
             {t.rich("showingText", { 
-              start: startResult, 
-              end: endResult, 
-              total: totalCount,
+              start: () => startResult, 
+              end: () => endResult, 
+              total: () => totalCount,
               span: (chunks) => <span className="font-semibold text-[#050505] dark:text-zinc-200">{chunks}</span>
             })}
           </div>

@@ -77,18 +77,18 @@ export default function SfiaSkillsPage() {
 
   const handleDelete = useCallback(
     (skill: SfiaSkillDto) => {
-      if (confirm(`Are you sure you want to delete the SFIA Skill "${skill.skillCode}"?`)) {
+      if (confirm(t('sfiaDeleteConfirm', { code: skill.skillCode }))) {
         deleteMutation.mutate(skill.id, {
           onSuccess: (res) => {
             if (res.success) {
-              showToast('SFIA Skill deleted successfully', 'success');
+              showToast(t('toastSfiaDeleteSuccess'), 'success');
             } else {
-              showToast(res.message || 'Failed to delete skill', 'error');
+              showToast(res.message || t('toastSfiaDeleteError'), 'error');
             }
           },
           onError: (err: any) => {
             showToast(
-              err.response?.data?.message || 'Failed to delete skill. It might be in use.',
+              err.response?.data?.message || t('toastSfiaDeleteConstraintError'),
               'error'
             );
           },
@@ -168,7 +168,7 @@ export default function SfiaSkillsPage() {
                 variant="ghost"
                 className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
               >
-                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> {t('clearFilters')}
               </Button>
             )}
           </div>

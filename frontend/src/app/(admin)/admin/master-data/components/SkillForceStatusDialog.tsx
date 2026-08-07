@@ -38,12 +38,12 @@ export function SkillForceStatusDialog({ isOpen, onClose, forceStatusData, onSuc
       {
         onSuccess: (res) => {
           if (res.success) {
-            onSuccess(`Force updated skill status to ${forceStatusData.status} successfully!`);
+            onSuccess(t('toastSkillStatusUpdateSuccess', { status: forceStatusData.status }));
             onClose();
           }
         },
         onError: (err: any) => {
-          onError(err.response?.data?.message || 'Error force updating status.');
+          onError(err.response?.data?.message || t('toastSkillStatusUpdateError'));
           onClose();
         },
       }

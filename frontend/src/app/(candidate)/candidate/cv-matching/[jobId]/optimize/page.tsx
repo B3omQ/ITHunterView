@@ -16,11 +16,13 @@ import { OptimizerHeader } from '../../components/optimizer/OptimizerHeader';
 import { SuggestionCard } from '../../components/optimizer/SuggestionCard';
 import { OptimizerCompletion } from '../../components/optimizer/OptimizerCompletion';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 export default function CvOptimizePage({ params }: { params: Promise<{ jobId: string }> }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const resolvedParams = React.use(params);
+  const t = useTranslations("CandidateCVMatching");
   
   const { data: pollData, isLoading, isError } = useGetMatchResult(resolvedParams.jobId);
   const [matchOutput, setMatchOutput] = useState<MatchingOutput | null>(null);
@@ -68,10 +70,10 @@ export default function CvOptimizePage({ params }: { params: Promise<{ jobId: st
     onSuccess: (res) => {
       if (res.data) {
         window.open(res.data, '_blank');
-        toast.success("CV Downloaded successfully!");
+        toast.success(t("cvDownloaded"));
       }
     },
-    onError: () => toast.error("Failed to generate CV file.")
+    onError: () => toast.error(t("failedGenerateCv"))
   });
 
   const getPreviewMutation = useMutation({
@@ -81,13 +83,10 @@ export default function CvOptimizePage({ params }: { params: Promise<{ jobId: st
         setPreviewImageBase64(res.data);
         setIsPreviewOpen(true);
       } else {
-        toast.info(
-          "Real-time preview is only available for PDF files. " +
-          "For Word Documents (.docx), please use the Download button to view changes."
-        );
+        toast.info(t("previewPdfOnly"));
       }
     },
-    onError: () => toast.error("Failed to load preview image.")
+    onError: () => toast.error(t("failedLoadPreview"))
   });
 
   // Loading state
@@ -95,7 +94,7 @@ export default function CvOptimizePage({ params }: { params: Promise<{ jobId: st
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-muted-foreground">Loading CV constraints and suggestions...</p>
+        <p className="text-muted-foreground">{t("loadingOptimizer")}</p>
       </div>
     );
   }
@@ -105,12 +104,12 @@ export default function CvOptimizePage({ params }: { params: Promise<{ jobId: st
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 max-w-md mx-auto text-center">
         <AlertCircle className="h-12 w-12 text-muted-foreground mb-2" />
-        <h2 className="text-xl font-bold">No Optimizations Available</h2>
+        <h2 className="text-xl font-bold">{t("noOptimizationsTitle")}</h2>
         <p className="text-muted-foreground">
-          Your CV is already well-optimized or there are no valid AI suggestions available for this job description.
+          {t("noOptimizationsDesc")}
         </p>
         <Button onClick={() => router.push(`${APP_ROUTES.CANDIDATE.CV_MATCHING}/new?jobId=${resolvedParams.jobId}`)}>
-          Back to Match Result
+          {t("backToMatchResult")}
         </Button>
       </div>
     );
@@ -122,24 +121,24 @@ export default function CvOptimizePage({ params }: { params: Promise<{ jobId: st
 
   const handlePreview = () => {
     if (!sessionId) {
-      toast.error("Session not initialized.");
+      toast.error(t("sessionNotInit"));
       return;
     }
     getPreviewMutation.mutate();
   };
 
   const handleSave = () => {
-    toast.success("Saved to My CVs successfully!");
+    toast.success(t("savedToMyCv"));
     router.push(`${APP_ROUTES.CANDIDATE.CV_MATCHING}/new?jobId=${resolvedParams.jobId}`);
   };
 
 
   const handleDownload = () => {
     if (!sessionId) {
-      toast.error("Cannot download: Session not initialized.");
+      toast.error(t("cannotDownload"));
       return;
     }
-    toast.info("Generating your optimized CV...");
+    toast.info(t("generatingOptimizedCv"));
     generateFileMutation.mutate();
   };
 
@@ -179,17 +178,17 @@ export default function CvOptimizePage({ params }: { params: Promise<{ jobId: st
         <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" /> CV Preview
+              <FileText className="w-5 h-5" /> {t("cvPreviewTitle")}
             </DialogTitle>
             <DialogDescription>
-              This is a real-time preview of your optimized CV.
+              {t("cvPreviewDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto bg-muted p-4 rounded border mt-4 flex justify-center">
             {getPreviewMutation.isPending ? (
               <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-4">
                 <Loader2 className="h-8 w-8 animate-spin" />
-                <p>Generating preview image...</p>
+                <p>{t("generatingPreviewImg")}</p>
               </div>
             ) : previewImageBase64 ? (
               <img src={previewImageBase64} alt="CV Preview" className="max-w-full h-auto border shadow-sm bg-white" />

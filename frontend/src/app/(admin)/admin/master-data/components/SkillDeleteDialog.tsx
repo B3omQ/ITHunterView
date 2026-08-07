@@ -30,15 +30,15 @@ export function SkillDeleteDialog({ isOpen, onClose, skillToDelete, onSuccess, o
     deleteSkillMutation.mutate(skillToDelete.id, {
       onSuccess: (res) => {
         if (res.success) {
-          onSuccess('Skill deleted successfully!');
+          onSuccess(t('toastSkillDeleteSuccess', { name: skillToDelete.name }));
           onClose();
         } else {
-          onError(res.message || 'Error deleting skill.');
+          onError(res.message || t('toastSkillDeleteError'));
         }
       },
       onError: (err: any) => {
         onError(
-          err.response?.data?.message || 'Cannot delete this skill (it might be in use or bound by foreign key constraints).'
+          err.response?.data?.message || t('toastSkillDeleteConstraintError')
         );
         onClose();
       },

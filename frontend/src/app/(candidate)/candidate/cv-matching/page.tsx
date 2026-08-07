@@ -31,7 +31,7 @@ export default function CvMatchingHistoryPage() {
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
-  const t = useTranslations("CandidateCvMatching");
+  const t = useTranslations("CandidateCVMatching");
 
   const { data: response, isLoading } = useGetMatchHistory(page, pageSize);
   const deleteMutation = useDeleteMatchHistory();

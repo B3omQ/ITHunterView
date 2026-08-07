@@ -209,7 +209,7 @@ export default function TargetRolesPage() {
               <span>{toast.message}</span>
               {toast.undoAction && (
                 <button onClick={() => { toast.undoAction?.(); setToast(null); }} className="ml-3 inline-flex items-center gap-1 text-xs font-bold underline hover:no-underline hover:opacity-90 cursor-pointer">
-                  <RotateCcw size={12} /><span>Undo</span>
+                  <RotateCcw size={12} /><span>{t('undoBtn')}</span>
                 </button>
               )}
             </div>

@@ -4,6 +4,7 @@ import { CriticalGap, Penalty } from "@/types/cv.types";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { AlertTriangle, XCircle } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useTranslations } from "next-intl";
 
 interface CriticalGapsPanelProps {
   criticalGaps: CriticalGap[];
@@ -11,6 +12,8 @@ interface CriticalGapsPanelProps {
 }
 
 export function CriticalGapsPanel({ criticalGaps, penalties }: CriticalGapsPanelProps) {
+  const t = useTranslations("CandidateCVMatching");
+
   if (criticalGaps.length === 0) {
     return null;
   }
@@ -20,7 +23,7 @@ export function CriticalGapsPanel({ criticalGaps, penalties }: CriticalGapsPanel
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2 text-destructive">
           <AlertTriangle className="h-5 w-5" />
-          Critical Gaps
+          {t("criticalGapsTitle")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -33,7 +36,7 @@ export function CriticalGapsPanel({ criticalGaps, penalties }: CriticalGapsPanel
             <AlertDescription className="mt-2 text-red-700/90 dark:text-red-400">
               <p className="mb-2">{gap.gapDescription}</p>
               <div className="text-xs bg-red-100 dark:bg-red-900/40 p-2 rounded-md font-medium">
-                <span className="opacity-80 uppercase tracking-wider text-[10px] block mb-1">Suggestion:</span>
+                <span className="opacity-80 uppercase tracking-wider text-[10px] block mb-1">{t("suggestionLabel")}</span>
                 {gap.suggestion}
               </div>
             </AlertDescription>
