@@ -254,7 +254,7 @@ export default function CandidateDashboard() {
             <MessageCircleQuestion size={24} className="text-emerald-500" />
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('mockInterviews')}</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('mockInterview')}</p>
             <div className="flex items-end gap-2">
               <h3 className="text-2xl font-black text-foreground">{completedInterviews}</h3>
               <span className="text-xs font-medium text-muted-foreground mb-1">{t('mockInterviewsCompleted')}</span>

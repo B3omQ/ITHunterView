@@ -76,6 +76,25 @@
       "recruiter": "Recruiter",
       "staff": "Staff",
       "admin": "Admin"
+    },
+    "Search": {
+      "placeholder": "Type a command or search...",
+      "noResults": "No results found.",
+      "quickActions": "Quick Actions",
+      "navigation": "Navigation",
+      "jobs": "Jobs & Candidates",
+      "searchJobs": "Search Jobs",
+      "createJob": "Create Job",
+      "searchCandidates": "Search Candidates",
+      "mockInterview": "Mock Interview",
+      "cvMatching": "CV-JD Matching",
+      "billing": "Billing",
+      "settings": "Settings",
+      "profile": "My Profile",
+      "theme": "Theme",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
     }
   },
   "Auth": {

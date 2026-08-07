@@ -76,6 +76,25 @@
       "recruiter": "Nhà tuyển dụng",
       "staff": "Nhân viên",
       "admin": "Quản trị viên"
+    },
+    "Search": {
+      "placeholder": "Nhập lệnh hoặc tìm kiếm...",
+      "noResults": "Không tìm thấy kết quả.",
+      "quickActions": "Hành động nhanh",
+      "navigation": "Điều hướng",
+      "jobs": "Tuyển dụng",
+      "searchJobs": "Tìm kiếm Việc làm",
+      "createJob": "Tạo Tin Tuyển Dụng",
+      "searchCandidates": "Tìm kiếm Ứng viên",
+      "mockInterview": "Phỏng vấn AI",
+      "cvMatching": "Đánh giá CV-JD",
+      "billing": "Thanh toán",
+      "settings": "Cài đặt",
+      "profile": "Hồ sơ của tôi",
+      "theme": "Giao diện",
+      "light": "Sáng",
+      "dark": "Tối",
+      "system": "Hệ thống"
     }
   },
   "Auth": {

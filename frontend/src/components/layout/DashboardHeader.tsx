@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { useWalletBalance } from "@/hooks/useWallet"
 import { NotificationDialog } from "@/components/shared/NotificationDialog"
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher"
+import { getNavItems } from "./Sidebar"
 import { useQuery } from "@tanstack/react-query"
 import { notificationService } from "@/services/notification.service"
 import { useTranslations, useLocale } from "next-intl"
@@ -24,8 +25,24 @@ export function DashboardHeader() {
   const [isNotificationOpen, setIsNotificationOpen] = React.useState(false)
   const [avatarError, setAvatarError] = React.useState(false)
   const [isAvatarLoaded, setIsAvatarLoaded] = React.useState(false)
+  const [searchQuery, setSearchQuery] = React.useState("")
+  const [isSearchFocused, setIsSearchFocused] = React.useState(false)
+  const [selectedIndex, setSelectedIndex] = React.useState(0)
 
   const isRecruiter = user?.role?.name?.toLowerCase() === "recruiter"
+  const roleName = user?.role?.name?.toLowerCase() || 'guest'
+
+  // Derived filtered links for autocomplete
+  const filteredLinks = React.useMemo(() => {
+    if (!searchQuery.trim()) return []
+    const navItems = getNavItems(roleName)
+    const allLinks = navItems.flatMap(item => 
+      item.children ? [item, ...item.children] : [item]
+    )
+    return allLinks.filter(item => 
+      t(item.labelKey).toLowerCase().includes(searchQuery.toLowerCase())
+    ).slice(0, 5)
+  }, [searchQuery, roleName, t])
 
   // Get Wallet Balance & Subscription
   const { data: walletData, isLoading: walletLoading } = useWalletBalance()
@@ -58,16 +75,70 @@ export function DashboardHeader() {
       {/* Left side: Global Search */}
       <div className="flex-1 flex items-center min-w-0">
         <div className="relative w-full max-w-md hidden sm:flex items-center group">
-          <Search size={16} className="absolute left-3 text-muted-foreground group-focus-within:text-primary transition-colors" />
+          <Search size={16} className="absolute left-3 text-muted-foreground group-focus-within:text-primary transition-colors z-10 pointer-events-none" />
           <Input 
             placeholder={t('searchPlaceholder')} 
-            className="pl-9 pr-14 h-9 w-full bg-muted/40 border-transparent hover:bg-muted/60 focus:bg-background focus:border-primary/50 transition-all rounded-full shadow-none"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setIsSearchFocused(true)
+              setSelectedIndex(0)
+            }}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+            className="pl-9 pr-4 h-9 w-full bg-muted/40 border-transparent hover:bg-muted/60 focus:bg-background focus:border-primary/50 transition-all rounded-full shadow-none relative z-0"
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                setSelectedIndex(prev => Math.min(prev + 1, filteredLinks.length - 1))
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault()
+                setSelectedIndex(prev => Math.max(prev - 1, 0))
+              } else if (e.key === 'Enter') {
+                e.preventDefault()
+                if (filteredLinks.length > 0 && selectedIndex >= 0 && selectedIndex < filteredLinks.length) {
+                  router.push(filteredLinks[selectedIndex].href)
+                  setSearchQuery("")
+                  setIsSearchFocused(false)
+                  setSelectedIndex(0)
+                  e.currentTarget.blur()
+                }
+              }
+            }}
           />
-          <div className="absolute right-2 flex items-center pointer-events-none">
-            <kbd className="hidden lg:inline-flex items-center gap-0.5 rounded-full border border-border/50 bg-background/50 px-2 h-5 font-mono text-[10px] font-medium text-muted-foreground shadow-sm">
-              <span className="text-[11px]">⌘</span>K
-            </kbd>
-          </div>
+          {isSearchFocused && searchQuery.trim().length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-lg overflow-hidden z-50">
+              <ul className="py-1">
+                {filteredLinks.length > 0 ? (
+                  filteredLinks.map((link, idx) => (
+                    <li key={idx}>
+                      <button
+                        className={`w-full text-left px-4 py-2.5 text-sm transition-all flex items-center gap-3 ${
+                          idx === selectedIndex 
+                            ? 'bg-primary/10 text-primary font-medium border-l-2 border-primary' 
+                            : 'hover:bg-muted/50 text-foreground border-l-2 border-transparent'
+                        }`}
+                        onMouseEnter={() => setSelectedIndex(idx)}
+                        onClick={() => {
+                          router.push(link.href)
+                          setSearchQuery("")
+                          setIsSearchFocused(false)
+                          setSelectedIndex(0)
+                        }}
+                      >
+                        <Search size={14} className={`shrink-0 ${idx === selectedIndex ? 'text-primary' : 'text-muted-foreground'}`} />
+                        <span className="truncate">{t(link.labelKey)}</span>
+                      </button>
+                    </li>
+                  ))
+                ) : (
+                  <li className="px-4 py-3 text-sm text-muted-foreground text-center">
+                    No results found
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 
