@@ -43,9 +43,9 @@ public sealed class JdAnalysisV4CompatibilityTests
         Assert.Equal(1m, complete.SkillScore);
         Assert.Equal(2m / 3m, partial.SkillScore);
 
-        var context = new JdStageTwoContextBuilder().Build(projection);
-        Assert.Equal(1, context.RequirementGroupCount);
-        Assert.Equal(3, context.RequirementItemCount);
+        var context = new JdMatchingRequirementContextBuilder().Build(projection);
+        Assert.Equal(1, context.GroupCount);
+        Assert.Equal(3, context.RequirementCount);
         Assert.All(projectedGroup.Items, item => Assert.Contains(item.ItemId, context.Json, StringComparison.Ordinal));
 
         var secondProjection = new JdRequirementProjector().Project(ValidateAndSerialize(ReadFixture("jd-v4-compact-caching-group.json")));

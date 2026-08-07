@@ -25,20 +25,14 @@ namespace ITHunterview.Service.Tests.UseCase
     {
         private readonly Mock<IAiEmbeddingService> _mockAiService;
         private readonly Mock<ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService> _mockExtractorService;
-        private readonly Mock<System.Net.Http.IHttpClientFactory> _mockHttpClientFactory;
-        private readonly Mock<Microsoft.Extensions.Configuration.IConfiguration> _mockConfiguration;
         private readonly Mock<IPromptManagementService> _mockPromptService;
-        private readonly Mock<ITHunterview.Service.Interface.Persistence.ISystemConfigRepository> _mockSystemConfigRepository;
         private readonly CvJobMatchingUseCase _sut;
 
         public CvJobMatchingUseCaseTests()
         {
             _mockAiService = new Mock<IAiEmbeddingService>();
             _mockExtractorService = new Mock<ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService>();
-            _mockHttpClientFactory = new Mock<System.Net.Http.IHttpClientFactory>();
-            _mockConfiguration = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
             _mockPromptService = new Mock<IPromptManagementService>();
-            _mockSystemConfigRepository = new Mock<ITHunterview.Service.Interface.Persistence.ISystemConfigRepository>();
             var mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<CvJobMatchingUseCase>>();
             var mockTextAiService = new Mock<IAiService>();
             var mockFeatureUsageUseCase = new Mock<ITHunterview.Service.Interface.UseCase.ICandidateFeatureUsageUseCase>();
@@ -47,7 +41,7 @@ namespace ITHunterview.Service.Tests.UseCase
             var mockCvAnalysisResponseValidator = new Mock<ITHunterview.Service.Interface.Service.Matching.ICvAnalysisResponseValidator>();
             
             // Pass null for context since we only test methods that don't hit DB
-            _sut = new CvJobMatchingUseCase(null!, _mockAiService.Object, _mockExtractorService.Object, _mockHttpClientFactory.Object, _mockConfiguration.Object, mockLogger.Object, _mockPromptService.Object, _mockSystemConfigRepository.Object, mockTextAiService.Object, mockFeatureUsageUseCase.Object, mockMatchingPreflightUseCase.Object, mockMatchingSourceRepository.Object, mockCvAnalysisResponseValidator.Object);
+            _sut = new CvJobMatchingUseCase(null!, _mockAiService.Object, _mockExtractorService.Object, mockLogger.Object, _mockPromptService.Object, mockTextAiService.Object, mockFeatureUsageUseCase.Object, mockMatchingPreflightUseCase.Object, mockMatchingSourceRepository.Object, mockCvAnalysisResponseValidator.Object);
         }
 
         [Theory]
@@ -199,11 +193,8 @@ namespace ITHunterview.Service.Tests.UseCase
                 context,
                 Mock.Of<IAiEmbeddingService>(),
                 extractor.Object,
-                Mock.Of<System.Net.Http.IHttpClientFactory>(),
-                Mock.Of<Microsoft.Extensions.Configuration.IConfiguration>(),
                 NullLogger<CvJobMatchingUseCase>.Instance,
                 Mock.Of<IPromptManagementService>(),
-                Mock.Of<ISystemConfigRepository>(),
                 Mock.Of<IAiService>(),
                 featureUsage.Object,
                 preflight.Object,
@@ -251,11 +242,8 @@ namespace ITHunterview.Service.Tests.UseCase
             context,
             Mock.Of<IAiEmbeddingService>(),
             Mock.Of<ICvTextExtractorService>(),
-            Mock.Of<System.Net.Http.IHttpClientFactory>(),
-            Mock.Of<Microsoft.Extensions.Configuration.IConfiguration>(),
             NullLogger<CvJobMatchingUseCase>.Instance,
             Mock.Of<IPromptManagementService>(),
-            Mock.Of<ISystemConfigRepository>(),
             Mock.Of<IAiService>(),
             Mock.Of<ICandidateFeatureUsageUseCase>(),
             Mock.Of<IMatchingInputPreflightUseCase>(),

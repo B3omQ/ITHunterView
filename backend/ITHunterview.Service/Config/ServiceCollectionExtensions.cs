@@ -95,8 +95,9 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IJdRequirementProjector, JdRequirementProjector>();
             services.AddScoped<JdHardcodeRequirementEvaluator>();
             services.AddScoped<HardcodeJdRequirementScoringService>();
-            services.AddScoped<JdStageTwoContextBuilder>();
-            services.AddScoped<JdStageTwoResponseValidator>();
+            services.AddScoped<JdMatchingRequirementContextBuilder>();
+            services.AddScoped<JdMatchingResponseAdapter>();
+            services.AddScoped<IJdStageTwoMatchingService, JdStageTwoMatchingService>();
             services.AddScoped<JdFitScoreCalculator>();
             services.AddScoped<CvStageTwoContextBuilder>();
             services.AddSingleton<IMatchingRequestValidator, MatchingRequestValidator>();

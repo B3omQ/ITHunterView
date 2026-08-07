@@ -100,11 +100,11 @@ public sealed class JdAnalysisThreeStateEndToEndTests
         JdRequirementProjection projection,
         decimal score)
     {
-        var itemScores = projection.Groups
+        var scores = projection.Groups
             .SelectMany(group => group.Items.Select(item => (group, item)))
             .Select(value => new
             {
-                itemId = value.item.ItemId,
+                reqId = value.item.ItemId,
                 handlerCode = value.item.Category switch
                 {
                     "tech_skill" => "H_TECH_01",
@@ -123,14 +123,14 @@ public sealed class JdAnalysisThreeStateEndToEndTests
             .ToArray();
         var json = JsonSerializer.Serialize(new
         {
-            itemScores,
+            scores,
             narrative = "The accepted requirements were scored.",
             improvements = Array.Empty<object>(),
             penalties = Array.Empty<object>()
         });
 
         using var document = JsonDocument.Parse(json);
-        return new JdStageTwoResponseValidator().Validate(document, projection);
+        return new JdMatchingResponseAdapter().Adapt(document, projection);
     }
 
     private static string Serialize(ValidatedJobAnalysis analysis)

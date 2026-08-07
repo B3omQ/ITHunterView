@@ -143,7 +143,7 @@ public class CvAnalysisPromptManagementTests
                 It.IsAny<string>(),
                 It.IsAny<AiGenerationOptions>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync("{}");
+            .ReturnsAsync("{\"schema_version\":\"cv-analysis/v2\"}");
 
         var promptService = new Mock<IPromptManagementService>();
         var responseValidator = new Mock<ICvAnalysisResponseValidator>();
@@ -199,7 +199,7 @@ public class CvAnalysisPromptManagementTests
                 options.ProfileId == "cv-analysis-json/v1" &&
                 options.ResponseMimeType == "application/json"),
             It.IsAny<CancellationToken>()), Times.Once);
-        responseValidator.Verify(x => x.ValidateAndCanonicalize("{}"), Times.Once);
+        responseValidator.Verify(x => x.ValidateAndCanonicalize("{\"schema_version\":\"cv-analysis/v2\"}"), Times.Once);
     }
 
     [Fact]
@@ -214,7 +214,7 @@ public class CvAnalysisPromptManagementTests
                 It.IsAny<string>(),
                 It.IsAny<AiGenerationOptions>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync("{}");
+            .ReturnsAsync("{\"schema_version\":\"cv-analysis/v2\"}");
 
         var promptService = new Mock<IPromptManagementService>();
         promptService
@@ -257,6 +257,13 @@ public class CvAnalysisPromptManagementTests
             service.ExtractParsedDataFromRawTextAsync("Jane Doe\nC# developer\n", "pasted_text", "resume.txt"));
 
         Assert.Equal("CV_ANALYSIS_INVALID_JSON", exception.FailureCode);
+        promptService.Verify(x => x.GetActivePromptPairSnapshotAsync(
+            CvAnalysisPromptContract.SystemPromptKey,
+            CvAnalysisPromptContract.UserPromptKey,
+            default), Times.Once);
+        aiService.Verify(x => x.GenerateTextAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     private static CvAnalysisCoverage EmptyCoverage() => new(

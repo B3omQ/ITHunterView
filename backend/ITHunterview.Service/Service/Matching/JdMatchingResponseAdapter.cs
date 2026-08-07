@@ -7,46 +7,37 @@ using ITHunterview.Service.DTOs.Cv.Matching;
 namespace ITHunterview.Service.Service.Matching;
 
 /// <summary>
-/// Converts the legacy flat response into the common item-score contract.
-/// It performs only transport validation and field mapping.
+/// Mechanically maps the approved provider response to the existing item-score
+/// model. It does not infer missing values or repair model semantics.
 /// </summary>
-public static class LegacyStageTwoResponseAdapter
+public sealed class JdMatchingResponseAdapter
 {
-    public static JdStageTwoValidatedResponse Adapt(
+    public JdStageTwoValidatedResponse Adapt(
         JsonDocument response,
         JdRequirementProjection projection)
     {
         ArgumentNullException.ThrowIfNull(response);
         ArgumentNullException.ThrowIfNull(projection);
 
-        var expectedItems = projection.Groups
-            .SelectMany(group => group.Items)
-            .ToArray();
-        var categoryByItem = expectedItems.ToDictionary(item => item.ItemId, item => item.Category, StringComparer.Ordinal);
-        LegacyJdStageTwoResponseValidator.Validate(
-            response,
-            expectedItems.Select(item => item.ItemId).ToArray(),
-            categoryByItem);
+        JdMatchingResponseValidator.Validate(response, projection);
 
         var scores = new Dictionary<string, JdStageTwoItemScore>(StringComparer.Ordinal);
         foreach (var element in response.RootElement.GetProperty("scores").EnumerateArray())
         {
-            var itemId = element.GetProperty("reqId").GetString()!;
-            var score = element.GetProperty("handlerScore").GetDecimal();
-            var handlerCode = element.GetProperty("handlerCode").GetString()!;
+            var itemId = element.GetProperty("reqId").GetString()!.Trim();
             scores[itemId] = new JdStageTwoItemScore(
                 itemId,
-                handlerCode,
-                score,
-                ReadOptional(element, "reasoning"),
-                ReadOptional(element, "confidence", "unknown"),
+                element.GetProperty("handlerCode").GetString()!.Trim(),
+                element.GetProperty("handlerScore").GetDecimal(),
+                ReadOptionalString(element, "reasoning"),
+                ReadOptionalString(element, "confidence", "unknown"),
                 ReadStringArray(element, "evidence"));
         }
 
         var root = response.RootElement;
-        var narrative = ReadOptional(root, "narrative");
+        var narrative = ReadOptionalString(root, "narrative");
         var improvements = root.TryGetProperty("improvements", out var improvementElement) &&
-                            improvementElement.ValueKind == JsonValueKind.Array
+                           improvementElement.ValueKind == JsonValueKind.Array
             ? improvementElement.Clone()
             : JsonSerializer.SerializeToElement(Array.Empty<object>());
 
@@ -54,16 +45,13 @@ public static class LegacyStageTwoResponseAdapter
             scores,
             narrative,
             improvements,
-            Array.Empty<JdStageTwoPenalty>());
+            JdMatchingResponseValidator.ReadPenalties(root));
     }
 
-    private static string ReadOptional(JsonElement element, string property, string fallback = "")
-    {
-        return element.TryGetProperty(property, out var value) &&
-               value.ValueKind == JsonValueKind.String
-            ? value.GetString() ?? fallback
+    private static string ReadOptionalString(JsonElement element, string property, string fallback = "") =>
+        element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()?.Trim() ?? fallback
             : fallback;
-    }
 
     private static IReadOnlyList<string> ReadStringArray(JsonElement element, string property)
     {
@@ -74,10 +62,9 @@ public static class LegacyStageTwoResponseAdapter
 
         return value.EnumerateArray()
             .Where(item => item.ValueKind == JsonValueKind.String)
-            .Select(item => item.GetString())
+            .Select(item => item.GetString()?.Trim())
             .Where(item => !string.IsNullOrWhiteSpace(item))
             .Select(item => item!)
-            .Take(5)
             .ToArray();
     }
 }

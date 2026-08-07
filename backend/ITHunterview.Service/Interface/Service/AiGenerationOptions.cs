@@ -7,7 +7,9 @@ public sealed record AiGenerationOptions(
     int? MaxOutputTokens,
     string? ResponseMimeType,
     string ProfileId,
-    int? MaxTransportAttempts = null)
+    int? MaxTransportAttempts = null,
+    int? ThinkingBudget = null,
+    string? ThinkingLevel = null)
 {
     public static readonly AiGenerationOptions StrictJsonExtraction = new(
         Temperature: 0m,
@@ -22,5 +24,38 @@ public sealed record AiGenerationOptions(
         TopP: 0.1m,
         MaxOutputTokens: 8192,
         ResponseMimeType: "application/json",
-        ProfileId: "cv-analysis-json/v1");
+        ProfileId: "cv-analysis-json/v1",
+        MaxTransportAttempts: 1,
+        ThinkingBudget: 512,
+        ThinkingLevel: "minimal");
+
+    public static readonly AiGenerationOptions CvAnalysisJsonRetry = new(
+        Temperature: 0m,
+        TopP: 0.1m,
+        MaxOutputTokens: 12288,
+        ResponseMimeType: "application/json",
+        ProfileId: "cv-analysis-json-retry/v1",
+        MaxTransportAttempts: 1,
+        ThinkingBudget: 512,
+        ThinkingLevel: "minimal");
+
+    public static readonly AiGenerationOptions JdMatchingJsonScoring = new(
+        Temperature: 0.2m,
+        TopP: 0.1m,
+        MaxOutputTokens: 8192,
+        ResponseMimeType: "application/json",
+        ProfileId: "jd-matching-json/v1",
+        MaxTransportAttempts: 1,
+        ThinkingBudget: 512,
+        ThinkingLevel: "minimal");
+
+    public static readonly AiGenerationOptions JdMatchingJsonRetry = new(
+        Temperature: 0.2m,
+        TopP: 0.1m,
+        MaxOutputTokens: 12288,
+        ResponseMimeType: "application/json",
+        ProfileId: "jd-matching-json-retry/v1",
+        MaxTransportAttempts: 1,
+        ThinkingBudget: 512,
+        ThinkingLevel: "minimal");
 }

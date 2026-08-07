@@ -20,6 +20,7 @@ using ITHunterview.Service.Interface.Persistence;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using UglyToad.PdfPig;
+using ITHunterview.Domain.Enums;
 
 namespace ITHunterview.Service.Service.Matching
 {
@@ -256,52 +257,199 @@ namespace ITHunterview.Service.Service.Matching
                 DateOnly.FromDateTime(DateTime.UtcNow));
             var userPrompt = BuildUserPrompt(prompts.User.Content, SerializeInput(input));
             var provider = await _aiService.GetActiveProviderNameAsync();
-            var aiResponse = await _aiService.GenerateTextAsync(
-                userPrompt,
-                prompts.System.Content,
-                provider,
-                AiGenerationOptions.CvAnalysisJsonExtraction,
-                cancellationToken);
-            var validation = _cvAnalysisResponseValidator.ValidateAndCanonicalize(NormalizeJsonResponse(aiResponse));
-            if (validation.IsUsable)
+
+            CvAnalysisAttemptCandidate? best = null;
+            for (var attempt = 1; attempt <= 2; attempt++)
             {
-                var warningCodes = validation.Diagnostics
-                    .Select(diagnostic => diagnostic.Code)
-                    .Distinct(StringComparer.Ordinal)
-                    .Take(20)
-                    .ToArray();
-                _logger.LogInformation(
-                    "CV analysis response accepted. Provider={Provider}; SourceType={SourceType}; InputLength={InputLength}; " +
-                    "ResponseLength={ResponseLength}; ResponseHash={ResponseHash}; Quality={Quality}; " +
-                    "AcceptedExperienceEntries={AcceptedExperienceEntries}; DiscardedExperienceEntries={DiscardedExperienceEntries}; " +
-                    "AcceptedSignals={AcceptedSignals}; DiscardedSignals={DiscardedSignals}; WarningCodes={WarningCodes}",
-                    provider,
-                    sourceType,
-                    rawCvText.Length,
-                    aiResponse?.Length ?? 0,
-                    HashIdentifier(aiResponse),
-                    validation.Quality,
-                    validation.Coverage?.AcceptedExperienceEntryCount ?? 0,
-                    validation.Coverage?.DiscardedExperienceEntryCount ?? 0,
-                    validation.Coverage?.AcceptedRequirementSignalCount ?? 0,
-                    validation.Coverage?.DiscardedRequirementSignalCount ?? 0,
-                    warningCodes);
-                return validation.CanonicalJson;
+                var options = attempt == 1
+                    ? AiGenerationOptions.CvAnalysisJsonExtraction
+                    : AiGenerationOptions.CvAnalysisJsonRetry;
+
+                string? aiResponse;
+                try
+                {
+                    aiResponse = await _aiService.GenerateTextAsync(
+                        userPrompt,
+                        prompts.System.Content,
+                        provider,
+                        options,
+                        cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception exception) when (attempt == 2 && best?.IsUsable == true)
+                {
+                    _logger.LogWarning(
+                        "CV analysis retry failed after a usable recovered result. Provider={Provider}; Attempt={Attempt}; ErrorType={ErrorType}",
+                        provider,
+                        attempt,
+                        exception.GetType().Name);
+                    return best.Validation.CanonicalJson;
+                }
+                catch (Exception exception) when (attempt == 2 && best is not null)
+                {
+                    _logger.LogWarning(
+                        "CV analysis retry failed after an unusable first result. Provider={Provider}; Attempt={Attempt}; ErrorType={ErrorType}",
+                        provider,
+                        attempt,
+                        exception.GetType().Name);
+                    throw new CvAnalysisValidationException(best.Validation);
+                }
+
+                var candidate = EvaluateCvResponse(aiResponse, attempt);
+                best = IsBetter(candidate, best) ? candidate : best;
+                LogCandidate(provider, sourceType, rawCvText.Length, options.ProfileId, aiResponse, candidate);
+
+                if (candidate.Validation.Quality == CvAnalysisQuality.COMPLETE)
+                {
+                    return candidate.Validation.CanonicalJson;
+                }
+
+                if (candidate.Validation.Quality == CvAnalysisQuality.PARTIAL &&
+                    !candidate.Recovery.WasTruncated)
+                {
+                    return candidate.Validation.CanonicalJson;
+                }
             }
 
-            _logger.LogWarning(
-                "CV analysis response rejected. Provider={Provider}; SourceType={SourceType}; InputLength={InputLength}; " +
-                "ResponseLength={ResponseLength}; ResponseHash={ResponseHash}; FailureCode={FailureCode}; " +
-                "DiagnosticCode={DiagnosticCode}; JsonPath={JsonPath}",
+            if (best?.IsUsable == true)
+            {
+                return best.Validation.CanonicalJson;
+            }
+
+            throw new CvAnalysisValidationException(best?.Validation ??
+                CvAnalysisValidationResult.Invalid(
+                    "CV_ANALYSIS_INVALID_JSON",
+                    "JSON_PARSE_FAILED",
+                    "$"));
+        }
+
+        private CvAnalysisAttemptCandidate EvaluateCvResponse(string? response, int attempt)
+        {
+            var recovery = CvAnalysisOutputRecovery.Recover(response);
+            var validation = recovery.HasCandidateJson
+                ? _cvAnalysisResponseValidator.ValidateAndCanonicalize(recovery.Json!)
+                : ToInvalidValidation(recovery);
+            return new CvAnalysisAttemptCandidate(attempt, recovery, validation);
+        }
+
+        private static CvAnalysisValidationResult ToInvalidValidation(CvAnalysisRecoveryResult recovery)
+        {
+            var diagnostic = recovery.Diagnostics.FirstOrDefault() ??
+                             new CvAnalysisDiagnostic("JSON_PARSE_FAILED", "$");
+            var failureCode = diagnostic.Code switch
+            {
+                "EMPTY_MODEL_OUTPUT" => "CV_ANALYSIS_EMPTY_OUTPUT",
+                "PAYLOAD_TOO_LARGE" => "CV_ANALYSIS_PAYLOAD_UNSAFE",
+                "SCHEMA_VERSION_UNSUPPORTED" => "CV_ANALYSIS_SCHEMA_UNSUPPORTED",
+                "SCHEMA_VERSION_MISSING" or "ROOT_NOT_OBJECT" => "CV_ANALYSIS_SCHEMA_INVALID",
+                _ => "CV_ANALYSIS_INVALID_JSON"
+            };
+            var diagnosticCode = diagnostic.Code == "PAYLOAD_TOO_LARGE"
+                ? "PAYLOAD_TOO_LARGE"
+                : diagnostic.Code;
+            return CvAnalysisValidationResult.Invalid(failureCode, diagnosticCode, diagnostic.JsonPath);
+        }
+
+        private void LogCandidate(
+            string provider,
+            string sourceType,
+            int inputLength,
+            string profileId,
+            string? response,
+            CvAnalysisAttemptCandidate candidate)
+        {
+            var warningCodes = candidate.Validation.Diagnostics
+                .Select(diagnostic => diagnostic.Code)
+                .Distinct(StringComparer.Ordinal)
+                .Take(20)
+                .ToArray();
+            var coverage = candidate.Validation.Coverage;
+            var logValues = new object?[]
+            {
                 provider,
                 sourceType,
-                rawCvText.Length,
-                aiResponse?.Length ?? 0,
-                HashIdentifier(aiResponse),
-                validation.FailureCode,
-                validation.DiagnosticCode,
-                validation.JsonPath);
-            throw new CvAnalysisValidationException(validation);
+                candidate.Attempt,
+                profileId,
+                inputLength,
+                response?.Length ?? 0,
+                HashIdentifier(response),
+                candidate.Recovery.Mode,
+                candidate.Recovery.WasTruncated,
+                candidate.Validation.Quality,
+                candidate.Validation.FailureCode,
+                candidate.Validation.DiagnosticCode,
+                candidate.Validation.JsonPath,
+                coverage?.AcceptedExperienceEntryCount ?? 0,
+                coverage?.DiscardedExperienceEntryCount ?? 0,
+                coverage?.AcceptedRequirementSignalCount ?? 0,
+                coverage?.DiscardedRequirementSignalCount ?? 0,
+                warningCodes
+            };
+
+            if (candidate.Validation.IsUsable)
+            {
+                _logger.LogInformation(
+                    "CV analysis attempt accepted. Provider={Provider}; SourceType={SourceType}; Attempt={Attempt}; ProfileId={ProfileId}; InputLength={InputLength}; ResponseLength={ResponseLength}; ResponseHash={ResponseHash}; RecoveryMode={RecoveryMode}; WasTruncated={WasTruncated}; Quality={Quality}; FailureCode={FailureCode}; DiagnosticCode={DiagnosticCode}; JsonPath={JsonPath}; AcceptedExperienceEntries={AcceptedExperienceEntries}; DiscardedExperienceEntries={DiscardedExperienceEntries}; AcceptedSignals={AcceptedSignals}; DiscardedSignals={DiscardedSignals}; WarningCodes={WarningCodes}",
+                    logValues);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "CV analysis attempt rejected. Provider={Provider}; SourceType={SourceType}; Attempt={Attempt}; ProfileId={ProfileId}; InputLength={InputLength}; ResponseLength={ResponseLength}; ResponseHash={ResponseHash}; RecoveryMode={RecoveryMode}; WasTruncated={WasTruncated}; Quality={Quality}; FailureCode={FailureCode}; DiagnosticCode={DiagnosticCode}; JsonPath={JsonPath}; AcceptedExperienceEntries={AcceptedExperienceEntries}; DiscardedExperienceEntries={DiscardedExperienceEntries}; AcceptedSignals={AcceptedSignals}; DiscardedSignals={DiscardedSignals}; WarningCodes={WarningCodes}",
+                    logValues);
+            }
+        }
+
+        private static bool IsBetter(CvAnalysisAttemptCandidate candidate, CvAnalysisAttemptCandidate? current)
+        {
+            if (current is null) return true;
+
+            var qualityComparison = QualityRank(candidate.Validation.Quality)
+                .CompareTo(QualityRank(current.Validation.Quality));
+            if (qualityComparison != 0) return qualityComparison > 0;
+
+            var metricComparison = AvailableMetricCount(candidate.Validation.Coverage)
+                .CompareTo(AvailableMetricCount(current.Validation.Coverage));
+            if (metricComparison != 0) return metricComparison > 0;
+
+            var acceptedComparison = AcceptedUnitCount(candidate.Validation.Coverage)
+                .CompareTo(AcceptedUnitCount(current.Validation.Coverage));
+            if (acceptedComparison != 0) return acceptedComparison > 0;
+
+            var diagnosticComparison = candidate.Validation.Diagnostics.Count
+                .CompareTo(current.Validation.Diagnostics.Count);
+            if (diagnosticComparison != 0) return diagnosticComparison < 0;
+
+            return candidate.Attempt < current.Attempt;
+        }
+
+        private static int QualityRank(CvAnalysisQuality quality) => quality switch
+        {
+            CvAnalysisQuality.COMPLETE => 2,
+            CvAnalysisQuality.PARTIAL => 1,
+            _ => 0
+        };
+
+        private static int AvailableMetricCount(CvAnalysisCoverage? coverage) => coverage is null ? 0 :
+            (coverage.TitleMetricsAvailable ? 1 : 0) +
+            (coverage.SkillMetricsAvailable ? 1 : 0) +
+            (coverage.ExperienceMetricAvailable ? 1 : 0) +
+            (coverage.DomainMetricsAvailable ? 1 : 0);
+
+        private static int AcceptedUnitCount(CvAnalysisCoverage? coverage) => coverage is null ? 0 :
+            coverage.AcceptedExperienceEntryCount +
+            coverage.AcceptedRequirementSignalCount +
+            coverage.AcceptedExperiencePeriodCount;
+
+        private sealed record CvAnalysisAttemptCandidate(
+            int Attempt,
+            CvAnalysisRecoveryResult Recovery,
+            CvAnalysisValidationResult Validation)
+        {
+            public bool IsUsable => Validation.IsUsable;
         }
 
         private static string SerializeInput(CvAnalysisInputSnapshot input) => JsonSerializer.Serialize(new
@@ -311,87 +459,6 @@ namespace ITHunterview.Service.Service.Matching
             file_name = input.FileName ?? string.Empty,
             analysis_date = input.AnalysisDate.ToString("yyyy-MM-dd")
         });
-
-        private static string StripMarkdownFence(string? value)
-        {
-            var jsonString = value ?? string.Empty;
-            if (jsonString.Contains("```json", StringComparison.OrdinalIgnoreCase))
-            {
-                var start = jsonString.IndexOf("```json", StringComparison.OrdinalIgnoreCase) + 7;
-                var end = jsonString.LastIndexOf("```", StringComparison.Ordinal);
-                if (end > start) return jsonString[start..end].Trim();
-            }
-            else if (jsonString.Contains("```", StringComparison.Ordinal))
-            {
-                var start = jsonString.IndexOf("```", StringComparison.Ordinal) + 3;
-                var end = jsonString.LastIndexOf("```", StringComparison.Ordinal);
-                if (end > start) return jsonString[start..end].Trim();
-            }
-
-            return jsonString.Trim();
-        }
-
-        private static string NormalizeJsonResponse(string? value)
-        {
-            var candidate = StripMarkdownFence(value);
-            if (candidate.Length == 0 || candidate[0] is '{' or '[')
-            {
-                return candidate;
-            }
-
-            return TryExtractBalancedJsonObject(candidate, out var jsonObject)
-                ? jsonObject
-                : candidate;
-        }
-
-        private static bool TryExtractBalancedJsonObject(string value, out string jsonObject)
-        {
-            jsonObject = string.Empty;
-            var start = value.IndexOf('{');
-            if (start < 0) return false;
-
-            var depth = 0;
-            var inString = false;
-            var escaping = false;
-
-            for (var index = start; index < value.Length; index++)
-            {
-                var current = value[index];
-                if (inString)
-                {
-                    if (escaping)
-                    {
-                        escaping = false;
-                    }
-                    else if (current == '\\')
-                    {
-                        escaping = true;
-                    }
-                    else if (current == '"')
-                    {
-                        inString = false;
-                    }
-
-                    continue;
-                }
-
-                if (current == '"')
-                {
-                    inString = true;
-                }
-                else if (current == '{')
-                {
-                    depth++;
-                }
-                else if (current == '}' && --depth == 0)
-                {
-                    jsonObject = value[start..(index + 1)];
-                    return true;
-                }
-            }
-
-            return false;
-        }
 
         private string SourceTypeFromIdentifier(string identifier)
         {

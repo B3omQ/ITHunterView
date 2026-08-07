@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Service.Interface.Service;
@@ -14,16 +13,11 @@ using Pgvector.EntityFrameworkCore;
 using Pgvector;
 using System.Collections.Generic;
 using ITHunterview.Service.DTOs.Cv.Matching;
-using System.Net.Http;
-using System.Net.Http.Json;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Service;
 using ITHunterview.Service.Service.Matching;
 using ITHunterview.Service.Exceptions;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -33,21 +27,15 @@ namespace ITHunterview.Service.UseCase
         private readonly ITHunterviewContext _context;
         private readonly IAiEmbeddingService _aiService;
         private readonly ICvTextExtractorService _cvTextExtractorService;
-        private readonly IHttpClientFactory _httpClientFactory;
-        private readonly IConfiguration _configuration;
         private readonly ILogger<CvJobMatchingUseCase> _logger;
         private readonly IPromptManagementService _promptManagementService;
-        private readonly ISystemConfigRepository _systemConfigRepository;
-        private readonly IAiService _textAiService;
+        private readonly IJdStageTwoMatchingService _jdStageTwoMatchingService;
         private readonly IJobAnalysisExtractionService? _jobAnalysisExtractionService;
         private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
         private readonly IMatchingInputPreflightUseCase _matchingInputPreflightUseCase;
         private readonly IMatchingSourceRepository _matchingSourceRepository;
         private readonly ICvAnalysisResponseValidator _cvAnalysisResponseValidator;
         private readonly IJdRequirementProjector _jdRequirementProjector;
-        private readonly JdStageTwoContextBuilder _jdStageTwoContextBuilder;
-        private readonly JdStageTwoResponseValidator _jdStageTwoResponseValidator;
-        private readonly JdFitScoreCalculator _jdFitScoreCalculator;
         private readonly CvStageTwoContextBuilder _cvStageTwoContextBuilder;
         private readonly IJobAnalysisInputBuilder _jobAnalysisInputBuilder;
 
@@ -55,11 +43,8 @@ namespace ITHunterview.Service.UseCase
             ITHunterviewContext context, 
             IAiEmbeddingService aiService,
             ICvTextExtractorService cvTextExtractorService,
-            IHttpClientFactory httpClientFactory,
-            IConfiguration configuration,
             ILogger<CvJobMatchingUseCase> logger,
             IPromptManagementService promptManagementService,
-            ISystemConfigRepository systemConfigRepository,
             IAiService textAiService,
             ICandidateFeatureUsageUseCase featureUsageUseCase,
             IMatchingInputPreflightUseCase matchingInputPreflightUseCase,
@@ -67,30 +52,23 @@ namespace ITHunterview.Service.UseCase
             ICvAnalysisResponseValidator cvAnalysisResponseValidator,
             IJobAnalysisExtractionService? jobAnalysisExtractionService = null,
             IJdRequirementProjector? jdRequirementProjector = null,
-            JdStageTwoContextBuilder? jdStageTwoContextBuilder = null,
-            JdStageTwoResponseValidator? jdStageTwoResponseValidator = null,
-            JdFitScoreCalculator? jdFitScoreCalculator = null,
+            IJdStageTwoMatchingService? jdStageTwoMatchingService = null,
             CvStageTwoContextBuilder? cvStageTwoContextBuilder = null,
             IJobAnalysisInputBuilder? jobAnalysisInputBuilder = null)
         {
             _context = context;
             _aiService = aiService;
             _cvTextExtractorService = cvTextExtractorService;
-            _httpClientFactory = httpClientFactory;
-            _configuration = configuration;
             _logger = logger;
             _promptManagementService = promptManagementService;
-            _systemConfigRepository = systemConfigRepository;
-            _textAiService = textAiService;
             _featureUsageUseCase = featureUsageUseCase;
             _matchingInputPreflightUseCase = matchingInputPreflightUseCase;
             _matchingSourceRepository = matchingSourceRepository;
             _cvAnalysisResponseValidator = cvAnalysisResponseValidator;
             _jobAnalysisExtractionService = jobAnalysisExtractionService;
             _jdRequirementProjector = jdRequirementProjector ?? new JdRequirementProjector();
-            _jdStageTwoContextBuilder = jdStageTwoContextBuilder ?? new JdStageTwoContextBuilder();
-            _jdStageTwoResponseValidator = jdStageTwoResponseValidator ?? new JdStageTwoResponseValidator();
-            _jdFitScoreCalculator = jdFitScoreCalculator ?? new JdFitScoreCalculator();
+            _jdStageTwoMatchingService = jdStageTwoMatchingService ??
+                new JdStageTwoMatchingService(textAiService, new Microsoft.Extensions.Logging.Abstractions.NullLogger<JdStageTwoMatchingService>());
             _cvStageTwoContextBuilder = cvStageTwoContextBuilder ?? new CvStageTwoContextBuilder();
             _jobAnalysisInputBuilder = jobAnalysisInputBuilder ?? new JobAnalysisInputBuilder();
         }
@@ -621,7 +599,6 @@ namespace ITHunterview.Service.UseCase
 
                 _logger.LogInformation("CV needs AI parse: {Parse}", cvNeedsAiParse);
                 string jdRequirementsJson = "";
-                IReadOnlyList<LegacyStageTwoRequirement> requirementsList = Array.Empty<LegacyStageTwoRequirement>();
                 Domain.Entities.JobPostings? savedJob = null;
                 bool jdNeedsAiParse = false; // Cần gọi LLM Stage 1 cho JD
 
@@ -726,34 +703,11 @@ namespace ITHunterview.Service.UseCase
 
                 var matchingPromptSnapshot = await _promptManagementService.GetActivePromptSnapshotAsync(
                     ITHunterview.Service.Constant.Prompts.BypassMatchingPrompt.Key);
-                var useV3MatchingContract = ITHunterview.Service.Constant.Prompts.JdMatchingPromptContract.IsV3(
-                    matchingPromptSnapshot.ModelConfig);
                 var stageTwoProjection = _jdRequirementProjector.Project(jdRequirementsJson);
                 if (stageTwoProjection.Groups.Count == 0)
                 {
                     throw new InvalidOperationException("INVALID_EFFECTIVE_JD_ANALYSIS");
                 }
-                JdStageTwoContext? stageTwoJdContext = null;
-                if (useV3MatchingContract)
-                {
-                    stageTwoJdContext = _jdStageTwoContextBuilder.Build(stageTwoProjection);
-                }
-                else
-                {
-                    requirementsList = LegacyJdStageTwoProjectionAdapter.Adapt(stageTwoProjection);
-                }
-
-                if (!useV3MatchingContract && !requirementsList.Any())
-                {
-                    throw new Exception("No requirements extracted from JD.");
-                }
-
-                // Serialize for Stage 2
-                var parsedJdJson = useV3MatchingContract
-                    ? stageTwoJdContext!.Json
-                    : JsonSerializer.Serialize(requirementsList.Select(r => new {
-                        r.ReqId, r.NormalizedText, r.Category, r.Importance, r.DetailVerbatim, r.Operator, r.MinSatisfied, r.Evidence
-                    }), new JsonSerializerOptions { WriteIndented = true });
 
                 if (!isCvTextJson)
                 {
@@ -767,55 +721,13 @@ namespace ITHunterview.Service.UseCase
                 }
                 var stageTwoCvContext = stageTwoCv.Json;
 
-                // 3. Prompt Stage 2
-                var variables = new Dictionary<string, string>
-                {
-                    { "CV_TEXT", stageTwoCvContext },
-                    { "PARSED_JD_REQUIREMENTS", parsedJdJson }
-                };
-                var prompt = matchingPromptSnapshot.Content;
-                foreach (var variable in variables)
-                {
-                    var placeholder = $"[{variable.Key}]";
-                    if (!prompt.Contains(placeholder, StringComparison.Ordinal))
-                    {
-                        throw new InvalidOperationException($"MATCHING_PROMPT_PLACEHOLDER_MISSING:{placeholder}");
-                    }
-                    prompt = prompt.Replace(placeholder, variable.Value, StringComparison.Ordinal);
-                }
-
-                prompt += useV3MatchingContract
-                    ? "\n\n[SYSTEM CRITICAL]: Return compact JSON only. Score every itemId exactly once; do not omit itemScores, handlerCode, or handlerScore."
-                    : "\n\n[SYSTEM CRITICAL]: Your output token limit is strictly capped. You MUST minify the JSON output (NO line breaks, NO indentation). Keep 'reasoning' under 20 words. Omit 'confidence' entirely.";
-
-                _logger.LogInformation("Starting CV-JD AI scoring for match {MatchId} with {RequirementCount} validated JD requirements under {MatchingContract}.",
-                    matchRecord.Id,
-                    useV3MatchingContract ? stageTwoJdContext!.RequirementItemCount : requirementsList.Count,
-                    useV3MatchingContract ? JdStageTwoContextBuilder.Contract : "jd-matching/legacy");
-
-                if (string.IsNullOrWhiteSpace(prompt))
-                {
-                    throw new Exception("Active Prompt for JD_MATCHING_PROMPT not found.");
-                }
-
-                var promptHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(prompt)))[..16]
-                    .ToLowerInvariant();
-                _logger.LogInformation(
-                    "Matching prompt prepared. MatchId={MatchId}; PromptLength={PromptLength}; PromptHash={PromptHash}",
-                    matchRecord.Id,
-                    prompt.Length,
-                    promptHash);
-
-                // 4. Call LLM (Stage 2)
-                string llmResponseText = await CallLlmBypassAsync(prompt, cancellationToken);
-
                 try 
                 {
-                    string cleanLlmResp = ExtractJsonFromText(llmResponseText);
-                    var jsonDoc = JsonDocument.Parse(cleanLlmResp);
-                    var finalResult = useV3MatchingContract
-                        ? _jdFitScoreCalculator.Calculate(stageTwoProjection!, _jdStageTwoResponseValidator.Validate(jsonDoc, stageTwoProjection!))
-                        : ToJdFitScoreCalculation(CalculateFinalMatchResult(requirementsList, jsonDoc));
+                    var finalResult = await _jdStageTwoMatchingService.ExecuteAsync(
+                        matchingPromptSnapshot,
+                        stageTwoCvContext,
+                        stageTwoProjection,
+                        cancellationToken);
                     
                     if (!manageLifecycle)
                     {
@@ -840,11 +752,15 @@ namespace ITHunterview.Service.UseCase
                 catch (Exception ex)
                 {
                     if (!manageLifecycle)
-                        throw new InvalidOperationException("MATCHING_STAGE2_OUTPUT_INVALID");
+                        throw;
 
-                    _logger.LogError("Stage 2 output rejected for match {MatchId}; code={ErrorCode}.", matchRecord.Id, "AI_OUTPUT_INVALID");
+                    var classification = MatchingFailureClassifier.Classify(ex);
+                    _logger.LogError(
+                        "Stage 2 processing failed for match {MatchId}; code={ErrorCode}.",
+                        matchRecord.Id,
+                        classification.ErrorCode);
                     matchRecord.Status = "Failed";
-                    matchRecord.ErrorMessage = "AI_OUTPUT_INVALID";
+                    matchRecord.ErrorMessage = classification.ErrorCode;
                     matchRecord.MatchDetails = string.Empty;
                     matchRecord.UpdatedAt = DateTime.UtcNow;
                     await _context.SaveChangesAsync(cancellationToken);
@@ -959,364 +875,6 @@ namespace ITHunterview.Service.UseCase
             return _jobAnalysisExtractionService.SerializeEffectiveAnalysis(extraction.Validation.Data);
         }
 
-        private FinalMatchResult CalculateFinalMatchResult(IReadOnlyList<LegacyStageTwoRequirement> requirements, JsonDocument stage2Response)
-        {
-            LegacyJdStageTwoResponseValidator.Validate(
-                stage2Response,
-                requirements.Select(requirement => requirement.ReqId).ToArray(),
-                requirements.ToDictionary(requirement => requirement.ReqId, requirement => requirement.Category, StringComparer.Ordinal));
-            var root = stage2Response.RootElement;
-            
-            // 1. Process scores
-            var scoreElements = root.TryGetProperty("scores", out var scoresProp) && scoresProp.ValueKind == JsonValueKind.Array
-                ? scoresProp.EnumerateArray().ToList()
-                : new List<JsonElement>();
-
-            var finalScores = new List<object>();
-            decimal poolA_Actual = 0m;
-            decimal poolA_Max = 0m;
-            decimal poolB_Actual = 0m;
-            decimal poolB_Max = 0m;
-            int criticalGapsCount = 0;
-            var coreTechnicalMustHaveScores = new List<decimal>();
-
-            foreach (var req in requirements)
-            {
-                // Find matching score from LLM
-                var llmScore = scoreElements.FirstOrDefault(s => s.TryGetProperty("reqId", out var id) && id.GetString() == req.ReqId);
-                
-                string handlerCode = "UNKNOWN";
-                decimal handlerScore = 0m;
-                string reasoning = "";
-                string flag = null;
-
-                if (llmScore.ValueKind != JsonValueKind.Undefined)
-                {
-                    if (llmScore.TryGetProperty("handlerCode", out var hc)) handlerCode = hc.GetString();
-                    if (llmScore.TryGetProperty("handlerScore", out var hs)) handlerScore = hs.GetDecimal();
-                    if (llmScore.TryGetProperty("reasoning", out var rs)) reasoning = rs.GetString();
-                    if (llmScore.TryGetProperty("flag", out var fl) && fl.ValueKind == JsonValueKind.String) flag = fl.GetString();
-                }
-
-                if (req.Importance == "must_have" && req.Category == "tech_skill")
-                {
-                    coreTechnicalMustHaveScores.Add(handlerScore);
-                }
-
-                // Ensure flag = CRITICAL_GAP if must_have and score = 0
-                if (req.Importance == "must_have" && handlerScore == 0.0m)
-                {
-                    flag = "CRITICAL_GAP";
-                    criticalGapsCount++;
-                }
-
-                // Math calculation
-                decimal weightedScore = handlerScore * req.CategoryWeight;
-                
-                if (req.Importance == "must_have")
-                {
-                    poolA_Actual += weightedScore;
-                    poolA_Max += 1.0m * req.CategoryWeight;
-                }
-                else
-                {
-                    poolB_Actual += weightedScore;
-                    poolB_Max += 1.0m * req.CategoryWeight;
-                }
-
-                // Reconstruct full JSON object for this requirement
-                finalScores.Add(new
-                {
-                    reqId = req.ReqId,
-                    normalizedText = req.NormalizedText,
-                    importance = req.Importance,
-                    category = req.Category,
-                    categoryWeight = req.CategoryWeight,
-                    entities = new { }, // empty
-                    handlerUsed = req.Category, // map category to handlerUsed
-                    handlerCode = handlerCode,
-                    handlerScore = handlerScore,
-                    reasoning = reasoning,
-                    confidence = "high", // Default
-                    flag = flag
-                });
-            }
-
-            // KSW_01 is a universal condition: all core technical must-haves
-            // must be absent, not merely one missing technical requirement.
-            var ksw01Triggered = coreTechnicalMustHaveScores.Count > 0 &&
-                coreTechnicalMustHaveScores.All(score => score == 0m);
-
-            // Math: Calculate Pool Percentages
-            decimal poolAPercentage = poolA_Max > 0 ? (poolA_Actual / poolA_Max) * 70m : 70m; // Max 70 points
-            decimal poolBPercentage = poolB_Max > 0 ? (poolB_Actual / poolB_Max) * 30m : 30m; // Max 30 points
-
-            // Apply RULE_TC1_02: Pool A capped
-            bool poolACapped = false;
-            if (criticalGapsCount >= 2)
-            {
-                poolACapped = true;
-                if (poolAPercentage > 28m) poolAPercentage = 28m;
-            }
-
-            // Process Penalties
-            var penaltiesOutput = new List<object>();
-            decimal totalDeduction = 0m;
-
-            // Add auto-detected penalties
-            if (poolACapped)
-            {
-                penaltiesOutput.Add(new { code = "RULE_TC1_02", triggered = true, deduction = 0, evidence = ">= 2 CRITICAL GAPs found. Pool A capped at 28 points." });
-            }
-
-            // Add KSW_01 Penalty output
-            if (ksw01Triggered)
-            {
-                penaltiesOutput.Add(new { code = "KSW_01", triggered = true, deduction = 0, evidence = "100% core tech skill is completely missing." });
-            }
-
-            // Final score
-            decimal rawScore = poolAPercentage + poolBPercentage - totalDeduction;
-            decimal finalScore = Math.Max(0m, Math.Min(100m, rawScore));
-            if (ksw01Triggered) finalScore = 15m; // Force kill switch
-
-            // Determine Result
-            string resultText = finalScore >= 80 ? "Highly Suitable" : finalScore >= 60 ? "Suitable" : finalScore >= 40 ? "Partially Suitable" : "Not Suitable";
-
-            // Extract other sections from LLM
-            object criticalGaps = new object[] { };
-            if (root.TryGetProperty("criticalGaps", out var cg)) criticalGaps = JsonSerializer.Deserialize<object>(cg.GetRawText());
-            
-            object improvements = new object[] { };
-            if (root.TryGetProperty("improvements", out var imp)) improvements = JsonSerializer.Deserialize<object>(imp.GetRawText());
-
-            string narrative = root.TryGetProperty("narrative", out var n) ? n.GetString() : "N/A";
-
-            // Reconstruct the giant JSON structure for the frontend
-            var finalJsonObj = new
-            {
-                mode = "jd_fit",
-                jdFit = new
-                {
-                    score = Math.Round(finalScore, 1),
-                    result = resultText,
-                    killSwitchTriggered = ksw01Triggered,
-                    poolACapped = poolACapped,
-                    poolA = new { score = Math.Round(poolAPercentage, 1), max = 70 },
-                    poolB = new { score = Math.Round(poolBPercentage, 1), max = 30 },
-                    requirementScores = finalScores,
-                    criticalGaps = criticalGaps,
-                    penalties = penaltiesOutput,
-                    narrative = narrative
-                },
-                improvements = improvements,
-                processingTime = 1000 // Fixed or measured
-            };
-
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            return new FinalMatchResult
-            {
-                FinalScore = finalScore,
-                JsonString = JsonSerializer.Serialize(finalJsonObj, options)
-            };
-        }
-
-        private static JdFitScoreCalculation ToJdFitScoreCalculation(FinalMatchResult legacyResult) =>
-            new(legacyResult.FinalScore, legacyResult.JsonString);
-
-
-
-        private async Task<string> CallLlmBypassAsync(string prompt, CancellationToken cancellationToken)
-        {
-            var provider = _configuration["AiSettings:DefaultProvider"] ?? "Gemini";
-            var modelName = _configuration[$"AiSettings:Providers:{provider}:Model"] ?? "gemini-1.5-flash-latest";
-            var apiKey = _configuration[$"AiSettings:Providers:{provider}:ApiKey"];
-            var endpoint = _configuration[$"AiSettings:Providers:{provider}:Endpoint"] ?? "https://generativelanguage.googleapis.com/v1beta/models";
-            
-            if (string.IsNullOrWhiteSpace(apiKey)) 
-            {
-                var dbKeyConfig = await _systemConfigRepository.GetByKeyAsync($"AiApiKey_{provider}");
-                apiKey = dbKeyConfig?.ConfigValue;
-            }
-
-            if (string.IsNullOrWhiteSpace(apiKey)) throw new Exception($"API Key is missing for Bypass Flow ({provider}).");
-
-            using var client = _httpClientFactory.CreateClient();
-            client.Timeout = TimeSpan.FromMinutes(2); // Thêm timeout dài cho LLM
-
-            if (provider == "Gemini" || modelName.Contains("gemini", StringComparison.OrdinalIgnoreCase))
-            {
-                if (endpoint.EndsWith("/")) endpoint = endpoint.TrimEnd('/');
-                var url = $"{endpoint}/{modelName}:generateContent?key={apiKey}";
-                var payload = new
-                {
-                    contents = new[]
-                    {
-                        new { parts = new[] { new { text = prompt } } }
-                    },
-                    generationConfig = new 
-                    { 
-                        maxOutputTokens = 8192,
-                        temperature = 0.2,
-                        responseMimeType = "application/json"
-                    },
-                    safetySettings = new[]
-                    {
-                        new { category = "HARM_CATEGORY_HARASSMENT", threshold = "BLOCK_NONE" },
-                        new { category = "HARM_CATEGORY_HATE_SPEECH", threshold = "BLOCK_NONE" },
-                        new { category = "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold = "BLOCK_NONE" },
-                        new { category = "HARM_CATEGORY_DANGEROUS_CONTENT", threshold = "BLOCK_NONE" }
-                    }
-                };
-
-                int maxRetries = 3;
-                for (int attempt = 1; attempt <= maxRetries; attempt++)
-                {
-                    string responseContent = "";
-                    try
-                    {
-                        using var request = new HttpRequestMessage(HttpMethod.Post, url)
-                        {
-                            Content = JsonContent.Create(payload)
-                        };
-                        using var response = await client.SendAsync(
-                            request,
-                            HttpCompletionOption.ResponseHeadersRead,
-                            cancellationToken);
-                        responseContent = await BoundedHttpContentReader.ReadAsStringAsync(
-                            response.Content,
-                            BoundedHttpContentReader.DefaultMaxBytes,
-                            cancellationToken);
-                        
-                        if (response.IsSuccessStatusCode)
-                        {
-                            using var jsonDoc = JsonDocument.Parse(responseContent);
-                            if (jsonDoc.RootElement.TryGetProperty("candidates", out var candidates) && 
-                                candidates.ValueKind == JsonValueKind.Array && 
-                                candidates.GetArrayLength() > 0)
-                            {
-                                var candidate = candidates[0];
-                                
-                                if (candidate.TryGetProperty("finishReason", out var frProp))
-                                {
-                                    var finishReason = frProp.GetString();
-                                    if (finishReason != "STOP")
-                                    {
-                                        _logger.LogWarning("Gemini stopped unexpectedly with finishReason: {FinishReason}", finishReason);
-                                    }
-                                }
-
-                                if (candidate.TryGetProperty("content", out var content) &&
-                                    content.TryGetProperty("parts", out var parts) &&
-                                    parts.ValueKind == JsonValueKind.Array &&
-                                    parts.GetArrayLength() > 0 &&
-                                    parts[0].TryGetProperty("text", out var textElement))
-                                {
-                                    var text = textElement.GetString() ?? string.Empty;
-                                    
-                                    text = ExtractJsonFromText(text);
-
-                                    try 
-                                    {
-                                        using (var testParse = JsonDocument.Parse(text)) { } 
-                                        return text; 
-                                    }
-                                    catch (JsonException)
-                                    {
-                                        // Never repair or fabricate truncated JSON; retry with a fresh provider response.
-                                        _logger.LogWarning(
-                                            "Gemini returned invalid JSON on attempt {Attempt}; retrying. ResponseLength={ResponseLength}.",
-                                            attempt,
-                                            text.Length);
-                                        if (attempt == maxRetries)
-                                        {
-                                            throw new InvalidOperationException("AI_PROVIDER_INVALID_JSON");
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    _logger.LogWarning("Gemini response missing content or parts. Attempt {Attempt}.", attempt);
-                                }
-                            }
-                            else
-                            {
-                                _logger.LogWarning("Gemini response missing candidates (might be blocked). Attempt {Attempt}.", attempt);
-                            }
-                        }
-                        else
-                        {
-                            _logger.LogWarning("Gemini API returned HTTP {StatusCode} on attempt {Attempt}.", response.StatusCode, attempt);
-                        }
-                    }
-                    catch (InvalidOperationException ex) when (ex.Message is "AI_RESPONSE_TOO_LARGE" or "AI_PROVIDER_INVALID_JSON")
-                    {
-                        throw;
-                    }
-                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                    {
-                        throw;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(
-                            "Exception during Gemini API call on attempt {Attempt}. ErrorType={ErrorType}",
-                            attempt,
-                            ex.GetType().Name);
-                        if (attempt == maxRetries)
-                        {
-                            throw new InvalidOperationException("AI_PROVIDER_REQUEST_FAILED");
-                        }
-                    }
-
-                    if (attempt == maxRetries)
-                    {
-                        throw new InvalidOperationException("AI_PROVIDER_HTTP_ERROR");
-                    }
-                    
-                    await Task.Delay(2000, cancellationToken);
-                }
-            }
-            else if (modelName.Contains("claude"))
-            {
-                var url = "https://api.anthropic.com/v1/messages";
-                client.DefaultRequestHeaders.Add("x-api-key", apiKey);
-                client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
-                client.DefaultRequestHeaders.Add("User-Agent", "ITHunterview-Bypass");
-
-                var payload = new
-                {
-                    model = modelName,
-                    max_tokens = 4000,
-                    messages = new[]
-                    {
-                        new { role = "user", content = prompt }
-                    }
-                };
-
-                using var request = new HttpRequestMessage(HttpMethod.Post, url)
-                {
-                    Content = JsonContent.Create(payload)
-                };
-                using var response = await client.SendAsync(
-                    request,
-                    HttpCompletionOption.ResponseHeadersRead,
-                    cancellationToken);
-                var responseContent = await BoundedHttpContentReader.ReadAsStringAsync(
-                    response.Content,
-                    BoundedHttpContentReader.DefaultMaxBytes,
-                    cancellationToken);
-
-                if (!response.IsSuccessStatusCode)
-                    throw new InvalidOperationException("AI_PROVIDER_HTTP_ERROR");
-
-                var jsonDoc = JsonDocument.Parse(responseContent);
-                var text = jsonDoc.RootElement.GetProperty("content")[0].GetProperty("text").GetString();
-                return text ?? string.Empty;
-            }
-
-            throw new Exception("Unsupported Model Name for Bypass Flow.");
-        }
 
         public async Task<MatchingResultDto?> GetMatchingResultAsync(Guid jobId, Guid userId)
         {
@@ -1387,27 +945,6 @@ namespace ITHunterview.Service.UseCase
             return null;
         }
 
-        private string ExtractJsonFromText(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text)) return string.Empty;
-
-            var match = Regex.Match(text, @"```(?:json)?\s*([\s\S]*?)```");
-            if (match.Success)
-            {
-                return match.Groups[1].Value.Trim();
-            }
-
-            // Phòng trường hợp nó trả về {...} không có markdown nhưng thừa chữ
-            var startIndex = text.IndexOf('{');
-            var endIndex = text.LastIndexOf('}');
-            if (startIndex >= 0 && endIndex >= startIndex)
-            {
-                return text.Substring(startIndex, endIndex - startIndex + 1).Trim();
-            }
-            
-            // Nếu không có } ở cuối (bị truncate), lấy từ { đến cuối
-            return text.Trim();
-        }
 
         public async Task<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>> GetMatchHistoryAsync(Guid userId, int page, int pageSize, Guid? cvId = null)
         {
@@ -1717,10 +1254,5 @@ namespace ITHunterview.Service.UseCase
             };
         }
 
-        private class FinalMatchResult
-        {
-            public decimal FinalScore { get; set; }
-            public string JsonString { get; set; }
-        }
     }
 }

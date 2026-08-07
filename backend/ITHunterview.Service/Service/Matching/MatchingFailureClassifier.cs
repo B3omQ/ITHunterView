@@ -73,11 +73,24 @@ public static class MatchingFailureClassifier
             or "SNAPSHOT_INVALID")
             return new MatchingFailureClassification("MATCHING_INPUT_INVALID", false);
 
-        if (message.StartsWith("MATCHING_PROMPT_PLACEHOLDER_MISSING", StringComparison.Ordinal)
+        if (message.StartsWith("PROMPT_NOT_CONFIGURED", StringComparison.Ordinal)
+            || message.StartsWith("MATCHING_PROMPT_PLACEHOLDER_MISSING", StringComparison.Ordinal)
             || message.StartsWith("PROMPT_CONFIGURATION_INVALID", StringComparison.Ordinal)
-            || message is "MATCHING_LEGACY_CONTRACT_UNREPRESENTABLE"
-            || message.StartsWith("INVALID_JD_ANALYSIS", StringComparison.Ordinal))
+            || message.StartsWith("MATCHING_PROMPT_PLACEHOLDER_INVALID", StringComparison.Ordinal)
+            || message.StartsWith("MATCHING_PROMPT_SCHEMA_MUTATION", StringComparison.Ordinal))
             return new MatchingFailureClassification("MATCHING_CONFIGURATION_INVALID", false);
+
+        // A JD that the provider could not turn into a usable analysis is an
+        // AI-output failure, not a matching configuration failure. Typed JD
+        // validation normally reaches the branch above; this preserves the
+        // same classification for the legacy bounded message.
+        if (message.StartsWith("INVALID_JD_ANALYSIS", StringComparison.Ordinal))
+        {
+            return new MatchingFailureClassification(
+                "AI_OUTPUT_INVALID",
+                false,
+                JdAnalysisQuality: JdAnalysisQuality.INVALID);
+        }
 
         return new MatchingFailureClassification("MATCHING_TECHNICAL_ERROR", true);
     }

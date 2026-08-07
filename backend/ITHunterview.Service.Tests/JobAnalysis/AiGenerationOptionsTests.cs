@@ -6,6 +6,7 @@ using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Service.AiProviders;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 
@@ -13,6 +14,34 @@ namespace ITHunterview.Service.Tests.JobAnalysis;
 
 public sealed class AiGenerationOptionsTests
 {
+    [Fact]
+    public void CvAnalysisProfiles_UseBoundedSingleAttemptsAndThinkingBudget()
+    {
+        Assert.Equal(8192, AiGenerationOptions.CvAnalysisJsonExtraction.MaxOutputTokens);
+        Assert.Equal(12288, AiGenerationOptions.CvAnalysisJsonRetry.MaxOutputTokens);
+        Assert.Equal(0m, AiGenerationOptions.CvAnalysisJsonExtraction.Temperature);
+        Assert.Equal(0.1m, AiGenerationOptions.CvAnalysisJsonExtraction.TopP);
+        Assert.Equal("application/json", AiGenerationOptions.CvAnalysisJsonExtraction.ResponseMimeType);
+        Assert.Equal(1, AiGenerationOptions.CvAnalysisJsonExtraction.MaxTransportAttempts);
+        Assert.Equal(1, AiGenerationOptions.CvAnalysisJsonRetry.MaxTransportAttempts);
+        Assert.Equal(512, AiGenerationOptions.CvAnalysisJsonExtraction.ThinkingBudget);
+        Assert.Equal("minimal", AiGenerationOptions.CvAnalysisJsonExtraction.ThinkingLevel);
+    }
+
+    [Fact]
+    public void JdMatchingProfiles_UseOneTransportAttemptAndAControlledLargerRetry()
+    {
+        Assert.Equal(8192, AiGenerationOptions.JdMatchingJsonScoring.MaxOutputTokens);
+        Assert.Equal(12288, AiGenerationOptions.JdMatchingJsonRetry.MaxOutputTokens);
+        Assert.Equal(0.2m, AiGenerationOptions.JdMatchingJsonScoring.Temperature);
+        Assert.Equal(0.1m, AiGenerationOptions.JdMatchingJsonScoring.TopP);
+        Assert.Equal("application/json", AiGenerationOptions.JdMatchingJsonScoring.ResponseMimeType);
+        Assert.Equal(1, AiGenerationOptions.JdMatchingJsonScoring.MaxTransportAttempts);
+        Assert.Equal(1, AiGenerationOptions.JdMatchingJsonRetry.MaxTransportAttempts);
+        Assert.Equal(512, AiGenerationOptions.JdMatchingJsonScoring.ThinkingBudget);
+        Assert.Equal("minimal", AiGenerationOptions.JdMatchingJsonScoring.ThinkingLevel);
+    }
+
     [Fact]
     public async Task Groq_StrictJsonExtraction_UsesRequestedLowTemperatureAndBound()
     {
@@ -47,7 +76,7 @@ public sealed class AiGenerationOptionsTests
             {
                 ["Gemini"] = new() { ApiKey = "test-key", Model = "test-model", Endpoint = "https://example.test/models" }
             }
-        }), systemConfigs.Object, cache);
+        }), systemConfigs.Object, cache, NullLogger<GeminiProvider>.Instance);
 
         await provider.GenerateTextAsync("input", "system", AiGenerationOptions.StrictJsonExtraction, CancellationToken.None);
 
@@ -55,6 +84,55 @@ public sealed class AiGenerationOptionsTests
         var generation = payload.RootElement.GetProperty("generationConfig");
         Assert.Equal(0m, generation.GetProperty("temperature").GetDecimal());
         Assert.Equal("application/json", generation.GetProperty("responseMimeType").GetString());
+        Assert.False(generation.TryGetProperty("thinkingConfig", out _));
+    }
+
+    [Fact]
+    public async Task Gemini_25_CvExtraction_UsesThinkingBudget()
+    {
+        var handler = new CaptureHandler("{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"{}\"}]}}]}");
+        using var client = new HttpClient(handler);
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var systemConfigs = new Mock<ISystemConfigRepository>();
+        systemConfigs.Setup(x => x.GetByKeyAsync("AiApiKey_Gemini")).ReturnsAsync((ITHunterview.Domain.Entities.SystemConfigs?)null);
+        var provider = new GeminiProvider(client, Options.Create(new AiSettings
+        {
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["Gemini"] = new() { ApiKey = "test-key", Model = "gemini-2.5-flash", Endpoint = "https://example.test/models" }
+            }
+        }), systemConfigs.Object, cache, NullLogger<GeminiProvider>.Instance);
+
+        await provider.GenerateTextAsync("input", "system", AiGenerationOptions.CvAnalysisJsonExtraction, CancellationToken.None);
+
+        using var payload = JsonDocument.Parse(handler.RequestBody!);
+        var thinking = payload.RootElement.GetProperty("generationConfig").GetProperty("thinkingConfig");
+        Assert.Equal(512, thinking.GetProperty("thinkingBudget").GetInt32());
+        Assert.False(thinking.TryGetProperty("thinkingLevel", out _));
+    }
+
+    [Fact]
+    public async Task Gemini_3_CvExtraction_UsesThinkingLevel()
+    {
+        var handler = new CaptureHandler("{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"{}\"}]}}]}");
+        using var client = new HttpClient(handler);
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var systemConfigs = new Mock<ISystemConfigRepository>();
+        systemConfigs.Setup(x => x.GetByKeyAsync("AiApiKey_Gemini")).ReturnsAsync((ITHunterview.Domain.Entities.SystemConfigs?)null);
+        var provider = new GeminiProvider(client, Options.Create(new AiSettings
+        {
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["Gemini"] = new() { ApiKey = "test-key", Model = "gemini-3.5-flash", Endpoint = "https://example.test/models" }
+            }
+        }), systemConfigs.Object, cache, NullLogger<GeminiProvider>.Instance);
+
+        await provider.GenerateTextAsync("input", "system", AiGenerationOptions.CvAnalysisJsonExtraction, CancellationToken.None);
+
+        using var payload = JsonDocument.Parse(handler.RequestBody!);
+        var thinking = payload.RootElement.GetProperty("generationConfig").GetProperty("thinkingConfig");
+        Assert.Equal("minimal", thinking.GetProperty("thinkingLevel").GetString());
+        Assert.False(thinking.TryGetProperty("thinkingBudget", out _));
     }
 
     [Fact]
@@ -118,6 +196,28 @@ public sealed class AiGenerationOptionsTests
     }
 
     [Fact]
+    public async Task Gemini_CvExtraction_UsesOneTransportAttempt()
+    {
+        var handler = new CountingStatusHandler(HttpStatusCode.ServiceUnavailable);
+        using var client = new HttpClient(handler);
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var systemConfigs = new Mock<ISystemConfigRepository>();
+        systemConfigs.Setup(x => x.GetByKeyAsync("AiApiKey_Gemini")).ReturnsAsync((ITHunterview.Domain.Entities.SystemConfigs?)null);
+        var provider = new GeminiProvider(client, Options.Create(new AiSettings
+        {
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["Gemini"] = new() { ApiKey = "test-key", Model = "gemini-2.5-flash", Endpoint = "https://example.test/models" }
+            }
+        }), systemConfigs.Object, cache, NullLogger<GeminiProvider>.Instance);
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => provider.GenerateTextAsync(
+            "input", "system", AiGenerationOptions.CvAnalysisJsonExtraction, CancellationToken.None));
+
+        Assert.Equal(1, handler.RequestCount);
+    }
+
+    [Fact]
     public async Task Gemini_JoinsAllNonThoughtAnswerParts()
     {
         var handler = new CaptureHandler("{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"{\\\"a\\\":\"},{\"text\":\"1}\"}]}}]}");
@@ -131,11 +231,34 @@ public sealed class AiGenerationOptionsTests
             {
                 ["Gemini"] = new() { ApiKey = "test-key", Model = "test-model", Endpoint = "https://example.test/models" }
             }
-        }), systemConfigs.Object, cache);
+        }), systemConfigs.Object, cache, NullLogger<GeminiProvider>.Instance);
 
         var result = await provider.GenerateTextAsync("input", "system", AiGenerationOptions.StrictJsonExtraction, CancellationToken.None);
 
         Assert.Equal("{\"a\":1}", result);
+    }
+
+    [Fact]
+    public async Task Gemini_MaxTokens_ReturnsNonThoughtPartialText()
+    {
+        var handler = new CaptureHandler("""
+            {"candidates":[{"finishReason":"MAX_TOKENS","content":{"parts":[{"thought":true,"text":"hidden"},{"text":"{\"schema_version\":\"cv-analysis/v2\""}]}}],"usageMetadata":{"promptTokenCount":10,"candidatesTokenCount":5,"thoughtsTokenCount":2,"totalTokenCount":17}}
+            """);
+        using var client = new HttpClient(handler);
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var systemConfigs = new Mock<ISystemConfigRepository>();
+        systemConfigs.Setup(x => x.GetByKeyAsync("AiApiKey_Gemini")).ReturnsAsync((ITHunterview.Domain.Entities.SystemConfigs?)null);
+        var provider = new GeminiProvider(client, Options.Create(new AiSettings
+        {
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["Gemini"] = new() { ApiKey = "test-key", Model = "gemini-2.5-flash", Endpoint = "https://example.test/models" }
+            }
+        }), systemConfigs.Object, cache, NullLogger<GeminiProvider>.Instance);
+
+        var result = await provider.GenerateTextAsync("input", "system", AiGenerationOptions.CvAnalysisJsonExtraction, CancellationToken.None);
+
+        Assert.Equal("{\"schema_version\":\"cv-analysis/v2\"", result);
     }
 
     private sealed class CaptureHandler(string responseBody) : HttpMessageHandler

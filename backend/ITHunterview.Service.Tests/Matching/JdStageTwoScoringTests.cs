@@ -9,14 +9,14 @@ public class JdStageTwoScoringTests
     [Fact]
     public void Build_PreservesItemCategoryAndGroupOperatorInPromptContext()
     {
-        var context = new JdStageTwoContextBuilder().Build(Projection());
+        var context = new JdMatchingRequirementContextBuilder().Build(Projection());
         using var document = JsonDocument.Parse(context.Json);
 
-        var group = document.RootElement.GetProperty("requirementGroups")[0];
-        Assert.Equal("one_of", group.GetProperty("operator").GetString());
-        Assert.Equal(1, group.GetProperty("minSatisfied").GetInt32());
-        Assert.Equal("tech_skill", group.GetProperty("items")[0].GetProperty("category").GetString());
-        Assert.Equal("language", group.GetProperty("items")[1].GetProperty("category").GetString());
+        var entries = document.RootElement.EnumerateArray().ToArray();
+        Assert.Equal("one_of", entries[0].GetProperty("Operator").GetString());
+        Assert.Equal(1, entries[0].GetProperty("MinSatisfied").GetInt32());
+        Assert.Equal("tech_skill", entries[0].GetProperty("Category").GetString());
+        Assert.Equal("language", entries[1].GetProperty("Category").GetString());
     }
 
     [Fact]
@@ -28,25 +28,25 @@ public class JdStageTwoScoringTests
                 new ProjectedJdRequirementItem("g-years:i1", "experience", "professional experience", "3-5 years", "3-5 years", "requirements", new[] { "3-5 years" }, 3, 5, JdRequirementCategoryWeights.Get("experience")))
         }, false);
 
-        var context = new JdStageTwoContextBuilder().Build(projection);
+        var context = new JdMatchingRequirementContextBuilder().Build(projection);
         using var document = JsonDocument.Parse(context.Json);
-        var item = document.RootElement.GetProperty("requirementGroups")[0].GetProperty("items")[0];
+        var item = document.RootElement[0];
 
-        Assert.Equal(3, item.GetProperty("minYears").GetInt32());
-        Assert.Equal(5, item.GetProperty("maxYears").GetInt32());
+        Assert.Equal(3, item.GetProperty("MinYears").GetInt32());
+        Assert.Equal(5, item.GetProperty("MaxYears").GetInt32());
     }
 
     [Fact]
     public void Validate_RejectsMissingItemScoreInsteadOfInventingZero()
     {
         using var response = JsonDocument.Parse("""
-            {"itemScores":[{"itemId":"g1:i1","handlerCode":"H_TECH_05","handlerScore":1,"reasoning":"evidence","confidence":"high"}]}
+            {"scores":[{"reqId":"g1:i1","handlerCode":"H_TECH_05","handlerScore":1,"reasoning":"evidence","confidence":"high"}]}
             """);
 
         var exception = Assert.Throws<InvalidOperationException>(() =>
-            new JdStageTwoResponseValidator().Validate(response, Projection()));
+            new JdMatchingResponseAdapter().Adapt(response, Projection()));
 
-        Assert.Equal(JdStageTwoResponseValidator.InvalidStageTwoResponse, exception.Message);
+        Assert.Equal(JdMatchingResponseValidator.InvalidStageTwoResponse, exception.Message);
     }
 
     [Fact]
@@ -59,16 +59,16 @@ public class JdStageTwoScoringTests
         }, false);
         using var response = JsonDocument.Parse("""
             {
-              "itemScores": [
-                {"itemId":"g-tech:i1","handlerCode":"H_TECH_01","handlerScore":0,"reasoning":"No React evidence","confidence":"high"},
-                {"itemId":"g-language:i1","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"English B2","confidence":"high"}
+              "scores": [
+                {"reqId":"g-tech:i1","handlerCode":"H_TECH_01","handlerScore":0,"reasoning":"No React evidence","confidence":"high"},
+                {"reqId":"g-language:i1","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"English B2","confidence":"high"}
               ],
               "narrative":"Candidate summary",
               "improvements":[],
               "penalties":[]
             }
             """);
-        var validated = new JdStageTwoResponseValidator().Validate(response, projection);
+        var validated = new JdMatchingResponseAdapter().Adapt(response, projection);
 
         var result = new JdFitScoreCalculator().Calculate(projection, validated);
         using var final = JsonDocument.Parse(result.JsonString);
@@ -84,16 +84,16 @@ public class JdStageTwoScoringTests
         var projection = Projection();
         using var response = JsonDocument.Parse("""
             {
-              "itemScores": [
-                {"itemId":"g1:i1","handlerCode":"H_TECH_01","handlerScore":0,"reasoning":"No React","confidence":"high"},
-                {"itemId":"g1:i2","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"English evidence","confidence":"high"}
+              "scores": [
+                {"reqId":"g1:i1","handlerCode":"H_TECH_01","handlerScore":0,"reasoning":"No React","confidence":"high"},
+                {"reqId":"g1:i2","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"English evidence","confidence":"high"}
               ],
               "narrative":"Candidate summary",
               "improvements":[],
               "penalties":[]
             }
             """);
-        var validated = new JdStageTwoResponseValidator().Validate(response, projection);
+        var validated = new JdMatchingResponseAdapter().Adapt(response, projection);
 
         var result = new JdFitScoreCalculator().Calculate(projection, validated);
         using var final = JsonDocument.Parse(result.JsonString);
@@ -123,17 +123,17 @@ public class JdStageTwoScoringTests
                 Item("g-tech:i1", "react", "tech_skill"))
         }, false);
         using var response = JsonDocument.Parse("""
-            {"itemScores":[
-              {"itemId":"g-tech:i1","handlerCode":"H_TECH_05","handlerScore":1,"reasoning":"React evidence","confidence":"high"},
-              {"itemId":"g-tech:i2","handlerCode":"H_TECH_05","handlerScore":0.7,"reasoning":"Angular evidence","confidence":"high"},
-              {"itemId":"g-tech:i3","handlerCode":"H_TECH_05","handlerScore":0.2,"reasoning":"Vue evidence","confidence":"high"}
+            {"scores":[
+              {"reqId":"g-tech:i1","handlerCode":"H_TECH_05","handlerScore":1,"reasoning":"React evidence","confidence":"high"},
+              {"reqId":"g-tech:i2","handlerCode":"H_TECH_05","handlerScore":0.7,"reasoning":"Angular evidence","confidence":"high"},
+              {"reqId":"g-tech:i3","handlerCode":"H_TECH_05","handlerScore":0.2,"reasoning":"Vue evidence","confidence":"high"}
             ]}
             """);
 
-        var validator = new JdStageTwoResponseValidator();
+        var validator = new JdMatchingResponseAdapter();
         var calculator = new JdFitScoreCalculator();
-        var first = calculator.Calculate(firstOrder, validator.Validate(response, firstOrder));
-        var second = calculator.Calculate(reverseOrder, validator.Validate(response, reverseOrder));
+        var first = calculator.Calculate(firstOrder, validator.Adapt(response, firstOrder));
+        var second = calculator.Calculate(reverseOrder, validator.Adapt(response, reverseOrder));
         using var final = JsonDocument.Parse(first.JsonString);
         var selected = final.RootElement.GetProperty("jdFit").GetProperty("requirementGroups")[0].GetProperty("selectedItemIds");
 
@@ -147,17 +147,17 @@ public class JdStageTwoScoringTests
     {
         using var response = JsonDocument.Parse("""
             {
-              "itemScores": [
-                {"itemId":"g1:i1","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"evidence","confidence":"high"},
-                {"itemId":"g1:i2","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"evidence","confidence":"high"}
+              "scores": [
+                {"reqId":"g1:i1","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"evidence","confidence":"high"},
+                {"reqId":"g1:i2","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"evidence","confidence":"high"}
               ]
             }
             """);
 
         var exception = Assert.Throws<InvalidOperationException>(() =>
-            new JdStageTwoResponseValidator().Validate(response, Projection()));
+            new JdMatchingResponseAdapter().Adapt(response, Projection()));
 
-        Assert.Equal(JdStageTwoResponseValidator.InvalidStageTwoResponse, exception.Message);
+        Assert.Equal(JdMatchingResponseValidator.InvalidStageTwoResponse, exception.Message);
     }
 
     [Fact]
@@ -165,9 +165,9 @@ public class JdStageTwoScoringTests
     {
         using var response = JsonDocument.Parse("""
             {
-              "itemScores": [
-                {"itemId":"g1:i1","handlerCode":"H_TECH_05","handlerScore":1,"reasoning":"evidence","confidence":"high"},
-                {"itemId":"g1:i2","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"evidence","confidence":"high"}
+              "scores": [
+                {"reqId":"g1:i1","handlerCode":"H_TECH_05","handlerScore":1,"reasoning":"evidence","confidence":"high"},
+                {"reqId":"g1:i2","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"evidence","confidence":"high"}
               ],
               "penalties": [
                 {"code":"PNL_TC1_01","triggered":true,"evidence":"model claim"}
@@ -175,7 +175,7 @@ public class JdStageTwoScoringTests
             }
             """);
 
-        var validated = new JdStageTwoResponseValidator().Validate(response, Projection());
+        var validated = new JdMatchingResponseAdapter().Adapt(response, Projection());
         var result = new JdFitScoreCalculator().Calculate(Projection(), validated);
         using var final = JsonDocument.Parse(result.JsonString);
 
@@ -189,9 +189,9 @@ public class JdStageTwoScoringTests
     {
         using var response = JsonDocument.Parse("""
             {
-              "itemScores": [
-                {"itemId":"g1:i1","handlerCode":"H_TECH_05","handlerScore":1,"reasoning":"evidence","confidence":"high"},
-                {"itemId":"g1:i2","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"evidence","confidence":"high"}
+              "scores": [
+                {"reqId":"g1:i1","handlerCode":"H_TECH_05","handlerScore":1,"reasoning":"evidence","confidence":"high"},
+                {"reqId":"g1:i2","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"evidence","confidence":"high"}
               ],
               "penalties": [
                 {"code":"PNL_TC1_01","triggered":true,"evidence":"first observation"},
@@ -201,9 +201,9 @@ public class JdStageTwoScoringTests
             """);
 
         var exception = Assert.Throws<InvalidOperationException>(() =>
-            new JdStageTwoResponseValidator().Validate(response, Projection()));
+            new JdMatchingResponseAdapter().Adapt(response, Projection()));
 
-        Assert.Equal(JdStageTwoResponseValidator.InvalidStageTwoResponse, exception.Message);
+        Assert.Equal(JdMatchingResponseValidator.InvalidStageTwoResponse, exception.Message);
     }
 
     private static JdRequirementProjection Projection() => new(

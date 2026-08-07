@@ -10,6 +10,7 @@ using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Service.Matching;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 
 namespace ITHunterview.Service.Service.AiProviders
 {
@@ -19,6 +20,7 @@ namespace ITHunterview.Service.Service.AiProviders
         private readonly ProviderConfig _config;
         private readonly ISystemConfigRepository _systemConfigRepository;
         private readonly Microsoft.Extensions.Caching.Memory.IMemoryCache _memoryCache;
+        private readonly ILogger<GeminiProvider> _logger;
         
         // SemaphoreSlim để tránh cache stampede khi nhiều thread cùng miss cache
         private static readonly System.Threading.SemaphoreSlim _cacheSemaphore = new System.Threading.SemaphoreSlim(1, 1);
@@ -26,11 +28,17 @@ namespace ITHunterview.Service.Service.AiProviders
 
         public string ProviderName => "Gemini";
 
-        public GeminiProvider(HttpClient httpClient, IOptions<AiSettings> settings, ISystemConfigRepository systemConfigRepository, Microsoft.Extensions.Caching.Memory.IMemoryCache memoryCache)
+        public GeminiProvider(
+            HttpClient httpClient,
+            IOptions<AiSettings> settings,
+            ISystemConfigRepository systemConfigRepository,
+            Microsoft.Extensions.Caching.Memory.IMemoryCache memoryCache,
+            ILogger<GeminiProvider> logger)
         {
             _httpClient = httpClient;
             _systemConfigRepository = systemConfigRepository;
             _memoryCache = memoryCache;
+            _logger = logger;
             if (settings.Value.Providers.TryGetValue("Gemini", out var config))
             {
                 _config = config;
@@ -132,6 +140,22 @@ namespace ITHunterview.Service.Service.AiProviders
                 if (options.TopP is decimal topP) generationConfig["topP"] = topP;
                 if (options.MaxOutputTokens is int maxOutputTokens) generationConfig["maxOutputTokens"] = maxOutputTokens;
                 if (!string.IsNullOrWhiteSpace(options.ResponseMimeType)) generationConfig["responseMimeType"] = options.ResponseMimeType;
+                if (model.Contains("2.5", StringComparison.OrdinalIgnoreCase) &&
+                    options.ThinkingBudget is int thinkingBudget)
+                {
+                    generationConfig["thinkingConfig"] = new Dictionary<string, object?>
+                    {
+                        ["thinkingBudget"] = thinkingBudget
+                    };
+                }
+                else if (model.StartsWith("gemini-3", StringComparison.OrdinalIgnoreCase) &&
+                         !string.IsNullOrWhiteSpace(options.ThinkingLevel))
+                {
+                    generationConfig["thinkingConfig"] = new Dictionary<string, object?>
+                    {
+                        ["thinkingLevel"] = options.ThinkingLevel
+                    };
+                }
                 if (generationConfig.Count > 0)
                 {
                     payload["generationConfig"] = generationConfig;
@@ -190,7 +214,11 @@ namespace ITHunterview.Service.Service.AiProviders
 
                 if (i < maxRetries - 1)
                 {
-                    Console.WriteLine($"[WARNING] Gemini API call returned transient status {response?.StatusCode} or threw exception. Retrying in 2 seconds... (Attempt {i + 1} of {maxRetries})");
+                    _logger.LogWarning(
+                        "Gemini transient provider response. Status={StatusCode}; Attempt={Attempt}; MaxAttempts={MaxAttempts}",
+                        response?.StatusCode,
+                        i + 1,
+                        maxRetries);
                     await Task.Delay(2000, cancellationToken);
                 }
             }
@@ -206,36 +234,101 @@ namespace ITHunterview.Service.Service.AiProviders
                 cancellationToken);
             using var doc = JsonDocument.Parse(responseContent);
 
-            // Extract candidate text content
+            // Extract candidate text content while retaining bounded completion diagnostics.
             if (doc.RootElement.TryGetProperty("candidates", out var candidates) &&
-                candidates.GetArrayLength() > 0 &&
-                candidates[0].TryGetProperty("content", out var content) &&
-                content.TryGetProperty("parts", out var parts) &&
-                parts.GetArrayLength() > 0)
+                candidates.ValueKind == JsonValueKind.Array &&
+                candidates.GetArrayLength() > 0)
             {
+                var candidate = candidates[0];
+                var finishReason = candidate.TryGetProperty("finishReason", out var finishReasonElement) &&
+                                    finishReasonElement.ValueKind == JsonValueKind.String
+                    ? finishReasonElement.GetString() ?? "UNKNOWN"
+                    : "UNKNOWN";
+                var usage = doc.RootElement.TryGetProperty("usageMetadata", out var usageElement) &&
+                            usageElement.ValueKind == JsonValueKind.Object
+                    ? usageElement
+                    : (JsonElement?)null;
+                var promptTokens = ReadTokenCount(usage, "promptTokenCount");
+                var candidateTokens = ReadTokenCount(usage, "candidatesTokenCount");
+                var thoughtTokens = ReadTokenCount(usage, "thoughtsTokenCount");
+                var totalTokens = ReadTokenCount(usage, "totalTokenCount");
                 var answer = new StringBuilder();
-                foreach (var part in parts.EnumerateArray())
+                var answerPartCount = 0;
+                if (candidate.TryGetProperty("content", out var content) &&
+                    content.ValueKind == JsonValueKind.Object &&
+                    content.TryGetProperty("parts", out var parts) &&
+                    parts.ValueKind == JsonValueKind.Array)
                 {
-                    if (part.TryGetProperty("thought", out var thought) &&
-                        thought.ValueKind == JsonValueKind.True)
+                    foreach (var part in parts.EnumerateArray())
                     {
-                        continue;
-                    }
+                        if (part.TryGetProperty("thought", out var thought) &&
+                            thought.ValueKind == JsonValueKind.True)
+                        {
+                            continue;
+                        }
 
-                    if (part.TryGetProperty("text", out var text) &&
-                        text.ValueKind == JsonValueKind.String)
-                    {
-                        answer.Append(text.GetString());
+                        if (part.TryGetProperty("text", out var text) &&
+                            text.ValueKind == JsonValueKind.String)
+                        {
+                            answer.Append(text.GetString());
+                            answerPartCount++;
+                        }
                     }
+                }
+
+                _logger.LogInformation(
+                    "Gemini completion metadata. Model={Model}; FinishReason={FinishReason}; PromptTokens={PromptTokens}; CandidateTokens={CandidateTokens}; ThoughtTokens={ThoughtTokens}; TotalTokens={TotalTokens}; AnswerParts={AnswerParts}; AnswerLength={AnswerLength}",
+                    model,
+                    finishReason,
+                    promptTokens,
+                    candidateTokens,
+                    thoughtTokens,
+                    totalTokens,
+                    answerPartCount,
+                    answer.Length);
+
+                var reachedOutputLimit = string.Equals(
+                    finishReason,
+                    "MAX_TOKENS",
+                    StringComparison.OrdinalIgnoreCase);
+                if (reachedOutputLimit)
+                {
+                    _logger.LogWarning(
+                        "Gemini completion reached output token limit. Model={Model}; PromptTokens={PromptTokens}; CandidateTokens={CandidateTokens}; ThoughtTokens={ThoughtTokens}; TotalTokens={TotalTokens}; AnswerParts={AnswerParts}; AnswerLength={AnswerLength}",
+                        model,
+                        promptTokens,
+                        candidateTokens,
+                        thoughtTokens,
+                        totalTokens,
+                        answerPartCount,
+                        answer.Length);
                 }
 
                 if (answer.Length > 0)
                 {
                     return answer.ToString();
                 }
+
+                if (reachedOutputLimit)
+                {
+                    return string.Empty;
+                }
             }
 
             throw new Exception("Unexpected response format from Gemini API.");
+        }
+
+        private static int? ReadTokenCount(JsonElement? usage, string propertyName)
+        {
+            if (usage is not { ValueKind: JsonValueKind.Object } value ||
+                !value.TryGetProperty(propertyName, out var tokenValue) ||
+                tokenValue.ValueKind != JsonValueKind.Number ||
+                !tokenValue.TryGetInt32(out var count))
+            {
+                return null;
+            }
+
+            return count;
         }
     }
 }

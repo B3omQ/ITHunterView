@@ -29,6 +29,7 @@
 
   <ItemGroup>
     <None Update="Matching\Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Matching\Fixtures\*.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

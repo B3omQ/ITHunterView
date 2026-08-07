@@ -48,6 +48,37 @@ public sealed class MatchingFailureClassifierTests
         result.Retryable.Should().BeFalse();
     }
 
+    [Fact]
+    public void Classify_MissingActivePrompt_IsNonRetryableConfigurationFailure()
+    {
+        var result = MatchingFailureClassifier.Classify(
+            new InvalidOperationException("PROMPT_NOT_CONFIGURED: active prompt not found"));
+
+        result.ErrorCode.Should().Be("MATCHING_CONFIGURATION_INVALID");
+        result.Retryable.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("MATCHING_PROMPT_SCHEMA_MUTATION")]
+    [InlineData("MATCHING_PROMPT_PLACEHOLDER_INVALID:[CV_TEXT]")]
+    public void Classify_MatchingPromptContractFailure_IsConfigurationFailure(string message)
+    {
+        var result = MatchingFailureClassifier.Classify(new InvalidOperationException(message));
+
+        result.ErrorCode.Should().Be("MATCHING_CONFIGURATION_INVALID");
+        result.Retryable.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Classify_UnusableJdAnalysis_IsAiOutputFailureNotConfigurationFailure()
+    {
+        var result = MatchingFailureClassifier.Classify(new InvalidOperationException("INVALID_JD_ANALYSIS"));
+
+        result.ErrorCode.Should().Be("AI_OUTPUT_INVALID");
+        result.Retryable.Should().BeFalse();
+        result.JdAnalysisQuality.Should().Be(JdAnalysisQuality.INVALID);
+    }
+
     [Theory]
     [MemberData(nameof(TransientProviderFailures))]
     public void Classify_TransientProviderFailure_RemainsRetryable(Exception exception)
