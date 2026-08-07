@@ -86,6 +86,7 @@ namespace ITHunterview.Service.UseCase
                                 int limit = featureKey switch
                                 {
                                     "CvJdMatching" => features.CvMatchLimit ?? 0,
+                                    "CvOptimize" => features.CvOptimizeLimit ?? 0,
                                     "MockInterview" => features.MockInterviewLimit ?? 0,
                                     "LearningPath" => features.LearningPathLimit ?? (features.LearningPathSlotLimit ?? 0),
                                     "PostJob" => features.JobSlots ?? 1, // Gói mặc định hoặc configured slot
@@ -157,6 +158,7 @@ namespace ITHunterview.Service.UseCase
                         coinCost = featureKey switch
                         {
                             "CvJdMatching" => defaultCosts.CvJdMatching,
+                            "CvOptimize" => defaultCosts.CvOptimize,
                             "MockInterview" => defaultCosts.MockInterview,
                             "LearningPath" => defaultCosts.LearningPath,
                             "PostJob" => defaultCosts.PostJob,
@@ -391,6 +393,11 @@ namespace ITHunterview.Service.UseCase
                                     m.Status != "Failed")
                         .CountAsync();
 
+                case "CvOptimize":
+                    return await _context.OptimizeSessions
+                        .Where(x => x.UserId == userId && x.CreatedAt >= start && x.CreatedAt <= end)
+                        .CountAsync();
+
                 case "MockInterview":
                     return await _context.InterviewSessions
                         .Where(x => x.CandidateId == userId && x.StartedAt >= start && x.StartedAt <= end)
@@ -428,6 +435,7 @@ namespace ITHunterview.Service.UseCase
             return new CoinFeatureCostsDto
             {
                 CvJdMatching = 1000,
+                CvOptimize = 500,
                 MockInterview = 2000,
                 LearningPath = 500,
                 UnlockCv = 3000,
@@ -442,6 +450,7 @@ namespace ITHunterview.Service.UseCase
             return featureKey switch
             {
                 "CvJdMatching" => "So khớp CV-JD AI",
+                "CvOptimize" => "Tối ưu hóa CV AI",
                 "MockInterview" => "Phỏng vấn thử AI Mock Interview",
                 "LearningPath" => "Tạo Learning Path",
                 "UnlockCv" => "Mở khóa CV",

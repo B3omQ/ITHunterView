@@ -72,6 +72,8 @@ namespace ITHunterview.Service.UseCase
             int? mockInterviewUsed = null;
             int? cvMatchLimit = null;
             int? cvMatchUsed = null;
+            int? cvOptimizeLimit = null;
+            int? cvOptimizeUsed = null;
             int? learningPathLimit = null;
             int? learningPathUsed = null;
             int? learningPathSlotLimit = null;
@@ -117,6 +119,7 @@ namespace ITHunterview.Service.UseCase
                         {
                             mockInterviewLimit = features.MockInterviewLimit;
                             cvMatchLimit = features.CvMatchLimit;
+                            cvOptimizeLimit = features.CvOptimizeLimit;
                             learningPathLimit = features.LearningPathLimit ?? features.LearningPathSlotLimit;
                             learningPathSlotLimit = features.LearningPathSlotLimit;
 
@@ -134,6 +137,13 @@ namespace ITHunterview.Service.UseCase
                                                 m.UpdatedAt >= start &&
                                                 m.UpdatedAt <= end &&
                                                 m.Status != "Failed")
+                                    .CountAsync();
+                            }
+
+                            if (cvOptimizeLimit.HasValue)
+                            {
+                                cvOptimizeUsed = await _context.OptimizeSessions
+                                    .Where(x => x.UserId == userId && x.CreatedAt >= start && x.CreatedAt <= end)
                                     .CountAsync();
                             }
 
@@ -216,6 +226,8 @@ namespace ITHunterview.Service.UseCase
                 MockInterviewUsed = mockInterviewUsed,
                 CvMatchLimit = cvMatchLimit,
                 CvMatchUsed = cvMatchUsed,
+                CvOptimizeLimit = cvOptimizeLimit,
+                CvOptimizeUsed = cvOptimizeUsed,
                 LearningPathLimit = learningPathLimit,
                 LearningPathUsed = learningPathUsed,
                 LearningPathSlotLimit = learningPathSlotLimit,

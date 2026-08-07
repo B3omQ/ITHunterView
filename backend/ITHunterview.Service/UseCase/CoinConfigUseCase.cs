@@ -35,6 +35,7 @@ namespace ITHunterview.Service.UseCase
             result.FeatureCosts = new CoinFeatureCostsDto
             {
                 CvJdMatching = dbFeatures.FirstOrDefault(f => f.FeatureKey == "CvJdMatching")?.CoinCost ?? 1000,
+                CvOptimize = dbFeatures.FirstOrDefault(f => f.FeatureKey == "CvOptimize")?.CoinCost ?? 500,
                 MockInterview = dbFeatures.FirstOrDefault(f => f.FeatureKey == "MockInterview")?.CoinCost ?? 2000,
                 LearningPath = dbFeatures.FirstOrDefault(f => f.FeatureKey == "LearningPath")?.CoinCost ?? 500,
                 UnlockCv = dbFeatures.FirstOrDefault(f => f.FeatureKey == "UnlockCv")?.CoinCost ?? 3000,
@@ -78,6 +79,7 @@ namespace ITHunterview.Service.UseCase
             result.FeatureCosts = new CoinFeatureCostsDto
             {
                 CvJdMatching = dbFeatures.FirstOrDefault(f => f.FeatureKey == "CvJdMatching")?.CoinCost ?? 1000,
+                CvOptimize = dbFeatures.FirstOrDefault(f => f.FeatureKey == "CvOptimize")?.CoinCost ?? 500,
                 MockInterview = dbFeatures.FirstOrDefault(f => f.FeatureKey == "MockInterview")?.CoinCost ?? 2000,
                 LearningPath = dbFeatures.FirstOrDefault(f => f.FeatureKey == "LearningPath")?.CoinCost ?? 500,
                 UnlockCv = dbFeatures.FirstOrDefault(f => f.FeatureKey == "UnlockCv")?.CoinCost ?? 3000,
@@ -119,7 +121,7 @@ namespace ITHunterview.Service.UseCase
             if (dto.FeatureCosts == null)
                 return new ResponseBase<UpdateCoinConfigDto>("Cấu hình chi phí tính năng không được để trống");
             
-            if (dto.FeatureCosts.CvJdMatching < 0 || dto.FeatureCosts.MockInterview < 0 || dto.FeatureCosts.LearningPath < 0 || dto.FeatureCosts.UnlockCv < 0 || dto.FeatureCosts.PostJob < 0 || dto.FeatureCosts.ExtendJob < 0 || dto.FeatureCosts.PushTop < 0)
+            if (dto.FeatureCosts.CvJdMatching < 0 || dto.FeatureCosts.CvOptimize < 0 || dto.FeatureCosts.MockInterview < 0 || dto.FeatureCosts.LearningPath < 0 || dto.FeatureCosts.UnlockCv < 0 || dto.FeatureCosts.PostJob < 0 || dto.FeatureCosts.ExtendJob < 0 || dto.FeatureCosts.PushTop < 0)
                 return new ResponseBase<UpdateCoinConfigDto>("Chi phí Coin của các tính năng không được nhỏ hơn 0");
 
             if (dto.Packages == null || dto.Packages.Count == 0)
@@ -146,6 +148,7 @@ namespace ITHunterview.Service.UseCase
                     var featuresToUpdate = new List<(string Key, int Cost, string Desc)>
                     {
                         ("CvJdMatching", dto.FeatureCosts.CvJdMatching, "So khớp CV-JD AI"),
+                        ("CvOptimize", dto.FeatureCosts.CvOptimize, "Tối ưu hóa CV AI"),
                         ("MockInterview", dto.FeatureCosts.MockInterview, "Phỏng vấn thử AI Mock Interview"),
                         ("LearningPath", dto.FeatureCosts.LearningPath, "Tạo Learning Path"),
                         ("UnlockCv", dto.FeatureCosts.UnlockCv, "Mở khóa thông tin CV"),

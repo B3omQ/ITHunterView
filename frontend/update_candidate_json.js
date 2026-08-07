@@ -180,6 +180,92 @@ const cvMatchingEn = {
   generatingPreviewImg: 'Generating preview image...',
 };
 
+const optimizeCvEn = {
+  // Toasts
+  toastLoadDetailFail: 'Failed to load report details.',
+  toastInvalidFormat: 'Only PDF (.pdf) or Word (.docx) formats are supported',
+  toastNotEnoughCoin: 'Not enough Coin. You need {cost} Coin to continue.',
+  toastSelectSavedCv: 'Please select a CV from your saved list',
+  toastAnalysisComplete: 'CV Analysis completed!',
+  toastSelectFileToUpload: 'Please select a CV file to upload',
+  toastUploadFail: 'Failed to upload CV',
+  
+  // Status Badges
+  statusGood: 'Good',
+  statusWarning: 'Warning',
+  statusMissing: 'Missing',
+  priorityHigh: 'High Priority',
+  priorityMedium: 'Medium Priority',
+  priorityRecommended: 'Recommended',
+  
+  // Header
+  pageTitle: 'CV Layout & Structure Optimization',
+  pageDesc: 'Evaluate the completeness of standard CV sections and analyze layout priority (for Students/Freshers or Professionals) without modifying your text.',
+  evaluateAnotherBtn: 'Evaluate Another CV',
+  
+  // Loading
+  analyzingTitle: 'AI is analyzing your CV...',
+  analyzingDesc: 'Checking standard sections, evaluating priority order based on experience, and gathering improvement solutions.',
+  
+  // Input Step
+  costLabel: 'Service Fee:',
+  freeSubUnlimited: 'Free ({subName} Plan - Unlimited)',
+  freeSubRemaining: 'Free ({subName} Plan - {remaining} left)',
+  costPerTime: '{cost} Coin / analysis',
+  currentBalanceLabel: 'Current Balance:',
+  topUpBtn: 'Top Up',
+  
+  selectCvTitle: 'Select CV for Evaluation',
+  selectCvDesc: 'Please choose a saved CV from your account or upload a new one (.pdf, .docx).',
+  tabSavedCv: 'Saved CVs ({count})',
+  tabUploadCv: 'Upload New CV',
+  loadingCvList: 'Loading CV list...',
+  noSavedCv: 'You don\'t have any saved CVs in the system.',
+  uploadFirstCvBtn: 'Upload First CV',
+  primaryCvBadge: 'Primary CV',
+  
+  uploadDragDrop: 'Click to select or drag and drop file here',
+  uploadFormatSupport: 'Supports PDF or DOCX (max 10MB)',
+  btnUploading: 'Uploading CV...',
+  btnAnalyzeOptimize: 'Analyze & Optimize CV',
+  
+  // Results
+  scoreTitle: 'Structure Score',
+  scoreExcellent: 'Excellent structure',
+  scoreGood: 'Quite complete, needs refinement',
+  scoreNeedsWork: 'Needs more sections',
+  overviewTitle: 'AI Overview Remarks',
+  cvFileLabel: 'CV File:',
+  defaultCvName: 'Selected CV',
+  
+  section1Title: '1. Standard Sections Completeness',
+  section1Desc: 'Evaluate the presence of mandatory and optional sections in the CV layout.',
+  section2Title: '2. Layout Priority Order Analysis',
+  targetAudience: 'Target Audience: {level}',
+  section2Rule: 'Rule: For Students/Freshers ➔ Prioritize Education & Skills; For Professionals ➔ Prioritize Experience.',
+  orderOptimal: 'Current layout order is OPTIMAL',
+  orderNeedsAdjustment: 'Current layout order NEEDS ADJUSTMENT',
+  currentOrderLabel: 'Current order in CV:',
+  recommendedOrderLabel: 'Recommended order:',
+  
+  section3Title: '3. Improvement Solutions & Recommendations',
+  section3Desc: 'Specific suggestions to enhance professionalism and attract recruiters without altering the original content.',
+  noRecommendations: 'No additional recommendations. Your CV perfectly follows standard layouts!',
+  exampleBefore: 'Before (Current):',
+  exampleAfter: 'After (Recommended):',
+  
+  // History
+  historyTitle: 'CV Optimization History',
+  historyTotal: 'Total: {count} analyses',
+  historyDesc: 'Review your past evaluation results and layout optimization suggestions.',
+  loadingHistory: 'Loading analysis history...',
+  noHistoryTitle: 'No CV analysis history yet.',
+  noHistoryDesc: 'New CV evaluations will automatically appear here.',
+  defaultHistoryName: 'CV Profile',
+  viewReportBtn: 'View Report',
+  deleteHistoryBtn: 'Delete History'
+};
+
 const cvMatchingVi = {
   // Critical Gaps Panel
   criticalGapsTitle: 'Lỗ Hổng Nghiêm Trọng',
@@ -357,8 +443,96 @@ const cvMatchingVi = {
   generatingPreviewImg: 'Đang tạo ảnh xem trước...',
 };
 
+const optimizeCvVi = {
+  // Toasts
+  toastLoadDetailFail: 'Không thể tải chi tiết báo cáo.',
+  toastInvalidFormat: 'Chỉ hỗ trợ các định dạng file PDF (.pdf) hoặc Word (.docx)',
+  toastNotEnoughCoin: 'Bạn không đủ Coin. Cần {cost} Coin để tiếp tục.',
+  toastSelectSavedCv: 'Vui lòng chọn một CV từ danh sách của bạn',
+  toastAnalysisComplete: 'Phân tích CV hoàn tất!',
+  toastSelectFileToUpload: 'Vui lòng chọn file CV để tải lên',
+  toastUploadFail: 'Tải CV lên không thành công',
+  
+  // Status Badges
+  statusGood: 'Đạt chuẩn',
+  statusWarning: 'Cần chú ý',
+  statusMissing: 'Còn thiếu',
+  priorityHigh: 'Ưu tiên cao',
+  priorityMedium: 'Ưu tiên vừa',
+  priorityRecommended: 'Khuyến nghị',
+  
+  // Header
+  pageTitle: 'Tối ưu hóa Bố cục & Cấu trúc CV',
+  pageDesc: 'Đánh giá độ đầy đủ của các phần chuẩn trong CV và phân tích thứ tự ưu tiên bố cục (dành cho Sinh viên/Fresher hoặc Người đã đi làm) mà không chỉnh sửa văn bản của bạn.',
+  evaluateAnotherBtn: 'Đánh giá CV khác',
+  
+  // Loading
+  analyzingTitle: 'Hệ thống AI đang phân tích CV của bạn...',
+  analyzingDesc: 'Đang kiểm tra các Section tiêu chuẩn, đánh giá thứ tự ưu tiên theo kinh nghiệm làm việc và tổng hợp giải pháp cải thiện.',
+  
+  // Input Step
+  costLabel: 'Phí sử dụng:',
+  freeSubUnlimited: 'Miễn phí (Gói {subName} - Còn Vô hạn)',
+  freeSubRemaining: 'Miễn phí (Gói {subName} - Còn {remaining} lượt)',
+  costPerTime: '{cost} Coin / lượt',
+  currentBalanceLabel: 'Số dư hiện tại:',
+  topUpBtn: 'Nạp thêm',
+  
+  selectCvTitle: 'Chọn CV cần đánh giá',
+  selectCvDesc: 'Vui lòng chọn CV đã lưu trong tài khoản của bạn hoặc tải lên một file CV mới (.pdf, .docx).',
+  tabSavedCv: 'CV đã lưu ({count})',
+  tabUploadCv: 'Tải lên CV mới',
+  loadingCvList: 'Đang tải danh sách CV...',
+  noSavedCv: 'Bạn chưa có CV nào được lưu trong hệ thống.',
+  uploadFirstCvBtn: 'Tải lên CV đầu tiên',
+  primaryCvBadge: 'CV Chính',
+  
+  uploadDragDrop: 'Nhấp để chọn file hoặc kéo thả vào đây',
+  uploadFormatSupport: 'Hỗ trợ định dạng PDF hoặc DOCX (tối đa 10MB)',
+  btnUploading: 'Đang tải CV lên...',
+  btnAnalyzeOptimize: 'Phân tích & Tối ưu CV',
+  
+  // Results
+  scoreTitle: 'Điểm Đánh giá Cấu trúc',
+  scoreExcellent: 'Cấu trúc rất tốt',
+  scoreGood: 'Khá đầy đủ, cần hoàn thiện',
+  scoreNeedsWork: 'Cần bổ sung thêm section',
+  overviewTitle: 'Nhận xét Tổng quan của AI',
+  cvFileLabel: 'File CV:',
+  defaultCvName: 'CV đã chọn',
+  
+  section1Title: '1. Kiểm tra Độ đầy đủ của các Section chuẩn',
+  section1Desc: 'Đánh giá sự hiện diện của các danh mục bắt buộc và bổ sung trong bố cục CV.',
+  section2Title: '2. Phân tích Thứ tự Ưu tiên Bố cục (Layout Order)',
+  targetAudience: 'Đánh giá đối tượng: {level}',
+  section2Rule: 'Quy tắc: Đối với Sinh viên/Mới đi làm ➔ Ưu tiên Học vấn & Kỹ năng lên trước; Đối với Người đã đi làm ➔ Ưu tiên Kinh nghiệm lên trước.',
+  orderOptimal: 'Bố cục thứ tự sắp xếp hiện tại là TỐI ƯU',
+  orderNeedsAdjustment: 'Bố cục thứ tự sắp xếp CẦN ĐIỀU CHỈNH',
+  currentOrderLabel: 'Thứ tự hiện tại trong CV:',
+  recommendedOrderLabel: 'Thứ tự khuyến nghị tối ưu:',
+  
+  section3Title: '3. Danh sách Giải pháp & Khuyến nghị Cải thiện',
+  section3Desc: 'Các đề xuất cụ thể giúp nâng cao tính chuyên nghiệp và thu hút nhà tuyển dụng mà không làm biến đổi nội dung gốc.',
+  noRecommendations: 'Không có khuyến nghị bổ sung nào. CV của bạn đã tuân thủ rất tốt các chuẩn bố cục!',
+  exampleBefore: 'Ví dụ Trước (Hiện tại):',
+  exampleAfter: 'Ví dụ Sau (Khuyến nghị):',
+  
+  // History
+  historyTitle: 'Lịch sử Tối ưu hóa CV',
+  historyTotal: 'Tổng cộng: {count} lần đánh giá',
+  historyDesc: 'Xem lại các kết quả đánh giá và đề xuất tối ưu hóa cấu trúc CV trước đây của bạn.',
+  loadingHistory: 'Đang tải lịch sử phân tích...',
+  noHistoryTitle: 'Chưa có lịch sử phân tích CV nào.',
+  noHistoryDesc: 'Các lần đánh giá CV mới sẽ tự động hiển thị tại đây.',
+  defaultHistoryName: 'Hồ sơ CV',
+  viewReportBtn: 'Xem báo cáo',
+  deleteHistoryBtn: 'Xóa lịch sử'
+};
+
 en['CandidateCVMatching'] = cvMatchingEn;
 vi['CandidateCVMatching'] = cvMatchingVi;
+en['CandidateOptimizeCv'] = optimizeCvEn;
+vi['CandidateOptimizeCv'] = optimizeCvVi;
 
 fs.writeFileSync('messages/en.json', JSON.stringify(en, null, 2));
 fs.writeFileSync('messages/vi.json', JSON.stringify(vi, null, 2));
