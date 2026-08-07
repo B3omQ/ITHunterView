@@ -142,7 +142,7 @@ namespace ITHunterview.Service.Service.AiProviders
 
             HttpResponseMessage response = null;
             string errorContent = string.Empty;
-            int maxRetries = 3;
+            int maxRetries = Math.Clamp(options?.MaxTransportAttempts ?? 3, 1, 3);
 
             for (int i = 0; i < maxRetries; i++)
             {
@@ -211,10 +211,28 @@ namespace ITHunterview.Service.Service.AiProviders
                 candidates.GetArrayLength() > 0 &&
                 candidates[0].TryGetProperty("content", out var content) &&
                 content.TryGetProperty("parts", out var parts) &&
-                parts.GetArrayLength() > 0 &&
-                parts[0].TryGetProperty("text", out var text))
+                parts.GetArrayLength() > 0)
             {
-                return text.GetString();
+                var answer = new StringBuilder();
+                foreach (var part in parts.EnumerateArray())
+                {
+                    if (part.TryGetProperty("thought", out var thought) &&
+                        thought.ValueKind == JsonValueKind.True)
+                    {
+                        continue;
+                    }
+
+                    if (part.TryGetProperty("text", out var text) &&
+                        text.ValueKind == JsonValueKind.String)
+                    {
+                        answer.Append(text.GetString());
+                    }
+                }
+
+                if (answer.Length > 0)
+                {
+                    return answer.ToString();
+                }
             }
 
             throw new Exception("Unexpected response format from Gemini API.");

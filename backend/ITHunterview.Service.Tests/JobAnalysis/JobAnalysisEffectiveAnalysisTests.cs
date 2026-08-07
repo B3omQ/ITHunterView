@@ -1,6 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Reflection;
+using FluentAssertions;
+using ITHunterview.Domain.Entities;
+using ITHunterview.Domain.Enums;
+using ITHunterview.Service.DTOs.JobAnalysis;
+using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Service;
 using ITHunterview.Service.Utils;
@@ -80,5 +86,29 @@ public class JobAnalysisEffectiveAnalysisTests
         Assert.Equal("one_of", group.GetProperty("operator").GetString());
         Assert.Equal(1, group.GetProperty("min_satisfied").GetInt32());
         Assert.Equal("React, Angular, or Vue", group.GetProperty("items")[0].GetProperty("evidences")[0].GetString());
+    }
+
+    [Fact]
+    public void RepositoryDecisionProjection_PreservesQualityMetadata()
+    {
+        const string source = """
+            {
+              "schema_version":"jd-analysis/v3",
+              "analysis_quality":"PARTIAL",
+              "analysis_coverage":{"input_group_count":2,"accepted_group_count":1,"discarded_group_count":1,"input_item_count":2,"accepted_item_count":1,"discarded_item_count":1,"requirement_set_complete":false},
+              "analysis_diagnostics":[{"code":"OUTPUT_TRUNCATED","json_path":"$"}],
+              "matching_metrics":{"job_titles_normalized":[],"skills_normalized":[],"total_years_exp":0,"domains":[],"requirements_list":[],"requirement_groups":[]}
+            }
+            """;
+        var method = typeof(JobAnalysisRepository).GetMethod(
+            "RebuildEffectiveAnalysisWithAcceptedStandardSkills",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        var result = method!.Invoke(null, new object?[] { source, Array.Empty<JobSkillDecisions>() }) as string;
+
+        using var document = JsonDocument.Parse(result!);
+        document.RootElement.GetProperty("analysis_quality").GetString().Should().Be("PARTIAL");
+        document.RootElement.GetProperty("analysis_coverage").GetProperty("accepted_group_count").GetInt32().Should().Be(1);
+        document.RootElement.GetProperty("analysis_diagnostics")[0].GetProperty("code").GetString().Should().Be("OUTPUT_TRUNCATED");
     }
 }

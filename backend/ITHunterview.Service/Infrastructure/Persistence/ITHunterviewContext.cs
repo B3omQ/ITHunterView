@@ -400,6 +400,14 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 entity.Property(e => e.CvAnalysisQuality)
                       .HasConversion<string>()
                       .HasMaxLength(16);
+                entity.Property(e => e.JdAnalysisQuality)
+                      .HasConversion<string>()
+                      .HasMaxLength(16);
+                entity.Property(e => e.JdAnalysisCoverageJson).HasColumnType("jsonb");
+                entity.Property(e => e.JdAnalysisDiagnosticsJson).HasColumnType("jsonb");
+                entity.ToTable(table => table.HasCheckConstraint(
+                    "ck_cv_job_match_scores_jd_analysis_quality",
+                    "\"jd_analysis_quality\" IS NULL OR \"jd_analysis_quality\" IN ('COMPLETE', 'PARTIAL', 'INVALID')"));
                 entity.Property(e => e.CvAnalysisCoverageJson).HasColumnType("jsonb");
                 entity.Property(e => e.CvAnalysisDiagnosticsJson).HasColumnType("jsonb");
                 entity.ToTable(table => table.HasCheckConstraint(
@@ -494,6 +502,14 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 entity.Property(e => e.RawInputSnapshot).HasColumnType("jsonb");
                 entity.Property(e => e.RawAnalysisJson).HasColumnType("jsonb");
                 entity.Property(e => e.EffectiveAnalysisJson).HasColumnType("jsonb");
+                entity.Property(e => e.AnalysisQuality)
+                      .HasConversion<string>()
+                      .HasMaxLength(16);
+                entity.Property(e => e.AnalysisCoverageJson).HasColumnType("jsonb");
+                entity.Property(e => e.AnalysisDiagnosticsJson).HasColumnType("jsonb");
+                entity.ToTable(table => table.HasCheckConstraint(
+                    "ck_job_analysis_runs_analysis_quality",
+                    "\"analysis_quality\" IS NULL OR \"analysis_quality\" IN ('COMPLETE', 'PARTIAL', 'INVALID')"));
                 entity.Property(e => e.ValidationErrorsJson).HasColumnType("jsonb");
 
                 entity.HasOne(e => e.Job)

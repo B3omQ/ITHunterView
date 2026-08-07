@@ -1,4 +1,6 @@
 using ITHunterview.Service.Utils;
+using ITHunterview.Service.DTOs.JobAnalysis;
+using ITHunterview.Domain.Enums;
 using Xunit;
 
 namespace ITHunterview.Service.Tests.JobAnalysis
@@ -70,6 +72,19 @@ namespace ITHunterview.Service.Tests.JobAnalysis
             Assert.False(metrics.SkillsAvailable);
             Assert.True(metrics.ExperienceAvailable);
             Assert.False(metrics.DomainsAvailable);
+        }
+
+        [Fact]
+        public void JdAnalysisMetadataReader_RoundTripsCoverageAndDiagnostics()
+        {
+            var coverage = new JdAnalysisCoverage(2, 1, 1, 3, 2, 1, false);
+            var diagnostics = new[] { new JdAnalysisDiagnostic("OUTPUT_TRUNCATED", "$") };
+
+            var coverageJson = JdAnalysisMetadataReader.SerializeCoverage(coverage);
+            var diagnosticsJson = JdAnalysisMetadataReader.SerializeDiagnostics(diagnostics);
+
+            Assert.Equal(coverage, JdAnalysisMetadataReader.ReadCoverageJson(coverageJson));
+            Assert.Equal(diagnostics, JdAnalysisMetadataReader.ReadDiagnosticsJson(diagnosticsJson));
         }
     }
 }

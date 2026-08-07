@@ -57,6 +57,10 @@ namespace ITHunterview.Service.DTOs.JobAnalysis
         public int InputRevision { get; set; }
         public int CurrentJobRevision { get; set; }
         public JobAnalysisStatus Status { get; set; }
+        public JdAnalysisQuality? AnalysisQuality { get; set; }
+        public JdAnalysisCoverage? AnalysisCoverage { get; set; }
+        public List<JdAnalysisDiagnostic> AnalysisDiagnostics { get; set; } = new();
+        public bool UsesRawTextFallback { get; set; }
         public string? FailureCode { get; set; }
         public string? Message { get; set; }
         public bool IsReused { get; set; }
@@ -79,6 +83,10 @@ namespace ITHunterview.Service.DTOs.JobAnalysis
         public JobAnalysisLifecycleState LifecycleState { get; set; }
         public bool IsCurrentAnalysis { get; set; }
         public JobAnalysisStatus Status { get; set; }
+        public JdAnalysisQuality? AnalysisQuality { get; set; }
+        public JdAnalysisCoverage? AnalysisCoverage { get; set; }
+        public List<JdAnalysisDiagnostic> AnalysisDiagnostics { get; set; } = new();
+        public bool UsesRawTextFallback { get; set; }
         public int DecisionVersion { get; set; }
         public string? FailureCode { get; set; }
         public List<JobSkillDecisionDto> Suggestions { get; set; } = new();

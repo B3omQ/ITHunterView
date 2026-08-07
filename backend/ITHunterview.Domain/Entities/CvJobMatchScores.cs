@@ -100,6 +100,15 @@ namespace ITHunterview.Domain.Entities
         [Column("error_code")]
         public string? ErrorCode { get; set; }
 
+        [Column("jd_analysis_quality")]
+        public JdAnalysisQuality? JdAnalysisQuality { get; set; }
+
+        [Column("jd_analysis_coverage_json", TypeName = "jsonb")]
+        public string? JdAnalysisCoverageJson { get; set; }
+
+        [Column("jd_analysis_diagnostics_json", TypeName = "jsonb")]
+        public string? JdAnalysisDiagnosticsJson { get; set; }
+
         [Column("cv_analysis_quality")]
         public CvAnalysisQuality? CvAnalysisQuality { get; set; }
 

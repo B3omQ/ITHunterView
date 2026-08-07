@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Clock3, Loader2, RefreshCw, Sparkles } from 'lucide-react'
+import { AlertCircle, Clock3, Loader2, RefreshCw, Sparkles } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -28,6 +28,9 @@ export function AiParseStatusBadge({ status, error, className, forCandidate = fa
   }
   if (normalized === 'SUCCESS') {
     return <StatusBadge className={className} title="AI completed scanning job description, extracted and tagged standard skills for candidate matching." icon={<Sparkles className="size-3 text-emerald-500 fill-emerald-500/20 shrink-0" />} tone="green">AI Scanned & Tagged</StatusBadge>
+  }
+  if (normalized === 'RAW_FALLBACK') {
+    return <StatusBadge className={className} title="Structured AI analysis was unavailable. The original job description is retained for matching." icon={<AlertCircle className="size-3 text-amber-500" />} tone="amber">AI Partial - Raw JD Fallback</StatusBadge>
   }
   if (normalized === 'NOT_REQUESTED') {
     return <StatusBadge className={className} title="This job posting has not been scanned by AI for skills and tagging." icon={<Sparkles className="size-3 text-zinc-400" />} tone="neutral">AI Not Scanned</StatusBadge>

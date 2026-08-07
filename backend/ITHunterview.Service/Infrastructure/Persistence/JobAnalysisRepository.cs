@@ -9,6 +9,7 @@ using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.JobAnalysis;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
+using ITHunterview.Service.Utils;
 using Microsoft.EntityFrameworkCore;
 
 namespace ITHunterview.Service.Infrastructure.Persistence
@@ -226,14 +227,30 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             return claimedIds;
         }
 
+        public async Task<bool> TryMarkProviderCallStartedAsync(Guid runId, CancellationToken ct = default)
+        {
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            var run = await _context.JobAnalysisRuns
+                .FromSqlInterpolated($"SELECT * FROM job_analysis_runs WHERE id = {runId} FOR UPDATE")
+                .FirstOrDefaultAsync(ct);
+            if (run == null || run.Status != JobAnalysisStatus.PROCESSING)
+            {
+                return false;
+            }
+
+            if (!run.ProviderCallStartedAt.HasValue)
+            {
+                run.ProviderCallStartedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync(ct);
+            }
+
+            await tx.CommitAsync(ct);
+            return true;
+        }
+
         public async Task<bool> TryCompleteReadyAsync(
             Guid runId,
-            int expectedRevision,
-            string rawJson,
-            string effectiveJson,
-            IReadOnlyList<JobSkillDecisions> decisions,
-            string? provider,
-            string? model,
+            JobAnalysisCompletion completion,
             CancellationToken ct = default)
         {
             await using var tx = await _context.Database.BeginTransactionAsync(ct);
@@ -247,7 +264,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             var job = await _context.JobPostings
                 .FromSqlInterpolated($"SELECT * FROM job_postings WHERE id = {run.JobId} FOR UPDATE")
                 .FirstOrDefaultAsync(ct);
-            if (job == null || job.AnalysisRevision != expectedRevision || job.ActiveAnalysisRunId != runId)
+            if (job == null || job.AnalysisRevision != completion.ExpectedRevision || job.ActiveAnalysisRunId != runId)
             {
                 run.Status = JobAnalysisStatus.SUPERSEDED;
                 await _context.SaveChangesAsync(ct);
@@ -256,23 +273,28 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             }
 
             run.Status = JobAnalysisStatus.READY;
-            run.RawAnalysisJson = rawJson;
-            run.EffectiveAnalysisJson = effectiveJson;
-            run.ProviderName = provider;
-            run.ModelName = model;
+            run.RawAnalysisJson = completion.RawAnalysisJson;
+            run.EffectiveAnalysisJson = completion.EffectiveAnalysisJson;
+            run.AnalysisQuality = completion.Quality;
+            run.AnalysisCoverageJson = completion.AnalysisCoverageJson;
+            run.AnalysisDiagnosticsJson = completion.AnalysisDiagnosticsJson;
+            run.ProviderName = completion.Provider;
+            run.ModelName = completion.Model;
+            run.FailureCode = null;
+            run.ValidationErrorsJson = null;
             run.CompletedAt = DateTime.UtcNow;
             run.LeaseExpiresAt = null;
             run.LastHeartbeatAt = DateTime.UtcNow;
-            run.DecisionVersion = decisions?.Count > 0 ? 1 : 0;
+            run.DecisionVersion = completion.Decisions?.Count > 0 ? 1 : 0;
 
             // READY means parsing has completed; publication still requires
             // the recruiter to finalize the reviewed result.
-            job.ParseStatus = "READY";
+            job.ParseStatus = completion.Quality == JdAnalysisQuality.INVALID ? "RAW_FALLBACK" : "READY";
             job.ParseError = null;
 
-            if (decisions != null && decisions.Count > 0)
+            if (completion.Decisions != null && completion.Decisions.Count > 0)
             {
-                _context.JobSkillDecisions.AddRange(decisions);
+                _context.JobSkillDecisions.AddRange(completion.Decisions);
             }
 
             await _context.SaveChangesAsync(ct);
@@ -288,6 +310,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 run.Status = JobAnalysisStatus.FAILED;
                 run.FailureCode = failureCode;
                 run.ValidationErrorsJson = validationErrorsJson;
+                run.AnalysisQuality = null;
+                run.AnalysisCoverageJson = null;
+                run.AnalysisDiagnosticsJson = null;
+                run.RawAnalysisJson = null;
+                run.EffectiveAnalysisJson = null;
                 run.CompletedAt = DateTime.UtcNow;
                 run.LeaseExpiresAt = null;
                 run.LastHeartbeatAt = DateTime.UtcNow;
@@ -405,6 +432,21 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 blockingReasons.Add($"Analysis run is currently in status '{run.Status}'. It must be READY to publish.");
             }
 
+            var analysisQuality = run.AnalysisQuality;
+            if (!analysisQuality.HasValue)
+            {
+                var persistedQuality = JdAnalysisMetadataReader.ReadQuality(run.EffectiveAnalysisJson);
+                if (Enum.TryParse<JdAnalysisQuality>(persistedQuality, ignoreCase: true, out var parsedQuality))
+                {
+                    analysisQuality = parsedQuality;
+                }
+            }
+            var analysisDiagnostics = JdAnalysisMetadataReader.ReadDiagnosticsJson(run.AnalysisDiagnosticsJson);
+            if (analysisDiagnostics.Count == 0)
+            {
+                analysisDiagnostics = JdAnalysisMetadataReader.ReadDiagnostics(run.EffectiveAnalysisJson);
+            }
+
             // AI owns the technical extraction.  A recruiter is not required to
             // approve individual technologies: only resolved dictionary skills
             // become tags/filters; all other validated requirements remain in the
@@ -420,6 +462,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 LifecycleState = ToLifecycleState(run.Status),
                 IsCurrentAnalysis = run.InputRevision == job.AnalysisRevision && job.ActiveAnalysisRunId == run.Id,
                 Status = run.Status,
+                AnalysisQuality = analysisQuality,
+                AnalysisCoverage = JdAnalysisMetadataReader.ReadCoverageJson(run.AnalysisCoverageJson)
+                    ?? JdAnalysisMetadataReader.ReadCoverage(run.EffectiveAnalysisJson),
+                AnalysisDiagnostics = analysisDiagnostics,
+                UsesRawTextFallback = analysisQuality == JdAnalysisQuality.INVALID,
                 DecisionVersion = decisionVersion,
                 FailureCode = run.FailureCode,
                 Suggestions = suggestions,
@@ -528,9 +575,12 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             run.DecisionVersion = expectedDecisionVersion + 1;
 
-            run.EffectiveAnalysisJson = RebuildEffectiveAnalysisWithAcceptedStandardSkills(
-                run.EffectiveAnalysisJson ?? run.RawAnalysisJson,
-                existingDecisions);
+            if (run.AnalysisQuality != JdAnalysisQuality.INVALID)
+            {
+                run.EffectiveAnalysisJson = RebuildEffectiveAnalysisWithAcceptedStandardSkills(
+                    run.EffectiveAnalysisJson ?? run.RawAnalysisJson,
+                    existingDecisions);
+            }
 
             await _context.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
@@ -639,6 +689,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             // a job that did not become PUBLISHED.
             await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "PostJob", job.Id.ToString());
 
+            bool isRawFallback = run.AnalysisQuality == JdAnalysisQuality.INVALID;
+
             // Remove existing JSR
             var oldJsr = await _context.JobSkillRequirements.Where(jsr => jsr.JobId == jobId).ToListAsync(ct);
             _context.JobSkillRequirements.RemoveRange(oldJsr);
@@ -660,25 +712,30 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             _context.JobSkillRequirements.AddRange(newJsrList);
 
-            run.EffectiveAnalysisJson = RebuildEffectiveAnalysisWithAcceptedStandardSkills(
-                run.EffectiveAnalysisJson ?? run.RawAnalysisJson,
-                acceptedDecisions);
-
-            if (string.IsNullOrWhiteSpace(run.EffectiveAnalysisJson))
+            if (!isRawFallback)
             {
-                res.Success = false;
-                res.ErrorCode = "ANALYSIS_RESULT_INTEGRITY_ERROR";
-                res.ErrorMessage = "Analysis result is incomplete. Please retry analysis.";
-                return res;
+                run.EffectiveAnalysisJson = RebuildEffectiveAnalysisWithAcceptedStandardSkills(
+                    run.EffectiveAnalysisJson ?? run.RawAnalysisJson,
+                    acceptedDecisions);
+
+                if (string.IsNullOrWhiteSpace(run.EffectiveAnalysisJson))
+                {
+                    res.Success = false;
+                    res.ErrorCode = "ANALYSIS_RESULT_INTEGRITY_ERROR";
+                    res.ErrorMessage = "Analysis result is incomplete. Please retry analysis.";
+                    return res;
+                }
             }
 
-            job.ParsedData = run.EffectiveAnalysisJson;
-            job.ParseStatus = "SUCCESS";
+            job.ParsedData = isRawFallback ? null : run.EffectiveAnalysisJson;
+            job.ParseStatus = isRawFallback ? "RAW_FALLBACK" : "SUCCESS";
             job.ParseError = null;
             job.EffectiveAnalysisRevision = job.AnalysisRevision;
             job.EffectiveAnalysisRunId = run.Id;
 
-            // Clear embeddings to trigger rebuild
+            // Clear embeddings to trigger rebuild. A raw-text fallback has no
+            // structured metrics to embed, so it must also clear any stale
+            // embeddings from an earlier analysis revision.
             job.TitleEmbedding = null;
             job.SkillsEmbedding = null;
             job.ExperienceEmbedding = null;
@@ -736,6 +793,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 var effectiveAnalysis = new
                 {
                     schema_version = schemaVersion,
+                    analysis_quality = root.TryGetProperty("analysis_quality", out var quality)
+                        ? (object?)quality.Clone()
+                        : null,
+                    analysis_coverage = root.TryGetProperty("analysis_coverage", out var coverage)
+                        ? (object?)coverage.Clone()
+                        : null,
+                    analysis_diagnostics = root.TryGetProperty("analysis_diagnostics", out var diagnostics)
+                        ? (object?)diagnostics.Clone()
+                        : null,
                     matching_metrics = new
                     {
                         job_titles_normalized = metrics.ValueKind != JsonValueKind.Undefined && metrics.TryGetProperty("job_titles_normalized", out var titles) ? titles : (object)new string[0],

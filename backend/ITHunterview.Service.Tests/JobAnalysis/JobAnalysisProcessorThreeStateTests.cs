@@ -28,9 +28,10 @@ public sealed class JobAnalysisProcessorThreeStateTests
                 UserPromptVersionId = userVersionId,
                 RawInputSnapshot = "{}"
             });
+        repository.Setup(x => x.TryMarkProviderCallStartedAsync(runId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
         repository.Setup(x => x.TryCompleteReadyAsync(
-                runId, 0, "raw", It.IsAny<string>(), It.IsAny<IReadOnlyList<JobSkillDecisions>>(),
-                "test", null, It.IsAny<CancellationToken>()))
+                runId, It.IsAny<JobAnalysisCompletion>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         var prompts = new Mock<IPromptManagementService>();
@@ -50,6 +51,9 @@ public sealed class JobAnalysisProcessorThreeStateTests
             {
                 ProviderName = "test",
                 RawJson = "raw",
+                PersistableAnalysisJson = "raw",
+                Quality = JdAnalysisQuality.PARTIAL,
+                Coverage = new JdAnalysisCoverage(2, 1, 1, 2, 1, 1, false),
                 Validation = new ValidationResult<ValidatedJobAnalysis>
                 {
                     IsValid = false,
@@ -75,8 +79,10 @@ public sealed class JobAnalysisProcessorThreeStateTests
         await processor.ProcessAsync(runId);
 
         repository.Verify(x => x.TryCompleteReadyAsync(
-            runId, 0, "raw", It.IsAny<string>(), It.IsAny<IReadOnlyList<JobSkillDecisions>>(),
-            "test", null, It.IsAny<CancellationToken>()), Times.Once);
+            runId, It.Is<JobAnalysisCompletion>(completion =>
+                completion.Quality == JdAnalysisQuality.PARTIAL &&
+                completion.RawAnalysisJson == "raw"),
+            It.IsAny<CancellationToken>()), Times.Once);
         repository.Verify(x => x.MarkFailedAsync(
             It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }

@@ -10,7 +10,8 @@ public static class JdAnalysisMetadataReader
 {
     private static readonly JsonSerializerOptions CaseInsensitiveJson = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
     };
 
     public static string? ReadQuality(string? effectiveJson)
@@ -121,6 +122,12 @@ public static class JdAnalysisMetadataReader
             return new List<JdAnalysisDiagnostic>();
         }
     }
+
+    public static string? SerializeCoverage(JdAnalysisCoverage? coverage) =>
+        coverage is null ? null : JsonSerializer.Serialize(coverage, CaseInsensitiveJson);
+
+    public static string? SerializeDiagnostics(IReadOnlyCollection<JdAnalysisDiagnostic>? diagnostics) =>
+        diagnostics is null ? null : JsonSerializer.Serialize(diagnostics.Take(100), CaseInsensitiveJson);
 
     private static int ReadInt(JsonElement value, string property) =>
         value.TryGetProperty(property, out var element) &&

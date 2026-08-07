@@ -7,7 +7,6 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.JobAnalysis;
 using ITHunterview.Service.Utils;
-using ITHunterview.Service.Utils;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.UseCase;
@@ -262,6 +261,10 @@ namespace ITHunterview.Service.UseCase
                 InputRevision = run.InputRevision,
                 CurrentJobRevision = run.InputRevision,
                 Status = run.Status,
+                AnalysisQuality = run.AnalysisQuality,
+                AnalysisCoverage = JdAnalysisMetadataReader.ReadCoverageJson(run.AnalysisCoverageJson),
+                AnalysisDiagnostics = JdAnalysisMetadataReader.ReadDiagnosticsJson(run.AnalysisDiagnosticsJson),
+                UsesRawTextFallback = run.AnalysisQuality == JdAnalysisQuality.INVALID,
                 FailureCode = run.FailureCode,
                 CreatedAt = run.CreatedAt,
                 CompletedAt = run.CompletedAt,

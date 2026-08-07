@@ -75,7 +75,7 @@ namespace ITHunterview.Service.Service.AiProviders
 
             HttpResponseMessage response = null;
             string errorContent = string.Empty;
-            int maxRetries = 3;
+            int maxRetries = Math.Clamp(options?.MaxTransportAttempts ?? 3, 1, 3);
 
             for (int i = 0; i < maxRetries; i++)
             {

@@ -98,6 +98,46 @@ public sealed class AiGenerationOptionsTests
         Assert.Equal(8192, payload.RootElement.GetProperty("max_tokens").GetInt32());
     }
 
+    [Fact]
+    public async Task Groq_StrictJsonExtraction_UsesOneTransportAttempt()
+    {
+        var handler = new CountingStatusHandler(HttpStatusCode.ServiceUnavailable);
+        using var client = new HttpClient(handler);
+        var provider = new GroqProvider(client, Options.Create(new AiSettings
+        {
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["Groq"] = new() { ApiKey = "test-key", Model = "test-model", Endpoint = "https://example.test/chat" }
+            }
+        }));
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => provider.GenerateTextAsync(
+            "input", "system", AiGenerationOptions.StrictJsonExtraction, CancellationToken.None));
+
+        Assert.Equal(1, handler.RequestCount);
+    }
+
+    [Fact]
+    public async Task Gemini_JoinsAllNonThoughtAnswerParts()
+    {
+        var handler = new CaptureHandler("{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"{\\\"a\\\":\"},{\"text\":\"1}\"}]}}]}");
+        using var client = new HttpClient(handler);
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var systemConfigs = new Mock<ISystemConfigRepository>();
+        systemConfigs.Setup(x => x.GetByKeyAsync("AiApiKey_Gemini")).ReturnsAsync((ITHunterview.Domain.Entities.SystemConfigs?)null);
+        var provider = new GeminiProvider(client, Options.Create(new AiSettings
+        {
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["Gemini"] = new() { ApiKey = "test-key", Model = "test-model", Endpoint = "https://example.test/models" }
+            }
+        }), systemConfigs.Object, cache);
+
+        var result = await provider.GenerateTextAsync("input", "system", AiGenerationOptions.StrictJsonExtraction, CancellationToken.None);
+
+        Assert.Equal("{\"a\":1}", result);
+    }
+
     private sealed class CaptureHandler(string responseBody) : HttpMessageHandler
     {
         public string? RequestBody { get; private set; }
@@ -109,6 +149,20 @@ public sealed class AiGenerationOptionsTests
             {
                 Content = new StringContent(responseBody, Encoding.UTF8, "application/json")
             };
+        }
+    }
+
+    private sealed class CountingStatusHandler(HttpStatusCode statusCode) : HttpMessageHandler
+    {
+        public int RequestCount { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            RequestCount++;
+            return Task.FromResult(new HttpResponseMessage(statusCode)
+            {
+                Content = new StringContent("error", Encoding.UTF8, "application/json")
+            });
         }
     }
 }
