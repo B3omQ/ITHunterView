@@ -2,6 +2,7 @@ import React from "react";
 import { AlertTriangle, Trash2, X } from "lucide-react";
 import { TargetRoleTemplateDto } from "@/types/master-data.types";
 import { useDeleteTargetRole } from "@/hooks/useTargetRole";
+import { useTranslations } from 'next-intl';
 
 interface TargetRoleDeleteDialogProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export function TargetRoleDeleteDialog({
   onSuccess,
   onError,
 }: TargetRoleDeleteDialogProps) {
+  const t = useTranslations('AdminMasterData');
   const deleteMutation = useDeleteTargetRole();
 
   if (!isOpen || !roleToDelete) return null;
@@ -48,7 +50,7 @@ export function TargetRoleDeleteDialog({
         <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-destructive/5">
           <div className="flex items-center gap-2 text-destructive">
             <AlertTriangle size={18} />
-            <h2 className="text-base font-bold">Delete Target Role</h2>
+            <h2 className="text-base font-bold">{t('targetRoleDeleteConfirmTitle')}</h2>
           </div>
           <button
             onClick={onClose}
@@ -61,11 +63,7 @@ export function TargetRoleDeleteDialog({
 
         <div className="p-6 space-y-4">
           <p className="text-sm text-foreground">
-            Are you sure you want to delete the target role <span className="font-bold">"{roleToDelete.roleName}"</span>?
-          </p>
-          <p className="text-xs text-muted-foreground">
-            This action cannot be undone. All required skills mapped to this role will also be removed.
-            This may affect candidate learning paths that were generated using this template.
+            {t('targetRoleDeleteConfirmDesc').replace('{name}', roleToDelete.roleName)}
           </p>
         </div>
 
@@ -75,7 +73,7 @@ export function TargetRoleDeleteDialog({
             disabled={isPending}
             className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-transparent hover:bg-muted rounded-xl transition-colors disabled:opacity-50"
           >
-            Cancel
+            {t('cancelBtn')}
           </button>
           <button
             onClick={handleDelete}
@@ -87,7 +85,7 @@ export function TargetRoleDeleteDialog({
             ) : (
               <Trash2 size={16} />
             )}
-            <span>Delete Role</span>
+            <span>{t('targetRoleDelete')}</span>
           </button>
         </div>
       </div>

@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useTranslations } from 'next-intl';
 import {
   Select,
   SelectContent,
@@ -59,6 +60,7 @@ export const SkillsTable = memo(function SkillsTable({
   onStatusToggle,
   onRetry,
 }: SkillsTableProps) {
+  const t = useTranslations('AdminMasterData');
   const [internalPageSize, setInternalPageSize] = useState(pageSize);
 
   const totalCount = totalItems || skills.length;
@@ -76,15 +78,15 @@ export const SkillsTable = memo(function SkillsTable({
           <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
             <TableRow className="hover:bg-transparent border-none">
               <TableHead className="w-[65%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                SKILL &amp; ALIASES
+                {t('colSkillName')}
               </TableHead>
 
               <TableHead className="w-[20%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                STATUS
+                {t('colStatus')}
               </TableHead>
 
               <TableHead className="w-[15%] py-3 px-2 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                ACTIONS
+                {t('colActions')}
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -189,7 +191,7 @@ export const SkillsTable = memo(function SkillsTable({
                         onCheckedChange={() => onStatusToggle(skill)}
                       />
                       <span className="text-xs font-semibold text-[#050505] dark:text-zinc-300">
-                        {skill.status === 'ACTIVE' ? 'Active' : 'Deactive'}
+                        {skill.status === 'ACTIVE' ? t('statusActive') : t('statusInactive')}
                       </span>
                     </div>
                   </TableCell>
@@ -202,7 +204,7 @@ export const SkillsTable = memo(function SkillsTable({
                         size="icon"
                         onClick={() => onEdit(skill)}
                         className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
-                        title="Edit Skill"
+                        title={t('editSkill')}
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -211,7 +213,7 @@ export const SkillsTable = memo(function SkillsTable({
                         size="icon"
                         onClick={() => onDelete(skill)}
                         className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
-                        title="Delete Skill"
+                        title={t('deleteSkill')}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

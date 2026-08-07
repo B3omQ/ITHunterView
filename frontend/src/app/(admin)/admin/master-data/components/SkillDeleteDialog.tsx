@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { useDeleteSkill } from '@/hooks/useSkill';
 import type { SkillDto } from '@/types/master-data.types';
+import { useTranslations } from 'next-intl';
 
 interface SkillDeleteDialogProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ interface SkillDeleteDialogProps {
 }
 
 export function SkillDeleteDialog({ isOpen, onClose, skillToDelete, onSuccess, onError }: SkillDeleteDialogProps) {
+  const t = useTranslations('AdminMasterData');
   const deleteSkillMutation = useDeleteSkill();
 
   const handleConfirm = () => {
@@ -47,17 +49,16 @@ export function SkillDeleteDialog({ isOpen, onClose, skillToDelete, onSuccess, o
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="hidden">
-            <DialogTitle>Delete Skill</DialogTitle>
+            <DialogTitle>{t('deleteSkill')}</DialogTitle>
         </DialogHeader>
         <div className="flex items-start gap-3 pt-4">
           <div className="p-2 rounded-full bg-destructive/10 text-destructive shrink-0">
             <AlertTriangle size={24} />
           </div>
           <div className="space-y-1.5">
-            <h3 className="text-base font-bold text-foreground">Delete Skill?</h3>
+            <h3 className="text-base font-bold text-foreground">{t('skillDeleteConfirmTitle')}</h3>
             <p className="text-sm text-muted-foreground">
-              This action will permanently delete the skill <strong className="text-foreground">"{skillToDelete?.name}"</strong> from the database.
-              If this skill is linked to other entities, the system will block this action.
+              {t('skillDeleteConfirmDesc').replace('{name}', skillToDelete?.name || '')}
             </p>
           </div>
         </div>
@@ -68,7 +69,7 @@ export function SkillDeleteDialog({ isOpen, onClose, skillToDelete, onSuccess, o
             onClick={onClose}
             className="px-4 py-2 border border-border hover:bg-muted text-foreground font-medium text-sm rounded-xl transition-colors"
           >
-            Cancel
+            {t('cancelBtn')}
           </button>
           <button
             type="button"
@@ -77,7 +78,7 @@ export function SkillDeleteDialog({ isOpen, onClose, skillToDelete, onSuccess, o
             className="px-4 py-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 font-medium text-sm rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
           >
             {deleteSkillMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-            <span>Confirm Delete</span>
+            <span>{t('skillDeleteBtn')}</span>
           </button>
         </div>
       </DialogContent>

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Loader2, AlertTriangle, XCircle } from 'lucide-react';
+import { Loader2, AlertTriangle, XCircle, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { useDeleteMajor } from '@/hooks/useMajor';
 import type { MajorDto } from '@/types/master-data.types';
+import { useTranslations } from 'next-intl';
 
 interface MajorDeleteDialogProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ interface MajorDeleteDialogProps {
 }
 
 export function MajorDeleteDialog({ isOpen, onClose, majorToDelete, onSuccess, onError }: MajorDeleteDialogProps) {
+  const t = useTranslations('AdminMasterData');
   const deleteMajorMutation = useDeleteMajor();
 
   const activeChildren = majorToDelete?.children || [];
@@ -32,7 +34,7 @@ export function MajorDeleteDialog({ isOpen, onClose, majorToDelete, onSuccess, o
       onSuccess: (res) => {
         if (res.success) {
           onSuccess(
-            `Soft deleted specialization "${majorToDelete.name}".`,
+            t('toastMajorDeleteSuccess').replace('{name}', majorToDelete.name),
             majorToDelete.id,
             majorToDelete.name
           );
@@ -43,7 +45,7 @@ export function MajorDeleteDialog({ isOpen, onClose, majorToDelete, onSuccess, o
       },
       onError: (err: any) => {
         onError(
-          err.response?.data?.message || 'Cannot delete this specialization due to active references or candidate enrollments.'
+          err.response?.data?.message || t('toastMajorDeleteError')
         );
         onClose();
       },
@@ -54,7 +56,7 @@ export function MajorDeleteDialog({ isOpen, onClose, majorToDelete, onSuccess, o
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="hidden">
-          <DialogTitle>Delete Specialization</DialogTitle>
+          <DialogTitle>{t('deleteMajor')}</DialogTitle>
         </DialogHeader>
 
         {hasActiveChildren ? (
@@ -65,16 +67,16 @@ export function MajorDeleteDialog({ isOpen, onClose, majorToDelete, onSuccess, o
                 <XCircle size={24} />
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-base font-bold text-foreground">Deletion Blocked</h3>
+                <h3 className="text-base font-bold text-foreground">{t('majorDeleteBlockedTitle')}</h3>
                 <p className="text-sm text-muted-foreground">
-                  You cannot delete specialization <strong className="text-foreground">"{majorToDelete?.name}"</strong> because it contains active sub-specializations (children). The database enforces restrict deletion to keep parent-child structure valid.
+                  {t('majorDeleteBlockedDesc').replace('{name}', majorToDelete?.name || '')}
                 </p>
               </div>
             </div>
 
             <div className="p-3 bg-muted/40 rounded-xl border border-border/80 max-h-40 overflow-y-auto space-y-2">
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                Active Sub-Specializations ({activeChildren.length})
+                {t('activeSubSpecializations').replace('{count}', activeChildren.length.toString())}
               </p>
               <ul className="space-y-1.5">
                 {activeChildren.map((child) => (
@@ -95,7 +97,7 @@ export function MajorDeleteDialog({ isOpen, onClose, majorToDelete, onSuccess, o
                 onClick={onClose}
                 className="px-4 py-2 border border-border bg-card hover:bg-muted text-foreground font-medium text-sm rounded-xl transition-colors cursor-pointer"
               >
-                Close
+                {t('cancelBtn')}
               </button>
               <button
                 type="button"
@@ -114,10 +116,9 @@ export function MajorDeleteDialog({ isOpen, onClose, majorToDelete, onSuccess, o
                 <AlertTriangle size={24} />
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-base font-bold text-foreground">Delete Specialization?</h3>
-                <p className="text-sm text-muted-foreground">
-                  This action will <strong className="text-foreground">soft-delete</strong> the specialization <strong className="text-foreground">"{majorToDelete?.name}"</strong>.
-                  The system will keep the record to maintain data integrity for candidates registered in this specialization. You can restore it later.
+                <h3 className="text-base font-bold text-foreground">{t('deleteMajorConfirmTitle')}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {t('deleteMajorConfirmDesc').replace('{name}', majorToDelete?.name || '')}
                 </p>
               </div>
             </div>
@@ -128,16 +129,16 @@ export function MajorDeleteDialog({ isOpen, onClose, majorToDelete, onSuccess, o
                 onClick={onClose}
                 className="px-4 py-2 border border-border bg-card hover:bg-muted text-foreground font-medium text-sm rounded-xl transition-colors cursor-pointer"
               >
-                Cancel
+                {t('cancelBtn')}
               </button>
               <button
                 type="button"
                 onClick={handleConfirm}
                 disabled={deleteMajorMutation.isPending}
-                className="px-4 py-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 font-medium text-sm rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground font-medium text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 cursor-pointer"
               >
-                {deleteMajorMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-                <span>Confirm Delete</span>
+                {deleteMajorMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                <span>{t('deleteMajorBtn')}</span>
               </button>
             </div>
           </div>

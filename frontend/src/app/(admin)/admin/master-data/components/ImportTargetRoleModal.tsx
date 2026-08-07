@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { X, UploadCloud, AlertCircle, FileText, CheckCircle2 } from "lucide-react";
 import { useImportTargetRoles } from "@/hooks/useTargetRole";
+import { useTranslations } from 'next-intl';
 
 interface ImportTargetRoleModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export function ImportTargetRoleModal({
   onClose,
   onSuccess,
 }: ImportTargetRoleModalProps) {
+  const t = useTranslations('AdminMasterData');
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -70,7 +72,7 @@ export function ImportTargetRoleModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-card w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border border-border flex flex-col">
         <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted/10 shrink-0">
-          <h2 className="text-lg font-semibold text-foreground">Import Target Roles</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t('importTargetRolesTitle')}</h2>
           <button
             onClick={onClose}
             className="p-1.5 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
@@ -132,7 +134,7 @@ export function ImportTargetRoleModal({
                   <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-1">
                     <UploadCloud size={24} />
                   </div>
-                  <span className="text-sm font-medium">Click to select a CSV file</span>
+                  <span className="text-sm font-medium">{t('importTargetRolesClickToUpload')}</span>
                   <span className="text-xs opacity-70">Requires exactly 3 columns</span>
                 </div>
               )}
@@ -154,7 +156,7 @@ export function ImportTargetRoleModal({
             disabled={isPending}
             className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl transition-colors disabled:opacity-50"
           >
-            Cancel
+            {t('cancelBtn')}
           </button>
           <button
             type="submit"
@@ -167,7 +169,7 @@ export function ImportTargetRoleModal({
             ) : (
               <UploadCloud size={16} />
             )}
-            <span>{isPending ? "Importing..." : "Import CSV"}</span>
+            <span>{isPending ? t('importTargetRolesProcessBtn') : t('importTargetRolesProcessBtn')}</span>
           </button>
         </div>
       </div>

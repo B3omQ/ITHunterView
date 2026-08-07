@@ -10,8 +10,10 @@ import { TargetRolesTable } from "../components/TargetRolesTable";
 import { ImportTargetRoleModal } from "../components/ImportTargetRoleModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useTranslations } from 'next-intl';
 
 export default function TargetRolesPage() {
+  const t = useTranslations('AdminMasterData');
   const [roleSearch, setRoleSearch] = useState("");
   const [debouncedRoleSearch, setDebouncedRoleSearch] = useState("");
 
@@ -98,10 +100,10 @@ export default function TargetRolesPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
               <Target className="text-[#1877F2] shrink-0 h-8 w-8" />
-              Target Roles (Templates)
+              {t('targetRolesTitle2')}
             </h1>
             <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
-              Manage standard target role templates and required skill mappings across the platform.
+              {t('targetRolesDesc2')}
             </p>
           </div>
 
@@ -112,14 +114,14 @@ export default function TargetRolesPage() {
               className="h-10 border-[#CED0D4] dark:border-zinc-800 text-[#050505] dark:text-zinc-300 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 transition-colors cursor-pointer w-full sm:w-auto gap-2"
             >
               <UploadCloud className="h-4 w-4" />
-              Import CSV
+              {t('importTargetRoleBtn')}
             </Button>
             <Button
               onClick={handleOpenRoleCreate}
               className="bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium h-10 px-4 rounded-lg shadow-2xs active:scale-[0.98] transition-all gap-2 cursor-pointer w-full sm:w-auto"
             >
               <Plus className="h-4 w-4" />
-              Add new template
+              {t('addTargetRoleBtn')}
             </Button>
           </div>
         </div>
@@ -133,7 +135,7 @@ export default function TargetRolesPage() {
               <Input
                 value={roleSearch}
                 onChange={(e) => setRoleSearch(e.target.value)}
-                placeholder="Search target roles by name or description..."
+                placeholder={t('targetRolesSearchPlaceholder')}
                 className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
               />
               {roleSearch && (
@@ -154,7 +156,7 @@ export default function TargetRolesPage() {
                 variant="ghost"
                 className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
               >
-                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> {t('clearFilters')}
               </Button>
             )}
           </div>

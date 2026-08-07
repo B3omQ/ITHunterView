@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useTranslations } from 'next-intl';
 
 interface SfiaSkillsTableProps {
   skills: SfiaSkillDto[];
@@ -32,6 +33,7 @@ export function SfiaSkillsTable({
   onDelete,
   onRetry,
 }: SfiaSkillsTableProps) {
+  const t = useTranslations('AdminMasterData');
   // Group skills by category -> subcategory -> skills
   const groupedData = React.useMemo(() => {
     const categories: Record<string, Record<string, SfiaSkillDto[]>> = {};
@@ -59,19 +61,19 @@ export function SfiaSkillsTable({
         <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
           <TableRow className="hover:bg-transparent border-none">
             <TableHead className="w-[18%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-              CATEGORY
+              {t('colSfiaCategory')}
             </TableHead>
             <TableHead className="w-[18%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-              SUBCATEGORY
+              {t('colSfiaSubcategory')}
             </TableHead>
             <TableHead className="w-[32%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-              SKILL &amp; CODE
+              {t('colSfiaSkillCode')}
             </TableHead>
             <TableHead className="w-[24%] py-3 px-1 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-              LEVELS (1 - 7)
+              {t('colSfiaLevels')}
             </TableHead>
             <TableHead className="w-[8%] py-3 px-2 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-              ACTIONS
+              {t('colSfiaActions')}
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -227,7 +229,7 @@ export function SfiaSkillsTable({
                                 size="icon"
                                 onClick={() => onEdit(skill)}
                                 className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
-                                title="Edit SFIA Skill"
+                                title={t('sfiaEditSkill')}
                               >
                                 <Edit2 className="h-4 w-4" />
                               </Button>
@@ -236,7 +238,7 @@ export function SfiaSkillsTable({
                                 size="icon"
                                 onClick={() => onDelete(skill)}
                                 className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
-                                title="Delete SFIA Skill"
+                                title={t('sfiaDeleteSkill')}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>

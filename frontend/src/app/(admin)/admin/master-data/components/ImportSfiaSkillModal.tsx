@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { X, UploadCloud, AlertCircle, FileText } from "lucide-react";
 import { useImportSfiaSkills } from "@/hooks/useSfiaSkill";
+import { useTranslations } from 'next-intl';
 
 interface ImportSfiaSkillModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export function ImportSfiaSkillModal({
   onClose,
   onSuccess,
 }: ImportSfiaSkillModalProps) {
+  const t = useTranslations('AdminMasterData');
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -70,7 +72,7 @@ export function ImportSfiaSkillModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-card w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border border-border flex flex-col">
         <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted/10 shrink-0">
-          <h2 className="text-lg font-semibold text-foreground">Import SFIA Skills</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t('importSfiaTitle')}</h2>
           <button
             onClick={onClose}
             className="p-1.5 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
@@ -120,8 +122,8 @@ export function ImportSfiaSkillModal({
               ) : (
                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
                   <UploadCloud size={32} />
-                  <span className="text-sm font-medium">Click to select a CSV file</span>
-                  <span className="text-xs opacity-70">CSV format only</span>
+                  <span className="text-sm font-medium">{t('importSfiaClickToUpload')}</span>
+                  <span className="text-xs opacity-70">{t('importSfiaFileHint')}</span>
                 </div>
               )}
               <input
@@ -142,7 +144,7 @@ export function ImportSfiaSkillModal({
             disabled={isPending}
             className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl transition-colors disabled:opacity-50"
           >
-            Cancel
+            {t('cancelBtn')}
           </button>
           <button
             type="submit"
@@ -155,7 +157,7 @@ export function ImportSfiaSkillModal({
             ) : (
               <UploadCloud size={16} />
             )}
-            <span>{isPending ? "Importing..." : "Import"}</span>
+            <span>{isPending ? t('importSfiaProcessBtn') : t('importSfiaProcessBtn')}</span>
           </button>
         </div>
       </div>
