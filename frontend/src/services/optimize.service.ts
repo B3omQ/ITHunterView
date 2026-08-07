@@ -1,26 +1,23 @@
 import api from './api-client';
 import { ApiResponse } from '@/types/api.types';
-
-export interface ApplySuggestionPayload {
-  action: 'accept' | 'edit' | 'skip';
-  editedText?: string;
-  originalText?: string;
-  suggestedText?: string;
-}
+import { CvOptimizationResult, OptimizeHistoryItem, PagedResult } from '@/types/optimize.types';
 
 export const optimizeService = {
-  createSession: (matchId: string, payload: { cvUrl?: string; cvId?: string }) =>
-    api.post<ApiResponse<string>>(`/api/optimize-sessions/match-sessions/${matchId}`, payload).then(r => r.data),
+  createSession: (payload: { cvUrl?: string; cvId?: string }) =>
+    api.post<ApiResponse<CvOptimizationResult>>('/api/optimize-sessions', payload, { timeout: 180000 }).then(r => r.data),
 
-  getSuggestions: (sessionId: string) =>
-    api.get<ApiResponse<any>>(`/api/optimize-sessions/${sessionId}/suggestions`).then(r => r.data),
+  getSessionResult: (sessionId: string) =>
+    api.get<ApiResponse<CvOptimizationResult>>(`/api/optimize-sessions/${sessionId}`).then(r => r.data),
 
-  applySuggestion: (sessionId: string, suggestionId: string, payload: ApplySuggestionPayload) =>
-    api.patch<ApiResponse<{ newScore: number; previewImageUrl: string }>>(`/api/optimize-sessions/${sessionId}/suggestions/${suggestionId}`, payload).then(r => r.data),
+  getPreview: (sessionId: string) =>
+    api.get<ApiResponse<string | null>>(`/api/optimize-sessions/${sessionId}/preview`).then(r => r.data),
 
   generateFile: (sessionId: string) =>
     api.post<ApiResponse<string>>(`/api/optimize-sessions/${sessionId}/generate`).then(r => r.data),
 
-  getPreview: (sessionId: string) =>
-    api.get<ApiResponse<string | null>>(`/api/optimize-sessions/${sessionId}/preview`).then(r => r.data),
+  getHistory: (page = 1, pageSize = 6) =>
+    api.get<ApiResponse<PagedResult<OptimizeHistoryItem>>>(`/api/optimize-sessions/history?page=${page}&pageSize=${pageSize}`).then(r => r.data),
+
+  deleteSession: (sessionId: string) =>
+    api.delete<ApiResponse<boolean>>(`/api/optimize-sessions/${sessionId}`).then(r => r.data),
 };

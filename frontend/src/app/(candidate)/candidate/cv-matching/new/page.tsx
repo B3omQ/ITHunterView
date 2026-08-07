@@ -181,27 +181,6 @@ function CvMatchingContent() {
               <Button variant="outline" onClick={() => setters.setStep('select')}>
                 {t('analyzeAnother')}
               </Button>
-              {state.matchOutput?.improvements && state.matchOutput.improvements.some(imp => imp.example?.before && imp.example?.after) && (
-                <Button 
-                  className="bg-primary hover:bg-primary/90 gap-2"
-                  onClick={() => {
-                    const queryParams = new URLSearchParams();
-                    const cvId = state.matchedCvId
-                      ?? (state.cvTab === 'saved' ? state.selectedCvId : null);
-                    if (cvId) queryParams.set('cvId', cvId);
-                    
-                    if (!queryParams.has('cvId')) {
-                      toast.error(t('cannotOptimizeError'));
-                      return;
-                    }
-
-                    router.push(`${APP_ROUTES.CANDIDATE.CV_MATCHING}/${state.currentJobId}/optimize?${queryParams.toString()}`);
-                  }}
-                >
-                  <Sparkles className="h-4 w-4" />
-                  {t('optimizeCv')}
-                </Button>
-              )}
             </div>
           </div>
 

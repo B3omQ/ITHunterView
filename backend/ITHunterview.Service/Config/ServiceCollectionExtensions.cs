@@ -64,7 +64,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IOptimizeSessionRepository, OptimizeSessionRepository>();
 
             // Application Services
-            services.AddHttpClient();
+            services.AddHttpClient("", client => client.Timeout = TimeSpan.FromMinutes(3));
             services.Configure<AiSettings>(configuration.GetSection("AiSettings"));
             services.AddScoped<IAiProvider, OpenAiProvider>();
             services.AddScoped<IAiProvider, GeminiProvider>();

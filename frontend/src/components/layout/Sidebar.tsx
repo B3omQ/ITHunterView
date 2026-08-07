@@ -53,6 +53,7 @@ const CANDIDATE_NAV: NavItem[] = [
   { labelKey: "myResume", href: APP_ROUTES.CANDIDATE.RESUME, icon: "FileText" },
   { labelKey: "mockInterview", href: APP_ROUTES.CANDIDATE.INTERVIEW, icon: "MessageSquare" },
   { labelKey: "cvJdMatching", href: APP_ROUTES.CANDIDATE.CV_MATCHING, icon: "FileSearch" },
+  { labelKey: "optimizeCv", href: APP_ROUTES.CANDIDATE.OPTIMIZE_CV, icon: "Sparkles" },
   { labelKey: "learningPath", href: APP_ROUTES.CANDIDATE.LEARNING_PATH, icon: "Map" }
 ]
 

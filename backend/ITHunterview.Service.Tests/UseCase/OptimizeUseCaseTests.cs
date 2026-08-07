@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Entities.Cv;
+using ITHunterview.Service.DTOs.Optimize;
 using ITHunterview.Service.Interface.Persistence;
+using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.UseCase;
 using Moq;
 using Xunit;
@@ -17,6 +20,7 @@ namespace ITHunterview.Service.Tests.UseCase
         private readonly Mock<IOptimizeSessionRepository> _mockSessionRepo;
         private readonly Mock<IServiceProvider> _mockServiceProvider;
         private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
+        private readonly Mock<IAiService> _mockAiService;
         private readonly OptimizeUseCase _sut;
 
         public OptimizeUseCaseTests()
@@ -24,14 +28,15 @@ namespace ITHunterview.Service.Tests.UseCase
             _mockSessionRepo = new Mock<IOptimizeSessionRepository>();
             _mockServiceProvider = new Mock<IServiceProvider>();
             _mockHttpClientFactory = new Mock<IHttpClientFactory>();
-            _sut = new OptimizeUseCase(_mockSessionRepo.Object, _mockServiceProvider.Object, _mockHttpClientFactory.Object);
+            _mockAiService = new Mock<IAiService>();
+            _sut = new OptimizeUseCase(_mockSessionRepo.Object, _mockServiceProvider.Object, _mockHttpClientFactory.Object, _mockAiService.Object);
         }
 
         [Fact]
-        public async Task CreateSessionAsync_ShouldThrowArgumentException_WhenCvUrlAndCvIdAreBothNull()
+        public async Task CreateSessionAndAnalyzeAsync_ShouldThrowArgumentException_WhenCvUrlAndCvIdAreBothNull()
         {
             // Act
-            Func<Task> act = async () => await _sut.CreateSessionAsync(Guid.NewGuid(), null, null);
+            Func<Task> act = async () => await _sut.CreateSessionAndAnalyzeAsync(Guid.NewGuid(), null, null);
 
             // Assert
             await act.Should().ThrowAsync<ArgumentException>()
@@ -39,53 +44,48 @@ namespace ITHunterview.Service.Tests.UseCase
         }
 
         [Fact]
-        public async Task GetSuggestionsAsync_ShouldThrowKeyNotFoundException_WhenSessionDoesNotExist()
+        public async Task GetSessionResultAsync_ShouldThrowKeyNotFoundException_WhenSessionDoesNotExist()
         {
             // Arrange
             var sessionId = Guid.NewGuid();
             _mockSessionRepo.Setup(x => x.GetByIdAsync(sessionId)).ReturnsAsync((OptimizeSession?)null);
 
             // Act
-            Func<Task> act = async () => await _sut.GetSuggestionsAsync(sessionId);
+            Func<Task> act = async () => await _sut.GetSessionResultAsync(sessionId);
 
             // Assert
             await act.Should().ThrowAsync<KeyNotFoundException>()
-                .WithMessage("*Session not found*");
+                .WithMessage("*Optimize session not found*");
         }
 
         [Fact]
-        public async Task ApplySuggestionAsync_ShouldThrowKeyNotFoundException_WhenSessionOrCvDocumentIsNull()
+        public async Task GetSessionResultAsync_ShouldReturnDeserializedDto_WhenSessionExists()
         {
             // Arrange
             var sessionId = Guid.NewGuid();
-            _mockSessionRepo.Setup(x => x.GetByIdAsync(sessionId)).ReturnsAsync((OptimizeSession?)null);
+            var resultDto = new CvOptimizationResultDto
+            {
+                SessionId = sessionId,
+                OverallScore = 88,
+                Summary = "Test summary"
+            };
 
-            // Act
-            Func<Task> act = async () => await _sut.ApplySuggestionAsync(sessionId, "sug1", "accept", "old", "old", "new");
-
-            // Assert
-            await act.Should().ThrowAsync<KeyNotFoundException>()
-                .WithMessage("*Session or CV Document not found*");
-        }
-
-        [Fact]
-        public async Task ApplySuggestionAsync_ShouldThrowArgumentException_WhenAcceptingWithoutRequiredTexts()
-        {
-            // Arrange
-            var sessionId = Guid.NewGuid();
             var session = new OptimizeSession
             {
                 Id = sessionId,
-                CvDocument = new CvDocument { Header = new CvHeader { FullName = "Test Candidate" } }
+                OverallScore = 88,
+                AnalysisResultJson = JsonSerializer.Serialize(resultDto)
             };
+
             _mockSessionRepo.Setup(x => x.GetByIdAsync(sessionId)).ReturnsAsync(session);
 
             // Act
-            Func<Task> act = async () => await _sut.ApplySuggestionAsync(sessionId, "sug1", "accept", null, null, null);
+            var result = await _sut.GetSessionResultAsync(sessionId);
 
             // Assert
-            await act.Should().ThrowAsync<ArgumentException>()
-                .WithMessage("*OriginalText and SuggestedText are required*");
+            result.Should().NotBeNull();
+            result.OverallScore.Should().Be(88);
+            result.Summary.Should().Be("Test summary");
         }
 
         [Fact]
