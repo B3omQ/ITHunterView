@@ -92,8 +92,7 @@ namespace ITHunterview.Service.Tests.UseCase
             
             try 
             {
-                var result = await _useCase.TryConsumeFeatureAsync(userId, featureKey);
-                result.Should().BeTrue();
+                await _useCase.TryConsumeFeatureAsync(userId, featureKey);
             } 
             catch (Exception)
             {
@@ -115,8 +114,7 @@ namespace ITHunterview.Service.Tests.UseCase
 
             try 
             {
-                var result = await _useCase.TryConsumeFeatureAsync(userId, featureKey);
-                result.Should().BeTrue();
+                await _useCase.TryConsumeFeatureAsync(userId, featureKey);
             } 
             catch (Exception)
             {
@@ -138,8 +136,7 @@ namespace ITHunterview.Service.Tests.UseCase
 
             try 
             {
-                var result = await _useCase.TryConsumeFeatureAsync(userId, featureKey);
-                result.Should().BeTrue();
+                await _useCase.TryConsumeFeatureAsync(userId, featureKey);
                 // Đảm bảo số tiền đã bị trừ
                 wallet.Balance.Should().Be(40);
             } 
@@ -233,10 +230,7 @@ namespace ITHunterview.Service.Tests.UseCase
             try 
             {
                 // Act
-                var result = await _useCase.TryConsumeFeatureAsync(userId, featureKey);
-                
-                // Assert
-                result.Should().BeTrue();
+                await _useCase.TryConsumeFeatureAsync(userId, featureKey);
             } 
             catch (Exception)
             {

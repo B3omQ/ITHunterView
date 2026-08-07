@@ -74,6 +74,7 @@ dataSourceBuilder.MapEnum<NotificationType>("notification_type");
 dataSourceBuilder.MapEnum<EmailLogStatus>("email_log_status");
 dataSourceBuilder.MapEnum<ActivityLogCategory>("activity_log_category");
 dataSourceBuilder.MapEnum<ActivityLogStatus>("activity_log_status");
+dataSourceBuilder.EnableDynamicJson();
 dataSourceBuilder.UseVector();
 var dataSource = dataSourceBuilder.Build();
 

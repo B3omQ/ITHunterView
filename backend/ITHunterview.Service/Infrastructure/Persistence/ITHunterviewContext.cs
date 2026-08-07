@@ -1,4 +1,5 @@
 using ITHunterview.Domain.Entities;
+using ITHunterview.Domain.Entities.Cv;
 using ITHunterview.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -482,6 +483,18 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             modelBuilder.Entity<RecruiterUnlockedCvs>(entity =>
             {
                 entity.HasIndex(e => new { e.RecruiterId, e.CvId }).IsUnique();
+            });
+
+            // OptimizeSession
+            modelBuilder.Entity<OptimizeSession>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.CvDocument)
+                      .HasConversion(
+                          v => v == null ? null : System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                          v => v == null ? null : System.Text.Json.JsonSerializer.Deserialize<CvDocument>(v, (System.Text.Json.JsonSerializerOptions?)null)
+                      )
+                      .HasColumnType("jsonb");
             });
         }
     }
