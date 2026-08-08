@@ -129,6 +129,13 @@ namespace ITHunterview.Service.UseCase
                 // create a second, drifting provider contract.
                 content = JdMatchingOutputSchema.NormalizeManagedContent(content).SemanticContent;
             }
+            else if (CvAnalysisPromptContract.IsCvAnalysisPromptKey(prompt.PromptKey))
+            {
+                // CV analysis owns its output schema in application code. Keep
+                // the editable prompt semantic-only and compose the fixed v2
+                // schema at the provider boundary.
+                content = CvAnalysisOutputSchema.NormalizeManagedContent(content).SemanticContent;
+            }
 
             ValidatePlaceholders(prompt.PromptKey, content);
 
@@ -205,6 +212,10 @@ namespace ITHunterview.Service.UseCase
 
             var systemMetadata = ReadCvAnalysisMetadata(systemVersion.ModelConfig, CvAnalysisPromptContract.SystemRole);
             var userMetadata = ReadCvAnalysisMetadata(userVersion.ModelConfig, CvAnalysisPromptContract.UserRole);
+
+            CvAnalysisOutputSchema.NormalizeManagedContent(systemVersion.Content);
+            var normalizedUser = CvAnalysisOutputSchema.NormalizeManagedContent(userVersion.Content);
+            ValidatePlaceholders(CvAnalysisPromptContract.UserPromptKey, normalizedUser.SemanticContent);
             if (!string.Equals(systemMetadata.Contract, userMetadata.Contract, StringComparison.Ordinal))
             {
                 throw new ArgumentException("CV analysis system and user prompts must have the same contract.");

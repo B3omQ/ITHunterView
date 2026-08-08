@@ -255,7 +255,9 @@ namespace ITHunterview.Service.Service.Matching
                 sourceType,
                 fileName,
                 DateOnly.FromDateTime(DateTime.UtcNow));
-            var userPrompt = BuildUserPrompt(prompts.User.Content, SerializeInput(input));
+            var composedSystemPrompt = CvAnalysisOutputSchema.ComposeSystemPrompt(prompts.System.Content);
+            var userTemplate = CvAnalysisOutputSchema.NormalizeManagedContent(prompts.User.Content).SemanticContent;
+            var userPrompt = BuildUserPrompt(userTemplate, SerializeInput(input));
             var provider = await _aiService.GetActiveProviderNameAsync();
 
             CvAnalysisAttemptCandidate? best = null;
@@ -270,7 +272,7 @@ namespace ITHunterview.Service.Service.Matching
                 {
                     aiResponse = await _aiService.GenerateTextAsync(
                         userPrompt,
-                        prompts.System.Content,
+                        composedSystemPrompt,
                         provider,
                         options,
                         cancellationToken);
@@ -483,14 +485,15 @@ namespace ITHunterview.Service.Service.Matching
                 CvAnalysisPromptContract.UserPromptKey);
 
             _logger.LogInformation(
-                "Using CV analysis prompt pair. System={SystemPromptKey}:{SystemVersionTag} ({SystemVersionId}); User={UserPromptKey}:{UserVersionTag} ({UserVersionId}); Contract={Contract}",
+                "Using CV analysis prompt pair. System={SystemPromptKey}:{SystemVersionTag} ({SystemVersionId}); User={UserPromptKey}:{UserVersionTag} ({UserVersionId}); Contract={Contract}; OutputSchema={OutputSchema}",
                 prompts.System.PromptKey,
                 prompts.System.VersionTag,
                 prompts.System.VersionId,
                 prompts.User.PromptKey,
                 prompts.User.VersionTag,
                 prompts.User.VersionId,
-                prompts.Contract);
+                prompts.Contract,
+                CvAnalysisOutputSchema.SchemaVersion);
 
             return prompts;
         }

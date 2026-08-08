@@ -6,7 +6,7 @@ namespace ITHunterview.Service.Constant.Prompts
         public const string UserPromptKey = "CV_ANALYSIS_USER";
         public const string UserPlaceholder = "[CV_TEXT]";
         public const string ContractV1 = "cv-analysis/v1";
-        public const string OutputSchemaVersion = "cv-analysis/v2";
+        public const string OutputSchemaVersion = CvAnalysisOutputSchema.SchemaVersion;
         public const string SystemRole = "system";
         public const string UserRole = "user";
 
