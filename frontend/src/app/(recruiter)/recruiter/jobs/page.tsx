@@ -566,11 +566,39 @@ export default function JobPostingsPage() {
 
                     {/* Cột 4: Ngày Hết Hạn */}
                     <TableCell className="px-2.5 sm:px-3 py-3 align-top text-xs text-[#050505] dark:text-zinc-300 font-medium font-mono whitespace-nowrap">
-                      <div className="mt-1">
-                        {job.expiresAt ? (
-                          <span>{formatDate(job.expiresAt)}</span>
+                      <div className="mt-1 flex flex-col gap-1">
+                        {job.applicationDeadline ? (
+                          <span title="Hạn nộp hồ sơ ứng tuyển" className="text-blue-600 dark:text-blue-400 font-semibold">{formatDate(job.applicationDeadline)}</span>
                         ) : (
-                          <span className="text-[#65676B] font-sans italic">{t("noExpiry")}</span>
+                          <span className="text-[#65676B] font-sans italic" title="Hạn ứng tuyển vô thời hạn">{t("noExpiry")}</span>
+                        )}
+                        {job.expiresAt && (
+                          (() => {
+                            const expDate = new Date(job.expiresAt);
+                            const today = new Date();
+                            const diffTime = expDate.getTime() - today.getTime();
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            const isUrgent = diffDays <= 5 && diffDays > 0;
+                            const isExpired = diffDays <= 0;
+
+                            return (
+                              <div className="mt-1.5 pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60 flex flex-col gap-0.5">
+                                <span title={t("currentExpirySys")} className="text-zinc-500 dark:text-zinc-400 text-[10px] uppercase tracking-wide font-semibold">
+                                  {t("sysExpiryNote")}
+                                </span>
+                                <span className={`text-[11px] font-medium flex items-center gap-1.5 ${isExpired ? 'text-red-600 dark:text-red-400' : isUrgent ? 'text-orange-600 dark:text-orange-400' : 'text-zinc-600 dark:text-zinc-300'}`}>
+                                  {formatDate(job.expiresAt)}
+                                  {isExpired ? (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">{t("hiddenBadge")}</span>
+                                  ) : (
+                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${isUrgent ? 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800' : 'bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'}`}>
+                                      {t("daysLeft", { days: diffDays })}
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })()
                         )}
                       </div>
                     </TableCell>
@@ -755,13 +783,21 @@ export default function JobPostingsPage() {
               </button>
             </div>
 
-            <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-700/60 rounded-xl p-4 space-y-2">
-              <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 line-clamp-1">
-                📌 {t("jobPosting")}<span className="font-semibold text-[#1877F2] dark:text-blue-400">{extendingJob.title}</span>
+            <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-700/60 rounded-xl p-4 space-y-3">
+              <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 leading-relaxed">
+                {t("extendWarningPrefix")} <span className="font-semibold text-[#1877F2] dark:text-blue-400">{extendingJob.title}</span>{t("extendWarningSuffix")}
               </p>
-              <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 pt-1 border-t border-zinc-200/40 dark:border-zinc-700/40">
-                <span>{t("currentExpiry")} <strong className="text-zinc-700 dark:text-zinc-300">{formatDate(extendingJob.expiresAt)}</strong></span>
-                <span className="text-[#1877F2] dark:text-blue-400 font-semibold">{t("plus15Days")}</span>
+              <div className="flex items-center justify-between text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 p-3 rounded-lg">
+                <div className="flex flex-col">
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">{t("currentExpirySys")}</span>
+                  <strong className="text-zinc-800 dark:text-zinc-200">{formatDate(extendingJob.expiresAt)}</strong>
+                </div>
+                <div className="flex items-center justify-center">
+                  <span className="text-zinc-400 mx-2">→</span>
+                  <span className="px-2.5 py-1 bg-[#E7F3FF] dark:bg-blue-900/30 text-[#1877F2] dark:text-blue-400 text-xs font-bold rounded-md border border-blue-200 dark:border-blue-800/50">
+                    {t("plus15DaysBtn")}
+                  </span>
+                </div>
               </div>
             </div>
 

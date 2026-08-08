@@ -894,7 +894,14 @@
     "insufficientPushMsg": "Bạn đã sử dụng hết lượt đẩy Top miễn phí của gói và số dư của bạn dưới 5.000 Coin. Vui lòng nạp Coin hoặc nâng cấp gói để tiếp tục!",
     "topupUpgrade": "💳 Nạp Coin / Nâng cấp Gói ngay",
     "pushNowFree": "✨ Đẩy Top ngay (Miễn phí)",
-    "confirmPush5k": "🪙 Xác nhận Đẩy (5.000 Coin)"
+    "confirmPush5k": "🪙 Xác nhận Đẩy (5.000 Coin)",
+    "sysExpiryNote": "Hạn hiển thị hệ thống:",
+    "hiddenBadge": "ĐÃ ẨN",
+    "daysLeft": "CÒN {days} NGÀY",
+    "extendWarningPrefix": "📌 Tin tuyển dụng ",
+    "extendWarningSuffix": " sẽ bị hệ thống tự động ẩn sau 30 ngày hiển thị. Bạn có thể dùng tính năng này để gia hạn thời gian hiển thị thêm 15 ngày tính từ hạn hiện tại.",
+    "currentExpirySys": "Hạn hiển thị (Hệ thống)",
+    "plus15DaysBtn": "+ 15 Ngày"
   },
   "RecruiterJobsNew": {
     "pageTitle": "Tạo tin tuyển dụng mới (Bản thảo)",
@@ -956,7 +963,8 @@
     "errLimit": "Chi tiết địa điểm làm việc không được vượt quá 4.000 ký tự sau khi định dạng",
     "errExpDateReq": "Vui lòng chọn Ngày Hết Hạn",
     "errExpFuture": "Ngày Hết Hạn phải nằm trong tương lai (sau ngày hôm nay)",
-    "errExpMax": "Ngày Hết Hạn không được vượt quá 30 ngày kể từ ngày hôm nay"
+    "errExpMax": "Ngày Hết Hạn không được vượt quá 30 ngày kể từ ngày hôm nay",
+    "sysVisibilityNotice": "* <strong>Lưu ý:</strong> Bất kể hạn nộp hồ sơ là ngày nào, hệ thống mặc định chỉ hiển thị tin này trong vòng <strong>30 ngày</strong> kể từ lúc đăng bài. Sau 30 ngày, bạn có thể gia hạn (tốn phí) để tin tiếp tục hiển thị."
   },
   "RecruiterJobDetail": {
     "loading": "Đang tải chi tiết công việc...",
@@ -1036,7 +1044,8 @@
     "errLimit": "Chi tiết địa điểm làm việc không được vượt quá 4.000 ký tự sau khi định dạng",
     "errExpDateReq": "Vui lòng chọn Ngày Hết Hạn",
     "errExpFuture": "Ngày Hết Hạn phải nằm trong tương lai (sau ngày hôm nay)",
-    "errExpMax": "Ngày Hết Hạn không được vượt quá 30 ngày kể từ ngày tạo"
+    "errExpMax": "Ngày Hết Hạn không được vượt quá 30 ngày kể từ ngày tạo",
+    "sysVisibilityNotice": "* <strong>Lưu ý:</strong> Bất kể hạn nộp hồ sơ là ngày nào, hệ thống mặc định chỉ hiển thị tin này trong vòng <strong>30 ngày</strong> kể từ lúc đăng bài. Sau 30 ngày, bạn có thể gia hạn (tốn phí) để tin tiếp tục hiển thị."
   },
   "RecruiterJobPreview": {
     "startAiError": "Không thể bắt đầu phân tích AI.",
@@ -2760,5 +2769,11 @@
     "defaultHistoryName": "Hồ sơ CV",
     "viewReportBtn": "Xem báo cáo",
     "deleteHistoryBtn": "Xóa lịch sử"
+  },
+  "RecruiterCreateJob": {
+    "sysVisibilityNotice": "* <strong>Lưu ý:</strong> Bất kể hạn nộp hồ sơ là ngày nào, hệ thống mặc định chỉ hiển thị tin này trong vòng <strong>30 ngày</strong> kể từ lúc đăng bài. Sau 30 ngày, bạn có thể gia hạn (tốn phí) để tin tiếp tục hiển thị."
+  },
+  "RecruiterEditJob": {
+    "sysVisibilityNotice": "* <strong>Lưu ý:</strong> Bất kể hạn nộp hồ sơ là ngày nào, hệ thống mặc định chỉ hiển thị tin này trong vòng <strong>30 ngày</strong> kể từ lúc đăng bài. Sau 30 ngày, bạn có thể gia hạn (tốn phí) để tin tiếp tục hiển thị."
   }
 }

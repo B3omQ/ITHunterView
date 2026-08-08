@@ -28,7 +28,7 @@ namespace ITHunterview.Service.Tests.UseCase
 
             _contextMock = new Mock<ITHunterviewContext>(options);
             _configRepoMock = new Mock<ISystemConfigRepository>();
-            _useCase = new CandidateFeatureUsageUseCase(_contextMock.Object, _configRepoMock.Object);
+            _useCase = new CandidateFeatureUsageUseCase(_contextMock.Object, _configRepoMock.Object, Mock.Of<ITHunterview.Service.Interface.Persistence.IFeatureUsageReservationRepository>());
         }
 
         private void SetupDbSets(
