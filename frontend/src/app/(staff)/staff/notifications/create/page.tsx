@@ -10,8 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { notificationService, CreateSystemNotificationDto } from "@/services/notification.service";
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 export default function CreateSystemNotificationPage() {
+  const t = useTranslations('StaffNotifications');
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -26,7 +28,7 @@ export default function CreateSystemNotificationPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim() || !formData.message.trim()) {
-      toast.error("Tiêu đề và Nội dung không được để trống.");
+      toast.error(t('emptyError'));
       return;
     }
 
@@ -34,14 +36,14 @@ export default function CreateSystemNotificationPage() {
 
     try {
       await notificationService.createSystemWideNotification(formData);
-      toast.success("Đã gửi thông báo hệ thống thành công.");
+      toast.success(t('createSuccess'));
       
       // Invalidate the list so it fetches fresh data when redirected
       queryClient.invalidateQueries({ queryKey: ['system-notifications'] });
       
       router.push("/staff/notifications"); // Navigate back to dashboard or notifications list
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Đã xảy ra lỗi khi gửi thông báo.");
+      toast.error(err.response?.data?.message || t('createError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -55,9 +57,9 @@ export default function CreateSystemNotificationPage() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Tạo Thông Báo Hệ Thống</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('titleCreate')}</h1>
           <p className="text-muted-foreground">
-            Gửi thông báo đến tất cả ứng viên và nhà tuyển dụng.
+            {t('descCreate')}
           </p>
         </div>
       </div>
@@ -65,10 +67,10 @@ export default function CreateSystemNotificationPage() {
       <form onSubmit={handleSubmit} className="space-y-8 bg-card p-6 rounded-lg border shadow-sm">
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Tiêu đề thông báo <span className="text-destructive">*</span></Label>
+            <Label htmlFor="title">{t('titleLabel')} <span className="text-destructive">*</span></Label>
             <Input
               id="title"
-              placeholder="VD: Cập nhật hệ thống v2.0"
+              placeholder={t('titlePlaceholder')}
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               disabled={isSubmitting}
@@ -76,10 +78,10 @@ export default function CreateSystemNotificationPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="message">Nội dung <span className="text-destructive">*</span></Label>
+            <Label htmlFor="message">{t('messageLabel')} <span className="text-destructive">*</span></Label>
             <Textarea
               id="message"
-              placeholder="Nhập nội dung chi tiết của thông báo..."
+              placeholder={t('messagePlaceholder')}
               className="min-h-[150px]"
               value={formData.message}
               onChange={(e) => setFormData({ ...formData, message: e.target.value })}
@@ -91,7 +93,7 @@ export default function CreateSystemNotificationPage() {
         <div className="flex justify-end">
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Gửi Thông Báo
+            {t('submitBtn')}
           </Button>
         </div>
       </form>

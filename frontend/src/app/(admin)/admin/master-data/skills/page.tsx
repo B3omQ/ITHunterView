@@ -21,8 +21,10 @@ import { SkillForceStatusDialog } from '../components/SkillForceStatusDialog';
 import { SkillsTable } from '../components/SkillsTable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useTranslations } from 'next-intl';
 
 export default function SkillsPage() {
+  const t = useTranslations('AdminMasterData');
   const [skillSearch, setSkillSearch] = useState('');
   const [debouncedSkillSearch, setDebouncedSkillSearch] = useState('');
 
@@ -171,10 +173,10 @@ export default function SkillsPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
               <Sparkles className="text-[#1877F2] shrink-0 h-8 w-8" />
-              Skills Library
+              {t('skillsTitle')}
             </h1>
             <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
-              Manage the core skills library and category taxonomy for candidate profile matching.
+              {t('skillsDesc')}
             </p>
           </div>
 
@@ -183,7 +185,7 @@ export default function SkillsPage() {
             className="bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium h-10 px-4 rounded-lg shadow-2xs active:scale-[0.98] transition-all gap-2 cursor-pointer w-full sm:w-auto"
           >
             <Plus className="h-4 w-4" />
-            Add New Skill
+            {t('addSkill')}
           </Button>
         </div>
 
@@ -200,7 +202,7 @@ export default function SkillsPage() {
                 variant="ghost"
                 size="icon-sm"
                 className="h-7 w-7 text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
-                title="Add Category"
+                title={t('addCategory')}
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -243,7 +245,7 @@ export default function SkillsPage() {
                             handleOpenCategoryEdit(cat);
                           }}
                           className="p-1 text-[#65676B] hover:text-[#1877F2] rounded cursor-pointer"
-                          title="Edit Category"
+                          title={t('editCategory')}
                         >
                           <Edit2 className="h-3.5 w-3.5" />
                         </button>
@@ -253,7 +255,7 @@ export default function SkillsPage() {
                             handleCategoryDeleteClick(cat);
                           }}
                           className="p-1 text-[#65676B] hover:text-rose-600 rounded cursor-pointer"
-                          title="Delete Category"
+                          title={t('deleteCategory')}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -272,7 +274,7 @@ export default function SkillsPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#65676B] dark:text-zinc-400" />
                 <Input
                   type="text"
-                  placeholder="Search skills by name or alias..."
+                  placeholder={t('searchPlaceholder')}
                   value={skillSearch}
                   onChange={(e) => setSkillSearch(e.target.value)}
                   className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"

@@ -28,21 +28,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
-
-const MONTHS = [
-  { value: '01', label: 'January' },
-  { value: '02', label: 'February' },
-  { value: '03', label: 'March' },
-  { value: '04', label: 'April' },
-  { value: '05', label: 'May' },
-  { value: '06', label: 'June' },
-  { value: '07', label: 'July' },
-  { value: '08', label: 'August' },
-  { value: '09', label: 'September' },
-  { value: '10', label: 'October' },
-  { value: '11', label: 'November' },
-  { value: '12', label: 'December' },
-];
+import { useTranslations } from 'next-intl';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 50 }, (_, i) => CURRENT_YEAR - i + 5);
@@ -67,6 +53,22 @@ interface CertificationFormProps {
 export function CertificationForm({ initialData, onCancel, onSuccess }: CertificationFormProps) {
   const { mutate: createCertification, isPending: isCreating } = useCreateCertification();
   const { mutate: updateCertification, isPending: isUpdating } = useUpdateCertification();
+  const t = useTranslations("CandidateProfile");
+
+  const MONTHS = [
+    { value: '01', label: '01' },
+    { value: '02', label: '02' },
+    { value: '03', label: '03' },
+    { value: '04', label: '04' },
+    { value: '05', label: '05' },
+    { value: '06', label: '06' },
+    { value: '07', label: '07' },
+    { value: '08', label: '08' },
+    { value: '09', label: '09' },
+    { value: '10', label: '10' },
+    { value: '11', label: '11' },
+    { value: '12', label: '12' },
+  ];
 
   // Form states
   const [name, setName] = useState(initialData?.name || '');
@@ -112,8 +114,8 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
     e.preventDefault();
 
     const newErrors: { name?: string; issuingOrganization?: string } = {};
-    if (!name.trim()) newErrors.name = 'Certification Name is required';
-    if (!issuingOrganization.trim()) newErrors.issuingOrganization = 'Issuing Organization is required';
+    if (!name.trim()) newErrors.name = t('certNameRequired');
+    if (!issuingOrganization.trim()) newErrors.issuingOrganization = t('issuingOrgRequired');
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -136,7 +138,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
         {
           onSuccess: () => onSuccess(),
           onError: (error: any) => {
-            toast.error(error?.response?.data?.message || 'Failed to update certification. Please try again.');
+            toast.error(error?.response?.data?.message || t('certUpdateError'));
           }
         }
       );
@@ -144,7 +146,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
       createCertification(payload, {
         onSuccess: () => onSuccess(),
         onError: (error: any) => {
-          toast.error(error?.response?.data?.message || 'Failed to save certification. Please try again.');
+          toast.error(error?.response?.data?.message || t('certSaveError'));
         }
       });
     }
@@ -156,7 +158,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className={cn("sm:col-span-2 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm", errors.name && "border-destructive focus-within:border-destructive focus-within:ring-destructive/30")}>
-              <Label htmlFor="name" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Certification Name <span className="text-destructive">*</span></Label>
+              <Label htmlFor="name" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('certificationName')} <span className="text-destructive">*</span></Label>
               <input
                 id="name"
                 placeholder="e.g. AWS Certified Solutions Architect"
@@ -172,7 +174,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
             </div>
 
             <div className={cn("sm:col-span-2 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm", errors.issuingOrganization && "border-destructive focus-within:border-destructive focus-within:ring-destructive/30")}>
-              <Label htmlFor="issuingOrganization" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Issuing Organization <span className="text-destructive">*</span></Label>
+              <Label htmlFor="issuingOrganization" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('issuingOrg')} <span className="text-destructive">*</span></Label>
               <input
                 id="issuingOrganization"
                 placeholder="e.g. Amazon Web Services (AWS)"
@@ -187,7 +189,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
             </div>
 
             <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
-              <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Issue Date</Label>
+              <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('issueDate')}</Label>
               <div className="flex gap-2">
                 <div className="w-1/2 border-r border-border/50 pr-2">
                   <Select
@@ -195,7 +197,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
                     onValueChange={(val) => setIssueDate(buildDateString(parseDateString(issueDate).year || '', val || ''))}
                   >
                     <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
-                      <SelectValue placeholder="Month" />
+                      <SelectValue placeholder={t('month')} />
                     </SelectTrigger>
                     <SelectContent>
                       {MONTHS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
@@ -208,7 +210,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
                     onValueChange={(val) => setIssueDate(buildDateString(val || '', parseDateString(issueDate).month || ''))}
                   >
                     <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
-                      <SelectValue placeholder="Year" />
+                      <SelectValue placeholder={t('year')} />
                     </SelectTrigger>
                     <SelectContent>
                       {YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
@@ -219,7 +221,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
             </div>
 
             <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
-              <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Expiration Date (Optional)</Label>
+              <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('expirationDateOpt')}</Label>
               <div className="flex gap-2">
                 <div className="w-1/2 border-r border-border/50 pr-2">
                   <Select
@@ -227,7 +229,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
                     onValueChange={(val) => setExpirationDate(buildDateString(parseDateString(expirationDate).year || '', val || ''))}
                   >
                     <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
-                      <SelectValue placeholder="Month" />
+                      <SelectValue placeholder={t('month')} />
                     </SelectTrigger>
                     <SelectContent>
                       {MONTHS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
@@ -240,7 +242,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
                     onValueChange={(val) => setExpirationDate(buildDateString(val || '', parseDateString(expirationDate).month || ''))}
                   >
                     <SelectTrigger className="w-full h-auto min-h-[20px] p-0 border-none bg-transparent hover:bg-transparent shadow-none focus:ring-0 text-sm font-medium">
-                      <SelectValue placeholder="Year" />
+                      <SelectValue placeholder={t('year')} />
                     </SelectTrigger>
                     <SelectContent>
                       {YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
@@ -251,7 +253,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
             </div>
 
             <div className="sm:col-span-2 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
-              <Label htmlFor="credentialUrl" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Credential URL</Label>
+              <Label htmlFor="credentialUrl" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('credentialUrl')}</Label>
               <input
                 id="credentialUrl"
                 type="url"
@@ -271,7 +273,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
               disabled={isCreating || isUpdating}
               className="text-muted-foreground hover:text-foreground hover:bg-muted font-semibold rounded-lg"
             >
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               type="submit"
@@ -279,7 +281,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
               className="bg-primary hover:bg-primary/95 transition-all text-primary-foreground font-semibold px-6 shadow-md shadow-primary/10 rounded-lg flex items-center gap-2"
             >
               {(isCreating || isUpdating) && <Loader2 className="w-4 h-4 animate-spin" />}
-              Save
+              {t('save')}
             </Button>
           </div>
         </form>
@@ -292,9 +294,9 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
             <div className="w-12 h-12 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center mb-4">
               <AlertTriangle className="w-6 h-6" />
             </div>
-            <DialogTitle className="text-lg font-bold">Discard Unsaved Changes?</DialogTitle>
+            <DialogTitle className="text-lg font-bold">{t('discardChanges')}</DialogTitle>
             <DialogDescription className="text-xs">
-              You have unsaved changes. Are you sure you want to discard them? This action cannot be undone.
+              {t('discardChangesDesc')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="pt-2">
@@ -303,7 +305,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
               onClick={() => setShowConfirmCancel(false)}
               className="border-border/60 hover:bg-muted/40 transition-all font-semibold rounded-lg"
             >
-              Continue Editing
+              {t('continueEditing')}
             </Button>
             <Button
               onClick={() => {
@@ -312,7 +314,7 @@ export function CertificationForm({ initialData, onCancel, onSuccess }: Certific
               }}
               className="bg-destructive hover:bg-destructive/95 transition-all text-destructive-foreground font-semibold px-6 shadow-md shadow-destructive/10 rounded-lg"
             >
-              Discard Changes
+              {t('discardChangesBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>

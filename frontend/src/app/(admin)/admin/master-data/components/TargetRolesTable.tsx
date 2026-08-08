@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTranslations } from 'next-intl';
 
 interface TargetRolesTableProps {
   roles: TargetRoleTemplateDto[];
@@ -55,6 +56,7 @@ export const TargetRolesTable = memo(function TargetRolesTable({
   isFilterActive,
   onResetFilters,
 }: TargetRolesTableProps) {
+  const t = useTranslations('AdminMasterData');
   const startResult = totalItems > 0 ? (currentPage - 1) * pageSize + 1 : 0;
   const endResult = Math.min(currentPage * pageSize, totalItems);
 
@@ -67,15 +69,15 @@ export const TargetRolesTable = memo(function TargetRolesTable({
           <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
             <TableRow className="hover:bg-transparent border-none">
               <TableHead className="w-[52%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                ROLE NAME & DESCRIPTION
+                {t('colRoleName')}
               </TableHead>
 
               <TableHead className="w-[40%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                REQUIRED SKILLS
+                {t('colTargetRoleSkills')}
               </TableHead>
 
               <TableHead className="w-[8%] py-3 px-2 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                ACTIONS
+                {t('colTargetRoleActions')}
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -141,7 +143,7 @@ export const TargetRolesTable = memo(function TargetRolesTable({
                         variant="outline"
                         className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
                       >
-                        <RotateCcw className="h-4 w-4 mr-2" /> Clear All Filters
+                        <RotateCcw className="h-4 w-4 mr-2" /> {t('clearFilters')}
                       </Button>
                     )}
                   </div>
@@ -186,7 +188,7 @@ export const TargetRolesTable = memo(function TargetRolesTable({
                         size="icon"
                         onClick={() => onEdit(role)}
                         className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
-                        title="Edit Target Role"
+                        title={t('targetRoleEdit')}
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -195,7 +197,7 @@ export const TargetRolesTable = memo(function TargetRolesTable({
                         size="icon"
                         onClick={() => onDelete(role)}
                         className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
-                        title="Delete Target Role"
+                        title={t('targetRoleDelete')}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

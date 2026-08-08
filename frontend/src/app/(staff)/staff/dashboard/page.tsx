@@ -17,6 +17,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { useTranslations } from "next-intl";
 
 const categoryData = [
   { name: "Frontend", value: 340 },
@@ -44,29 +45,31 @@ const verificationData = [
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"];
 
 export default function StaffDashboard() {
+  const t = useTranslations("StaffDashboard");
+
   const stats = [
     {
-      title: "Total Questions",
+      title: t("qTitle"),
       value: "1,140",
-      change: "+120 this month",
+      change: t("qChange"),
       icon: <FileQuestion className="h-4 w-4 text-muted-foreground" />,
     },
     {
-      title: "New Questions",
+      title: t("newQTitle"),
       value: "35",
-      change: "Added this week",
+      change: t("newQChange"),
       icon: <HelpCircle className="h-4 w-4 text-muted-foreground" />,
     },
     {
-      title: "Pending Companies",
+      title: t("pendTitle"),
       value: "18",
-      change: "Needs verification",
+      change: t("pendChange"),
       icon: <Building2 className="h-4 w-4 text-muted-foreground" />,
     },
     {
-      title: "Audit Warnings",
+      title: t("auditTitle"),
       value: "3",
-      change: "System flags",
+      change: t("auditChange"),
       icon: <AlertTriangle className="h-4 w-4 text-amber-500" />,
     },
   ];
@@ -74,9 +77,9 @@ export default function StaffDashboard() {
   return (
     <div className="w-full pb-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Staff Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground">
-          Question bank analytics and company verification tracking.
+          {t("desc")}
         </p>
       </div>
 
@@ -102,7 +105,7 @@ export default function StaffDashboard() {
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-6">
         <Card className="col-span-1 lg:col-span-2">
           <CardHeader>
-            <CardTitle>Questions by Category</CardTitle>
+            <CardTitle>{t("chartQCat")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full flex items-center justify-center">
@@ -131,7 +134,7 @@ export default function StaffDashboard() {
 
         <Card className="col-span-1 lg:col-span-4">
           <CardHeader>
-            <CardTitle>Questions by Level</CardTitle>
+            <CardTitle>{t("chartQLevel")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
@@ -150,7 +153,7 @@ export default function StaffDashboard() {
 
         <Card className="col-span-1 lg:col-span-6">
           <CardHeader>
-            <CardTitle>Company Verifications</CardTitle>
+            <CardTitle>{t("chartVerif")}</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
             <div className="h-[300px] w-full">

@@ -26,9 +26,11 @@ import { useMyLearningPaths } from "@/hooks/useLearningPath"
 import { useProfileCompletionStatus, useClaimNewbieReward } from "@/hooks/useCandidateProfile"
 import { Progress } from "@/components/ui/progress"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts"
+import { useTranslations } from "next-intl"
 
 export default function CandidateDashboard() {
   const { user } = useAuthStore()
+  const t = useTranslations("CandidateDashboard")
 
   // 1. Fetch Data
   const { data: completionStatus } = useProfileCompletionStatus()
@@ -137,19 +139,19 @@ export default function CandidateDashboard() {
       <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight mb-1 flex items-center gap-2">
-            Hi {user?.fullName?.split(" ")[0] || "there"}!
+            {t('greeting', { name: user?.fullName?.split(" ")[0] || "there" })}
             <Image src="/images/mascotAvatarGreeting.png" alt="Waving Mascot" width={36} height={36} className="w-9 h-9 object-contain mix-blend-multiply dark:mix-blend-normal transform hover:scale-110 hover:rotate-12 transition-transform cursor-pointer" />
           </h1>
           <p className="text-muted-foreground text-sm">
-            Here is a comprehensive overview of your career development progress.
+            {t('overviewText')}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Link href="/candidate/cv-matching" className="flex items-center gap-2 bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
-            <ScanSearch size={16} /> Scan CV
+            <ScanSearch size={16} /> {t('scanCv')}
           </Link>
           <Link href="/candidate/interview" className="flex items-center gap-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
-            <Mic size={16} /> Mock Interview
+            <Mic size={16} /> {t('mockInterview')}
           </Link>
         </div>
       </div>
@@ -163,13 +165,13 @@ export default function CandidateDashboard() {
           <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
             <div className="space-y-3 max-w-2xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-amber-300 text-xs font-bold tracking-wide uppercase border border-white/20 shadow-sm animate-pulse">
-                <Sparkles size={14} className="text-amber-300" /> Thưởng Chào Mừng Tân Binh
+                <Sparkles size={14} className="text-amber-300" /> {t('newbieReward')}
               </div>
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2">
-                Nhận ngay <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 font-extrabold">1.500 Coin</span> khởi tạo! 🎁
+                {t('receiveCoinTitle1')} <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 font-extrabold">{t('receiveCoinTitle2')}</span> {t('receiveCoinTitle3')}
               </h2>
               <p className="text-purple-100 text-sm leading-relaxed">
-                Hoàn thành 2 bước xác thực cơ bản dưới đây để mở khóa <strong className="text-amber-200">1.500 Coin</strong> vào ví và trải nghiệm miễn phí các dịch vụ scan CV AI, phỏng vấn thực chiến đỉnh cao.
+                {t('newbieRewardDesc')}
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
@@ -180,9 +182,9 @@ export default function CandidateDashboard() {
                     <div className="p-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 flex-shrink-0"><Circle size={16} /></div>
                   )}
                   <div className="flex flex-col">
-                    <span className="font-semibold text-white">1. Xác thực Email</span>
+                    <span className="font-semibold text-white">{t('verifyEmail')}</span>
                     <span className="text-xs text-purple-200">
-                      {completionStatus.isEmailVerified ? "Đã hoàn thành ✅" : "Vui lòng kiểm tra email"}
+                      {completionStatus.isEmailVerified ? t('completed') : t('checkEmail')}
                     </span>
                   </div>
                 </div>
@@ -194,9 +196,9 @@ export default function CandidateDashboard() {
                     <div className="p-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 flex-shrink-0"><Circle size={16} /></div>
                   )}
                   <div className="flex flex-col">
-                    <span className="font-semibold text-white">2. Hoàn thiện 100% Hồ sơ</span>
+                    <span className="font-semibold text-white">{t('completeProfile')}</span>
                     <span className="text-xs text-purple-200">
-                      {completionStatus.isComplete ? "Đã hoàn thành ✅" : `Tiến độ: ${completionStatus.completionPercentage}%`}
+                      {completionStatus.isComplete ? t('completed') : t('progress', { percentage: completionStatus.completionPercentage })}
                     </span>
                   </div>
                 </div>
@@ -212,7 +214,7 @@ export default function CandidateDashboard() {
                 >
                   <span className="relative z-10 flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-purple-700 animate-bounce" />
-                    {isClaiming ? "ĐANG HẠCH TOÁN..." : "NHẬN 1.500 COIN NGAY"}
+                    {isClaiming ? t('claiming') : t('claimNow')}
                   </span>
                 </button>
               ) : (
@@ -220,12 +222,12 @@ export default function CandidateDashboard() {
                   href="/candidate/profile"
                   className="rounded-2xl bg-white/15 hover:bg-white/20 border border-white/20 px-6 py-4 text-center font-bold text-sm text-white shadow-lg backdrop-blur-md transition-all flex items-center justify-center gap-2 group"
                 >
-                  <span>Hoàn thiện điều kiện ngay</span>
+                  <span>{t('completeConditions')}</span>
                   <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
                 </Link>
               )}
               <span className="text-xs text-purple-200/80 text-center lg:text-right">
-                * Phần thưởng dành riêng cho thành viên mới (1 lần duy nhất).
+                {t('rewardNote')}
               </span>
             </div>
           </div>
@@ -239,10 +241,10 @@ export default function CandidateDashboard() {
             <Activity size={24} className="text-blue-500" />
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Avg Match Score</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('avgMatchScore')}</p>
             <div className="flex items-end gap-2">
               <h3 className="text-2xl font-black text-foreground">{avgMatchScore}%</h3>
-              <span className="text-xs font-medium text-emerald-500 mb-1 flex items-center"><TrendingUp size={12} className="mr-0.5"/> Top 20%</span>
+              <span className="text-xs font-medium text-emerald-500 mb-1 flex items-center"><TrendingUp size={12} className="mr-0.5"/> {t('top20')}</span>
             </div>
           </div>
         </div>
@@ -252,10 +254,10 @@ export default function CandidateDashboard() {
             <MessageCircleQuestion size={24} className="text-emerald-500" />
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Mock Interviews</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('mockInterview')}</p>
             <div className="flex items-end gap-2">
               <h3 className="text-2xl font-black text-foreground">{completedInterviews}</h3>
-              <span className="text-xs font-medium text-muted-foreground mb-1">Completed</span>
+              <span className="text-xs font-medium text-muted-foreground mb-1">{t('mockInterviewsCompleted')}</span>
             </div>
           </div>
         </div>
@@ -265,9 +267,9 @@ export default function CandidateDashboard() {
             <Crosshair size={24} className="text-teal-500" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Learning Progress</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('learningProgress')}</p>
             <div className="flex items-end justify-between gap-2 mb-2">
-              <h3 className="text-xl font-black text-foreground truncate">{activePath?.roleName || "No Path"}</h3>
+              <h3 className="text-xl font-black text-foreground truncate">{activePath?.roleName || t('noPath')}</h3>
               <span className="text-sm font-bold text-teal-600">{activeProgress}%</span>
             </div>
             <Progress value={activeProgress} className="h-1.5 bg-teal-100 [&>div]:bg-teal-500 rounded-full" />
@@ -282,9 +284,9 @@ export default function CandidateDashboard() {
           <div className="mb-6">
             <h2 className="text-lg font-bold flex items-center gap-2">
               <TrendingUp size={20} className="text-blue-500" />
-              Match Score Trend
+              {t('matchScoreTrend')}
             </h2>
-            <p className="text-xs text-muted-foreground mt-1">Your CV compatibility scores over recent applications.</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('matchScoreTrendDesc')}</p>
           </div>
           <div className="flex-1 min-h-[250px]">
             {lineChartData.length > 0 ? (
@@ -301,7 +303,7 @@ export default function CandidateDashboard() {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Not enough data to display trend.</div>
+              <div className="h-full flex items-center justify-center text-sm text-muted-foreground">{t('notEnoughData')}</div>
             )}
           </div>
         </div>
@@ -311,9 +313,9 @@ export default function CandidateDashboard() {
           <div className="mb-2">
             <h2 className="text-lg font-bold flex items-center gap-2">
               <Sparkles size={20} className="text-indigo-500" />
-              Skill Readiness
+              {t('skillReadiness')}
             </h2>
-            <p className="text-xs text-muted-foreground mt-1">Your competency gap across core dimensions (from active path).</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('skillReadinessDesc')}</p>
           </div>
           {radarChartData.length >= 3 ? (
             <div className="flex-1 min-h-[250px] -mt-4">
@@ -343,10 +345,10 @@ export default function CandidateDashboard() {
                         <span className="font-bold text-foreground truncate max-w-[70%]" title={item.subject}>{item.subject}</span>
                         <div className="flex items-center gap-2 text-xs font-semibold">
                           <span className="text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 dark:text-indigo-400 px-2 py-0.5 rounded-md">
-                            Current: L{current}
+                            {t('currentLevel', { level: current })}
                           </span>
                           <span className="text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
-                            Target: L{target}
+                            {t('targetLevel', { level: target })}
                           </span>
                         </div>
                       </div>
@@ -379,18 +381,18 @@ export default function CandidateDashboard() {
               <div className="flex items-center justify-center gap-5 pt-3 text-[11px] font-medium text-muted-foreground border-t border-border/40">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500 inline-block"></span>
-                  <span>Current Level</span>
+                  <span>{t('currentLevelLabel')}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-sm bg-indigo-100 border border-indigo-300 dark:bg-indigo-950 dark:border-indigo-700 inline-block"></span>
-                  <span>Target Gap</span>
+                  <span>{t('targetGapLabel')}</span>
                 </div>
               </div>
             </div>
           ) : (
             <div className="flex-1 min-h-[250px] flex flex-col items-center justify-center text-center text-sm text-muted-foreground p-4">
               <Sparkles size={24} className="text-muted-foreground/50 mb-2" />
-              <p>No skill gap data found in your current learning path.</p>
+              <p>{t('noSkillGap')}</p>
             </div>
           )}
         </div>
@@ -404,19 +406,19 @@ export default function CandidateDashboard() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-bold flex items-center gap-2">
               <FileSearch size={20} className="text-blue-500" />
-              Recent CV Matches
+              {t('recentMatches')}
             </h2>
             <Link href="/candidate/cv-matching" className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center">
-              View all <ChevronRight size={14} />
+              {t('viewAll')} <ChevronRight size={14} />
             </Link>
           </div>
           
           <div className="flex-1">
-            {isMatchLoading ? <div className="text-sm text-muted-foreground animate-pulse">Loading matches...</div> : null}
+            {isMatchLoading ? <div className="text-sm text-muted-foreground animate-pulse">{t('loadingMatches')}</div> : null}
             {!isMatchLoading && matchHistory.length === 0 ? (
               <div className="bg-muted/30 rounded-xl p-6 text-center h-full flex flex-col items-center justify-center border border-border/50">
                 <AlertCircle size={28} className="text-blue-400 mb-2" />
-                <p className="text-sm text-muted-foreground mb-3">You haven't matched any CVs yet.</p>
+                <p className="text-sm text-muted-foreground mb-3">{t('noMatches')}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -424,14 +426,14 @@ export default function CandidateDashboard() {
                   <Link href={`/candidate/cv-matching/${item.jobId}/optimize`} key={item.jobId} className="block">
                     <div className="bg-background border border-border/50 hover:border-blue-300 hover:shadow-sm transition-all rounded-xl p-3 px-4 group flex items-center justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-sm text-foreground truncate group-hover:text-blue-600 transition-colors">{item.jdTitle || "Untitled Job"}</h3>
+                        <h3 className="font-bold text-sm text-foreground truncate group-hover:text-blue-600 transition-colors">{item.jdTitle || t('untitledJob')}</h3>
                         <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
                           <Clock size={10} /> {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : 'N/A'}
                         </p>
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0">
                         <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${item.status === 'Optimized' ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-100 text-gray-600'}`}>
-                          {item.status || 'Matched'}
+                          {item.status || t('matched')}
                         </div>
                         <span className={`text-base font-extrabold w-10 text-right ${item.matchScore && item.matchScore * 100 >= 70 ? 'text-emerald-500' : 'text-amber-500'}`}>
                           {item.matchScore ? `${Math.round(item.matchScore * 100)}%` : 'N/A'}
@@ -450,19 +452,19 @@ export default function CandidateDashboard() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-bold flex items-center gap-2">
               <BookOpen size={20} className="text-teal-500" />
-              Pending Learning Tasks
+              {t('pendingTasks')}
             </h2>
             <Link href="/candidate/learning-path" className="text-xs font-semibold text-teal-600 hover:text-teal-700 flex items-center">
-              Continue Learning <ChevronRight size={14} />
+              {t('continueLearning')} <ChevronRight size={14} />
             </Link>
           </div>
           
           <div className="flex-1">
-            {isPathsLoading ? <div className="text-sm text-muted-foreground animate-pulse">Loading tasks...</div> : null}
+            {isPathsLoading ? <div className="text-sm text-muted-foreground animate-pulse">{t('loadingTasks')}</div> : null}
             {!isPathsLoading && pendingTasks.length === 0 ? (
               <div className="bg-muted/30 rounded-xl p-6 text-center h-full flex flex-col items-center justify-center border border-border/50">
                 <CheckCircle2 size={28} className="text-teal-400 mb-2" />
-                <p className="text-sm text-muted-foreground">You are all caught up!</p>
+                <p className="text-sm text-muted-foreground">{t('allCaughtUp')}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -471,7 +473,7 @@ export default function CandidateDashboard() {
                     <Circle size={16} className="text-muted-foreground mt-0.5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-sm text-foreground leading-snug">{task.title}</h3>
-                      <p className="text-[11px] font-medium text-teal-600 uppercase tracking-wider mt-1 truncate">Module: {task.moduleTitle}</p>
+                      <p className="text-[11px] font-medium text-teal-600 uppercase tracking-wider mt-1 truncate">{t('module')}: {task.moduleTitle}</p>
                     </div>
                     <div className="flex-shrink-0">
                       <Link href={`/candidate/learning-path/${activePath?.id}`}>

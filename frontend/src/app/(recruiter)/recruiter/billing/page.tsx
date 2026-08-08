@@ -6,8 +6,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Check, Loader2 } from 'lucide-react';
 import type { SubscriptionDto } from '@/types/subscription.types';
+import { useTranslations } from 'next-intl';
 
 export default function RecruiterPricingPage() {
+  const t = useTranslations("RecruiterBilling");
   const { data, isLoading } = usePublicSubscriptions({ role: 'RECRUITER' });
   const { mutate: buySubscription, isPending } = useBuySubscription();
   
@@ -33,10 +35,10 @@ export default function RecruiterPricingPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">
-          Smart Recruiting Solutions
+          {t("pageTitle")}
         </h1>
         <p className="text-muted-foreground mt-2">
-          Reach potential candidates faster with tailored service packages for employers. Flexible management, maximum efficiency.
+          {t("pageDesc")}
         </p>
       </div>
 
@@ -73,12 +75,12 @@ export default function RecruiterPricingPage() {
                   </span>
                   {sub.durationDays < 36500 && (
                     <span className="text-sm font-medium text-zinc-500">
-                      /{sub.durationDays} days
+                      {t("durationDays", { days: sub.durationDays })}
                     </span>
                   )}
                 </div>
                 <CardDescription className="mt-2 text-[13px] text-zinc-500">
-                  {isHiringPro ? 'A comprehensive toolkit to help businesses recruit with high performance.' : isGrowth ? 'A growing package with more powerful features for active hiring.' : isStarter ? 'A basic package suitable for occasional recruiting needs.' : 'Start with basic features. Experience the system.'}
+                  {isHiringPro ? t("proDesc") : isGrowth ? t("growthDesc") : isStarter ? t("starterDesc") : t("basicDesc")}
                 </CardDescription>
               </CardHeader>
               
@@ -88,7 +90,7 @@ export default function RecruiterPricingPage() {
                     <li className="flex gap-3 items-start">
                       <Check className="w-5 h-5 shrink-0 text-zinc-900" />
                       <span className="text-zinc-600 text-sm mt-0.5">
-                        {sub.featuresConfig.jobSlots} Active Job Postings
+                        {t("featureJobSlots", { slots: sub.featuresConfig.jobSlots })}
                       </span>
                     </li>
                   )}
@@ -96,7 +98,7 @@ export default function RecruiterPricingPage() {
                     <li className="flex gap-3 items-start">
                       <Check className="w-5 h-5 shrink-0 text-zinc-900" />
                       <span className="text-zinc-600 text-sm mt-0.5">
-                        {sub.featuresConfig.unlockCvLimit} CV Unlocks (Sourcing)
+                        {t("featureUnlockCv", { limit: sub.featuresConfig.unlockCvLimit })}
                       </span>
                     </li>
                   )}
@@ -104,7 +106,7 @@ export default function RecruiterPricingPage() {
                     <li className="flex gap-3 items-start">
                       <Check className="w-5 h-5 shrink-0 text-zinc-900" />
                       <span className="text-zinc-600 text-sm mt-0.5">
-                        {sub.featuresConfig.pushTopLimit} Job Push-to-Top Credits
+                        {t("featurePushTop", { limit: sub.featuresConfig.pushTopLimit })}
                       </span>
                     </li>
                   )}
@@ -112,7 +114,7 @@ export default function RecruiterPricingPage() {
                     <li className="flex gap-3 items-start">
                       <Check className="w-5 h-5 shrink-0 text-zinc-900" />
                       <span className="text-zinc-600 text-sm mt-0.5">
-                        {sub.featuresConfig.jobExtendLimit} Job Extension Credits
+                        {t("featureJobExtend", { limit: sub.featuresConfig.jobExtendLimit })}
                       </span>
                     </li>
                   )}
@@ -120,7 +122,7 @@ export default function RecruiterPricingPage() {
                     <li className="flex gap-3 items-start">
                       <Check className="w-5 h-5 shrink-0 text-zinc-900" />
                       <span className="text-zinc-600 text-sm mt-0.5">
-                        Includes {new Intl.NumberFormat('en-US').format(sub.featuresConfig.coinCredit)} Coins
+                        {t("featureCoin", { coin: new Intl.NumberFormat('en-US').format(sub.featuresConfig.coinCredit) })}
                       </span>
                     </li>
                   )}
@@ -143,7 +145,7 @@ export default function RecruiterPricingPage() {
                   disabled={isPending}
                 >
                   {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isHiringPro ? 'Upgrade to Pro' : isGrowth ? 'Upgrade to Growth' : isStarter ? 'Choose Starter' : 'Start Using'}
+                  {isHiringPro ? t("btnPro") : isGrowth ? t("btnGrowth") : isStarter ? t("btnStarter") : t("btnBasic")}
                 </Button>
               </CardFooter>
             </Card>
@@ -153,7 +155,7 @@ export default function RecruiterPricingPage() {
       
       {subscriptions.length === 0 && !isLoading && (
         <div className="text-center p-12 bg-zinc-50 rounded-2xl border border-zinc-200 max-w-2xl mx-auto">
-          <p className="text-zinc-500">There are currently no subscription plans available for Recruiters.</p>
+          <p className="text-zinc-500">{t("noPlans")}</p>
         </div>
       )}
     </div>

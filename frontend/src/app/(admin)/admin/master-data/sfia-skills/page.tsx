@@ -17,8 +17,10 @@ import { SfiaSkillModal } from '../components/SfiaSkillModal';
 import { ImportSfiaSkillModal } from '../components/ImportSfiaSkillModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useTranslations } from 'next-intl';
 
 export default function SfiaSkillsPage() {
+  const t = useTranslations('AdminMasterData');
   const [skillSearch, setSkillSearch] = useState('');
   const [debouncedSkillSearch, setDebouncedSkillSearch] = useState('');
 
@@ -75,18 +77,18 @@ export default function SfiaSkillsPage() {
 
   const handleDelete = useCallback(
     (skill: SfiaSkillDto) => {
-      if (confirm(`Are you sure you want to delete the SFIA Skill "${skill.skillCode}"?`)) {
+      if (confirm(t('sfiaDeleteConfirm', { code: skill.skillCode }))) {
         deleteMutation.mutate(skill.id, {
           onSuccess: (res) => {
             if (res.success) {
-              showToast('SFIA Skill deleted successfully', 'success');
+              showToast(t('toastSfiaDeleteSuccess'), 'success');
             } else {
-              showToast(res.message || 'Failed to delete skill', 'error');
+              showToast(res.message || t('toastSfiaDeleteError'), 'error');
             }
           },
           onError: (err: any) => {
             showToast(
-              err.response?.data?.message || 'Failed to delete skill. It might be in use.',
+              err.response?.data?.message || t('toastSfiaDeleteConstraintError'),
               'error'
             );
           },
@@ -110,10 +112,10 @@ export default function SfiaSkillsPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
               <Boxes className="text-[#1877F2] shrink-0 h-8 w-8" />
-              SFIA 9 Skills Framework
+              {t('sfiaTitle')}
             </h1>
             <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
-              Manage standard SFIA 9 skills taxonomy and responsibility level mappings across target roles.
+              {t('sfiaDesc')}
             </p>
           </div>
 
@@ -124,14 +126,14 @@ export default function SfiaSkillsPage() {
               className="border-[#CED0D4] dark:border-zinc-800 text-[#050505] dark:text-zinc-200 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 font-medium h-10 px-4 rounded-lg cursor-pointer gap-2 flex-1 sm:flex-none"
             >
               <UploadCloud className="h-4 w-4 text-[#1877F2]" />
-              Import CSV
+              {t('importCsvBtn')}
             </Button>
             <Button
               onClick={handleOpenCreate}
               className="bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium h-10 px-4 rounded-lg shadow-2xs active:scale-[0.98] transition-all gap-2 cursor-pointer flex-1 sm:flex-none"
             >
               <Plus className="h-4 w-4" />
-              Add SFIA Skill
+              {t('addSfiaSkillBtn')}
             </Button>
           </div>
         </div>
@@ -145,7 +147,7 @@ export default function SfiaSkillsPage() {
               <Input
                 value={skillSearch}
                 onChange={(e) => setSkillSearch(e.target.value)}
-                placeholder="Search by code, name, category, or subcategory..."
+                placeholder={t('sfiaSearchPlaceholder')}
                 className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
               />
               {skillSearch && (
@@ -166,13 +168,13 @@ export default function SfiaSkillsPage() {
                 variant="ghost"
                 className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
               >
-                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> {t('clearFilters')}
               </Button>
             )}
           </div>
 
           <div className="text-xs font-semibold text-[#65676B] dark:text-zinc-400">
-            Total: <span className="text-[#050505] dark:text-zinc-100 font-bold">{sfiaSkillsData?.data?.length || 0}</span> SFIA skills
+            {t('sfiaTotal').replace('{count}', (sfiaSkillsData?.data?.length || 0).toString())}
           </div>
         </div>
 

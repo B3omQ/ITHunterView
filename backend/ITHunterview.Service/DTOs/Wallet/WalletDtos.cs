@@ -13,6 +13,8 @@ namespace ITHunterview.Service.DTOs.Wallet
         public int? MockInterviewUsed { get; set; }
         public int? CvMatchLimit { get; set; }
         public int? CvMatchUsed { get; set; }
+        public int? CvOptimizeLimit { get; set; }
+        public int? CvOptimizeUsed { get; set; }
         public int? LearningPathLimit { get; set; }
         public int? LearningPathUsed { get; set; }
         public int? LearningPathSlotLimit { get; set; }

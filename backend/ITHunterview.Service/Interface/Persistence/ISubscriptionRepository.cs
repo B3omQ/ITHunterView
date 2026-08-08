@@ -16,5 +16,6 @@ namespace ITHunterview.Service.Interface.Persistence
         Task<bool> IsSubscriptionUsedAsync(int id);
         Task<(List<Subscriptions> Items, int TotalCount)> GetPagedAsync(string? role, SubscriptionStatus? status, int page, int pageSize);
         Task<int> UpdateUnusedSubscriptionAsync(Subscriptions subscription);
+        Task DeleteAsync(Subscriptions subscription);
     }
 }

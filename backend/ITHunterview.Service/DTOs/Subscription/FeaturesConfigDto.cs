@@ -11,6 +11,7 @@ namespace ITHunterview.Service.DTOs.Subscription
 
         // Candidate limits
         public int? CvMatchLimit { get; set; }
+        public int? CvOptimizeLimit { get; set; }
         public int? MockInterviewLimit { get; set; }
         public int? LearningPathLimit { get; set; }
         public int? LearningPathSlotLimit { get; set; }
@@ -30,6 +31,9 @@ namespace ITHunterview.Service.DTOs.Subscription
             {
                 if (!CvMatchLimit.HasValue || CvMatchLimit < -1)
                     yield return new ValidationResult("CvMatchLimit là bắt buộc và phải >= -1.", new[] { nameof(CvMatchLimit) });
+                
+                if (!CvOptimizeLimit.HasValue || CvOptimizeLimit < -1)
+                    yield return new ValidationResult("CvOptimizeLimit là bắt buộc và phải >= -1.", new[] { nameof(CvOptimizeLimit) });
                 
                 if (!MockInterviewLimit.HasValue || MockInterviewLimit < -1)
                     yield return new ValidationResult("MockInterviewLimit là bắt buộc và phải >= -1.", new[] { nameof(MockInterviewLimit) });
@@ -66,10 +70,10 @@ namespace ITHunterview.Service.DTOs.Subscription
                 if (!CoinCredit.HasValue || CoinCredit < 0)
                     yield return new ValidationResult("CoinCredit là bắt buộc và phải >= 0.", new[] { nameof(CoinCredit) });
 
-                if (CvMatchLimit.HasValue || MockInterviewLimit.HasValue || LearningPathLimit.HasValue || LearningPathSlotLimit.HasValue)
+                if (CvMatchLimit.HasValue || CvOptimizeLimit.HasValue || MockInterviewLimit.HasValue || LearningPathLimit.HasValue || LearningPathSlotLimit.HasValue)
                 {
                     yield return new ValidationResult("Không được cấu hình các hạn mức của Candidate cho gói Recruiter.", 
-                        new[] { nameof(CvMatchLimit), nameof(MockInterviewLimit), nameof(LearningPathLimit), nameof(LearningPathSlotLimit) });
+                        new[] { nameof(CvMatchLimit), nameof(CvOptimizeLimit), nameof(MockInterviewLimit), nameof(LearningPathLimit), nameof(LearningPathSlotLimit) });
                 }
             }
         }

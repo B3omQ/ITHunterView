@@ -51,8 +51,10 @@ import {
   ChevronRight,
   Coins,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export default function SubscriptionsAdminPage() {
+  const t = useTranslations('AdminSubscriptions');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
@@ -79,7 +81,7 @@ export default function SubscriptionsAdminPage() {
         {
           onSuccess: (res) => {
             if (res.success) {
-              toast.success('Subscription package updated successfully');
+              toast.success(t('toastUpdateSuccess'));
               setIsDialogOpen(false);
               setEditingSub(null);
             } else {
@@ -95,7 +97,7 @@ export default function SubscriptionsAdminPage() {
       createMutation.mutate(formData, {
         onSuccess: (res) => {
           if (res.success) {
-            toast.success('Subscription package created successfully in INACTIVE status');
+            toast.success(t('toastCreateSuccess'));
             setIsDialogOpen(false);
           } else {
             toast.error(res.message || 'Failed to create package');
@@ -112,7 +114,7 @@ export default function SubscriptionsAdminPage() {
     duplicateMutation.mutate(id, {
       onSuccess: (res) => {
         if (res.success) {
-          toast.success('Package duplicated successfully (default copy in INACTIVE status)');
+          toast.success(t('toastDuplicateSuccess'));
         } else {
           toast.error(res.message || 'Failed to duplicate package');
         }
@@ -127,7 +129,7 @@ export default function SubscriptionsAdminPage() {
       {
         onSuccess: (res) => {
           if (res.success) {
-            toast.success(`Package status changed to ${nextStatus}`);
+            toast.success(t('toastStatusChangeSuccess').replace('{status}', nextStatus));
           } else {
             toast.error(res.message || 'Failed to change status');
           }
@@ -163,10 +165,10 @@ export default function SubscriptionsAdminPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
               <CreditCard className="text-[#1877F2] shrink-0 h-8 w-8" />
-              Subscription &amp; Coin Configuration
+              {t('pageTitle')}
             </h1>
             <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
-              Manage subscription packages, AI limits, and coin wallet configurations.
+              {t('pageDesc')}
             </p>
           </div>
 
@@ -179,12 +181,12 @@ export default function SubscriptionsAdminPage() {
           >
             <DialogTrigger render={<Button className="bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium h-10 px-4 rounded-lg shadow-2xs active:scale-[0.98] transition-all gap-2 cursor-pointer w-full sm:w-auto" onClick={() => setEditingSub(null)} />}>
               <Plus className="h-4 w-4" />
-              Add New Package
+              {t('addNewPackage')}
             </DialogTrigger>
             <DialogContent className="max-w-lg overflow-y-auto max-h-[90vh]">
               <DialogHeader>
                 <DialogTitle>
-                  {editingSub ? 'Edit Service Package' : 'Create New Service Package'}
+                  {editingSub ? t('editPackageTitle') : t('createPackageTitle')}
                 </DialogTitle>
               </DialogHeader>
               <SubscriptionForm
@@ -204,21 +206,21 @@ export default function SubscriptionsAdminPage() {
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#1877F2] data-[state=active]:text-[#1877F2] data-[state=active]:bg-transparent px-4 py-2 font-bold text-sm transition-all flex items-center gap-2 cursor-pointer"
             >
               <CreditCard className="h-4 w-4" />
-              Subscription Packages
+              {t('tabSubscriptions')}
             </TabsTrigger>
             <TabsTrigger
               value="coin-config"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#1877F2] data-[state=active]:text-[#1877F2] data-[state=active]:bg-transparent px-4 py-2 font-bold text-sm transition-all flex items-center gap-2 cursor-pointer"
             >
               <Coins className="h-4 w-4" />
-              Coin Configuration
+              {t('tabCoinConfig')}
             </TabsTrigger>
             <TabsTrigger
               value="custom-coin-price"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#1877F2] data-[state=active]:text-[#1877F2] data-[state=active]:bg-transparent px-4 py-2 font-bold text-sm transition-all flex items-center gap-2 cursor-pointer"
             >
               <Coins className="h-4 w-4" />
-              Custom Coin Price
+              {t('tabCustomCoinPrice')}
             </TabsTrigger>
           </TabsList>
 
@@ -235,12 +237,12 @@ export default function SubscriptionsAdminPage() {
                   }}
                 >
                   <SelectTrigger className="w-full sm:w-[170px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
-                    <SelectValue placeholder="Target Role" />
+                    <SelectValue placeholder={t('targetRoleFilter')} />
                   </SelectTrigger>
                   <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
-                    <SelectItem value="ALL">All Target Roles</SelectItem>
-                    <SelectItem value="CANDIDATE">Candidate</SelectItem>
-                    <SelectItem value="RECRUITER">Recruiter</SelectItem>
+                    <SelectItem value="ALL">{t('allTargetRoles')}</SelectItem>
+                    <SelectItem value="CANDIDATE">{t('roleCandidate')}</SelectItem>
+                    <SelectItem value="RECRUITER">{t('roleRecruiter')}</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -253,12 +255,12 @@ export default function SubscriptionsAdminPage() {
                   }}
                 >
                   <SelectTrigger className="w-full sm:w-[170px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
-                    <SelectValue placeholder="Status Filter" />
+                    <SelectValue placeholder={t('statusFilter')} />
                   </SelectTrigger>
                   <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
-                    <SelectItem value="ALL">All Statuses</SelectItem>
-                    <SelectItem value="ACTIVE">Active</SelectItem>
-                    <SelectItem value="INACTIVE">Inactive</SelectItem>
+                    <SelectItem value="ALL">{t('allStatuses')}</SelectItem>
+                    <SelectItem value="ACTIVE">{t('statusActive')}</SelectItem>
+                    <SelectItem value="INACTIVE">{t('statusInactive')}</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -269,7 +271,7 @@ export default function SubscriptionsAdminPage() {
                     variant="ghost"
                     className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
                   >
-                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> {t('clearFilters')}
                   </Button>
                 )}
               </div>
@@ -282,31 +284,31 @@ export default function SubscriptionsAdminPage() {
                 <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
                   <TableRow className="hover:bg-transparent border-none">
                     <TableHead className="w-[24%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                      PACKAGE NAME
+                      {t('colPackageName')}
                     </TableHead>
 
                     <TableHead className="w-[15%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                      TARGET ROLE
+                      {t('colTargetRole')}
                     </TableHead>
 
                     <TableHead className="w-[16%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                      PRICE
+                      {t('colPrice')}
                     </TableHead>
 
                     <TableHead className="w-[13%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                      DURATION
+                      {t('colDuration')}
                     </TableHead>
 
                     <TableHead className="w-[14%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                      STATUS
+                      {t('colStatus')}
                     </TableHead>
 
                     <TableHead className="w-[10%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                      TRANSACTIONS
+                      {t('colTransactions')}
                     </TableHead>
 
                     <TableHead className="w-[8%] py-3 px-2 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                      ACTIONS
+                      {t('colActions')}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -346,17 +348,17 @@ export default function SubscriptionsAdminPage() {
                       <TableCell colSpan={7} className="h-64 text-center">
                         <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
                           <p className="font-semibold text-rose-600 dark:text-rose-400 text-base">
-                            Failed to load subscription packages
+                            {t('loadFailTitle')}
                           </p>
                           <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
-                            An error occurred while fetching package records. Please try again.
+                            {t('loadFailDesc')}
                           </p>
                           <Button
                             onClick={() => refetch()}
                             variant="outline"
                             className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
                           >
-                            <RotateCcw className="h-4 w-4 mr-2" /> Retry Loading
+                            <RotateCcw className="h-4 w-4 mr-2" /> {t('retryBtn')}
                           </Button>
                         </div>
                       </TableCell>
@@ -370,12 +372,12 @@ export default function SubscriptionsAdminPage() {
                             <SearchX className="h-6 w-6" />
                           </div>
                           <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">
-                            No service packages found
+                            {t('noDataTitle')}
                           </p>
                           <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
                             {isFilterActive
-                              ? 'No subscription packages match the current filters. Try clearing or adjusting your filter.'
-                              : 'No service packages configured yet.'}
+                              ? t('noDataFilterDesc')
+                              : t('noDataEmptyDesc')}
                           </p>
                           {isFilterActive && (
                             <Button
@@ -383,7 +385,7 @@ export default function SubscriptionsAdminPage() {
                               variant="outline"
                               className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
                             >
-                              <RotateCcw className="h-4 w-4 mr-2" /> Clear All Filters
+                              <RotateCcw className="h-4 w-4 mr-2" /> {t('clearAllFilters')}
                             </Button>
                           )}
                         </div>
@@ -410,11 +412,11 @@ export default function SubscriptionsAdminPage() {
                         <TableCell className="py-3.5 px-3 align-middle">
                           {sub.featuresConfig?.role === 'CANDIDATE' ? (
                             <Badge className="bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none">
-                              Candidate
+                              {t('roleCandidate')}
                             </Badge>
                           ) : (
                             <Badge className="bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none">
-                              Recruiter
+                              {t('roleRecruiter')}
                             </Badge>
                           )}
                         </TableCell>
@@ -426,7 +428,7 @@ export default function SubscriptionsAdminPage() {
 
                         {/* Duration */}
                         <TableCell className="py-3.5 px-3 align-middle text-sm font-medium text-[#65676B] dark:text-zinc-300">
-                          {sub.durationDays} days
+                          {sub.durationDays} {t('durationDays')}
                         </TableCell>
 
                         {/* Status (Switch + Label) */}
@@ -437,7 +439,7 @@ export default function SubscriptionsAdminPage() {
                               onCheckedChange={() => handleToggleStatus(sub.id, sub.status)}
                             />
                             <span className="text-xs font-semibold text-[#050505] dark:text-zinc-300">
-                              {sub.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+                              {sub.status === 'ACTIVE' ? t('statusActive') : t('statusInactive')}
                             </span>
                           </div>
                         </TableCell>
@@ -447,11 +449,11 @@ export default function SubscriptionsAdminPage() {
                           <div className="flex justify-center">
                             {sub.isUsed ? (
                               <Badge className="bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none">
-                                Sold
+                                {t('badgeSold')}
                               </Badge>
                             ) : (
                               <Badge variant="outline" className="rounded-full px-2.5 py-0.5 text-xs font-medium text-[#65676B]">
-                                Not Sold
+                                {t('badgeNotSold')}
                               </Badge>
                             )}
                           </div>
@@ -468,7 +470,7 @@ export default function SubscriptionsAdminPage() {
                                 setIsDialogOpen(true);
                               }}
                               className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
-                              title="Edit Package"
+                              title={t('editPackage')}
                             >
                               <Edit2 className="h-4 w-4" />
                             </Button>
@@ -477,7 +479,7 @@ export default function SubscriptionsAdminPage() {
                               size="icon"
                               onClick={() => handleDuplicate(sub.id)}
                               className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
-                              title="Duplicate Package"
+                              title={t('duplicatePackage')}
                             >
                               <Copy className="h-4 w-4" />
                             </Button>
@@ -493,9 +495,7 @@ export default function SubscriptionsAdminPage() {
             {/* TẦNG 3: PAGINATION FOOTER */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 px-1">
               <div className="flex items-center space-x-3 text-sm text-[#65676B] dark:text-zinc-400">
-                <div>
-                  Showing <span className="font-semibold text-[#050505] dark:text-zinc-200">{startResult} - {endResult}</span> of <span className="font-semibold text-[#050505] dark:text-zinc-200">{totalCount}</span> service packages
-                </div>
+                <div dangerouslySetInnerHTML={{ __html: t.raw('showingText').replace('{start}', startResult.toString()).replace('{end}', endResult.toString()).replace('{total}', totalCount.toString()) }} />
                 <Select
                   value={String(pageSize)}
                   onValueChange={(val) => {
@@ -504,7 +504,7 @@ export default function SubscriptionsAdminPage() {
                   }}
                 >
                   <SelectTrigger className="h-8 w-[110px] border-[#CED0D4] dark:border-zinc-800 text-xs font-medium focus:ring-[#1877F2]">
-                    <SelectValue placeholder="Page size" />
+                    <SelectValue placeholder={t('pageSize')} />
                   </SelectTrigger>
                   <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
                     <SelectItem value="10">10 / page</SelectItem>

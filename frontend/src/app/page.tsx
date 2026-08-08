@@ -28,6 +28,7 @@ import {
 import { jobService } from "@/services/job.service"
 import { JobCard } from "@/components/shared/JobCard"
 import type { JobCardDto } from "@/types/job.types"
+import { useTranslations } from "next-intl"
 
 const LOCATIONS = [
   "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Cần Thơ", "Hải Phòng",
@@ -44,6 +45,7 @@ const removeAccents = (str: string) => {
 export default function Home() {
   const router = useRouter()
   const { user, logout } = useAuthStore()
+  const t = useTranslations("Home")
   const [searchTitle, setSearchTitle] = useState("")
   const [searchLoc, setSearchLoc] = useState("")
   const [mounted, setMounted] = useState(false)
@@ -96,19 +98,19 @@ export default function Home() {
         {/* Badge */}
         <div className="inline-flex items-center gap-2 glass-panel text-foreground text-xs font-semibold px-4 py-2 rounded-full mb-8 shadow-sm hover:scale-105 transition-transform cursor-default relative z-10">
           <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-          <span>#1 IT Job Platform for Fresh IT Graduates in Vietnam</span>
+          <span>{t('badge')}</span>
           <span>🇻🇳</span>
         </div>
 
         {/* Headline */}
         <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold text-foreground tracking-tight max-w-4xl mx-auto leading-tight relative z-10">
-          Land your first IT job <br className="hidden sm:block" />
+          {t('heroTitle1')} <br className="hidden sm:block" />
           <span className="text-muted-foreground font-light">—</span>{" "}
-          <span className="bg-gradient-to-r from-blue-600 to-cyan-400 bg-clip-text text-transparent animate-typing">faster.</span>
+          <span className="bg-gradient-to-r from-blue-600 to-cyan-400 bg-clip-text text-transparent animate-typing">{t('heroTitle2')}</span>
         </h1>
 
         <p className="mt-5 text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-          Smart job matching, AI-powered Learning Path generation, and real mock interviews to get you hired at top tech companies.
+          {t('heroSubtitle')}
         </p>
 
         {/* Search Bar */}
@@ -117,7 +119,7 @@ export default function Home() {
             <SearchIcon className="text-muted-foreground flex-shrink-0 group-focus-within:text-primary transition-colors" size={18} />
             <Input
               type="text"
-              placeholder="Job title, keywords, company..."
+              placeholder={t('searchPlaceholder')}
               value={searchTitle}
               onChange={(e) => setSearchTitle(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -129,7 +131,7 @@ export default function Home() {
             <MapPinIcon className="text-muted-foreground flex-shrink-0" size={18} />
             <Input
               type="text"
-              placeholder="Location (Hanoi, Ho Chi Minh...)"
+              placeholder={t('locationPlaceholder')}
               value={searchLoc}
               onChange={(e) => {
                 setSearchLoc(e.target.value);
@@ -169,7 +171,7 @@ export default function Home() {
               <div className="absolute top-full left-0 right-0 mt-4 z-50">
                 <div className="border border-border shadow-lg rounded-xl overflow-hidden bg-popover text-popover-foreground flex flex-col max-h-[300px]">
                   {filteredLocations.length === 0 ? (
-                    <div className="py-6 text-center text-sm text-muted-foreground">No location found.</div>
+                    <div className="py-6 text-center text-sm text-muted-foreground">{t('noLocation')}</div>
                   ) : (
                     <div className="p-1.5 overflow-y-auto">
                       {filteredLocations.map((loc, idx) => (
@@ -197,7 +199,7 @@ export default function Home() {
             className="h-10 px-8 rounded-xl md:rounded-full font-semibold flex items-center justify-center gap-2 shrink-0 shadow-md hover:shadow-lg transition-all"
           >
             <SearchIcon size={16} />
-            <span>Search</span>
+            <span>{t('searchBtn')}</span>
           </Button>
         </div>
 
@@ -211,8 +213,8 @@ export default function Home() {
               <ZapIcon size={20} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">AI Match</p>
-              <p className="text-sm text-muted-foreground mt-1">Smart ranking & fit scoring for every job</p>
+              <p className="text-2xl font-bold text-foreground">{t('aiMatchTitle')}</p>
+              <p className="text-sm text-muted-foreground mt-1">{t('aiMatchDesc')}</p>
             </div>
           </div>
 
@@ -222,8 +224,8 @@ export default function Home() {
               <TargetIcon size={20} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">100+ Mocks</p>
-              <p className="text-sm text-muted-foreground mt-1">Real-world technical interview prep</p>
+              <p className="text-2xl font-bold text-foreground">{t('mocksTitle')}</p>
+              <p className="text-sm text-muted-foreground mt-1">{t('mocksDesc')}</p>
             </div>
           </div>
 
@@ -234,13 +236,13 @@ export default function Home() {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground flex items-center gap-2">
-                10k+ Jobs
+                {t('jobsTitle')}
                 <span className="flex h-2.5 w-2.5 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500"></span>
                 </span>
               </p>
-              <p className="text-sm text-muted-foreground mt-1">From 500+ top tech companies</p>
+              <p className="text-sm text-muted-foreground mt-1">{t('jobsDesc')}</p>
             </div>
           </div>
         </div>
@@ -254,24 +256,24 @@ export default function Home() {
           <div className="text-left">
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-extrabold bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 text-orange-600 dark:text-orange-400 border border-orange-500/30 shadow-sm mb-3 uppercase tracking-wide">
               <SparklesIcon className="h-3.5 w-3.5 fill-orange-500 animate-spin" style={{ animationDuration: '6s' }} />
-              Việc Làm Top Trang Chủ 24H
+              {t('featuredTopJobs')}
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-foreground tracking-tight flex items-center gap-3">
-              Việc Làm Nổi Bật Tốt Nhất
+              {t('featuredTitle')}
               <span className="inline-flex h-3 w-3 relative">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-gradient-to-tr from-amber-500 to-orange-600"></span>
               </span>
             </h2>
             <p className="text-muted-foreground mt-2 text-sm sm:text-base md:text-lg max-w-2xl">
-              Các vị trí IT hot nhất từ top nhà tuyển dụng uy tín, được ưu tiên đẩy Top và tuyển gấp trong ngày!
+              {t('featuredDesc')}
             </p>
           </div>
           <Link
             href="/jobs"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-zinc-100 dark:bg-zinc-800/80 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-600 text-sm font-bold text-zinc-800 dark:text-zinc-200 transition-all shadow-sm shrink-0 group"
           >
-            <span>Khám phá tất cả việc làm</span>
+            <span>{t('exploreAllJobs')}</span>
             <ArrowRightIcon size={16} className="group-hover:translate-x-1.5 transition-transform" />
           </Link>
         </div>
@@ -285,9 +287,9 @@ export default function Home() {
         ) : featuredJobs.length === 0 ? (
           <div className="glass-panel text-center py-16 px-6 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 shadow-inner">
             <SparklesIcon className="h-10 w-10 text-zinc-400 mx-auto mb-3 opacity-50" />
-            <p className="text-muted-foreground text-base font-medium">Hiện chưa có việc làm nào được đẩy lên Top trong 24 giờ qua.</p>
-            <p className="text-xs text-zinc-400 mt-1">Hãy là nhà tuyển dụng đầu tiên đẩy tin tuyển dụng của bạn lên Top vị trí này!</p>
-            <Link href="/jobs" className="mt-5 inline-block text-sm text-primary font-bold px-6 py-2 bg-primary/10 rounded-full hover:bg-primary hover:text-white transition-colors">Xem toàn bộ danh sách việc làm</Link>
+            <p className="text-muted-foreground text-base font-medium">{t('noFeaturedJobs')}</p>
+            <p className="text-xs text-zinc-400 mt-1">{t('beTheFirst')}</p>
+            <Link href="/jobs" className="mt-5 inline-block text-sm text-primary font-bold px-6 py-2 bg-primary/10 rounded-full hover:bg-primary hover:text-white transition-colors">{t('exploreAllJobs')}</Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
@@ -306,11 +308,11 @@ export default function Home() {
       <section id="mock-interview" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         <div className="text-center mb-16">
           <span className="text-primary text-xs font-semibold uppercase tracking-wider bg-primary/10 px-3 py-1 rounded-full">
-            Simple 3-step process
+            {t('howItWorksLabel')}
           </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground mt-4">How It Works</h2>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground mt-4">{t('howItWorksTitle')}</h2>
           <p className="text-muted-foreground mt-3 text-sm sm:text-base max-w-md mx-auto">
-            From fresh-grad to hired — in as few as 4 weeks.
+            {t('howItWorksSubtitle')}
           </p>
         </div>
 
@@ -327,10 +329,10 @@ export default function Home() {
                 1
               </span>
             </div>
-            <p className="text-xs uppercase font-bold text-primary tracking-wider mb-2">Step 01</p>
-            <h3 className="text-lg font-bold text-foreground mb-2">Upload CV</h3>
+            <p className="text-xs uppercase font-bold text-primary tracking-wider mb-2">{t('step1Label')}</p>
+            <h3 className="text-lg font-bold text-foreground mb-2">{t('step1Title')}</h3>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-              Upload your CV and let our AI analyze your skills, experience, and career goals in seconds.
+              {t('step1Desc')}
             </p>
           </div>
 
@@ -342,10 +344,10 @@ export default function Home() {
                 2
               </span>
             </div>
-            <p className="text-xs uppercase font-bold text-primary tracking-wider mb-2">Step 02</p>
-            <h3 className="text-lg font-bold text-foreground mb-2">Match & Optimize</h3>
+            <p className="text-xs uppercase font-bold text-primary tracking-wider mb-2">{t('step2Label')}</p>
+            <h3 className="text-lg font-bold text-foreground mb-2">{t('step2Title')}</h3>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-              Get matched with the best IT jobs and receive AI-powered suggestions to improve your CV for each role.
+              {t('step2Desc')}
             </p>
           </div>
 
@@ -357,10 +359,10 @@ export default function Home() {
                 3
               </span>
             </div>
-            <p className="text-xs uppercase font-bold text-primary tracking-wider mb-2">Step 03</p>
-            <h3 className="text-lg font-bold text-foreground mb-2">Practice & Apply</h3>
+            <p className="text-xs uppercase font-bold text-primary tracking-wider mb-2">{t('step3Label')}</p>
+            <h3 className="text-lg font-bold text-foreground mb-2">{t('step3Title')}</h3>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-              Sharpen your skills with real mock interviews, get feedback, and apply with confidence.
+              {t('step3Desc')}
             </p>
           </div>
         </div>
@@ -376,45 +378,45 @@ export default function Home() {
             <div className="md:col-span-2 space-y-4">
               <Logo size="md" href="/" />
               <p className="text-xs text-muted-foreground max-w-sm leading-relaxed">
-                Vietnam&apos;s smartest platform to help fresh IT graduates land their dream first job — faster, with AI-powered matching and mock interviews.
+                {t('footerDesc')}
               </p>
             </div>
 
             {/* Links Columns */}
             <div className="space-y-4">
-              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Platform</h4>
+              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">{t('platform')}</h4>
               <ul className="space-y-2.5 text-xs text-muted-foreground">
-                <li><Link href="/#" className="hover:text-primary transition-colors">Browse Jobs</Link></li>
-                <li><Link href="/#" className="hover:text-primary transition-colors">Mock Interviews</Link></li>
-                <li><Link href="/#" className="hover:text-primary transition-colors">CV Builder</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">{t('browseJobs')}</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">{t('mockInterviews')}</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">{t('cvBuilder')}</Link></li>
               </ul>
             </div>
 
             <div className="space-y-4">
-              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Company</h4>
+              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">{t('company')}</h4>
               <ul className="space-y-2.5 text-xs text-muted-foreground">
-                <li><Link href="/#" className="hover:text-primary transition-colors">About Us</Link></li>
-                <li><Link href="/#" className="hover:text-primary transition-colors">Blog</Link></li>
-                <li><Link href="/#" className="hover:text-primary transition-colors">Press</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">{t('aboutUs')}</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">{t('blog')}</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">{t('press')}</Link></li>
               </ul>
             </div>
 
             <div className="space-y-4">
-              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Resources</h4>
+              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">{t('resources')}</h4>
               <ul className="space-y-2.5 text-xs text-muted-foreground">
-                <li><Link href="/#" className="hover:text-primary transition-colors">Interview Prep Guide</Link></li>
-                <li><Link href="/#" className="hover:text-primary transition-colors">Salary Insights</Link></li>
-                <li><Link href="/#" className="hover:text-primary transition-colors">IT Career Roadmap</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">{t('interviewPrep')}</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">{t('salaryInsights')}</Link></li>
+                <li><Link href="/#" className="hover:text-primary transition-colors">{t('careerRoadmap')}</Link></li>
               </ul>
             </div>
           </div>
 
           <div className="pt-8 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} ITHunterView. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} ITHunterView. {t('allRightsReserved')}</p>
             <div className="flex items-center gap-6">
-              <Link href="/#" className="hover:text-primary transition-colors">Privacy Policy</Link>
-              <Link href="/#" className="hover:text-primary transition-colors">Terms of Service</Link>
-              <Link href="/#" className="hover:text-primary transition-colors">Cookie Settings</Link>
+              <Link href="/#" className="hover:text-primary transition-colors">{t('privacyPolicy')}</Link>
+              <Link href="/#" className="hover:text-primary transition-colors">{t('termsOfService')}</Link>
+              <Link href="/#" className="hover:text-primary transition-colors">{t('cookieSettings')}</Link>
             </div>
           </div>
         </div>

@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTranslations } from 'next-intl';
 
 interface MajorsTableProps {
   majors: MajorDto[];
@@ -61,6 +62,7 @@ export const MajorsTable = memo(function MajorsTable({
   isFilterActive,
   onResetFilters,
 }: MajorsTableProps) {
+  const t = useTranslations('AdminMasterData');
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
   const toggleExpand = (id: number, e: React.MouseEvent) => {
@@ -98,25 +100,11 @@ export const MajorsTable = memo(function MajorsTable({
   const getLevelBadge = (level: number) => {
     switch (level) {
       case 1:
-        return (
-          <Badge className="bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-none">
-            Level 1 (Root)
-          </Badge>
-        );
+        return <Badge className="bg-blue-100 text-blue-700 shadow-none hover:bg-blue-200 border-none px-2 py-0">{t('level1')}</Badge>;
       case 2:
-        return (
-          <Badge className="bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-none">
-            Level 2 (Category)
-          </Badge>
-        );
-      case 3:
-        return (
-          <Badge className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-none">
-            Level 3 (Specialization)
-          </Badge>
-        );
+        return <Badge className="bg-green-100 text-green-700 shadow-none hover:bg-green-200 border-none px-2 py-0">{t('level2')}</Badge>;
       default:
-        return null;
+        return <Badge className="bg-gray-100 text-gray-700 shadow-none hover:bg-gray-200 border-none px-2 py-0">{t('level3')}</Badge>;
     }
   };
 
@@ -131,16 +119,20 @@ export const MajorsTable = memo(function MajorsTable({
           {/* Table Header */}
           <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
             <TableRow className="hover:bg-transparent border-none">
-              <TableHead className="w-[22%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                SPECIALIZATION CODE
+              <TableHead className="w-[15%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                {t('colMajorCode')}
               </TableHead>
-
-              <TableHead className="w-[70%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                SPECIALIZATION NAME
+              <TableHead className="w-[35%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                {t('colMajorName')}
               </TableHead>
-
-              <TableHead className="w-[8%] py-3 px-2 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                ACTIONS
+              <TableHead className="w-[15%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400 text-center">
+                {t('colMajorLevel')}
+              </TableHead>
+              <TableHead className="w-[15%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400 text-center">
+                {t('colMajorStatus')}
+              </TableHead>
+              <TableHead className="w-[20%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                {t('colActions')}
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -165,7 +157,7 @@ export const MajorsTable = memo(function MajorsTable({
             ) : isError ? (
               // Error State
               <TableRow>
-                <TableCell colSpan={3} className="h-64 text-center">
+                <TableCell colSpan={5} className="h-64 text-center">
                   <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
                     <p className="font-semibold text-rose-600 dark:text-rose-400 text-base">
                       Failed to load specializations
@@ -186,7 +178,7 @@ export const MajorsTable = memo(function MajorsTable({
             ) : flattenedMajors.length === 0 ? (
               // Empty State
               <TableRow>
-                <TableCell colSpan={3} className="h-72 text-center">
+                <TableCell colSpan={5} className="h-72 text-center">
                   <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
                     <div className="h-12 w-12 rounded-full bg-[#E7F3FF] dark:bg-blue-950/50 flex items-center justify-center text-[#1877F2] dark:text-blue-400 mb-3">
                       <SearchX className="h-6 w-6" />
@@ -218,14 +210,12 @@ export const MajorsTable = memo(function MajorsTable({
                   key={item.id}
                   className="border-b border-[#CED0D4]/60 dark:border-zinc-800/60 hover:bg-[#E7F3FF]/40 dark:hover:bg-blue-950/20 transition-colors duration-150 group"
                 >
-                  {/* Specialization Code */}
                   <TableCell className="py-3.5 px-3 align-middle font-mono text-xs">
                     <span className="font-semibold text-[#050505] dark:text-zinc-200 bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded-md border border-[#CED0D4]/60 dark:border-zinc-700">
                       {item.code}
                     </span>
                   </TableCell>
 
-                  {/* Specialization Name */}
                   <TableCell className="py-3.5 px-3 align-middle">
                     <div
                       className="flex items-center gap-2"
@@ -248,11 +238,29 @@ export const MajorsTable = memo(function MajorsTable({
                       <span className="font-bold text-sm text-[#050505] dark:text-zinc-100 group-hover:text-[#1877F2] dark:group-hover:text-blue-400 transition-colors mr-1.5">
                         {item.name}
                       </span>
-                      {getLevelBadge(level)}
                     </div>
                   </TableCell>
 
-                  {/* Actions (Icon-only buttons) */}
+                  <TableCell className="py-3.5 px-2 align-middle text-center">
+                    {getLevelBadge(level)}
+                  </TableCell>
+
+                  <TableCell className="py-3.5 px-2 align-middle">
+                    <div className="flex justify-center">
+                      {(item as any).isActive ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#E7F3FF] text-[#1877F2] dark:bg-blue-900/30 dark:text-blue-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#1877F2] animate-pulse"></span>
+                          {t('statusActive')}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-neutral-400"></span>
+                          {t('statusInactive')}
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+
                   <TableCell className="py-3.5 px-2 align-middle text-center">
                     <div className="flex items-center justify-center gap-1">
                       <Button
@@ -260,7 +268,7 @@ export const MajorsTable = memo(function MajorsTable({
                         size="icon"
                         onClick={() => onEdit(item)}
                         className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
-                        title="Edit Specialization"
+                        title={t('editMajor')}
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -269,7 +277,7 @@ export const MajorsTable = memo(function MajorsTable({
                         size="icon"
                         onClick={() => onDelete(item)}
                         className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
-                        title="Delete Specialization"
+                        title={t('deleteMajor')}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

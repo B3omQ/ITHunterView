@@ -45,9 +45,9 @@ export function ResultOverviewCard({ jdFit, isRawTextFallback = false }: ResultO
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-destructive"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
           </div>
           <div>
-            <h3 className="text-destructive font-bold mb-1">Cảnh báo Nghiêm trọng: Thiếu hoàn toàn Kỹ năng cốt lõi (Kill-Switch)</h3>
+            <h3 className="text-destructive font-bold mb-1">{t.raw("killSwitchTitle")}</h3>
             <p className="text-sm text-foreground/80 leading-relaxed">
-              Hệ thống đã ngừng chấm điểm phần còn lại vì CV của bạn <strong>không có bất kỳ bằng chứng nào</strong> về các công nghệ cốt lõi bắt buộc (Core Tech Skills). Điểm số đã bị đóng băng ở mức 15/100. Hãy đảm bảo bạn có cập nhật đầy đủ các kỹ năng quan trọng nhất trước khi ứng tuyển.
+              {t.raw("killSwitchDesc")}
             </p>
           </div>
         </div>
@@ -93,9 +93,9 @@ export function ResultOverviewCard({ jdFit, isRawTextFallback = false }: ResultO
           {/* Narrative & Badges */}
           <div className="flex-1 space-y-4">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight mb-2">Analysis Result</h2>
+              <h2 className="text-2xl font-bold tracking-tight mb-2">{t("analysisResultTitle")}</h2>
               <Badge variant="outline" className={`${badgeColor} border-0 font-semibold px-3 py-1 text-sm mb-3`}>
-                {jdFit.result}
+                {jdFit.result === "Highly Suitable" ? t("highlySuitable") : jdFit.result === "Suitable" ? t("suitable") : jdFit.result === "Partially Suitable" ? t("partiallySuitable") : t("notSuitable")}
               </Badge>
               <p className="text-muted-foreground leading-relaxed">
                 {jdFit.narrative}
@@ -111,7 +111,7 @@ export function ResultOverviewCard({ jdFit, isRawTextFallback = false }: ResultO
               <div className="space-y-2">
                 <div className="flex justify-between text-sm items-center">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground/80">Must-Have (Pool A)</span>
+                    <span className="font-medium text-foreground/80">{t("poolA")}</span>
                     {jdFit.poolACapped && (
                       <Badge variant="destructive" className="text-[10px] h-5 px-1.5 font-normal uppercase tracking-wider">
                         Capped
@@ -123,8 +123,8 @@ export function ResultOverviewCard({ jdFit, isRawTextFallback = false }: ResultO
                 <Progress value={poolAProgress} className={`h-2 ${jdFit.poolACapped ? 'bg-red-100 [&>div]:bg-red-500' : ''}`} />
               </div>
               <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium text-foreground/80">Nice-to-Have (Pool B)</span>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="font-medium text-muted-foreground">{t("poolB")}</span>
                   <span className="font-semibold">{jdFit.poolB.score}/{jdFit.poolB.max}</span>
                 </div>
                 <Progress value={poolBProgress} className="h-2" />

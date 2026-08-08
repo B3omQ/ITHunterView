@@ -46,8 +46,10 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
+import { useTranslations } from 'next-intl';
 
 export default function StaffNotificationsPage() {
+  const t = useTranslations('StaffNotifications');
   const queryClient = useQueryClient();
   const [pageIndex, setPageIndex] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -72,12 +74,12 @@ export default function StaffNotificationsPage() {
     mutationFn: (item: SystemNotificationDto) =>
       notificationService.deleteSystemNotification(item.title, item.message),
     onSuccess: () => {
-      toast.success('System notification deleted successfully');
+      toast.success(t('delSuccess'));
       queryClient.invalidateQueries({ queryKey: ['system-notifications'] });
       setDeleteDialog({ open: false, item: null });
     },
     onError: () => {
-      toast.error('Failed to delete notification');
+      toast.error(t('delFail'));
     },
   });
 
@@ -116,17 +118,17 @@ export default function StaffNotificationsPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
               <Bell className="text-[#1877F2] shrink-0 h-8 w-8" />
-              System Notifications (Staff)
+              {t('title')}
             </h1>
             <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
-              Manage announcements and notifications sent to candidates and recruiters.
+              {t('desc')}
             </p>
           </div>
 
           <Link href="/staff/notifications/create" className="w-full sm:w-auto">
             <Button className="bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium h-10 px-4 rounded-lg shadow-2xs active:scale-[0.98] transition-all gap-2 cursor-pointer w-full sm:w-auto">
               <Plus className="h-4 w-4" />
-              Create Notification
+              {t('createNotification')}
             </Button>
           </Link>
         </div>
@@ -143,7 +145,7 @@ export default function StaffNotificationsPage() {
                   setSearchTerm(e.target.value);
                   setPageIndex(1);
                 }}
-                placeholder="Search notifications by title..."
+                placeholder={t('searchPlaceholder')}
                 className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
               />
               {searchTerm && (
@@ -153,7 +155,7 @@ export default function StaffNotificationsPage() {
                     setPageIndex(1);
                   }}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#65676B] hover:text-[#050505] dark:hover:text-white transition-colors p-1 cursor-pointer"
-                  title="Clear search"
+                  title={t('clearSearch')}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -167,7 +169,7 @@ export default function StaffNotificationsPage() {
                 variant="ghost"
                 className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
               >
-                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> {t('clearFilters')}
               </Button>
             )}
           </div>
@@ -180,23 +182,23 @@ export default function StaffNotificationsPage() {
             <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
               <TableRow className="hover:bg-transparent border-none">
                 <TableHead className="w-[25%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  NOTIFICATION TITLE
+                  {t('colTitle')}
                 </TableHead>
 
                 <TableHead className="w-[42%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  MESSAGE
+                  {t('colMessage')}
                 </TableHead>
 
                 <TableHead className="w-[12%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  STATUS
+                  {t('colStatus')}
                 </TableHead>
 
                 <TableHead className="w-[13%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  SENT DATE
+                  {t('colDate')}
                 </TableHead>
 
                 <TableHead className="w-[8%] py-3 px-2 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  ACTIONS
+                  {t('colActions')}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -230,17 +232,17 @@ export default function StaffNotificationsPage() {
                   <TableCell colSpan={5} className="h-64 text-center">
                     <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
                       <p className="font-semibold text-rose-600 dark:text-rose-400 text-base">
-                        Failed to load system notifications
+                        {t('failLoad')}
                       </p>
                       <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
-                        An error occurred while fetching notification history. Please try again.
+                        {t('failLoadDesc')}
                       </p>
                       <Button
                         onClick={() => refetch()}
                         variant="outline"
                         className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
                       >
-                        <RotateCcw className="h-4 w-4 mr-2" /> Retry Loading
+                        <RotateCcw className="h-4 w-4 mr-2" /> {t('retryLoading')}
                       </Button>
                     </div>
                   </TableCell>
@@ -254,12 +256,12 @@ export default function StaffNotificationsPage() {
                         <SearchX className="h-6 w-6" />
                       </div>
                       <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">
-                        No notifications found
+                        {t('noNotifs')}
                       </p>
                       <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
                         {isFilterActive
-                          ? 'No notifications match the search query. Try clearing or adjusting your search filter.'
-                          : 'No system notifications have been broadcasted yet.'}
+                          ? t('noMatchSearch')
+                          : t('noBroadcasts')}
                       </p>
                       {isFilterActive && (
                         <Button
@@ -267,7 +269,7 @@ export default function StaffNotificationsPage() {
                           variant="outline"
                           className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
                         >
-                          <RotateCcw className="h-4 w-4 mr-2" /> Clear All Filters
+                          <RotateCcw className="h-4 w-4 mr-2" /> {t('clearAllFilters')}
                         </Button>
                       )}
                     </div>
@@ -305,11 +307,11 @@ export default function StaffNotificationsPage() {
                       <div className="flex justify-center">
                         {notification.isHidden ? (
                           <Badge variant="outline" className="rounded-full px-2.5 py-0.5 text-xs font-medium text-[#65676B]">
-                            Hidden
+                            {t('hidden')}
                           </Badge>
                         ) : (
                           <Badge className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none">
-                            Active
+                            {t('active')}
                           </Badge>
                         )}
                       </div>
@@ -329,7 +331,7 @@ export default function StaffNotificationsPage() {
                           className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer disabled:opacity-40"
                           onClick={() => setDeleteDialog({ open: true, item: notification })}
                           disabled={notification.isHidden}
-                          title="Delete Notification"
+                          title={t('deleteNotif')}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -345,9 +347,7 @@ export default function StaffNotificationsPage() {
         {/* TẦNG 3: PAGINATION FOOTER */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 px-1">
           <div className="flex items-center space-x-3 text-sm text-[#65676B] dark:text-zinc-400">
-            <div>
-              Showing <span className="font-semibold text-[#050505] dark:text-zinc-200">{startResult} - {endResult}</span> of <span className="font-semibold text-[#050505] dark:text-zinc-200">{totalCount}</span> system notifications
-            </div>
+            <div dangerouslySetInnerHTML={{ __html: t.raw("showingText").replace('{start}', startResult.toString()).replace('{end}', endResult.toString()).replace('{total}', totalCount.toString()) }} />
             <Select
               value={String(pageSize)}
               onValueChange={(val) => {
@@ -356,7 +356,7 @@ export default function StaffNotificationsPage() {
               }}
             >
               <SelectTrigger className="h-8 w-[110px] border-[#CED0D4] dark:border-zinc-800 text-xs font-medium focus:ring-[#1877F2]">
-                <SelectValue placeholder="Page size" />
+                <SelectValue placeholder={t('pageSize')} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
                 <SelectItem value="10">10 / page</SelectItem>
@@ -433,9 +433,9 @@ export default function StaffNotificationsPage() {
       <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog((prev) => ({ ...prev, open }))}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete System Notification</DialogTitle>
+            <DialogTitle>{t('delTitle')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this notification? It will be removed from all users' inboxes immediately. This action cannot be undone.
+              {t('delDesc')}
             </DialogDescription>
           </DialogHeader>
 
@@ -446,14 +446,14 @@ export default function StaffNotificationsPage() {
 
           <DialogFooter className="mt-4">
             <DialogClose render={<Button variant="outline" />}>
-              Cancel
+              {t('cancel')}
             </DialogClose>
             <Button
               variant="destructive"
               onClick={() => deleteDialog.item && deleteMutation.mutate(deleteDialog.item)}
               disabled={deleteMutation.isPending}
             >
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete Notification'}
+              {deleteMutation.isPending ? t('deleting') : t('deleteBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>

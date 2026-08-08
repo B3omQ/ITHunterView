@@ -140,6 +140,23 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         /// <summary>
+        /// Xóa một gói Subscription ở trạng thái INACTIVE và chưa có người sử dụng
+        /// </summary>
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> DeleteSubscription(int id)
+        {
+            var userIdClaim = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                return Unauthorized();
+
+            var result = await _subscriptionUseCase.DeleteSubscriptionAsync(id, userId);
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        /// <summary>
         /// Lấy cấu hình Coin hiện tại (Chi phí tính năng & danh sách gói nạp Coin)
         /// </summary>
         [HttpGet("coin-config")]

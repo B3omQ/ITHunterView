@@ -4,10 +4,12 @@ import React, { use } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, AlertCircle, Bookmark, Layers, FileText } from "lucide-react";
 import { useSfiaSkill } from "@/hooks/useSfiaSkill";
+import { useTranslations } from "next-intl";
 
 export default function SfiaSkillDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id } = use(params);
+  const t = useTranslations("AdminMasterData");
 
   const { data, isLoading, isError } = useSfiaSkill(id);
   const skill = data?.data;
@@ -16,7 +18,7 @@ export default function SfiaSkillDetailPage({ params }: { params: Promise<{ id: 
     return (
       <div className="flex flex-col items-center justify-center h-[50vh] text-muted-foreground">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-sm">Loading skill details...</p>
+        <p className="text-sm">{t('sfiaDetailLoading')}</p>
       </div>
     );
   }
@@ -26,14 +28,14 @@ export default function SfiaSkillDetailPage({ params }: { params: Promise<{ id: 
       <div className="flex flex-col items-center justify-center h-[50vh] text-destructive space-y-4">
         <AlertCircle size={40} className="opacity-50" />
         <div className="text-center">
-          <p className="text-base font-semibold">Skill not found</p>
-          <p className="text-sm opacity-80 mt-1">The requested SFIA skill could not be loaded.</p>
+          <p className="text-base font-semibold">{t('sfiaDetailNotFoundTitle')}</p>
+          <p className="text-sm opacity-80 mt-1">{t('sfiaDetailNotFoundDesc')}</p>
         </div>
         <button
           onClick={() => router.push("/admin/master-data/sfia-skills")}
           className="px-4 py-2 bg-muted text-foreground hover:bg-muted/80 rounded-xl text-sm font-medium transition-colors"
         >
-          Go Back
+          {t('sfiaDetailGoBack')}
         </button>
       </div>
     );
@@ -67,17 +69,17 @@ export default function SfiaSkillDetailPage({ params }: { params: Promise<{ id: 
               <div className="p-5 rounded-2xl bg-card border border-border/50 shadow-sm">
                 <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
                   <Bookmark size={16} className="text-primary" />
-                  Classification
+                  {t('sfiaDetailClassification')}
                 </h3>
                 <div className="space-y-4">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Category</p>
+                    <p className="text-xs text-muted-foreground mb-1">{t('sfiaDetailCategory')}</p>
                     <p className="text-sm font-medium text-foreground">{skill.category}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Subcategory</p>
+                    <p className="text-xs text-muted-foreground mb-1">{t('sfiaDetailSubcategory')}</p>
                     <p className="text-sm font-medium text-foreground">
-                      {skill.subcategory || <span className="italic text-muted-foreground/50">None</span>}
+                      {skill.subcategory || <span className="italic text-muted-foreground/50">{t('sfiaDetailNone')}</span>}
                     </p>
                   </div>
                 </div>
@@ -88,21 +90,26 @@ export default function SfiaSkillDetailPage({ params }: { params: Promise<{ id: 
               <div className="p-5 rounded-2xl bg-card border border-border/50 shadow-sm h-full">
                 <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
                   <FileText size={16} className="text-primary" />
-                  General Description
+                  {t('sfiaDetailDesc')}
                 </h3>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                  {skill.description || "No general description provided for this skill."}
+                  {skill.description || t('sfiaDetailNoDesc')}
                 </p>
               </div>
             </div>
           </div>
 
           {/* Level Details */}
-          <div>
-            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-              <Layers size={20} className="text-primary" />
-              Level Requirements
-            </h3>
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <Layers size={20} className="text-primary" />
+                {t('sfiaDetailLevelsTitle')}
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t('sfiaDetailLevelsDesc')}
+              </p>
+            </div>
 
             {skill.levels && skill.levels.length > 0 ? (
               <div className="grid gap-4">
@@ -116,7 +123,7 @@ export default function SfiaSkillDetailPage({ params }: { params: Promise<{ id: 
                     </div>
                     <div className="flex-1 pt-1">
                       <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-                        {levelObj.description || <span className="italic text-muted-foreground">No description available for this level.</span>}
+                        {levelObj.description || <span className="italic text-muted-foreground">{t('sfiaDetailNoDesc')}</span>}
                       </p>
                     </div>
                   </div>
@@ -125,7 +132,7 @@ export default function SfiaSkillDetailPage({ params }: { params: Promise<{ id: 
             ) : (
               <div className="p-8 rounded-2xl border-2 border-dashed border-border/50 flex flex-col items-center justify-center text-muted-foreground bg-muted/5">
                 <Layers size={32} className="opacity-20 mb-3" />
-                <p className="text-sm">This skill has no detailed level descriptions configured.</p>
+                <p className="text-sm">{t('sfiaDetailNoLevels')}</p>
               </div>
             )}
           </div>

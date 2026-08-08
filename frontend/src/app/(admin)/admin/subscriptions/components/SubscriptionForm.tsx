@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useTranslations } from 'next-intl';
 import type { SubscriptionDto, CreateSubscriptionDto } from '@/types/subscription.types';
 
 const formSchema = z.object({
@@ -51,6 +52,7 @@ interface SubscriptionFormProps {
 }
 
 export function SubscriptionForm({ initialData, onSubmit, isLoading }: SubscriptionFormProps) {
+  const t = useTranslations('AdminSubscriptions');
   const isEdit = !!initialData;
   const isUsed = initialData?.isUsed || false;
 
@@ -148,9 +150,9 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Service Package Name</FormLabel>
+              <FormLabel>{t('formPackageName')}</FormLabel>
               <FormControl>
-                <Input placeholder="Example: Premium Candidate Monthly" {...field} />
+                <Input placeholder={t('formPlaceholderPackageName')} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -164,7 +166,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
             name="price"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Price (VND)</FormLabel>
+                <FormLabel>{t('formPrice')}</FormLabel>
                 <FormControl>
                   <Input type="number" disabled={isUsed} {...field} />
                 </FormControl>
@@ -179,7 +181,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
             name="durationDays"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Duration (days)</FormLabel>
+                <FormLabel>{t('formDuration')}</FormLabel>
                 <FormControl>
                   <Input type="number" disabled={isUsed} {...field} />
                 </FormControl>
@@ -195,7 +197,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
           name="role"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Target Audience</FormLabel>
+              <FormLabel>{t('formTargetAudience')}</FormLabel>
               <Select
                 disabled={isUsed || isEdit}
                 onValueChange={field.onChange}
@@ -203,12 +205,12 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
+                    <SelectValue placeholder={t('formSelectRole')} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="CANDIDATE">Candidate</SelectItem>
-                  <SelectItem value="RECRUITER">Recruiter</SelectItem>
+                  <SelectItem value="CANDIDATE">{t('roleCandidate')}</SelectItem>
+                  <SelectItem value="RECRUITER">{t('roleRecruiter')}</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -218,7 +220,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
 
         {/* Conditionally Render Fields based on Role */}
         <div className="p-4 border rounded-lg bg-neutral-50/50 space-y-4">
-          <h4 className="text-sm font-semibold text-neutral-900 mb-2">Feature Limit Configuration</h4>
+          <h4 className="text-sm font-semibold text-neutral-900 mb-2">{t('formFeatureLimitTitle')}</h4>
           
           {selectedRole === 'CANDIDATE' && (
             <div className="space-y-4">
@@ -228,7 +230,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                 name="cvMatchLimit"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>CV-JD Match Limit per Month</FormLabel>
+                    <FormLabel>{t('formCvMatchLimit')}</FormLabel>
                     <FormControl>
                       <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
                     </FormControl>
@@ -242,7 +244,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                 name="mockInterviewLimit"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Mock Interview Limit per Month</FormLabel>
+                    <FormLabel>{t('formMockInterviewLimit')}</FormLabel>
                     <FormControl>
                       <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
                     </FormControl>
@@ -256,7 +258,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                  name="learningPathLimit"
                  render={({ field }) => (
                    <FormItem>
-                     <FormLabel>Learning Path Generation Limit per Period</FormLabel>
+                     <FormLabel>{t('formLearningPathLimit')}</FormLabel>
                      <FormControl>
                        <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
                      </FormControl>
@@ -270,7 +272,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                  name="learningPathSlotLimit"
                  render={({ field }) => (
                    <FormItem>
-                     <FormLabel>Learning Path Slot Limit (-1 for unlimited)</FormLabel>
+                     <FormLabel>{t('formLearningPathSlotLimit')}</FormLabel>
                      <FormControl>
                        <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
                      </FormControl>
@@ -289,7 +291,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                 name="jobSlots"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Job Slots</FormLabel>
+                    <FormLabel>{t('formJobSlots')}</FormLabel>
                     <FormControl>
                       <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
                     </FormControl>
@@ -303,7 +305,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                 name="jobExtendLimit"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Job Extend Limit (per month)</FormLabel>
+                    <FormLabel>{t('formJobExtendLimit')}</FormLabel>
                     <FormControl>
                       <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
                     </FormControl>
@@ -317,7 +319,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                 name="unlockCvLimit"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Unlock CV Limit</FormLabel>
+                    <FormLabel>{t('formUnlockCvLimit')}</FormLabel>
                     <FormControl>
                       <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
                     </FormControl>
@@ -331,7 +333,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                 name="pushTopLimit"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Push Top Limit</FormLabel>
+                    <FormLabel>{t('formPushTopLimit')}</FormLabel>
                     <FormControl>
                       <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
                     </FormControl>
@@ -348,7 +350,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
             name="coinCredit"
             render={({ field }) => (
               <FormItem className="mt-4">
-                <FormLabel>Coin Credit Bonus</FormLabel>
+                <FormLabel>{t('formCoinCredit')}</FormLabel>
                 <FormControl>
                   <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
                 </FormControl>
@@ -360,13 +362,13 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
 
         {isUsed && (
           <p className="text-xs text-amber-600 font-medium">
-            * This package has active transactions. Only the package name can be edited. To change prices or limits, please duplicate this package to create a new one.
+            {t('formUsedWarning')}
           </p>
         )}
 
         <div className="flex justify-end gap-2 pt-4 border-t">
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? 'Processing...' : isEdit ? 'Save Changes' : 'Create Package'}
+            {isLoading ? t('btnProcessing') : isEdit ? t('btnSaveChanges') : t('btnCreatePackage')}
           </Button>
         </div>
       </form>

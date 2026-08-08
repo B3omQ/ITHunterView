@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { CvAnalysisPairActivationCard } from '@/components/prompts/CvAnalysisPairActivationCard';
 import { JdAnalysisPairActivationCard } from '@/components/prompts/JdAnalysisPairActivationCard';
 import { isJdMatchingPromptKey, sanitizeJdMatchingContentForEditing } from '@/lib/prompts/jd-matching-prompt-policy';
+import { useTranslations } from 'next-intl';
 
 const formSchema = z.object({
   versionTag: z.string().min(1, 'Version Tag is required').max(50),
@@ -31,6 +32,7 @@ const formSchema = z.object({
 });
 
 export default function AdminPromptDetailPage() {
+  const t = useTranslations('AdminPrompts');
   const params = useParams();
   const id = params.id as string;
 
@@ -75,7 +77,7 @@ export default function AdminPromptDetailPage() {
   }
 
   function handleActivate(versionId: string) {
-    if (confirm('Are you sure you want to make this version active? The current active version will be deactivated.')) {
+    if (confirm(t('activateConfirm'))) {
       activateMutation.mutate(versionId);
     }
   }
@@ -84,11 +86,11 @@ export default function AdminPromptDetailPage() {
     form.setValue('content', isJdMatchingPrompt ? sanitizeJdMatchingContentForEditing(content) : content);
     form.setValue('modelConfig', modelConfig || '');
     setActiveTab('create');
-    toast.info('Copied content to new version form');
+    toast.info(t('copySuccess'));
   }
 
-  if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading prompt details...</div>;
-  if (isError || !prompt) return <div className="p-8 text-center text-destructive">Failed to load prompt</div>;
+  if (isLoading) return <div className="p-8 text-center text-muted-foreground">{t('loadingDetails')}</div>;
+  if (isError || !prompt) return <div className="p-8 text-center text-destructive">{t('failedLoadDetail')}</div>;
 
   return (
     <div className="w-full pb-8 space-y-6">
@@ -100,14 +102,14 @@ export default function AdminPromptDetailPage() {
         </Link>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{prompt.promptKey}</h1>
-          <p className="text-muted-foreground mt-1">{prompt.description || 'No description provided'}</p>
+          <p className="text-muted-foreground mt-1">{prompt.description || t('noDesc')}</p>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
-          <TabsTrigger value="history">Version History</TabsTrigger>
-          <TabsTrigger value="create">Create New Version</TabsTrigger>
+          <TabsTrigger value="history">{t('tabHistory')}</TabsTrigger>
+          <TabsTrigger value="create">{t('tabCreate')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="history" className="mt-6 space-y-6">
@@ -127,11 +129,11 @@ export default function AdminPromptDetailPage() {
             {/* Left Column: List of versions */}
             <Card className="lg:col-span-1 h-fit max-h-[800px] overflow-y-auto">
               <CardHeader className="sticky top-0 bg-card z-10 border-b">
-                <CardTitle className="text-lg">Versions</CardTitle>
+                <CardTitle className="text-lg">{t('versionsTitle')}</CardTitle>
               </CardHeader>
               <div className="p-0">
                 {prompt.versions?.length === 0 && (
-                  <div className="p-6 text-center text-muted-foreground">No versions found.</div>
+                  <div className="p-6 text-center text-muted-foreground">{t('noVersions')}</div>
                 )}
                 <div className="flex flex-col">
                   {prompt.versions?.map((version) => (
@@ -144,7 +146,7 @@ export default function AdminPromptDetailPage() {
                         <span className="font-semibold">{version.versionTag}</span>
                         {version.isActive && (
                           <Badge variant="default" className="bg-green-600/10 text-green-700 hover:bg-green-600/20">
-                            Active
+                            {t('activeBadge')}
                           </Badge>
                         )}
                       </div>
@@ -168,13 +170,13 @@ export default function AdminPromptDetailPage() {
                         {selectedVersion.isActive && <CheckCircle2 className="h-5 w-5 text-green-600" />}
                       </CardTitle>
                       <CardDescription className="mt-1">
-                        Created at {format(new Date(selectedVersion.createdAt), 'PPpp')}
+                        {t('createdAt')} {format(new Date(selectedVersion.createdAt), 'PPpp')}
                       </CardDescription>
                     </div>
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={() => handleCopyFromExisting(selectedVersion.content, selectedVersion.modelConfig)}>
                         <Copy className="h-4 w-4 mr-2" />
-                        Copy to New
+                        {t('copyToNewBtn')}
                       </Button>
                       {!selectedVersion.isActive && !isManagedAnalysisPrompt && (
                         <Button 
@@ -182,14 +184,14 @@ export default function AdminPromptDetailPage() {
                           onClick={() => handleActivate(selectedVersion.id)}
                           disabled={activateMutation.isPending}
                         >
-                          Activate
+                          {t('activateBtn')}
                         </Button>
                       )}
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div>
-                      <h4 className="text-sm font-medium mb-2">Prompt Content</h4>
+                      <h4 className="text-sm font-medium mb-2">{t('promptContentTitle')}</h4>
                       <div className="bg-muted p-4 rounded-md overflow-x-auto">
                         <pre className="text-sm font-mono whitespace-pre-wrap">{selectedVersion.content}</pre>
                       </div>
@@ -197,7 +199,7 @@ export default function AdminPromptDetailPage() {
                     
                     {selectedVersion.modelConfig && (
                       <div>
-                        <h4 className="text-sm font-medium mb-2">Model Config (JSON)</h4>
+                        <h4 className="text-sm font-medium mb-2">{t('modelConfigTitle')}</h4>
                         <div className="bg-muted p-4 rounded-md overflow-x-auto">
                           <pre className="text-sm font-mono whitespace-pre-wrap">{selectedVersion.modelConfig}</pre>
                         </div>
@@ -207,7 +209,7 @@ export default function AdminPromptDetailPage() {
                 </Card>
               ) : (
                 <Card className="h-full flex items-center justify-center p-8 text-muted-foreground">
-                  Select a version from the left to view details.
+                  {t('selectToView')}
                 </Card>
               )}
             </div>
@@ -235,11 +237,11 @@ export default function AdminPromptDetailPage() {
                       name="versionTag"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Version Tag</FormLabel>
+                          <FormLabel>{t('versionTagLabel')}</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., v2.0-experimental" {...field} />
+                            <Input placeholder={t('versionTagPlaceholder')} {...field} />
                           </FormControl>
-                          <FormDescription>A unique identifier for this version.</FormDescription>
+                          <FormDescription>{t('versionTagHelp')}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -247,7 +249,7 @@ export default function AdminPromptDetailPage() {
 
                     {isManagedAnalysisPrompt ? (
                       <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-                        This version is saved as a draft. Activate it from the analysis prompt-pair card with a compatible counterpart.
+                        {t('draftHelp')}
                       </div>
                     ) : (
                       <FormField
@@ -256,9 +258,9 @@ export default function AdminPromptDetailPage() {
                         render={({ field }) => (
                           <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                             <div className="space-y-0.5">
-                              <FormLabel className="text-base">Set as Active</FormLabel>
+                              <FormLabel className="text-base">{t('setActiveLabel')}</FormLabel>
                               <FormDescription>
-                                Make this version active immediately after creation.
+                                {t('setActiveHelp')}
                               </FormDescription>
                             </div>
                             <FormControl>
@@ -275,10 +277,10 @@ export default function AdminPromptDetailPage() {
                     name="content"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Prompt Content</FormLabel>
+                        <FormLabel>{t('promptContentTitle')}</FormLabel>
                         <FormControl>
                           <Textarea 
-                            placeholder="You are an expert recruiter..." 
+                            placeholder={t('promptContentPlaceholder')} 
                             className="min-h-[400px] font-mono text-sm" 
                             {...field} 
                           />
@@ -298,7 +300,7 @@ export default function AdminPromptDetailPage() {
                     name="modelConfig"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Model Configuration (Optional JSON)</FormLabel>
+                        <FormLabel>{t('modelConfigLabel')}</FormLabel>
                         <FormControl>
                           <Textarea 
                             placeholder={`{\n  "temperature": 0.2,\n  "topK": 40\n}`} 
@@ -318,12 +320,12 @@ export default function AdminPromptDetailPage() {
 
                   <div className="flex justify-end gap-4">
                     <Button type="button" variant="outline" onClick={() => setActiveTab('history')}>
-                      Cancel
+                      {t('cancelBtn')}
                     </Button>
                     <Button type="submit" disabled={createMutation.isPending}>
                       {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       <Save className="mr-2 h-4 w-4" />
-                      Save Version
+                      {t('saveBtn')}
                     </Button>
                   </div>
                 </form>

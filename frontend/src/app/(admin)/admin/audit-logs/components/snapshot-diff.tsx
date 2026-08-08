@@ -2,16 +2,20 @@
 
 import React from 'react';
 
+import { useTranslations } from 'next-intl';
+
 interface SnapshotDiffProps {
   diffStr: string | null;
   operation: string | null;
 }
 
 export function SnapshotDiff({ diffStr, operation }: SnapshotDiffProps) {
+  const t = useTranslations('AdminAuditLogs.snapshotDiff');
+
   if (!diffStr) {
     return (
       <p className="text-muted-foreground italic text-xs">
-        No structural/data changes recorded or no payload diff.
+        {t('noChanges')}
       </p>
     );
   }
@@ -19,7 +23,7 @@ export function SnapshotDiff({ diffStr, operation }: SnapshotDiffProps) {
   try {
     const parsed = JSON.parse(diffStr);
     if (parsed.error) {
-      return <p className="text-destructive italic text-xs">{parsed.error}</p>;
+      return <p className="text-destructive italic text-xs">{t('jsonError')}</p>;
     }
 
     if (parsed.changes) {
@@ -27,7 +31,7 @@ export function SnapshotDiff({ diffStr, operation }: SnapshotDiffProps) {
       if (changeEntries.length === 0) {
         return (
           <p className="text-muted-foreground italic text-xs">
-            No fields had modified values.
+            {t('noFieldsModified')}
           </p>
         );
       }
@@ -36,9 +40,9 @@ export function SnapshotDiff({ diffStr, operation }: SnapshotDiffProps) {
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-muted/80 text-muted-foreground uppercase text-[10px] tracking-wider font-semibold border-b border-border">
               <tr>
-                <th className="p-2.5 border-r border-border">Field</th>
-                <th className="p-2.5 bg-rose-500/5 text-rose-700 dark:text-rose-400 border-r border-border">Old Value</th>
-                <th className="p-2.5 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400">New Value</th>
+                <th className="p-2.5 border-r border-border">{t('colField')}</th>
+                <th className="p-2.5 bg-rose-500/5 text-rose-700 dark:text-rose-400 border-r border-border">{t('colOldValue')}</th>
+                <th className="p-2.5 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400">{t('colNewValue')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60 font-mono text-[11px]">
@@ -47,14 +51,14 @@ export function SnapshotDiff({ diffStr, operation }: SnapshotDiffProps) {
                   <td className="p-2.5 font-medium text-foreground border-r border-border/60">{field}</td>
                   <td className="p-2.5 bg-rose-500/[0.02] text-rose-600 dark:text-rose-400 line-through max-w-xs break-all border-r border-border/60">
                     {diff.old === null || diff.old === undefined ? (
-                      <span className="text-muted-foreground italic">null</span>
+                      <span className="text-muted-foreground italic">{t('valNull')}</span>
                     ) : (
                       String(diff.old)
                     )}
                   </td>
                   <td className="p-2.5 bg-emerald-500/[0.02] text-emerald-600 dark:text-emerald-400 max-w-xs break-all">
                     {diff.new === null || diff.new === undefined ? (
-                      <span className="text-muted-foreground italic">null</span>
+                      <span className="text-muted-foreground italic">{t('valNull')}</span>
                     ) : (
                       String(diff.new)
                     )}
@@ -74,8 +78,8 @@ export function SnapshotDiff({ diffStr, operation }: SnapshotDiffProps) {
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-muted/80 text-muted-foreground uppercase text-[10px] tracking-wider font-semibold border-b border-border">
               <tr>
-                <th className="p-2.5 border-r border-border">Field</th>
-                <th className="p-2.5">Recorded Value</th>
+                <th className="p-2.5 border-r border-border">{t('colField')}</th>
+                <th className="p-2.5">{t('colRecordedValue')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60 font-mono text-[11px]">
@@ -90,7 +94,7 @@ export function SnapshotDiff({ diffStr, operation }: SnapshotDiffProps) {
                     }`}
                   >
                     {val === null || val === undefined ? (
-                      <span className="text-muted-foreground italic">null</span>
+                      <span className="text-muted-foreground italic">{t('valNull')}</span>
                     ) : (
                       String(val)
                     )}

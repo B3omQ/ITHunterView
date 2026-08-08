@@ -11,6 +11,7 @@ import {
 import { TagInput } from '@/components/forms/TagInput';
 import { useCreateSkill, useUpdateSkill } from '@/hooks/useSkill';
 import type { SkillDto, SkillStatus } from '@/types/master-data.types';
+import { useTranslations } from 'next-intl';
 
 interface SkillModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ const validateSkillForm = (name: string, categoryId: string): string | null => {
 };
 
 export function SkillModal({ isOpen, onClose, mode, initialData, categories, onSuccess }: SkillModalProps) {
+  const t = useTranslations('AdminMasterData');
   const [skillForm, setSkillForm] = useState({ name: '', categoryId: '', status: 'ACTIVE' as SkillStatus, aliases: [] as string[] });
   const [skillFormError, setSkillFormError] = useState('');
 
@@ -79,14 +81,14 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
         {
           onSuccess: (res) => {
             if (res.success) {
-              onSuccess('New skill added successfully!');
+              onSuccess(t('toastSkillCreateSuccess'));
               onClose();
             } else {
-              setSkillFormError(res.message || 'An error occurred.');
+              setSkillFormError(res.message || t('toastErrorOccurred'));
             }
           },
           onError: (err: any) => {
-            setSkillFormError(err.response?.data?.message || 'An error occurred while creating skill.');
+            setSkillFormError(err.response?.data?.message || t('toastSkillCreateError'));
           },
         }
       );
@@ -104,14 +106,14 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
         {
           onSuccess: (res) => {
             if (res.success) {
-              onSuccess('Skill updated successfully!');
+              onSuccess(t('toastSkillUpdateSuccess'));
               onClose();
             } else {
-              setSkillFormError(res.message || 'An error occurred.');
+              setSkillFormError(res.message || t('toastErrorOccurred'));
             }
           },
           onError: (err: any) => {
-            setSkillFormError(err.response?.data?.message || 'An error occurred while updating.');
+            setSkillFormError(err.response?.data?.message || t('toastSkillUpdateError'));
           },
         }
       );
@@ -124,7 +126,7 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{mode === 'create' ? 'Add New Skill' : 'Edit Skill'}</DialogTitle>
+          <DialogTitle>{mode === 'create' ? t('addSkill') : t('editSkill')}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
@@ -136,10 +138,10 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
           )}
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-foreground">Skill Name</label>
+            <label className="text-xs font-bold text-foreground">{t('skillFormName')}</label>
             <input
               type="text"
-              placeholder="Enter skill name (e.g. React, .NET Core...)"
+              placeholder={t('skillFormNamePlaceholder')}
               value={skillForm.name}
               onChange={(e) => setSkillForm({ ...skillForm, name: e.target.value })}
               className="w-full px-3.5 py-2 rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/60"
@@ -148,7 +150,7 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-foreground">Category</label>
+            <label className="text-xs font-bold text-foreground">{t('skillFormCategory')}</label>
             <select
               value={skillForm.categoryId}
               onChange={(e) => setSkillForm({ ...skillForm, categoryId: e.target.value })}
@@ -156,7 +158,7 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
               required
             >
               <option value="" disabled>
-                Select skill category
+                {t('skillFormCategoryPlaceholder')}
               </option>
               {categories?.map((cat) => (
                 <option key={cat.id} value={cat.id}>
@@ -167,19 +169,19 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-foreground">Aliases / Synonyms</label>
+            <label className="text-xs font-bold text-foreground">{t('skillFormAliases')}</label>
             <TagInput
               tags={skillForm.aliases}
               onChange={(newTags) => setSkillForm({ ...skillForm, aliases: newTags })}
-              placeholder="e.g. ReactJS, React.js (Press Enter to add)"
+              placeholder={t('skillFormAliasesPlaceholder')}
             />
             <p className="text-[10px] text-muted-foreground mt-1">
-              Gõ từ khóa đồng nghĩa, gõ sai chính tả của kỹ năng này và nhấn Enter để thêm mới.
+              {t('skillFormAliasesDesc')}
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-foreground">Status</label>
+            <label className="text-xs font-bold text-foreground">{t('skillFormStatus')}</label>
             <div className="flex gap-4">
               <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
                 <input
@@ -189,7 +191,7 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
                   onChange={() => setSkillForm({ ...skillForm, status: 'ACTIVE' })}
                   className="accent-primary"
                 />
-                <span>Active</span>
+                <span>{t('skillFormActive')}</span>
               </label>
               <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
                 <input
@@ -199,7 +201,7 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
                   onChange={() => setSkillForm({ ...skillForm, status: 'DEACTIVE' })}
                   className="accent-primary"
                 />
-                <span>Disabled</span>
+                <span>{t('skillFormDisabled')}</span>
               </label>
             </div>
           </div>
@@ -210,7 +212,7 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
               onClick={onClose}
               className="px-4 py-2 border border-border hover:bg-muted text-foreground font-medium text-sm rounded-xl transition-colors"
             >
-              Cancel
+              {t('cancelBtn')}
             </button>
             <button
               type="submit"
@@ -218,7 +220,7 @@ export function SkillModal({ isOpen, onClose, mode, initialData, categories, onS
               className="px-4 py-2 bg-primary hover:bg-primary/95 text-primary-foreground font-medium text-sm rounded-xl shadow-xs transition-colors flex items-center gap-1.5 disabled:opacity-50"
             >
               {isPending && <Loader2 size={14} className="animate-spin" />}
-              <span>Save Changes</span>
+              <span>{t('saveBtn')}</span>
             </button>
           </div>
         </form>

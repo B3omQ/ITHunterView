@@ -8,8 +8,10 @@ import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapPin, Phone, Mail, Link as LinkIcon, Briefcase, GraduationCap, Award, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useTranslations } from 'next-intl';
 
 export default function CandidatePublicProfilePage() {
+  const t = useTranslations("RecruiterCandidateProfile");
   const params = useParams();
   const id = params?.id as string;
   const [profile, setProfile] = useState<any>(null);
@@ -36,7 +38,7 @@ export default function CandidatePublicProfilePage() {
   if (isLoading) {
     return (
       <div className="w-full pb-8 space-y-8">
-        <PageLoader message="Loading candidate profile..." />
+        <PageLoader message={t("loading")} />
       </div>
     );
   }
@@ -45,8 +47,8 @@ export default function CandidatePublicProfilePage() {
     return (
       <div className="w-full pb-8 space-y-8">
         <EmptyState
-          title="Profile Not Found"
-          description={error || "This profile may not exist or is not public."}
+          title={t("notFoundTitle")}
+          description={error || t("notFoundDesc")}
         />
       </div>
     );
@@ -57,7 +59,7 @@ export default function CandidatePublicProfilePage() {
 
   return (
     <div className="w-full pb-16 space-y-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold tracking-tight mb-6">Candidate Profile</h1>
+      <h1 className="text-2xl font-bold tracking-tight mb-6">{t("pageTitle")}</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-6 items-start">
         {/* Left Column: Personal Info */}
@@ -80,7 +82,7 @@ export default function CandidatePublicProfilePage() {
                 </h2>
                 <div className="flex items-center gap-1.5 mt-2 text-slate-500 text-sm">
                   <MapPin className="w-4 h-4" />
-                  <span>{personalInfo.location || 'Location not specified'}</span>
+                  <span>{personalInfo.location || t("noLocation")}</span>
                 </div>
               </div>
 
@@ -89,13 +91,13 @@ export default function CandidatePublicProfilePage() {
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50 text-slate-500">
                     <Mail className="h-4 w-4" />
                   </div>
-                  <span className="truncate">{personalInfo.email || 'No email provided'}</span>
+                  <span className="truncate">{personalInfo.email || t("noEmail")}</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-slate-600">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50 text-slate-500">
                     <Phone className="h-4 w-4" />
                   </div>
-                  <span>{personalInfo.phone || 'No phone provided'}</span>
+                  <span>{personalInfo.phone || t("noPhone")}</span>
                 </div>
               </div>
             </CardContent>
@@ -106,7 +108,7 @@ export default function CandidatePublicProfilePage() {
               <CardHeader className="pb-3 border-b border-slate-100">
                 <CardTitle className="text-base font-bold flex items-center gap-2">
                   <LinkIcon className="h-5 w-5 text-indigo-500" />
-                  Social Links
+                  {t("socialLinks")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-4 space-y-3">
@@ -133,7 +135,7 @@ export default function CandidatePublicProfilePage() {
             <CardHeader className="pb-3 border-b border-slate-100">
               <CardTitle className="text-base font-bold flex items-center gap-2">
                 <FileText className="h-5 w-5 text-indigo-500" />
-                Skills
+                {t("skills")}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
@@ -146,7 +148,7 @@ export default function CandidatePublicProfilePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-slate-500">No skills added yet.</p>
+                <p className="text-sm text-slate-500">{t("noSkills")}</p>
               )}
             </CardContent>
           </Card>
@@ -157,7 +159,7 @@ export default function CandidatePublicProfilePage() {
           {personalInfo.aboutMe && (
             <Card className="border-slate-200 shadow-sm">
               <CardHeader className="pb-3 border-b border-slate-100">
-                <CardTitle className="text-base font-bold">About Me</CardTitle>
+                <CardTitle className="text-base font-bold">{t("aboutMe")}</CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
                 <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
@@ -171,7 +173,7 @@ export default function CandidatePublicProfilePage() {
             <CardHeader className="pb-3 border-b border-slate-100">
               <CardTitle className="text-base font-bold flex items-center gap-2">
                 <Briefcase className="h-5 w-5 text-indigo-500" />
-                Work Experience
+                {t("workExp")}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
@@ -188,7 +190,7 @@ export default function CandidatePublicProfilePage() {
                         </div>
                         <div className="text-sm font-medium text-slate-600 mb-2">{exp.companyName}</div>
                         <div className="text-xs text-slate-400 mb-3">
-                          {new Date(exp.startDate).toLocaleDateString()} - {exp.isCurrentJob ? 'Present' : new Date(exp.endDate).toLocaleDateString()}
+                          {new Date(exp.startDate).toLocaleDateString()} - {exp.isCurrentJob ? t("present") : new Date(exp.endDate).toLocaleDateString()}
                         </div>
                         <p className="text-sm text-slate-500 whitespace-pre-wrap">{exp.description}</p>
                       </div>
@@ -196,7 +198,7 @@ export default function CandidatePublicProfilePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-slate-500 text-center py-4">No experience added yet.</p>
+                <p className="text-sm text-slate-500 text-center py-4">{t("noExp")}</p>
               )}
             </CardContent>
           </Card>
@@ -205,7 +207,7 @@ export default function CandidatePublicProfilePage() {
             <CardHeader className="pb-3 border-b border-slate-100">
               <CardTitle className="text-base font-bold flex items-center gap-2">
                 <GraduationCap className="h-5 w-5 text-indigo-500" />
-                Education
+                {t("education")}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
@@ -220,7 +222,7 @@ export default function CandidatePublicProfilePage() {
                         <h4 className="font-bold text-slate-900">{edu.schoolName}</h4>
                         <div className="text-sm text-slate-600 mt-1">{edu.degree} - {edu.fieldOfStudy}</div>
                         <div className="text-xs text-slate-400 mt-2">
-                          {new Date(edu.startDate).toLocaleDateString()} - {edu.isCurrent ? 'Present' : new Date(edu.endDate).toLocaleDateString()}
+                          {new Date(edu.startDate).toLocaleDateString()} - {edu.isCurrent ? t("present") : new Date(edu.endDate).toLocaleDateString()}
                         </div>
                         {edu.description && (
                           <p className="text-sm text-slate-500 mt-3 whitespace-pre-wrap">{edu.description}</p>
@@ -230,7 +232,7 @@ export default function CandidatePublicProfilePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-slate-500 text-center py-4">No education added yet.</p>
+                <p className="text-sm text-slate-500 text-center py-4">{t("noEdu")}</p>
               )}
             </CardContent>
           </Card>
@@ -240,7 +242,7 @@ export default function CandidatePublicProfilePage() {
               <CardHeader className="pb-3 border-b border-slate-100">
                 <CardTitle className="text-base font-bold flex items-center gap-2">
                   <Award className="h-5 w-5 text-indigo-500" />
-                  Certifications
+                  {t("certifications")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
@@ -254,11 +256,11 @@ export default function CandidatePublicProfilePage() {
                         <h4 className="font-bold text-slate-900 truncate">{cert.name}</h4>
                         <div className="text-sm text-slate-500 truncate">{cert.issuingOrganization}</div>
                         <div className="text-xs text-slate-400 mt-1">
-                          Issued: {new Date(cert.issueDate).toLocaleDateString()}
+                          {t("issued", { date: new Date(cert.issueDate).toLocaleDateString() })}
                         </div>
                         {cert.credentialUrl && (
                           <a href={cert.credentialUrl} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 hover:underline mt-1 block">
-                            View Credential
+                            {t("viewCredential")}
                           </a>
                         )}
                       </div>

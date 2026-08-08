@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 import {
   Form,
@@ -22,20 +23,23 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useGetMyCompany, useVerifyCompanyLegal, useSubmitCompanyUpdateRequest } from '@/hooks/useCompany';
 import { uploadService } from '@/services/upload.service';
 
-const legalSchema = z.object({
-  taxCode: z.string().min(1, 'Tax ID is required'),
-  companyName: z.string().min(1, 'Company name is required'),
-  headquartersAddress: z.string().min(1, 'Headquarters address is required'),
-  verificationMethod: z.enum(['BUSINESS_REGISTRATION', 'POA_AND_ID'], {
-    message: 'Please select a verification method',
-  }),
-  verificationDocumentUrl: z.string().min(1, 'Please upload a verification document'),
-});
-
-type LegalFormValues = z.infer<typeof legalSchema>;
-
 export default function LegalVerificationPage() {
   const router = useRouter();
+  const t = useTranslations('RecruiterCompanyLegal');
+
+  const legalSchema = React.useMemo(() => {
+    return z.object({
+      taxCode: z.string().min(1, t('zodTaxCode')),
+      companyName: z.string().min(1, t('zodCompanyName')),
+      headquartersAddress: z.string().min(1, t('zodHqAddress')),
+      verificationMethod: z.enum(['BUSINESS_REGISTRATION', 'POA_AND_ID'], {
+        message: t('zodVerificationMethod'),
+      }),
+      verificationDocumentUrl: z.string().min(1, t('zodVerificationDoc')),
+    });
+  }, [t]);
+
+  type LegalFormValues = z.infer<typeof legalSchema>;
   const { data: company, isLoading: isFetchingCompany } = useGetMyCompany();
   const { mutateAsync: verifyLegal, isPending: isSubmitting } = useVerifyCompanyLegal();
   const { mutateAsync: submitUpdateRequest, isPending: isUpdatingRequest } = useSubmitCompanyUpdateRequest();
@@ -44,7 +48,7 @@ export default function LegalVerificationPage() {
   const [isEditingVerified, setIsEditingVerified] = useState(false);
 
   const form = useForm<LegalFormValues>({
-    resolver: zodResolver(legalSchema),
+    resolver: zodResolver(legalSchema) as any,
     defaultValues: {
       taxCode: '',
       companyName: '',
@@ -56,7 +60,7 @@ export default function LegalVerificationPage() {
 
   useEffect(() => {
     if (!isFetchingCompany && !company) {
-      toast.error('Please complete your Company Profile first.');
+      toast.error(t('profileRequired'));
       router.push('/recruiter/company/profile');
     } else if (company) {
       form.reset({
@@ -80,12 +84,12 @@ export default function LegalVerificationPage() {
 
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
     if (!validTypes.includes(file.type)) {
-      toast.error('Please upload jpeg, jpg, png, or pdf');
+      toast.error(t('uploadTypeError'));
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Maximum file size is 5MB');
+      toast.error(t('uploadSizeError'));
       return;
     }
 
@@ -93,9 +97,9 @@ export default function LegalVerificationPage() {
       setIsUploading(true);
       const res = await uploadService.uploadFile(file, 'legal_documents');
       form.setValue('verificationDocumentUrl', res.data || '', { shouldValidate: true });
-      toast.success('Document uploaded successfully');
+      toast.success(t('uploadSuccess'));
     } catch (error) {
-      toast.error('Failed to upload document');
+      toast.error(t('uploadFail'));
     } finally {
       setIsUploading(false);
     }
@@ -115,7 +119,7 @@ export default function LegalVerificationPage() {
             headquartersAddress: values.headquartersAddress,
           }
         });
-        toast.success('Legal verification update request submitted successfully!');
+        toast.success(t('submitUpdateSuccess'));
         setIsEditingVerified(false);
       } else {
         await verifyLegal({
@@ -128,15 +132,15 @@ export default function LegalVerificationPage() {
             headquartersAddress: values.headquartersAddress,
           }
         });
-        toast.success('Legal verification submitted successfully!');
+        toast.success(t('submitSuccess'));
       }
     } catch (error) {
-      toast.error('Failed to submit legal verification');
+      toast.error(t('submitFail'));
     }
   };
 
   if (isFetchingCompany) {
-    return <div className="p-8 text-center text-muted-foreground">Loading legal profile...</div>;
+    return <div className="p-8 text-center text-muted-foreground">{t('loadingLegal')}</div>;
   }
 
   if (!company) return null;
@@ -146,51 +150,49 @@ export default function LegalVerificationPage() {
   return (
     <div className="w-full pb-8 space-y-6">
       <div className="mb-6">
-        <h2 className="text-xl font-bold">Legal Verification</h2>
-        <p className="text-muted-foreground">Please complete your company details and upload matching corporate documents for verification.</p>
+        <h2 className="text-xl font-bold">{t('pageTitle')}</h2>
+        <p className="text-muted-foreground">{t('pageDesc')}</p>
       </div>
 
       {company.hasPendingChange && (
         <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800 flex flex-col gap-1">
-          <p className="font-semibold flex items-center gap-1.5">ℹ Verification Update Request Pending</p>
+          <p className="font-semibold flex items-center gap-1.5">{t('pendingUpdate')}</p>
           <p className="text-blue-700/80 text-xs">
-            Your request to update company details is pending review by our staff.
+            {t('pendingUpdateDesc')}
           </p>
         </div>
       )}
 
       {company.status === 'PENDING' && !company.hasPendingChange && (
         <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800 flex flex-col gap-1">
-          <p className="font-semibold flex items-center gap-1.5">⏳ Verification Pending</p>
+          <p className="font-semibold flex items-center gap-1.5">{t('pendingVer')}</p>
           <p className="text-yellow-700/80 text-xs">
-            Your company verification is pending review by our staff.
+            {t('pendingVerDesc')}
           </p>
         </div>
       )}
 
       {company.status === 'VERIFIED' && !company.hasPendingChange && (
         <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800 flex flex-col gap-1">
-          <p className="font-semibold flex items-center gap-1.5">✅ Verified</p>
+          <p className="font-semibold flex items-center gap-1.5">{t('verified')}</p>
           <p className="text-green-700/80 text-xs">
-            Your company has been verified. To update details, click the "Request Update" button below.
+            {t('verifiedDesc')}
           </p>
         </div>
       )}
 
       {company.status === 'REJECTED' && (
         <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-800 flex flex-col gap-1">
-          <p className="font-semibold flex items-center gap-1.5">❌ Verification Rejected</p>
-          <p className="text-red-700/80 text-xs">
-            Your verification request was rejected. Reason: <strong>{company.rejectReason || 'No reason specified'}</strong>. Please update your details and resubmit.
+          <p className="font-semibold flex items-center gap-1.5">{t('rejected')}</p>
+          <p className="text-red-700/80 text-xs" dangerouslySetInnerHTML={{__html: t('rejectedDesc', { reason: company.rejectReason || t('noReason') })}}>
           </p>
         </div>
       )}
 
       {company.status === 'VERIFIED' && !company.hasPendingChange && company.rejectReason && (
         <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-800 flex flex-col gap-1">
-          <p className="font-semibold flex items-center gap-1.5">❌ Update Request Rejected</p>
-          <p className="text-red-700/80 text-xs">
-            Your previous request to update company details was rejected. Reason: <strong>{company.rejectReason}</strong>. You can request changes again below.
+          <p className="font-semibold flex items-center gap-1.5">{t('updateRejected')}</p>
+          <p className="text-red-700/80 text-xs" dangerouslySetInnerHTML={{__html: t('updateRejectedDesc', { reason: company.rejectReason })}}>
           </p>
         </div>
       )}
@@ -200,16 +202,16 @@ export default function LegalVerificationPage() {
           
           {/* Left Column: Details */}
           <div className="bg-card rounded-xl border p-6 space-y-6">
-            <h3 className="font-semibold text-lg border-b pb-2">Company Details</h3>
+            <h3 className="font-semibold text-lg border-b pb-2">{t('companyDetails')}</h3>
             
             <FormField
               control={form.control}
               name="taxCode"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tax ID / Registration Number *</FormLabel>
+              <FormItem>
+                  <FormLabel>{t('taxId')}</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. 0102345678" {...field} disabled={isReadOnly} />
+                    <Input placeholder={t('taxIdPlaceholder')} {...field} disabled={isReadOnly} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -221,12 +223,12 @@ export default function LegalVerificationPage() {
               name="companyName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Company Name *</FormLabel>
+                  <FormLabel>{t('companyName')}</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Acme Technologies Joint Stock Company" {...field} disabled={isReadOnly} />
+                    <Input placeholder={t('companyNamePlaceholder')} {...field} disabled={isReadOnly} />
                   </FormControl>
                   <p className="text-xs text-muted-foreground">
-                    {company.status === 'VERIFIED' ? 'Modify to request name update' : 'Synced from Company Profile'}
+                    {company.status === 'VERIFIED' ? t('modifyName') : t('syncedName')}
                   </p>
                   <FormMessage />
                 </FormItem>
@@ -238,9 +240,9 @@ export default function LegalVerificationPage() {
               name="headquartersAddress"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Headquarters Address *</FormLabel>
+                  <FormLabel>{t('hqAddress')}</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Acme Tower, District 1, Ho Chi Minh City" {...field} disabled={isReadOnly} />
+                    <Input placeholder={t('hqAddressPlaceholder')} {...field} disabled={isReadOnly} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -251,8 +253,8 @@ export default function LegalVerificationPage() {
           {/* Right Column: Documents */}
           <div className="space-y-6">
             <div className="bg-card rounded-xl border p-6 space-y-6">
-              <h3 className="font-semibold text-lg border-b pb-2">Attached Documents</h3>
-              <p className="text-sm text-muted-foreground">Please select your preferred verification method. View the submission guide here.</p>
+              <h3 className="font-semibold text-lg border-b pb-2">{t('attachedDocs')}</h3>
+              <p className="text-sm text-muted-foreground">{t('docDesc')}</p>
 
               <FormField
                 control={form.control}
@@ -272,7 +274,7 @@ export default function LegalVerificationPage() {
                             <RadioGroupItem value="BUSINESS_REGISTRATION" />
                           </FormControl>
                           <FormLabel className="font-normal">
-                            Business Registration Certificate or equivalent document
+                            {t('methodBrc')}
                           </FormLabel>
                         </FormItem>
                         <FormItem className="flex items-center space-x-3 space-y-0">
@@ -280,7 +282,7 @@ export default function LegalVerificationPage() {
                             <RadioGroupItem value="POA_AND_ID" />
                           </FormControl>
                           <FormLabel className="font-normal">
-                            Power of Attorney (POA) and Identity Document
+                            {t('methodPoa')}
                           </FormLabel>
                         </FormItem>
                       </RadioGroup>
@@ -291,24 +293,24 @@ export default function LegalVerificationPage() {
               />
 
               <div className="space-y-2">
-                <FormLabel>Business Certificate *</FormLabel>
+                <FormLabel>{t('businessCert')}</FormLabel>
                 <div className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-center bg-muted/20">
                   {currentDoc ? (
                     <div className="space-y-2">
-                      <p className="text-sm font-medium text-primary">Document Uploaded Successfully</p>
-                      <a href={currentDoc} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline">View Document</a>
+                      <p className="text-sm font-medium text-primary">{t('docUploaded')}</p>
+                      <a href={currentDoc} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline">{t('viewDoc')}</a>
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <p className="text-sm font-medium">Click or drag file to this area to upload</p>
-                      <p className="text-xs text-muted-foreground">Maximum file size 5MB. Supported formats: jpeg, jpg, png, pdf</p>
+                      <p className="text-sm font-medium">{t('uploadHint')}</p>
+                      <p className="text-xs text-muted-foreground">{t('uploadLimits')}</p>
                     </div>
                   )}
                   
                   {!isReadOnly && (
                     <div className="mt-4">
                       <Button type="button" variant="outline" size="sm" className="relative" disabled={isUploading}>
-                        {isUploading ? 'Uploading...' : (currentDoc ? 'Replace File' : 'Upload File')}
+                        {isUploading ? t('uploading') : (currentDoc ? t('replaceFile') : t('uploadFile'))}
                         <input 
                           type="file" 
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
@@ -326,10 +328,10 @@ export default function LegalVerificationPage() {
               </div>
 
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-                <p className="font-semibold mb-2">⚠ Document Guidelines:</p>
+                <p className="font-semibold mb-2">{t('docGuidelines')}</p>
                 <ul className="list-disc list-inside space-y-1 text-amber-700/80 text-xs">
-                  <li>The document must be fully visible with no signs of editing, cropping, or blurred information.</li>
-                  <li>Ensure that the business information submitted perfectly matches the records on the official tax authority portal.</li>
+                  <li>{t('guide1')}</li>
+                  <li>{t('guide2')}</li>
                 </ul>
               </div>
             </div>
@@ -343,7 +345,7 @@ export default function LegalVerificationPage() {
                   onClick={() => setIsEditingVerified(true)}
                   className="bg-primary text-primary-foreground hover:bg-primary/95 cursor-pointer"
                 >
-                  Request Update
+                  {t('requestUpdate')}
                 </Button>
               ) : (
                 <>
@@ -357,14 +359,14 @@ export default function LegalVerificationPage() {
                     disabled={isSubmitting || isUpdatingRequest || isUploading}
                     className="cursor-pointer"
                   >
-                    Cancel
+                    {t('cancel')}
                   </Button>
                   <Button 
                     type="submit" 
                     disabled={isSubmitting || isUpdatingRequest || isUploading}
                     className="cursor-pointer"
                   >
-                    {isUpdatingRequest ? 'Submitting...' : 'Submit Update Request'}
+                    {isUpdatingRequest ? t('submitting') : t('submitUpdateReq')}
                   </Button>
                 </>
               )
@@ -377,14 +379,14 @@ export default function LegalVerificationPage() {
                   disabled={isReadOnly}
                   className="cursor-pointer"
                 >
-                  Reset
+                  {t('reset')}
                 </Button>
                 <Button 
                   type="submit" 
                   disabled={isSubmitting || isUploading || isReadOnly}
                   className="cursor-pointer"
                 >
-                  {isSubmitting ? 'Saving...' : 'Save Legal Profile'}
+                  {isSubmitting ? t('saving') : t('saveLegal')}
                 </Button>
               </>
             )}

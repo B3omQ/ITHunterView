@@ -20,6 +20,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { useTranslations } from "next-intl";
 
 const dailyApplicationsData = [
   { day: "1", apps: 12 },
@@ -50,30 +51,31 @@ export default function RecruiterDashboard() {
   const { user } = useAuthStore();
   const { data: company } = useGetMyCompany();
   const { mutate: claimReward, isPending: isClaiming } = useClaimCompanyNewbieReward();
+  const t = useTranslations("RecruiterDashboard");
 
   const stats = [
     {
-      title: "Active Jobs",
+      title: t('activeJobs'),
       value: "12",
-      change: "2 new this week",
+      change: `2 ${t('newThisWeek')}`,
       icon: <Briefcase className="h-4 w-4 text-muted-foreground" />,
     },
     {
-      title: "Total Applications",
+      title: t('totalApplications'),
       value: "245",
-      change: "+18% from last month",
+      change: `+18% ${t('fromLastMonth')}`,
       icon: <Users className="h-4 w-4 text-muted-foreground" />,
     },
     {
-      title: "Total Views",
+      title: t('totalViews'),
       value: "12.5K",
-      change: "+24% from last month",
+      change: `+24% ${t('fromLastMonth')}`,
       icon: <Eye className="h-4 w-4 text-muted-foreground" />,
     },
     {
-      title: "Application Status",
-      value: "89 Viewed",
-      change: "156 Applied (Pending)",
+      title: t('applicationStatus'),
+      value: `89 ${t('viewed')}`,
+      change: `156 ${t('appliedPending')}`,
       icon: <FileText className="h-4 w-4 text-muted-foreground" />,
     },
   ];
@@ -81,9 +83,9 @@ export default function RecruiterDashboard() {
   return (
     <div className="w-full pb-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Recruiter Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
         <p className="text-muted-foreground">
-          Analytics for your job postings and candidate pipeline.
+          {t('subtitle')}
         </p>
       </div>
 
@@ -96,13 +98,13 @@ export default function RecruiterDashboard() {
           <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
             <div className="space-y-3 max-w-2xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-amber-300 text-xs font-bold tracking-wide uppercase border border-white/20 shadow-sm animate-pulse">
-                <Sparkles size={14} className="text-amber-300" /> Thưởng Xác Thực Doanh Nghiệp
+                <Sparkles size={14} className="text-amber-300" /> {t('companyReward')}
               </div>
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2">
-                Nhận ngay <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 font-extrabold">25.000 Coin</span> ưu đãi! 🎁
+                {t('receiveCoinTitle1')} <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 font-extrabold">{t('receiveCoinTitle2')}</span> {t('receiveCoinTitle3')}
               </h2>
               <p className="text-blue-100 text-sm leading-relaxed">
-                Hoàn tất hồ sơ pháp lý công ty và được Admin duyệt để mở khóa ngay <strong className="text-amber-200">25.000 Coin</strong> vào ví tài khoản, tha hồ trải nghiệm tính năng đăng tin & tìm kiếm ứng viên AI.
+                {t('companyRewardDesc')}
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
@@ -113,9 +115,9 @@ export default function RecruiterDashboard() {
                     <div className="p-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 flex-shrink-0"><Circle size={16} /></div>
                   )}
                   <div className="flex flex-col">
-                    <span className="font-semibold text-white">1. Nộp Hồ sơ Pháp lý</span>
+                    <span className="font-semibold text-white">{t('submitLegal')}</span>
                     <span className="text-xs text-blue-200">
-                      {!company ? "Chưa tạo doanh nghiệp" : company.status === 'VERIFIED' || company.status === 'PENDING' ? "Đã gửi tài liệu ✅" : "Chưa nộp hoặc cần chỉnh sửa"}
+                      {!company ? t('notCreated') : company.status === 'VERIFIED' || company.status === 'PENDING' ? t('submitted') : t('needsUpdate')}
                     </span>
                   </div>
                 </div>
@@ -131,9 +133,9 @@ export default function RecruiterDashboard() {
                     <div className="p-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 flex-shrink-0"><Circle size={16} /></div>
                   )}
                   <div className="flex flex-col">
-                    <span className="font-semibold text-white">2. Admin Duyệt Thẩm Định</span>
+                    <span className="font-semibold text-white">{t('adminApproval')}</span>
                     <span className="text-xs text-blue-200">
-                      {company?.status === 'VERIFIED' ? "Đã xác thực ✅" : company?.status === 'PENDING' ? "Đang chờ Admin duyệt ⏳" : company?.status === 'REJECTED' ? "Đã từ chối (cần cập nhật)" : "Chờ nộp tài liệu"}
+                      {company?.status === 'VERIFIED' ? t('verified') : company?.status === 'PENDING' ? t('pending') : company?.status === 'REJECTED' ? t('rejected') : t('waitingSubmit')}
                     </span>
                   </div>
                 </div>
@@ -149,7 +151,7 @@ export default function RecruiterDashboard() {
                 >
                   <span className="relative z-10 flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-blue-700 animate-bounce" />
-                    {isClaiming ? "ĐANG HẠCH TOÁN..." : "NHẬN 25.000 COIN NGAY"}
+                    {isClaiming ? t('claiming') : t('claimNow')}
                   </span>
                 </button>
               ) : (
@@ -157,12 +159,12 @@ export default function RecruiterDashboard() {
                   href={!company ? "/recruiter/company/profile" : "/recruiter/company/legal"}
                   className="rounded-2xl bg-white/15 hover:bg-white/20 border border-white/20 px-6 py-4 text-center font-bold text-sm text-white shadow-lg backdrop-blur-md transition-all flex items-center justify-center gap-2 group"
                 >
-                  <span>{!company ? "Tạo công ty ngay" : company?.status === 'PENDING' ? "Xem hồ sơ xác thực" : "Hoàn thiện tài liệu ngay"}</span>
+                  <span>{!company ? t('createCompany') : company?.status === 'PENDING' ? t('viewProfile') : t('completeDocuments')}</span>
                   <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
                 </Link>
               )}
               <span className="text-xs text-blue-200/80 text-center lg:text-right">
-                * Thưởng 1 lần duy nhất khi xác thực công ty thành công.
+                {t('rewardNote')}
               </span>
             </div>
           </div>
@@ -191,7 +193,7 @@ export default function RecruiterDashboard() {
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-1 lg:col-span-4">
           <CardHeader>
-            <CardTitle>Daily Applications (This Month)</CardTitle>
+            <CardTitle>{t('dailyApplications')}</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
             <div className="h-[300px] w-full">
@@ -210,7 +212,7 @@ export default function RecruiterDashboard() {
 
         <Card className="col-span-1 lg:col-span-3">
           <CardHeader>
-            <CardTitle>Application Status</CardTitle>
+            <CardTitle>{t('applicationStatus')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full flex items-center justify-center">
@@ -239,7 +241,7 @@ export default function RecruiterDashboard() {
 
         <Card className="col-span-1 lg:col-span-7">
           <CardHeader>
-            <CardTitle>Top Jobs by Applications</CardTitle>
+            <CardTitle>{t('topJobs')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
@@ -249,7 +251,7 @@ export default function RecruiterDashboard() {
                   <XAxis type="number" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis dataKey="title" type="category" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} width={100} />
                   <RechartsTooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} />
-                  <Bar dataKey="applicants" name="Applicants" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={32} />
+                  <Bar dataKey="applicants" name={t('applicants')} fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={32} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

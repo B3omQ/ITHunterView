@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { useCreateSkillCategory, useUpdateSkillCategory } from "@/hooks/useSkill";
 import type { SkillCategoryDto } from "@/types/master-data.types";
+import { useTranslations } from 'next-intl';
 
 interface CategoryModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export function CategoryModal({
   initialData,
   onSuccess,
 }: CategoryModalProps) {
+  const t = useTranslations('AdminMasterData');
   const [name, setName] = useState("");
   const [error, setError] = useState("");
 
@@ -96,7 +98,7 @@ export function CategoryModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {mode === "create" ? "Add New Category" : "Edit Category"}
+            {mode === "create" ? t('addCategory') : t('editCategory')}
           </DialogTitle>
         </DialogHeader>
 
@@ -112,7 +114,7 @@ export function CategoryModal({
             <label className="text-xs font-bold text-foreground">Category Name</label>
             <input
               type="text"
-              placeholder="Enter category name..."
+              placeholder="e.g. Programming Languages..."
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-3.5 py-2 rounded-xl border border-input bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/60"
@@ -126,7 +128,7 @@ export function CategoryModal({
               onClick={onClose}
               className="px-4 py-2 border border-border hover:bg-muted text-foreground font-medium text-sm rounded-xl transition-colors"
             >
-              Cancel
+              {t('cancelBtn')}
             </button>
             <button
               type="submit"
@@ -134,7 +136,7 @@ export function CategoryModal({
               className="px-4 py-2 bg-primary hover:bg-primary/95 text-primary-foreground font-medium text-sm rounded-xl shadow-xs transition-colors flex items-center gap-1.5 disabled:opacity-50"
             >
               {isPending && <Loader2 size={14} className="animate-spin" />}
-              <span>Save Changes</span>
+              <span>{t('saveBtn')}</span>
             </button>
           </div>
         </form>

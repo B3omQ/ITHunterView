@@ -23,6 +23,7 @@ import { LocationCombobox } from '@/components/shared/LocationCombobox';
 import { VIETNAM_PROVINCES } from '@/lib/job-constants';
 import { cn } from '@/lib/utils';
 import { AboutSection } from './AboutSection';
+import { useTranslations } from 'next-intl';
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const MAX_IMAGE_SIZE_BYTES = 3 * 1024 * 1024; // 3MB
@@ -59,6 +60,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const t = useTranslations("CandidateProfile");
 
   // Form states
   const [firstName, setFirstName] = useState('');
@@ -108,24 +110,24 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
     const file = e.target.files?.[0];
     if (file) {
       if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-        toast.error('Chỉ chấp nhận ảnh định dạng JPG, JPEG, PNG hoặc WebP.');
+        toast.error(t('invalidImage'));
         if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
 
       if (file.size > MAX_IMAGE_SIZE_BYTES) {
-        toast.error('Ảnh không được vượt quá 3MB.');
+        toast.error(t('imageTooLarge'));
         if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
 
       uploadAvatar(file, {
         onSuccess: () => {
-          toast.success('Avatar uploaded successfully');
+          toast.success(t('avatarSuccess'));
           if (fileInputRef.current) fileInputRef.current.value = '';
         },
         onError: () => {
-          toast.error('Failed to upload avatar, please try again');
+          toast.error(t('avatarError'));
           if (fileInputRef.current) fileInputRef.current.value = '';
         }
       });
@@ -144,11 +146,11 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
     updateVisibility({ isVisibleToRecruiters: false }, {
       onSuccess: () => {
         setIsTurnOffModalOpen(false);
-        toast.success('Profile is now hidden from recruiters');
+        toast.success(t('profileHidden'));
       },
       onError: () => {
         setIsTurnOffModalOpen(false);
-        toast.error('An error occurred, please try again');
+        toast.error(t('errorOccurred'));
       }
     });
   };
@@ -170,7 +172,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
         basicSuccess = true;
         checkAndClose();
       },
-      onError: () => toast.error('Failed to update basic information.')
+      onError: () => toast.error(t('errorOccurred'))
     });
 
     updateSocialLinks({
@@ -182,12 +184,12 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
         presenceSuccess = true;
         checkAndClose();
       },
-      onError: () => toast.error('Failed to update online presence.')
+      onError: () => toast.error(t('errorOccurred'))
     });
 
     const checkAndClose = () => {
       if (basicSuccess && presenceSuccess) {
-        toast.success('Profile updated successfully');
+        toast.success(t('profileUpdateSuccess'));
         setIsEditModalOpen(false);
       }
     };
@@ -208,7 +210,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
                 className="scale-75 data-[state=checked]:bg-primary m-0"
               />
             )}
-            Visible to recruiters
+            {t('visibleToRecruiters')}
           </Label>
         </div>
       </div>
@@ -310,7 +312,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
               </a>
             )}
             {!info?.linkedInUrl && !info?.githubUrl && !info?.portfolioUrl && (
-              <p className="text-xs text-muted-foreground italic">No online presence added.</p>
+              <p className="text-xs text-muted-foreground italic">{t('noOnlinePresence')}</p>
             )}
           </div>
         </div>
@@ -327,19 +329,19 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <AlertCircle className="w-5 h-5" />
-              Hide profile from recruiters?
+              {t('hideProfile')}
             </DialogTitle>
             <DialogDescription className="pt-2">
-              Recruiters will no longer be able to find your profile in the search system if you turn this off. Are you sure?
+              {t('hideProfileDesc')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0 mt-4">
             <Button variant="outline" onClick={() => setIsTurnOffModalOpen(false)}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button variant="destructive" onClick={confirmTurnOff} disabled={isUpdatingVisibility}>
               {isUpdatingVisibility && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Confirm
+              {t('confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -349,7 +351,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
       <Dialog disablePointerDismissal open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="sm:max-w-[750px] p-0 overflow-hidden gap-0 bg-background border-none shadow-xl rounded-xl">
           <DialogHeader className="px-6 py-4 border-b border-border/40 bg-card/50 backdrop-blur-sm">
-            <DialogTitle className="text-xl font-extrabold tracking-tight">Personal details</DialogTitle>
+            <DialogTitle className="text-xl font-extrabold tracking-tight">{t('personalDetails')}</DialogTitle>
           </DialogHeader>
           
           <form onSubmit={handleSaveProfile} className="flex flex-col">
@@ -389,7 +391,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
                   </div>
                 </div>
                 <Button type="button" variant="ghost" size="sm" onClick={handleAvatarClick} disabled={isUploadingAvatar} className="text-primary font-bold hover:text-primary hover:bg-primary/10 gap-1.5 h-8">
-                  <Camera className="w-4 h-4" /> {isUploadingAvatar ? 'Uploading...' : 'Edit Avatar'}
+                  <Camera className="w-4 h-4" /> {isUploadingAvatar ? t('uploading') : t('editAvatar')}
                 </Button>
               </div>
 
@@ -398,29 +400,29 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
-                    <Label htmlFor="firstName" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">First name <span className="text-destructive">*</span></Label>
+                    <Label htmlFor="firstName" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('firstName')} <span className="text-destructive">*</span></Label>
                     <input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} required className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="e.g. Tra" />
                   </div>
                   <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
-                    <Label htmlFor="lastName" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Last name <span className="text-destructive">*</span></Label>
+                    <Label htmlFor="lastName" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('lastName')} <span className="text-destructive">*</span></Label>
                     <input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} required className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="e.g. Pham" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="border border-border/60 rounded-lg px-3 py-1.5 bg-muted/30 opacity-70 cursor-not-allowed shadow-sm">
-                    <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Email address</Label>
+                    <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('emailAddress')}</Label>
                     <input value={info?.email || ''} disabled className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground cursor-not-allowed truncate" />
                   </div>
                   <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
-                    <Label htmlFor="phone" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Phone number</Label>
+                    <Label htmlFor="phone" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('phoneNumber')}</Label>
                     <input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-transparent border-none outline-none focus:!outline-none focus:!ring-0 focus:!border-transparent focus:!shadow-none p-0 text-sm font-medium text-foreground placeholder:text-muted-foreground/50" placeholder="e.g. 0947852588" />
                   </div>
                 </div>
 
                 <div className="flex gap-4">
                   <div className="flex-1 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
-                    <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Current Location <span className="text-destructive">*</span></Label>
+                    <Label className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('currentLocation')} <span className="text-destructive">*</span></Label>
                     <LocationCombobox
                       value={locationType}
                       onChange={(val) => {
@@ -433,7 +435,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
                   </div>
                   {locationType === "Other" && (
                     <div className="flex-1 border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
-                      <Label htmlFor="location" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">Specific address</Label>
+                      <Label htmlFor="location" className="text-[11px] text-muted-foreground font-semibold block mb-0.5">{t('specificAddress')}</Label>
                       <input
                         id="location"
                         placeholder="e.g. 123 Main St..."
@@ -446,7 +448,7 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
                 </div>
 
                 <div className="space-y-3 pt-4 border-t border-border/30">
-                  <h4 className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider ml-1">Personal Links</h4>
+                  <h4 className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider ml-1">{t('personalLinks')}</h4>
                   
                   <div className="border border-border/60 rounded-lg px-3 py-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 transition-all bg-card shadow-sm">
                     <Label htmlFor="linkedInUrl" className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1.5 mb-0.5">
@@ -475,11 +477,11 @@ export function ProfileHeader({ summary }: ProfileHeaderProps) {
 
             <DialogFooter className="px-6 pt-4 pb-6 border-t border-border/40 bg-muted/10 sm:justify-end gap-2">
               <Button type="button" variant="ghost" onClick={() => setIsEditModalOpen(false)} className="h-10 px-6 font-semibold hover:bg-muted text-muted-foreground">
-                Cancel
+                {t('cancel')}
               </Button>
               <Button type="submit" disabled={isPending || !firstName || !lastName} className="h-10 px-8 font-bold shadow-sm">
                 {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Save
+                {t('save')}
               </Button>
             </DialogFooter>
           </form>

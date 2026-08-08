@@ -36,8 +36,10 @@ import {
   SearchX,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 export default function AdminQuestionBankPage() {
+  const t = useTranslations('AdminQuestionBank');
   const router = useRouter();
   const [search, setSearch] = useState('');
 
@@ -82,12 +84,12 @@ export default function AdminQuestionBankPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this question?')) return;
+    if (!confirm(t('deleteConfirm'))) return;
     const res = await deleteQuestion(id);
     if (res.success) {
-      toast.success('Question deleted successfully');
+      toast.success(t('deleteSuccess'));
     } else {
-      toast.error(res.message || 'Failed to delete question');
+      toast.error(res.message || t('deleteFail'));
     }
   };
 
@@ -151,10 +153,10 @@ export default function AdminQuestionBankPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
               <BookOpen className="text-[#1877F2] shrink-0 h-8 w-8" />
-              Question Bank (Admin)
+              {t('title')}
             </h1>
             <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
-              Manage sample interview questions across all domains and difficulty levels.
+              {t('desc')}
             </p>
           </div>
 
@@ -163,7 +165,7 @@ export default function AdminQuestionBankPage() {
             className="bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium h-10 px-4 rounded-lg shadow-2xs active:scale-[0.98] transition-all gap-2 cursor-pointer w-full sm:w-auto"
           >
             <Plus className="h-4 w-4" />
-            Add Question
+            {t('addBtn')}
           </Button>
         </div>
 
@@ -176,14 +178,14 @@ export default function AdminQuestionBankPage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search questions, industry, level..."
+                placeholder={t('searchPlaceholder')}
                 className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
               />
               {search && (
                 <button
                   onClick={() => setSearch('')}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#65676B] hover:text-[#050505] dark:hover:text-white transition-colors p-1 cursor-pointer"
-                  title="Clear search"
+                  title={t('clearSearch')}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -199,13 +201,13 @@ export default function AdminQuestionBankPage() {
               }}
             >
               <SelectTrigger className="w-full sm:w-[160px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
-                <SelectValue placeholder="Industry" />
+                <SelectValue placeholder={t('industryLabel')} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
-                <SelectItem value="ALL">All Industries</SelectItem>
-                <SelectItem value="BA">BA</SelectItem>
-                <SelectItem value="DEV">Dev</SelectItem>
-                <SelectItem value="TEST">Test</SelectItem>
+                <SelectItem value="ALL">{t('allIndustries')}</SelectItem>
+                <SelectItem value="BA">{t('industryBA')}</SelectItem>
+                <SelectItem value="DEV">{t('industryDev')}</SelectItem>
+                <SelectItem value="TEST">{t('industryTest')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -218,14 +220,14 @@ export default function AdminQuestionBankPage() {
               }}
             >
               <SelectTrigger className="w-full sm:w-[160px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
-                <SelectValue placeholder="Level" />
+                <SelectValue placeholder={t('levelLabel')} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
-                <SelectItem value="ALL">All Levels</SelectItem>
-                <SelectItem value="INTERN_FRESHER">Intern / Fresher</SelectItem>
-                <SelectItem value="JUNIOR">Junior</SelectItem>
-                <SelectItem value="MIDDLE">Middle</SelectItem>
-                <SelectItem value="SENIOR">Senior</SelectItem>
+                <SelectItem value="ALL">{t('allLevels')}</SelectItem>
+                <SelectItem value="INTERN_FRESHER">{t('levelInternFresher')}</SelectItem>
+                <SelectItem value="JUNIOR">{t('levelJunior')}</SelectItem>
+                <SelectItem value="MIDDLE">{t('levelMiddle')}</SelectItem>
+                <SelectItem value="SENIOR">{t('levelSenior')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -236,7 +238,7 @@ export default function AdminQuestionBankPage() {
                 variant="ghost"
                 className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
               >
-                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> {t('clearFilters')}
               </Button>
             )}
           </div>
@@ -249,15 +251,15 @@ export default function AdminQuestionBankPage() {
             <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
               <TableRow className="hover:bg-transparent border-none">
                 <TableHead className="w-[22%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  CATEGORY & LEVEL
+                  {t('colCategoryLevel')}
                 </TableHead>
 
                 <TableHead className="w-[70%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  QUESTION CONTENT
+                  {t('colQuestionContent')}
                 </TableHead>
 
                 <TableHead className="w-[8%] py-3 px-2 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  ACTIONS
+                  {t('colActions')}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -289,12 +291,12 @@ export default function AdminQuestionBankPage() {
                         <SearchX className="h-6 w-6" />
                       </div>
                       <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">
-                        No questions found
+                        {t('noQuestionsTitle')}
                       </p>
                       <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
                         {isFilterActive
-                          ? 'No questions match the current filters. Try clearing or adjusting your filter.'
-                          : 'No question items created yet.'}
+                          ? t('noQuestionsFilterDesc')
+                          : t('noQuestionsEmptyDesc')}
                       </p>
                       {isFilterActive && (
                         <Button
@@ -302,7 +304,7 @@ export default function AdminQuestionBankPage() {
                           variant="outline"
                           className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
                         >
-                          <RotateCcw className="h-4 w-4 mr-2" /> Clear All Filters
+                          <RotateCcw className="h-4 w-4 mr-2" /> {t('clearAllFilters')}
                         </Button>
                       )}
                     </div>
@@ -341,7 +343,7 @@ export default function AdminQuestionBankPage() {
                           size="icon"
                           onClick={() => openEditModal(q)}
                           className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
-                          title="Edit Question"
+                          title={t('editQuestion')}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -350,7 +352,7 @@ export default function AdminQuestionBankPage() {
                           size="icon"
                           onClick={() => handleDelete(q.id)}
                           className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
-                          title="Delete Question"
+                          title={t('deleteQuestion')}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -366,9 +368,7 @@ export default function AdminQuestionBankPage() {
         {/* TẦNG 3: PAGINATION FOOTER */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 px-1">
           <div className="flex items-center space-x-3 text-sm text-[#65676B] dark:text-zinc-400">
-            <div>
-              Showing <span className="font-semibold text-[#050505] dark:text-zinc-200">{startResult} - {endResult}</span> of <span className="font-semibold text-[#050505] dark:text-zinc-200">{totalCount}</span> question items
-            </div>
+            <div dangerouslySetInnerHTML={{ __html: t.raw("showingText").replace('{start}', startResult.toString()).replace('{end}', endResult.toString()).replace('{total}', totalCount.toString()) }} />
             <Select
               value={String(pageSize)}
               onValueChange={(val) => {
@@ -377,7 +377,7 @@ export default function AdminQuestionBankPage() {
               }}
             >
               <SelectTrigger className="h-8 w-[110px] border-[#CED0D4] dark:border-zinc-800 text-xs font-medium focus:ring-[#1877F2]">
-                <SelectValue placeholder="Page size" />
+                <SelectValue placeholder={t('pageSize')} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
                 <SelectItem value="10">10 / page</SelectItem>

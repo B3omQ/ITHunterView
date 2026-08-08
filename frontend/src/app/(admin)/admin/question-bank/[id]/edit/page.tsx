@@ -10,8 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 export default function AdminEditQuestionPage() {
+  const t = useTranslations("AdminQuestionBank");
   const router = useRouter();
   const params = useParams();
   const questionId = params.id as string;
@@ -41,10 +43,10 @@ export default function AdminEditQuestionPage() {
             questionText: res.data.questionText || "",
           });
         } else {
-          setFormError(res.message || "Failed to load question details");
+          setFormError(res.message || t('loadFail'));
         }
       } catch (err: any) {
-        setFormError(err.message || "An error occurred");
+        setFormError(err.message || t('errorOccurred'));
       } finally {
         setIsLoading(false);
       }
@@ -58,7 +60,7 @@ export default function AdminEditQuestionPage() {
     setFormError("");
 
     if (!formData.level || !formData.questionText) {
-      setFormError("All fields are required.");
+      setFormError(t('allRequired'));
       return;
     }
 
@@ -69,7 +71,7 @@ export default function AdminEditQuestionPage() {
     if (res.success) {
       router.push("/admin/question-bank");
     } else {
-      setFormError(res.message || "An error occurred.");
+      setFormError(res.message || t('errorOccurred'));
     }
   };
 
@@ -83,8 +85,8 @@ export default function AdminEditQuestionPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">Edit Question (Admin)</h1>
-            <p className="text-zinc-500 dark:text-zinc-400 mt-1 text-sm">Update sample interview question details</p>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">{t('editTitle')}</h1>
+            <p className="text-zinc-500 dark:text-zinc-400 mt-1 text-sm">{t('editDesc')}</p>
           </div>
         </div>
 
@@ -103,39 +105,39 @@ export default function AdminEditQuestionPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="industry">Industry <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="industry">{t('industryLabel')} <span className="text-red-500">*</span></Label>
                   <Select value={formData.industry} onValueChange={(v) => setFormData({...formData, industry: v || ""})}>
                     <SelectTrigger id="industry" className="bg-white dark:bg-zinc-950">
-                      <SelectValue placeholder="Select Industry" />
+                      <SelectValue placeholder={t('selectIndustry')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="BA">BA</SelectItem>
-                      <SelectItem value="DEV">Dev</SelectItem>
-                      <SelectItem value="TEST">Test</SelectItem>
+                      <SelectItem value="BA">{t('industryBA')}</SelectItem>
+                      <SelectItem value="DEV">{t('industryDev')}</SelectItem>
+                      <SelectItem value="TEST">{t('industryTest')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="level">Level <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="level">{t('levelLabel')} <span className="text-red-500">*</span></Label>
                   <Select value={formData.level} onValueChange={(v) => setFormData({ ...formData, level: v || "" })}>
                     <SelectTrigger id="level" className="bg-white dark:bg-zinc-950">
-                      <SelectValue placeholder="Select Level" />
+                      <SelectValue placeholder={t('selectLevel')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="INTERN_FRESHER">Intern/Fresher</SelectItem>
-                      <SelectItem value="JUNIOR">Junior</SelectItem>
-                      <SelectItem value="MIDDLE">Middle</SelectItem>
-                      <SelectItem value="SENIOR">Senior</SelectItem>
+                      <SelectItem value="INTERN_FRESHER">{t('levelInternFresher')}</SelectItem>
+                      <SelectItem value="JUNIOR">{t('levelJunior')}</SelectItem>
+                      <SelectItem value="MIDDLE">{t('levelMiddle')}</SelectItem>
+                      <SelectItem value="SENIOR">{t('levelSenior')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="questionText">Question Content <span className="text-red-500">*</span></Label>
+                <Label htmlFor="questionText">{t('questionContent')} <span className="text-red-500">*</span></Label>
                 <Textarea
                   id="questionText"
-                  placeholder="Enter the full question..."
+                  placeholder={t('questionPlaceholder')}
                   rows={4}
                   value={formData.questionText}
                   onChange={(e) => setFormData({ ...formData, questionText: e.target.value })}
@@ -146,12 +148,12 @@ export default function AdminEditQuestionPage() {
               <div className="flex justify-end gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
                 <Link href="/admin/question-bank">
                   <Button type="button" variant="outline">
-                    Cancel
+                    {t('cancelBtn')}
                   </Button>
                 </Link>
                 <Button type="submit" disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]">
                   {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Save Changes
+                  {isSubmitting ? t('savingBtn') : t('saveBtn')}
                 </Button>
               </div>
             </form>

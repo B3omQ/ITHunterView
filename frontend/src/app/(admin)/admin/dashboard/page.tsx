@@ -17,6 +17,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { useTranslations } from "next-intl";
 
 const userGrowthData = [
   { month: "Jan", users: 1200, revenue: 4000 },
@@ -47,29 +48,31 @@ const subscriptionData = [
 const COLORS = ["#3b82f6", "#8b5cf6", "#ec4899"];
 
 export default function AdminDashboard() {
+  const t = useTranslations("AdminDashboard");
+
   const stats = [
     {
-      title: "Total Revenue",
+      title: t("revTitle"),
       value: "$13,500",
-      change: "+15% from last month",
+      change: t("revChange"),
       icon: <Banknote className="h-4 w-4 text-muted-foreground" />,
     },
     {
-      title: "Total Users",
+      title: t("usersTitle"),
       value: "4,800",
-      change: "+12% from last month",
+      change: t("usersChange"),
       icon: <Users className="h-4 w-4 text-muted-foreground" />,
     },
     {
-      title: "AI Tokens Used",
+      title: t("tokensTitle"),
       value: "967K",
-      change: "+5% from last week",
+      change: t("tokensChange"),
       icon: <Coins className="h-4 w-4 text-muted-foreground" />,
     },
     {
-      title: "Transactions",
+      title: t("txTitle"),
       value: "1,204",
-      change: "+8% from last month",
+      change: t("txChange"),
       icon: <Activity className="h-4 w-4 text-muted-foreground" />,
     },
   ];
@@ -77,9 +80,9 @@ export default function AdminDashboard() {
   return (
     <div className="w-full pb-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Admin Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground">
-          Platform overview, financial growth, and AI usage metrics.
+          {t("desc")}
         </p>
       </div>
 
@@ -105,7 +108,7 @@ export default function AdminDashboard() {
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-1 lg:col-span-4">
           <CardHeader>
-            <CardTitle>User & Revenue Growth</CardTitle>
+            <CardTitle>{t("chartUserRev")}</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
             <div className="h-[300px] w-full">
@@ -127,7 +130,7 @@ export default function AdminDashboard() {
 
         <Card className="col-span-1 lg:col-span-3">
           <CardHeader>
-            <CardTitle>AI Token Usage (Weekly)</CardTitle>
+            <CardTitle>{t("chartTokens")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
@@ -146,7 +149,7 @@ export default function AdminDashboard() {
 
         <Card className="col-span-1 lg:col-span-3">
           <CardHeader>
-            <CardTitle>Subscriptions Breakdown</CardTitle>
+            <CardTitle>{t("chartSub")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full flex items-center justify-center">

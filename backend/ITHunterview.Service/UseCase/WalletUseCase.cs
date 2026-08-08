@@ -72,6 +72,8 @@ namespace ITHunterview.Service.UseCase
             int? mockInterviewUsed = null;
             int? cvMatchLimit = null;
             int? cvMatchUsed = null;
+            int? cvOptimizeLimit = null;
+            int? cvOptimizeUsed = null;
             int? learningPathLimit = null;
             int? learningPathUsed = null;
             int? learningPathSlotLimit = null;
@@ -117,6 +119,7 @@ namespace ITHunterview.Service.UseCase
                         {
                             mockInterviewLimit = features.MockInterviewLimit;
                             cvMatchLimit = features.CvMatchLimit;
+                            cvOptimizeLimit = features.CvOptimizeLimit;
                             learningPathLimit = features.LearningPathLimit ?? features.LearningPathSlotLimit;
                             learningPathSlotLimit = features.LearningPathSlotLimit;
 
@@ -134,6 +137,13 @@ namespace ITHunterview.Service.UseCase
                                                 m.UpdatedAt >= start &&
                                                 m.UpdatedAt <= end &&
                                                 m.Status != "Failed")
+                                    .CountAsync();
+                            }
+
+                            if (cvOptimizeLimit.HasValue)
+                            {
+                                cvOptimizeUsed = await _context.OptimizeSessions
+                                    .Where(x => x.UserId == userId && x.CreatedAt >= start && x.CreatedAt <= end)
                                     .CountAsync();
                             }
 
@@ -216,6 +226,8 @@ namespace ITHunterview.Service.UseCase
                 MockInterviewUsed = mockInterviewUsed,
                 CvMatchLimit = cvMatchLimit,
                 CvMatchUsed = cvMatchUsed,
+                CvOptimizeLimit = cvOptimizeLimit,
+                CvOptimizeUsed = cvOptimizeUsed,
                 LearningPathLimit = learningPathLimit,
                 LearningPathUsed = learningPathUsed,
                 LearningPathSlotLimit = learningPathSlotLimit,
@@ -320,19 +332,31 @@ namespace ITHunterview.Service.UseCase
                     return new ResponseBase<CreatePaymentResponseDto>("Gói Subscription không tồn tại hoặc không hoạt động");
                 }
 
-                var buyer = await _context.Users
-                    .Include(u => u.Role)
-                    .FirstOrDefaultAsync(u => u.Id == userId);
-                var features = DeserializeSubscriptionFeatures(sub.FeaturesConfig);
-                if (buyer?.Role?.Name == null || features?.Role == null ||
-                    !IsSubscriptionRoleCompatible(buyer.Role.Name, features.Role))
+                // Check active subscription hierarchy
+                var activeSub = await _context.UserSubscriptions
+                    .Where(us => us.UserId == userId && us.Status == UserSubscriptionStatus.ACTIVE && us.EndDate >= DateTime.UtcNow)
+                    .OrderByDescending(us => us.StartDate)
+                    .FirstOrDefaultAsync();
+
+                if (activeSub != null)
                 {
-                    return new ResponseBase<CreatePaymentResponseDto>("Gói dịch vụ không phù hợp với vai trò tài khoản của bạn.");
+                    if (activeSub.SubId == subId)
+                    {
+                        return new ResponseBase<CreatePaymentResponseDto>("Gói hiện tại đang sử dụng, không thể mua lại.");
+                    }
+
+                    var currentSubDetails = await _context.Subscriptions.FirstOrDefaultAsync(s => s.Id == activeSub.SubId);
+                    if (currentSubDetails != null && sub.Price <= currentSubDetails.Price)
+                    {
+                        return new ResponseBase<CreatePaymentResponseDto>("Chỉ được mua gói cao hơn gói hiện tại.");
+                    }
                 }
 
                 amount = sub.Price;
+                // Parse features to get CoinCredit
+                var features = System.Text.Json.JsonSerializer.Deserialize<DTOs.Subscription.FeaturesConfigDto>(sub.FeaturesConfig);
                 // Snapshot coin bonus at purchase time so future package edits do not affect this payment.
-                creditsGranted = features.CoinCredit ?? 0;
+                creditsGranted = features?.CoinCredit ?? 0;
                 // Ánh xạ int ID thành Guid: 00000000-0000-0000-0000-XXXXXXXXXXXX
                 targetIdGuid = Guid.Parse(sub.Id.ToString().PadLeft(32, '0'));
                 descriptionText = $"Mua goi {sub.Name}";

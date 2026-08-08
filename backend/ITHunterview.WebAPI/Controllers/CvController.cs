@@ -23,6 +23,9 @@ namespace ITHunterview.WebAPI.Controllers
         private readonly ICvJdMatchingRetryUseCase _matchingRetryUseCase;
         private readonly ICvJdMatchingHistoryUseCase _matchingHistoryUseCase;
         private readonly ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService _cvTextExtractorService;
+        private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
+        private readonly IMatchingInputPreflightUseCase _matchingInputPreflightUseCase;
+        private readonly ITHunterview.WebAPI.BackgroundServices.ICvMatchingQueue _matchingQueue;
 
         public CvController(
             ICvUseCase cvUseCase, 
@@ -31,7 +34,11 @@ namespace ITHunterview.WebAPI.Controllers
             ICvJdMatchingSubmissionUseCase matchingSubmissionUseCase,
             ICvJdMatchingRetryUseCase matchingRetryUseCase,
             ICvJdMatchingHistoryUseCase matchingHistoryUseCase,
-            ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService cvTextExtractorService)
+            IServiceScopeFactory serviceScopeFactory,
+            ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService cvTextExtractorService,
+            ICandidateFeatureUsageUseCase featureUsageUseCase,
+            IMatchingInputPreflightUseCase matchingInputPreflightUseCase,
+            ITHunterview.WebAPI.BackgroundServices.ICvMatchingQueue matchingQueue)
         {
             _cvUseCase = cvUseCase;
             _cvJobMatchingUseCase = cvJobMatchingUseCase;
@@ -224,10 +231,18 @@ namespace ITHunterview.WebAPI.Controllers
 
             try
             {
-                // Optionally verify that CV belongs to user
+                // Verify that CV belongs to user
                 await _cvUseCase.GetCvByIdAsync(id, userId);
-                await _cvJobMatchingUseCase.MatchCvWithAllJobsAsync(id, userId);
-                return Ok(new ResponseBase<string>("Matching completed", "CV matched with jobs successfully"));
+
+                // Queue the matching task
+                await _matchingQueue.QueueMatchRequestAsync(new ITHunterview.WebAPI.BackgroundServices.CvMatchingRequest
+                {
+                    CvId = id,
+                    UserId = userId,
+                    IsHardcode = false
+                });
+
+                return Accepted(new ResponseBase<string>("Matching queued", "CV matching process has been started in the background."));
             }
             catch (KeyNotFoundException)
             {
@@ -287,8 +302,16 @@ namespace ITHunterview.WebAPI.Controllers
             {
                 // Verify that CV belongs to user
                 await _cvUseCase.GetCvByIdAsync(id, userId);
-                await _hardcodeCvJobMatchingUseCase.MatchCvWithAllJobsHardcodeAsync(id, userId);
-                return Ok(new ResponseBase<string>("Matching completed", "CV matched with jobs using Hardcode successfully"));
+
+                // Queue the matching task
+                await _matchingQueue.QueueMatchRequestAsync(new ITHunterview.WebAPI.BackgroundServices.CvMatchingRequest
+                {
+                    CvId = id,
+                    UserId = userId,
+                    IsHardcode = true
+                });
+
+                return Accepted(new ResponseBase<string>("Matching queued", "CV matched with jobs using Hardcode successfully in the background."));
             }
             catch (KeyNotFoundException)
             {

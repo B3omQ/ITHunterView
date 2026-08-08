@@ -45,8 +45,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import JobDetailModal from '@/components/jobs/JobDetailModal';
+import { useTranslations } from 'next-intl';
 
 export default function AdminJobPostingsPage() {
+  const t = useTranslations('AdminJobPostings');
   const { data, loading, fetchJobs, banJob, unbanJob } = useStaffJobs();
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -84,7 +86,7 @@ export default function AdminJobPostingsPage() {
   useEffect(() => {
     if (connection) {
       connection.on('JobCreated', (job) => {
-        toast.success(`New job posting: ${job.title}`);
+        toast.success(t("toastNew", { title: job.title }));
         fetchJobs(page, pageSize, debouncedSearch || undefined, statusFilter === 'ALL' ? undefined : statusFilter);
       });
       connection.on('JobStatusChanged', () => {
@@ -120,22 +122,22 @@ export default function AdminJobPostingsPage() {
     setIsSubmitting(false);
 
     if (res.success) {
-      toast.success('Job posting banned successfully');
+      toast.success(t("toastBanSuccess"));
       setIsBanDialogOpen(false);
       fetchJobs(page, pageSize, debouncedSearch || undefined, statusFilter === 'ALL' ? undefined : statusFilter);
     } else {
-      toast.error(res.message || 'Failed to ban job posting');
+      toast.error(res.message || t("toastBanFail"));
     }
   };
 
   const handleUnban = async (id: string) => {
-    if (confirm('Are you sure you want to unban this job posting?')) {
+    if (confirm(t("confirmUnban"))) {
       const res = await unbanJob(id);
       if (res.success) {
-        toast.success('Job posting unbanned successfully');
+        toast.success(t("toastUnbanSuccess"));
         fetchJobs(page, pageSize, debouncedSearch || undefined, statusFilter === 'ALL' ? undefined : statusFilter);
       } else {
-        toast.error(res.message || 'Failed to unban job posting');
+        toast.error(res.message || t("toastUnbanFail"));
       }
     }
   };
@@ -160,10 +162,10 @@ export default function AdminJobPostingsPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
               <Briefcase className="text-[#1877F2] shrink-0 h-8 w-8" />
-              Job Postings Management & Audit
+              {t("title")}
             </h1>
             <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
-              Monitor, review, and audit job postings across the platform in real-time.
+              {t("desc")}
             </p>
           </div>
         </div>
@@ -177,14 +179,14 @@ export default function AdminJobPostingsPage() {
               <Input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by title, job code..."
+                placeholder={t("searchPlaceholder")}
                 className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
               />
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#65676B] hover:text-[#050505] dark:hover:text-white transition-colors p-1 cursor-pointer"
-                  title="Clear search"
+                  title={t("clearSearch")}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -200,13 +202,13 @@ export default function AdminJobPostingsPage() {
               }}
             >
               <SelectTrigger className="w-full sm:w-[170px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
-                <SelectValue placeholder="Status Filter" />
+                <SelectValue placeholder={t("statusFilter")} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
-                <SelectItem value="ALL">All Statuses</SelectItem>
-                <SelectItem value="PUBLISHED">Published</SelectItem>
-                <SelectItem value="DRAFT">Draft</SelectItem>
-                <SelectItem value="CLOSED">Closed</SelectItem>
+                <SelectItem value="ALL">{t("allStatuses")}</SelectItem>
+                <SelectItem value="PUBLISHED">{t("published")}</SelectItem>
+                <SelectItem value="DRAFT">{t("draft")}</SelectItem>
+                <SelectItem value="CLOSED">{t("closed")}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -217,7 +219,7 @@ export default function AdminJobPostingsPage() {
                 variant="ghost"
                 className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
               >
-                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> {t("clearFilters")}
               </Button>
             )}
           </div>
@@ -230,27 +232,27 @@ export default function AdminJobPostingsPage() {
             <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
               <TableRow className="hover:bg-transparent border-none">
                 <TableHead className="w-[14%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  JOB CODE
+                  {t("colCode")}
                 </TableHead>
 
                 <TableHead className="w-[32%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  JOB TITLE
+                  {t("colTitle")}
                 </TableHead>
 
                 <TableHead className="w-[15%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  PUBLISHED DATE
+                  {t("colDate")}
                 </TableHead>
 
                 <TableHead className="w-[14%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  STATUS
+                  {t("colStatus")}
                 </TableHead>
 
                 <TableHead className="w-[15%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  AUDIT STATUS
+                  {t("colAudit")}
                 </TableHead>
 
                 <TableHead className="w-[10%] py-3 px-2 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  ACTIONS
+                  {t("colActions")}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -290,12 +292,10 @@ export default function AdminJobPostingsPage() {
                         <SearchX className="h-6 w-6" />
                       </div>
                       <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">
-                        No job postings found
+                        {t("noJobsFound")}
                       </p>
                       <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
-                        {isFilterActive
-                          ? 'No job postings match the current filters. Try clearing or adjusting your search criteria.'
-                          : 'No job postings registered yet.'}
+                        {isFilterActive ? t("noJobsFilter") : t("noJobsEmpty")}
                       </p>
                       {isFilterActive && (
                         <Button
@@ -303,7 +303,7 @@ export default function AdminJobPostingsPage() {
                           variant="outline"
                           className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
                         >
-                          <RotateCcw className="h-4 w-4 mr-2" /> Clear All Filters
+                          <RotateCcw className="h-4 w-4 mr-2" /> {t("clearAllFilters")}
                         </Button>
                       )}
                     </div>
@@ -338,15 +338,15 @@ export default function AdminJobPostingsPage() {
                       <div className="flex justify-center">
                         {job.status === 'PUBLISHED' ? (
                           <Badge className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none">
-                            Published
+                            {t("published")}
                           </Badge>
                         ) : job.status === 'DRAFT' ? (
                           <Badge className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 rounded-full px-2.5 py-0.5 text-xs font-medium">
-                            Draft
+                            {t("draft")}
                           </Badge>
                         ) : (
                           <Badge className="bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none">
-                            Closed
+                            {t("closed")}
                           </Badge>
                         )}
                       </div>
@@ -357,11 +357,11 @@ export default function AdminJobPostingsPage() {
                       <div className="flex justify-center">
                         {job.isBanned ? (
                           <Badge className="bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none inline-flex items-center gap-1">
-                            <Ban className="h-3 w-3" /> Banned
+                            <Ban className="h-3 w-3" /> {t("banned")}
                           </Badge>
                         ) : (
                           <Badge className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none inline-flex items-center gap-1">
-                            <CheckCircle2 className="h-3 w-3" /> Valid
+                            <CheckCircle2 className="h-3 w-3" /> {t("valid")}
                           </Badge>
                         )}
                       </div>
@@ -374,7 +374,7 @@ export default function AdminJobPostingsPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
-                          title="View Details"
+                          title={t("viewDetails")}
                           onClick={() => openDetailModal(job.id)}
                         >
                           <Eye className="h-4 w-4" />
@@ -385,7 +385,7 @@ export default function AdminJobPostingsPage() {
                             size="icon"
                             onClick={() => handleUnban(job.id)}
                             className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
-                            title="Unban Job"
+                            title={t("unbanJob")}
                           >
                             <CheckCircle2 className="h-4 w-4" />
                           </Button>
@@ -395,7 +395,7 @@ export default function AdminJobPostingsPage() {
                             size="icon"
                             onClick={() => openBanDialog(job.id)}
                             className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
-                            title="Ban Job"
+                            title={t("banJob")}
                           >
                             <Ban className="h-4 w-4" />
                           </Button>
@@ -412,9 +412,7 @@ export default function AdminJobPostingsPage() {
         {/* TẦNG 3: PAGINATION FOOTER */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 px-1">
           <div className="flex items-center space-x-3 text-sm text-[#65676B] dark:text-zinc-400">
-            <div>
-              Showing <span className="font-semibold text-[#050505] dark:text-zinc-200">{startResult} - {endResult}</span> of <span className="font-semibold text-[#050505] dark:text-zinc-200">{totalItems}</span> job postings
-            </div>
+            <div dangerouslySetInnerHTML={{ __html: t.raw("showingText").replace('{start}', startResult.toString()).replace('{end}', endResult.toString()).replace('{total}', totalItems.toString()) }} />
             <Select
               value={String(pageSize)}
               onValueChange={(val) => {
@@ -423,12 +421,12 @@ export default function AdminJobPostingsPage() {
               }}
             >
               <SelectTrigger className="h-8 w-[110px] border-[#CED0D4] dark:border-zinc-800 text-xs font-medium focus:ring-[#1877F2]">
-                <SelectValue placeholder="Page size" />
+                <SelectValue placeholder={t("pageSize")} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
-                <SelectItem value="10">10 / page</SelectItem>
-                <SelectItem value="20">20 / page</SelectItem>
-                <SelectItem value="50">50 / page</SelectItem>
+                <SelectItem value="10">{t("perPage", { size: 10 })}</SelectItem>
+                <SelectItem value="20">{t("perPage", { size: 20 })}</SelectItem>
+                <SelectItem value="50">{t("perPage", { size: 50 })}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -500,14 +498,14 @@ export default function AdminJobPostingsPage() {
       <Dialog open={isBanDialogOpen} onOpenChange={setIsBanDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ban Job Posting</DialogTitle>
+            <DialogTitle>{t("banTitle")}</DialogTitle>
             <DialogDescription>
-              Please enter a reason for banning this job posting. The recruiter will be notified.
+              {t("banDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Input
-              placeholder="Reason for banning (e.g. Violation of terms, Spam...)"
+              placeholder={t("banReason")}
               value={banReason}
               onChange={(e) => setBanReason(e.target.value)}
               autoFocus
@@ -515,10 +513,10 @@ export default function AdminJobPostingsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsBanDialogOpen(false)}>
-              Cancel
+              {t("cancel")}
             </Button>
             <Button variant="destructive" onClick={handleBanSubmit} disabled={isSubmitting || !banReason.trim()}>
-              {isSubmitting ? 'Banning...' : 'Confirm Ban'}
+              {isSubmitting ? t("banning") : t("confirmBan")}
             </Button>
           </DialogFooter>
         </DialogContent>

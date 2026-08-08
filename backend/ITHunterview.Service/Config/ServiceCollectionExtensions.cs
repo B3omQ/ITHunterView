@@ -21,6 +21,8 @@ namespace ITHunterview.Service.Config
     {
         public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
         {
+            services.AddLocalization();
+            
             // Repositories — Auth
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<ITokenRepository, TokenRepository>();
@@ -66,7 +68,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IOptimizeSessionRepository, OptimizeSessionRepository>();
 
             // Application Services
-            services.AddHttpClient();
+            services.AddHttpClient("", client => client.Timeout = TimeSpan.FromMinutes(3));
             services.Configure<AiSettings>(configuration.GetSection("AiSettings"));
             services.AddScoped<IAiProvider, OpenAiProvider>();
             services.AddScoped<IAiProvider, GeminiProvider>();

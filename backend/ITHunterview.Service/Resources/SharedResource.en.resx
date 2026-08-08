@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <data name="ItemNotFound" xml:space="preserve">
+    <value>Item not found</value>
+  </data>
+  <data name="Unauthorized" xml:space="preserve">
+    <value>Unauthorized</value>
+  </data>
+  <data name="SystemError" xml:space="preserve">
+    <value>A system error occurred. Please try again later.</value>
+  </data>
+</root>

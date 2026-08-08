@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { useCreateMajor, useUpdateMajor, useMajorTree } from '@/hooks/useMajor';
 import type { MajorDto } from '@/types/master-data.types';
+import { useTranslations } from 'next-intl';
 
 interface MajorModalProps {
   isOpen: boolean;
@@ -83,6 +84,7 @@ const getDropdownOptions = (
 };
 
 export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: MajorModalProps) {
+  const t = useTranslations('AdminMasterData');
   const [majorForm, setMajorForm] = useState({ name: '', code: '' });
   const [parentId, setParentId] = useState<number | null>(null);
   const [majorFormError, setMajorFormError] = useState('');
@@ -188,7 +190,7 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{mode === 'create' ? 'Add New Specialization' : 'Edit Specialization'}</DialogTitle>
+          <DialogTitle>{mode === 'create' ? t('addMajor') : t('editMajor')}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
@@ -207,7 +209,7 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
           )}
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-foreground">Major Name</label>
+            <label className="text-xs font-bold text-foreground">{t('majorFormNameLabel')}</label>
             <input
               type="text"
               placeholder="Enter full major name..."
@@ -219,7 +221,7 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-foreground">Major Code</label>
+            <label className="text-xs font-bold text-foreground">{t('majorFormCodeLabel')}</label>
             <input
               type="text"
               placeholder="Enter major code (e.g. DEV, BA...)"
@@ -232,7 +234,7 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-foreground">Parent Specialization</label>
+            <label className="text-xs font-bold text-foreground">{t('majorFormParentLabel')}</label>
             <select
               value={parentId ?? ''}
               onChange={(e) => {
@@ -246,7 +248,7 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
                 <option disabled>Loading parents...</option>
               ) : (
                 <>
-                  <option value="" className="text-muted-foreground">-- None (Root Level 1) --</option>
+                  <option value="" className="text-muted-foreground">-- {t('majorFormNoneParent')} --</option>
                   {dropdownOptions.map((opt) => (
                     <option key={opt.id} value={opt.id}>
                       {'\u00A0'.repeat((opt.level - 1) * 4)}
@@ -270,7 +272,7 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
               onClick={onClose}
               className="px-4 py-2 border border-border hover:bg-muted text-foreground font-medium text-sm rounded-xl transition-colors"
             >
-              Cancel
+              {t('cancelBtn')}
             </button>
             <button
               type="submit"
@@ -278,7 +280,7 @@ export function MajorModal({ isOpen, onClose, mode, initialData, onSuccess }: Ma
               className="px-4 py-2 bg-primary hover:bg-primary/95 text-primary-foreground font-medium text-sm rounded-xl shadow-xs transition-colors flex items-center gap-1.5 disabled:opacity-50"
             >
               {(isPending || isTreeLoading) && <Loader2 size={14} className="animate-spin" />}
-              <span>Save Changes</span>
+              <span>{t('saveBtn')}</span>
             </button>
           </div>
         </form>

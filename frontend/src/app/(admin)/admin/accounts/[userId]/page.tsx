@@ -25,6 +25,7 @@ import { useUserDetail, useUpdateUserStatus } from '@/hooks/useUserGovernance';
 import { UserStatus, SystemRole } from '@/types/user-governance.types';
 import { UpdateStatusModal } from '../components/update-status-modal';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
+import { useTranslations } from 'next-intl';
 
 // Custom inline SVG icons for social links since they are not exported by this version of lucide-react
 const Github = ({ size = 24, className, ...props }: React.SVGProps<SVGSVGElement> & { size?: number }) => (
@@ -69,6 +70,7 @@ interface PageProps {
 }
 
 export default function AdminAccountDetailPage({ params }: PageProps) {
+  const t = useTranslations('AdminAccounts');
   const router = useRouter();
   const resolvedParams = use(params);
   const userId = resolvedParams.userId;
@@ -94,7 +96,7 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
 
   useEffect(() => {
     if (isError) {
-      showToast('Account does not exist or an error occurred (404).', 'error');
+      showToast(t('detailPage.error404'), 'error');
     }
   }, [isError]);
 
@@ -125,28 +127,28 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
             <CheckCircle size={12} />
-            <span>Active</span>
+            <span>{t('statusActive')}</span>
           </span>
         );
       case 'INACTIVE':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-zinc-500/10 text-zinc-500 border border-zinc-500/20">
             <Clock size={12} />
-            <span>Inactive</span>
+            <span>{t('statusInactive')}</span>
           </span>
         );
       case 'BANNED':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-500 border border-rose-500/20">
             <Ban size={12} />
-            <span>Banned</span>
+            <span>{t('statusBanned')}</span>
           </span>
         );
       case 'PENDING_VERIFICATION':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/20">
             <AlertTriangle size={12} />
-            <span>Pending Verification</span>
+            <span>{t('statusPending')}</span>
           </span>
         );
       default:
@@ -164,28 +166,28 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/10">
           <Shield size={11} />
-          <span>Admin</span>
+          <span>{t('roleAdmin')}</span>
         </span>
       );
     } else if (name.includes('staff')) {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/10">
           <User size={11} />
-          <span>Staff</span>
+          <span>{t('roleStaff')}</span>
         </span>
       );
     } else if (name.includes('recruiter')) {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/10">
           <Building size={11} />
-          <span>Recruiter</span>
+          <span>{t('roleRecruiter')}</span>
         </span>
       );
     } else {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border border-zinc-500/10">
           <User size={11} />
-          <span>Candidate</span>
+          <span>{t('roleCandidate')}</span>
         </span>
       );
     }
@@ -195,7 +197,7 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
     return (
       <div className="min-h-[400px] flex flex-col items-center justify-center text-muted-foreground gap-3">
         <Loader2 className="animate-spin text-primary" size={40} />
-        <span className="text-sm font-semibold">Loading user profile details...</span>
+        <span className="text-sm font-semibold">{t('detailPage.loading')}</span>
       </div>
     );
   }
@@ -208,10 +210,10 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
           className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft size={16} />
-          <span>Back to list</span>
+          <span>{t('detailPage.backToList')}</span>
         </Link>
         <div className="bg-rose-500/10 border border-rose-500/25 p-6 rounded-2xl text-rose-500 text-center font-bold">
-          Detailed profile info for this user account could not be found.
+          {t('detailPage.notFoundDetails')}
         </div>
         {toastMarkup}
       </div>
@@ -228,7 +230,7 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
         className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors border border-border bg-card px-3.5 py-2 rounded-xl"
       >
         <ArrowLeft size={16} />
-        <span>Back to list</span>
+        <span>{t('detailPage.backToList')}</span>
       </Link>
 
       {/* Main Grid Layout */}
@@ -237,23 +239,23 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
         <div className="space-y-6">
           <div className="bg-card border border-border p-6 rounded-2xl shadow-xs space-y-5">
             <h2 className="text-sm font-black text-foreground border-b border-border pb-3 uppercase tracking-wider">
-              System Account
+              {t('detailPage.systemAccountLabel')}
             </h2>
             <div className="space-y-3">
               <div className="space-y-1">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Email</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">{t('detailPage.emailLabel')}</span>
                 <span className="text-sm font-mono font-semibold text-foreground break-all">{user.email}</span>
               </div>
               <div className="space-y-1">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Role</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">{t('detailPage.roleLabel')}</span>
                 <div>{getRoleBadge(user.roleName)}</div>
               </div>
               <div className="space-y-1">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Status</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">{t('detailPage.statusLabel')}</span>
                 <div>{getStatusBadge(user.status)}</div>
               </div>
               <div className="space-y-1">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Joined Date</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">{t('detailPage.joinedDateLabel')}</span>
                 <span className="text-sm font-semibold text-foreground">
                   {new Date(user.createdAt).toLocaleDateString('en-US', {
                     year: 'numeric',
@@ -264,7 +266,7 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
               </div>
               {user.deactiveAt && (
                 <div className="space-y-1">
-                  <span className="text-xs font-bold text-rose-500 uppercase tracking-wider block">Deactivated Date</span>
+                  <span className="text-xs font-bold text-rose-500 uppercase tracking-wider block">{t('detailPage.deactivatedDateLabel')}</span>
                   <span className="text-sm font-semibold text-rose-500">
                     {new Date(user.deactiveAt).toLocaleDateString('en-US', {
                       year: 'numeric',
@@ -284,7 +286,7 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
                   className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-border hover:bg-muted text-foreground font-semibold text-sm rounded-xl transition-colors"
                 >
                   <Edit2 size={16} />
-                  <span>Change Status</span>
+                  <span>{t('detailPage.changeStatusBtn')}</span>
                 </button>
               </div>
             )}
@@ -313,7 +315,7 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
                     {user.candidateProfile.firstName} {user.candidateProfile.lastName}
                   </h3>
                   <span className="inline-flex px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 font-semibold text-xs mt-1">
-                    Candidate Profile
+                    {t('detailPage.candidateProfileLabel')}
                   </span>
                 </div>
               </div>
@@ -321,32 +323,32 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
               {/* Bio & Details */}
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">About Me</span>
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">{t('detailPage.aboutMeLabel')}</span>
                   <p className="text-sm text-foreground bg-muted/40 border border-border/50 p-3 rounded-xl leading-relaxed whitespace-pre-wrap">
-                    {user.candidateProfile.aboutMe || <span className="text-muted-foreground italic">No introduction provided.</span>}
+                    {user.candidateProfile.aboutMe || <span className="text-muted-foreground italic">{t('detailPage.noIntro')}</span>}
                   </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Phone</span>
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">{t('detailPage.phoneLabel')}</span>
                     <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                       <Phone size={14} className="text-muted-foreground" />
-                      {user.candidateProfile.phone || <span className="text-muted-foreground italic font-normal">Not updated</span>}
+                      {user.candidateProfile.phone || <span className="text-muted-foreground italic font-normal">{t('notUpdated')}</span>}
                     </span>
                   </div>
                   <div className="space-y-1">
-                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Location</span>
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">{t('detailPage.locationLabel')}</span>
                     <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                       <MapPin size={14} className="text-muted-foreground" />
-                      {user.candidateProfile.location || <span className="text-muted-foreground italic font-normal">Not updated</span>}
+                      {user.candidateProfile.location || <span className="text-muted-foreground italic font-normal">{t('notUpdated')}</span>}
                     </span>
                   </div>
                 </div>
 
                 {/* Social Links */}
                 <div className="space-y-2 pt-2">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Social Links</span>
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">{t('detailPage.socialLinksLabel')}</span>
                   <div className="flex flex-wrap gap-2">
                     {user.candidateProfile.githubUrl && (
                       <a
@@ -382,7 +384,7 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
                       </a>
                     )}
                     {!user.candidateProfile.githubUrl && !user.candidateProfile.linkedInUrl && !user.candidateProfile.portfolioUrl && (
-                      <span className="text-sm text-muted-foreground italic">No social links.</span>
+                      <span className="text-sm text-muted-foreground italic">{t('detailPage.noSocialLinks')}</span>
                     )}
                   </div>
                 </div>
@@ -409,7 +411,7 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
                   <h3 className="text-xl font-black text-foreground">{user.recruiterProfile.fullName}</h3>
                   <p className="text-sm text-muted-foreground font-medium mt-0.5">{user.recruiterProfile.positionTitle}</p>
                   <span className="inline-flex px-2 py-0.5 rounded bg-orange-500/10 text-orange-500 font-semibold text-xs mt-2">
-                    Professional Recruiter
+                    {t('detailPage.recruiterProfileLabel')}
                   </span>
                 </div>
               </div>
@@ -417,10 +419,10 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
               {/* Personal Info */}
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Contact Phone</span>
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">{t('detailPage.contactPhoneLabel')}</span>
                   <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                     <Phone size={14} className="text-muted-foreground" />
-                    {user.recruiterProfile.phone || <span className="text-muted-foreground italic font-normal">Not updated</span>}
+                    {user.recruiterProfile.phone || <span className="text-muted-foreground italic font-normal">{t('notUpdated')}</span>}
                   </span>
                 </div>
               </div>
@@ -430,7 +432,7 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
                 <div className="border-t border-border pt-5 space-y-4">
                   <h4 className="text-sm font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
                     <Building size={16} className="text-primary" />
-                    Affiliated Company
+                    {t('detailPage.affiliatedCompanyLabel')}
                   </h4>
                   <div className="flex items-start gap-3 bg-muted/20 border border-border/60 p-4 rounded-xl">
                     <div className="w-12 h-12 bg-card border border-border rounded-xl flex items-center justify-center overflow-hidden shrink-0">
@@ -452,14 +454,14 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Headquarters</span>
+                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">{t('detailPage.headquartersLabel')}</span>
                       <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                         <MapPin size={14} className="text-muted-foreground shrink-0" />
                         <span className="leading-relaxed">{user.recruiterProfile.company.headquartersAddress}</span>
                       </span>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Website</span>
+                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">{t('detailPage.websiteLabel')}</span>
                       <a
                         href={user.recruiterProfile.company.website}
                         target="_blank"
@@ -474,7 +476,7 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
                 </div>
               ) : (
                 <div className="border-t border-border pt-5 text-center text-muted-foreground text-sm italic">
-                  This recruiter is not yet affiliated with any company.
+                  {t('detailPage.noCompanyMsg')}
                 </div>
               )}
             </div>
@@ -496,7 +498,7 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
                       ? 'bg-purple-500/10 text-purple-500 border border-purple-500/20' 
                       : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
                   }`}>
-                    {user.roleName} Profile
+                    {user.roleName?.toLowerCase() === 'admin' ? t('detailPage.adminProfileLabel') : t('detailPage.staffProfileLabel')}
                   </span>
                 </div>
               </div>
@@ -504,11 +506,11 @@ export default function AdminAccountDetailPage({ params }: PageProps) {
               {/* Description */}
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Description</span>
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">{t('detailPage.descriptionLabel')}</span>
                   <p className="text-sm text-foreground bg-muted/40 border border-border/50 p-4 rounded-xl leading-relaxed">
                     {user.roleName?.toLowerCase() === 'staff' 
-                      ? 'This is an internal system Staff account. Staff members can monitor candidate and recruiter activities, inspect applications, review job postings, and handle standard support operations.'
-                      : 'This is the master Administrator account. The administrator has full permissions over system configurations, user governance, audit log tracking, and security parameters.'
+                      ? t('detailPage.staffDesc')
+                      : t('detailPage.adminDesc')
                     }
                   </p>
                 </div>

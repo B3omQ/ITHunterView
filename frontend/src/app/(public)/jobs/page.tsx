@@ -15,12 +15,14 @@ import type { JobSearchQuery } from '@/types/job.types';
 import { JobDetailPanel } from '@/components/jobs/JobDetailPanel';
 import JobDetailModal from '@/components/jobs/JobDetailModal';
 import { useAuthStore } from '@/store/auth.store';
+import { useTranslations } from 'next-intl';
 
 function PublicJobsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useAuthStore();
+  const t = useTranslations('Jobs');
   const isCandidateMode = user?.role?.name?.toLowerCase() === 'candidate';
   
   const parseArray = (param: string | null) => param ? param.split(',').filter(Boolean) : undefined;
@@ -94,7 +96,7 @@ function PublicJobsContent() {
                 ))}
               </div>
             ) : isError ? (
-              <EmptyState title="Failed to load jobs" description="Please try again later." />
+              <EmptyState title={t('failedToLoad')} description={t('pleaseTryAgain')} />
             ) : data?.data?.length ? (
               <>
                 <div className="flex flex-col gap-4">
@@ -118,7 +120,7 @@ function PublicJobsContent() {
                       onClick={() => handlePageChange(data.meta.currentPage - 1)}
                       disabled={data.meta.currentPage === 1}
                     >
-                      <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+                      <ChevronLeft className="w-4 h-4 mr-1" /> {t('prev')}
                     </Button>
                     <span className="text-sm font-medium text-slate-600">
                       {data.meta.currentPage} / {data.meta.totalPages}
@@ -129,13 +131,13 @@ function PublicJobsContent() {
                       onClick={() => handlePageChange(data.meta.currentPage + 1)}
                       disabled={data.meta.currentPage === data.meta.totalPages}
                     >
-                      Next <ChevronRight className="w-4 h-4 ml-1" />
+                      {t('next')} <ChevronRight className="w-4 h-4 ml-1" />
                     </Button>
                   </div>
                 )}
               </>
             ) : (
-              <EmptyState title="No jobs found" description="Try adjusting your search filters." />
+              <EmptyState title={t('noJobsFound')} description={t('tryAdjusting')} />
             )}
           </div>
         </div>
@@ -152,8 +154,8 @@ function PublicJobsContent() {
                  <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6">
                    <MousePointerClick className="w-10 h-10 text-slate-500" />
                  </div>
-                 <h3 className="text-xl font-semibold text-slate-900 mb-2">Select a job to view details</h3>
-                 <p className="text-slate-500 max-w-sm">Click on any job card from the list on the left to see the full job description and apply.</p>
+                 <h3 className="text-xl font-semibold text-slate-900 mb-2">{t('selectJob')}</h3>
+                 <p className="text-slate-500 max-w-sm">{t('clickOnCard')}</p>
               </div>
             )}
           </Card>
