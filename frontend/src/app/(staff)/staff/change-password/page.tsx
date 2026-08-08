@@ -33,6 +33,11 @@ export default function SecuritySettingsPage() {
       return
     }
 
+    if (newPassword.length < 6) {
+      setError("New password must be at least 6 characters long.")
+      return
+    }
+
     setLoading(true)
     try {
       const res = await authService.changePassword({ currentPassword, newPassword, confirmNewPassword })
@@ -44,8 +49,12 @@ export default function SecuritySettingsPage() {
       setTimeout(async () => {
         await logout()
       }, 3000)
-    } catch {
-      setError(t("errServer"))
+    } catch (err: any) {
+      const serverMsg = err?.response?.data?.message 
+        || err?.response?.data?.errors?.NewPassword?.[0]
+        || err?.response?.data?.title
+        || t("errServer")
+      setError(serverMsg)
     } finally {
       setLoading(false)
     }
