@@ -92,11 +92,27 @@ export default function CandidatePricingPage() {
                       </span>
                     </li>
                   )}
+                  {sub.featuresConfig.cvOptimizeLimit !== null && sub.featuresConfig.cvOptimizeLimit !== undefined && (
+                    <li className="flex gap-3 items-start">
+                      <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
+                      <span className="text-zinc-600 text-sm">
+                        {sub.featuresConfig.cvOptimizeLimit} CV Optimizations
+                      </span>
+                    </li>
+                  )}
+                  {sub.featuresConfig.mockInterviewLimit !== null && (
+                    <li className="flex gap-3 items-start">
+                      <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
+                      <span className="text-zinc-600 text-sm">
+                        {sub.featuresConfig.mockInterviewLimit} AI Mock Interviews
+                      </span>
+                    </li>
+                  )}
                   {(sub.featuresConfig.learningPathLimit !== null && sub.featuresConfig.learningPathLimit !== undefined) || (sub.featuresConfig.learningPathSlotLimit !== null && sub.featuresConfig.learningPathSlotLimit !== undefined) ? (
                     <>
                       <li className="flex gap-3 items-start">
                         <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
-                        <span className="text-zinc-600 text-sm font-medium">
+                        <span className="text-zinc-600 text-sm">
                           {sub.name === 'Basic' || sub.durationDays > 365 
                             ? `${sub.featuresConfig.learningPathLimit ?? 1} Lượt tạo Learning Path (duy nhất trong chu kỳ)` 
                             : `${sub.featuresConfig.learningPathLimit ?? sub.featuresConfig.learningPathSlotLimit} Lượt tạo Learning Path / tháng`}
@@ -104,7 +120,7 @@ export default function CandidatePricingPage() {
                       </li>
                       <li className="flex gap-3 items-start">
                         <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
-                        <span className="text-zinc-600 text-sm font-medium">
+                        <span className="text-zinc-600 text-sm">
                           {(sub.featuresConfig.learningPathSlotLimit === -1 || (sub.featuresConfig.learningPathSlotLimit && sub.featuresConfig.learningPathSlotLimit >= 999))
                             ? 'Vô hạn Slot lưu trữ lộ trình học'
                             : `${sub.featuresConfig.learningPathSlotLimit ?? 1} Slot lưu trữ lộ trình học`}
@@ -117,14 +133,6 @@ export default function CandidatePricingPage() {
                       <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                       <span className="text-zinc-600 text-sm">
                         Includes {new Intl.NumberFormat('en-US').format(sub.featuresConfig.coinCredit)} Coins
-                      </span>
-                    </li>
-                  )}
-                  {sub.featuresConfig.mockInterviewLimit !== null && (
-                    <li className="flex gap-3 items-start">
-                      <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
-                      <span className="text-zinc-600 text-sm">
-                        {sub.featuresConfig.mockInterviewLimit} AI Mock Interviews
                       </span>
                     </li>
                   )}
