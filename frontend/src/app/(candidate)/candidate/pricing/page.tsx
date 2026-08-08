@@ -88,11 +88,11 @@ export default function CandidatePricingPage() {
               
               <CardContent className="flex-1 pb-6">
                 <ul className="space-y-2.5">
-                  {sub.featuresConfig.cvMatchLimit !== null && (
+                  {sub.featuresConfig.cvMatchLimit !== null && sub.featuresConfig.cvMatchLimit !== undefined && (
                     <li className="flex gap-3 items-start">
                       <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                       <span className="text-zinc-600 text-sm">
-                        {t("cvMatch", { limit: sub.featuresConfig.cvMatchLimit })}
+                        {t("cvMatch", { limit: sub.featuresConfig.cvMatchLimit ?? 0 })}
                       </span>
                     </li>
                   )}
@@ -104,11 +104,11 @@ export default function CandidatePricingPage() {
                       </span>
                     </li>
                   )}
-                  {sub.featuresConfig.mockInterviewLimit !== null && (
+                  {sub.featuresConfig.mockInterviewLimit !== null && sub.featuresConfig.mockInterviewLimit !== undefined && (
                     <li className="flex gap-3 items-start">
                       <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                       <span className="text-zinc-600 text-sm">
-                        {t("mockInterview", { limit: sub.featuresConfig.mockInterviewLimit })}
+                        {t("mockInterview", { limit: sub.featuresConfig.mockInterviewLimit ?? 0 })}
                       </span>
                     </li>
                   )}
@@ -119,7 +119,7 @@ export default function CandidatePricingPage() {
                         <span className="text-zinc-600 text-sm">
                           {sub.name === 'Basic' || sub.durationDays > 365 
                             ? t("learningPathSingle", { limit: sub.featuresConfig.learningPathLimit ?? 1 }) 
-                            : t("learningPathMonthly", { limit: sub.featuresConfig.learningPathLimit ?? sub.featuresConfig.learningPathSlotLimit })}
+                            : t("learningPathMonthly", { limit: sub.featuresConfig.learningPathLimit ?? sub.featuresConfig.learningPathSlotLimit ?? 0 })}
                         </span>
                       </li>
                       <li className="flex gap-3 items-start">
