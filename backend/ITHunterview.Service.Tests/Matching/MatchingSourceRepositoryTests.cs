@@ -75,6 +75,29 @@ public class MatchingSourceRepositoryTests
         context.Entry(result).State.Should().Be(EntityState.Detached);
     }
 
+    [Fact]
+    public async Task GetAccessibleJobAsync_ReturnsNonPublicJobOnlyWhenCandidateSavedIt()
+    {
+        await using var context = CreateContext();
+        var candidateId = Guid.NewGuid();
+        var job = CreateJob(JobStatus.CLOSED, isBanned: true, expiresAt: DateTime.UtcNow.AddDays(-1));
+        context.JobPostings.Add(job);
+        context.UserSavedJobs.Add(new UserSavedJobs
+        {
+            UserId = candidateId,
+            JobId = job.Id,
+            CreatedAt = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync();
+        var repository = new MatchingSourceRepository(context);
+
+        var savedResult = await repository.GetAccessibleJobAsync(job.Id, candidateId, DateTime.UtcNow);
+        var foreignResult = await repository.GetAccessibleJobAsync(job.Id, Guid.NewGuid(), DateTime.UtcNow);
+
+        savedResult!.Id.Should().Be(job.Id);
+        foreignResult.Should().BeNull();
+    }
+
     private static MatchingSourceTestContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<ITHunterviewContext>()
@@ -130,7 +153,9 @@ public class MatchingSourceRepositoryTests
             // PostgreSQL/pgvector and contains keyless document types, neither of
             // which is supported by EF's in-memory provider.
             foreach (var entityType in modelBuilder.Model.GetEntityTypes()
-                         .Where(type => type.ClrType != typeof(Cvs) && type.ClrType != typeof(JobPostings))
+                         .Where(type => type.ClrType != typeof(Cvs) &&
+                                        type.ClrType != typeof(JobPostings) &&
+                                        type.ClrType != typeof(UserSavedJobs))
                          .Select(type => type.ClrType)
                          .Distinct()
                          .ToList())
@@ -158,6 +183,8 @@ public class MatchingSourceRepositoryTests
                 entity.Ignore(job => job.ExperienceEmbedding);
                 entity.Ignore(job => job.DomainEmbedding);
             });
+
+            modelBuilder.Entity<UserSavedJobs>().HasKey(saved => new { saved.UserId, saved.JobId });
         }
     }
 }

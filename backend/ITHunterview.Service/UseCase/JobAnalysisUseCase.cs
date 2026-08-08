@@ -7,7 +7,6 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.JobAnalysis;
 using ITHunterview.Service.Utils;
-using ITHunterview.Service.Utils;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.UseCase;
@@ -83,9 +82,13 @@ namespace ITHunterview.Service.UseCase
                 ct);
             var sysPrompt = promptPair.System;
             var userPrompt = promptPair.User;
+            if (string.IsNullOrWhiteSpace(promptPair.Contract))
+            {
+                throw new InvalidOperationException("JD_ANALYSIS_PROMPT_CONTRACT_MISSING: Active JD prompt pair must declare its analysis contract.");
+            }
 
             var snapshot = _inputBuilder.Build(job);
-            var analysisInputHash = _inputBuilder.ComputeAnalysisHash(snapshot, sysPrompt.VersionId, userPrompt.VersionId);
+            var analysisInputHash = _inputBuilder.ComputeAnalysisHash(snapshot, sysPrompt.VersionId, userPrompt.VersionId, promptPair.Contract);
 
             // Reusable run check
             var reusableRun = await _jobAnalysisRepository.FindReusableRunAsync(jobId, job.AnalysisRevision, analysisInputHash, ct);
@@ -123,7 +126,7 @@ namespace ITHunterview.Service.UseCase
                 Status = JobAnalysisStatus.PENDING,
                 SystemPromptVersionId = sysPrompt.VersionId,
                 UserPromptVersionId = userPrompt.VersionId,
-                SchemaVersion = "jd-analysis/v2",
+                SchemaVersion = promptPair.Contract,
                 RawInputSnapshot = rawSnapshotJson,
                 RequestedBy = recruiterId,
                 DecisionVersion = 0,
@@ -258,6 +261,10 @@ namespace ITHunterview.Service.UseCase
                 InputRevision = run.InputRevision,
                 CurrentJobRevision = run.InputRevision,
                 Status = run.Status,
+                AnalysisQuality = run.AnalysisQuality,
+                AnalysisCoverage = JdAnalysisMetadataReader.ReadCoverageJson(run.AnalysisCoverageJson),
+                AnalysisDiagnostics = JdAnalysisMetadataReader.ReadDiagnosticsJson(run.AnalysisDiagnosticsJson),
+                UsesRawTextFallback = run.AnalysisQuality == JdAnalysisQuality.INVALID,
                 FailureCode = run.FailureCode,
                 CreatedAt = run.CreatedAt,
                 CompletedAt = run.CompletedAt,

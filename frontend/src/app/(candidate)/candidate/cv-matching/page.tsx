@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { ListPagination } from '@/components/shared/ListPagination';
 import { CardSkeleton } from '@/components/shared/CardSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { Loader2, FileText, Briefcase, Eye, Plus, Trash2, Activity, Calendar, ChevronLeft, ChevronRight, MoreHorizontal, Sparkles } from 'lucide-react';
+import { FileText, Eye, Plus, Trash2, Calendar, MoreHorizontal, Sparkles } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Dialog,
@@ -21,8 +21,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { useTranslations } from 'next-intl';
 
@@ -187,23 +185,25 @@ export default function CvMatchingHistoryPage() {
                     <Eye className="w-4 h-4" /> {t('viewReport')}
                   </Button>
 
-                  <Popover>
-                    <PopoverTrigger className="inline-flex items-center justify-center h-9 w-9 text-slate-500 hover:text-foreground shrink-0 border border-transparent hover:border-border hover:bg-muted/50 rounded-lg transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </PopoverTrigger>
-                    <PopoverContent align="end" className="w-48 p-1">
-                      <div className="flex flex-col">
-                        <Button 
-                          variant="ghost" 
-                          className="w-full justify-start gap-2 h-9 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                          onClick={() => setItemToDelete(item.jobId)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span>{t('deleteHistory')}</span>
-                        </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
+                  {item.status === 'Completed' || item.status === 'Failed' ? (
+                    <Popover>
+                      <PopoverTrigger className="inline-flex items-center justify-center h-9 w-9 text-slate-500 hover:text-foreground shrink-0 border border-transparent hover:border-border hover:bg-muted/50 rounded-lg transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-48 p-1">
+                        <div className="flex flex-col">
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start gap-2 h-9 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                            onClick={() => setItemToDelete(item.jobId)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span>Delete History</span>
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  ) : null}
                 </div>
               </div>
             </CardContent>

@@ -8,6 +8,22 @@ export type JobAnalysisLifecycleState =
   | 'STALE'
 export type SkillResolutionStatus = 'EXACT_CANONICAL' | 'EXACT_ALIAS' | 'AMBIGUOUS' | 'UNMATCHED' | 'MANUAL'
 export type SkillDecisionStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED'
+export type JdAnalysisQuality = 'COMPLETE' | 'PARTIAL' | 'INVALID'
+
+export interface JdAnalysisCoverage {
+  inputGroupCount: number
+  acceptedGroupCount: number
+  discardedGroupCount: number
+  inputItemCount: number
+  acceptedItemCount: number
+  discardedItemCount: number
+  requirementSetComplete: boolean
+}
+
+export interface JdAnalysisDiagnostic {
+  code: string
+  jsonPath: string
+}
 
 export interface AnalyzeJobRequest {
   expectedRevision: number
@@ -40,6 +56,10 @@ export interface JobAnalysisStatusDto {
   inputRevision: number
   currentJobRevision: number
   status: JobAnalysisStatus
+  analysisQuality?: JdAnalysisQuality | null
+  analysisCoverage?: JdAnalysisCoverage | null
+  analysisDiagnostics?: JdAnalysisDiagnostic[]
+  usesRawTextFallback?: boolean
   failureCode?: string | null
   message?: string | null
   isReused: boolean
@@ -82,6 +102,10 @@ export interface JobAnalysisPreviewDto {
   lifecycleState: JobAnalysisLifecycleState
   isCurrentAnalysis: boolean
   status: JobAnalysisStatus
+  analysisQuality?: JdAnalysisQuality | null
+  analysisCoverage?: JdAnalysisCoverage | null
+  analysisDiagnostics?: JdAnalysisDiagnostic[]
+  usesRawTextFallback?: boolean
   decisionVersion: number
   failureCode?: string | null
   suggestions: JobSkillDecisionDto[]

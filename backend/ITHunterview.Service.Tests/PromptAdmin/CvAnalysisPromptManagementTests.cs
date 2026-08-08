@@ -4,6 +4,8 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Service.Config;
 using ITHunterview.Service.Constant.Prompts;
 using ITHunterview.Service.DTOs.PromptAdmin;
+using ITHunterview.Service.DTOs.Cv.Matching;
+using ITHunterview.Service.Exceptions;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.Service.Matching;
@@ -133,15 +135,21 @@ public class CvAnalysisPromptManagementTests
     public async Task ExtractParsedDataFromRawTextAsync_UsesActiveCvPromptPair()
     {
         var aiService = new Mock<IAiService>();
+        aiService.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("Gemini");
         aiService
-            .Setup(x => x.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-            .ReturnsAsync("{}");
+            .Setup(x => x.GenerateTextAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<AiGenerationOptions>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("{\"schema_version\":\"cv-analysis/v2\"}");
 
         var promptService = new Mock<IPromptManagementService>();
         var responseValidator = new Mock<ICvAnalysisResponseValidator>();
         responseValidator
-            .Setup(x => x.ValidateAndCanonicalize(It.IsAny<string>(), It.IsAny<ITHunterview.Service.DTOs.Cv.Matching.CvAnalysisInputSnapshot>()))
-            .Returns(ITHunterview.Service.DTOs.Cv.Matching.CvAnalysisValidationResult.Success("{\"canonical\":true}"));
+            .Setup(x => x.ValidateAndCanonicalize(It.IsAny<string>()))
+            .Returns(CvAnalysisValidationResult.Complete("{\"canonical\":true}", EmptyCoverage()));
         promptService
             .Setup(x => x.GetActivePromptPairSnapshotAsync(
                 CvAnalysisPromptContract.SystemPromptKey,
@@ -186,22 +194,27 @@ public class CvAnalysisPromptManagementTests
                                     prompt.Contains("\"source_type\":\"pasted_text\"") &&
                                     prompt.Contains("\"file_name\":\"resume.txt\"")),
             "system from database",
-            It.IsAny<string>()), Times.Once);
-        responseValidator.Verify(x => x.ValidateAndCanonicalize(
-            "{}",
-            It.Is<ITHunterview.Service.DTOs.Cv.Matching.CvAnalysisInputSnapshot>(input =>
-                input.RawText == "Jane Doe\nC# developer\n" &&
-                input.SourceType == "pasted_text" &&
-                input.FileName == "resume.txt")), Times.Once);
+            "Gemini",
+            It.Is<AiGenerationOptions>(options =>
+                options.ProfileId == "cv-analysis-json/v1" &&
+                options.ResponseMimeType == "application/json"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        responseValidator.Verify(x => x.ValidateAndCanonicalize("{\"schema_version\":\"cv-analysis/v2\"}"), Times.Once);
     }
 
     [Fact]
     public async Task ExtractParsedDataFromRawTextAsync_WhenTypedValidationFails_PreservesFailureCode()
     {
         var aiService = new Mock<IAiService>();
+        aiService.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("Gemini");
         aiService
-            .Setup(x => x.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-            .ReturnsAsync("{}");
+            .Setup(x => x.GenerateTextAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<AiGenerationOptions>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("{\"schema_version\":\"cv-analysis/v2\"}");
 
         var promptService = new Mock<IPromptManagementService>();
         promptService
@@ -228,8 +241,8 @@ public class CvAnalysisPromptManagementTests
 
         var responseValidator = new Mock<ICvAnalysisResponseValidator>();
         responseValidator
-            .Setup(x => x.ValidateAndCanonicalize(It.IsAny<string>(), It.IsAny<ITHunterview.Service.DTOs.Cv.Matching.CvAnalysisInputSnapshot>()))
-            .Returns(ITHunterview.Service.DTOs.Cv.Matching.CvAnalysisValidationResult.Failure("CV_ANALYSIS_EVIDENCE_NOT_GROUNDED"));
+            .Setup(x => x.ValidateAndCanonicalize(It.IsAny<string>()))
+            .Returns(CvAnalysisValidationResult.Invalid("CV_ANALYSIS_INVALID_JSON", "JSON_PARSE_FAILED", "$"));
 
         var service = new CvTextExtractorService(
             NullLogger<CvTextExtractorService>.Instance,
@@ -240,9 +253,22 @@ public class CvAnalysisPromptManagementTests
             promptService.Object,
             responseValidator.Object);
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var exception = await Assert.ThrowsAsync<CvAnalysisValidationException>(() =>
             service.ExtractParsedDataFromRawTextAsync("Jane Doe\nC# developer\n", "pasted_text", "resume.txt"));
 
-        Assert.Equal("CV_ANALYSIS_EVIDENCE_NOT_GROUNDED", exception.Message);
+        Assert.Equal("CV_ANALYSIS_INVALID_JSON", exception.FailureCode);
+        promptService.Verify(x => x.GetActivePromptPairSnapshotAsync(
+            CvAnalysisPromptContract.SystemPromptKey,
+            CvAnalysisPromptContract.UserPromptKey,
+            default), Times.Once);
+        aiService.Verify(x => x.GenerateTextAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
+
+    private static CvAnalysisCoverage EmptyCoverage() => new(
+        0, 0, 0,
+        0, 0, 0,
+        0, 0, 0,
+        false, false, false, false);
 }

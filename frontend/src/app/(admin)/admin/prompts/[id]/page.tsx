@@ -21,6 +21,7 @@ import * as z from 'zod';
 import { toast } from 'sonner';
 import { CvAnalysisPairActivationCard } from '@/components/prompts/CvAnalysisPairActivationCard';
 import { JdAnalysisPairActivationCard } from '@/components/prompts/JdAnalysisPairActivationCard';
+import { isJdMatchingPromptKey, sanitizeJdMatchingContentForEditing } from '@/lib/prompts/jd-matching-prompt-policy';
 import { useTranslations } from 'next-intl';
 
 const formSchema = z.object({
@@ -63,6 +64,7 @@ export default function AdminPromptDetailPage() {
   const selectedVersion = prompt?.versions?.find(v => v.id === selectedVersionId);
   const isCvAnalysisPrompt = prompt?.promptKey === 'CV_ANALYSIS_SYSTEM' || prompt?.promptKey === 'CV_ANALYSIS_USER';
   const isJdAnalysisPrompt = prompt?.promptKey === 'JD_ANALYSIS_V2_SYSTEM' || prompt?.promptKey === 'JD_ANALYSIS_V2_USER';
+  const isJdMatchingPrompt = isJdMatchingPromptKey(prompt?.promptKey);
   const isManagedAnalysisPrompt = isCvAnalysisPrompt || isJdAnalysisPrompt;
 
   function onSubmit(values: z.infer<typeof formSchema>) {
@@ -81,7 +83,7 @@ export default function AdminPromptDetailPage() {
   }
 
   function handleCopyFromExisting(content: string, modelConfig?: string) {
-    form.setValue('content', content);
+    form.setValue('content', isJdMatchingPrompt ? sanitizeJdMatchingContentForEditing(content) : content);
     form.setValue('modelConfig', modelConfig || '');
     setActiveTab('create');
     toast.info(t('copySuccess'));
@@ -111,6 +113,16 @@ export default function AdminPromptDetailPage() {
         </TabsList>
 
         <TabsContent value="history" className="mt-6 space-y-6">
+          {isJdMatchingPrompt && (
+            <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
+              <CardHeader>
+                <CardTitle className="text-base">Application-managed matching output</CardTitle>
+                <CardDescription>
+                  This editor controls semantic matching instructions only. The application appends and validates the approved JSON output schema at runtime; it cannot be edited here.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
           {isCvAnalysisPrompt && <CvAnalysisPairActivationCard />}
           {isJdAnalysisPrompt && <JdAnalysisPairActivationCard />}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -207,8 +219,13 @@ export default function AdminPromptDetailPage() {
         <TabsContent value="create" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>{t('createTitle')}</CardTitle>
-              <CardDescription dangerouslySetInnerHTML={{ __html: t.raw('createDesc').replace('{promptKey}', prompt.promptKey) }} />
+              <CardTitle>Create New Version</CardTitle>
+              <CardDescription>
+                Create a new immutable version for <span className="font-mono text-primary">{prompt.promptKey}</span>.
+                {isJdMatchingPrompt
+                  ? ' Edit semantic instructions only; keep the CV and JD input slots intact.'
+                  : ' Remember to keep required placeholders like [CV_TEXT] and [JD_TEXT].'}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...form}>
@@ -269,7 +286,9 @@ export default function AdminPromptDetailPage() {
                           />
                         </FormControl>
                         <FormDescription>
-                          {t('promptContentHelp')}
+                          {isJdMatchingPrompt
+                            ? 'Use raw semantic instructions. Keep exactly one operational CV and JD input slot; the output schema is managed by the application.'
+                            : 'Use raw text. Make sure to include variables wrapped in brackets, like [CV_TEXT].'}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -290,7 +309,9 @@ export default function AdminPromptDetailPage() {
                           />
                         </FormControl>
                         <FormDescription>
-                          {t('modelConfigHelp')}
+                          {isJdMatchingPrompt
+                            ? 'Optional provider settings only. This JSON does not select the matching output schema.'
+                            : 'Optional JSON overriding default LLM settings. Must be valid JSON.'}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

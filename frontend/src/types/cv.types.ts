@@ -9,6 +9,9 @@ export interface Cv {
   parsedData: string;
   parseStatus?: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED';
   parseError?: string | null;
+  analysisQuality?: CvAnalysisQuality | null;
+  analysisCoverage?: CvAnalysisCoverage | null;
+  analysisWarningCodes?: string[];
   warningMessage?: string;
   createdAt: string;
   updatedAt: string;
@@ -36,6 +39,42 @@ export interface MatchJdResponse {
   id: string; // JobId for polling
 }
 
+export type JdAnalysisQuality = 'COMPLETE' | 'PARTIAL' | 'INVALID';
+export type CvAnalysisQuality = 'COMPLETE' | 'PARTIAL' | 'INVALID';
+
+export interface CvAnalysisCoverage {
+  inputExperienceEntryCount: number;
+  acceptedExperienceEntryCount: number;
+  discardedExperienceEntryCount: number;
+  inputRequirementSignalCount: number;
+  acceptedRequirementSignalCount: number;
+  discardedRequirementSignalCount: number;
+  inputExperiencePeriodCount: number;
+  acceptedExperiencePeriodCount: number;
+  discardedExperiencePeriodCount: number;
+  titleMetricsAvailable: boolean;
+  skillMetricsAvailable: boolean;
+  experienceMetricAvailable: boolean;
+  domainMetricsAvailable: boolean;
+}
+
+export interface CvAnalysisResult {
+  quality: CvAnalysisQuality;
+  scoreBasis: string;
+  coverage?: CvAnalysisCoverage | null;
+  warningCodes: string[];
+}
+
+export interface JdAnalysisCoverage {
+  inputGroupCount: number;
+  acceptedGroupCount: number;
+  discardedGroupCount: number;
+  inputItemCount: number;
+  acceptedItemCount: number;
+  discardedItemCount: number;
+  requirementSetComplete: boolean;
+}
+
 export interface MatchHistoryDto {
   jobId: string;
   cvId?: string;
@@ -48,6 +87,12 @@ export interface MatchHistoryDto {
   errorMessage?: string;
   updatedAt: string;
   matchType?: 'AI' | 'Hardcode';
+  jdAnalysisQuality?: JdAnalysisQuality | null;
+  jdAnalysisScoreBasis?: string | null;
+  jdAnalysisCoverage?: JdAnalysisCoverage | null;
+  cvAnalysisQuality?: CvAnalysisQuality | null;
+  cvAnalysisScoreBasis?: string | null;
+  cvAnalysisCoverage?: CvAnalysisCoverage | null;
   fileUrl?: string;
   isUnlocked?: boolean;
   unlockCost?: number;
@@ -79,19 +124,31 @@ export interface MatchingResultDto {
   jobId?: string;
   jdTitle?: string;
   status: string;
+  errorCode?: string;
   errorMessage?: string;
+  canRetry: boolean;
   matchDetails?: string; // The raw JSON string from LLM
+  cvAnalysis?: CvAnalysisResult | null;
 }
 
 export interface MatchingOutput {
   mode: "jd_fit" | "cv_quality" | "both";
+  contract?: string;
+  sourceJdSchemaVersion?: string;
+  jdAnalysis?: {
+    quality: JdAnalysisQuality;
+    scoreBasis: string;
+    requirementSetComplete: boolean;
+    coverage?: JdAnalysisCoverage | null;
+    warningCodes: string[];
+  };
   jdFit?: {
     score: number;
     result: "Highly Suitable" | "Suitable" | "Partially Suitable" | "Not Suitable";
     killSwitchTriggered: boolean;
     poolACapped: boolean;
-    poolA: { score: number; max: number };
-    poolB: { score: number; max: number };
+    poolA: { score: number | null; max: number | null };
+    poolB: { score: number | null; max: number | null };
     requirementScores: RequirementScore[];
     criticalGaps: CriticalGap[];
     penalties: Penalty[];
@@ -100,7 +157,7 @@ export interface MatchingOutput {
   cvQuality?: {
     score: number;
     result: "Excellent" | "Good" | "Fair" | "Poor";
-    breakdown: any;
+    breakdown: Record<string, unknown>;
     penalties: Penalty[];
   };
   improvements: ImprovementSuggestion[];
@@ -116,13 +173,18 @@ export type RequirementCategory =
   | "education"
   | "soft_skill";
 
+export interface RequirementEntities {
+  skill_name?: string;
+  [key: string]: unknown;
+}
+
 export interface RequirementScore {
   reqId: string;
   normalizedText: string;
   importance: "must_have" | "nice_to_have";
   category: RequirementCategory;
   categoryWeight: number;
-  entities: any;
+  entities: RequirementEntities;
   handlerUsed: string;
   handlerCode: string;
   handlerScore: number;

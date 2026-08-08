@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ITHunterview.Service.DTOs.JobAnalysis;
 
 namespace ITHunterview.Service.DTOs.Cv.Matching
 {
@@ -14,12 +15,33 @@ namespace ITHunterview.Service.DTOs.Cv.Matching
         public int ProcessingTimeMs { get; set; }
         
         public string Status { get; set; } = "Pending";
+        public string? ErrorCode { get; set; }
         public string? ErrorMessage { get; set; }
+        public bool CanRetry { get; set; }
         public string? MatchDetails { get; set; }
 
         public JdFitResultDto? JdFit { get; set; }
+        public JdAnalysisResultDto? JdAnalysis { get; set; }
+        public CvAnalysisResultDto? CvAnalysis { get; set; }
         public CvQualityResultDto? CvQuality { get; set; }
         public SummaryFeedbackDto? Summary { get; set; }
+    }
+
+    public class JdAnalysisResultDto
+    {
+        public string Quality { get; set; } = string.Empty;
+        public string ScoreBasis { get; set; } = string.Empty;
+        public bool RequirementSetComplete { get; set; } = true;
+        public JdAnalysisCoverage? Coverage { get; set; }
+        public List<string> WarningCodes { get; set; } = new();
+    }
+
+    public class CvAnalysisResultDto
+    {
+        public string Quality { get; set; } = string.Empty;
+        public string ScoreBasis { get; set; } = string.Empty;
+        public CvAnalysisCoverage? Coverage { get; set; }
+        public List<string> WarningCodes { get; set; } = new();
     }
 
     public class JdFitResultDto

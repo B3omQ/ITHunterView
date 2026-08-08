@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using ITHunterview.Domain.Enums;
 using ITHunterview.Service.Service.Matching;
 using Xunit;
 
@@ -19,7 +20,8 @@ public sealed class JdRequirementProjectorTests
         Assert.Equal("one_of", alternatives.Operator);
         Assert.Equal(1, alternatives.MinSatisfied);
         Assert.Equal(new[] { "tech_skill", "tech_skill", "tech_skill" }, alternatives.Items.Select(item => item.Category));
-        Assert.Equal(new[] { "grp-001:item-001", "grp-001:item-002", "grp-001:item-003" }, alternatives.Items.Select(item => item.ItemId));
+        Assert.All(alternatives.Items, item => Assert.StartsWith("grp-001:itm-", item.ItemId, StringComparison.Ordinal));
+        Assert.Equal(3, alternatives.Items.Select(item => item.ItemId).Distinct(StringComparer.Ordinal).Count());
     }
 
     [Fact]
@@ -63,6 +65,19 @@ public sealed class JdRequirementProjectorTests
         var exception = Assert.Throws<InvalidOperationException>((Action)(() => projector.Project(invalid)));
 
         Assert.Equal("INVALID_EFFECTIVE_JD_ANALYSIS", exception.Message);
+    }
+
+    [Fact]
+    public void Project_ExplicitInvalidQuality_RemainsInvalid()
+    {
+        const string analysis = """
+            {"schema_version":"jd-analysis/v3","analysis_quality":"INVALID","matching_metrics":{"requirement_groups":[{"group_id":"grp-001","operator":"all_of","min_satisfied":1,"importance":"must_have","items":[{"category":"tech_skill","skill_name":"react"}]}]}}
+            """;
+        var projector = new JdRequirementProjector();
+
+        var projection = projector.Project(analysis);
+
+        Assert.Equal(JdAnalysisQuality.INVALID, projection.Quality);
     }
 
     private static string ReadFixture(string name) => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Matching", "Fixtures", name));

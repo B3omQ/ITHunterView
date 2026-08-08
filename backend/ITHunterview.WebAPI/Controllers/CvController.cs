@@ -5,11 +5,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Cv;
-using ITHunterview.Service.DTOs.FeatureUsage;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ITHunterview.WebAPI.Controllers
 {
@@ -21,7 +19,9 @@ namespace ITHunterview.WebAPI.Controllers
         private readonly ICvUseCase _cvUseCase;
         private readonly ICvJobMatchingUseCase _cvJobMatchingUseCase;
         private readonly IHardcodeCvJobMatchingUseCase _hardcodeCvJobMatchingUseCase;
-        private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly ICvJdMatchingSubmissionUseCase _matchingSubmissionUseCase;
+        private readonly ICvJdMatchingRetryUseCase _matchingRetryUseCase;
+        private readonly ICvJdMatchingHistoryUseCase _matchingHistoryUseCase;
         private readonly ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService _cvTextExtractorService;
         private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
         private readonly IMatchingInputPreflightUseCase _matchingInputPreflightUseCase;
@@ -31,6 +31,9 @@ namespace ITHunterview.WebAPI.Controllers
             ICvUseCase cvUseCase, 
             ICvJobMatchingUseCase cvJobMatchingUseCase,
             IHardcodeCvJobMatchingUseCase hardcodeCvJobMatchingUseCase,
+            ICvJdMatchingSubmissionUseCase matchingSubmissionUseCase,
+            ICvJdMatchingRetryUseCase matchingRetryUseCase,
+            ICvJdMatchingHistoryUseCase matchingHistoryUseCase,
             IServiceScopeFactory serviceScopeFactory,
             ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService cvTextExtractorService,
             ICandidateFeatureUsageUseCase featureUsageUseCase,
@@ -40,11 +43,10 @@ namespace ITHunterview.WebAPI.Controllers
             _cvUseCase = cvUseCase;
             _cvJobMatchingUseCase = cvJobMatchingUseCase;
             _hardcodeCvJobMatchingUseCase = hardcodeCvJobMatchingUseCase;
-            _serviceScopeFactory = serviceScopeFactory;
+            _matchingSubmissionUseCase = matchingSubmissionUseCase;
+            _matchingRetryUseCase = matchingRetryUseCase;
+            _matchingHistoryUseCase = matchingHistoryUseCase;
             _cvTextExtractorService = cvTextExtractorService;
-            _featureUsageUseCase = featureUsageUseCase;
-            _matchingInputPreflightUseCase = matchingInputPreflightUseCase;
-            _matchingQueue = matchingQueue;
         }
 
         [HttpPost]
@@ -126,35 +128,26 @@ namespace ITHunterview.WebAPI.Controllers
                 return Unauthorized();
             }
 
-            var prepared = await _matchingInputPreflightUseCase.PrepareAsync(userId, request, ct);
-            var operationId = Guid.NewGuid();
-            FeatureConsumptionResult? consumption = null;
+            var idempotencyKey = Request.Headers["Idempotency-Key"].ToString();
             try
             {
-                consumption = await _featureUsageUseCase.TryConsumeFeatureAsync(userId, "CvJdMatching", operationId.ToString());
-                var jobId = await _cvJobMatchingUseCase.SubmitMatchingJobAsync(userId, prepared, operationId);
+                var result = await _matchingSubmissionUseCase.SubmitAsync(userId, request, idempotencyKey, ct);
 
-                // The request is already immutable and authorized. Do not flow the
-                // HTTP cancellation token into detached background work.
-                _ = Task.Run(async () =>
-                {
-                    using var scope = _serviceScopeFactory.CreateScope();
-                    var useCase = scope.ServiceProvider.GetRequiredService<ICvJobMatchingUseCase>();
-                    await useCase.ProcessMatchingJobAsync(jobId, userId, prepared);
-                });
-
-                return Ok(new ResponseBase<Guid>(jobId, "Matching job submitted"));
+                return Accepted(new ResponseBase<Guid>(result.JobId, result.IsExisting
+                    ? "Existing matching job returned"
+                    : "Matching job accepted"));
             }
-            catch
+            catch (ArgumentException ex)
             {
-                if (consumption != null)
-                {
-                    await _featureUsageUseCase.RefundFeatureUsageAsync(
-                        userId,
-                        consumption,
-                        "Hoàn Coin do không thể tạo yêu cầu CV-JD matching.");
-                }
-                throw;
+                return BadRequest(new ResponseBase<Guid>(ex.Message));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new ResponseBase<Guid>("Matching source not found"));
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "IDEMPOTENCY_KEY_REUSED")
+            {
+                return Conflict(new ResponseBase<Guid>(ex.Message));
             }
         }
 
@@ -178,6 +171,7 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpGet("match-results/{jobId:guid}")]
+        [Authorize(Policy = "CandidateOnly")]
         public async Task<ActionResult<ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.MatchingResultDto>>> GetMatchResult(Guid jobId)
         {
             var userIdStr = User.FindFirstValue("userId");
@@ -193,6 +187,37 @@ namespace ITHunterview.WebAPI.Controllers
             }
 
             return Ok(new ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.MatchingResultDto>(result, "Result retrieved"));
+        }
+
+        [HttpPost("match-results/{jobId:guid}/retry")]
+        [Authorize(Policy = "CandidateOnly")]
+        public async Task<ActionResult<ResponseBase<Guid>>> RetryMatch(Guid jobId, CancellationToken ct)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+                return Unauthorized();
+
+            var idempotencyKey = Request.Headers["Idempotency-Key"].ToString();
+            try
+            {
+                var result = await _matchingRetryUseCase.RetryAsync(userId, jobId, idempotencyKey, ct);
+                return Accepted(new ResponseBase<Guid>(result.JobId, result.IsExisting
+                    ? "Existing retry job returned"
+                    : "Matching retry accepted"));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ResponseBase<Guid>(ex.Message));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new ResponseBase<Guid>("Failed matching job not found"));
+            }
+            catch (InvalidOperationException ex) when (
+                ex.Message is "IDEMPOTENCY_KEY_REUSED" or "MANUAL_RETRY_ALREADY_USED" or "MATCHING_RETRY_NOT_ALLOWED" or "MATCHING_SNAPSHOT_UNAVAILABLE")
+            {
+                return Conflict(new ResponseBase<Guid>(ex.Message));
+            }
         }
 
         [HttpPost("{id:guid}/match-jobs")]
@@ -243,6 +268,7 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpDelete("match-history/{jobId:guid}")]
+        [Authorize(Policy = "CandidateOnly")]
         public async Task<ActionResult<ResponseBase<string>>> DeleteMatchHistory(Guid jobId)
         {
             var userIdStr = User.FindFirstValue("userId");
@@ -251,19 +277,17 @@ namespace ITHunterview.WebAPI.Controllers
                 return Unauthorized();
             }
 
-            try
+            var result = await _matchingHistoryUseCase.HideAsync(jobId, userId, DateTime.UtcNow, HttpContext.RequestAborted);
+            return result switch
             {
-                await _cvJobMatchingUseCase.DeleteMatchHistoryAsync(jobId, userId);
-                return Ok(new ResponseBase<string>("Match history deleted successfully", "Match history deleted successfully"));
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound(new ResponseBase<string>("Match history not found"));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ResponseBase<string>(null, ex.Message));
-            }
+                ITHunterview.Service.DTOs.Cv.Matching.HideMatchHistoryResult.Hidden =>
+                    Ok(new ResponseBase<string>("Match history hidden successfully", "Match history hidden successfully")),
+                ITHunterview.Service.DTOs.Cv.Matching.HideMatchHistoryResult.NotFound =>
+                    NotFound(new ResponseBase<string>("Match history not found")),
+                ITHunterview.Service.DTOs.Cv.Matching.HideMatchHistoryResult.ActiveJob =>
+                    Conflict(new ResponseBase<string>("MATCH_HISTORY_ACTIVE")),
+                _ => throw new InvalidOperationException("MATCH_HISTORY_RESULT_INVALID")
+            };
         }
         [HttpPost("{id:guid}/match-jobs-hardcode")]
         public async Task<ActionResult<ResponseBase<string>>> MatchJobsHardcode(Guid id)

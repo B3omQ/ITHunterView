@@ -4,7 +4,6 @@ import React, { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { APP_ROUTES } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Sparkles, ArrowRight, Info, History, Coins, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -19,12 +18,14 @@ import { JdSelectionPanel } from '../components/JdSelectionPanel';
 import { MatchingLoadingState } from '../components/MatchingLoadingState';
 import { useCvMatchingForm } from '@/hooks/useCvMatchingForm';
 import { toast } from 'sonner';
+import { CvAnalysisQualityNotice } from '@/components/shared/CvAnalysisQualityNotice';
 import { useTranslations } from 'next-intl';
 
 function CvMatchingContent() {
   const router = useRouter();
   const t = useTranslations('CandidateCVMatching');
   const { state, queries, setters, handlers } = useCvMatchingForm();
+  const isRawJdFallback = state.matchOutput?.jdAnalysis?.scoreBasis === 'raw_text_fallback';
 
   return (
     <div className="w-full pb-8">
@@ -52,6 +53,11 @@ function CvMatchingContent() {
 
       {state.step === 'select' && (
         <div className="space-y-8">
+          {state.resultError && (
+            <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {state.resultError}
+            </div>
+          )}
           {/* Feature Cost & Wallet Balance Banner */}
           <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500/10 via-amber-500/10 to-transparent border border-purple-500/20 shadow-sm flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -133,6 +139,19 @@ function CvMatchingContent() {
 
           {/* Action Button */}
           <div className="flex justify-center pt-4">
+            {state.retryJobId && (
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={handlers.handleRetry}
+                disabled={state.isRetrying}
+                className="mr-3 gap-2 font-semibold"
+              >
+                {state.isRetrying ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+                Retry failed match
+              </Button>
+            )}
             <Button 
               size="lg" 
               onClick={handlers.handleStartAnalysis} 
@@ -172,6 +191,7 @@ function CvMatchingContent() {
       {/* 3. Giao diện Kết quả (Sử dụng Sub-Components) */}
       {state.step === 'result' && (
         <div className="space-y-6 animate-in fade-in duration-500">
+          <CvAnalysisQualityNotice analysis={state.cvAnalysis} />
           <div className="flex flex-col sm:flex-row justify-between items-center bg-muted/20 p-4 rounded-lg border gap-4">
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <Info className="h-5 w-5 text-primary/70" />
@@ -186,14 +206,14 @@ function CvMatchingContent() {
 
           {state.matchOutput?.jdFit && (
             <>
-              <ResultOverviewCard jdFit={state.matchOutput.jdFit} />
-              <PenaltyWarningPanel penalties={state.matchOutput.jdFit.penalties} />
+              <ResultOverviewCard jdFit={state.matchOutput.jdFit} isRawTextFallback={isRawJdFallback} />
+              {!isRawJdFallback && <PenaltyWarningPanel penalties={state.matchOutput.jdFit.penalties} />}
             </>
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              {state.matchOutput?.jdFit && (
+              {state.matchOutput?.jdFit && !isRawJdFallback && (
                 <RequirementBreakdown scores={state.matchOutput.jdFit.requirementScores} />
               )}
               {state.matchOutput?.improvements && state.matchOutput.improvements.length > 0 && (
@@ -201,7 +221,7 @@ function CvMatchingContent() {
               )}
             </div>
             <div className="space-y-6">
-              {state.matchOutput?.jdFit && (
+              {state.matchOutput?.jdFit && !isRawJdFallback && (
                 <CriticalGapsPanel 
                   criticalGaps={state.matchOutput.jdFit.criticalGaps} 
                   penalties={state.matchOutput.jdFit.penalties} 

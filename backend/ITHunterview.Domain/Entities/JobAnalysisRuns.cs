@@ -42,6 +42,15 @@ namespace ITHunterview.Domain.Entities
         [Column("effective_analysis_json", TypeName = "jsonb")]
         public string? EffectiveAnalysisJson { get; set; }
 
+        [Column("analysis_quality")]
+        public JdAnalysisQuality? AnalysisQuality { get; set; }
+
+        [Column("analysis_coverage_json", TypeName = "jsonb")]
+        public string? AnalysisCoverageJson { get; set; }
+
+        [Column("analysis_diagnostics_json", TypeName = "jsonb")]
+        public string? AnalysisDiagnosticsJson { get; set; }
+
         [Column("validation_errors_json", TypeName = "jsonb")]
         public string? ValidationErrorsJson { get; set; }
 

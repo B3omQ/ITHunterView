@@ -11,6 +11,9 @@ using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Utils;
 using ITHunterview.Service.Service.Matching;
 using Microsoft.Extensions.Logging;
+using ITHunterview.Domain.Enums;
+using ITHunterview.Service.DTOs.Cv.Matching;
+using ITHunterview.Service.Exceptions;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -20,17 +23,20 @@ namespace ITHunterview.Service.UseCase
         private readonly ICvTextExtractorService _cvTextExtractorService;
         private readonly ILogger<HardcodeCvJobMatchingUseCase> _logger;
         private readonly HardcodeJdRequirementScoringService _hardcodeJdRequirementScoringService;
+        private readonly ICvAnalysisResponseValidator _cvAnalysisResponseValidator;
 
         public HardcodeCvJobMatchingUseCase(
             ITHunterviewContext context,
             ICvTextExtractorService cvTextExtractorService,
             ILogger<HardcodeCvJobMatchingUseCase> logger,
-            HardcodeJdRequirementScoringService hardcodeJdRequirementScoringService)
+            HardcodeJdRequirementScoringService hardcodeJdRequirementScoringService,
+            ICvAnalysisResponseValidator cvAnalysisResponseValidator)
         {
             _context = context;
             _cvTextExtractorService = cvTextExtractorService;
             _logger = logger;
             _hardcodeJdRequirementScoringService = hardcodeJdRequirementScoringService;
+            _cvAnalysisResponseValidator = cvAnalysisResponseValidator;
         }
 
         private JsonElement? GetJsonElement(string? jsonString, string fieldName)
@@ -147,6 +153,10 @@ namespace ITHunterview.Service.UseCase
             public List<string> Skills { get; set; } = new();
             public int Exp { get; set; }
             public List<string> Domains { get; set; } = new();
+            public bool TitleAvailable { get; set; }
+            public bool SkillsAvailable { get; set; }
+            public bool ExperienceAvailable { get; set; }
+            public bool DomainsAvailable { get; set; }
         }
 
         private ParsedMetrics ExtractMetrics(string? parsedData)
@@ -157,7 +167,11 @@ namespace ITHunterview.Service.UseCase
                 Titles = metrics.Titles,
                 Skills = metrics.Skills,
                 Exp = metrics.TotalYearsExperience,
-                Domains = metrics.Domains
+                Domains = metrics.Domains,
+                TitleAvailable = metrics.TitleAvailable,
+                SkillsAvailable = metrics.SkillsAvailable,
+                ExperienceAvailable = metrics.ExperienceAvailable,
+                DomainsAvailable = metrics.DomainsAvailable
             };
         }
 
@@ -194,6 +208,14 @@ namespace ITHunterview.Service.UseCase
             var scoringDecision = _hardcodeJdRequirementScoringService.Evaluate(job.ParsedData, cvMetrics.Skills);
             if (scoringDecision.FailureCode != null)
             {
+                if (!scoringDecision.CanUseLegacyCompatibilityFallback)
+                {
+                    _logger.LogError(
+                        "Hardcode matching skipped job {JobId}: its JD declares v3 but its effective analysis is invalid.",
+                        job.Id);
+                    return;
+                }
+
                 _logger.LogWarning(
                     "Hardcode matching ignored invalid effective JD analysis for job {JobId}; using compatibility metrics.",
                     job.Id);
@@ -203,11 +225,22 @@ namespace ITHunterview.Service.UseCase
             var skillsScore = groupEvaluation?.SkillScore ?? CalculateSkillsScore(cvMetrics.Skills, jobMetrics.Skills);
             var expScore = CalculateExperienceScore(cvMetrics.Exp, jobMetrics.Exp);
             var domainScore = CalculateDomainScore(cvMetrics.Domains, jobMetrics.Domains);
+            var availableWeight = 0m;
+            var weightedScore = 0m;
+            var availableDimensions = new List<string>(4);
+            AddAvailableDimension(cvMetrics.TitleAvailable, "title", 0.15m, titleScore, availableDimensions, ref availableWeight, ref weightedScore);
+            AddAvailableDimension(cvMetrics.SkillsAvailable, "skills", 0.45m, skillsScore, availableDimensions, ref availableWeight, ref weightedScore);
+            AddAvailableDimension(cvMetrics.ExperienceAvailable, "experience", 0.30m, expScore, availableDimensions, ref availableWeight, ref weightedScore);
+            AddAvailableDimension(cvMetrics.DomainsAvailable, "domain", 0.10m, domainScore, availableDimensions, ref availableWeight, ref weightedScore);
 
-            var finalScore = (titleScore * 0.15m) +
-                             (skillsScore * 0.45m) +
-                             (expScore * 0.30m) +
-                             (domainScore * 0.10m);
+            if (availableWeight == 0m)
+            {
+                WriteUnsupportedHardcodeResult(cv, job, existingScore);
+                return;
+            }
+
+            var finalScore = weightedScore / availableWeight;
+            var scoreBasis = availableWeight == 1m ? "complete_cv_metrics" : "available_cv_metrics";
 
             var details = JsonSerializer.Serialize(new 
             {
@@ -218,6 +251,9 @@ namespace ITHunterview.Service.UseCase
                 ExperienceScore = Math.Round(expScore, 4),
                 DomainScore = Math.Round(domainScore, 4),
                 FinalScore = Math.Round(finalScore, 4),
+                ScoreBasis = scoreBasis,
+                CvAnalysisQuality = cv.AnalysisQuality?.ToString(),
+                AvailableDimensions = availableDimensions,
                 Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m },
                 GroupOutcomes = groupEvaluation?.Outcomes
             });
@@ -229,10 +265,11 @@ namespace ITHunterview.Service.UseCase
                 existingScore.MatchDetails = details;
                 existingScore.Status = "Completed";
                 existingScore.MatchType = "Hardcode";
+                ApplyCvAnalysisMetadata(existingScore, cv);
             }
             else
             {
-                _context.CvJobMatchScores.Add(new CvJobMatchScores
+                var score = new CvJobMatchScores
                 {
                     UserId = cv.UserId, // Fix Wrong ID Bug: Lưu ID của Candidate
                     CvId = cv.Id,
@@ -243,30 +280,112 @@ namespace ITHunterview.Service.UseCase
                     MatchType = "Hardcode",
                     Status = "Completed",
                     UpdatedAt = DateTime.UtcNow
-                });
+                };
+                ApplyCvAnalysisMetadata(score, cv);
+                _context.CvJobMatchScores.Add(score);
             }
+        }
+
+        private static void AddAvailableDimension(
+            bool available,
+            string name,
+            decimal weight,
+            decimal score,
+            ICollection<string> dimensions,
+            ref decimal totalWeight,
+            ref decimal weightedScore)
+        {
+            if (!available) return;
+            dimensions.Add(name);
+            totalWeight += weight;
+            weightedScore += weight * score;
+        }
+
+        private void WriteUnsupportedHardcodeResult(
+            Cvs cv,
+            JobPostings job,
+            CvJobMatchScores? existingScore)
+        {
+            var details = JsonSerializer.Serialize(new
+            {
+                Method = "Hardcode",
+                ScoreBasis = "no_cv_metrics",
+                ErrorCode = "CV_ANALYSIS_METRICS_UNAVAILABLE",
+                CvAnalysisQuality = cv.AnalysisQuality?.ToString()
+            });
+            var target = existingScore ?? new CvJobMatchScores
+            {
+                UserId = cv.UserId,
+                CvId = cv.Id,
+                JobId = job.Id,
+                RawJdText = job.Title,
+                MatchType = "Hardcode"
+            };
+            target.MatchScore = null;
+            target.MatchDetails = details;
+            target.Status = "Failed";
+            target.ErrorCode = "CV_ANALYSIS_METRICS_UNAVAILABLE";
+            target.ErrorMessage = "CV_ANALYSIS_METRICS_UNAVAILABLE";
+            target.UpdatedAt = DateTime.UtcNow;
+            ApplyCvAnalysisMetadata(target, cv);
+            if (existingScore == null) _context.CvJobMatchScores.Add(target);
+        }
+
+        private static void ApplyCvAnalysisMetadata(CvJobMatchScores score, Cvs cv)
+        {
+            score.CvAnalysisQuality = cv.AnalysisQuality;
+            score.CvAnalysisCoverageJson = cv.AnalysisCoverageJson;
+            score.CvAnalysisDiagnosticsJson = cv.AnalysisDiagnosticsJson;
         }
 
         private async Task EnsureCvIsParsedAsync(Cvs cv)
         {
-            if (string.IsNullOrWhiteSpace(cv.ParsedData) || cv.ParseStatus != "SUCCESS")
+            if (!string.IsNullOrWhiteSpace(cv.ParsedData) && cv.ParseStatus == "SUCCESS")
             {
-                _logger.LogInformation("[INFO] On-demand parsing CV {CvId} in Hardcode Matching.", cv.Id);
-                var parsedData = await _cvTextExtractorService.ExtractParsedDataFromUrlAsync(cv.FileUrl, cv.RawText);
-                
-                if (string.IsNullOrWhiteSpace(parsedData))
+                var stored = _cvAnalysisResponseValidator.ValidateAndCanonicalize(cv.ParsedData);
+                if (stored.IsUsable)
                 {
-                    cv.ParseStatus = "FAILED";
-                    _context.Cvs.Update(cv);
+                    ApplyValidatedCv(cv, stored);
                     await _context.SaveChangesAsync();
-                    throw new Exception($"Cannot parse CV data on-demand for CV {cv.Id}.");
+                    return;
                 }
-                
-                cv.ParsedData = parsedData;
+            }
+
+            _logger.LogInformation("On-demand parsing CV {CvId} in hardcode matching.", cv.Id);
+            try
+            {
+                var parsedData = await _cvTextExtractorService.ExtractParsedDataFromUrlAsync(cv.FileUrl, cv.RawText);
+                var validation = _cvAnalysisResponseValidator.ValidateAndCanonicalize(parsedData);
+                if (!validation.IsUsable)
+                {
+                    throw new CvAnalysisValidationException(validation);
+                }
+
+                ApplyValidatedCv(cv, validation);
                 cv.ParseStatus = "SUCCESS";
+                cv.ParseError = null;
                 _context.Cvs.Update(cv);
                 await _context.SaveChangesAsync();
             }
+            catch
+            {
+                cv.ParseStatus = "FAILED";
+                cv.ParseError = "CV_ANALYSIS_INVALID_FOR_MATCHING";
+                cv.AnalysisQuality = CvAnalysisQuality.INVALID;
+                cv.AnalysisCoverageJson = null;
+                cv.AnalysisDiagnosticsJson = null;
+                _context.Cvs.Update(cv);
+                await _context.SaveChangesAsync();
+                throw;
+            }
+        }
+
+        private static void ApplyValidatedCv(Cvs cv, CvAnalysisValidationResult validation)
+        {
+            cv.ParsedData = validation.CanonicalJson;
+            cv.AnalysisQuality = validation.Quality;
+            cv.AnalysisCoverageJson = CvAnalysisMetadataReader.SerializeCoverage(validation.Coverage);
+            cv.AnalysisDiagnosticsJson = CvAnalysisMetadataReader.SerializeDiagnostics(validation.Diagnostics);
         }
 
         public async Task MatchCvWithAllJobsHardcodeAsync(Guid cvId, Guid userId)
@@ -311,7 +430,6 @@ namespace ITHunterview.Service.UseCase
             var cvs = await _context.Cvs
                 .Include(c => c.User)
                 .ThenInclude(u => u.CandidateProfile)
-                .AsNoTracking()
                 .Where(c => c.IsPrimary
                          && c.User.CandidateProfile != null 
                          && c.User.CandidateProfile.IsVisibleToRecruiters == true // Fix Privacy Bug
@@ -321,6 +439,19 @@ namespace ITHunterview.Service.UseCase
             foreach (var cv in cvs)
             {
                 if (cv.ParseStatus != "SUCCESS") continue; // Skip unparsed CVs to avoid inaccurate 0% matches
+
+                try
+                {
+                    await EnsureCvIsParsedAsync(cv);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(
+                        "Skipping CV {CvId} because its analysis is unusable. FailureType={FailureType}",
+                        cv.Id,
+                        ex.GetType().Name);
+                    continue;
+                }
 
                 existingScores.TryGetValue(cv.Id, out var existingScore);
                 var cvMetrics = ExtractMetrics(cv.ParsedData);

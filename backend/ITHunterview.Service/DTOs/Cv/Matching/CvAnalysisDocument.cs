@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using ITHunterview.Domain.Enums;
 
 namespace ITHunterview.Service.DTOs.Cv.Matching;
 
@@ -11,19 +12,55 @@ public sealed record CvAnalysisInputSnapshot(
     DateOnly AnalysisDate);
 
 public sealed record CvAnalysisValidationResult(
-    bool IsValid,
+    CvAnalysisQuality Quality,
     string CanonicalJson,
-    string FailureCode)
+    CvAnalysisCoverage? Coverage,
+    IReadOnlyList<CvAnalysisDiagnostic> Diagnostics,
+    string FailureCode,
+    string DiagnosticCode = "",
+    string JsonPath = "")
 {
-    public static CvAnalysisValidationResult Success(string canonicalJson) => new(true, canonicalJson, string.Empty);
+    public bool IsUsable =>
+        Quality is CvAnalysisQuality.COMPLETE or CvAnalysisQuality.PARTIAL &&
+        !string.IsNullOrWhiteSpace(CanonicalJson);
 
-    public static CvAnalysisValidationResult Failure(string failureCode) => new(false, string.Empty, failureCode);
+    public static CvAnalysisValidationResult Complete(string canonicalJson, CvAnalysisCoverage coverage) =>
+        new(CvAnalysisQuality.COMPLETE, canonicalJson, coverage, Array.Empty<CvAnalysisDiagnostic>(), string.Empty);
+
+    public static CvAnalysisValidationResult Partial(
+        string canonicalJson,
+        CvAnalysisCoverage coverage,
+        IReadOnlyList<CvAnalysisDiagnostic> diagnostics) =>
+        new(CvAnalysisQuality.PARTIAL, canonicalJson, coverage, diagnostics, string.Empty);
+
+    public static CvAnalysisValidationResult Invalid(
+        string failureCode,
+        string diagnosticCode = "UNSPECIFIED",
+        string jsonPath = "") =>
+        new(
+            CvAnalysisQuality.INVALID,
+            string.Empty,
+            null,
+            new[] { new CvAnalysisDiagnostic(diagnosticCode, jsonPath) },
+            failureCode,
+            diagnosticCode,
+            jsonPath);
+
 }
 
 public sealed class CvAnalysisDocument
 {
     [JsonRequired, JsonPropertyName("schema_version")]
     public string SchemaVersion { get; set; } = string.Empty;
+
+    [JsonPropertyName("analysis_quality")]
+    public CvAnalysisQuality AnalysisQuality { get; set; }
+
+    [JsonPropertyName("analysis_coverage")]
+    public CvAnalysisCoverage? AnalysisCoverage { get; set; }
+
+    [JsonPropertyName("analysis_diagnostics")]
+    public List<CvAnalysisDiagnostic> AnalysisDiagnostics { get; set; } = new();
 
     [JsonRequired, JsonPropertyName("verbatim_sections")]
     public CvVerbatimSections VerbatimSections { get; set; } = new();

@@ -6,8 +6,6 @@ using ITHunterview.Service.DTOs.Cv.Matching;
 
 namespace ITHunterview.Service.Service.Matching;
 
-public sealed record JdStageTwoContext(string Json, int RequirementGroupCount, int RequirementItemCount);
-
 public sealed record JdStageTwoItemScore(
     string ItemId,
     string HandlerCode,
@@ -26,206 +24,12 @@ public sealed record JdStageTwoValidatedResponse(
 
 public sealed record JdFitScoreCalculation(decimal FinalScore, string JsonString);
 
-/// <summary>Builds the stage-two input without flattening v3 JD groups.</summary>
-public sealed class JdStageTwoContextBuilder
-{
-    public const string Contract = "jd-matching/v3";
-
-    public JdStageTwoContext Build(JdRequirementProjection projection)
-    {
-        ArgumentNullException.ThrowIfNull(projection);
-
-        var groups = projection.Groups.Select(group => new
-        {
-            groupId = group.GroupId,
-            @operator = group.Operator,
-            minSatisfied = group.MinSatisfied,
-            importance = group.Importance,
-            items = group.Items.Select(item => new
-            {
-                itemId = item.ItemId,
-                category = item.Category,
-                skillName = item.SkillName,
-                detailVerbatim = item.DetailVerbatim,
-                rawMention = item.RawMention,
-                sourceSection = item.SourceSection,
-                evidences = item.Evidences,
-                minYears = item.MinYears,
-                maxYears = item.MaxYears
-            })
-        }).ToList();
-
-        var json = JsonSerializer.Serialize(new
-        {
-            contract = Contract,
-            sourceJdSchemaVersion = projection.SourceSchemaVersion,
-            requirementGroups = groups
-        }, new JsonSerializerOptions { WriteIndented = true });
-
-        return new JdStageTwoContext(json, groups.Count, groups.Sum(group => group.items.Count()));
-    }
-}
-
-/// <summary>
-/// Rejects incomplete or out-of-range model scores. A missing item must never be
-/// silently converted to a zero, because that would fabricate a critical gap.
-/// </summary>
-public sealed class JdStageTwoResponseValidator
-{
-    public const string InvalidStageTwoResponse = "INVALID_STAGE_TWO_RESPONSE";
-    private const string CredibilityPenaltyCode = "PNL_TC1_01";
-
-    public JdStageTwoValidatedResponse Validate(JsonDocument response, JdRequirementProjection projection)
-    {
-        ArgumentNullException.ThrowIfNull(response);
-        ArgumentNullException.ThrowIfNull(projection);
-
-        try
-        {
-            var root = response.RootElement;
-            if (root.ValueKind != JsonValueKind.Object ||
-                !root.TryGetProperty("itemScores", out var itemScoresElement) ||
-                itemScoresElement.ValueKind != JsonValueKind.Array)
-            {
-                throw Invalid();
-            }
-
-            var expectedIds = projection.Groups
-                .SelectMany(group => group.Items)
-                .Select(item => item.ItemId)
-                .ToHashSet(StringComparer.Ordinal);
-            if (expectedIds.Count == 0)
-            {
-                throw Invalid();
-            }
-
-            var scores = new Dictionary<string, JdStageTwoItemScore>(StringComparer.Ordinal);
-            foreach (var itemScore in itemScoresElement.EnumerateArray())
-            {
-                if (itemScore.ValueKind != JsonValueKind.Object)
-                {
-                    throw Invalid();
-                }
-
-                var itemId = RequiredString(itemScore, "itemId");
-                var handlerCode = RequiredString(itemScore, "handlerCode");
-                var score = RequiredDecimal(itemScore, "handlerScore");
-                if (score is < 0m or > 1m || !expectedIds.Contains(itemId) || !scores.TryAdd(itemId,
-                    new JdStageTwoItemScore(
-                        itemId,
-                        handlerCode,
-                        score,
-                        OptionalString(itemScore, "reasoning"),
-                        OptionalString(itemScore, "confidence", "unknown"),
-                        ReadStrings(itemScore, "evidence"))))
-                {
-                    throw Invalid();
-                }
-            }
-
-            if (!scores.Keys.ToHashSet(StringComparer.Ordinal).SetEquals(expectedIds))
-            {
-                throw Invalid();
-            }
-
-            var improvements = root.TryGetProperty("improvements", out var improvementsElement)
-                && improvementsElement.ValueKind == JsonValueKind.Array
-                    ? improvementsElement.Clone()
-                    : EmptyArray();
-            return new JdStageTwoValidatedResponse(
-                scores,
-                OptionalString(root, "narrative", ""),
-                improvements,
-                ReadPenalties(root));
-        }
-        catch (InvalidOperationException exception) when (exception.Message == InvalidStageTwoResponse)
-        {
-            throw;
-        }
-        catch (Exception)
-        {
-            throw Invalid();
-        }
-    }
-
-    private static IReadOnlyList<JdStageTwoPenalty> ReadPenalties(JsonElement root)
-    {
-        if (!root.TryGetProperty("penalties", out var penaltiesElement))
-        {
-            return Array.Empty<JdStageTwoPenalty>();
-        }
-        if (penaltiesElement.ValueKind != JsonValueKind.Array)
-        {
-            throw Invalid();
-        }
-
-        var penalties = new List<JdStageTwoPenalty>();
-        foreach (var penalty in penaltiesElement.EnumerateArray())
-        {
-            if (penalty.ValueKind != JsonValueKind.Object ||
-                !string.Equals(RequiredString(penalty, "code"), CredibilityPenaltyCode, StringComparison.Ordinal) ||
-                !penalty.TryGetProperty("triggered", out var triggered) ||
-                (triggered.ValueKind is not JsonValueKind.True and not JsonValueKind.False))
-            {
-                throw Invalid();
-            }
-            penalties.Add(new JdStageTwoPenalty(
-                CredibilityPenaltyCode,
-                triggered.GetBoolean(),
-                OptionalString(penalty, "evidence")));
-        }
-
-        return penalties;
-    }
-
-    private static string RequiredString(JsonElement element, string property)
-    {
-        var value = OptionalString(element, property);
-        return value.Length > 0 ? value : throw Invalid();
-    }
-
-    private static string OptionalString(JsonElement element, string property, string fallback = "") =>
-        element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString()?.Trim() ?? fallback
-            : fallback;
-
-    private static decimal RequiredDecimal(JsonElement element, string property)
-    {
-        if (!element.TryGetProperty(property, out var value) || value.ValueKind != JsonValueKind.Number || !value.TryGetDecimal(out var score))
-        {
-            throw Invalid();
-        }
-        return score;
-    }
-
-    private static IReadOnlyList<string> ReadStrings(JsonElement element, string property)
-    {
-        if (!element.TryGetProperty(property, out var values)) return Array.Empty<string>();
-        if (values.ValueKind != JsonValueKind.Array) throw Invalid();
-        return values.EnumerateArray()
-            .Where(value => value.ValueKind == JsonValueKind.String)
-            .Select(value => value.GetString()?.Trim())
-            .Where(value => !string.IsNullOrWhiteSpace(value))
-            .Select(value => value!)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-    }
-
-    private static JsonElement EmptyArray()
-    {
-        using var empty = JsonDocument.Parse("[]");
-        return empty.RootElement.Clone();
-    }
-
-    private static InvalidOperationException Invalid() => new(InvalidStageTwoResponse);
-}
 
 /// <summary>Owns Pool A/B, critical-gap, credibility and KSW decisions.</summary>
 public sealed class JdFitScoreCalculator
 {
     private const decimal PoolAMaximum = 70m;
     private const decimal PoolBMaximum = 30m;
-    private const decimal CredibilityDeduction = 15m;
 
     public JdFitScoreCalculation Calculate(JdRequirementProjection projection, JdStageTwoValidatedResponse response)
     {
@@ -291,17 +95,8 @@ public sealed class JdFitScoreCalculator
             });
         }
 
-        var credibilityTriggered = response.Penalties.Any(penalty => penalty.Code == "PNL_TC1_01" && penalty.Triggered);
-        if (credibilityTriggered)
-        {
-            penalties.Add(new
-            {
-                code = "PNL_TC1_01",
-                triggered = true,
-                deduction = CredibilityDeduction,
-                evidence = response.Penalties.First(penalty => penalty.Code == "PNL_TC1_01" && penalty.Triggered).Evidence
-            });
-        }
+        // Penalties are backend decisions. The model may return evidence, but a
+        // model-controlled `triggered` flag must never deduct points by itself.
         if (ksw01Triggered)
         {
             penalties.Add(new
@@ -313,7 +108,7 @@ public sealed class JdFitScoreCalculator
             });
         }
 
-        var finalScore = Math.Clamp(poolA + poolB - (credibilityTriggered ? CredibilityDeduction : 0m), 0m, 100m);
+        var finalScore = Math.Clamp(poolA + poolB, 0m, 100m);
         if (ksw01Triggered)
         {
             finalScore = 15m;
@@ -367,8 +162,18 @@ public sealed class JdFitScoreCalculator
         var json = JsonSerializer.Serialize(new
         {
             mode = "jd_fit",
-            contract = JdStageTwoContextBuilder.Contract,
+            contract = JdFitResultContract.Current,
             sourceJdSchemaVersion = projection.SourceSchemaVersion,
+            jdAnalysis = new
+            {
+                quality = projection.AnalysisQuality,
+                scoreBasis = projection.RequirementSetComplete
+                    ? "complete_requirement_set"
+                    : "accepted_requirements_only",
+                requirementSetComplete = projection.RequirementSetComplete,
+                coverage = projection.Coverage,
+                warningCodes = projection.WarningCodes ?? Array.Empty<string>()
+            },
             jdFit = new
             {
                 score = Math.Round(finalScore, 1),

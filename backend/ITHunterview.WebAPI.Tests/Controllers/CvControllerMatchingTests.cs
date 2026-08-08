@@ -2,7 +2,6 @@ using System.Reflection;
 using System.Security.Claims;
 using FluentAssertions;
 using ITHunterview.Service.DTOs.Cv.Matching;
-using ITHunterview.Service.DTOs.FeatureUsage;
 using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.WebAPI.Controllers;
@@ -10,7 +9,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
 namespace ITHunterview.WebAPI.Tests.Controllers;
@@ -18,31 +16,18 @@ namespace ITHunterview.WebAPI.Tests.Controllers;
 public class CvControllerMatchingTests
 {
     [Fact]
-    public async Task MatchJd_PreflightsBeforeBillingAndSubmission()
+    public async Task MatchJd_SubmitsWithIdempotencyKeyAndReturnsAccepted()
     {
         var userId = Guid.NewGuid();
         var matchId = Guid.NewGuid();
-        var prepared = new PreparedMatchingRequest(
-            new PreparedRawCvSource(new string('c', 100), "cv.pdf"),
-            new PreparedRawJdSource(new string('j', 100), "JD"),
-            MatchingMode.JdFit);
-        var sequence = new MockSequence();
-        var preflight = new Mock<IMatchingInputPreflightUseCase>();
-        var usage = new Mock<ICandidateFeatureUsageUseCase>();
+        var submission = new Mock<ICvJdMatchingSubmissionUseCase>();
         var matching = new Mock<ICvJobMatchingUseCase>();
-        var consumption = new FeatureConsumptionResult { DeductTransactionId = Guid.NewGuid() };
+        submission
+            .Setup(x => x.SubmitAsync(userId, It.IsAny<MatchingRequestDto>(), "request-123", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MatchingSubmissionResult(matchId, false));
 
-        preflight.InSequence(sequence)
-            .Setup(x => x.PrepareAsync(userId, It.IsAny<MatchingRequestDto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(prepared);
-        usage.InSequence(sequence)
-            .Setup(x => x.TryConsumeFeatureAsync(userId, "CvJdMatching", It.IsAny<string>()))
-            .ReturnsAsync(consumption);
-        matching.InSequence(sequence)
-            .Setup(x => x.SubmitMatchingJobAsync(userId, prepared, It.IsAny<Guid>()))
-            .ReturnsAsync(matchId);
-
-        var controller = CreateController(userId, matching.Object, usage.Object, preflight.Object);
+        var controller = CreateController(userId, matching.Object, submission.Object);
+        controller.HttpContext.Request.Headers["Idempotency-Key"] = "request-123";
 
         var result = await controller.MatchJd(new MatchingRequestDto
         {
@@ -50,26 +35,22 @@ public class CvControllerMatchingTests
             RawJdText = new string('j', 100)
         }, CancellationToken.None);
 
-        Assert.IsType<OkObjectResult>(result.Result);
-        preflight.Verify(x => x.PrepareAsync(userId, It.IsAny<MatchingRequestDto>(), It.IsAny<CancellationToken>()), Times.Once);
-        usage.Verify(x => x.TryConsumeFeatureAsync(userId, "CvJdMatching", It.IsAny<string>()), Times.Once);
-        matching.Verify(x => x.SubmitMatchingJobAsync(userId, prepared, It.IsAny<Guid>()), Times.Once);
+        Assert.IsType<AcceptedResult>(result.Result);
+        submission.Verify(x => x.SubmitAsync(userId, It.IsAny<MatchingRequestDto>(), "request-123", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task MatchJd_WhenPreflightFails_DoesNotConsumeFeature()
     {
         var userId = Guid.NewGuid();
-        var preflight = new Mock<IMatchingInputPreflightUseCase>();
-        preflight.Setup(x => x.PrepareAsync(userId, It.IsAny<MatchingRequestDto>(), It.IsAny<CancellationToken>()))
+        var submission = new Mock<ICvJdMatchingSubmissionUseCase>();
+        submission.Setup(x => x.SubmitAsync(userId, It.IsAny<MatchingRequestDto>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new ArgumentException("MULTIPLE_CV_SOURCES"));
-        var usage = new Mock<ICandidateFeatureUsageUseCase>();
-        var controller = CreateController(userId, Mock.Of<ICvJobMatchingUseCase>(), usage.Object, preflight.Object);
+        var controller = CreateController(userId, Mock.Of<ICvJobMatchingUseCase>(), submission.Object);
 
-        Func<Task> action = async () => await controller.MatchJd(new MatchingRequestDto(), CancellationToken.None);
+        var result = await controller.MatchJd(new MatchingRequestDto(), CancellationToken.None);
 
-        await Assert.ThrowsAsync<ArgumentException>(action);
-        usage.Verify(x => x.TryConsumeFeatureAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
+        Assert.IsType<BadRequestObjectResult>(result.Result);
     }
 
     [Fact]
@@ -81,29 +62,66 @@ public class CvControllerMatchingTests
 
         authorization!.Policy.Should().Be("CandidateOnly");
         ((IRequestSizeLimitMetadata)requestSize!).MaxRequestBodySize.Should().Be(524288);
+
+        var resultMethod = typeof(CvController).GetMethod(nameof(CvController.GetMatchResult), BindingFlags.Instance | BindingFlags.Public)!;
+        resultMethod.GetCustomAttribute<AuthorizeAttribute>()!.Policy.Should().Be("CandidateOnly");
+    }
+
+    [Fact]
+    public async Task RetryMatch_SubmitsWithIdempotencyKeyAndReturnsAccepted()
+    {
+        var userId = Guid.NewGuid();
+        var failedJobId = Guid.NewGuid();
+        var retryId = Guid.NewGuid();
+        var retry = new Mock<ICvJdMatchingRetryUseCase>();
+        retry.Setup(x => x.RetryAsync(userId, failedJobId, "retry-123", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MatchingSubmissionResult(retryId, false));
+        var controller = CreateController(userId, Mock.Of<ICvJobMatchingUseCase>(), Mock.Of<ICvJdMatchingSubmissionUseCase>(), retry.Object);
+        controller.HttpContext.Request.Headers["Idempotency-Key"] = "retry-123";
+
+        var result = await controller.RetryMatch(failedJobId, CancellationToken.None);
+
+        Assert.IsType<AcceptedResult>(result.Result);
+        retry.Verify(x => x.RetryAsync(userId, failedJobId, "retry-123", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteMatchHistory_ActiveJobReturnsConflictAndRequiresCandidateOnly()
+    {
+        var userId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var history = new Mock<ICvJdMatchingHistoryUseCase>();
+        history
+            .Setup(x => x.HideAsync(jobId, userId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(HideMatchHistoryResult.ActiveJob);
+        var controller = CreateController(
+            userId,
+            Mock.Of<ICvJobMatchingUseCase>(),
+            Mock.Of<ICvJdMatchingSubmissionUseCase>(),
+            history: history.Object);
+
+        var result = await controller.DeleteMatchHistory(jobId);
+
+        Assert.IsType<ConflictObjectResult>(result.Result);
+        var method = typeof(CvController).GetMethod(nameof(CvController.DeleteMatchHistory), BindingFlags.Instance | BindingFlags.Public)!;
+        method.GetCustomAttribute<AuthorizeAttribute>()!.Policy.Should().Be("CandidateOnly");
     }
 
     private static CvController CreateController(
         Guid userId,
         ICvJobMatchingUseCase matching,
-        ICandidateFeatureUsageUseCase usage,
-        IMatchingInputPreflightUseCase preflight)
+        ICvJdMatchingSubmissionUseCase submission,
+        ICvJdMatchingRetryUseCase? retry = null,
+        ICvJdMatchingHistoryUseCase? history = null)
     {
-        var provider = new Mock<IServiceProvider>();
-        provider.Setup(x => x.GetService(typeof(ICvJobMatchingUseCase))).Returns(matching);
-        var scope = new Mock<IServiceScope>();
-        scope.SetupGet(x => x.ServiceProvider).Returns(provider.Object);
-        var scopeFactory = new Mock<IServiceScopeFactory>();
-        scopeFactory.Setup(x => x.CreateScope()).Returns(scope.Object);
-
         return new CvController(
             Mock.Of<ICvUseCase>(),
             matching,
             Mock.Of<IHardcodeCvJobMatchingUseCase>(),
-            scopeFactory.Object,
-            Mock.Of<ICvTextExtractorService>(),
-            usage,
-            preflight)
+            submission,
+            retry ?? Mock.Of<ICvJdMatchingRetryUseCase>(),
+            history ?? Mock.Of<ICvJdMatchingHistoryUseCase>(),
+            Mock.Of<ICvTextExtractorService>())
         {
             ControllerContext = new ControllerContext
             {

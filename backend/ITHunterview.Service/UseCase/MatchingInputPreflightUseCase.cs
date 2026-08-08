@@ -53,7 +53,7 @@ public sealed class MatchingInputPreflightUseCase : IMatchingInputPreflightUseCa
         PreparedJdSource jd;
         if (selection.JobId.HasValue)
         {
-            var savedJob = await _sourceRepository.GetAccessiblePublishedJobAsync(selection.JobId.Value, DateTime.UtcNow, ct);
+            var savedJob = await _sourceRepository.GetAccessibleJobAsync(selection.JobId.Value, userId, DateTime.UtcNow, ct);
             if (savedJob is null)
             {
                 throw new KeyNotFoundException("Job not found");
@@ -85,7 +85,7 @@ public sealed class MatchingInputPreflightUseCase : IMatchingInputPreflightUseCa
 
         if (request.Jd is PreparedSavedJdSource savedJob)
         {
-            var job = await _sourceRepository.GetAccessiblePublishedJobAsync(savedJob.JobId, DateTime.UtcNow, ct);
+            var job = await _sourceRepository.GetAccessibleJobAsync(savedJob.JobId, userId, DateTime.UtcNow, ct);
             if (job is null)
             {
                 throw new KeyNotFoundException("Job not found");

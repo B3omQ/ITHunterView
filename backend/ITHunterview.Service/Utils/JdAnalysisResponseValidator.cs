@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ITHunterview.Domain.Enums;
+using ITHunterview.Service.DTOs.JobAnalysis;
 using ITHunterview.Service.Utils;
 
 namespace ITHunterview.Service.Utils
@@ -10,12 +12,15 @@ namespace ITHunterview.Service.Utils
     public sealed class ValidatedJobAnalysis
     {
         public string SchemaVersion { get; set; } = "jd-analysis/v2";
+        public JdAnalysisQuality Quality { get; set; } = JdAnalysisQuality.COMPLETE;
         public List<string> JobTitlesNormalized { get; set; } = new();
         public List<ValidatedSkillMention> SkillsNormalized { get; set; } = new();
         public int TotalYearsExp { get; set; }
         public List<string> Domains { get; set; } = new();
         public List<ValidatedRequirementItem> RequirementsList { get; set; } = new();
         public List<ValidatedRequirementGroup> RequirementGroups { get; set; } = new();
+        public JdAnalysisCoverage Coverage { get; set; } = new(0, 0, 0, 0, 0, 0, true);
+        public List<JdAnalysisDiagnostic> Diagnostics { get; set; } = new();
     }
 
         public sealed class ValidatedSkillMention
@@ -50,12 +55,16 @@ namespace ITHunterview.Service.Utils
         public string Operator { get; set; } = "all_of";
         public int MinSatisfied { get; set; }
         public string Importance { get; set; } = "must_have";
+        public string SourceSection { get; set; } = string.Empty;
+        public string RequirementVerbatim { get; set; } = string.Empty;
         public List<ValidatedRequirementItem> Items { get; set; } = new();
     }
 
     public sealed class ValidationResult<T>
     {
         public bool IsValid { get; set; }
+        public bool IsUsable => Data is not null && Quality != JdAnalysisQuality.INVALID;
+        public JdAnalysisQuality Quality { get; set; } = JdAnalysisQuality.INVALID;
         public string? FailureCode { get; set; }
         public List<string> Errors { get; set; } = new();
         public T? Data { get; set; }
@@ -138,11 +147,14 @@ namespace ITHunterview.Service.Utils
                 }
 
                 if (!root.TryGetProperty("schema_version", out var schemaProp) ||
-                    (schemaProp.GetString() != "jd-analysis/v2" && schemaProp.GetString() != "jd-analysis/v3"))
+                    schemaProp.ValueKind != JsonValueKind.String ||
+                    (schemaProp.GetString() != "jd-analysis/v2" &&
+                     schemaProp.GetString() != "jd-analysis/v3" &&
+                     schemaProp.GetString() != "jd-analysis/v4"))
                 {
                     result.IsValid = false;
                     result.FailureCode = "UNSUPPORTED_SCHEMA_VERSION";
-                    result.Errors.Add("Missing or invalid schema_version. Expected 'jd-analysis/v2' or 'jd-analysis/v3'.");
+                    result.Errors.Add("Missing or invalid schema_version. Expected a supported JD analysis contract.");
                     return result;
                 }
 
@@ -156,6 +168,11 @@ namespace ITHunterview.Service.Utils
                 }
 
                 var schemaVersion = schemaProp.GetString()!;
+                if (schemaVersion == "jd-analysis/v4")
+                {
+                    return ValidateV4(metricsProp, result);
+                }
+
                 var validated = new ValidatedJobAnalysis { SchemaVersion = schemaVersion };
                 string fullInputText = CombineInputText(input);
 
@@ -226,6 +243,12 @@ namespace ITHunterview.Service.Utils
                 if (schemaVersion == "jd-analysis/v3")
                 {
                     if (!ParseV3Groups(groupsProp, fullInputText, validated, result)) return result;
+                    // Preserve historical v3 behavior for stored snapshots. The v4
+                    // provider path above intentionally performs structural mapping only.
+                    if (!JdRequirementSemanticNormalizer.TryNormalize(validated, input, out var failureCode, out var failureMessage))
+                    {
+                        return Invalid(result, failureCode, failureMessage);
+                    }
                 }
                 else foreach (var rElem in reqsProp.EnumerateArray())
                 {
@@ -267,11 +290,259 @@ namespace ITHunterview.Service.Utils
                     });
                 }
 
-                Canonicalize(validated);
+                try
+                {
+                    Canonicalize(validated);
+                }
+                catch (InvalidOperationException exception) when (exception.Message == "JD_ANALYSIS_GROUP_ID_COLLISION")
+                {
+                    return Invalid(result, "JD_ANALYSIS_DUPLICATE_REQUIREMENT_GROUP", "JD analysis contains duplicate semantic requirement groups.");
+                }
 
                 result.IsValid = true;
+                result.Quality = JdAnalysisQuality.COMPLETE;
+                validated.Quality = result.Quality;
+                var groupCount = validated.RequirementGroups.Count;
+                var itemCount = validated.RequirementGroups.Sum(group => group.Items.Count);
+                validated.Coverage = new JdAnalysisCoverage(groupCount, groupCount, 0, itemCount, itemCount, 0, true);
                 result.Data = validated;
                 return result;
+            }
+        }
+
+        private static ValidationResult<ValidatedJobAnalysis> ValidateV4(
+            JsonElement metrics,
+            ValidationResult<ValidatedJobAnalysis> result)
+        {
+            var validated = new ValidatedJobAnalysis
+            {
+                // v4 is the provider contract. Everything downstream consumes one
+                // stable, expanded v3 representation.
+                SchemaVersion = "jd-analysis/v3"
+            };
+
+            ReadV4StringArray(metrics, "job_titles_normalized", validated.JobTitlesNormalized, validated.Diagnostics);
+            ReadV4StringArray(metrics, "domains", validated.Domains, validated.Diagnostics);
+            if (metrics.TryGetProperty("total_years_exp", out var yearsElement) &&
+                yearsElement.ValueKind == JsonValueKind.Number &&
+                yearsElement.TryGetInt32(out var years) && years >= 0)
+            {
+                validated.TotalYearsExp = years;
+            }
+            else
+            {
+                validated.Diagnostics.Add(new JdAnalysisDiagnostic("INVALID_TOTAL_YEARS_EXP", "$.matching_metrics.total_years_exp"));
+            }
+
+            if (!metrics.TryGetProperty("requirement_groups", out var groupsElement) ||
+                groupsElement.ValueKind != JsonValueKind.Array)
+            {
+                return Invalid(result, "MISSING_REQUIREMENT_GROUPS", "Missing required array 'requirement_groups'.");
+            }
+
+            var inputGroupCount = groupsElement.GetArrayLength();
+            var inputItemCount = 0;
+            var acceptedItemCount = 0;
+            var groupIndex = 0;
+            foreach (var groupElement in groupsElement.EnumerateArray())
+            {
+                var path = $"$.matching_metrics.requirement_groups[{groupIndex}]";
+                groupIndex++;
+                if (groupElement.ValueKind == JsonValueKind.Object &&
+                    groupElement.TryGetProperty("items", out var rawItems) && rawItems.ValueKind == JsonValueKind.Array)
+                {
+                    inputItemCount += rawItems.GetArrayLength();
+                }
+
+                if (validated.RequirementGroups.Count >= 50 ||
+                    !TryParseV4Group(groupElement, out var group))
+                {
+                    AddDiagnostic(validated.Diagnostics, "INVALID_REQUIREMENT_GROUP", path);
+                    continue;
+                }
+
+                if (acceptedItemCount + group.Items.Count > 100)
+                {
+                    AddDiagnostic(validated.Diagnostics, "REQUIREMENT_ITEM_LIMIT_EXCEEDED", path);
+                    continue;
+                }
+
+                acceptedItemCount += group.Items.Count;
+                validated.RequirementGroups.Add(group);
+            }
+
+            if (inputGroupCount > 0 && validated.RequirementGroups.Count == 0)
+            {
+                return Invalid(result, "NO_USABLE_REQUIREMENT_GROUPS", "No structurally usable requirement group remains.");
+            }
+
+            try
+            {
+                Canonicalize(validated);
+            }
+            catch (InvalidOperationException exception) when (exception.Message == "JD_ANALYSIS_GROUP_ID_COLLISION")
+            {
+                return Invalid(result, "JD_ANALYSIS_DUPLICATE_REQUIREMENT_GROUP", "JD analysis contains duplicate semantic requirement groups.");
+            }
+
+            var acceptedGroupCount = validated.RequirementGroups.Count;
+            acceptedItemCount = validated.RequirementGroups.Sum(group => group.Items.Count);
+            var discardedGroupCount = Math.Max(0, inputGroupCount - acceptedGroupCount);
+            var discardedItemCount = Math.Max(0, inputItemCount - acceptedItemCount);
+            var complete = validated.Diagnostics.Count == 0 && discardedGroupCount == 0 && discardedItemCount == 0;
+            validated.Coverage = new JdAnalysisCoverage(
+                inputGroupCount,
+                acceptedGroupCount,
+                discardedGroupCount,
+                inputItemCount,
+                acceptedItemCount,
+                discardedItemCount,
+                complete);
+            validated.Quality = complete ? JdAnalysisQuality.COMPLETE : JdAnalysisQuality.PARTIAL;
+
+            result.IsValid = complete;
+            result.Quality = validated.Quality;
+            result.FailureCode = complete ? null : "PARTIAL_JD_ANALYSIS";
+            result.Data = validated;
+            return result;
+        }
+
+        private static bool TryParseV4Group(
+            JsonElement element,
+            out ValidatedRequirementGroup group)
+        {
+            group = new ValidatedRequirementGroup();
+            if (element.ValueKind != JsonValueKind.Object ||
+                !element.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array ||
+                items.GetArrayLength() == 0)
+            {
+                return false;
+            }
+
+            var operation = ReadString(element, "operator").ToLowerInvariant();
+            var importance = ReadString(element, "importance").ToLowerInvariant();
+            var sourceSection = ReadString(element, "source_section").ToLowerInvariant();
+            var requirementVerbatim = ReadString(element, "requirement_verbatim");
+            if (!AllowedGroupOperators.Contains(operation) || !AllowedImportances.Contains(importance) ||
+                !AllowedSourceSections.Contains(sourceSection) || string.IsNullOrWhiteSpace(requirementVerbatim))
+            {
+                return false;
+            }
+
+            int minSatisfied;
+            if (operation == "all_of") minSatisfied = items.GetArrayLength();
+            else if (operation == "one_of") minSatisfied = 1;
+            else if (!element.TryGetProperty("min_satisfied", out var minElement) ||
+                     minElement.ValueKind != JsonValueKind.Number || !minElement.TryGetInt32(out minSatisfied) ||
+                     minSatisfied < 1 || minSatisfied > items.GetArrayLength())
+            {
+                return false;
+            }
+
+            group = new ValidatedRequirementGroup
+            {
+                Operator = operation,
+                MinSatisfied = minSatisfied,
+                Importance = importance,
+                SourceSection = sourceSection,
+                RequirementVerbatim = requirementVerbatim
+            };
+
+            var itemIndex = 0;
+            foreach (var item in items.EnumerateArray())
+            {
+                if (!TryParseV4Item(item, importance, sourceSection, requirementVerbatim, out var parsedItem))
+                {
+                    return false;
+                }
+
+                group.Items.Add(parsedItem);
+                itemIndex++;
+            }
+
+            return itemIndex > 0;
+        }
+
+        private static bool TryParseV4Item(
+            JsonElement item,
+            string importance,
+            string sourceSection,
+            string requirementVerbatim,
+            out ValidatedRequirementItem parsed)
+        {
+            parsed = new ValidatedRequirementItem();
+            if (item.ValueKind != JsonValueKind.Object) return false;
+
+            var category = ReadString(item, "category").ToLowerInvariant();
+            var skillName = NormalizeToken(ReadString(item, "skill_name"));
+            var rawMention = ReadString(item, "raw_mention");
+            if (!AllowedCategories.Contains(category) || string.IsNullOrWhiteSpace(skillName) ||
+                string.IsNullOrWhiteSpace(rawMention) ||
+                !TryReadOptionalNonNegativeInt(item, "min_years", out var minYears) ||
+                !TryReadOptionalNonNegativeInt(item, "max_years", out var maxYears) ||
+                (minYears.HasValue && maxYears.HasValue && minYears > maxYears))
+            {
+                return false;
+            }
+
+            parsed = new ValidatedRequirementItem
+            {
+                Category = category,
+                Importance = importance,
+                SkillName = skillName,
+                DetailVerbatim = requirementVerbatim,
+                RawMention = rawMention,
+                SourceSection = sourceSection,
+                Evidence = requirementVerbatim,
+                Evidences = new List<string> { requirementVerbatim },
+                MinYears = minYears,
+                MaxYears = maxYears,
+                Confidence = 1m
+            };
+            return true;
+        }
+
+        private static bool TryReadOptionalNonNegativeInt(JsonElement item, string property, out int? value)
+        {
+            value = null;
+            if (!item.TryGetProperty(property, out var element) || element.ValueKind == JsonValueKind.Null) return true;
+            if (element.ValueKind != JsonValueKind.Number || !element.TryGetInt32(out var number) || number < 0) return false;
+            value = number;
+            return true;
+        }
+
+        private static void ReadV4StringArray(
+            JsonElement metrics,
+            string property,
+            List<string> destination,
+            List<JdAnalysisDiagnostic> diagnostics)
+        {
+            if (!metrics.TryGetProperty(property, out var values) || values.ValueKind != JsonValueKind.Array)
+            {
+                AddDiagnostic(diagnostics, $"INVALID_{property.ToUpperInvariant()}", $"$.matching_metrics.{property}");
+                return;
+            }
+
+            var index = 0;
+            foreach (var value in values.EnumerateArray())
+            {
+                if (value.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(value.GetString()))
+                {
+                    AddCanonical(destination, value.GetString());
+                }
+                else
+                {
+                    AddDiagnostic(diagnostics, $"INVALID_{property.ToUpperInvariant()}_ITEM", $"$.matching_metrics.{property}[{index}]");
+                }
+                index++;
+            }
+        }
+
+        private static void AddDiagnostic(List<JdAnalysisDiagnostic> diagnostics, string code, string path)
+        {
+            if (diagnostics.Count < 100 && !diagnostics.Any(item => item.Code == code && item.JsonPath == path))
+            {
+                diagnostics.Add(new JdAnalysisDiagnostic(code, path));
             }
         }
 
@@ -478,9 +749,27 @@ namespace ITHunterview.Service.Utils
                     .ThenBy(group => string.Join("|", group.Items.Select(item => item.SkillName)), StringComparer.Ordinal)
                     .ToList();
 
-                for (var index = 0; index < validated.RequirementGroups.Count; index++)
+                var assignedIds = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var requirementGroup in validated.RequirementGroups)
                 {
-                    validated.RequirementGroups[index].GroupId = $"grp-{index + 1:000}";
+                    var itemTokens = requirementGroup.Items
+                        .Select(item => JdRequirementSemanticNormalizer.CreateItemToken(
+                            item.Category,
+                            item.SkillName,
+                            item.MinYears,
+                            item.MaxYears))
+                        .ToList();
+                    var groupId = JdRequirementSemanticNormalizer.CreateGroupId(
+                        requirementGroup.Importance,
+                        requirementGroup.Operator,
+                        requirementGroup.MinSatisfied,
+                        itemTokens);
+                    if (!assignedIds.Add(groupId))
+                    {
+                        throw new InvalidOperationException("JD_ANALYSIS_GROUP_ID_COLLISION");
+                    }
+
+                    requirementGroup.GroupId = groupId;
                 }
 
                 validated.RequirementsList = validated.RequirementGroups

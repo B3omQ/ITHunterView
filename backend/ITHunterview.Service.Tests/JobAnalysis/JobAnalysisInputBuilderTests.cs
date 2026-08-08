@@ -53,8 +53,8 @@ namespace ITHunterview.Service.Tests.JobAnalysis
             var snap1 = _builder.Build(job1);
             var snap2 = _builder.Build(job2);
 
-            var hash1 = _builder.ComputeHash(snap1, sysPromptId, userPromptId);
-            var hash2 = _builder.ComputeHash(snap2, sysPromptId, userPromptId);
+            var hash1 = _builder.ComputeHash(snap1, sysPromptId, userPromptId, "jd-analysis/v3");
+            var hash2 = _builder.ComputeHash(snap2, sysPromptId, userPromptId, "jd-analysis/v3");
 
             Assert.Equal(hash1, hash2);
         }
@@ -71,8 +71,8 @@ namespace ITHunterview.Service.Tests.JobAnalysis
             var snap1 = _builder.Build(job1);
             var snap2 = _builder.Build(job2);
 
-            var hash1 = _builder.ComputeHash(snap1, sysPromptId, userPromptId);
-            var hash2 = _builder.ComputeHash(snap2, sysPromptId, userPromptId);
+            var hash1 = _builder.ComputeHash(snap1, sysPromptId, userPromptId, "jd-analysis/v3");
+            var hash2 = _builder.ComputeHash(snap2, sysPromptId, userPromptId, "jd-analysis/v3");
 
             Assert.NotEqual(hash1, hash2);
         }
@@ -115,8 +115,8 @@ namespace ITHunterview.Service.Tests.JobAnalysis
 
             Assert.Equal(_builder.ComputeSemanticHash(snapshot1), _builder.ComputeSemanticHash(snapshot2));
             Assert.Equal(
-                _builder.ComputeAnalysisHash(snapshot1, systemPrompt, userPrompt),
-                _builder.ComputeAnalysisHash(snapshot2, systemPrompt, userPrompt));
+                _builder.ComputeAnalysisHash(snapshot1, systemPrompt, userPrompt, "jd-analysis/v3"),
+                _builder.ComputeAnalysisHash(snapshot2, systemPrompt, userPrompt, "jd-analysis/v3"));
         }
 
         [Fact]
@@ -144,8 +144,8 @@ namespace ITHunterview.Service.Tests.JobAnalysis
             Assert.Equal(snapshot1.Requirements, snapshot2.Requirements);
             Assert.Equal(_builder.ComputeSemanticHash(snapshot1), _builder.ComputeSemanticHash(snapshot2));
             Assert.Equal(
-                _builder.ComputeAnalysisHash(snapshot1, systemPrompt, userPrompt),
-                _builder.ComputeAnalysisHash(snapshot2, systemPrompt, userPrompt));
+                _builder.ComputeAnalysisHash(snapshot1, systemPrompt, userPrompt, "jd-analysis/v3"),
+                _builder.ComputeAnalysisHash(snapshot2, systemPrompt, userPrompt, "jd-analysis/v3"));
         }
 
         [Fact]
@@ -172,8 +172,8 @@ namespace ITHunterview.Service.Tests.JobAnalysis
             Assert.Equal(plainSnapshot.Description, formattedSnapshot.Description);
             Assert.Equal(_builder.ComputeSemanticHash(plainSnapshot), _builder.ComputeSemanticHash(formattedSnapshot));
             Assert.Equal(
-                _builder.ComputeAnalysisHash(plainSnapshot, systemPrompt, userPrompt),
-                _builder.ComputeAnalysisHash(formattedSnapshot, systemPrompt, userPrompt));
+                _builder.ComputeAnalysisHash(plainSnapshot, systemPrompt, userPrompt, "jd-analysis/v3"),
+                _builder.ComputeAnalysisHash(formattedSnapshot, systemPrompt, userPrompt, "jd-analysis/v3"));
         }
 
         [Fact]
@@ -197,8 +197,72 @@ namespace ITHunterview.Service.Tests.JobAnalysis
 
             Assert.Equal(_builder.ComputeSemanticHash(snapshot1), _builder.ComputeSemanticHash(snapshot2));
             Assert.Equal(
-                _builder.ComputeAnalysisHash(snapshot1, systemPrompt, userPrompt),
-                _builder.ComputeAnalysisHash(snapshot2, systemPrompt, userPrompt));
+                _builder.ComputeAnalysisHash(snapshot1, systemPrompt, userPrompt, "jd-analysis/v3"),
+                _builder.ComputeAnalysisHash(snapshot2, systemPrompt, userPrompt, "jd-analysis/v3"));
+        }
+
+        [Fact]
+        public void BuildFromPastedText_SplitsVietnameseRequirementsAndKeepsNiceToHaveHeading()
+        {
+            var snapshot = _builder.BuildFromPastedText(
+                "Full-stack Engineer",
+                """
+                **Mô tả công việc**
+                Build e-commerce applications.
+
+                **Yêu cầu ứng viên**
+                Proficient in ReactJS.
+
+                **Nice to have:**
+                Docker and Kubernetes.
+
+                **Quyền lợi**
+                Annual leave and insurance.
+                """);
+
+            Assert.Equal("Full-stack Engineer", snapshot.Title);
+            Assert.Contains("Build e-commerce applications.", snapshot.Description);
+            Assert.Contains("Yêu cầu ứng viên", snapshot.Requirements);
+            Assert.Contains("Nice to have", snapshot.Requirements, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Docker and Kubernetes.", snapshot.Requirements);
+            Assert.DoesNotContain("Annual leave", snapshot.Description);
+            Assert.DoesNotContain("Annual leave", snapshot.Requirements);
+        }
+
+        [Fact]
+        public void BuildFromPastedText_WithoutRecognizedHeading_PreservesAllTextAsDescription()
+        {
+            const string pasted = "We need a backend engineer with C# and PostgreSQL.";
+
+            var snapshot = _builder.BuildFromPastedText("Backend Engineer", pasted);
+
+            Assert.Equal(pasted, snapshot.Description);
+            Assert.Equal(string.Empty, snapshot.Requirements);
+        }
+
+        [Fact]
+        public void BuildFromPastedText_SplitsActualUnicodeVietnameseHeadings()
+        {
+            var pasted = "\u004d\u00f4 t\u1ea3 c\u00f4ng vi\u1ec7c\nBuild APIs.\n\nY\u00eau c\u1ea7u \u1ee9ng vi\u00ean\nC# is required.";
+
+            var snapshot = _builder.BuildFromPastedText("Backend Engineer", pasted);
+
+            Assert.Contains("Build APIs.", snapshot.Description);
+            Assert.Contains("C# is required.", snapshot.Requirements);
+        }
+
+        [Fact]
+        public void ComputeAnalysisHash_RequiresAndIncludesExplicitPromptContract()
+        {
+            var snapshot = _builder.Build(new JobPostings { Title = "Dev", Description = "Desc", Requirements = "Req" });
+            var system = Guid.NewGuid();
+            var user = Guid.NewGuid();
+
+            var v2 = _builder.ComputeAnalysisHash(snapshot, system, user, "jd-analysis/v2");
+            var v3 = _builder.ComputeAnalysisHash(snapshot, system, user, "jd-analysis/v3");
+
+            Assert.NotEqual(v2, v3);
+            Assert.Throws<ArgumentException>(() => _builder.ComputeAnalysisHash(snapshot, system, user, ""));
         }
     }
 }

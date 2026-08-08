@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, Eye, Trash2, Star, Loader2 } from 'lucide-react';
+import { FileText, Trash2, Star, Loader2 } from 'lucide-react';
 import { useIsMutating } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import type { Cv } from '@/types/cv.types';
@@ -77,6 +77,11 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
             {cv.parseStatus === 'FAILED' && (
               <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-medium" title={cv.parseError || undefined}>
                 {t('analysisFailed')}
+              </span>
+            )}
+            {cv.parseStatus === 'SUCCESS' && cv.analysisQuality === 'PARTIAL' && (
+              <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-medium">
+                Partially read
               </span>
             )}
           </div>

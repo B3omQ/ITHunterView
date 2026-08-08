@@ -97,6 +97,7 @@ builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.Notific
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.NotificationProcessorBackgroundService>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.PaymentCleanupBackgroundService>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.JobAnalysisWorker>();
+builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.CvJdMatchingWorker>();
 builder.Services.AddSingleton<ITHunterview.WebAPI.BackgroundServices.ICvMatchingQueue, ITHunterview.WebAPI.BackgroundServices.CvMatchingQueue>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.CvMatchingWorker>();
 

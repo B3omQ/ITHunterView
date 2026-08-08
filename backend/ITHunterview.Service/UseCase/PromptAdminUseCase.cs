@@ -121,7 +121,16 @@ namespace ITHunterview.Service.UseCase
 
             ValidateModelConfig(prompt.PromptKey, dto.ModelConfig);
 
-            ValidatePlaceholders(prompt.PromptKey, dto.Content);
+            var content = dto.Content;
+            if (prompt.PromptKey == JdMatchingPromptContract.PromptKey)
+            {
+                // Matching owns its output schema in application code. Store
+                // only semantic instructions so an editor cannot silently
+                // create a second, drifting provider contract.
+                content = JdMatchingOutputSchema.NormalizeManagedContent(content).SemanticContent;
+            }
+
+            ValidatePlaceholders(prompt.PromptKey, content);
 
             if (IsManagedAnalysisPromptKey(prompt.PromptKey) && dto.MakeActive)
             {
@@ -133,7 +142,7 @@ namespace ITHunterview.Service.UseCase
                 Id = Guid.NewGuid(),
                 PromptId = promptId,
                 VersionTag = dto.VersionTag,
-                Content = dto.Content,
+                Content = content,
                 ModelConfig = dto.ModelConfig,
                 CreatedBy = adminId,
                 CreatedAt = DateTime.UtcNow
@@ -156,6 +165,24 @@ namespace ITHunterview.Service.UseCase
             {
                 throw new ArgumentException("Analysis prompt versions must be activated as a compatible system/user pair.");
             }
+
+            // Validate the selected row before the repository starts its
+            // deactivation transaction. This keeps a bad version from ever
+            // replacing the currently active version.
+            var version = await _promptRepository.GetPromptVersionAsync(versionId);
+            if (version == null || version.PromptId != promptId)
+            {
+                throw new KeyNotFoundException("Prompt version not found or does not belong to the specified prompt.");
+            }
+
+            ValidateModelConfig(prompt.PromptKey, version.ModelConfig);
+            var content = version.Content;
+            if (prompt.PromptKey == JdMatchingPromptContract.PromptKey)
+            {
+                content = JdMatchingOutputSchema.NormalizeManagedContent(content).SemanticContent;
+            }
+
+            ValidatePlaceholders(prompt.PromptKey, content);
 
             await _promptRepository.ActivatePromptVersionAsync(promptId, versionId);
         }
@@ -228,11 +255,29 @@ namespace ITHunterview.Service.UseCase
                 JdAnalysisPromptContract.UserPromptKey => new[] { JdAnalysisPromptContract.UserPlaceholder },
                 "CV_ANALYSIS_SYSTEM" => Array.Empty<string>(),
                 "CV_ANALYSIS_USER" => new[] { CvAnalysisPromptContract.UserPlaceholder },
-                "JD_MATCHING_PROMPT" => new[] { "[CV_TEXT]", "[PARSED_JD_REQUIREMENTS]" },
+                JdMatchingPromptContract.PromptKey => new[]
+                {
+                    JdMatchingPromptContract.CvPlaceholder,
+                    JdMatchingPromptContract.RequirementsPlaceholder
+                },
                 "MOCK_INTERVIEW_START" => new[] { "[CV_TEXT]", "[JD_TEXT]" },
                 "MOCK_INTERVIEW_NEXT" => new[] { "[CV_TEXT]", "[JD_TEXT]", "[INTERVIEW_CONTEXT]" },
                 _ => Array.Empty<string>()
             };
+
+            if (promptKey == JdMatchingPromptContract.PromptKey)
+            {
+                var invalidPlaceholders = requiredPlaceholders
+                    .Where(p => JdMatchingPromptContract.FindOperationalPlaceholderIndex(content, p) < 0)
+                    .ToList();
+                if (invalidPlaceholders.Any())
+                {
+                    throw new ArgumentException(
+                        $"{JdMatchingPromptContract.PromptKey} must contain exactly one operational input slot for each placeholder: {string.Join(", ", invalidPlaceholders)}");
+                }
+
+                return;
+            }
 
 
             var missingPlaceholders = requiredPlaceholders.Where(p => !content.Contains(p)).ToList();

@@ -53,7 +53,7 @@ public class MatchingInputPreflightUseCaseTests
         var repository = new Mock<IMatchingSourceRepository>();
         repository.Setup(r => r.GetOwnedCvAsync(cvId, candidateId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Cvs { Id = cvId, FileName = "trusted-cv.pdf", FileUrl = "url", FileType = "application/pdf" });
-        repository.Setup(r => r.GetAccessiblePublishedJobAsync(jobId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+        repository.Setup(r => r.GetAccessibleJobAsync(jobId, candidateId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new JobPostings { Id = jobId, Title = "Trusted Job" });
         var sut = new MatchingInputPreflightUseCase(
             Validating(new MatchingInputSelection(cvId, null, jobId, null, "client-name.pdf", "client title", MatchingMode.JdFit)),
@@ -70,7 +70,7 @@ public class MatchingInputPreflightUseCaseTests
     {
         var jobId = Guid.NewGuid();
         var repository = new Mock<IMatchingSourceRepository>();
-        repository.Setup(r => r.GetAccessiblePublishedJobAsync(jobId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+        repository.Setup(r => r.GetAccessibleJobAsync(jobId, It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((JobPostings?)null);
         var sut = new MatchingInputPreflightUseCase(Validating(null), repository.Object);
         var prepared = new PreparedMatchingRequest(

@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Interface.Service.Matching;
+using ITHunterview.Service.Utils;
 
 namespace ITHunterview.Service.Service.Matching;
 
@@ -45,12 +47,15 @@ public sealed class JdRequirementProjector : IJdRequirementProjector
             }
 
             var sourceSchemaVersion = ReadOptionalString(root, "schema_version") ?? "legacy";
+            var quality = ReadQuality(root);
+            var coverage = JdAnalysisMetadataReader.ReadCoverage(effectiveJdJson);
+            var diagnostics = JdAnalysisMetadataReader.ReadDiagnostics(effectiveJdJson);
             if (string.Equals(sourceSchemaVersion, "jd-analysis/v3", StringComparison.Ordinal))
             {
-                return new JdRequirementProjection(sourceSchemaVersion, ReadV3Groups(metrics), false);
+                return new JdRequirementProjection(sourceSchemaVersion, ReadV3Groups(metrics), false, quality, coverage, diagnostics);
             }
 
-            return new JdRequirementProjection(sourceSchemaVersion, ReadLegacyGroups(metrics), true);
+            return new JdRequirementProjection(sourceSchemaVersion, ReadLegacyGroups(metrics), true, quality, coverage, diagnostics);
         }
         catch (JsonException)
         {
@@ -88,19 +93,27 @@ public sealed class JdRequirementProjector : IJdRequirementProjector
 
             var items = new List<ProjectedJdRequirementItem>();
             var itemKeys = new HashSet<string>(StringComparer.Ordinal);
-            var itemIndex = 0;
             foreach (var itemElement in itemArray.EnumerateArray())
             {
-                itemIndex++;
-                var item = ReadItem(itemElement, $"{groupId}:item-{itemIndex:000}");
+                var item = ReadItem(itemElement, string.Empty);
                 if (!itemKeys.Add($"{item.Category}|{item.SkillName}|{item.MinYears}|{item.MaxYears}"))
                 {
                     throw Invalid();
                 }
-                items.Add(item);
+                items.Add(item with
+                {
+                    ItemId = $"{groupId}:{JdRequirementSemanticNormalizer.CreateItemToken(item.Category, item.SkillName, item.MinYears, item.MaxYears)}"
+                });
             }
 
-            groups.Add(new ProjectedJdRequirementGroup(groupId, @operator, minSatisfied, importance, items));
+            groups.Add(new ProjectedJdRequirementGroup(
+                groupId,
+                @operator,
+                minSatisfied,
+                importance,
+                items,
+                ReadOptionalString(groupElement, "source_section") ?? string.Empty,
+                ReadOptionalString(groupElement, "requirement_verbatim") ?? string.Empty));
         }
 
         return groups;
@@ -231,6 +244,22 @@ public sealed class JdRequirementProjector : IJdRequirementProjector
             throw Invalid();
         }
         return result;
+    }
+
+    private static JdAnalysisQuality ReadQuality(JsonElement root)
+    {
+        var value = ReadOptionalString(root, "analysis_quality");
+        if (value is null)
+        {
+            // Historical structured analyses did not carry three-state metadata.
+            // Their structural validity is the only available signal, so preserve
+            // the established COMPLETE default for those legacy payloads.
+            return JdAnalysisQuality.COMPLETE;
+        }
+
+        return Enum.TryParse<JdAnalysisQuality>(value, ignoreCase: false, out var quality)
+            ? quality
+            : throw Invalid();
     }
 
     private static InvalidOperationException Invalid() => new(InvalidEffectiveJdAnalysis);
