@@ -583,16 +583,16 @@ export default function JobPostingsPage() {
 
                             return (
                               <div className="mt-1.5 pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60 flex flex-col gap-0.5">
-                                <span title="Hạn hiển thị trên hệ thống" className="text-zinc-500 dark:text-zinc-400 text-[10px] uppercase tracking-wide font-semibold">
-                                  Hạn hiển thị hệ thống:
+                                <span title={t("currentExpirySys")} className="text-zinc-500 dark:text-zinc-400 text-[10px] uppercase tracking-wide font-semibold">
+                                  {t("sysExpiryNote")}
                                 </span>
                                 <span className={`text-[11px] font-medium flex items-center gap-1.5 ${isExpired ? 'text-red-600 dark:text-red-400' : isUrgent ? 'text-orange-600 dark:text-orange-400' : 'text-zinc-600 dark:text-zinc-300'}`}>
                                   {formatDate(job.expiresAt)}
                                   {isExpired ? (
-                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">ĐÃ ẨN</span>
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">{t("hiddenBadge")}</span>
                                   ) : (
                                     <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${isUrgent ? 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800' : 'bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'}`}>
-                                      CÒN {diffDays} NGÀY
+                                      {t("daysLeft", { days: diffDays })}
                                     </span>
                                   )}
                                 </span>
@@ -785,18 +785,17 @@ export default function JobPostingsPage() {
 
             <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-700/60 rounded-xl p-4 space-y-3">
               <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 leading-relaxed">
-                📌 Tin tuyển dụng <span className="font-semibold text-[#1877F2] dark:text-blue-400">{extendingJob.title}</span> sẽ bị hệ thống tự động ẩn sau 30 ngày hiển thị. 
-                Bạn có thể dùng tính năng này để gia hạn thời gian hiển thị thêm 15 ngày tính từ hạn hiện tại.
+                {t("extendWarningPrefix")} <span className="font-semibold text-[#1877F2] dark:text-blue-400">{extendingJob.title}</span>{t("extendWarningSuffix")}
               </p>
               <div className="flex items-center justify-between text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 p-3 rounded-lg">
                 <div className="flex flex-col">
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">{t("currentExpiry")} (Hệ thống)</span>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">{t("currentExpirySys")}</span>
                   <strong className="text-zinc-800 dark:text-zinc-200">{formatDate(extendingJob.expiresAt)}</strong>
                 </div>
                 <div className="flex items-center justify-center">
                   <span className="text-zinc-400 mx-2">→</span>
                   <span className="px-2.5 py-1 bg-[#E7F3FF] dark:bg-blue-900/30 text-[#1877F2] dark:text-blue-400 text-xs font-bold rounded-md border border-blue-200 dark:border-blue-800/50">
-                    +15 Ngày
+                    {t("plus15DaysBtn")}
                   </span>
                 </div>
               </div>
