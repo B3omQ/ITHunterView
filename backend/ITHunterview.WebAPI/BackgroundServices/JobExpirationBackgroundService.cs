@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.Hubs;
 using ITHunterview.Service.Infrastructure.Persistence;
+using ITHunterview.Service.Interface.UseCase;
+using ITHunterview.Service.DTOs.Notification;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,10 +40,11 @@ namespace ITHunterview.WebAPI.BackgroundServices
                     using var scope = _scopeFactory.CreateScope();
                     var context = scope.ServiceProvider.GetRequiredService<ITHunterviewContext>();
                     var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<NotificationHub>>();
+                    var notificationUseCase = scope.ServiceProvider.GetRequiredService<INotificationUseCase>();
 
                     var now = DateTime.UtcNow;
                     var expiredJobs = await context.JobPostings
-                        .Where(j => j.Status == JobStatus.PUBLISHED && j.ApplicationDeadline.HasValue && j.ApplicationDeadline.Value < now)
+                        .Where(j => j.Status == JobStatus.PUBLISHED && j.ExpiresAt.HasValue && j.ExpiresAt.Value < now)
                         .ToListAsync(stoppingToken);
 
                     if (expiredJobs.Any())
@@ -60,6 +63,13 @@ namespace ITHunterview.WebAPI.BackgroundServices
                         foreach (var job in expiredJobs)
                         {
                             await hubContext.Clients.All.SendAsync("JobStatusChanged", job.Id, stoppingToken);
+                            await notificationUseCase.CreateNotificationAsync(new CreateNotificationDto
+                            {
+                                UserId = job.RecruiterId,
+                                Title = "Tin tuyển dụng hết hạn hiển thị",
+                                Message = $"Tin tuyển dụng '{job.Title}' đã hết thời gian hiển thị trên hệ thống. Hệ thống đã tạm ẩn bài đăng này. Bạn có thể sử dụng chức năng gia hạn tại màn hình quản lý (tốn phí) để tiếp tục hiển thị tin thêm 15 ngày.",
+                                Type = NotificationType.SYSTEM
+                            });
                         }
                     }
                 }

@@ -447,6 +447,9 @@ export default function CreateJobPage() {
                   onChange={handleChange}
                   className="focus-visible:ring-blue-500"
                 />
+                <p className="text-[11.5px] text-zinc-500 dark:text-zinc-400 mt-1 italic leading-relaxed">
+                  * <strong>Lưu ý:</strong> Bất kể hạn nộp hồ sơ là ngày nào, hệ thống mặc định chỉ hiển thị tin này trong vòng <strong>30 ngày</strong> kể từ lúc đăng bài. Sau 30 ngày, bạn có thể gia hạn (tốn phí) để tin tiếp tục hiển thị.
+                </p>
               </div>
             </div>
 
