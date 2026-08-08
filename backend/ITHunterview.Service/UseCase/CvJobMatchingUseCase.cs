@@ -18,6 +18,8 @@ using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Service;
 using ITHunterview.Service.Service.Matching;
 using ITHunterview.Service.Exceptions;
+using ITHunterview.Domain.Enums;
+using ITHunterview.Service.DTOs.JobAnalysis;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -38,6 +40,9 @@ namespace ITHunterview.Service.UseCase
         private readonly IJdRequirementProjector _jdRequirementProjector;
         private readonly CvStageTwoContextBuilder _cvStageTwoContextBuilder;
         private readonly IJobAnalysisInputBuilder _jobAnalysisInputBuilder;
+        private readonly IMatchingCvPreparationService? _matchingCvPreparationService;
+        private readonly IMatchingJdPreparationService? _matchingJdPreparationService;
+        private readonly IRawJdFallbackMatchingService? _rawJdFallbackMatchingService;
 
         public CvJobMatchingUseCase(
             ITHunterviewContext context, 
@@ -54,7 +59,10 @@ namespace ITHunterview.Service.UseCase
             IJdRequirementProjector? jdRequirementProjector = null,
             IJdStageTwoMatchingService? jdStageTwoMatchingService = null,
             CvStageTwoContextBuilder? cvStageTwoContextBuilder = null,
-            IJobAnalysisInputBuilder? jobAnalysisInputBuilder = null)
+            IJobAnalysisInputBuilder? jobAnalysisInputBuilder = null,
+            IMatchingCvPreparationService? matchingCvPreparationService = null,
+            IMatchingJdPreparationService? matchingJdPreparationService = null,
+            IRawJdFallbackMatchingService? rawJdFallbackMatchingService = null)
         {
             _context = context;
             _aiService = aiService;
@@ -71,6 +79,9 @@ namespace ITHunterview.Service.UseCase
                 new JdStageTwoMatchingService(textAiService, new Microsoft.Extensions.Logging.Abstractions.NullLogger<JdStageTwoMatchingService>());
             _cvStageTwoContextBuilder = cvStageTwoContextBuilder ?? new CvStageTwoContextBuilder();
             _jobAnalysisInputBuilder = jobAnalysisInputBuilder ?? new JobAnalysisInputBuilder();
+            _matchingCvPreparationService = matchingCvPreparationService;
+            _matchingJdPreparationService = matchingJdPreparationService;
+            _rawJdFallbackMatchingService = rawJdFallbackMatchingService;
         }
 
         public string ExtractJsonField(string? jsonString, string fieldName)
@@ -524,6 +535,28 @@ namespace ITHunterview.Service.UseCase
 
             try
             {
+                if (snapshot is not null &&
+                    _matchingCvPreparationService is not null &&
+                    _matchingJdPreparationService is not null &&
+                    _rawJdFallbackMatchingService is not null)
+                {
+                    var preparedResult = await ProcessPreparedSnapshotAsync(userId, snapshot, cancellationToken);
+                    if (!manageLifecycle)
+                    {
+                        return preparedResult;
+                    }
+
+                    matchRecord.Status = "Completed";
+                    matchRecord.MatchScore = preparedResult.Score;
+                    matchRecord.MatchDetails = preparedResult.MatchDetails;
+                    matchRecord.CvAnalysisQuality = preparedResult.CvAnalysisQuality;
+                    matchRecord.CvAnalysisCoverageJson = CvAnalysisMetadataReader.SerializeCoverage(preparedResult.CvAnalysisCoverage);
+                    matchRecord.CvAnalysisDiagnosticsJson = CvAnalysisMetadataReader.SerializeDiagnostics(preparedResult.CvAnalysisDiagnostics);
+                    matchRecord.UpdatedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync(cancellationToken);
+                    return preparedResult;
+                }
+
                 if (manageLifecycle)
                 {
                     matchRecord.Status = "Processing";
@@ -849,6 +882,69 @@ namespace ITHunterview.Service.UseCase
             await ProcessMatchingJobCoreAsync(jobId, userId, internalRequest);
         }
 
+        private async Task<CvJdMatchingExecutionResult> ProcessPreparedSnapshotAsync(
+            Guid userId,
+            MatchingInputSnapshotV1 snapshot,
+            CancellationToken cancellationToken)
+        {
+            // Keep extraction ordered: all preparation services are scoped and may
+            // share the current DbContext. Prompt-pair metadata is deliberately
+            // absent from this decision; source/quality state alone selects the path.
+            var preparedCv = await _matchingCvPreparationService!.PrepareAsync(userId, snapshot, cancellationToken);
+            var preparedJd = await _matchingJdPreparationService!.PrepareAsync(snapshot, cancellationToken);
+            var cvContext = _cvStageTwoContextBuilder.Build(preparedCv.CanonicalJson);
+
+            JdFitScoreCalculation score;
+            JdAnalysisQuality jdQuality;
+            JdAnalysisCoverage? jdCoverage;
+            IReadOnlyList<JdAnalysisDiagnostic> jdDiagnostics;
+            JdAnalysisPersistenceIntent? jdIntent;
+            if (preparedJd is PreparedStructuredJdMatchingInput structured)
+            {
+                var matchingPrompt = await _promptManagementService.GetActivePromptSnapshotAsync(
+                    ITHunterview.Service.Constant.Prompts.BypassMatchingPrompt.Key);
+                score = await _jdStageTwoMatchingService.ExecuteAsync(
+                    matchingPrompt,
+                    cvContext.Json,
+                    structured.Projection,
+                    cancellationToken);
+                jdQuality = structured.Quality;
+                jdCoverage = structured.Coverage;
+                jdDiagnostics = structured.Diagnostics;
+                jdIntent = structured.PersistenceIntent;
+            }
+            else if (preparedJd is PreparedRawJdMatchingInput raw)
+            {
+                score = await _rawJdFallbackMatchingService!.ExecuteAsync(
+                    cvContext.Json,
+                    raw.RawText,
+                    raw.Title,
+                    raw.Diagnostics,
+                    cancellationToken);
+                jdQuality = raw.Quality;
+                jdCoverage = raw.Coverage;
+                jdDiagnostics = raw.Diagnostics;
+                jdIntent = raw.PersistenceIntent;
+            }
+            else
+            {
+                throw new InvalidOperationException("INVALID_PREPARED_JD_SOURCE");
+            }
+
+            return new CvJdMatchingExecutionResult(
+                score.FinalScore,
+                score.JsonString,
+                null,
+                cvContext.Quality,
+                cvContext.Coverage,
+                cvContext.Diagnostics,
+                jdQuality,
+                jdCoverage,
+                jdDiagnostics,
+                preparedCv.PersistenceIntent,
+                jdIntent);
+        }
+
         private async Task<string> ExtractJdWithV2Async(
             JobPostings? savedJob,
             string? rawJdText,
@@ -882,6 +978,7 @@ namespace ITHunterview.Service.UseCase
                 .SingleOrDefaultAsync(m => m.Id == jobId && m.UserId == userId && m.HistoryHiddenAt == null);
                 
             if (matchRecord == null) return null;
+            var jdAnalysis = BuildJdAnalysisResult(matchRecord);
 
             return new MatchingResultDto
             {
@@ -897,7 +994,34 @@ namespace ITHunterview.Service.UseCase
                     && MatchingRetryPolicy.IsManualRetryAllowed(matchRecord.ErrorCode),
                 MatchDetails = matchRecord.MatchDetails,
                 JdFit = new JdFitResultDto { Score = matchRecord.MatchScore ?? 0m },
+                JdAnalysis = jdAnalysis,
                 CvAnalysis = BuildCvAnalysisResult(matchRecord)
+            };
+        }
+
+        private static JdAnalysisResultDto? BuildJdAnalysisResult(CvJobMatchScores score)
+        {
+            var embedded = JdMatchMetadataReader.Read(score.MatchDetails);
+            if (embedded is not null)
+            {
+                return embedded;
+            }
+
+            if (!score.JdAnalysisQuality.HasValue) return null;
+            var quality = score.JdAnalysisQuality.Value;
+            return new JdAnalysisResultDto
+            {
+                Quality = quality.ToString(),
+                ScoreBasis = quality == JdAnalysisQuality.INVALID
+                    ? "raw_text_fallback"
+                    : "available_jd_analysis",
+                RequirementSetComplete = quality != JdAnalysisQuality.INVALID,
+                Coverage = JdAnalysisMetadataReader.ReadCoverageJson(score.JdAnalysisCoverageJson),
+                WarningCodes = JdAnalysisMetadataReader.ReadDiagnosticsJson(score.JdAnalysisDiagnosticsJson)
+                    .Select(item => item.Code)
+                    .Distinct(StringComparer.Ordinal)
+                    .Take(100)
+                    .ToList()
             };
         }
 
@@ -966,8 +1090,11 @@ namespace ITHunterview.Service.UseCase
             var total = await query.CountAsync();
             var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
-            var mappedItems = items.Select(x => new ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto
+            var mappedItems = items.Select(x =>
             {
+                var jdAnalysis = BuildJdAnalysisResult(x.Score);
+                return new ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto
+                {
                 JobId = x.Score.Id,
                 CvId = x.Score.CvId,
                 CandidateId = x.Cv?.UserId,
@@ -982,7 +1109,11 @@ namespace ITHunterview.Service.UseCase
                 MatchType = x.Score.MatchType,
                 CvAnalysisQuality = x.Score.CvAnalysisQuality,
                 CvAnalysisScoreBasis = ReadScoreBasis(x.Score.MatchDetails),
-                CvAnalysisCoverage = CvAnalysisMetadataReader.ReadCoverageJson(x.Score.CvAnalysisCoverageJson)
+                CvAnalysisCoverage = CvAnalysisMetadataReader.ReadCoverageJson(x.Score.CvAnalysisCoverageJson),
+                JdAnalysisQuality = jdAnalysis?.Quality,
+                JdAnalysisScoreBasis = jdAnalysis?.ScoreBasis,
+                JdAnalysisCoverage = jdAnalysis?.Coverage
+                };
             }).ToList();
 
             return new ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>
@@ -1066,6 +1197,7 @@ namespace ITHunterview.Service.UseCase
                 }
 
                 var itemIndex = index++;
+                var jdAnalysis = BuildJdAnalysisResult(x.Score);
 
                 return new ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto
                 {
@@ -1085,6 +1217,9 @@ namespace ITHunterview.Service.UseCase
                     CvAnalysisQuality = x.Score.CvAnalysisQuality,
                     CvAnalysisScoreBasis = ReadScoreBasis(x.Score.MatchDetails),
                     CvAnalysisCoverage = CvAnalysisMetadataReader.ReadCoverageJson(x.Score.CvAnalysisCoverageJson),
+                    JdAnalysisQuality = jdAnalysis?.Quality,
+                    JdAnalysisScoreBasis = jdAnalysis?.ScoreBasis,
+                    JdAnalysisCoverage = jdAnalysis?.Coverage,
                     IsUnlocked = isUnlocked,
                     UnlockCost = 50
                 };

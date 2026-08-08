@@ -23,6 +23,7 @@ import { CvAnalysisQualityNotice } from '@/components/shared/CvAnalysisQualityNo
 function CvMatchingContent() {
   const router = useRouter();
   const { state, queries, setters, handlers } = useCvMatchingForm();
+  const isRawJdFallback = state.matchOutput?.jdAnalysis?.scoreBasis === 'raw_text_fallback';
 
   return (
     <div className="w-full pb-8">
@@ -224,14 +225,14 @@ function CvMatchingContent() {
 
           {state.matchOutput?.jdFit && (
             <>
-              <ResultOverviewCard jdFit={state.matchOutput.jdFit} />
-              <PenaltyWarningPanel penalties={state.matchOutput.jdFit.penalties} />
+              <ResultOverviewCard jdFit={state.matchOutput.jdFit} isRawTextFallback={isRawJdFallback} />
+              {!isRawJdFallback && <PenaltyWarningPanel penalties={state.matchOutput.jdFit.penalties} />}
             </>
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              {state.matchOutput?.jdFit && (
+              {state.matchOutput?.jdFit && !isRawJdFallback && (
                 <RequirementBreakdown scores={state.matchOutput.jdFit.requirementScores} />
               )}
               {state.matchOutput?.improvements && state.matchOutput.improvements.length > 0 && (
@@ -239,7 +240,7 @@ function CvMatchingContent() {
               )}
             </div>
             <div className="space-y-6">
-              {state.matchOutput?.jdFit && (
+              {state.matchOutput?.jdFit && !isRawJdFallback && (
                 <CriticalGapsPanel 
                   criticalGaps={state.matchOutput.jdFit.criticalGaps} 
                   penalties={state.matchOutput.jdFit.penalties} 

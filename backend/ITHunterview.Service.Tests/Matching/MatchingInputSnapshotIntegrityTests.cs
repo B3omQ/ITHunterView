@@ -7,6 +7,20 @@ namespace ITHunterview.Service.Tests.Matching;
 
 public sealed class MatchingInputSnapshotIntegrityTests
 {
+    private const string V1GoldenJson = """
+        {"schemaVersion":"matching-context/v1","mode":"JdFit","cv":{"sourceKind":"raw_cv","sourceId":null,"fileName":"legacy.pdf","originalText":"legacy candidate","analysisJson":null,"analysisSchemaVersion":null},"jd":{"sourceKind":"raw_jd","sourceId":null,"title":"Legacy Engineer","originalText":"legacy job","analysisJson":null,"analysisSchemaVersion":null},"submittedAtUtc":"2026-08-02T08:00:00Z"}
+        """;
+
+    [Fact]
+    public void Deserialize_V1GoldenPayload_PreservesHistoricalHash()
+    {
+        var snapshot = MatchingInputSnapshotIntegrity.Deserialize(V1GoldenJson);
+
+        snapshot.SchemaVersion.Should().Be("matching-context/v1");
+        MatchingInputSnapshotIntegrity.ComputeHash(snapshot)
+            .Should().Be("0c9e41c40be2808a555b0d0af322626cfdabc3378c8f460902aa60af689f7928");
+    }
+
     [Fact]
     public void SerializeAndDeserialize_PreservesCanonicalSnapshotHash()
     {

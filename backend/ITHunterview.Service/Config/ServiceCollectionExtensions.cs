@@ -34,6 +34,7 @@ namespace ITHunterview.Service.Config
 
             services.AddScoped<ICvRepository, CvRepository>();
             services.AddScoped<IMatchingSourceRepository, MatchingSourceRepository>();
+            services.AddScoped<IMatchingSourceAnalysisPersistence, MatchingSourceAnalysisPersistence>();
             services.AddScoped<IFeatureUsageReservationRepository, FeatureUsageReservationRepository>();
             services.AddScoped<ICvJdMatchingJobRepository, CvJdMatchingJobRepository>();
             services.AddScoped<ICvJdMatchingHistoryRepository, CvJdMatchingHistoryRepository>();
@@ -91,6 +92,9 @@ namespace ITHunterview.Service.Config
 
             // Matching AI Services
             services.AddScoped<ICvTextExtractorService, CvTextExtractorService>();
+            services.AddScoped<IMatchingCvPreparationService, MatchingCvPreparationService>();
+            services.AddScoped<IMatchingJdPreparationService, MatchingJdPreparationService>();
+            services.AddScoped<IRawJdFallbackMatchingService, RawJdFallbackMatchingService>();
             services.AddScoped<ICvAnalysisResponseValidator, CvAnalysisResponseValidator>();
             services.AddScoped<IJdRequirementProjector, JdRequirementProjector>();
             services.AddScoped<JdHardcodeRequirementEvaluator>();

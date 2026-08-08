@@ -7,13 +7,18 @@ namespace ITHunterview.Service.Service.Matching;
 
 public sealed class MatchingInputSnapshotBuilder
 {
-    public const string SchemaVersion = "matching-context/v1";
+    public const string LegacySchemaVersion = "matching-context/v1";
+    public const string SchemaVersion = "matching-context/v2";
 
     private readonly IMatchingSourceRepository _sourceRepository;
+    private readonly IJobAnalysisInputBuilder _jobAnalysisInputBuilder;
 
-    public MatchingInputSnapshotBuilder(IMatchingSourceRepository sourceRepository)
+    public MatchingInputSnapshotBuilder(
+        IMatchingSourceRepository sourceRepository,
+        IJobAnalysisInputBuilder? jobAnalysisInputBuilder = null)
     {
         _sourceRepository = sourceRepository;
+        _jobAnalysisInputBuilder = jobAnalysisInputBuilder ?? new JobAnalysisInputBuilder();
     }
 
     public async Task<MatchingSnapshotResult> BuildAsync(
@@ -71,7 +76,10 @@ public sealed class MatchingInputSnapshotBuilder
             cv.FileName,
             cv.RawText ?? string.Empty,
             cv.ParsedData,
-            ReadSchemaVersion(cv.ParsedData));
+            ReadSchemaVersion(cv.ParsedData),
+            string.IsNullOrWhiteSpace(cv.FileUrl) ? null : cv.FileUrl.Trim(),
+            MatchingSourceFingerprint.ForCv(cv.FileUrl, cv.RawText),
+            cv.ParseStatus);
     }
 
     private async Task<MatchingJdSnapshot> BuildJdSnapshotAsync(
@@ -105,13 +113,19 @@ public sealed class MatchingInputSnapshotBuilder
             throw new KeyNotFoundException("Job not found");
         }
 
+        var input = _jobAnalysisInputBuilder.Build(job);
         return new MatchingJdSnapshot(
             "saved_jd",
             job.Id,
             job.Title,
             JdTextHelper.BuildRawText(job),
             job.ParsedData,
-            ReadSchemaVersion(job.ParsedData));
+            ReadSchemaVersion(job.ParsedData),
+            MatchingSourceFingerprint.ForJd(input, _jobAnalysisInputBuilder),
+            MatchingSourceFingerprint.ForAnalysis(job.ParsedData),
+            job.AnalysisRevision,
+            job.EffectiveAnalysisRevision,
+            job.ParseStatus);
     }
 
     private static string? ReadSchemaVersion(string? analysisJson)

@@ -46,6 +46,9 @@ public interface ICvJdMatchingJobRepository
         string? cvAnalysisCoverageJson,
         string? cvAnalysisDiagnosticsJson,
         DateTime utcNow,
+        JdAnalysisQuality? jdAnalysisQuality = null,
+        string? jdAnalysisCoverageJson = null,
+        string? jdAnalysisDiagnosticsJson = null,
         CancellationToken cancellationToken = default);
 
     Task<bool> ScheduleRetryAsync(

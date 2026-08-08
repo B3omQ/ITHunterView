@@ -249,10 +249,17 @@ public sealed class JdRequirementProjector : IJdRequirementProjector
     private static JdAnalysisQuality ReadQuality(JsonElement root)
     {
         var value = ReadOptionalString(root, "analysis_quality");
-        return Enum.TryParse<JdAnalysisQuality>(value, ignoreCase: false, out var quality) &&
-               quality is JdAnalysisQuality.COMPLETE or JdAnalysisQuality.PARTIAL
+        if (value is null)
+        {
+            // Historical structured analyses did not carry three-state metadata.
+            // Their structural validity is the only available signal, so preserve
+            // the established COMPLETE default for those legacy payloads.
+            return JdAnalysisQuality.COMPLETE;
+        }
+
+        return Enum.TryParse<JdAnalysisQuality>(value, ignoreCase: false, out var quality)
             ? quality
-            : JdAnalysisQuality.COMPLETE;
+            : throw Invalid();
     }
 
     private static InvalidOperationException Invalid() => new(InvalidEffectiveJdAnalysis);

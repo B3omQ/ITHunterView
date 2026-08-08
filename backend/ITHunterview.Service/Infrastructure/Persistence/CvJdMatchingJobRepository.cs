@@ -152,6 +152,9 @@ public sealed class CvJdMatchingJobRepository : ICvJdMatchingJobRepository
         string? cvAnalysisCoverageJson,
         string? cvAnalysisDiagnosticsJson,
         DateTime utcNow,
+        JdAnalysisQuality? jdAnalysisQuality = null,
+        string? jdAnalysisCoverageJson = null,
+        string? jdAnalysisDiagnosticsJson = null,
         CancellationToken cancellationToken = default)
     {
         if (IsInMemoryProvider())
@@ -165,6 +168,9 @@ public sealed class CvJdMatchingJobRepository : ICvJdMatchingJobRepository
             job.CvAnalysisQuality = cvAnalysisQuality;
             job.CvAnalysisCoverageJson = cvAnalysisCoverageJson;
             job.CvAnalysisDiagnosticsJson = cvAnalysisDiagnosticsJson;
+            job.JdAnalysisQuality = jdAnalysisQuality;
+            job.JdAnalysisCoverageJson = jdAnalysisCoverageJson;
+            job.JdAnalysisDiagnosticsJson = jdAnalysisDiagnosticsJson;
             job.CompletedAt = utcNow;
             job.UpdatedAt = utcNow;
             job.ErrorCode = null;
@@ -178,7 +184,8 @@ public sealed class CvJdMatchingJobRepository : ICvJdMatchingJobRepository
         }
 
         var cvAnalysisQualityValue = cvAnalysisQuality?.ToString();
-        var affected = await _context.Database.ExecuteSqlInterpolatedAsync($"UPDATE cv_job_match_scores SET status = 'Completed', match_score = {score}, match_details = {matchDetails}, sfia_extract_result = {sfiaExtractResult}, cv_analysis_quality = {cvAnalysisQualityValue}, cv_analysis_coverage_json = CAST({cvAnalysisCoverageJson} AS jsonb), cv_analysis_diagnostics_json = CAST({cvAnalysisDiagnosticsJson} AS jsonb), completed_at = {utcNow}, updated_at = {utcNow}, error_code = NULL, error_message = NULL, lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL, last_heartbeat_at = NULL WHERE id = {jobId} AND match_type = 'AI' AND status = 'Processing' AND lease_owner = {workerId} AND lease_token = {leaseToken}", cancellationToken);
+        var jdAnalysisQualityValue = jdAnalysisQuality?.ToString();
+        var affected = await _context.Database.ExecuteSqlInterpolatedAsync($"UPDATE cv_job_match_scores SET status = 'Completed', match_score = {score}, match_details = {matchDetails}, sfia_extract_result = {sfiaExtractResult}, cv_analysis_quality = {cvAnalysisQualityValue}, cv_analysis_coverage_json = CAST({cvAnalysisCoverageJson} AS jsonb), cv_analysis_diagnostics_json = CAST({cvAnalysisDiagnosticsJson} AS jsonb), jd_analysis_quality = {jdAnalysisQualityValue}, jd_analysis_coverage_json = CAST({jdAnalysisCoverageJson} AS jsonb), jd_analysis_diagnostics_json = CAST({jdAnalysisDiagnosticsJson} AS jsonb), completed_at = {utcNow}, updated_at = {utcNow}, error_code = NULL, error_message = NULL, lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL, last_heartbeat_at = NULL WHERE id = {jobId} AND match_type = 'AI' AND status = 'Processing' AND lease_owner = {workerId} AND lease_token = {leaseToken}", cancellationToken);
         return affected == 1;
     }
 

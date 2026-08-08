@@ -15,7 +15,10 @@ public sealed record MatchingCvSnapshot(
     string? FileName,
     string OriginalText,
     string? AnalysisJson,
-    string? AnalysisSchemaVersion);
+    string? AnalysisSchemaVersion,
+    string? FileUrl = null,
+    string? SourceContentHash = null,
+    string? SourceParseStatus = null);
 
 public sealed record MatchingJdSnapshot(
     string SourceKind,
@@ -23,7 +26,12 @@ public sealed record MatchingJdSnapshot(
     string? Title,
     string OriginalText,
     string? AnalysisJson,
-    string? AnalysisSchemaVersion);
+    string? AnalysisSchemaVersion,
+    string? SourceContentHash = null,
+    string? SourceAnalysisHash = null,
+    int? SourceAnalysisRevision = null,
+    int? SourceEffectiveAnalysisRevision = null,
+    string? SourceParseStatus = null);
 
 public sealed record MatchingSnapshotResult(
     MatchingInputSnapshotV1 Snapshot,

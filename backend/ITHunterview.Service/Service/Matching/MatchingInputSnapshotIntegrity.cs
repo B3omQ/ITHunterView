@@ -28,7 +28,14 @@ public static class MatchingInputSnapshotIntegrity
     public static string Serialize(MatchingInputSnapshotV1 snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
-        return JsonSerializer.Serialize(snapshot, JsonOptions);
+        return snapshot.SchemaVersion switch
+        {
+            MatchingInputSnapshotBuilder.LegacySchemaVersion =>
+                JsonSerializer.Serialize(CreateV1StoragePayload(snapshot), JsonOptions),
+            MatchingInputSnapshotBuilder.SchemaVersion =>
+                JsonSerializer.Serialize(CreateV2StoragePayload(snapshot), JsonOptions),
+            _ => throw new InvalidOperationException("SNAPSHOT_INVALID")
+        };
     }
 
     public static MatchingInputSnapshotV1 Deserialize(string json)
@@ -42,9 +49,11 @@ public static class MatchingInputSnapshotIntegrity
         {
             var snapshot = JsonSerializer.Deserialize<MatchingInputSnapshotV1>(json, JsonOptions);
             if (snapshot is null ||
-                !string.Equals(snapshot.SchemaVersion, MatchingInputSnapshotBuilder.SchemaVersion, StringComparison.Ordinal) ||
                 snapshot.Cv is null ||
-                snapshot.Jd is null)
+                snapshot.Jd is null ||
+                (snapshot.SchemaVersion != MatchingInputSnapshotBuilder.LegacySchemaVersion &&
+                 snapshot.SchemaVersion != MatchingInputSnapshotBuilder.SchemaVersion) ||
+                (snapshot.SchemaVersion == MatchingInputSnapshotBuilder.LegacySchemaVersion && HasV2OnlyFields(snapshot)))
             {
                 throw new InvalidOperationException("SNAPSHOT_INVALID");
             }
@@ -60,13 +69,14 @@ public static class MatchingInputSnapshotIntegrity
     public static string ComputeHash(MatchingInputSnapshotV1 snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
-        var canonicalPayload = JsonSerializer.Serialize(new
+        var canonicalPayload = snapshot.SchemaVersion switch
         {
-            snapshot.SchemaVersion,
-            snapshot.Mode,
-            snapshot.Cv,
-            snapshot.Jd
-        }, JsonOptions);
+            MatchingInputSnapshotBuilder.LegacySchemaVersion =>
+                JsonSerializer.Serialize(CreateV1HashPayload(snapshot), JsonOptions),
+            MatchingInputSnapshotBuilder.SchemaVersion =>
+                JsonSerializer.Serialize(CreateV2HashPayload(snapshot), JsonOptions),
+            _ => throw new InvalidOperationException("SNAPSHOT_INVALID")
+        };
 
         return Convert.ToHexStringLower(
             SHA256.HashData(Encoding.UTF8.GetBytes(canonicalPayload)));
@@ -77,4 +87,96 @@ public static class MatchingInputSnapshotIntegrity
             && CryptographicOperations.FixedTimeEquals(
                 Encoding.ASCII.GetBytes(ComputeHash(snapshot)),
                 Encoding.ASCII.GetBytes(expectedHash.Trim().ToLowerInvariant()));
+
+    private static bool HasV2OnlyFields(MatchingInputSnapshotV1 snapshot) =>
+        snapshot.Cv.FileUrl is not null ||
+        snapshot.Cv.SourceContentHash is not null ||
+        snapshot.Cv.SourceParseStatus is not null ||
+        snapshot.Jd.SourceContentHash is not null ||
+        snapshot.Jd.SourceAnalysisHash is not null ||
+        snapshot.Jd.SourceAnalysisRevision is not null ||
+        snapshot.Jd.SourceEffectiveAnalysisRevision is not null ||
+        snapshot.Jd.SourceParseStatus is not null;
+
+    private static object CreateV1StoragePayload(MatchingInputSnapshotV1 snapshot) => new
+    {
+        snapshot.SchemaVersion,
+        snapshot.Mode,
+        Cv = CreateV1CvPayload(snapshot.Cv),
+        Jd = CreateV1JdPayload(snapshot.Jd),
+        snapshot.SubmittedAtUtc
+    };
+
+    private static object CreateV2StoragePayload(MatchingInputSnapshotV1 snapshot) => new
+    {
+        snapshot.SchemaVersion,
+        snapshot.Mode,
+        Cv = CreateV2CvPayload(snapshot.Cv),
+        Jd = CreateV2JdPayload(snapshot.Jd),
+        snapshot.SubmittedAtUtc
+    };
+
+    private static object CreateV1HashPayload(MatchingInputSnapshotV1 snapshot) => new
+    {
+        snapshot.SchemaVersion,
+        snapshot.Mode,
+        Cv = CreateV1CvPayload(snapshot.Cv),
+        Jd = CreateV1JdPayload(snapshot.Jd)
+    };
+
+    private static object CreateV2HashPayload(MatchingInputSnapshotV1 snapshot) => new
+    {
+        snapshot.SchemaVersion,
+        snapshot.Mode,
+        Cv = CreateV2CvPayload(snapshot.Cv),
+        Jd = CreateV2JdPayload(snapshot.Jd)
+    };
+
+    private static object CreateV1CvPayload(MatchingCvSnapshot cv) => new
+    {
+        cv.SourceKind,
+        cv.SourceId,
+        cv.FileName,
+        cv.OriginalText,
+        cv.AnalysisJson,
+        cv.AnalysisSchemaVersion
+    };
+
+    private static object CreateV1JdPayload(MatchingJdSnapshot jd) => new
+    {
+        jd.SourceKind,
+        jd.SourceId,
+        jd.Title,
+        jd.OriginalText,
+        jd.AnalysisJson,
+        jd.AnalysisSchemaVersion
+    };
+
+    private static object CreateV2CvPayload(MatchingCvSnapshot cv) => new
+    {
+        cv.SourceKind,
+        cv.SourceId,
+        cv.FileName,
+        cv.OriginalText,
+        cv.AnalysisJson,
+        cv.AnalysisSchemaVersion,
+        cv.FileUrl,
+        cv.SourceContentHash,
+        cv.SourceParseStatus
+    };
+
+    private static object CreateV2JdPayload(MatchingJdSnapshot jd) => new
+    {
+        jd.SourceKind,
+        jd.SourceId,
+        jd.Title,
+        jd.OriginalText,
+        jd.AnalysisJson,
+        jd.AnalysisSchemaVersion,
+        jd.SourceContentHash,
+        jd.SourceAnalysisHash,
+        jd.SourceAnalysisRevision,
+        jd.SourceEffectiveAnalysisRevision,
+        jd.SourceParseStatus
+    };
 }

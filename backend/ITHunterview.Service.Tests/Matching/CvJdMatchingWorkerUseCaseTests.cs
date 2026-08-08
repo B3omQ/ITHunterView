@@ -6,6 +6,7 @@ using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Exceptions;
 using ITHunterview.Service.Infrastructure.Persistence;
+using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Service.Matching;
@@ -63,7 +64,9 @@ public sealed class CvJdMatchingWorkerUseCaseTests
                 "sfia",
                 CvAnalysisQuality.PARTIAL,
                 coverage,
-                diagnostics));
+                diagnostics,
+                JdAnalysisQuality: JdAnalysisQuality.INVALID,
+                JdAnalysisDiagnostics: new[] { new ITHunterview.Service.DTOs.JobAnalysis.JdAnalysisDiagnostic("INVALID_JSON_FORMAT", "$") }));
         var featureUsage = CreateFeatureUsageMock();
         var worker = CreateWorker(context, processor.Object, featureUsage.Object);
         var repository = new CvJdMatchingJobRepository(context);
@@ -78,9 +81,46 @@ public sealed class CvJdMatchingWorkerUseCaseTests
         job.CvAnalysisQuality.Should().Be(CvAnalysisQuality.PARTIAL);
         job.CvAnalysisCoverageJson.Should().Contain("accepted_experience_entry_count");
         job.CvAnalysisDiagnosticsJson.Should().Contain("DOMAIN_METRIC_MISSING");
+        job.JdAnalysisQuality.Should().Be(JdAnalysisQuality.INVALID);
+        job.JdAnalysisDiagnosticsJson.Should().Contain("INVALID_JSON_FORMAT");
         job.LeaseToken.Should().BeNull();
         featureUsage.Verify(x => x.RefundFeatureReservationAsync(
             It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessClaimedJob_SourceAnalysisPersistenceFailure_DoesNotUndoCompletedMatch()
+    {
+        await using var context = CreateContext();
+        var job = CreateJob();
+        context.CvJobMatchScores.Add(job);
+        await context.SaveChangesAsync();
+
+        var processor = new Mock<ICvJdOneToOneMatchingProcessor>(MockBehavior.Strict);
+        processor.Setup(x => x.ExecuteAsync(job.Id, It.IsAny<MatchingInputSnapshotV1>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CvJdMatchingExecutionResult(
+                0.82m,
+                "details",
+                null,
+                CvPersistenceIntent: new CvAnalysisPersistenceIntent(
+                    Guid.NewGuid(), job.UserId, "source", "analysis", "{}",
+                    CvAnalysisQuality.COMPLETE, null, null)));
+        var sourcePersistence = new Mock<IMatchingSourceAnalysisPersistence>(MockBehavior.Strict);
+        sourcePersistence.Setup(service => service.TryPersistCvAsync(
+                It.IsAny<CvAnalysisPersistenceIntent>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("CACHE_WRITE_FAILED"));
+        var featureUsage = CreateFeatureUsageMock();
+        var worker = CreateWorker(context, processor.Object, featureUsage.Object, sourcePersistence.Object);
+        var repository = new CvJdMatchingJobRepository(context);
+        var claimed = (await repository.ClaimRunnableJobsAsync(1, "worker-a", UtcNow, CvJdMatchingWorkerUseCase.LeaseDuration))[0];
+
+        await worker.ProcessClaimedJobAsync(job.Id, "worker-a", claimed.LeaseToken);
+
+        job.Status.Should().Be("Completed");
+        featureUsage.Verify(service => service.RefundFeatureReservationAsync(
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        sourcePersistence.VerifyAll();
     }
 
     [Fact]
@@ -348,13 +388,15 @@ public sealed class CvJdMatchingWorkerUseCaseTests
     private static CvJdMatchingWorkerUseCase CreateWorker(
         ITHunterviewContext context,
         ICvJdOneToOneMatchingProcessor processor,
-        ICandidateFeatureUsageUseCase featureUsage)
+        ICandidateFeatureUsageUseCase featureUsage,
+        IMatchingSourceAnalysisPersistence? sourceAnalysisPersistence = null)
         => new(
             context,
             new CvJdMatchingJobRepository(context),
             processor,
             featureUsage,
-            NullLogger<CvJdMatchingWorkerUseCase>.Instance);
+            NullLogger<CvJdMatchingWorkerUseCase>.Instance,
+            sourceAnalysisPersistence);
 
     private static Mock<ICandidateFeatureUsageUseCase> CreateFeatureUsageMock()
     {

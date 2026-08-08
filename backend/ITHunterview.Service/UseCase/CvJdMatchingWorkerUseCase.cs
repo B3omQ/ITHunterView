@@ -25,19 +25,22 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
     private readonly ICvJdOneToOneMatchingProcessor _processor;
     private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
     private readonly ILogger<CvJdMatchingWorkerUseCase> _logger;
+    private readonly IMatchingSourceAnalysisPersistence? _sourceAnalysisPersistence;
 
     public CvJdMatchingWorkerUseCase(
         ITHunterviewContext context,
         ICvJdMatchingJobRepository jobRepository,
         ICvJdOneToOneMatchingProcessor processor,
         ICandidateFeatureUsageUseCase featureUsageUseCase,
-        ILogger<CvJdMatchingWorkerUseCase> logger)
+        ILogger<CvJdMatchingWorkerUseCase> logger,
+        IMatchingSourceAnalysisPersistence? sourceAnalysisPersistence = null)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _jobRepository = jobRepository ?? throw new ArgumentNullException(nameof(jobRepository));
         _processor = processor ?? throw new ArgumentNullException(nameof(processor));
         _featureUsageUseCase = featureUsageUseCase ?? throw new ArgumentNullException(nameof(featureUsageUseCase));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _sourceAnalysisPersistence = sourceAnalysisPersistence;
     }
 
     public Task<IReadOnlyList<ClaimedMatchingJob>> ClaimRunnableJobsAsync(
@@ -89,9 +92,19 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
                 CvAnalysisMetadataReader.SerializeCoverage(result.CvAnalysisCoverage),
                 CvAnalysisMetadataReader.SerializeDiagnostics(result.CvAnalysisDiagnostics),
                 DateTime.UtcNow,
+                result.JdAnalysisQuality,
+                JdAnalysisMetadataReader.SerializeCoverage(result.JdAnalysisCoverage),
+                JdAnalysisMetadataReader.SerializeDiagnostics(result.JdAnalysisDiagnostics),
                 cancellationToken);
             if (!completed)
                 _logger.LogInformation("Matching lease lost before completion for job {JobId}.", job.Id);
+            else if (_sourceAnalysisPersistence is not null)
+            {
+                if (result.CvPersistenceIntent is not null)
+                    await TryPersistCvSourceAnalysisAsync(job.Id, result.CvPersistenceIntent, cancellationToken);
+                if (result.JdPersistenceIntent is not null)
+                    await TryPersistJdSourceAnalysisAsync(job.Id, result.JdPersistenceIntent, cancellationToken);
+            }
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -233,6 +246,45 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
             2 => TimeSpan.FromSeconds(30),
             _ => TimeSpan.FromSeconds(120)
         };
+
+    // Source-analysis caching is intentionally best-effort after the immutable
+    // matching result is committed. A later source edit or a cache-write fault
+    // must never turn a completed, billable match into a failed/refunded job.
+    private async Task TryPersistCvSourceAnalysisAsync(
+        Guid matchingJobId,
+        CvAnalysisPersistenceIntent intent,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var outcome = await _sourceAnalysisPersistence!.TryPersistCvAsync(intent, cancellationToken);
+            _logger.LogInformation("Matching source CV persistence completed. MatchingJobId={MatchingJobId}; CvId={CvId}; Outcome={Outcome}",
+                matchingJobId, intent.CvId, outcome);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Matching source CV persistence failed after match completion. MatchingJobId={MatchingJobId}; CvId={CvId}",
+                matchingJobId, intent.CvId);
+        }
+    }
+
+    private async Task TryPersistJdSourceAnalysisAsync(
+        Guid matchingJobId,
+        JdAnalysisPersistenceIntent intent,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var outcome = await _sourceAnalysisPersistence!.TryPersistJdAsync(intent, cancellationToken);
+            _logger.LogInformation("Matching source JD persistence completed. MatchingJobId={MatchingJobId}; JobId={JobId}; Outcome={Outcome}",
+                matchingJobId, intent.JobId, outcome);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Matching source JD persistence failed after match completion. MatchingJobId={MatchingJobId}; JobId={JobId}",
+                matchingJobId, intent.JobId);
+        }
+    }
 
     private bool IsInMemoryProvider()
         => string.Equals(_context.Database.ProviderName, "Microsoft.EntityFrameworkCore.InMemory", StringComparison.Ordinal);

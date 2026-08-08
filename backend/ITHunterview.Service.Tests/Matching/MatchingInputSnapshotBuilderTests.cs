@@ -60,6 +60,57 @@ public sealed class MatchingInputSnapshotBuilderTests
     }
 
     [Fact]
+    public async Task BuildAsync_SavedSourcesCreatesV2SnapshotWithRecoveryAndConcurrencyMetadata()
+    {
+        var userId = Guid.NewGuid();
+        var cvId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var cv = new Cvs
+        {
+            Id = cvId,
+            UserId = userId,
+            FileName = "trusted.pdf",
+            FileUrl = "https://res.cloudinary.com/demo/raw/upload/v1/cv/trusted.pdf",
+            RawText = "CV raw text",
+            ParsedData = "{\"schema_version\":\"cv-analysis/v2\"}",
+            ParseStatus = "SUCCESS"
+        };
+        var job = new JobPostings
+        {
+            Id = jobId,
+            Title = "Backend Engineer",
+            Description = "Build APIs",
+            Requirements = "C# and PostgreSQL",
+            Benefits = "Flexible work",
+            ParsedData = "{\"schema_version\":\"jd-analysis/v3\"}",
+            ParseStatus = "SUCCESS",
+            AnalysisRevision = 7,
+            EffectiveAnalysisRevision = 7
+        };
+        var repository = new Mock<IMatchingSourceRepository>();
+        repository.Setup(x => x.GetOwnedCvAsync(cvId, userId, It.IsAny<CancellationToken>())).ReturnsAsync(cv);
+        repository.Setup(x => x.GetAccessibleJobAsync(jobId, userId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(job);
+        var builder = new MatchingInputSnapshotBuilder(repository.Object);
+
+        var result = await builder.BuildAsync(
+            userId,
+            new PreparedMatchingRequest(
+                new PreparedSavedCvSource(cvId, "client-name.pdf"),
+                new PreparedSavedJdSource(jobId, "client title"),
+                MatchingMode.JdFit));
+
+        using var json = JsonDocument.Parse(result.Json);
+        json.RootElement.GetProperty("schemaVersion").GetString().Should().Be("matching-context/v2");
+        json.RootElement.GetProperty("cv").GetProperty("fileUrl").GetString().Should().Be(cv.FileUrl);
+        json.RootElement.GetProperty("cv").GetProperty("sourceContentHash").GetString().Should().MatchRegex("^[0-9a-f]{64}$");
+        json.RootElement.GetProperty("jd").GetProperty("sourceContentHash").GetString().Should().MatchRegex("^[0-9a-f]{64}$");
+        json.RootElement.GetProperty("jd").GetProperty("sourceAnalysisHash").GetString().Should().MatchRegex("^[0-9a-f]{64}$");
+        json.RootElement.GetProperty("jd").GetProperty("sourceAnalysisRevision").GetInt32().Should().Be(7);
+        json.RootElement.GetProperty("jd").GetProperty("sourceEffectiveAnalysisRevision").GetInt32().Should().Be(7);
+        MatchingInputSnapshotIntegrity.IsValid(result.Snapshot, result.Sha256).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task BuildAsync_RawSourcesCopiesValidatedTextExactly()
     {
         var repository = new Mock<IMatchingSourceRepository>(MockBehavior.Strict);

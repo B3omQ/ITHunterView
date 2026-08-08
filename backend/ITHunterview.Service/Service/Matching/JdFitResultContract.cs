@@ -7,4 +7,5 @@ namespace ITHunterview.Service.Service.Matching;
 public static class JdFitResultContract
 {
     public const string Current = "jd-matching/v3";
+    public const string RawTextFallback = "jd-matching/raw-text-v1";
 }

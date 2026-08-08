@@ -133,13 +133,22 @@ export interface MatchingResultDto {
 
 export interface MatchingOutput {
   mode: "jd_fit" | "cv_quality" | "both";
+  contract?: string;
+  sourceJdSchemaVersion?: string;
+  jdAnalysis?: {
+    quality: JdAnalysisQuality;
+    scoreBasis: string;
+    requirementSetComplete: boolean;
+    coverage?: JdAnalysisCoverage | null;
+    warningCodes: string[];
+  };
   jdFit?: {
     score: number;
     result: "Highly Suitable" | "Suitable" | "Partially Suitable" | "Not Suitable";
     killSwitchTriggered: boolean;
     poolACapped: boolean;
-    poolA: { score: number; max: number };
-    poolB: { score: number; max: number };
+    poolA: { score: number | null; max: number | null };
+    poolB: { score: number | null; max: number | null };
     requirementScores: RequirementScore[];
     criticalGaps: CriticalGap[];
     penalties: Penalty[];
