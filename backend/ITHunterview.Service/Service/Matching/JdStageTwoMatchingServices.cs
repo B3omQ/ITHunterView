@@ -16,11 +16,29 @@ public sealed record JdStageTwoItemScore(
 
 public sealed record JdStageTwoPenalty(string Code, bool Triggered, string Evidence);
 
+public enum JdStageTwoOutputQuality
+{
+    COMPLETE,
+    PARTIAL,
+    INVALID
+}
+
+public sealed record JdStageTwoOutputCoverage(
+    int ExpectedScoreCount,
+    int InputScoreCount,
+    int AcceptedScoreCount,
+    int DiscardedScoreCount,
+    int MissingScoreCount,
+    bool WasTruncated);
+
 public sealed record JdStageTwoValidatedResponse(
     IReadOnlyDictionary<string, JdStageTwoItemScore> ItemScores,
     string Narrative,
     JsonElement Improvements,
-    IReadOnlyList<JdStageTwoPenalty> Penalties);
+    IReadOnlyList<JdStageTwoPenalty> Penalties,
+    JdStageTwoOutputQuality Quality = JdStageTwoOutputQuality.COMPLETE,
+    JdStageTwoOutputCoverage? Coverage = null,
+    IReadOnlyList<string>? WarningCodes = null);
 
 public sealed record JdFitScoreCalculation(decimal FinalScore, string JsonString);
 
@@ -45,12 +63,18 @@ public sealed class JdFitScoreCalculator
         foreach (var group in projection.Groups)
         {
             var itemScores = group.Items
+                .Where(item => response.ItemScores.ContainsKey(item.ItemId))
                 .Select(item => new ItemCalculation(item, response.ItemScores[item.ItemId]))
                 .ToList();
+            if (itemScores.Count == 0)
+            {
+                continue;
+            }
             var selectedItems = SelectScoredItems(group, itemScores);
             var groupScore = WeightedAverage(selectedItems);
             var groupWeight = group.Items.Average(item => item.CategoryWeight);
-            var criticalGap = group.Importance == "must_have" && groupScore == 0m;
+            var criticalGap = response.Quality == JdStageTwoOutputQuality.COMPLETE &&
+                group.Importance == "must_have" && groupScore == 0m;
             var calculation = new GroupCalculation(group, itemScores, selectedItems, groupScore, groupWeight, criticalGap);
             calculatedGroups.Add(calculation);
 
@@ -66,8 +90,12 @@ public sealed class JdFitScoreCalculator
             }
         }
 
-        var poolA = poolAMax == 0m ? PoolAMaximum : poolAActual / poolAMax * PoolAMaximum;
-        var poolB = poolBMax == 0m ? PoolBMaximum : poolBActual / poolBMax * PoolBMaximum;
+        var poolA = poolAMax == 0m
+            ? response.Quality == JdStageTwoOutputQuality.COMPLETE ? PoolAMaximum : 0m
+            : poolAActual / poolAMax * PoolAMaximum;
+        var poolB = poolBMax == 0m
+            ? response.Quality == JdStageTwoOutputQuality.COMPLETE ? PoolBMaximum : 0m
+            : poolBActual / poolBMax * PoolBMaximum;
         var criticalGroups = calculatedGroups.Where(group => group.CriticalGap).ToList();
         var poolACapped = criticalGroups.Count >= 2;
         if (poolACapped)
@@ -80,7 +108,8 @@ public sealed class JdFitScoreCalculator
                             group.Group.Items.Count > 0 &&
                             group.Group.Items.All(item => item.Category == "tech_skill"))
             .ToList();
-        var ksw01Triggered = coreTechnicalGroups.Count > 0 &&
+        var ksw01Triggered = response.Quality == JdStageTwoOutputQuality.COMPLETE &&
+            coreTechnicalGroups.Count > 0 &&
             coreTechnicalGroups.All(group => group.ItemScores.All(item => item.Score.HandlerScore == 0m));
 
         var penalties = new List<object>();
@@ -164,6 +193,23 @@ public sealed class JdFitScoreCalculator
             mode = "jd_fit",
             contract = JdFitResultContract.Current,
             sourceJdSchemaVersion = projection.SourceSchemaVersion,
+            stageTwoAnalysis = new
+            {
+                quality = response.Quality.ToString(),
+                scoreBasis = response.Quality == JdStageTwoOutputQuality.COMPLETE
+                    ? "complete_requirement_scores"
+                    : "accepted_requirement_scores_only",
+                coverage = response.Coverage == null ? null : new
+                {
+                    expectedScoreCount = response.Coverage.ExpectedScoreCount,
+                    inputScoreCount = response.Coverage.InputScoreCount,
+                    acceptedScoreCount = response.Coverage.AcceptedScoreCount,
+                    discardedScoreCount = response.Coverage.DiscardedScoreCount,
+                    missingScoreCount = response.Coverage.MissingScoreCount,
+                    wasTruncated = response.Coverage.WasTruncated
+                },
+                warningCodes = response.WarningCodes ?? Array.Empty<string>()
+            },
             jdAnalysis = new
             {
                 quality = projection.AnalysisQuality,
@@ -193,7 +239,9 @@ public sealed class JdFitScoreCalculator
                     flag = "CRITICAL_GAP"
                 }).ToList(),
                 penalties,
-                narrative = response.Narrative
+                narrative = response.Quality == JdStageTwoOutputQuality.PARTIAL
+                    ? BuildPartialNarrative(response)
+                    : response.Narrative
             },
             improvements = response.Improvements,
             processingTime = 1000
@@ -208,9 +256,19 @@ public sealed class JdFitScoreCalculator
         {
             "all_of" => items,
             "one_of" => new[] { items.OrderByDescending(item => item.Score.HandlerScore).ThenBy(item => item.Item.ItemId, StringComparer.Ordinal).First() },
-            "at_least_n" => items.OrderByDescending(item => item.Score.HandlerScore).ThenBy(item => item.Item.ItemId, StringComparer.Ordinal).Take(group.MinSatisfied).ToList(),
+            "at_least_n" => items.OrderByDescending(item => item.Score.HandlerScore).ThenBy(item => item.Item.ItemId, StringComparer.Ordinal).Take(Math.Min(group.MinSatisfied, items.Count)).ToList(),
             _ => throw new InvalidOperationException(JdRequirementProjector.InvalidEffectiveJdAnalysis)
         };
+
+    private static string BuildPartialNarrative(JdStageTwoValidatedResponse response)
+    {
+        var accepted = response.Coverage?.AcceptedScoreCount ?? response.ItemScores.Count;
+        var expected = response.Coverage?.ExpectedScoreCount ?? response.ItemScores.Count;
+        var notice = $"Partial matching result based on {accepted} of {expected} requirements.";
+        return string.IsNullOrWhiteSpace(response.Narrative)
+            ? notice
+            : $"{notice} {response.Narrative}";
+    }
 
     private static decimal WeightedAverage(IReadOnlyList<ItemCalculation> items)
     {

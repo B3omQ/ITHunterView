@@ -14,10 +14,12 @@ public sealed record AiGenerationOptions(
     public static readonly AiGenerationOptions StrictJsonExtraction = new(
         Temperature: 0m,
         TopP: 0.1m,
-        MaxOutputTokens: 8192,
+        MaxOutputTokens: 16384,
         ResponseMimeType: "application/json",
         ProfileId: "jd-analysis-json/v1",
-        MaxTransportAttempts: 1);
+        MaxTransportAttempts: 1,
+        ThinkingBudget: 3000,
+        ThinkingLevel: "medium");
 
     public static readonly AiGenerationOptions CvAnalysisJsonExtraction = new(
         Temperature: 0m,
@@ -26,7 +28,7 @@ public sealed record AiGenerationOptions(
         ResponseMimeType: "application/json",
         ProfileId: "cv-analysis-json/v1",
         MaxTransportAttempts: 1,
-        ThinkingBudget: 512,
+        ThinkingBudget: 1000,
         ThinkingLevel: "minimal");
 
     public static readonly AiGenerationOptions CvAnalysisJsonRetry = new(
@@ -36,26 +38,26 @@ public sealed record AiGenerationOptions(
         ResponseMimeType: "application/json",
         ProfileId: "cv-analysis-json-retry/v1",
         MaxTransportAttempts: 1,
-        ThinkingBudget: 512,
+        ThinkingBudget: 1000,
         ThinkingLevel: "minimal");
 
     public static readonly AiGenerationOptions JdMatchingJsonScoring = new(
         Temperature: 0.2m,
         TopP: 0.1m,
-        MaxOutputTokens: 8192,
+        MaxOutputTokens: 16384,
         ResponseMimeType: "application/json",
         ProfileId: "jd-matching-json/v1",
         MaxTransportAttempts: 1,
-        ThinkingBudget: 512,
-        ThinkingLevel: "minimal");
+        ThinkingBudget: 3000,
+        ThinkingLevel: "medium");
 
     public static readonly AiGenerationOptions JdMatchingJsonRetry = new(
         Temperature: 0.2m,
         TopP: 0.1m,
-        MaxOutputTokens: 12288,
+        MaxOutputTokens: 20480,
         ResponseMimeType: "application/json",
         ProfileId: "jd-matching-json-retry/v1",
         MaxTransportAttempts: 1,
-        ThinkingBudget: 512,
-        ThinkingLevel: "minimal");
+        ThinkingBudget: 3000,
+        ThinkingLevel: "medium");
 }

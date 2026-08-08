@@ -72,6 +72,7 @@ public sealed class JdStageTwoMatchingService : IJdStageTwoMatchingService
             promptHash,
             schemaHash);
 
+        JdStageTwoValidatedResponse? bestPartial = null;
         for (var attempt = 1; attempt <= 2; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -89,9 +90,36 @@ public sealed class JdStageTwoMatchingService : IJdStageTwoMatchingService
                     options,
                     cancellationToken);
 
-                using var response = JsonDocument.Parse(StripCompleteJsonFence(responseText));
-                var validated = _responseAdapter.Adapt(response, jdProjection);
-                return _calculator.Calculate(jdProjection, validated);
+                using var recovered = JdMatchingOutputRecovery.Recover(responseText);
+                if (recovered.Document == null)
+                {
+                    throw new InvalidOperationException(JdMatchingResponseValidator.InvalidStageTwoResponse);
+                }
+
+                var candidate = _responseAdapter.Adapt(
+                    recovered.Document,
+                    jdProjection,
+                    recovered.IsCompleteJson,
+                    recovered.WasTruncated,
+                    recovered.WarningCodes);
+                if (candidate.Quality == JdStageTwoOutputQuality.INVALID)
+                {
+                    throw new InvalidOperationException(JdMatchingResponseValidator.InvalidStageTwoResponse);
+                }
+
+                if (candidate.Quality == JdStageTwoOutputQuality.COMPLETE)
+                {
+                    return _calculator.Calculate(jdProjection, candidate);
+                }
+
+                bestPartial = bestPartial == null
+                    ? candidate
+                    : _responseAdapter.MergePartialAttempts(bestPartial, candidate);
+                LogPartialOutputAccepted(activePrompt, provider, attempt, responseText, bestPartial);
+                if (attempt == 2)
+                {
+                    return _calculator.Calculate(jdProjection, bestPartial);
+                }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -105,7 +133,20 @@ public sealed class JdStageTwoMatchingService : IJdStageTwoMatchingService
             catch (Exception exception) when (IsRetryableOutputFailure(exception))
             {
                 LogOutputFailure(activePrompt, provider, attempt, responseText, exception);
+                if (bestPartial != null)
+                {
+                    return _calculator.Calculate(jdProjection, bestPartial);
+                }
                 throw new InvalidOperationException(StageTwoOutputInvalid);
+            }
+            catch (Exception exception) when (attempt == 2 && bestPartial != null)
+            {
+                _logger.LogWarning(
+                    "JD Stage 2 retry failed after a usable partial output; returning the partial result. PromptVersionId={PromptVersionId}; Provider={Provider}; ErrorType={ErrorType}",
+                    activePrompt.VersionId,
+                    provider,
+                    exception.GetType().Name);
+                return _calculator.Calculate(jdProjection, bestPartial);
             }
         }
 
@@ -129,24 +170,6 @@ public sealed class JdStageTwoMatchingService : IJdStageTwoMatchingService
         }
 
         return prompt[..first] + replacement + prompt[(first + placeholder.Length)..];
-    }
-
-    private static string StripCompleteJsonFence(string? response)
-    {
-        var candidate = response?.Trim() ?? string.Empty;
-        if (!candidate.StartsWith("```", StringComparison.Ordinal) ||
-            !candidate.EndsWith("```", StringComparison.Ordinal))
-        {
-            return candidate;
-        }
-
-        var firstNewLine = candidate.IndexOf('\n');
-        if (firstNewLine < 0)
-        {
-            return candidate;
-        }
-
-        return candidate[(firstNewLine + 1)..^3].Trim();
     }
 
     private static bool IsRetryableOutputFailure(Exception exception) =>
@@ -174,6 +197,29 @@ public sealed class JdStageTwoMatchingService : IJdStageTwoMatchingService
             boundedResponse.Length,
             HashForLog(boundedResponse),
             GetBoundedFailureCode(exception));
+    }
+
+    private void LogPartialOutputAccepted(
+        PromptSnapshotDto prompt,
+        string provider,
+        int attempt,
+        string? response,
+        JdStageTwoValidatedResponse partial)
+    {
+        var boundedResponse = response ?? string.Empty;
+        _logger.LogWarning(
+            "JD Stage 2 partial output accepted. PromptVersionId={PromptVersionId}; VersionTag={VersionTag}; Provider={Provider}; Attempt={Attempt}; ResponseLength={ResponseLength}; ResponseHash={ResponseHash}; AcceptedScoreCount={AcceptedScoreCount}; ExpectedScoreCount={ExpectedScoreCount}; MissingScoreCount={MissingScoreCount}; WasTruncated={WasTruncated}; WarningCodes={WarningCodes}",
+            prompt.VersionId,
+            prompt.VersionTag,
+            provider,
+            attempt,
+            boundedResponse.Length,
+            HashForLog(boundedResponse),
+            partial.Coverage?.AcceptedScoreCount ?? partial.ItemScores.Count,
+            partial.Coverage?.ExpectedScoreCount ?? partial.ItemScores.Count,
+            partial.Coverage?.MissingScoreCount ?? 0,
+            partial.Coverage?.WasTruncated ?? false,
+            string.Join(',', partial.WarningCodes ?? Array.Empty<string>()));
     }
 
     private static string GetBoundedFailureCode(Exception exception) =>
