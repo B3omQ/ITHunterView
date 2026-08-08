@@ -2779,5 +2779,58 @@
   },
   "RecruiterEditJob": {
     "sysVisibilityNotice": "* <strong>Lưu ý:</strong> Bất kể hạn nộp hồ sơ là ngày nào, hệ thống mặc định chỉ hiển thị tin này trong vòng <strong>30 ngày</strong> kể từ lúc đăng bài. Sau 30 ngày, bạn có thể gia hạn (tốn phí) để tin tiếp tục hiển thị."
+  },
+  "CandidatePricing": {
+    "title": "Nâng Cấp Trải Nghiệm Ứng Tuyển",
+    "subtitle": "Mở khóa các tính năng AI mạnh mẽ để tối ưu CV, luyện phỏng vấn và giành được công việc mơ ước nhanh hơn. Bắt đầu miễn phí, nâng cấp khi bạn sẵn sàng.",
+    "descBasic": "Bắt đầu với các tính năng cơ bản. Trải nghiệm hệ thống.",
+    "descPro": "Mọi thứ bạn cần để nhanh chóng có được công việc mơ ước.",
+    "descMastery": "Công cụ nâng cao cho chuyên gia để tối đa hóa cơ hội.",
+    "currency": "VNĐ",
+    "durationDays": "/{days} ngày",
+    "cvMatch": "{limit} Lượt đối chiếu CV-JD",
+    "cvOptimize": "{limit} Lượt tối ưu CV",
+    "mockInterview": "{limit} Lượt phỏng vấn AI",
+    "learningPathSingle": "{limit} Lượt tạo Learning Path (duy nhất trong chu kỳ)",
+    "learningPathMonthly": "{limit} Lượt tạo Learning Path / tháng",
+    "learningPathSlotUnlimited": "Vô hạn Slot lưu trữ lộ trình học",
+    "learningPathSlot": "{limit} Slot lưu trữ lộ trình học",
+    "includesCoins": "Bao gồm {coins} Coins",
+    "btnStart": "Bắt Đầu Sử Dụng",
+    "btnBuyNow": "Mua Ngay",
+    "btnUpgrade": "Nâng Cấp",
+    "noPlans": "Hiện tại chưa có gói dịch vụ nào."
+  },
+  "CandidateTopUp": {
+    "title": "Nạp Thêm Coins",
+    "subtitle": "Mua thêm Coins để sử dụng các tính năng AI nâng cao như Đối chiếu CV và Phỏng vấn thử trên nền tảng.",
+    "currentBalance": "Số dư hiện tại của bạn:",
+    "customCoinTitle": "Nạp Số Lượng Coins Tùy Chọn",
+    "customCoinDesc": "Chọn số lượng Coins chính xác bạn cần. Mức giá này tách biệt với các gói Coins cố định.",
+    "loadingPrice": "Đang tải giá trị Coin tùy chọn...",
+    "coinsToTopUp": "Số Coins muốn nạp",
+    "unitPrice": "Đơn giá",
+    "unitPriceValue": "{price} / Coin",
+    "totalPayment": "Tổng thanh toán",
+    "unavailable": "Giá trị Coin tùy chọn đang tạm thời không khả dụng.",
+    "payForCustom": "Thanh toán nạp Coins tùy chọn",
+    "errInvalidAmount": "Vui lòng nhập số nguyên Coins từ 1 đến 100.000.",
+    "errCheckoutLink": "Không tìm thấy đường dẫn thanh toán",
+    "errPayment": "Đã xảy ra lỗi khi tạo thanh toán",
+    "noPackages": "Hiện tại không có gói nạp Coins nào.",
+    "tagPopular": "Phổ biến",
+    "descBeginner": "Dành cho người mới",
+    "descValue": "Tiết kiệm nhất",
+    "descPro": "Dành cho chuyên gia",
+    "btnBuyNow": "Mua Ngay",
+    "refTitle": "Bạn muốn biết chi phí sử dụng các tính năng?",
+    "refCvMatch": "Đối chiếu CV:",
+    "refMockInterview": "Phỏng vấn AI:",
+    "refLearningPath": "Lộ trình học:"
+  },
+  "CandidateBillingHistory": {
+    "title": "Lịch Sử Giao Dịch",
+    "subtitle": "Theo dõi các thanh toán Gói dịch vụ và Nạp Coins của bạn.",
+    "pageTitle": "Lịch sử giao dịch | ITHunterview"
   }
 }

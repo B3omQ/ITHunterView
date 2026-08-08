@@ -6,8 +6,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Check, Loader2 } from 'lucide-react';
 import type { SubscriptionDto } from '@/types/subscription.types';
+import { useTranslations } from 'next-intl';
 
 export default function CandidatePricingPage() {
+  const t = useTranslations("CandidatePricing");
   const { data, isLoading } = usePublicSubscriptions({ role: 'CANDIDATE' });
   const { mutate: buySubscription, isPending } = useBuySubscription();
   const { data: walletData } = useWalletBalance();
@@ -35,10 +37,10 @@ export default function CandidatePricingPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">
-          Upgrade Your Application Experience
+          {t("title")}
         </h1>
         <p className="text-muted-foreground mt-2">
-          Unlock powerful AI features to optimize your CV, practice interviews, and land your dream job faster. Start for free, upgrade when you're ready.
+          {t("subtitle")}
         </p>
       </div>
 
@@ -68,19 +70,19 @@ export default function CandidatePricingPage() {
                     {new Intl.NumberFormat('en-US').format(sub.price)}
                   </span>
                   <span className="text-sm font-bold text-zinc-500 mr-1">
-                    VND
+                    {t("currency")}
                   </span>
                   {sub.durationDays < 36500 && (
                     <span className="text-sm font-medium text-zinc-500">
-                      /{sub.durationDays} days
+                      {t("durationDays", { days: sub.durationDays })}
                     </span>
                   )}
                 </div>
                 <CardDescription className="mt-2 text-[13px] text-zinc-500">
-                  {idx === 0 && 'Start with basic features. Experience the system.'}
-                  {idx === 1 && 'Everything you need to quickly land your dream job.'}
-                  {idx === 2 && 'Advanced tools for professionals to maximize opportunities.'}
-                  {idx > 2 && 'Start with basic features. Experience the system.'}
+                  {idx === 0 && t("descBasic")}
+                  {idx === 1 && t("descPro")}
+                  {idx === 2 && t("descMastery")}
+                  {idx > 2 && t("descBasic")}
                 </CardDescription>
               </CardHeader>
               
@@ -90,7 +92,7 @@ export default function CandidatePricingPage() {
                     <li className="flex gap-3 items-start">
                       <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                       <span className="text-zinc-600 text-sm">
-                        {sub.featuresConfig.cvMatchLimit} CV-JD Matches
+                        {t("cvMatch", { limit: sub.featuresConfig.cvMatchLimit })}
                       </span>
                     </li>
                   )}
@@ -98,7 +100,7 @@ export default function CandidatePricingPage() {
                     <li className="flex gap-3 items-start">
                       <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                       <span className="text-zinc-600 text-sm">
-                        {sub.featuresConfig.cvOptimizeLimit} CV Optimizations
+                        {t("cvOptimize", { limit: sub.featuresConfig.cvOptimizeLimit })}
                       </span>
                     </li>
                   )}
@@ -106,7 +108,7 @@ export default function CandidatePricingPage() {
                     <li className="flex gap-3 items-start">
                       <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                       <span className="text-zinc-600 text-sm">
-                        {sub.featuresConfig.mockInterviewLimit} AI Mock Interviews
+                        {t("mockInterview", { limit: sub.featuresConfig.mockInterviewLimit })}
                       </span>
                     </li>
                   )}
@@ -116,16 +118,16 @@ export default function CandidatePricingPage() {
                         <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                         <span className="text-zinc-600 text-sm">
                           {sub.name === 'Basic' || sub.durationDays > 365 
-                            ? `${sub.featuresConfig.learningPathLimit ?? 1} Lượt tạo Learning Path (duy nhất trong chu kỳ)` 
-                            : `${sub.featuresConfig.learningPathLimit ?? sub.featuresConfig.learningPathSlotLimit} Lượt tạo Learning Path / tháng`}
+                            ? t("learningPathSingle", { limit: sub.featuresConfig.learningPathLimit ?? 1 }) 
+                            : t("learningPathMonthly", { limit: sub.featuresConfig.learningPathLimit ?? sub.featuresConfig.learningPathSlotLimit })}
                         </span>
                       </li>
                       <li className="flex gap-3 items-start">
                         <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                         <span className="text-zinc-600 text-sm">
                           {(sub.featuresConfig.learningPathSlotLimit === -1 || (sub.featuresConfig.learningPathSlotLimit && sub.featuresConfig.learningPathSlotLimit >= 999))
-                            ? 'Vô hạn Slot lưu trữ lộ trình học'
-                            : `${sub.featuresConfig.learningPathSlotLimit ?? 1} Slot lưu trữ lộ trình học`}
+                            ? t("learningPathSlotUnlimited")
+                            : t("learningPathSlot", { limit: sub.featuresConfig.learningPathSlotLimit ?? 1 })}
                         </span>
                       </li>
                     </>
@@ -134,7 +136,7 @@ export default function CandidatePricingPage() {
                     <li className="flex gap-3 items-start">
                       <Check className="w-4 h-4 shrink-0 text-zinc-900 mt-0.5" />
                       <span className="text-zinc-600 text-sm">
-                        Includes {new Intl.NumberFormat('en-US').format(sub.featuresConfig.coinCredit)} Coins
+                        {t("includesCoins", { coins: new Intl.NumberFormat('en-US').format(sub.featuresConfig.coinCredit) })}
                       </span>
                     </li>
                   )}
@@ -155,10 +157,10 @@ export default function CandidatePricingPage() {
                   disabled={isPending}
                 >
                   {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {idx === 0 && 'Start Using'}
-                  {idx === 1 && 'Buy Now'}
-                  {idx === 2 && 'Upgrade'}
-                  {idx > 2 && 'Start Using'}
+                  {idx === 0 && t("btnStart")}
+                  {idx === 1 && t("btnBuyNow")}
+                  {idx === 2 && t("btnUpgrade")}
+                  {idx > 2 && t("btnStart")}
                 </Button>
               </CardFooter>
             </Card>
@@ -168,7 +170,7 @@ export default function CandidatePricingPage() {
       
       {subscriptions.length === 0 && !isLoading && (
         <div className="text-center p-12 bg-zinc-50 rounded-2xl border border-zinc-200 max-w-2xl mx-auto">
-          <p className="text-zinc-500">There are currently no subscription plans available.</p>
+          <p className="text-zinc-500">{t("noPlans")}</p>
         </div>
       )}
     </div>
