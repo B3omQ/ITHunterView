@@ -15,7 +15,7 @@ public sealed class JdMatchingPromptGoldenMasterTests
     public void ActiveV2Fixture_MatchesTheReviewedDatabaseSnapshot()
     {
         var prompt = ReadFixture();
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(prompt))).ToLowerInvariant();
+        var hash = Hash(prompt);
 
         hash.Should().Be(ActivePromptSha256);
         prompt.Should().Contain("[CV_TEXT]");
@@ -56,6 +56,11 @@ public sealed class JdMatchingPromptGoldenMasterTests
 
         normalized.RemovedKnownSchema.Should().BeTrue();
         normalized.RemovedKnownFormatFooter.Should().BeTrue();
+        normalized.SemanticContent.Length.Should().Be(4309);
+        Hash(normalized.SemanticContent).Should().Be(
+            "78e8bc2565b85e39afcda0ae569ef55160f2b78f67cadb5de4eb937e71f4d6eb");
+        Hash(JdMatchingOutputSchema.LockedBlock).Should().Be(
+            "2dd465d89778932d8f4bb644df9ffcfee9e68f38651bf16efe41b338d2b40370");
         normalized.SemanticContent.Should().NotContain("SCHEMA OUTPUT BẮT BUỘC");
         normalized.SemanticContent.Should().NotContain("Chỉ trả về JSON hợp lệ. Bắt đầu bằng { và kết thúc bằng }.");
         normalized.SemanticContent.Should().Contain("HANDLER SCORING RULES (MANDATORY — follow exactly):");
@@ -214,6 +219,10 @@ public sealed class JdMatchingPromptGoldenMasterTests
 
     private static int Count(string value, string token) =>
         value.Split(token, StringSplitOptions.None).Length - 1;
+
+    private static string Hash(string content) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(content)))
+            .ToLowerInvariant();
 }
 
 internal static class JdMatchingPromptContractTestHelpers
