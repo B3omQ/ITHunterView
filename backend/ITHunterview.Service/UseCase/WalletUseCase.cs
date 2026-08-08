@@ -354,7 +354,7 @@ namespace ITHunterview.Service.UseCase
 
                 amount = sub.Price;
                 // Parse features to get CoinCredit
-                var features = System.Text.Json.JsonSerializer.Deserialize<DTOs.Subscription.FeaturesConfigDto>(sub.FeaturesConfig);
+                var features = DeserializeSubscriptionFeatures(sub.FeaturesConfig);
                 // Snapshot coin bonus at purchase time so future package edits do not affect this payment.
                 creditsGranted = features?.CoinCredit ?? 0;
                 // Ánh xạ int ID thành Guid: 00000000-0000-0000-0000-XXXXXXXXXXXX
