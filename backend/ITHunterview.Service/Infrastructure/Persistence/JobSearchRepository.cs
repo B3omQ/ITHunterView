@@ -20,7 +20,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
         public async Task<PaginatedDataResponse<JobCardDto>> SearchJobsAsync(JobSearchQueryDto query, Guid? userId = null)
         {
-            var jobsQuery = _context.JobPostings.Where(j => !j.IsBanned).AsQueryable();
+            var utcNow = DateTime.UtcNow;
+            var jobsQuery = _context.JobPostings.Where(j => !j.IsBanned && (!j.ExpiresAt.HasValue || j.ExpiresAt.Value >= utcNow)).AsQueryable();
 
             if (query.Status.HasValue)
             {
