@@ -450,8 +450,12 @@ export default function JobPostingsPage() {
                   </button>
                 </TableHead>
 
-                <TableHead className="w-[13%] py-3 px-2.5 sm:px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  {t("colExpirationDate")}
+                <TableHead className="w-[12%] py-3 px-2.5 sm:px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  {t("colAppDeadline")}
+                </TableHead>
+
+                <TableHead className="w-[12%] py-3 px-2.5 sm:px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                  {t("colSysExpiry")}
                 </TableHead>
 
                 <TableHead className="w-[9%] text-center py-3 px-2.5 sm:px-3">
@@ -477,15 +481,16 @@ export default function JobPostingsPage() {
 
             <TableBody>
               {loading && sortedJobs.length === 0 ? (
-                // Loading Skeleton state (No overlay shift) - 7 columns
+                // Loading Skeleton state (No overlay shift) - 8 columns
                 Array.from({ length: pageSize || 6 }).map((_, index) => (
                   <TableRow key={index} className="border-b border-[#CED0D4]/60 dark:border-zinc-800/60">
                     <TableCell className="py-4 px-2.5 sm:px-3"><Skeleton className="h-7 w-16 bg-slate-100 dark:bg-zinc-800 rounded-md" /></TableCell>
                     <TableCell className="py-4 px-2.5 sm:px-3">
                       <Skeleton className="h-5 w-4/5 bg-slate-100 dark:bg-zinc-800 rounded my-1" />
                     </TableCell>
-                    <TableCell className="px-2.5 sm:px-3 py-4"><Skeleton className="h-4 w-16 bg-slate-100 dark:bg-zinc-800 rounded" /></TableCell>
-                    <TableCell className="px-2.5 sm:px-3 py-4"><Skeleton className="h-4 w-16 bg-slate-100 dark:bg-zinc-800 rounded" /></TableCell>
+                    <TableCell className="px-2.5 sm:px-3"><Skeleton className="h-4 w-[60%]" /></TableCell>
+                    <TableCell className="px-2.5 sm:px-3"><Skeleton className="h-4 w-[70%]" /></TableCell>
+                    <TableCell className="px-2.5 sm:px-3"><Skeleton className="h-4 w-[70%]" /></TableCell>
                     <TableCell className="px-2.5 sm:px-3 py-4 text-center"><Skeleton className="h-6 w-12 bg-slate-100 dark:bg-zinc-800 rounded-full mx-auto" /></TableCell>
                     <TableCell className="px-2.5 sm:px-3 py-4 text-center"><Skeleton className="h-6 w-20 bg-slate-100 dark:bg-zinc-800 rounded-full mx-auto" /></TableCell>
                     <TableCell className="px-2.5 sm:px-3 py-4 text-right"><Skeleton className="h-8 w-16 bg-slate-100 dark:bg-zinc-800 rounded ml-auto" /></TableCell>
@@ -564,15 +569,20 @@ export default function JobPostingsPage() {
                       </div>
                     </TableCell>
 
-                    {/* Cột 4: Ngày Hết Hạn */}
+                    {/* Cột 4: Hạn nộp hồ sơ */}
                     <TableCell className="px-2.5 sm:px-3 py-3 align-top text-xs text-[#050505] dark:text-zinc-300 font-medium font-mono whitespace-nowrap">
-                      <div className="mt-1 flex flex-col gap-1">
+                      <div className="mt-1">
                         {job.applicationDeadline ? (
-                          <span title="Hạn nộp hồ sơ ứng tuyển" className="text-blue-600 dark:text-blue-400 font-semibold">{formatDate(job.applicationDeadline)}</span>
+                          <span className="text-blue-600 dark:text-blue-400 font-semibold">{formatDate(job.applicationDeadline)}</span>
                         ) : (
                           <span className="text-[#65676B] font-sans italic" title="Hạn ứng tuyển vô thời hạn">{t("noExpiry")}</span>
                         )}
-                        {job.expiresAt && (
+                      </div>
+                    </TableCell>
+
+                    {/* Cột 4.5: Hạn hiển thị hệ thống */}
+                    <TableCell className="px-2.5 sm:px-3 py-3 align-top text-xs text-[#050505] dark:text-zinc-300 font-medium font-mono whitespace-nowrap">
+                        {job.expiresAt ? (
                           (() => {
                             const expDate = new Date(job.expiresAt);
                             const today = new Date();
@@ -582,16 +592,13 @@ export default function JobPostingsPage() {
                             const isExpired = diffDays <= 0;
 
                             return (
-                              <div className="mt-1.5 pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60 flex flex-col gap-0.5">
-                                <span title={t("currentExpirySys")} className="text-zinc-500 dark:text-zinc-400 text-[10px] uppercase tracking-wide font-semibold">
-                                  {t("sysExpiryNote")}
-                                </span>
-                                <span className={`text-[11px] font-medium flex items-center gap-1.5 ${isExpired ? 'text-red-600 dark:text-red-400' : isUrgent ? 'text-orange-600 dark:text-orange-400' : 'text-zinc-600 dark:text-zinc-300'}`}>
-                                  {formatDate(job.expiresAt)}
+                              <div className="mt-1 flex flex-col gap-1.5">
+                                <span className={`font-medium flex flex-col items-start gap-1 ${isExpired ? 'text-red-600 dark:text-red-400' : isUrgent ? 'text-orange-600 dark:text-orange-400' : 'text-zinc-600 dark:text-zinc-300'}`}>
+                                  <span>{formatDate(job.expiresAt)}</span>
                                   {isExpired ? (
-                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">{t("hiddenBadge")}</span>
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 w-fit">{t("hiddenBadge")}</span>
                                   ) : (
-                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${isUrgent ? 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800' : 'bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'}`}>
+                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border w-fit ${isUrgent ? 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800' : 'bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'}`}>
                                       {t("daysLeft", { days: diffDays })}
                                     </span>
                                   )}
@@ -599,8 +606,9 @@ export default function JobPostingsPage() {
                               </div>
                             );
                           })()
+                        ) : (
+                          <span className="text-zinc-500 mt-1 block">-</span>
                         )}
-                      </div>
                     </TableCell>
 
                     {/* Cột 5: Ứng Viên */}

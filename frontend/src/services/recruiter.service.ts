@@ -88,6 +88,7 @@ export interface CreateJobPostingDto {
   maxSalary: number | null;
   currency: string;
   applicationDeadline?: string | null;
+
   description: string;
   requirements: string;
   benefits: string;
@@ -107,6 +108,7 @@ export interface UpdateJobPostingDto {
   maxSalary: number | null;
   currency: string;
   applicationDeadline?: string | null;
+
   description: string;
   requirements: string;
   benefits: string;

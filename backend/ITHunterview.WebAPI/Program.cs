@@ -96,6 +96,7 @@ builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.AuditLo
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.NotificationCleanupBackgroundService>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.NotificationProcessorBackgroundService>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.PaymentCleanupBackgroundService>();
+builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.JobExpirationBackgroundService>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.JobAnalysisWorker>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.CvJdMatchingWorker>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.JobExpirationBackgroundService>();

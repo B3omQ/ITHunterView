@@ -896,12 +896,14 @@
     "pushNowFree": "✨ Đẩy Top ngay (Miễn phí)",
     "confirmPush5k": "🪙 Xác nhận Đẩy (5.000 Coin)",
     "sysExpiryNote": "Hạn hiển thị hệ thống:",
-    "hiddenBadge": "ĐÃ ẨN",
-    "daysLeft": "CÒN {days} NGÀY",
     "extendWarningPrefix": "📌 Tin tuyển dụng ",
     "extendWarningSuffix": " sẽ bị hệ thống tự động ẩn sau 30 ngày hiển thị. Bạn có thể dùng tính năng này để gia hạn thời gian hiển thị thêm 15 ngày tính từ hạn hiện tại.",
     "currentExpirySys": "Hạn hiển thị (Hệ thống)",
-    "plus15DaysBtn": "+ 15 Ngày"
+    "plus15DaysBtn": "+ 15 Ngày",
+    "colAppDeadline": "NGÀY HẾT HẠN",
+    "colSysExpiry": "HẠN HIỂN THỊ",
+    "hiddenBadge": "ĐÃ ẨN",
+    "daysLeft": "CÒN {days} NGÀY"
   },
   "RecruiterJobsNew": {
     "pageTitle": "Tạo tin tuyển dụng mới (Bản thảo)",
@@ -934,6 +936,8 @@
     "maxSalary": "Lương tối đa",
     "currency": "Tiền tệ",
     "expirationDate": "Ngày Hết Hạn *",
+    "applicationDeadline": "Hạn Nộp Hồ Sơ *",
+    "systemDisplayNote": "Tin tuyển dụng sẽ được hiển thị tối đa 30 ngày trên hệ thống. Bạn có thể gia hạn thêm nếu cần.",
     "incomeDetails": "Chi tiết Thu nhập *",
     "incomePlaceholder": "Lên đến $3.000 / tháng + thưởng hiệu suất...",
     "workLocation": "Địa chỉ Làm việc *",

@@ -67,7 +67,7 @@ namespace ITHunterview.WebAPI.BackgroundServices
                             {
                                 UserId = job.RecruiterId,
                                 Title = "Tin tuyển dụng hết hạn hiển thị",
-                                Message = $"Tin tuyển dụng '{job.Title}' đã hết thời gian hiển thị trên hệ thống. Hệ thống đã tạm ẩn bài đăng này. Bạn có thể sử dụng chức năng gia hạn tại màn hình quản lý (tốn phí) để tiếp tục hiển thị tin thêm 15 ngày.",
+                                Message = $"Tin tuyển dụng '{job.Title}' đã hết thời gian hiển thị 30 ngày trên hệ thống. Ứng viên sẽ không thể tìm thấy tin này nữa. Bạn có thể gia hạn hiển thị bằng cách sử dụng gói Extend Job.",
                                 Type = NotificationType.SYSTEM
                             });
                         }

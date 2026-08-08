@@ -65,9 +65,6 @@ export default function EditJobPage() {
   const error = metadataError || detailError
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const maxDateObj = new Date(job?.createdAt || new Date());
-  maxDateObj.setDate(maxDateObj.getDate() + 30);
-  const maxDateStr = maxDateObj.toISOString().split('T')[0];
 
   useEffect(() => {
     if (job && !initializedRef.current) {
@@ -136,13 +133,13 @@ export default function EditJobPage() {
       return t("errLimit")
     }
 
-    if (formData.applicationDeadline) {
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const expDate = new Date(formData.applicationDeadline)
-      if (expDate <= today) {
-        return t("errExpFuture")
-      }
+    if (!formData.applicationDeadline) return t("errExpDateReq")
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const expDate = new Date(formData.applicationDeadline)
+    if (expDate <= today) {
+      return t("errExpFuture")
     }
 
     return null
@@ -443,7 +440,7 @@ export default function EditJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="applicationDeadline" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("expirationDate")}</Label>
+                <Label htmlFor="applicationDeadline" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("applicationDeadline")}</Label>
                 <Input
                   id="applicationDeadline"
                   name="applicationDeadline"
