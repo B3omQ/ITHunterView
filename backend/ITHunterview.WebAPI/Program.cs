@@ -180,7 +180,8 @@ if (!app.Environment.IsEnvironment("Testing"))
         catch (Exception ex)
         {
             var logger = services.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, "An error occurred seeding the DB.");
+            logger.LogCritical(ex, "Database migration or seeding failed. Application startup aborted.");
+            throw;
         }
     }
 }

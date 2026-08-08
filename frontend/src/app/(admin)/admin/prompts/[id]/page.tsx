@@ -113,6 +113,16 @@ export default function AdminPromptDetailPage() {
         </TabsList>
 
         <TabsContent value="history" className="mt-6 space-y-6">
+          {isCvAnalysisPrompt && (
+            <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
+              <CardHeader>
+                <CardTitle className="text-base">Application-managed CV analysis output</CardTitle>
+                <CardDescription>
+                  This editor controls CV extraction instructions only. The application appends the fixed cv-analysis/v2 JSON schema at runtime. Known historical embedded schemas are removed when a new version is saved; modified schemas are rejected.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
           {isJdMatchingPrompt && (
             <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
               <CardHeader>
@@ -224,6 +234,8 @@ export default function AdminPromptDetailPage() {
                 Create a new immutable version for <span className="font-mono text-primary">{prompt.promptKey}</span>.
                 {isJdMatchingPrompt
                   ? ' Edit semantic instructions only; keep the CV and JD input slots intact.'
+                  : isCvAnalysisPrompt
+                    ? ' Edit semantic extraction instructions only; keep [CV_TEXT] exactly once in the user template. Do not add or modify an output JSON schema.'
                   : ' Remember to keep required placeholders like [CV_TEXT] and [JD_TEXT].'}
               </CardDescription>
             </CardHeader>
@@ -286,7 +298,9 @@ export default function AdminPromptDetailPage() {
                           />
                         </FormControl>
                         <FormDescription>
-                          {isJdMatchingPrompt
+                          {isCvAnalysisPrompt
+                            ? 'Edit semantic extraction instructions only. Keep [CV_TEXT] exactly once in the user template. Do not add or modify an output JSON schema.'
+                            : isJdMatchingPrompt
                             ? 'Use raw semantic instructions. Keep exactly one operational CV and JD input slot; the output schema is managed by the application.'
                             : 'Use raw text. Make sure to include variables wrapped in brackets, like [CV_TEXT].'}
                         </FormDescription>

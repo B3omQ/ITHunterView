@@ -28,7 +28,7 @@ public sealed class CvTextExtractorServiceTests
         aiService.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("Gemini");
         aiService.Setup(x => x.GenerateTextAsync(
                 It.IsAny<string>(),
-                "system from database",
+                It.IsAny<string>(),
                 "Gemini",
                 It.IsAny<AiGenerationOptions>(),
                 It.IsAny<CancellationToken>()))
@@ -47,7 +47,10 @@ public sealed class CvTextExtractorServiceTests
         result.Should().Be("{\"canonical\":true}");
         aiService.Verify(x => x.GenerateTextAsync(
             It.IsAny<string>(),
-            "system from database",
+            It.Is<string>(system =>
+                system.Contains(CvAnalysisOutputSchema.BeginMarker, StringComparison.Ordinal) &&
+                system.Contains("\"schema_version\": \"cv-analysis/v2\"", StringComparison.Ordinal) &&
+                Count(system, CvAnalysisOutputSchema.BeginMarker) == 1),
             "Gemini",
             It.Is<AiGenerationOptions>(options =>
                 options.ProfileId == "cv-analysis-json/v1" &&
@@ -382,6 +385,149 @@ public sealed class CvTextExtractorServiceTests
     }
 
     [Fact]
+    public async Task Extract_SemanticOnlySystemPrompt_ReceivesFixedSchemaRegardlessOfPairContract()
+    {
+        var capturedSystems = new List<string>();
+        var aiService = CreateAiServiceReturning(ValidSchemaOnly);
+        aiService.Setup(x => x.GenerateTextAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                "Gemini",
+                It.IsAny<AiGenerationOptions>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<string, string, string, AiGenerationOptions, CancellationToken>((_, system, _, _, _) =>
+                capturedSystems.Add(system))
+            .ReturnsAsync(ValidSchemaOnly);
+        var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
+        validator.Setup(x => x.ValidateAndCanonicalize(ValidSchemaOnly))
+            .Returns(CvAnalysisValidationResult.Complete("{\"canonical\":true}", EmptyCoverage()));
+        var pair = CreatePromptPair(contract: CvAnalysisPromptContract.ContractV1, systemContent: "Keep evidence grounded.");
+        var service = CreateService(aiService, validator, promptService: CreatePromptService(pair));
+
+        await service.ExtractParsedDataFromRawTextAsync(
+            "Jane Doe\nEngineer", "pasted_text", "resume.txt", CancellationToken.None);
+
+        capturedSystems.Should().ContainSingle();
+        capturedSystems[0].Should().Contain(CvAnalysisOutputSchema.BeginMarker);
+        capturedSystems[0].Should().Contain("\"schema_version\": \"cv-analysis/v2\"");
+        Count(capturedSystems[0], CvAnalysisOutputSchema.BeginMarker).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Extract_EmbeddedV2SystemPrompt_IsNormalizedWithoutDuplicatingSchema()
+    {
+        var schema = ExtractJson(CvAnalysisOutputSchema.LockedBlock);
+        var pair = CreatePromptPair(
+            systemContent: $"Keep evidence grounded.\n\nOUTPUT SCHEMA\n\n{schema}\n\nVERBATIM SECTION RULES\n\nPreserve exact evidence.");
+        var capturedSystems = new List<string>();
+        var aiService = CreateAiServiceReturning(ValidSchemaOnly);
+        aiService.Setup(x => x.GenerateTextAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                "Gemini",
+                It.IsAny<AiGenerationOptions>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<string, string, string, AiGenerationOptions, CancellationToken>((_, system, _, _, _) =>
+                capturedSystems.Add(system))
+            .ReturnsAsync(ValidSchemaOnly);
+        var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
+        validator.Setup(x => x.ValidateAndCanonicalize(ValidSchemaOnly))
+            .Returns(CvAnalysisValidationResult.Complete("{\"canonical\":true}", EmptyCoverage()));
+        var service = CreateService(aiService, validator, promptService: CreatePromptService(pair));
+
+        await service.ExtractParsedDataFromRawTextAsync(
+            "Jane Doe\nEngineer", "pasted_text", "resume.txt", CancellationToken.None);
+
+        capturedSystems.Should().ContainSingle();
+        Count(capturedSystems[0], CvAnalysisOutputSchema.BeginMarker).Should().Be(1);
+        Count(capturedSystems[0], "\"schema_version\": \"cv-analysis/v2\"").Should().Be(1);
+        capturedSystems[0].Should().Contain("VERBATIM SECTION RULES");
+    }
+
+    [Fact]
+    public async Task Extract_UserTemplateWithEmbeddedSchema_RemovesSchemaBeforeCvSubstitution()
+    {
+        var schema = ExtractJson(CvAnalysisOutputSchema.LockedBlock);
+        var pair = CreatePromptPair(
+            userContent: $"Use these instructions.\n\nOUTPUT SCHEMA\n\n{schema}\n\nVERBATIM SECTION RULES\n\n[CV_TEXT]");
+        var capturedUsers = new List<string>();
+        var aiService = CreateAiServiceReturning(ValidSchemaOnly);
+        aiService.Setup(x => x.GenerateTextAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                "Gemini",
+                It.IsAny<AiGenerationOptions>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<string, string, string, AiGenerationOptions, CancellationToken>((user, _, _, _, _) =>
+                capturedUsers.Add(user))
+            .ReturnsAsync(ValidSchemaOnly);
+        var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
+        validator.Setup(x => x.ValidateAndCanonicalize(ValidSchemaOnly))
+            .Returns(CvAnalysisValidationResult.Complete("{\"canonical\":true}", EmptyCoverage()));
+        var service = CreateService(aiService, validator, promptService: CreatePromptService(pair));
+
+        await service.ExtractParsedDataFromRawTextAsync(
+            "Jane Doe\nEngineer", "pasted_text", "resume.txt", CancellationToken.None);
+
+        capturedUsers.Should().ContainSingle();
+        capturedUsers[0].Should().Contain("Use these instructions.");
+        capturedUsers[0].Should().Contain("Jane Doe");
+        capturedUsers[0].Should().NotContain("\"schema_version\"");
+    }
+
+    [Fact]
+    public async Task Extract_MutatedManagedSchema_RejectsBeforeProviderCall()
+    {
+        var pair = CreatePromptPair(
+            systemContent: CvAnalysisOutputSchema.LockedBlock.Replace(
+                "\"matching_evidence\"",
+                "\"matching_evidence_changed\"",
+                StringComparison.Ordinal));
+        var aiService = new Mock<IAiService>(MockBehavior.Strict);
+        var service = CreateService(
+            aiService,
+            new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict),
+            promptService: CreatePromptService(pair));
+
+        var action = () => service.ExtractParsedDataFromRawTextAsync(
+            "Jane Doe\nEngineer", "pasted_text", "resume.txt", CancellationToken.None);
+
+        await action.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*CV_ANALYSIS_PROMPT_SCHEMA_MUTATION*");
+        aiService.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Extract_RetryUsesByteIdenticalComposedSystemPrompt()
+    {
+        var capturedSystems = new List<string>();
+        var aiService = new Mock<IAiService>(MockBehavior.Strict);
+        aiService.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("Gemini");
+        var callCount = 0;
+        aiService.Setup(x => x.GenerateTextAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                "Gemini",
+                It.IsAny<AiGenerationOptions>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<string, string, string, AiGenerationOptions, CancellationToken>((_, system, _, _, _) =>
+                capturedSystems.Add(system))
+            .ReturnsAsync(() => callCount++ == 0 ? "{}" : ValidSchemaOnly);
+        var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
+        validator.Setup(x => x.ValidateAndCanonicalize("{}"))
+            .Returns(CvAnalysisValidationResult.Invalid("CV_ANALYSIS_INVALID_JSON", "JSON_PARSE_FAILED", "$"));
+        validator.Setup(x => x.ValidateAndCanonicalize(ValidSchemaOnly))
+            .Returns(CvAnalysisValidationResult.Complete("{\"complete\":true}", EmptyCoverage()));
+        var service = CreateService(aiService, validator);
+
+        await service.ExtractParsedDataFromRawTextAsync(
+            "Jane Doe\nEngineer", "pasted_text", "resume.txt", CancellationToken.None);
+
+        capturedSystems.Should().HaveCount(2);
+        capturedSystems[1].Should().Be(capturedSystems[0]);
+    }
+
+    [Fact]
     public async Task Extract_RetryProviderFailureAfterPartial_ReturnsSavedPartial()
     {
         var aiService = new Mock<IAiService>(MockBehavior.Strict);
@@ -526,22 +672,47 @@ public sealed class CvTextExtractorServiceTests
         0, 0, 0,
         false, false, false, false);
 
-    private static PromptPairSnapshotDto CreatePromptPair() => new()
+    private static Mock<IPromptManagementService> CreatePromptService(PromptPairSnapshotDto pair)
     {
-        Contract = "cv-analysis/v2",
+        var promptService = new Mock<IPromptManagementService>(MockBehavior.Strict);
+        promptService.Setup(x => x.GetActivePromptPairSnapshotAsync(
+                CvAnalysisPromptContract.SystemPromptKey,
+                CvAnalysisPromptContract.UserPromptKey,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pair);
+        return promptService;
+    }
+
+    private static PromptPairSnapshotDto CreatePromptPair(
+        string contract = "cv-analysis/v2",
+        string? systemContent = null,
+        string? userContent = null) => new()
+    {
+        Contract = contract,
         System = new PromptSnapshotDto
         {
             PromptKey = CvAnalysisPromptContract.SystemPromptKey,
             VersionTag = "v2.0",
-            Content = "system from database"
+            Content = systemContent ?? "system from database"
         },
         User = new PromptSnapshotDto
         {
             PromptKey = CvAnalysisPromptContract.UserPromptKey,
             VersionTag = "v2.0",
-            Content = $"parse {CvAnalysisPromptContract.UserPlaceholder}"
+            Content = userContent ?? $"parse {CvAnalysisPromptContract.UserPlaceholder}"
         }
     };
+
+    private static string ExtractJson(string lockedBlock)
+    {
+        var start = lockedBlock.IndexOf('{');
+        var end = lockedBlock.LastIndexOf('}');
+        return lockedBlock[start..(end + 1)];
+    }
+
+    private static int Count(string value, string token) =>
+        value.Split(token, StringSplitOptions.None).Length - 1;
+
 
     private sealed class StubHttpMessageHandler(
         Func<HttpRequestMessage, HttpResponseMessage> responseFactory) : HttpMessageHandler

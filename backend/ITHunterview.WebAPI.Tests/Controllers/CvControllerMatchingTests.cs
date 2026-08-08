@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
 namespace ITHunterview.WebAPI.Tests.Controllers;
@@ -121,7 +122,7 @@ public class CvControllerMatchingTests
             submission,
             retry ?? Mock.Of<ICvJdMatchingRetryUseCase>(),
             history ?? Mock.Of<ICvJdMatchingHistoryUseCase>(),
-            Mock.Of<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(),
+            Mock.Of<IServiceScopeFactory>(),
             Mock.Of<ICvTextExtractorService>(),
             Mock.Of<ICandidateFeatureUsageUseCase>(),
             Mock.Of<IMatchingInputPreflightUseCase>(),
