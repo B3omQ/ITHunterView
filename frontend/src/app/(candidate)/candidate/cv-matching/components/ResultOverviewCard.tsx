@@ -7,9 +7,10 @@ import { MatchingOutput } from "@/types/cv.types";
 
 interface ResultOverviewCardProps {
   jdFit: NonNullable<MatchingOutput['jdFit']>;
+  isRawTextFallback?: boolean;
 }
 
-export function ResultOverviewCard({ jdFit }: ResultOverviewCardProps) {
+export function ResultOverviewCard({ jdFit, isRawTextFallback = false }: ResultOverviewCardProps) {
   // Determine color based on score or result string
   let badgeColor = "bg-green-100 text-green-800";
   let ringColor = "stroke-green-500";
@@ -29,6 +30,12 @@ export function ResultOverviewCard({ jdFit }: ResultOverviewCardProps) {
   const radius = 45;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (jdFit.score / 100) * circumference;
+  const poolAProgress = jdFit.poolA.score !== null && jdFit.poolA.max !== null && jdFit.poolA.max > 0
+    ? (jdFit.poolA.score / jdFit.poolA.max) * 100
+    : 0;
+  const poolBProgress = jdFit.poolB.score !== null && jdFit.poolB.max !== null && jdFit.poolB.max > 0
+    ? (jdFit.poolB.score / jdFit.poolB.max) * 100
+    : 0;
 
   return (
     <div className="space-y-4">
@@ -95,7 +102,11 @@ export function ResultOverviewCard({ jdFit }: ResultOverviewCardProps) {
               </p>
             </div>
 
-            {/* Sub-pools Progress */}
+            {isRawTextFallback ? (
+              <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                JD chưa thể tạo dữ liệu yêu cầu có cấu trúc. Đây là đánh giá tham khảo dựa trên toàn bộ nội dung JD gốc, nên không có điểm Pool A/B, Kill-Switch hoặc critical gap.
+              </p>
+            ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <div className="space-y-2">
                 <div className="flex justify-between text-sm items-center">
@@ -109,16 +120,17 @@ export function ResultOverviewCard({ jdFit }: ResultOverviewCardProps) {
                   </div>
                   <span className="font-semibold">{jdFit.poolA.score}/{jdFit.poolA.max}</span>
                 </div>
-                <Progress value={(jdFit.poolA.score / jdFit.poolA.max) * 100} className={`h-2 ${jdFit.poolACapped ? 'bg-red-100 [&>div]:bg-red-500' : ''}`} />
+                <Progress value={poolAProgress} className={`h-2 ${jdFit.poolACapped ? 'bg-red-100 [&>div]:bg-red-500' : ''}`} />
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="font-medium text-foreground/80">Nice-to-Have (Pool B)</span>
                   <span className="font-semibold">{jdFit.poolB.score}/{jdFit.poolB.max}</span>
                 </div>
-                <Progress value={(jdFit.poolB.score / jdFit.poolB.max) * 100} className="h-2" />
+                <Progress value={poolBProgress} className="h-2" />
               </div>
             </div>
+            )}
           </div>
         </div>
       </CardContent>
