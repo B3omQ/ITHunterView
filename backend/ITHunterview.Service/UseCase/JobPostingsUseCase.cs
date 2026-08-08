@@ -78,6 +78,7 @@ namespace ITHunterview.Service.UseCase
                 ApplicationCount = j.ApplicationCount,
                 ViewCount = j.ViewCount,
                 PublishedAt = j.PublishedAt,
+                ApplicationDeadline = j.ApplicationDeadline,
                 ExpiresAt = j.ExpiresAt,
                 CreatedAt = j.CreatedAt,
                 Level = j.Level,
@@ -131,7 +132,6 @@ namespace ITHunterview.Service.UseCase
             {
                 return new ResponseBase<JobPostingDetailDto>("Thời hạn ứng tuyển phải ở tương lai.");
             }
-
             var text = NormalizeRichTextFields(dto.Description, dto.Requirements, dto.Benefits, dto.IncomeText);
 
             var job = new JobPostings
@@ -214,7 +214,6 @@ namespace ITHunterview.Service.UseCase
             {
                 return new ResponseBase<JobPostingDetailDto>("Thời hạn ứng tuyển phải ở tương lai.");
             }
-
             var oldSnapshot = _inputBuilder.Build(job);
             var oldSemanticHash = _inputBuilder.ComputeSemanticHash(oldSnapshot);
             var text = NormalizeRichTextFields(dto.Description, dto.Requirements, dto.Benefits, dto.IncomeText);
@@ -231,6 +230,7 @@ namespace ITHunterview.Service.UseCase
             job.Currency = dto.Currency;
             job.Location = dto.Location;
             job.ApplicationDeadline = dto.ApplicationDeadline;
+
             job.Level = dto.Level;
             job.WorkingModel = dto.WorkingModel;
             job.JobExpertise = dto.JobExpertise;
@@ -462,6 +462,7 @@ namespace ITHunterview.Service.UseCase
                 ApplicationCount = j.ApplicationCount,
                 ViewCount = j.ViewCount,
                 PublishedAt = j.PublishedAt,
+                ApplicationDeadline = j.ApplicationDeadline,
                 ExpiresAt = j.ExpiresAt,
                 CreatedAt = j.CreatedAt,
                 IsBanned = j.IsBanned,

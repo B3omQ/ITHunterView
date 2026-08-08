@@ -896,12 +896,14 @@
     "pushNowFree": "✨ Push to Top Now (Free)",
     "confirmPush5k": "🪙 Confirm Push (5,000 Coin)",
     "sysExpiryNote": "System Expiry:",
-    "hiddenBadge": "HIDDEN",
-    "daysLeft": "{days} DAYS LEFT",
     "extendWarningPrefix": "📌 Job posting ",
     "extendWarningSuffix": " will be hidden automatically by the system after 30 days of active display. You can use this feature to extend the display time by 15 days from the current system expiry date.",
     "currentExpirySys": "Current Expiry (System)",
-    "plus15DaysBtn": "+ 15 Days"
+    "plus15DaysBtn": "+ 15 Days",
+    "colAppDeadline": "APPLICATION DEADLINE",
+    "colSysExpiry": "SYSTEM EXPIRY",
+    "hiddenBadge": "HIDDEN",
+    "daysLeft": "{days} DAYS LEFT"
   },
   "RecruiterJobsNew": {
     "pageTitle": "Create New Job Posting (Draft)",
@@ -934,6 +936,8 @@
     "maxSalary": "Max Salary",
     "currency": "Currency",
     "expirationDate": "Expiration Date *",
+    "applicationDeadline": "Application Deadline *",
+    "systemDisplayNote": "The job will be displayed for up to 30 days on the system. You can extend it later if needed.",
     "incomeDetails": "Income Details *",
     "incomePlaceholder": "Up to $3,000 / month + performance bonus...",
     "workLocation": "Work Location Address *",

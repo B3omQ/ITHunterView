@@ -16,6 +16,7 @@ namespace ITHunterview.Service.DTOs.Job
         public int ApplicationCount { get; set; }
         public int ViewCount { get; set; }
         public DateTime? PublishedAt { get; set; }
+        public DateTime? ApplicationDeadline { get; set; }
         public DateTime? ExpiresAt { get; set; }
         public DateTime CreatedAt { get; set; }
         public string? Level { get; set; }
@@ -58,8 +59,9 @@ namespace ITHunterview.Service.DTOs.Job
         public int ApplicationCount { get; set; }
         public int ViewCount { get; set; }
         public DateTime? PublishedAt { get; set; }
-        public DateTime? ExpiresAt { get; set; }
         public DateTime? ApplicationDeadline { get; set; }
+        public DateTime? ExpiresAt { get; set; }
+
         public DateTime CreatedAt { get; set; }
         public string? Level { get; set; }
         public string? WorkingModel { get; set; }

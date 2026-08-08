@@ -97,11 +97,12 @@ namespace ITHunterview.Domain.Entities
         [Column("published_at")]
         public DateTime? PublishedAt { get; set; }
 
+        [Column("application_deadline")]
+        public DateTime? ApplicationDeadline { get; set; }
+
         [Column("expires_at")]
         public DateTime? ExpiresAt { get; set; }
 
-        [Column("application_deadline")]
-        public DateTime? ApplicationDeadline { get; set; }
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }
