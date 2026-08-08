@@ -12,6 +12,8 @@ import { useGetMyCvs } from '@/hooks/useCv';
 import type { Cv, MatchHistoryDto } from '@/types/cv.types';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { useSignalR } from '@/hooks/useSignalR';
+import { toast } from 'sonner';
 
 interface MatchJobsModalProps {
   isOpen: boolean;
@@ -25,9 +27,33 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
   const [selectedCvId, setSelectedCvId] = useState<string>('');
   const [useAI, setUseAI] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [isBackgroundScanning, setIsBackgroundScanning] = useState(false);
   const [matches, setMatches] = useState<MatchHistoryDto[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const connection = useSignalR('/hubs/notification');
+
+  useEffect(() => {
+    if (connection) {
+      connection.on('ReceiveNotification', (notification: any) => {
+        if (notification.type === 'CvMatchComplete' && notification.cvId === selectedCvId) {
+          setIsBackgroundScanning(false);
+          toast.success(notification.message || 'Matching complete!');
+          fetchMatches();
+        } else if (notification.type === 'CvMatchError' && notification.cvId === selectedCvId) {
+          setIsBackgroundScanning(false);
+          toast.error(notification.message || 'An error occurred during matching.');
+          setError(notification.message);
+        }
+      });
+    }
+    return () => {
+      if (connection) {
+        connection.off('ReceiveNotification');
+      }
+    };
+  }, [connection, selectedCvId]);
 
   useEffect(() => {
     if (isOpen && cvs.length > 0 && !selectedCvId) {
@@ -64,13 +90,21 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
     try {
       setIsScanning(true);
       setError(null);
+      let res;
       if (useAI) {
-        await cvService.matchJobs(selectedCvId);
+        res = await cvService.matchJobs(selectedCvId);
       } else {
-        await cvService.matchJobsHardcode(selectedCvId);
+        res = await cvService.matchJobsHardcode(selectedCvId);
       }
 
-      await fetchMatches();
+      // If backend accepted the request for background processing
+      if (res?.message?.includes('queued') || res?.message?.includes('background')) {
+        setIsBackgroundScanning(true);
+        toast.success("Matching started in background. You will be notified when it's done.");
+      } else {
+        // Fallback if backend processed it synchronously
+        await fetchMatches();
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to scan for matches.');
     } finally {
@@ -144,15 +178,15 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
             <h4 className="text-sm font-semibold text-slate-900">Matches Found ({matches.length})</h4>
             <Button
               onClick={handleScan}
-              disabled={isScanning}
+              disabled={isScanning || isBackgroundScanning}
               size="sm"
               className={cn(
                 "gap-2",
                 useAI ? "bg-purple-600 hover:bg-purple-700" : "bg-blue-600 hover:bg-blue-700"
               )}
             >
-              <RefreshCcw className={cn("h-4 w-4", isScanning && "animate-spin")} />
-              {isScanning ? 'Scanning...' : 'Scan Now'}
+              <RefreshCcw className={cn("h-4 w-4", (isScanning || isBackgroundScanning) && "animate-spin")} />
+              {isBackgroundScanning ? 'Scanning in background...' : isScanning ? 'Starting...' : 'Scan Now'}
             </Button>
           </div>
 
