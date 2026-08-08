@@ -29,6 +29,7 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
   const [matches, setMatches] = useState<MatchHistoryDto[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [useAI, setUseAI] = useState(false);
 
   const connection = useSignalR('/hubs/notification');
 
