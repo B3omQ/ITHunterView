@@ -467,7 +467,8 @@
     "deleting": "Deleting...",
     "delete": "Delete",
     "deleteResume": "Delete Resume",
-    "deleteResumeConfirm": "Are you sure you want to delete {fileName}? This action cannot be undone."
+    "deleteResumeConfirm": "Are you sure you want to delete {fileName}? This action cannot be undone.",
+    "cancel": "Cancel"
   },
   "CandidateJobs": {
     "jobCreatedToast": "A new matching job has just been posted: {title}",

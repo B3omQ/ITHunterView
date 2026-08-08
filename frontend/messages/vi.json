@@ -467,7 +467,8 @@
     "deleting": "Đang xóa...",
     "delete": "Xóa",
     "deleteResume": "Xóa hồ sơ",
-    "deleteResumeConfirm": "Bạn có chắc chắn muốn xóa {fileName} không? Hành động này không thể hoàn tác."
+    "deleteResumeConfirm": "Bạn có chắc chắn muốn xóa {fileName} không? Hành động này không thể hoàn tác.",
+    "cancel": "Hủy"
   },
   "CandidateJobs": {
     "jobCreatedToast": "Một bài đăng mới phù hợp vừa được tạo: {title}",
