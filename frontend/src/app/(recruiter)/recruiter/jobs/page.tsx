@@ -566,11 +566,16 @@ export default function JobPostingsPage() {
 
                     {/* Cột 4: Ngày Hết Hạn */}
                     <TableCell className="px-2.5 sm:px-3 py-3 align-top text-xs text-[#050505] dark:text-zinc-300 font-medium font-mono whitespace-nowrap">
-                      <div className="mt-1">
-                        {job.expiresAt ? (
-                          <span>{formatDate(job.expiresAt)}</span>
+                      <div className="mt-1 flex flex-col gap-1">
+                        {job.applicationDeadline ? (
+                          <span title="Hạn nộp hồ sơ ứng tuyển" className="text-blue-600 dark:text-blue-400 font-semibold">{formatDate(job.applicationDeadline)}</span>
                         ) : (
-                          <span className="text-[#65676B] font-sans italic">{t("noExpiry")}</span>
+                          <span className="text-[#65676B] font-sans italic" title="Hạn ứng tuyển vô thời hạn">{t("noExpiry")}</span>
+                        )}
+                        {job.expiresAt && (
+                          <span title="Hạn hiển thị trên hệ thống" className="text-zinc-500 dark:text-zinc-500 text-[10px] mt-0.5 border-t border-zinc-200 dark:border-zinc-700 pt-0.5 block max-w-fit">
+                            Hiển thị tới: {formatDate(job.expiresAt)}
+                          </span>
                         )}
                       </div>
                     </TableCell>

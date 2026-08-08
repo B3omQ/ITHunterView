@@ -21,7 +21,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         public async Task<PaginatedDataResponse<JobCardDto>> SearchJobsAsync(JobSearchQueryDto query, Guid? userId = null)
         {
             var utcNow = DateTime.UtcNow;
-            var jobsQuery = _context.JobPostings.Where(j => !j.IsBanned && (!j.ExpiresAt.HasValue || j.ExpiresAt.Value >= utcNow)).AsQueryable();
+            var thirtyDaysAgo = utcNow.AddDays(-30);
+            var jobsQuery = _context.JobPostings.Where(j => !j.IsBanned && (!j.PublishedAt.HasValue || j.PublishedAt.Value >= thirtyDaysAgo || (j.ExpiresAt.HasValue && j.ExpiresAt.Value >= utcNow))).AsQueryable();
 
             if (query.Status.HasValue)
             {
@@ -29,8 +30,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             }
             else
             {
-                // Default to PUBLISHED for backwards compatibility if not provided
-                jobsQuery = jobsQuery.Where(j => j.Status == JobStatus.PUBLISHED);
+                // Default to PUBLISHED and EXPIRED for backwards compatibility if not provided
+                jobsQuery = jobsQuery.Where(j => j.Status == JobStatus.PUBLISHED || j.Status == JobStatus.EXPIRED);
             }
 
             if (query.MinSalary.HasValue)
@@ -154,6 +155,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 JobExpertise = x.job.JobExpertise,
                 JobDomain = x.job.JobDomain,
                 PublishedAt = x.job.PublishedAt,
+                Status = x.job.Status.ToString(),
+                ApplicationDeadline = x.job.ApplicationDeadline,
                 IsSaved = false,
                 PushedTopUntil = x.job.PushedTopUntil,
                 Skills = skillLookup.ContainsKey(x.job.Id) ? skillLookup[x.job.Id] : new List<string>()
@@ -267,11 +270,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             var now = DateTime.UtcNow;
             var queryable = from job in _context.JobPostings
                             join company in _context.Companies on job.CompanyId equals company.Id
-                            where job.Status == Domain.Enums.JobStatus.PUBLISHED
+                            where (job.Status == Domain.Enums.JobStatus.PUBLISHED || job.Status == Domain.Enums.JobStatus.EXPIRED)
                                   && !job.IsBanned
                                   && job.PushedTopUntil.HasValue
                                   && job.PushedTopUntil.Value >= now
-                                  && (!job.ExpiresAt.HasValue || job.ExpiresAt.Value >= now)
+                                  && (!job.PublishedAt.HasValue || job.PublishedAt.Value >= now.AddDays(-30) || (job.ExpiresAt.HasValue && job.ExpiresAt.Value >= now))
                             orderby job.PushedTopUntil descending, job.PublishedAt descending
                             select new { job, company };
 
@@ -302,6 +305,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 JobExpertise = x.job.JobExpertise,
                 JobDomain = x.job.JobDomain,
                 PublishedAt = x.job.PublishedAt,
+                Status = x.job.Status.ToString(),
+                ApplicationDeadline = x.job.ApplicationDeadline,
                 IsSaved = false,
                 PushedTopUntil = x.job.PushedTopUntil,
                 Skills = skillLookup.ContainsKey(x.job.Id) ? skillLookup[x.job.Id] : new List<string>()

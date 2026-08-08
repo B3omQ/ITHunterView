@@ -121,7 +121,11 @@ public class CvControllerMatchingTests
             submission,
             retry ?? Mock.Of<ICvJdMatchingRetryUseCase>(),
             history ?? Mock.Of<ICvJdMatchingHistoryUseCase>(),
-            Mock.Of<ICvTextExtractorService>())
+            Mock.Of<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(),
+            Mock.Of<ICvTextExtractorService>(),
+            Mock.Of<ICandidateFeatureUsageUseCase>(),
+            Mock.Of<IMatchingInputPreflightUseCase>(),
+            Mock.Of<ITHunterview.WebAPI.BackgroundServices.ICvMatchingQueue>())
         {
             ControllerContext = new ControllerContext
             {

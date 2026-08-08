@@ -16,6 +16,7 @@ export interface JobPostingSummary {
   viewCount: number;
   publishedAt: string | null;
   expiresAt: string | null;
+  applicationDeadline: string | null;
   createdAt: string;
   level?: string;
   workingModel?: string;
@@ -50,6 +51,7 @@ export interface JobPosting {
   viewCount: number;
   publishedAt: string | null;
   expiresAt: string | null;
+  applicationDeadline: string | null;
   createdAt: string;
   level?: string;
   workingModel?: string;
@@ -85,7 +87,7 @@ export interface CreateJobPostingDto {
   minSalary: number | null;
   maxSalary: number | null;
   currency: string;
-  expiresAt?: string | null;
+  applicationDeadline?: string | null;
   description: string;
   requirements: string;
   benefits: string;
@@ -104,7 +106,7 @@ export interface UpdateJobPostingDto {
   minSalary: number | null;
   maxSalary: number | null;
   currency: string;
-  expiresAt?: string | null;
+  applicationDeadline?: string | null;
   description: string;
   requirements: string;
   benefits: string;
