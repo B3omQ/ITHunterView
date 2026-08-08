@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Brain, FileCode, Users, RefreshCcw, AlertCircle, FileText, Download, Eye, FileSpreadsheet, Lock, Sparkles, Coins } from 'lucide-react';
 import { recruiterService } from '@/services/recruiter.service';
 import type { MatchHistoryDto } from '@/types/cv.types';
@@ -27,7 +25,6 @@ interface MatchCvsSectionProps {
 }
 
 export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSectionProps) {
-  const [useAI, setUseAI] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [matches, setMatches] = useState<MatchHistoryDto[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -60,11 +57,7 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
     try {
       setIsScanning(true);
       setError(null);
-      if (useAI) {
-        await recruiterService.matchJobWithCvs(jobId);
-      } else {
-        await recruiterService.matchJobWithCvsHardcode(jobId);
-      }
+      await recruiterService.matchJobWithCvsHardcode(jobId);
 
       await fetchMatches();
     } catch (err: any) {
@@ -127,23 +120,11 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
           </CardTitle>
 
           <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-lg border border-slate-200">
-            <div className="flex items-center gap-2">
-              <Label className="text-xs font-semibold text-slate-700">Method:</Label>
-              <span className={cn("text-xs font-medium", !useAI ? "text-slate-900" : "text-slate-400")}>Hardcode</span>
-              <Switch disabled checked={useAI} onCheckedChange={setUseAI} className={useAI ? "data-[state=checked]:bg-purple-600" : ""} />
-              <span className={cn("text-xs font-medium", useAI ? "text-purple-700" : "text-slate-400")}>AI Vector</span>
-            </div>
-
-            <div className="h-6 w-px bg-slate-300 mx-1"></div>
-
             <Button
               onClick={handleScan}
               disabled={isScanDisabled}
               size="sm"
-              className={cn(
-                "gap-2",
-                useAI ? "bg-purple-600 hover:bg-purple-700" : "bg-blue-600 hover:bg-blue-700"
-              )}
+              className="gap-2 bg-blue-600 hover:bg-blue-700"
               title={getButtonTitle()}
             >
               <RefreshCcw className={cn("h-4 w-4", isScanning && "animate-spin")} />

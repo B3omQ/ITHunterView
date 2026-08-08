@@ -3,10 +3,9 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Brain, FileCode, CheckCircle2, AlertCircle, RefreshCcw, Briefcase, ChevronRight, FileText } from 'lucide-react';
+import { CheckCircle2, AlertCircle, RefreshCcw, Briefcase, ChevronRight, FileText } from 'lucide-react';
 import { cvService } from '@/services/cv.service';
 import { useGetMyCvs } from '@/hooks/useCv';
 import type { Cv, MatchHistoryDto } from '@/types/cv.types';
@@ -23,7 +22,6 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
   const cvs = cvsResponse?.data || [];
 
   const [selectedCvId, setSelectedCvId] = useState<string>('');
-  const [useAI, setUseAI] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [matches, setMatches] = useState<MatchHistoryDto[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -64,11 +62,7 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
     try {
       setIsScanning(true);
       setError(null);
-      if (useAI) {
-        await cvService.matchJobs(selectedCvId);
-      } else {
-        await cvService.matchJobsHardcode(selectedCvId);
-      }
+      await cvService.matchJobsHardcode(selectedCvId);
 
       await fetchMatches();
     } catch (err: any) {
@@ -123,33 +117,13 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
             )}
           </div>
 
-          {/* Controls */}
-          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
-            <div className="flex flex-col gap-1">
-              <Label className="text-sm font-semibold text-slate-900">Matching Engine</Label>
-              <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                {useAI ? <Brain className="h-3.5 w-3.5 text-purple-500" /> : <FileCode className="h-3.5 w-3.5 text-blue-500" />}
-                {useAI ? 'Semantic Vector AI' : 'Rule-based Keyword Extraction'}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className={cn("text-xs font-medium", !useAI ? "text-slate-900" : "text-slate-400")}>Hardcode</span>
-              <Switch disabled checked={useAI} onCheckedChange={setUseAI} className={useAI ? "data-[state=checked]:bg-purple-600" : ""} />
-              <span className={cn("text-xs font-medium", useAI ? "text-purple-700" : "text-slate-400")}>AI Vector</span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mt-4">
             <h4 className="text-sm font-semibold text-slate-900">Matches Found ({matches.length})</h4>
             <Button
               onClick={handleScan}
               disabled={isScanning}
               size="sm"
-              className={cn(
-                "gap-2",
-                useAI ? "bg-purple-600 hover:bg-purple-700" : "bg-blue-600 hover:bg-blue-700"
-              )}
+              className="gap-2 bg-blue-600 hover:bg-blue-700"
             >
               <RefreshCcw className={cn("h-4 w-4", isScanning && "animate-spin")} />
               {isScanning ? 'Scanning...' : 'Scan Now'}
