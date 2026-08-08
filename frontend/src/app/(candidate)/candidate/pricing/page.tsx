@@ -1,7 +1,7 @@
 'use client';
 
 import { usePublicSubscriptions } from '@/hooks/useSubscription';
-import { useBuySubscription } from '@/hooks/useWallet';
+import { useBuySubscription, useWalletBalance } from '@/hooks/useWallet';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Check, Loader2 } from 'lucide-react';
@@ -10,8 +10,10 @@ import type { SubscriptionDto } from '@/types/subscription.types';
 export default function CandidatePricingPage() {
   const { data, isLoading } = usePublicSubscriptions({ role: 'CANDIDATE' });
   const { mutate: buySubscription, isPending } = useBuySubscription();
+  const { data: walletData } = useWalletBalance();
   
-  const subscriptions = data?.data || [];
+  const currentPrice = walletData?.data?.activeSubscriptionPrice ?? 0;
+  const subscriptions = (data?.data || []).filter(sub => sub.price > currentPrice);
 
   const handleBuy = (sub: SubscriptionDto) => {
     buySubscription({

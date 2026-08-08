@@ -68,6 +68,7 @@ namespace ITHunterview.Service.UseCase
                 .FirstOrDefaultAsync();
                 
             string? activeSubName = null;
+            decimal? activeSubPrice = null;
             int? mockInterviewLimit = null;
             int? mockInterviewUsed = null;
             int? cvMatchLimit = null;
@@ -99,6 +100,7 @@ namespace ITHunterview.Service.UseCase
                 if (subscription != null)
                 {
                     activeSubName = subscription.Name;
+                    activeSubPrice = subscription.Price;
 
                     if (!string.IsNullOrEmpty(subscription.FeaturesConfig))
                     {
@@ -221,6 +223,7 @@ namespace ITHunterview.Service.UseCase
                 UserId = wallet.UserId,
                 Balance = wallet.Balance,
                 ActiveSubscriptionName = activeSubName,
+                ActiveSubscriptionPrice = activeSubPrice,
                 SubscriptionEndDate = activeSub?.EndDate,
                 MockInterviewLimit = mockInterviewLimit,
                 MockInterviewUsed = mockInterviewUsed,

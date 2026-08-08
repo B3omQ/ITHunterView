@@ -8,6 +8,7 @@ namespace ITHunterview.Service.DTOs.Wallet
         public Guid UserId { get; set; }
         public int Balance { get; set; }
         public string? ActiveSubscriptionName { get; set; }
+        public decimal? ActiveSubscriptionPrice { get; set; }
         public DateTime? SubscriptionEndDate { get; set; }
         public int? MockInterviewLimit { get; set; }
         public int? MockInterviewUsed { get; set; }
