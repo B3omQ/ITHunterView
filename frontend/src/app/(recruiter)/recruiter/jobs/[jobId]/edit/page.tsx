@@ -38,7 +38,7 @@ export default function EditJobPage() {
     minSalary: "",
     maxSalary: "",
     currency: "USD",
-    expiresAt: "",
+    applicationDeadline: "",
     description: "",
     incomeText: "",
     workLocation: "",
@@ -81,7 +81,7 @@ export default function EditJobPage() {
         minSalary: job.minSalary ? job.minSalary.toString() : "",
         maxSalary: job.maxSalary ? job.maxSalary.toString() : "",
         currency: job.currency || "USD",
-        expiresAt: job.expiresAt ? new Date(job.expiresAt).toISOString().split("T")[0] : "",
+        applicationDeadline: job.applicationDeadline ? new Date(job.applicationDeadline).toISOString().split("T")[0] : "",
         description: job.description || "",
         incomeText: job.incomeText || "",
         workLocation: parsedWorkLoc.workLocation || "",
@@ -136,19 +136,13 @@ export default function EditJobPage() {
       return t("errLimit")
     }
 
-    if (!formData.expiresAt) return t("errExpDateReq")
-
-    const created = job ? new Date(job.createdAt) : new Date()
-    created.setHours(0, 0, 0, 0)
-    const expDate = new Date(formData.expiresAt)
-    if (expDate <= new Date()) {
-      return t("errExpFuture")
-    }
-
-    const maxExpDate = new Date(created)
-    maxExpDate.setDate(maxExpDate.getDate() + 30)
-    if (expDate > maxExpDate) {
-      return t("errExpMax")
+    if (formData.applicationDeadline) {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const expDate = new Date(formData.applicationDeadline)
+      if (expDate <= today) {
+        return t("errExpFuture")
+      }
     }
 
     return null
@@ -177,7 +171,7 @@ export default function EditJobPage() {
         minSalary: formData.minSalary ? Number(formData.minSalary) : null,
         maxSalary: formData.maxSalary ? Number(formData.maxSalary) : null,
         currency: formData.currency,
-        expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null,
+        applicationDeadline: formData.applicationDeadline ? new Date(formData.applicationDeadline).toISOString() : null,
         description: richText.description,
         incomeText: richText.incomeText,
         workLocationText: serializedWorkLocation,
@@ -449,16 +443,19 @@ export default function EditJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="expiresAt" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("expirationDate")}</Label>
+                <Label htmlFor="applicationDeadline" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("expirationDate")}</Label>
                 <Input
-                  id="expiresAt"
-                  name="expiresAt"
+                  id="applicationDeadline"
+                  name="applicationDeadline"
                   type="date"
                   min={todayStr}
-                  max={maxDateStr}
-                  value={formData.expiresAt}
+                  value={formData.applicationDeadline}
                   onChange={handleChange}
                   className="focus-visible:ring-blue-500"
+                />
+                <p 
+                  className="text-[11.5px] text-zinc-500 dark:text-zinc-400 mt-1 italic leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: t("sysVisibilityNotice") }}
                 />
               </div>
             </div>

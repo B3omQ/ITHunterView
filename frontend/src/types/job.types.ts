@@ -38,6 +38,8 @@ export interface JobCardDto {
   skills?: string[];
   pushedTopUntil?: string;
   isPushedTop?: boolean;
+  status?: string;
+  applicationDeadline?: string;
 }
 
 export interface SavedJobDto {

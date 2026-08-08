@@ -59,6 +59,7 @@ namespace ITHunterview.Service.DTOs.Job
         public int ViewCount { get; set; }
         public DateTime? PublishedAt { get; set; }
         public DateTime? ExpiresAt { get; set; }
+        public DateTime? ApplicationDeadline { get; set; }
         public DateTime CreatedAt { get; set; }
         public string? Level { get; set; }
         public string? WorkingModel { get; set; }
@@ -108,7 +109,7 @@ namespace ITHunterview.Service.DTOs.Job
         public string Currency { get; set; } = "USD";
         public string Location { get; set; } = string.Empty;
 
-        public DateTime? ExpiresAt { get; set; }
+        public DateTime? ApplicationDeadline { get; set; }
         public string? Level { get; set; }
         public string? WorkingModel { get; set; }
         public string? JobExpertise { get; set; }
@@ -146,7 +147,7 @@ namespace ITHunterview.Service.DTOs.Job
         public string Currency { get; set; } = "USD";
         public string Location { get; set; } = string.Empty;
 
-        public DateTime? ExpiresAt { get; set; }
+        public DateTime? ApplicationDeadline { get; set; }
         public string? Level { get; set; }
         public string? WorkingModel { get; set; }
         public string? JobExpertise { get; set; }

@@ -23,5 +23,7 @@ namespace ITHunterview.Service.DTOs.JobSearch
         public List<string> Skills { get; set; } = new();
         public DateTime? PushedTopUntil { get; set; }
         public bool IsPushedTop => PushedTopUntil.HasValue && PushedTopUntil.Value >= DateTime.UtcNow;
+        public string Status { get; set; }
+        public DateTime? ApplicationDeadline { get; set; }
     }
 }

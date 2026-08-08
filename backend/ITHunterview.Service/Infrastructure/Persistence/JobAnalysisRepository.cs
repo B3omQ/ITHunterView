@@ -746,6 +746,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             if (targetStatus == JobStatus.PUBLISHED && !job.PublishedAt.HasValue)
             {
                 job.PublishedAt = DateTime.UtcNow;
+                job.ExpiresAt = job.PublishedAt.Value.AddDays(30);
             }
             job.UpdatedAt = DateTime.UtcNow;
 

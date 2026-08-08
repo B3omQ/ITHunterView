@@ -894,7 +894,14 @@
     "insufficientPushMsg": "You have used all free Top pushes in your plan and your balance is under 5,000 Coin. Please top up Coins or upgrade your plan to continue!",
     "topupUpgrade": "💳 Top-up Coin / Upgrade Plan Now",
     "pushNowFree": "✨ Push to Top Now (Free)",
-    "confirmPush5k": "🪙 Confirm Push (5,000 Coin)"
+    "confirmPush5k": "🪙 Confirm Push (5,000 Coin)",
+    "sysExpiryNote": "System Expiry:",
+    "hiddenBadge": "HIDDEN",
+    "daysLeft": "{days} DAYS LEFT",
+    "extendWarningPrefix": "📌 Job posting ",
+    "extendWarningSuffix": " will be hidden automatically by the system after 30 days of active display. You can use this feature to extend the display time by 15 days from the current system expiry date.",
+    "currentExpirySys": "Current Expiry (System)",
+    "plus15DaysBtn": "+ 15 Days"
   },
   "RecruiterJobsNew": {
     "pageTitle": "Create New Job Posting (Draft)",
@@ -956,7 +963,8 @@
     "errLimit": "Work location details must not exceed 4,000 characters after formatting",
     "errExpDateReq": "Expiration Date is required",
     "errExpFuture": "Expiration Date must be in the future (after today)",
-    "errExpMax": "Expiration Date cannot exceed 30 days from today"
+    "errExpMax": "Expiration Date cannot exceed 30 days from today",
+    "sysVisibilityNotice": "* <strong>Note:</strong> Regardless of the application deadline, the system limits the default active display time to <strong>30 days</strong> from the publish date. After 30 days, you can extend (paid) to keep the job visible."
   },
   "RecruiterJobDetail": {
     "loading": "Loading Job Details...",
@@ -1036,7 +1044,8 @@
     "errLimit": "Work location details must not exceed 4,000 characters after formatting",
     "errExpDateReq": "Expiration Date is required",
     "errExpFuture": "Expiration Date must be in the future (after today)",
-    "errExpMax": "Expiration Date cannot exceed 30 days from creation"
+    "errExpMax": "Expiration Date cannot exceed 30 days from creation",
+    "sysVisibilityNotice": "* <strong>Note:</strong> Regardless of the application deadline, the system limits the default active display time to <strong>30 days</strong> from the publish date. After 30 days, you can extend (paid) to keep the job visible."
   },
   "RecruiterJobPreview": {
     "startAiError": "Unable to start AI analysis.",
@@ -2760,5 +2769,11 @@
     "defaultHistoryName": "CV Profile",
     "viewReportBtn": "View Report",
     "deleteHistoryBtn": "Delete History"
+  },
+  "RecruiterCreateJob": {
+    "sysVisibilityNotice": "* <strong>Note:</strong> Regardless of the application deadline, the system limits the default active display time to <strong>30 days</strong> from the publish date. After 30 days, you can extend (paid) to keep the job visible."
+  },
+  "RecruiterEditJob": {
+    "sysVisibilityNotice": "* <strong>Note:</strong> Regardless of the application deadline, the system limits the default active display time to <strong>30 days</strong> from the publish date. After 30 days, you can extend (paid) to keep the job visible."
   }
 }
