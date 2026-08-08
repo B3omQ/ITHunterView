@@ -114,6 +114,55 @@ public sealed class JdStageTwoMatchingServiceTests
             It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task Execute_TruncatedAndPartialAttempts_MergesCompleteScoreObjectsAndCompletes()
+    {
+        var ai = new Mock<IAiService>(MockBehavior.Strict);
+        ai.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("Gemini");
+        ai.SetupSequence(x => x.GenerateTextAsync(
+                It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("""
+                {"scores":[
+                  {"reqId":"g1:i1","handlerCode":"H_TECH_05","handlerScore":1,"reasoning":"React evidence","confidence":"high"},
+                  {"reqId":"g1:i2","handlerCode":"H_LANG_06"
+                """)
+            .ReturnsAsync("""
+                {"scores":[
+                  {"reqId":"g1:i2","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"English evidence","confidence":"high"}
+                ]}
+                """);
+
+        var result = await CreateService(ai).ExecuteAsync(Prompt("{}"), "{\"cv\":true}", TwoItemProjection());
+        using var json = JsonDocument.Parse(result.JsonString);
+
+        json.RootElement.GetProperty("stageTwoAnalysis").GetProperty("quality").GetString()
+            .Should().Be("PARTIAL");
+        json.RootElement.GetProperty("jdFit").GetProperty("requirementScores").GetArrayLength()
+            .Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Execute_TwoUsablePartialAttempts_ReturnsPartialResultInsteadOfFailing()
+    {
+        const string partial = "{\"scores\":[{\"reqId\":\"g1:i1\",\"handlerCode\":\"H_TECH_05\",\"handlerScore\":1}]}";
+        var ai = new Mock<IAiService>(MockBehavior.Strict);
+        ai.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("Gemini");
+        ai.SetupSequence(x => x.GenerateTextAsync(
+                It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(partial)
+            .ReturnsAsync(partial);
+
+        var result = await CreateService(ai).ExecuteAsync(Prompt("{}"), "{\"cv\":true}", TwoItemProjection());
+        using var json = JsonDocument.Parse(result.JsonString);
+
+        json.RootElement.GetProperty("stageTwoAnalysis").GetProperty("quality").GetString()
+            .Should().Be("PARTIAL");
+        json.RootElement.GetProperty("stageTwoAnalysis").GetProperty("coverage")
+            .GetProperty("acceptedScoreCount").GetInt32().Should().Be(1);
+        json.RootElement.GetProperty("jdFit").GetProperty("killSwitchTriggered").GetBoolean()
+            .Should().BeFalse();
+    }
+
     private static JdStageTwoMatchingService CreateService(Mock<IAiService> ai) =>
         new(ai.Object, NullLogger<JdStageTwoMatchingService>.Instance);
 
@@ -139,6 +188,27 @@ public sealed class JdStageTwoMatchingServiceTests
                     new ProjectedJdRequirementItem(
                         "g1:i1", "tech_skill", "React", "React", "React", "requirements",
                         Array.Empty<string>(), null, null, 1m)
+                })
+        },
+        false);
+
+    private static JdRequirementProjection TwoItemProjection() => new(
+        "jd-analysis/v4",
+        new[]
+        {
+            new ProjectedJdRequirementGroup(
+                "g1",
+                "all_of",
+                2,
+                "must_have",
+                new[]
+                {
+                    new ProjectedJdRequirementItem(
+                        "g1:i1", "tech_skill", "React", "React", "React", "requirements",
+                        Array.Empty<string>(), null, null, 1m),
+                    new ProjectedJdRequirementItem(
+                        "g1:i2", "language", "English", "English", "English", "requirements",
+                        Array.Empty<string>(), null, null, 0.8m)
                 })
         },
         false);

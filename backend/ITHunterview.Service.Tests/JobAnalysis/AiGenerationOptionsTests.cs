@@ -15,6 +15,15 @@ namespace ITHunterview.Service.Tests.JobAnalysis;
 public sealed class AiGenerationOptionsTests
 {
     [Fact]
+    public void JdAnalysisProfile_ReservesReasoningAndJsonOutputCapacity()
+    {
+        Assert.Equal(16384, AiGenerationOptions.StrictJsonExtraction.MaxOutputTokens);
+        Assert.Equal(3000, AiGenerationOptions.StrictJsonExtraction.ThinkingBudget);
+        Assert.Equal("medium", AiGenerationOptions.StrictJsonExtraction.ThinkingLevel);
+        Assert.Equal(1, AiGenerationOptions.StrictJsonExtraction.MaxTransportAttempts);
+    }
+
+    [Fact]
     public void CvAnalysisProfiles_UseBoundedSingleAttemptsAndThinkingBudget()
     {
         Assert.Equal(8192, AiGenerationOptions.CvAnalysisJsonExtraction.MaxOutputTokens);
@@ -31,15 +40,17 @@ public sealed class AiGenerationOptionsTests
     [Fact]
     public void JdMatchingProfiles_UseOneTransportAttemptAndAControlledLargerRetry()
     {
-        Assert.Equal(8192, AiGenerationOptions.JdMatchingJsonScoring.MaxOutputTokens);
-        Assert.Equal(12288, AiGenerationOptions.JdMatchingJsonRetry.MaxOutputTokens);
+        Assert.Equal(16384, AiGenerationOptions.JdMatchingJsonScoring.MaxOutputTokens);
+        Assert.Equal(20480, AiGenerationOptions.JdMatchingJsonRetry.MaxOutputTokens);
         Assert.Equal(0.2m, AiGenerationOptions.JdMatchingJsonScoring.Temperature);
         Assert.Equal(0.1m, AiGenerationOptions.JdMatchingJsonScoring.TopP);
         Assert.Equal("application/json", AiGenerationOptions.JdMatchingJsonScoring.ResponseMimeType);
         Assert.Equal(1, AiGenerationOptions.JdMatchingJsonScoring.MaxTransportAttempts);
         Assert.Equal(1, AiGenerationOptions.JdMatchingJsonRetry.MaxTransportAttempts);
-        Assert.Equal(512, AiGenerationOptions.JdMatchingJsonScoring.ThinkingBudget);
-        Assert.Equal("minimal", AiGenerationOptions.JdMatchingJsonScoring.ThinkingLevel);
+        Assert.Equal(3000, AiGenerationOptions.JdMatchingJsonScoring.ThinkingBudget);
+        Assert.Equal(3000, AiGenerationOptions.JdMatchingJsonRetry.ThinkingBudget);
+        Assert.Equal("medium", AiGenerationOptions.JdMatchingJsonScoring.ThinkingLevel);
+        Assert.Equal("medium", AiGenerationOptions.JdMatchingJsonRetry.ThinkingLevel);
     }
 
     [Fact]
@@ -59,11 +70,11 @@ public sealed class AiGenerationOptionsTests
 
         using var payload = JsonDocument.Parse(handler.RequestBody!);
         Assert.Equal(0m, payload.RootElement.GetProperty("temperature").GetDecimal());
-        Assert.Equal(8192, payload.RootElement.GetProperty("max_tokens").GetInt32());
+        Assert.Equal(16384, payload.RootElement.GetProperty("max_tokens").GetInt32());
     }
 
     [Fact]
-    public async Task Gemini_StrictJsonExtraction_UsesGenerationConfig()
+    public async Task Gemini_25_JdExtraction_LimitsThinkingBudget()
     {
         var handler = new CaptureHandler("""{"candidates":[{"content":{"parts":[{"text":"{}"}]}}]}""");
         using var client = new HttpClient(handler);
@@ -74,7 +85,7 @@ public sealed class AiGenerationOptionsTests
         {
             Providers = new Dictionary<string, ProviderConfig>
             {
-                ["Gemini"] = new() { ApiKey = "test-key", Model = "test-model", Endpoint = "https://example.test/models" }
+                ["Gemini"] = new() { ApiKey = "test-key", Model = "gemini-2.5-flash", Endpoint = "https://example.test/models" }
             }
         }), systemConfigs.Object, cache, NullLogger<GeminiProvider>.Instance);
 
@@ -84,7 +95,34 @@ public sealed class AiGenerationOptionsTests
         var generation = payload.RootElement.GetProperty("generationConfig");
         Assert.Equal(0m, generation.GetProperty("temperature").GetDecimal());
         Assert.Equal("application/json", generation.GetProperty("responseMimeType").GetString());
-        Assert.False(generation.TryGetProperty("thinkingConfig", out _));
+        Assert.Equal(16384, generation.GetProperty("maxOutputTokens").GetInt32());
+        var thinking = generation.GetProperty("thinkingConfig");
+        Assert.Equal(3000, thinking.GetProperty("thinkingBudget").GetInt32());
+        Assert.False(thinking.TryGetProperty("thinkingLevel", out _));
+    }
+
+    [Fact]
+    public async Task Gemini_3_JdExtraction_UsesMediumThinkingLevel()
+    {
+        var handler = new CaptureHandler("{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"{}\"}]}}]}");
+        using var client = new HttpClient(handler);
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var systemConfigs = new Mock<ISystemConfigRepository>();
+        systemConfigs.Setup(x => x.GetByKeyAsync("AiApiKey_Gemini")).ReturnsAsync((ITHunterview.Domain.Entities.SystemConfigs?)null);
+        var provider = new GeminiProvider(client, Options.Create(new AiSettings
+        {
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["Gemini"] = new() { ApiKey = "test-key", Model = "gemini-3.5-flash", Endpoint = "https://example.test/models" }
+            }
+        }), systemConfigs.Object, cache, NullLogger<GeminiProvider>.Instance);
+
+        await provider.GenerateTextAsync("input", "system", AiGenerationOptions.StrictJsonExtraction, CancellationToken.None);
+
+        using var payload = JsonDocument.Parse(handler.RequestBody!);
+        var thinking = payload.RootElement.GetProperty("generationConfig").GetProperty("thinkingConfig");
+        Assert.Equal("medium", thinking.GetProperty("thinkingLevel").GetString());
+        Assert.False(thinking.TryGetProperty("thinkingBudget", out _));
     }
 
     [Fact]
@@ -152,7 +190,7 @@ public sealed class AiGenerationOptionsTests
 
         using var payload = JsonDocument.Parse(handler.RequestBody!);
         Assert.Equal(0m, payload.RootElement.GetProperty("temperature").GetDecimal());
-        Assert.Equal(8192, payload.RootElement.GetProperty("max_tokens").GetInt32());
+        Assert.Equal(16384, payload.RootElement.GetProperty("max_tokens").GetInt32());
         Assert.Equal("json_object", payload.RootElement.GetProperty("response_format").GetProperty("type").GetString());
     }
 
@@ -173,7 +211,7 @@ public sealed class AiGenerationOptionsTests
 
         using var payload = JsonDocument.Parse(handler.RequestBody!);
         Assert.Equal(0m, payload.RootElement.GetProperty("temperature").GetDecimal());
-        Assert.Equal(8192, payload.RootElement.GetProperty("max_tokens").GetInt32());
+        Assert.Equal(16384, payload.RootElement.GetProperty("max_tokens").GetInt32());
     }
 
     [Fact]

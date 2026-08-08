@@ -7,64 +7,92 @@ using ITHunterview.Service.DTOs.Cv.Matching;
 namespace ITHunterview.Service.Service.Matching;
 
 /// <summary>
-/// Mechanically maps the approved provider response to the existing item-score
-/// model. It does not infer missing values or repair model semantics.
+/// Mechanically maps provider fields without inferring missing scores or
+/// changing requirement semantics.
 /// </summary>
 public sealed class JdMatchingResponseAdapter
 {
     public JdStageTwoValidatedResponse Adapt(
         JsonDocument response,
-        JdRequirementProjection projection)
+        JdRequirementProjection projection,
+        bool isCompleteJson = true,
+        bool wasTruncated = false,
+        IReadOnlyList<string>? recoveryWarnings = null)
     {
-        ArgumentNullException.ThrowIfNull(response);
-        ArgumentNullException.ThrowIfNull(projection);
-
-        JdMatchingResponseValidator.Validate(response, projection);
-
-        var scores = new Dictionary<string, JdStageTwoItemScore>(StringComparer.Ordinal);
-        foreach (var element in response.RootElement.GetProperty("scores").EnumerateArray())
-        {
-            var itemId = element.GetProperty("reqId").GetString()!.Trim();
-            scores[itemId] = new JdStageTwoItemScore(
-                itemId,
-                element.GetProperty("handlerCode").GetString()!.Trim(),
-                element.GetProperty("handlerScore").GetDecimal(),
-                ReadOptionalString(element, "reasoning"),
-                ReadOptionalString(element, "confidence", "unknown"),
-                ReadStringArray(element, "evidence"));
-        }
-
-        var root = response.RootElement;
-        var narrative = ReadOptionalString(root, "narrative");
-        var improvements = root.TryGetProperty("improvements", out var improvementElement) &&
-                           improvementElement.ValueKind == JsonValueKind.Array
-            ? improvementElement.Clone()
-            : JsonSerializer.SerializeToElement(Array.Empty<object>());
+        var validated = JdMatchingResponseValidator.Validate(
+            response,
+            projection,
+            isCompleteJson,
+            wasTruncated,
+            recoveryWarnings);
 
         return new JdStageTwoValidatedResponse(
-            scores,
-            narrative,
-            improvements,
-            JdMatchingResponseValidator.ReadPenalties(root));
+            validated.ItemScores,
+            validated.Narrative,
+            validated.Improvements,
+            validated.Penalties,
+            validated.Quality,
+            validated.Coverage,
+            validated.WarningCodes);
     }
 
-    private static string ReadOptionalString(JsonElement element, string property, string fallback = "") =>
-        element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString()?.Trim() ?? fallback
-            : fallback;
-
-    private static IReadOnlyList<string> ReadStringArray(JsonElement element, string property)
+    public JdStageTwoValidatedResponse MergePartialAttempts(
+        JdStageTwoValidatedResponse first,
+        JdStageTwoValidatedResponse second)
     {
-        if (!element.TryGetProperty(property, out var value) || value.ValueKind != JsonValueKind.Array)
+        ArgumentNullException.ThrowIfNull(first);
+        ArgumentNullException.ThrowIfNull(second);
+
+        if (first.Quality == JdStageTwoOutputQuality.INVALID)
         {
-            return Array.Empty<string>();
+            return second;
+        }
+        if (second.Quality == JdStageTwoOutputQuality.INVALID)
+        {
+            return first;
+        }
+        if (second.Quality == JdStageTwoOutputQuality.COMPLETE)
+        {
+            return second;
         }
 
-        return value.EnumerateArray()
-            .Where(item => item.ValueKind == JsonValueKind.String)
-            .Select(item => item.GetString()?.Trim())
-            .Where(item => !string.IsNullOrWhiteSpace(item))
-            .Select(item => item!)
+        var scores = new Dictionary<string, JdStageTwoItemScore>(first.ItemScores, StringComparer.Ordinal);
+        foreach (var score in second.ItemScores)
+        {
+            scores[score.Key] = score.Value;
+        }
+
+        var expected = Math.Max(first.Coverage?.ExpectedScoreCount ?? 0, second.Coverage?.ExpectedScoreCount ?? 0);
+        var input = (first.Coverage?.InputScoreCount ?? first.ItemScores.Count) +
+                    (second.Coverage?.InputScoreCount ?? second.ItemScores.Count);
+        var discarded = (first.Coverage?.DiscardedScoreCount ?? 0) +
+                        (second.Coverage?.DiscardedScoreCount ?? 0);
+        var missing = Math.Max(0, expected - scores.Count);
+        var warnings = (first.WarningCodes ?? Array.Empty<string>())
+            .Concat(second.WarningCodes ?? Array.Empty<string>())
+            .Where(code => missing > 0 || !string.Equals(code, "MISSING_REQUIREMENT_SCORES", StringComparison.Ordinal))
+            .Append("MERGED_PARTIAL_ATTEMPTS")
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(code => code, StringComparer.Ordinal)
             .ToArray();
+
+        var improvements = HasItems(second.Improvements) ? second.Improvements : first.Improvements;
+        return new JdStageTwoValidatedResponse(
+            scores,
+            string.IsNullOrWhiteSpace(second.Narrative) ? first.Narrative : second.Narrative,
+            improvements,
+            second.Penalties.Count > 0 ? second.Penalties : first.Penalties,
+            JdStageTwoOutputQuality.PARTIAL,
+            new JdStageTwoOutputCoverage(
+                expected,
+                input,
+                scores.Count,
+                discarded,
+                missing,
+                (first.Coverage?.WasTruncated ?? false) || (second.Coverage?.WasTruncated ?? false)),
+            warnings);
     }
+
+    private static bool HasItems(JsonElement value) =>
+        value.ValueKind == JsonValueKind.Array && value.GetArrayLength() > 0;
 }

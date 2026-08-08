@@ -37,16 +37,18 @@ public class JdStageTwoScoringTests
     }
 
     [Fact]
-    public void Validate_RejectsMissingItemScoreInsteadOfInventingZero()
+    public void Validate_MissingItemScore_ReturnsPartialWithoutInventingZero()
     {
         using var response = JsonDocument.Parse("""
             {"scores":[{"reqId":"g1:i1","handlerCode":"H_TECH_05","handlerScore":1,"reasoning":"evidence","confidence":"high"}]}
             """);
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
-            new JdMatchingResponseAdapter().Adapt(response, Projection()));
+        var result = new JdMatchingResponseAdapter().Adapt(response, Projection());
 
-        Assert.Equal(JdMatchingResponseValidator.InvalidStageTwoResponse, exception.Message);
+        Assert.Equal(JdStageTwoOutputQuality.PARTIAL, result.Quality);
+        Assert.Single(result.ItemScores);
+        Assert.False(result.ItemScores.ContainsKey("g1:i2"));
+        Assert.Equal(1, result.Coverage?.MissingScoreCount);
     }
 
     [Fact]
@@ -143,7 +145,7 @@ public class JdStageTwoScoringTests
     }
 
     [Fact]
-    public void Validate_RejectsHandlerCodeFromAnotherCategory()
+    public void Validate_HandlerCodeFromAnotherCategory_DiscardsInvalidScores()
     {
         using var response = JsonDocument.Parse("""
             {
@@ -154,10 +156,13 @@ public class JdStageTwoScoringTests
             }
             """);
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
-            new JdMatchingResponseAdapter().Adapt(response, Projection()));
+        var result = new JdMatchingResponseAdapter().Adapt(response, Projection());
 
-        Assert.Equal(JdMatchingResponseValidator.InvalidStageTwoResponse, exception.Message);
+        Assert.Equal(JdStageTwoOutputQuality.PARTIAL, result.Quality);
+        Assert.Single(result.ItemScores);
+        Assert.False(result.ItemScores.ContainsKey("g1:i1"));
+        Assert.True(result.ItemScores.ContainsKey("g1:i2"));
+        Assert.Contains("HANDLER_CODE_CATEGORY_MISMATCH", result.WarningCodes!);
     }
 
     [Fact]
@@ -185,7 +190,7 @@ public class JdStageTwoScoringTests
     }
 
     [Fact]
-    public void Validate_RejectsDuplicateModelPenaltyObservation()
+    public void Validate_DuplicateModelPenaltyObservation_DiscardsDuplicateWithoutLosingScores()
     {
         using var response = JsonDocument.Parse("""
             {
@@ -200,10 +205,12 @@ public class JdStageTwoScoringTests
             }
             """);
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
-            new JdMatchingResponseAdapter().Adapt(response, Projection()));
+        var result = new JdMatchingResponseAdapter().Adapt(response, Projection());
 
-        Assert.Equal(JdMatchingResponseValidator.InvalidStageTwoResponse, exception.Message);
+        Assert.Equal(JdStageTwoOutputQuality.PARTIAL, result.Quality);
+        Assert.Equal(2, result.ItemScores.Count);
+        Assert.Single(result.Penalties);
+        Assert.Contains("PENALTY_ITEM_DISCARDED", result.WarningCodes!);
     }
 
     private static JdRequirementProjection Projection() => new(

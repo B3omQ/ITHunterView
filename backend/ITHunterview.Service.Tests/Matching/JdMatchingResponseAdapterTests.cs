@@ -33,42 +33,44 @@ public sealed class JdMatchingResponseAdapterTests
     }
 
     [Fact]
-    public void Adapt_MissingUnknownOrDuplicateIds_RejectsWithoutFabricatingScores()
+    public void Adapt_MissingUnknownOrDuplicateIds_KeepsOnlyValidScoresAsPartial()
     {
         var projection = MixedProjection();
-        var responses = new[]
-        {
-            "{\"scores\":[{\"reqId\":\"grp:tech\",\"handlerCode\":\"H_TECH_05\",\"handlerScore\":1}]}",
-            "{\"scores\":[{\"reqId\":\"grp:unknown\",\"handlerCode\":\"H_TECH_05\",\"handlerScore\":1},{\"reqId\":\"grp:exp\",\"handlerCode\":\"H_EXP_06\",\"handlerScore\":1}]}",
-            "{\"scores\":[{\"reqId\":\"grp:tech\",\"handlerCode\":\"H_TECH_05\",\"handlerScore\":1},{\"reqId\":\"grp:tech\",\"handlerCode\":\"H_TECH_04\",\"handlerScore\":0},{\"reqId\":\"grp:exp\",\"handlerCode\":\"H_EXP_06\",\"handlerScore\":1}]}"
-        };
+        using var response = JsonDocument.Parse("""
+            {
+              "scores": [
+                {"reqId":"grp:tech","handlerCode":"H_TECH_05","handlerScore":1},
+                {"reqId":"grp:tech","handlerCode":"H_TECH_04","handlerScore":0},
+                {"reqId":"grp:unknown","handlerCode":"H_TECH_05","handlerScore":1}
+              ]
+            }
+            """);
 
-        foreach (var text in responses)
-        {
-            using var response = JsonDocument.Parse(text);
-            var action = () => new JdMatchingResponseAdapter().Adapt(response, projection);
-            action.Should().Throw<InvalidOperationException>()
-                .Which.Message.Should().Be(JdMatchingResponseValidator.InvalidStageTwoResponse);
-        }
+        var result = new JdMatchingResponseAdapter().Adapt(response, projection);
+
+        result.Quality.Should().Be(JdStageTwoOutputQuality.PARTIAL);
+        result.ItemScores.Should().ContainSingle().Which.Key.Should().Be("grp:tech");
+        result.Coverage.ExpectedScoreCount.Should().Be(2);
+        result.Coverage.AcceptedScoreCount.Should().Be(1);
+        result.Coverage.MissingScoreCount.Should().Be(1);
+        result.Coverage.DiscardedScoreCount.Should().Be(2);
     }
 
     [Fact]
-    public void Adapt_OutOfRangeOrHandlerCategoryMismatch_RejectsAsStructuralError()
+    public void Adapt_OutOfRangeOrHandlerCategoryMismatch_DiscardsBadItemsWithoutLosingGoodItems()
     {
         var projection = MixedProjection();
-        var responses = new[]
-        {
-            "{\"scores\":[{\"reqId\":\"grp:tech\",\"handlerCode\":\"H_TECH_05\",\"handlerScore\":1.1},{\"reqId\":\"grp:exp\",\"handlerCode\":\"H_EXP_06\",\"handlerScore\":1}]}",
-            "{\"scores\":[{\"reqId\":\"grp:tech\",\"handlerCode\":\"H_EXP_06\",\"handlerScore\":1},{\"reqId\":\"grp:exp\",\"handlerCode\":\"H_EXP_06\",\"handlerScore\":1}]}"
-        };
+        using var response = JsonDocument.Parse("""
+            {"scores":[
+              {"reqId":"grp:tech","handlerCode":"H_EXP_06","handlerScore":1},
+              {"reqId":"grp:exp","handlerCode":"H_EXP_06","handlerScore":1}
+            ]}
+            """);
 
-        foreach (var text in responses)
-        {
-            using var response = JsonDocument.Parse(text);
-            var action = () => new JdMatchingResponseAdapter().Adapt(response, projection);
-            action.Should().Throw<InvalidOperationException>()
-                .Which.Message.Should().Be(JdMatchingResponseValidator.InvalidStageTwoResponse);
-        }
+        var result = new JdMatchingResponseAdapter().Adapt(response, projection);
+
+        result.Quality.Should().Be(JdStageTwoOutputQuality.PARTIAL);
+        result.ItemScores.Should().ContainSingle().Which.Key.Should().Be("grp:exp");
     }
 
     [Fact]
@@ -92,7 +94,7 @@ public sealed class JdMatchingResponseAdapterTests
     }
 
     [Fact]
-    public void Adapt_InvalidOptionalTopLevelType_IsRejected()
+    public void Adapt_InvalidOptionalTopLevelType_PreservesCompleteScoresAsPartial()
     {
         var projection = MixedProjection();
         using var response = JsonDocument.Parse("""
@@ -105,10 +107,11 @@ public sealed class JdMatchingResponseAdapterTests
             }
             """);
 
-        var action = () => new JdMatchingResponseAdapter().Adapt(response, projection);
+        var result = new JdMatchingResponseAdapter().Adapt(response, projection);
 
-        action.Should().Throw<InvalidOperationException>()
-            .Which.Message.Should().Be(JdMatchingResponseValidator.InvalidStageTwoResponse);
+        result.Quality.Should().Be(JdStageTwoOutputQuality.PARTIAL);
+        result.ItemScores.Should().HaveCount(2);
+        result.Improvements.ValueKind.Should().Be(JsonValueKind.Array);
     }
 
     [Fact]
