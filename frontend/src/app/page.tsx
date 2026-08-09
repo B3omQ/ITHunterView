@@ -255,7 +255,7 @@ export default function Home() {
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
           <div className="text-left">
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-extrabold bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 text-orange-600 dark:text-orange-400 border border-orange-500/30 shadow-sm mb-3 uppercase tracking-wide">
-              <SparklesIcon className="h-3.5 w-3.5 fill-orange-500 animate-spin" style={{ animationDuration: '6s' }} />
+              <SparklesIcon className="h-3.5 w-3.5 fill-orange-500" />
               {t('featuredTopJobs')}
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-foreground tracking-tight flex items-center gap-3">

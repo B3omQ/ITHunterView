@@ -47,6 +47,9 @@ namespace ITHunterview.WebAPI.Controllers
             _matchingRetryUseCase = matchingRetryUseCase;
             _matchingHistoryUseCase = matchingHistoryUseCase;
             _cvTextExtractorService = cvTextExtractorService;
+            _featureUsageUseCase = featureUsageUseCase;
+            _matchingInputPreflightUseCase = matchingInputPreflightUseCase;
+            _matchingQueue = matchingQueue;
         }
 
         [HttpPost]

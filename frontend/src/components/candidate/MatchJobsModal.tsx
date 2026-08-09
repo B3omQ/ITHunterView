@@ -85,7 +85,10 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
   }, [isOpen, selectedCvId]);
 
   const handleScan = async () => {
-    if (!selectedCvId) return;
+    if (!selectedCvId) {
+      setError('Please select a resume before scanning.');
+      return;
+    }
     try {
       setIsScanning(true);
       setError(null);
@@ -105,7 +108,8 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
         await fetchMatches();
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to scan for matches.');
+      const serverMsg = err?.response?.data?.message || err?.response?.data?.title || err?.message || 'Failed to scan for matches.';
+      setError(serverMsg);
     } finally {
       setIsScanning(false);
     }
