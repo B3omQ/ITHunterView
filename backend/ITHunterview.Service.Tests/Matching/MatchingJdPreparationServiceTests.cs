@@ -94,7 +94,7 @@ public sealed class MatchingJdPreparationServiceTests
                 "React Developer",
                 "React developer required.",
                 analysisJson,
-                "jd-analysis/v3",
+                "jd-analysis-effective/v1",
                 "source-hash",
                 "analysis-hash",
                 analysisRevision,
@@ -104,16 +104,20 @@ public sealed class MatchingJdPreparationServiceTests
 
     private static string EffectiveJson(string quality) => $$"""
         {
-          "schema_version":"jd-analysis/v3",
+          "schema_version":"jd-analysis-effective/v1",
           "analysis_quality":"{{quality}}",
           "matching_metrics":{
             "requirement_groups":[
               {
                 "group_id":"grp-001",
+                "source_requirement_id":"req-001",
+                "intent":"qualification",
                 "operator":"all_of",
                 "min_satisfied":1,
                 "importance":"must_have",
-                "items":[{"category":"tech_skill","skill_name":"react"}]
+                "source_section":"requirements",
+                "requirement_verbatim":"React developer required.",
+                "items":[{"item_id":"grp-001:item-001","category":"tech_skill","skill_name":"react","raw_mention":"React"}]
               }
             ]
           }

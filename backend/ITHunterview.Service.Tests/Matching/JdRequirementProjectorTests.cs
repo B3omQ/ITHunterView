@@ -9,6 +9,65 @@ namespace ITHunterview.Service.Tests.Matching;
 public sealed class JdRequirementProjectorTests
 {
     [Fact]
+    public void Project_EffectiveV1_PreservesStructuralIdentityOrderAndSourceMeaning()
+    {
+        const string effective = """
+            {
+              "schema_version":"jd-analysis-effective/v1",
+              "analysis_quality":"PARTIAL",
+              "matching_metrics":{"requirement_groups":[
+                {
+                  "group_id":"grp-001",
+                  "source_requirement_id":"req-004",
+                  "intent":"experience_duration",
+                  "operator":"one_of",
+                  "min_satisfied":1,
+                  "importance":"must_have",
+                  "source_section":"requirements",
+                  "requirement_verbatim":"Có ít nhất 3 năm backend với Java hoặc Go.",
+                  "items":[
+                    {"item_id":"grp-001:item-001","category":"experience","skill_name":"Java backend experience","raw_mention":"Java","min_years":3},
+                    {"item_id":"grp-001:item-002","category":"experience","skill_name":"Go backend experience","raw_mention":"Go","min_years":3,"max_years":5}
+                  ]
+                }
+              ]}
+            }
+            """;
+
+        var projection = new JdRequirementProjector().Project(effective);
+
+        Assert.Equal("jd-analysis-effective/v1", projection.SourceSchemaVersion);
+        Assert.False(projection.UsesLegacySemantics);
+        Assert.Equal(JdAnalysisQuality.PARTIAL, projection.Quality);
+        var group = Assert.Single(projection.Groups);
+        Assert.Equal("grp-001", group.GroupId);
+        Assert.Equal("req-004", group.SourceRequirementId);
+        Assert.Equal("experience_duration", group.Intent);
+        Assert.Equal("one_of", group.Operator);
+        Assert.Equal(1, group.MinSatisfied);
+        Assert.Equal("Có ít nhất 3 năm backend với Java hoặc Go.", group.RequirementVerbatim);
+        Assert.Equal(new[] { "grp-001:item-001", "grp-001:item-002" }, group.Items.Select(item => item.ItemId));
+        Assert.Equal(new[] { "Java backend experience", "Go backend experience" }, group.Items.Select(item => item.SkillName));
+        Assert.All(group.Items, item => Assert.Equal("requirements", item.SourceSection));
+    }
+
+    [Fact]
+    public void Project_V4CompactGroup_RemainsReadableForHistoricalRows()
+    {
+        const string v4 = """
+            {"schema_version":"jd-analysis/v4","matching_metrics":{"requirement_groups":[{"operator":"all_of","importance":"must_have","source_section":"requirements","requirement_verbatim":"Java and Spring Boot.","items":[{"category":"tech_skill","skill_name":"Java","raw_mention":"Java"},{"category":"tech_skill","skill_name":"Spring Boot","raw_mention":"Spring Boot"}]}]}}
+            """;
+
+        var projection = new JdRequirementProjector().Project(v4);
+
+        Assert.False(projection.UsesLegacySemantics);
+        var group = Assert.Single(projection.Groups);
+        Assert.Equal("legacy-v4-001", group.GroupId);
+        Assert.Equal(2, group.MinSatisfied);
+        Assert.Equal(new[] { "legacy-v4-001:item-001", "legacy-v4-001:item-002" }, group.Items.Select(item => item.ItemId));
+    }
+
+    [Fact]
     public void Project_V3_KeepsCategoryAndAlternativeGroupSemantics()
     {
         var projector = new JdRequirementProjector();

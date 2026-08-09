@@ -17,10 +17,17 @@ public sealed class AiGenerationOptionsTests
     [Fact]
     public void JdAnalysisProfile_ReservesReasoningAndJsonOutputCapacity()
     {
-        Assert.Equal(16384, AiGenerationOptions.StrictJsonExtraction.MaxOutputTokens);
-        Assert.Equal(3000, AiGenerationOptions.StrictJsonExtraction.ThinkingBudget);
-        Assert.Equal("medium", AiGenerationOptions.StrictJsonExtraction.ThinkingLevel);
-        Assert.Equal(1, AiGenerationOptions.StrictJsonExtraction.MaxTransportAttempts);
+        Assert.Equal(16384, AiGenerationOptions.JdAnalysisJsonExtraction.MaxOutputTokens);
+        Assert.Equal(20480, AiGenerationOptions.JdAnalysisJsonRetry.MaxOutputTokens);
+        Assert.Equal(0m, AiGenerationOptions.JdAnalysisJsonExtraction.Temperature);
+        Assert.Equal(0.1m, AiGenerationOptions.JdAnalysisJsonExtraction.TopP);
+        Assert.Equal("application/json", AiGenerationOptions.JdAnalysisJsonExtraction.ResponseMimeType);
+        Assert.Equal(3000, AiGenerationOptions.JdAnalysisJsonExtraction.ThinkingBudget);
+        Assert.Equal(3000, AiGenerationOptions.JdAnalysisJsonRetry.ThinkingBudget);
+        Assert.Equal("medium", AiGenerationOptions.JdAnalysisJsonExtraction.ThinkingLevel);
+        Assert.Equal("medium", AiGenerationOptions.JdAnalysisJsonRetry.ThinkingLevel);
+        Assert.Equal(1, AiGenerationOptions.JdAnalysisJsonExtraction.MaxTransportAttempts);
+        Assert.Equal(1, AiGenerationOptions.JdAnalysisJsonRetry.MaxTransportAttempts);
     }
 
     [Fact]

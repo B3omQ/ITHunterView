@@ -136,6 +136,14 @@ namespace ITHunterview.Service.UseCase
                 // schema at the provider boundary.
                 content = CvAnalysisOutputSchema.NormalizeManagedContent(content).SemanticContent;
             }
+            else if (JdAnalysisPromptContract.IsJdAnalysisPromptKey(prompt.PromptKey))
+            {
+                // JD analysis owns its provider output schema in application
+                // code. Prompt versions persist semantic instructions only;
+                // pair metadata remains a compatibility check, not a schema
+                // selector.
+                content = JdAnalysisOutputSchema.NormalizeManagedContent(content).SemanticContent;
+            }
 
             ValidatePlaceholders(prompt.PromptKey, content);
 
@@ -246,6 +254,10 @@ namespace ITHunterview.Service.UseCase
 
             var systemMetadata = ReadJdAnalysisMetadata(systemVersion.ModelConfig, JdAnalysisPromptContract.SystemRole);
             var userMetadata = ReadJdAnalysisMetadata(userVersion.ModelConfig, JdAnalysisPromptContract.UserRole);
+
+            JdAnalysisOutputSchema.NormalizeManagedContent(systemVersion.Content);
+            var normalizedUser = JdAnalysisOutputSchema.NormalizeManagedContent(userVersion.Content);
+            ValidatePlaceholders(JdAnalysisPromptContract.UserPromptKey, normalizedUser.SemanticContent);
             if (!string.Equals(systemMetadata.Contract, userMetadata.Contract, StringComparison.Ordinal))
             {
                 throw new ArgumentException("JD analysis system and user prompts must have the same contract.");

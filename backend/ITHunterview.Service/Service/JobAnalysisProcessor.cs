@@ -101,6 +101,11 @@ namespace ITHunterview.Service.Service
                 }
 
                 var validatedData = validation.Data;
+                var completionDiagnostics = extraction.Diagnostics
+                    .GroupBy(diagnostic => $"{diagnostic.Code}:{diagnostic.JsonPath}", StringComparer.Ordinal)
+                    .Select(group => group.First())
+                    .Take(100)
+                    .ToList();
                 IReadOnlyList<SkillResolution> resolutions;
                 try
                 {
@@ -114,14 +119,20 @@ namespace ITHunterview.Service.Service
                 {
                     _logger.LogWarning(
                         exception,
-                        "JobAnalysisProcessor: Skill resolution failed for run {RunId}; preserving raw snapshot fallback.",
+                        "JobAnalysisProcessor: Skill resolution unavailable for run {RunId}; preserving structured JD analysis.",
                         runId);
-                    await CompleteRawFallbackAsync(
-                        run,
-                        "SKILL_RESOLUTION_FAILED",
-                        ct,
-                        new[] { new JdAnalysisDiagnostic("SKILL_RESOLUTION_FAILED", "$") });
-                    return;
+                    var diagnostic = new JdAnalysisDiagnostic("SKILL_RESOLUTION_UNAVAILABLE", "$.matching_metrics.skills_normalized");
+                    if (completionDiagnostics.Count < 100 &&
+                        !completionDiagnostics.Any(item => item.Code == diagnostic.Code && item.JsonPath == diagnostic.JsonPath))
+                    {
+                        completionDiagnostics.Add(diagnostic);
+                    }
+                    if (validatedData.Diagnostics.Count < 100 &&
+                        !validatedData.Diagnostics.Any(item => item.Code == diagnostic.Code && item.JsonPath == diagnostic.JsonPath))
+                    {
+                        validatedData.Diagnostics.Add(diagnostic);
+                    }
+                    resolutions = Array.Empty<SkillResolution>();
                 }
 
                 var decisions = new List<JobSkillDecisions>();
@@ -151,19 +162,13 @@ namespace ITHunterview.Service.Service
                         ResolvedSkillId = res.ResolvedSkillId,
                         ResolutionStatus = res.ResolutionStatus,
                         DecisionStatus = decisionStatus,
-                        Confidence = res.Confidence,
                         DecisionVersion = 1,
                         CreatedAt = now,
                         UpdatedAt = now
                     });
                 }
 
-                string effectiveJson = _extractionService.SerializeEffectiveAnalysis(
-                    validatedData,
-                    resolutions
-                        .Where(resolution => resolution.ResolvedSkillId.HasValue)
-                        .Select(resolution => resolution.NormalizedMention)
-                        .ToHashSet(StringComparer.OrdinalIgnoreCase));
+                string effectiveJson = _extractionService.SerializeEffectiveAnalysis(validatedData);
 
                 bool completed = await _jobAnalysisRepository.TryCompleteReadyAsync(
                     runId,
@@ -173,7 +178,7 @@ namespace ITHunterview.Service.Service
                         extraction.PersistableAnalysisJson ?? extraction.RawJson,
                         effectiveJson,
                         JdAnalysisMetadataReader.SerializeCoverage(extraction.Coverage),
-                        JdAnalysisMetadataReader.SerializeDiagnostics(extraction.Diagnostics),
+                        JdAnalysisMetadataReader.SerializeDiagnostics(completionDiagnostics),
                         decisions,
                         extraction.ProviderName,
                         null),

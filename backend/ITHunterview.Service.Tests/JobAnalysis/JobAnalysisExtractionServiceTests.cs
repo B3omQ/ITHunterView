@@ -1,6 +1,6 @@
-using System.Threading.Tasks;
+using System.Net;
 using FluentAssertions;
-using System.Threading;
+using ITHunterview.Domain.Enums;
 using ITHunterview.Service.Constant.Prompts;
 using ITHunterview.Service.DTOs.PromptAdmin;
 using ITHunterview.Service.Interface.Service;
@@ -11,286 +11,242 @@ using Moq;
 
 namespace ITHunterview.Service.Tests.JobAnalysis;
 
-public class JobAnalysisExtractionServiceTests
+public sealed class JobAnalysisExtractionServiceTests
 {
     [Fact]
-    public async Task ExtractWithActivePrompts_UsesOneCompatibleJdPromptPair()
+    public async Task ExtractWithActivePrompts_UsesCompatiblePairAndApplicationOwnedV5Schema()
     {
-        var aiService = new Mock<IAiService>();
-        aiService.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
-        aiService
-            .Setup(x => x.GenerateTextAsync(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                "test-provider",
-                AiGenerationOptions.StrictJsonExtraction,
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync("{}");
-
-        var promptService = new Mock<IPromptManagementService>();
-        promptService.Setup(x => x.GetActivePromptPairSnapshotAsync(
+        var ai = CreateAi(CompleteEmptyV5);
+        var prompts = new Mock<IPromptManagementService>();
+        prompts.Setup(service => service.GetActivePromptPairSnapshotAsync(
                 JdAnalysisPromptContract.SystemPromptKey,
                 JdAnalysisPromptContract.UserPromptKey,
-                default))
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PromptPairSnapshotDto
             {
-                Contract = JdAnalysisPromptContract.ContractV3,
-                System = new PromptSnapshotDto { Content = "system from database" },
+                Contract = "jd-analysis-prompt/custom-compatible",
+                System = new PromptSnapshotDto { Content = "semantic system from database" },
                 User = new PromptSnapshotDto { Content = $"user {JdAnalysisPromptContract.UserPlaceholder}" }
             });
+        var service = CreateService(ai, prompts.Object);
 
-        var validator = new Mock<IJdAnalysisResponseValidator>();
-        validator.Setup(x => x.Validate(It.IsAny<string>(), It.IsAny<JobAnalysisInputSnapshot>()))
-            .Returns(new ValidationResult<ValidatedJobAnalysis>());
+        var result = await service.ExtractWithActivePromptsAsync(new JobAnalysisInputSnapshot { Title = "Backend" });
 
-        var service = new JobAnalysisExtractionService(
-            aiService.Object,
-            promptService.Object,
-            validator.Object,
-            NullLogger<JobAnalysisExtractionService>.Instance);
-
-        await service.ExtractWithActivePromptsAsync(new JobAnalysisInputSnapshot { Title = "Backend Engineer" });
-
-        promptService.Verify(x => x.GetActivePromptPairSnapshotAsync(
+        result.Quality.Should().Be(JdAnalysisQuality.COMPLETE);
+        prompts.Verify(candidate => candidate.GetActivePromptPairSnapshotAsync(
             JdAnalysisPromptContract.SystemPromptKey,
             JdAnalysisPromptContract.UserPromptKey,
-            default), Times.Once);
-        promptService.Verify(x => x.GetActivePromptSnapshotAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>()), Times.Never);
-        aiService.Verify(x => x.GenerateTextAsync(
+            It.IsAny<CancellationToken>()), Times.Once);
+        prompts.Verify(candidate => candidate.GetActivePromptSnapshotAsync(
+            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        ai.Verify(candidate => candidate.GenerateTextAsync(
             It.IsAny<string>(),
             It.Is<string>(system =>
-                system.Contains("system from database", StringComparison.Ordinal) &&
+                system.Contains("semantic system from database", StringComparison.Ordinal) &&
                 system.Contains(JdAnalysisOutputSchema.BeginMarker, StringComparison.Ordinal) &&
-                system.Contains("\"schema_version\": \"jd-analysis/v4\"", StringComparison.Ordinal)),
+                system.Contains("\"schema_version\": \"jd-analysis/v5\"", StringComparison.Ordinal)),
             "test-provider",
-            AiGenerationOptions.StrictJsonExtraction,
-            It.IsAny<CancellationToken>()), Times.Exactly(2));
+            AiGenerationOptions.JdAnalysisJsonExtraction,
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-        public async Task ExtractWithActivePrompts_ForwardsCancellationTokenToAiProvider()
+    public async Task ExtractAsync_FirstCompleteResult_DoesNotCallProviderAgain()
+    {
+        var ai = CreateAi(CompleteEmptyV5);
+        var service = CreateService(ai);
+
+        var result = await service.ExtractAsync(new JobAnalysisInputSnapshot(), "system", "user [JOB_INPUT_JSON]");
+
+        result.Quality.Should().Be(JdAnalysisQuality.COMPLETE);
+        result.ProviderRequestCount.Should().Be(1);
+        VerifyProfileCalls(ai, first: 1, retry: 0);
+    }
+
+    [Fact]
+    public async Task ExtractAsync_TruncatedFirstResult_RetriesOnceWithLargerProfileAndReturnsComplete()
+    {
+        var ai = CreateAiSequence(TruncatedAfterOneGroup, CompleteEmptyV5);
+        var service = CreateService(ai);
+
+        var result = await service.ExtractAsync(
+            new JobAnalysisInputSnapshot { Requirements = "Use Java." },
+            "system",
+            "user [JOB_INPUT_JSON]");
+
+        result.Quality.Should().Be(JdAnalysisQuality.COMPLETE);
+        result.ProviderRequestCount.Should().Be(2);
+        VerifyProfileCalls(ai, first: 1, retry: 1);
+    }
+
+    [Fact]
+    public async Task ExtractAsync_WhenBothAttemptsAreInvalid_ReturnsRawTextFallback()
+    {
+        var ai = CreateAiSequence("not-json", "still-not-json");
+        var service = CreateService(ai);
+
+        var result = await service.ExtractAsync(
+            new JobAnalysisInputSnapshot { Title = "Backend", Requirements = "Use Java." },
+            "system",
+            "user [JOB_INPUT_JSON]");
+
+        result.Quality.Should().Be(JdAnalysisQuality.INVALID);
+        result.UsesRawTextFallback.Should().BeTrue();
+        result.RawTextFallback.Should().Contain("Backend").And.Contain("Use Java.");
+        result.ProviderRequestCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ExtractAsync_SecondPartialCannotReplaceBetterFirstPartial()
+    {
+        var ai = CreateAiSequence(TruncatedAfterTwoGroups, TruncatedAfterOneGroup);
+        var service = CreateService(ai);
+
+        var result = await service.ExtractAsync(new JobAnalysisInputSnapshot(), "system", "user [JOB_INPUT_JSON]");
+
+        result.Quality.Should().Be(JdAnalysisQuality.PARTIAL);
+        result.Coverage.AcceptedGroupCount.Should().Be(2);
+        result.ProviderRequestCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ExtractAsync_TransientHttpFailure_RetriesOnce()
+    {
+        var ai = new Mock<IAiService>();
+        ai.Setup(service => service.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
+        ai.SetupSequence(service => service.GenerateTextAsync(
+                It.IsAny<string>(), It.IsAny<string>(), "test-provider",
+                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("temporary", null, HttpStatusCode.ServiceUnavailable))
+            .ReturnsAsync(CompleteEmptyV5);
+        var service = CreateService(ai);
+
+        var result = await service.ExtractAsync(new JobAnalysisInputSnapshot(), "system", "user [JOB_INPUT_JSON]");
+
+        result.Quality.Should().Be(JdAnalysisQuality.COMPLETE);
+        result.ProviderRequestCount.Should().Be(2);
+        VerifyProfileCalls(ai, first: 1, retry: 1);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task ExtractAsync_AuthenticationFailure_DoesNotRetry(HttpStatusCode statusCode)
+    {
+        var ai = new Mock<IAiService>();
+        ai.Setup(service => service.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
+        ai.Setup(service => service.GenerateTextAsync(
+                It.IsAny<string>(), It.IsAny<string>(), "test-provider",
+                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("auth", null, statusCode));
+        var service = CreateService(ai);
+
+        var result = await service.ExtractAsync(new JobAnalysisInputSnapshot(), "system", "user [JOB_INPUT_JSON]");
+
+        result.Quality.Should().Be(JdAnalysisQuality.INVALID);
+        result.ProviderRequestCount.Should().Be(1);
+        ai.Verify(service => service.GenerateTextAsync(
+            It.IsAny<string>(), It.IsAny<string>(), "test-provider",
+            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExtractAsync_InvalidProviderConfiguration_DoesNotRetry()
+    {
+        var ai = new Mock<IAiService>();
+        ai.Setup(service => service.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
+        ai.Setup(service => service.GenerateTextAsync(
+                It.IsAny<string>(), It.IsAny<string>(), "test-provider",
+                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("AI_PROVIDER_NOT_CONFIGURED"));
+        var service = CreateService(ai);
+
+        var result = await service.ExtractAsync(new JobAnalysisInputSnapshot(), "system", "user [JOB_INPUT_JSON]");
+
+        result.Quality.Should().Be(JdAnalysisQuality.INVALID);
+        result.ProviderRequestCount.Should().Be(1);
+        ai.Verify(service => service.GenerateTextAsync(
+            It.IsAny<string>(), It.IsAny<string>(), "test-provider",
+            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ExtractAsync_CancellationIsPropagatedAndNotRetried()
     {
         using var cancellation = new CancellationTokenSource();
-        var aiService = new Mock<IAiService>();
-        aiService.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
-        aiService
-            .Setup(x => x.GenerateTextAsync(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                "test-provider",
-                AiGenerationOptions.StrictJsonExtraction,
-                cancellation.Token))
-            .ReturnsAsync("{}");
+        cancellation.Cancel();
+        var ai = new Mock<IAiService>();
+        ai.Setup(service => service.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
+        ai.Setup(service => service.GenerateTextAsync(
+                It.IsAny<string>(), It.IsAny<string>(), "test-provider",
+                It.IsAny<AiGenerationOptions>(), cancellation.Token))
+            .ThrowsAsync(new OperationCanceledException(cancellation.Token));
+        var service = CreateService(ai);
 
-        var promptService = new Mock<IPromptManagementService>();
-        promptService.Setup(x => x.GetActivePromptPairSnapshotAsync(
-                JdAnalysisPromptContract.SystemPromptKey,
-                JdAnalysisPromptContract.UserPromptKey,
-                cancellation.Token))
-            .ReturnsAsync(new PromptPairSnapshotDto
-            {
-                Contract = JdAnalysisPromptContract.ContractV3,
-                System = new PromptSnapshotDto { Content = "system" },
-                User = new PromptSnapshotDto { Content = $"user {JdAnalysisPromptContract.UserPlaceholder}" }
-            });
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.ExtractAsync(
+            new JobAnalysisInputSnapshot(), "system", "user [JOB_INPUT_JSON]", cancellation.Token));
 
-        var validator = new Mock<IJdAnalysisResponseValidator>();
-        validator.Setup(x => x.Validate(It.IsAny<string>(), It.IsAny<JobAnalysisInputSnapshot>()))
-            .Returns(new ValidationResult<ValidatedJobAnalysis>());
+        ai.Verify(service => service.GenerateTextAsync(
+            It.IsAny<string>(), It.IsAny<string>(), "test-provider",
+            It.IsAny<AiGenerationOptions>(), cancellation.Token), Times.Once);
+    }
 
-        var service = new JobAnalysisExtractionService(
-            aiService.Object,
-            promptService.Object,
-            validator.Object,
+    private static JobAnalysisExtractionService CreateService(
+        Mock<IAiService> ai,
+        IPromptManagementService? prompts = null) =>
+        new(
+            ai.Object,
+            prompts ?? new Mock<IPromptManagementService>().Object,
+            new JdAnalysisResponseValidator(),
             NullLogger<JobAnalysisExtractionService>.Instance);
 
-        await service.ExtractWithActivePromptsAsync(
-            new JobAnalysisInputSnapshot { Title = "Backend Engineer" },
-            cancellation.Token);
-
-            aiService.Verify(x => x.GenerateTextAsync(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                "test-provider",
-                AiGenerationOptions.StrictJsonExtraction,
-                cancellation.Token), Times.Exactly(2));
-        }
-
-        [Fact]
-        public async Task ExtractWithActivePrompts_UsesStrictJsonGenerationProfile()
-        {
-            var aiService = new Mock<IAiService>();
-            aiService.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
-            aiService.Setup(x => x.GenerateTextAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<string>(),
-                    "test-provider",
-                    AiGenerationOptions.StrictJsonExtraction,
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync("{}");
-
-            var promptService = new Mock<IPromptManagementService>();
-            promptService.Setup(x => x.GetActivePromptPairSnapshotAsync(
-                    JdAnalysisPromptContract.SystemPromptKey,
-                    JdAnalysisPromptContract.UserPromptKey,
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new PromptPairSnapshotDto
-                {
-                    Contract = JdAnalysisPromptContract.ContractV3,
-                    System = new PromptSnapshotDto { Content = "system" },
-                    User = new PromptSnapshotDto { Content = $"user {JdAnalysisPromptContract.UserPlaceholder}" }
-                });
-
-            var validator = new Mock<IJdAnalysisResponseValidator>();
-            validator.Setup(x => x.Validate(It.IsAny<string>(), It.IsAny<JobAnalysisInputSnapshot>()))
-                .Returns(new ValidationResult<ValidatedJobAnalysis>());
-
-            var service = new JobAnalysisExtractionService(
-                aiService.Object,
-                promptService.Object,
-                validator.Object,
-                NullLogger<JobAnalysisExtractionService>.Instance);
-
-            await service.ExtractWithActivePromptsAsync(new JobAnalysisInputSnapshot());
-
-            aiService.Verify(x => x.GenerateTextAsync(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                "test-provider",
-                AiGenerationOptions.StrictJsonExtraction,
-                It.IsAny<CancellationToken>()), Times.Exactly(2));
-        }
-
-        [Fact]
-        public async Task ExtractAsync_RetriesOneTruncatedOutputAndReturnsCompleteAttempt()
-        {
-            var aiService = new Mock<IAiService>();
-            aiService.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
-            aiService.SetupSequence(x => x.GenerateTextAsync(
-                    It.IsAny<string>(), It.IsAny<string>(), "test-provider",
-                    AiGenerationOptions.StrictJsonExtraction, It.IsAny<CancellationToken>()))
-                .ReturnsAsync("{\"schema_version\":\"jd-analysis/v4\",\"matching_metrics\":{\"requirement_groups\":[{\"operator\":\"all_of\"")
-                .ReturnsAsync("{\"schema_version\":\"jd-analysis/v4\",\"matching_metrics\":{\"job_titles_normalized\":[],\"total_years_exp\":0,\"domains\":[],\"requirement_groups\":[]}}");
-
-            var promptService = new Mock<IPromptManagementService>();
-            var validator = new Mock<IJdAnalysisResponseValidator>();
-            validator.Setup(x => x.Validate(It.IsAny<string>(), It.IsAny<JobAnalysisInputSnapshot>()))
-                .Returns(new ValidationResult<ValidatedJobAnalysis>
-                {
-                    IsValid = true,
-                    Quality = ITHunterview.Domain.Enums.JdAnalysisQuality.COMPLETE,
-                    Data = new ValidatedJobAnalysis()
-                });
-
-            var service = new JobAnalysisExtractionService(
-                aiService.Object, promptService.Object, validator.Object,
-                NullLogger<JobAnalysisExtractionService>.Instance);
-
-            var result = await service.ExtractAsync(
-                new JobAnalysisInputSnapshot { Requirements = "Use C#." }, "system", "user [JOB_INPUT_JSON]");
-
-            result.ProviderRequestCount.Should().Be(2);
-            result.Quality.Should().Be(ITHunterview.Domain.Enums.JdAnalysisQuality.COMPLETE);
-            result.PersistableAnalysisJson.Should().NotBeNullOrWhiteSpace();
-            result.UsesRawTextFallback.Should().BeFalse();
-        }
-
-        [Fact]
-        public async Task ExtractAsync_WhenBothAttemptsAreInvalid_ReturnsRawTextFallbackInsteadOfThrowing()
-        {
-            var aiService = new Mock<IAiService>();
-            aiService.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
-            aiService.Setup(x => x.GenerateTextAsync(
-                    It.IsAny<string>(), It.IsAny<string>(), "test-provider",
-                    AiGenerationOptions.StrictJsonExtraction, It.IsAny<CancellationToken>()))
-                .ReturnsAsync("not-json");
-
-            var validator = new Mock<IJdAnalysisResponseValidator>();
-            validator.Setup(x => x.Validate(It.IsAny<string>(), It.IsAny<JobAnalysisInputSnapshot>()))
-                .Returns(new ValidationResult<ValidatedJobAnalysis>
-                {
-                    IsValid = false,
-                    Quality = ITHunterview.Domain.Enums.JdAnalysisQuality.INVALID,
-                    FailureCode = "INVALID_JSON_FORMAT"
-                });
-
-            var service = new JobAnalysisExtractionService(
-                aiService.Object, new Mock<IPromptManagementService>().Object, validator.Object,
-                NullLogger<JobAnalysisExtractionService>.Instance);
-
-            var result = await service.ExtractAsync(
-                new JobAnalysisInputSnapshot { Title = "Backend", Requirements = "Use C#." },
-                "system", "user [JOB_INPUT_JSON]");
-
-            result.ProviderRequestCount.Should().Be(2);
-            result.Quality.Should().Be(ITHunterview.Domain.Enums.JdAnalysisQuality.INVALID);
-            result.UsesRawTextFallback.Should().BeTrue();
-            result.RawTextFallback.Should().Contain("Backend");
-        }
-
-        [Fact]
-        public async Task ExtractAsync_WhenProviderFailsOnce_RetriesBeforeReturningFallback()
-        {
-            var aiService = new Mock<IAiService>();
-            aiService.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
-            aiService.SetupSequence(x => x.GenerateTextAsync(
-                    It.IsAny<string>(), It.IsAny<string>(), "test-provider",
-                    AiGenerationOptions.StrictJsonExtraction, It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new InvalidOperationException("temporary provider failure"))
-                .ReturnsAsync("not-json");
-
-            var validator = new Mock<IJdAnalysisResponseValidator>();
-            validator.Setup(x => x.Validate(It.IsAny<string>(), It.IsAny<JobAnalysisInputSnapshot>()))
-                .Returns(new ValidationResult<ValidatedJobAnalysis>
-                {
-                    IsValid = false,
-                    Quality = ITHunterview.Domain.Enums.JdAnalysisQuality.INVALID,
-                    FailureCode = "INVALID_JSON_FORMAT"
-                });
-
-            var service = new JobAnalysisExtractionService(
-                aiService.Object, new Mock<IPromptManagementService>().Object, validator.Object,
-                NullLogger<JobAnalysisExtractionService>.Instance);
-
-            var result = await service.ExtractAsync(
-                new JobAnalysisInputSnapshot { Requirements = "Use C#." },
-                "system", "user [JOB_INPUT_JSON]");
-
-            result.ProviderRequestCount.Should().Be(2);
-            result.Quality.Should().Be(ITHunterview.Domain.Enums.JdAnalysisQuality.INVALID);
-            result.UsesRawTextFallback.Should().BeTrue();
-            aiService.Verify(x => x.GenerateTextAsync(
+    private static Mock<IAiService> CreateAi(string response)
+    {
+        var ai = new Mock<IAiService>();
+        ai.Setup(service => service.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
+        ai.Setup(service => service.GenerateTextAsync(
                 It.IsAny<string>(), It.IsAny<string>(), "test-provider",
-                AiGenerationOptions.StrictJsonExtraction, It.IsAny<CancellationToken>()), Times.Exactly(2));
-        }
+                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+        return ai;
+    }
 
-        [Fact]
-        public async Task ExtractAsync_WithTruncatedV4AndRealValidator_ReturnsUsablePartialAnalysis()
+    private static Mock<IAiService> CreateAiSequence(params string[] responses)
+    {
+        var ai = new Mock<IAiService>();
+        ai.Setup(service => service.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
+        var sequence = ai.SetupSequence(service => service.GenerateTextAsync(
+            It.IsAny<string>(), It.IsAny<string>(), "test-provider",
+            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()));
+        foreach (var response in responses)
         {
-            var aiService = new Mock<IAiService>();
-            aiService.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
-            aiService.Setup(x => x.GenerateTextAsync(
-                    It.IsAny<string>(), It.IsAny<string>(), "test-provider",
-                    AiGenerationOptions.StrictJsonExtraction, It.IsAny<CancellationToken>()))
-                .ReturnsAsync("""
-                    {"schema_version":"jd-analysis/v4","matching_metrics":{"job_titles_normalized":[],"total_years_exp":0,"domains":[],"requirement_groups":[{"operator":"all_of","importance":"must_have","source_section":"requirements","requirement_verbatim":"Use C#.","items":[{"category":"tech_skill","skill_name":"c#","raw_mention":"C#"}]},{"operator":"all_of","importance":"must_have","source_section":"requirements","requirement_verbatim":"Use PostgreSQL.","items":[{"category":"tech_skill","skill_name":"postgresql"
-                    """);
-
-            var service = new JobAnalysisExtractionService(
-                aiService.Object,
-                new Mock<IPromptManagementService>().Object,
-                new JdAnalysisResponseValidator(),
-                NullLogger<JobAnalysisExtractionService>.Instance);
-
-            var result = await service.ExtractAsync(
-                new JobAnalysisInputSnapshot { Requirements = "Use C#." },
-                "system",
-                "user [JOB_INPUT_JSON]");
-
-            result.Quality.Should().Be(ITHunterview.Domain.Enums.JdAnalysisQuality.PARTIAL);
-            result.Validation.IsUsable.Should().BeTrue();
-            result.Coverage.AcceptedGroupCount.Should().Be(1);
-            result.Coverage.DiscardedGroupCount.Should().Be(1);
-            result.Diagnostics.Should().Contain(diagnostic => diagnostic.Code == "OUTPUT_TRUNCATED");
+            sequence.ReturnsAsync(response);
         }
+        return ai;
+    }
+
+    private static void VerifyProfileCalls(Mock<IAiService> ai, int first, int retry)
+    {
+        ai.Verify(service => service.GenerateTextAsync(
+            It.IsAny<string>(), It.IsAny<string>(), "test-provider",
+            AiGenerationOptions.JdAnalysisJsonExtraction, It.IsAny<CancellationToken>()), Times.Exactly(first));
+        ai.Verify(service => service.GenerateTextAsync(
+            It.IsAny<string>(), It.IsAny<string>(), "test-provider",
+            AiGenerationOptions.JdAnalysisJsonRetry, It.IsAny<CancellationToken>()), Times.Exactly(retry));
+    }
+
+    private const string CompleteEmptyV5 =
+        "{\"schema_version\":\"jd-analysis/v5\",\"matching_metrics\":{\"job_titles_normalized\":[],\"total_years_exp\":0,\"domains\":[],\"requirement_groups\":[]}}";
+
+    private const string GroupOne =
+        "{\"source_requirement_id\":\"req-001\",\"intent\":\"qualification\",\"operator\":\"all_of\",\"importance\":\"must_have\",\"source_section\":\"requirements\",\"requirement_verbatim\":\"Use Java.\",\"items\":[{\"category\":\"tech_skill\",\"skill_name\":\"Java\",\"raw_mention\":\"Java\"}]}";
+
+    private const string GroupTwo =
+        "{\"source_requirement_id\":\"req-002\",\"intent\":\"qualification\",\"operator\":\"all_of\",\"importance\":\"must_have\",\"source_section\":\"requirements\",\"requirement_verbatim\":\"Use SQL.\",\"items\":[{\"category\":\"tech_skill\",\"skill_name\":\"SQL\",\"raw_mention\":\"SQL\"}]}";
+
+    private const string Prefix =
+        "{\"schema_version\":\"jd-analysis/v5\",\"matching_metrics\":{\"job_titles_normalized\":[],\"total_years_exp\":0,\"domains\":[],\"requirement_groups\":[";
+
+    private static readonly string TruncatedAfterOneGroup = Prefix + GroupOne + ",";
+    private static readonly string TruncatedAfterTwoGroups = Prefix + GroupOne + "," + GroupTwo + ",";
 }

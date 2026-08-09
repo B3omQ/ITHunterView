@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ITHunterview.Domain.Enums;
+using ITHunterview.Service.Constant.Prompts;
 using ITHunterview.Service.DTOs.JobAnalysis;
 using ITHunterview.Service.Utils;
 
@@ -36,6 +37,7 @@ namespace ITHunterview.Service.Utils
 
     public sealed class ValidatedRequirementItem
     {
+        public string ItemId { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
         public string Importance { get; set; } = "must_have";
         public string SkillName { get; set; } = string.Empty;
@@ -52,6 +54,8 @@ namespace ITHunterview.Service.Utils
     public sealed class ValidatedRequirementGroup
     {
         public string GroupId { get; set; } = string.Empty;
+        public string SourceRequirementId { get; set; } = string.Empty;
+        public string Intent { get; set; } = JdAnalysisEffectiveContract.UnspecifiedIntent;
         public string Operator { get; set; } = "all_of";
         public int MinSatisfied { get; set; }
         public string Importance { get; set; } = "must_have";
@@ -77,6 +81,10 @@ namespace ITHunterview.Service.Utils
 
         public class JdAnalysisResponseValidator : IJdAnalysisResponseValidator
         {
+        private const int MaxProviderOutputCharacters = 262_144;
+        private const int MaxRequirementGroups = 50;
+        private const int MaxRequirementItems = 100;
+
         private static readonly HashSet<string> AllowedCategories = new(StringComparer.OrdinalIgnoreCase)
         {
             "tech_skill", "experience", "domain_knowledge", "language", "education", "soft_skill"
@@ -113,6 +121,11 @@ namespace ITHunterview.Service.Utils
                 return result;
             }
 
+            if (providerOutput.Length > MaxProviderOutputCharacters)
+            {
+                return Invalid(result, "JD_ANALYSIS_PAYLOAD_TOO_LARGE", "AI provider output exceeds the bounded JD analysis payload size.");
+            }
+
             string jsonContent = ExtractJsonPayload(providerOutput);
             if (string.IsNullOrWhiteSpace(jsonContent))
             {
@@ -125,7 +138,12 @@ namespace ITHunterview.Service.Utils
             JsonDocument doc;
             try
             {
-                doc = JsonDocument.Parse(jsonContent);
+                doc = JsonDocument.Parse(jsonContent, new JsonDocumentOptions
+                {
+                    AllowTrailingCommas = false,
+                    CommentHandling = JsonCommentHandling.Disallow,
+                    MaxDepth = 64
+                });
             }
             catch (JsonException ex)
             {
@@ -150,7 +168,8 @@ namespace ITHunterview.Service.Utils
                     schemaProp.ValueKind != JsonValueKind.String ||
                     (schemaProp.GetString() != "jd-analysis/v2" &&
                      schemaProp.GetString() != "jd-analysis/v3" &&
-                     schemaProp.GetString() != "jd-analysis/v4"))
+                     schemaProp.GetString() != "jd-analysis/v4" &&
+                     schemaProp.GetString() != JdAnalysisOutputSchema.ProviderSchemaVersion))
                 {
                     result.IsValid = false;
                     result.FailureCode = "UNSUPPORTED_SCHEMA_VERSION";
@@ -168,6 +187,11 @@ namespace ITHunterview.Service.Utils
                 }
 
                 var schemaVersion = schemaProp.GetString()!;
+                if (schemaVersion == JdAnalysisOutputSchema.ProviderSchemaVersion)
+                {
+                    return ValidateV5(metricsProp, result);
+                }
+
                 if (schemaVersion == "jd-analysis/v4")
                 {
                     return ValidateV4(metricsProp, result);
@@ -307,6 +331,392 @@ namespace ITHunterview.Service.Utils
                 validated.Coverage = new JdAnalysisCoverage(groupCount, groupCount, 0, itemCount, itemCount, 0, true);
                 result.Data = validated;
                 return result;
+            }
+        }
+
+        private static ValidationResult<ValidatedJobAnalysis> ValidateV5(
+            JsonElement metrics,
+            ValidationResult<ValidatedJobAnalysis> result)
+        {
+            var validated = new ValidatedJobAnalysis
+            {
+                SchemaVersion = JdAnalysisOutputSchema.ProviderSchemaVersion
+            };
+
+            ReadV5StringArray(metrics, "job_titles_normalized", validated.JobTitlesNormalized, validated.Diagnostics);
+            ReadV5StringArray(metrics, "domains", validated.Domains, validated.Diagnostics);
+            if (metrics.TryGetProperty("total_years_exp", out var yearsElement) &&
+                yearsElement.ValueKind == JsonValueKind.Number &&
+                yearsElement.TryGetInt32(out var years) && years >= 0)
+            {
+                validated.TotalYearsExp = years;
+            }
+            else
+            {
+                AddDiagnostic(validated.Diagnostics, "INVALID_TOTAL_YEARS_EXP", "$.matching_metrics.total_years_exp");
+            }
+
+            if (!metrics.TryGetProperty("requirement_groups", out var groupsElement) ||
+                groupsElement.ValueKind != JsonValueKind.Array)
+            {
+                return Invalid(result, "MISSING_REQUIREMENT_GROUPS", "Missing required array 'requirement_groups'.");
+            }
+
+            var inputGroupCount = groupsElement.GetArrayLength();
+            var inputItemCount = 0;
+            var signatures = new HashSet<string>(StringComparer.Ordinal);
+            var groupIndex = 0;
+            foreach (var groupElement in groupsElement.EnumerateArray())
+            {
+                var path = $"$.matching_metrics.requirement_groups[{groupIndex}]";
+                var rawItemCount = 0;
+                if (groupElement.ValueKind == JsonValueKind.Object &&
+                    groupElement.TryGetProperty("items", out var rawItems) &&
+                    rawItems.ValueKind == JsonValueKind.Array)
+                {
+                    rawItemCount = rawItems.GetArrayLength();
+                    inputItemCount += rawItemCount;
+                }
+
+                if (groupIndex >= MaxRequirementGroups)
+                {
+                    AddDiagnostic(validated.Diagnostics, "REQUIREMENT_GROUP_LIMIT_EXCEEDED", path);
+                    groupIndex++;
+                    continue;
+                }
+
+                if (rawItemCount > MaxRequirementItems ||
+                    validated.RequirementGroups.Sum(group => group.Items.Count) + rawItemCount > MaxRequirementItems)
+                {
+                    AddDiagnostic(validated.Diagnostics, "REQUIREMENT_ITEM_LIMIT_EXCEEDED", path);
+                    groupIndex++;
+                    continue;
+                }
+
+                if (!TryParseV5Group(groupElement, groupIndex, path, validated.Diagnostics, out var group))
+                {
+                    AddDiagnostic(validated.Diagnostics, "INVALID_REQUIREMENT_GROUP", path);
+                    groupIndex++;
+                    continue;
+                }
+
+                var signature = CreateV5GroupSignature(group);
+                if (!signatures.Add(signature))
+                {
+                    AddDiagnostic(validated.Diagnostics, "EXACT_DUPLICATE_GROUP_REMOVED", path);
+                    groupIndex++;
+                    continue;
+                }
+
+                AssignStructuralIds(group, validated.RequirementGroups.Count + 1);
+                validated.RequirementGroups.Add(group);
+                groupIndex++;
+            }
+
+            if (inputGroupCount > 0 && validated.RequirementGroups.Count == 0)
+            {
+                return Invalid(result, "NO_USABLE_REQUIREMENT_GROUPS", "No structurally usable requirement group remains.");
+            }
+
+            PopulateV5SkillProjection(validated);
+
+            var acceptedGroupCount = validated.RequirementGroups.Count;
+            var acceptedItemCount = validated.RequirementGroups.Sum(group => group.Items.Count);
+            var discardedGroupCount = Math.Max(0, inputGroupCount - acceptedGroupCount);
+            var discardedItemCount = Math.Max(0, inputItemCount - acceptedItemCount);
+            var complete = validated.Diagnostics.Count == 0 && discardedGroupCount == 0 && discardedItemCount == 0;
+            validated.Coverage = new JdAnalysisCoverage(
+                inputGroupCount,
+                acceptedGroupCount,
+                discardedGroupCount,
+                inputItemCount,
+                acceptedItemCount,
+                discardedItemCount,
+                complete);
+            validated.Quality = complete ? JdAnalysisQuality.COMPLETE : JdAnalysisQuality.PARTIAL;
+
+            result.IsValid = complete;
+            result.Quality = validated.Quality;
+            result.FailureCode = complete ? null : "PARTIAL_JD_ANALYSIS";
+            result.Data = validated;
+            return result;
+        }
+
+        private static bool TryParseV5Group(
+            JsonElement element,
+            int groupIndex,
+            string path,
+            List<JdAnalysisDiagnostic> diagnostics,
+            out ValidatedRequirementGroup group)
+        {
+            group = new ValidatedRequirementGroup();
+            if (element.ValueKind != JsonValueKind.Object ||
+                !element.TryGetProperty("items", out var itemsElement) ||
+                itemsElement.ValueKind != JsonValueKind.Array ||
+                itemsElement.GetArrayLength() == 0)
+            {
+                return false;
+            }
+
+            var operation = ReadString(element, "operator");
+            var importance = ReadString(element, "importance");
+            var requirementVerbatim = ReadString(element, "requirement_verbatim");
+            if (!JdAnalysisEffectiveContract.Operators.Contains(operation) ||
+                !JdAnalysisEffectiveContract.Importances.Contains(importance) ||
+                string.IsNullOrWhiteSpace(requirementVerbatim))
+            {
+                return false;
+            }
+
+            var sourceRequirementId = ReadString(element, "source_requirement_id");
+            if (!IsProviderSourceRequirementId(sourceRequirementId))
+            {
+                sourceRequirementId = $"req-recovered-{groupIndex + 1:000}";
+                AddDiagnostic(diagnostics, "SOURCE_REQUIREMENT_ID_RECOVERED", path + ".source_requirement_id");
+            }
+
+            var intent = ReadString(element, "intent");
+            if (!JdAnalysisEffectiveContract.ProviderIntents.Contains(intent))
+            {
+                intent = JdAnalysisEffectiveContract.UnspecifiedIntent;
+                AddDiagnostic(diagnostics, "INTENT_UNSPECIFIED", path + ".intent");
+            }
+
+            var sourceSection = ReadString(element, "source_section");
+            if (!JdAnalysisEffectiveContract.SourceSections.Contains(sourceSection))
+            {
+                sourceSection = JdAnalysisEffectiveContract.UnknownSourceSection;
+                AddDiagnostic(diagnostics, "SOURCE_SECTION_UNKNOWN", path + ".source_section");
+            }
+
+            var parsedItems = new List<ValidatedRequirementItem>();
+            var itemIndex = 0;
+            foreach (var itemElement in itemsElement.EnumerateArray())
+            {
+                if (TryParseV5Item(
+                        itemElement,
+                        importance,
+                        sourceSection,
+                        requirementVerbatim,
+                        path + $".items[{itemIndex}]",
+                        diagnostics,
+                        out var item))
+                {
+                    parsedItems.Add(item);
+                }
+                else
+                {
+                    AddDiagnostic(diagnostics, "INVALID_REQUIREMENT_ITEM", path + $".items[{itemIndex}]");
+                }
+
+                itemIndex++;
+            }
+
+            if (parsedItems.Count == 0)
+            {
+                return false;
+            }
+
+            int minSatisfied;
+            if (operation == "all_of")
+            {
+                minSatisfied = parsedItems.Count;
+            }
+            else if (operation == "one_of")
+            {
+                minSatisfied = 1;
+            }
+            else if (!element.TryGetProperty("min_satisfied", out var minSatisfiedElement) ||
+                     minSatisfiedElement.ValueKind != JsonValueKind.Number ||
+                     !minSatisfiedElement.TryGetInt32(out minSatisfied) ||
+                     minSatisfied < 1 || minSatisfied > parsedItems.Count)
+            {
+                return false;
+            }
+
+            group = new ValidatedRequirementGroup
+            {
+                SourceRequirementId = sourceRequirementId,
+                Intent = intent,
+                Operator = operation,
+                MinSatisfied = minSatisfied,
+                Importance = importance,
+                SourceSection = sourceSection,
+                RequirementVerbatim = requirementVerbatim,
+                Items = parsedItems
+            };
+            return true;
+        }
+
+        private static bool TryParseV5Item(
+            JsonElement element,
+            string importance,
+            string sourceSection,
+            string requirementVerbatim,
+            string path,
+            List<JdAnalysisDiagnostic> diagnostics,
+            out ValidatedRequirementItem item)
+        {
+            item = new ValidatedRequirementItem();
+            if (element.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
+            var category = ReadString(element, "category");
+            var skillName = ReadString(element, "skill_name");
+            var rawMention = ReadString(element, "raw_mention");
+            if (!JdAnalysisEffectiveContract.Categories.Contains(category) ||
+                string.IsNullOrWhiteSpace(skillName) ||
+                string.IsNullOrWhiteSpace(rawMention))
+            {
+                return false;
+            }
+
+            var minYearsValid = TryReadV5Year(element, "min_years", out var minYears);
+            var maxYearsValid = TryReadV5Year(element, "max_years", out var maxYears);
+            if (!minYearsValid)
+            {
+                minYears = null;
+                AddDiagnostic(diagnostics, "INVALID_MIN_YEARS_REMOVED", path + ".min_years");
+            }
+            if (!maxYearsValid)
+            {
+                maxYears = null;
+                AddDiagnostic(diagnostics, "INVALID_MAX_YEARS_REMOVED", path + ".max_years");
+            }
+            if (minYears.HasValue && maxYears.HasValue && minYears > maxYears)
+            {
+                minYears = null;
+                maxYears = null;
+                AddDiagnostic(diagnostics, "REVERSED_YEAR_RANGE_REMOVED", path);
+            }
+
+            item = new ValidatedRequirementItem
+            {
+                Category = category,
+                Importance = importance,
+                SkillName = skillName,
+                DetailVerbatim = requirementVerbatim,
+                RawMention = rawMention,
+                SourceSection = sourceSection,
+                Evidence = requirementVerbatim,
+                Evidences = new List<string> { requirementVerbatim },
+                MinYears = minYears,
+                MaxYears = maxYears,
+                Confidence = 1m
+            };
+            return true;
+        }
+
+        private static bool TryReadV5Year(JsonElement element, string property, out int? value)
+        {
+            value = null;
+            if (!element.TryGetProperty(property, out var yearElement))
+            {
+                return true;
+            }
+
+            if (yearElement.ValueKind != JsonValueKind.Number ||
+                !yearElement.TryGetInt32(out var year) ||
+                year < 0)
+            {
+                return false;
+            }
+
+            value = year;
+            return true;
+        }
+
+        private static void ReadV5StringArray(
+            JsonElement metrics,
+            string property,
+            List<string> destination,
+            List<JdAnalysisDiagnostic> diagnostics)
+        {
+            if (!metrics.TryGetProperty(property, out var values) || values.ValueKind != JsonValueKind.Array)
+            {
+                AddDiagnostic(diagnostics, $"INVALID_{property.ToUpperInvariant()}", $"$.matching_metrics.{property}");
+                return;
+            }
+
+            var index = 0;
+            foreach (var value in values.EnumerateArray())
+            {
+                if (value.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(value.GetString()))
+                {
+                    destination.Add(value.GetString()!);
+                }
+                else
+                {
+                    AddDiagnostic(diagnostics, $"INVALID_{property.ToUpperInvariant()}_ITEM", $"$.matching_metrics.{property}[{index}]");
+                }
+                index++;
+            }
+        }
+
+        private static bool IsProviderSourceRequirementId(string value)
+        {
+            return value.Length == 7 &&
+                   value.StartsWith("req-", StringComparison.Ordinal) &&
+                   value.AsSpan(4).IndexOfAnyExceptInRange('0', '9') < 0;
+        }
+
+        private static void AssignStructuralIds(ValidatedRequirementGroup group, int groupOrdinal)
+        {
+            group.GroupId = $"grp-{groupOrdinal:000}";
+            for (var itemIndex = 0; itemIndex < group.Items.Count; itemIndex++)
+            {
+                group.Items[itemIndex].ItemId = $"{group.GroupId}:item-{itemIndex + 1:000}";
+            }
+        }
+
+        private static string CreateV5GroupSignature(ValidatedRequirementGroup group)
+        {
+            var transport = new
+            {
+                group.SourceRequirementId,
+                group.Intent,
+                group.Operator,
+                group.MinSatisfied,
+                group.Importance,
+                group.SourceSection,
+                group.RequirementVerbatim,
+                Items = group.Items.Select(item => new
+                {
+                    item.Category,
+                    item.SkillName,
+                    item.RawMention,
+                    item.MinYears,
+                    item.MaxYears
+                })
+            };
+            return JsonSerializer.Serialize(transport);
+        }
+
+        private static void PopulateV5SkillProjection(ValidatedJobAnalysis validated)
+        {
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var group in validated.RequirementGroups)
+            {
+                foreach (var item in group.Items.Where(item => item.Category == "tech_skill"))
+                {
+                    if (!names.Add(item.SkillName))
+                    {
+                        continue;
+                    }
+
+                    validated.SkillsNormalized.Add(new ValidatedSkillMention
+                    {
+                        Name = item.SkillName,
+                        Category = item.Category,
+                        RawMention = item.RawMention,
+                        SourceSection = group.SourceSection,
+                        Evidence = group.RequirementVerbatim,
+                        Importance = group.Importance,
+                        Confidence = 1m
+                    });
+                }
             }
         }
 

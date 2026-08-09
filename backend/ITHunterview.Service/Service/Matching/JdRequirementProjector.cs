@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using ITHunterview.Domain.Enums;
+using ITHunterview.Service.Constant.Prompts;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Utils;
@@ -13,7 +14,7 @@ public sealed class JdRequirementProjector : IJdRequirementProjector
 {
     public const string InvalidEffectiveJdAnalysis = "INVALID_EFFECTIVE_JD_ANALYSIS";
 
-    private static readonly HashSet<string> AllowedCategories = new(StringComparer.Ordinal)
+    private static readonly HashSet<string> AllowedLegacyCategories = new(StringComparer.Ordinal)
     {
         "tech_skill", "experience", "seniority_fit", "domain_knowledge", "language", "education", "soft_skill"
     };
@@ -26,6 +27,16 @@ public sealed class JdRequirementProjector : IJdRequirementProjector
     private static readonly HashSet<string> AllowedOperators = new(StringComparer.Ordinal)
     {
         "all_of", "one_of", "at_least_n"
+    };
+
+    private static readonly HashSet<string> AllowedEffectiveIntents = new(StringComparer.Ordinal)
+    {
+        "qualification", "experience_duration", JdAnalysisEffectiveContract.UnspecifiedIntent
+    };
+
+    private static readonly HashSet<string> AllowedEffectiveSourceSections = new(StringComparer.Ordinal)
+    {
+        "title", "description", "requirements", JdAnalysisEffectiveContract.UnknownSourceSection
     };
 
     public JdRequirementProjection Project(string? effectiveJdJson)
@@ -50,9 +61,26 @@ public sealed class JdRequirementProjector : IJdRequirementProjector
             var quality = ReadQuality(root);
             var coverage = JdAnalysisMetadataReader.ReadCoverage(effectiveJdJson);
             var diagnostics = JdAnalysisMetadataReader.ReadDiagnostics(effectiveJdJson);
+            if (string.Equals(sourceSchemaVersion, JdAnalysisEffectiveContract.SchemaVersion, StringComparison.Ordinal))
+            {
+                return new JdRequirementProjection(sourceSchemaVersion, ReadEffectiveV1Groups(metrics), false, quality, coverage, diagnostics);
+            }
+
             if (string.Equals(sourceSchemaVersion, "jd-analysis/v3", StringComparison.Ordinal))
             {
                 return new JdRequirementProjection(sourceSchemaVersion, ReadV3Groups(metrics), false, quality, coverage, diagnostics);
+            }
+
+            if (string.Equals(sourceSchemaVersion, "jd-analysis/v4", StringComparison.Ordinal))
+            {
+                return new JdRequirementProjection(sourceSchemaVersion, ReadV4Groups(metrics), false, quality, coverage, diagnostics);
+            }
+
+            if (string.Equals(sourceSchemaVersion, "jd-analysis/v5", StringComparison.Ordinal))
+            {
+                // Provider v5 must pass through the structural validator and the
+                // effective-v1 serializer before matching can consume it.
+                throw Invalid();
             }
 
             return new JdRequirementProjection(sourceSchemaVersion, ReadLegacyGroups(metrics), true, quality, coverage, diagnostics);
@@ -61,6 +89,130 @@ public sealed class JdRequirementProjector : IJdRequirementProjector
         {
             throw Invalid();
         }
+    }
+
+    private static IReadOnlyList<ProjectedJdRequirementGroup> ReadEffectiveV1Groups(JsonElement metrics)
+    {
+        if (!metrics.TryGetProperty("requirement_groups", out var groupArray) || groupArray.ValueKind != JsonValueKind.Array)
+        {
+            throw Invalid();
+        }
+
+        var groups = new List<ProjectedJdRequirementGroup>();
+        var groupIds = new HashSet<string>(StringComparer.Ordinal);
+        var itemIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var groupElement in groupArray.EnumerateArray())
+        {
+            if (groupElement.ValueKind != JsonValueKind.Object)
+            {
+                throw Invalid();
+            }
+
+            var groupId = RequiredString(groupElement, "group_id");
+            var sourceRequirementId = RequiredString(groupElement, "source_requirement_id");
+            var intent = RequiredString(groupElement, "intent");
+            var @operator = RequiredString(groupElement, "operator");
+            var importance = RequiredString(groupElement, "importance");
+            var sourceSection = RequiredString(groupElement, "source_section");
+            var requirementVerbatim = RequiredString(groupElement, "requirement_verbatim");
+            if (!groupIds.Add(groupId) ||
+                !AllowedEffectiveIntents.Contains(intent) ||
+                !AllowedOperators.Contains(@operator) ||
+                !AllowedImportances.Contains(importance) ||
+                !AllowedEffectiveSourceSections.Contains(sourceSection) ||
+                !groupElement.TryGetProperty("items", out var itemArray) ||
+                itemArray.ValueKind != JsonValueKind.Array ||
+                itemArray.GetArrayLength() == 0)
+            {
+                throw Invalid();
+            }
+
+            var minSatisfied = RequiredInt(groupElement, "min_satisfied");
+            ValidateCardinality(@operator, minSatisfied, itemArray.GetArrayLength());
+
+            var items = new List<ProjectedJdRequirementItem>();
+            foreach (var itemElement in itemArray.EnumerateArray())
+            {
+                var item = ReadEffectiveV1Item(itemElement, sourceSection);
+                if (!itemIds.Add(item.ItemId))
+                {
+                    throw Invalid();
+                }
+                items.Add(item);
+            }
+
+            groups.Add(new ProjectedJdRequirementGroup(
+                groupId,
+                @operator,
+                minSatisfied,
+                importance,
+                items,
+                sourceSection,
+                requirementVerbatim,
+                sourceRequirementId,
+                intent));
+        }
+
+        return groups;
+    }
+
+    private static IReadOnlyList<ProjectedJdRequirementGroup> ReadV4Groups(JsonElement metrics)
+    {
+        if (!metrics.TryGetProperty("requirement_groups", out var groupArray) || groupArray.ValueKind != JsonValueKind.Array)
+        {
+            throw Invalid();
+        }
+
+        var groups = new List<ProjectedJdRequirementGroup>();
+        var groupIndex = 0;
+        foreach (var groupElement in groupArray.EnumerateArray())
+        {
+            groupIndex++;
+            if (groupElement.ValueKind != JsonValueKind.Object ||
+                !groupElement.TryGetProperty("items", out var itemArray) ||
+                itemArray.ValueKind != JsonValueKind.Array ||
+                itemArray.GetArrayLength() == 0)
+            {
+                throw Invalid();
+            }
+
+            var groupId = $"legacy-v4-{groupIndex:000}";
+            var @operator = RequiredString(groupElement, "operator").ToLowerInvariant();
+            var importance = RequiredString(groupElement, "importance").ToLowerInvariant();
+            if (!AllowedOperators.Contains(@operator) || !AllowedImportances.Contains(importance))
+            {
+                throw Invalid();
+            }
+
+            var minSatisfied = @operator switch
+            {
+                "all_of" => itemArray.GetArrayLength(),
+                "one_of" => 1,
+                _ => RequiredInt(groupElement, "min_satisfied")
+            };
+            ValidateCardinality(@operator, minSatisfied, itemArray.GetArrayLength());
+
+            var sourceSection = ReadOptionalString(groupElement, "source_section") ?? string.Empty;
+            var requirementVerbatim = ReadOptionalString(groupElement, "requirement_verbatim") ?? string.Empty;
+            var items = itemArray.EnumerateArray()
+                .Select((item, itemIndex) => ReadItem(
+                    item,
+                    $"{groupId}:item-{itemIndex + 1:000}",
+                    sourceSection,
+                    requirementVerbatim))
+                .ToList();
+
+            groups.Add(new ProjectedJdRequirementGroup(
+                groupId,
+                @operator,
+                minSatisfied,
+                importance,
+                items,
+                sourceSection,
+                requirementVerbatim));
+        }
+
+        return groups;
     }
 
     private static IReadOnlyList<ProjectedJdRequirementGroup> ReadV3Groups(JsonElement metrics)
@@ -144,7 +296,11 @@ public sealed class JdRequirementProjector : IJdRequirementProjector
         return groups;
     }
 
-    private static ProjectedJdRequirementItem ReadItem(JsonElement element, string itemId)
+    private static ProjectedJdRequirementItem ReadItem(
+        JsonElement element,
+        string itemId,
+        string fallbackSourceSection = "",
+        string fallbackDetailVerbatim = "")
     {
         if (element.ValueKind != JsonValueKind.Object)
         {
@@ -152,15 +308,15 @@ public sealed class JdRequirementProjector : IJdRequirementProjector
         }
 
         var category = RequiredString(element, "category").ToLowerInvariant();
-        if (!AllowedCategories.Contains(category))
+        if (!AllowedLegacyCategories.Contains(category))
         {
             throw Invalid();
         }
 
         var skillName = RequiredString(element, "skill_name");
-        var detail = ReadOptionalString(element, "detail_verbatim") ?? string.Empty;
+        var detail = ReadOptionalString(element, "detail_verbatim") ?? fallbackDetailVerbatim;
         var rawMention = ReadOptionalString(element, "raw_mention") ?? string.Empty;
-        var sourceSection = ReadOptionalString(element, "source_section") ?? string.Empty;
+        var sourceSection = ReadOptionalString(element, "source_section") ?? fallbackSourceSection;
         var evidences = ReadEvidence(element);
         var minYears = ReadOptionalNonNegativeInt(element, "min_years");
         var maxYears = ReadOptionalNonNegativeInt(element, "max_years");
@@ -177,6 +333,42 @@ public sealed class JdRequirementProjector : IJdRequirementProjector
             rawMention,
             sourceSection,
             evidences,
+            minYears,
+            maxYears,
+            JdRequirementCategoryWeights.Get(category));
+    }
+
+    private static ProjectedJdRequirementItem ReadEffectiveV1Item(JsonElement element, string sourceSection)
+    {
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            throw Invalid();
+        }
+
+        var itemId = RequiredString(element, "item_id");
+        var category = RequiredString(element, "category");
+        if (!JdAnalysisEffectiveContract.Categories.Contains(category))
+        {
+            throw Invalid();
+        }
+
+        var skillName = RequiredString(element, "skill_name");
+        var rawMention = RequiredString(element, "raw_mention");
+        var minYears = ReadOptionalNonNegativeInt(element, "min_years");
+        var maxYears = ReadOptionalNonNegativeInt(element, "max_years");
+        if (minYears.HasValue && maxYears.HasValue && minYears > maxYears)
+        {
+            throw Invalid();
+        }
+
+        return new ProjectedJdRequirementItem(
+            itemId,
+            category,
+            skillName,
+            string.Empty,
+            rawMention,
+            sourceSection,
+            Array.Empty<string>(),
             minYears,
             maxYears,
             JdRequirementCategoryWeights.Get(category));

@@ -61,11 +61,11 @@ public sealed class HardcodeJdRequirementScoringService
                 null,
                 null,
                 JdRequirementProjector.InvalidEffectiveJdAnalysis,
-                !ClaimsV3Contract(effectiveJdJson));
+                !ClaimsStructuredGroupContract(effectiveJdJson));
         }
     }
 
-    private static bool ClaimsV3Contract(string? effectiveJdJson)
+    private static bool ClaimsStructuredGroupContract(string? effectiveJdJson)
     {
         if (string.IsNullOrWhiteSpace(effectiveJdJson))
             return false;
@@ -73,9 +73,18 @@ public sealed class HardcodeJdRequirementScoringService
         try
         {
             using var document = JsonDocument.Parse(effectiveJdJson);
-            return document.RootElement.ValueKind == JsonValueKind.Object &&
-                   document.RootElement.TryGetProperty("schema_version", out var version) &&
-                   string.Equals(version.GetString(), "jd-analysis/v3", StringComparison.OrdinalIgnoreCase);
+            if (document.RootElement.ValueKind != JsonValueKind.Object ||
+                !document.RootElement.TryGetProperty("schema_version", out var version) ||
+                version.ValueKind != JsonValueKind.String)
+            {
+                return false;
+            }
+
+            return version.GetString() is { } schemaVersion &&
+                   (schemaVersion.Equals("jd-analysis/v3", StringComparison.OrdinalIgnoreCase) ||
+                    schemaVersion.Equals("jd-analysis/v4", StringComparison.OrdinalIgnoreCase) ||
+                    schemaVersion.Equals("jd-analysis/v5", StringComparison.OrdinalIgnoreCase) ||
+                    schemaVersion.Equals("jd-analysis-effective/v1", StringComparison.OrdinalIgnoreCase));
         }
         catch (JsonException)
         {
