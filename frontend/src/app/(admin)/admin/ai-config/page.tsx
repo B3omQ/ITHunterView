@@ -153,8 +153,9 @@ export default function AiConfigPage() {
     }
   };
 
-  const handleProviderFilterChange = (val: string) => {
-    const newFilter = { ...usageFilter, providerName: val, page: 1 };
+  const handleProviderFilterChange = (val: string | null) => {
+    const provider = val || 'ALL';
+    const newFilter = { ...usageFilter, providerName: provider, page: 1 };
     setUsageFilter(newFilter);
     loadUsageAnalytics(newFilter);
   };
