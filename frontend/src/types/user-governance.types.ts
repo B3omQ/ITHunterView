@@ -74,9 +74,6 @@ export interface UpdateUserStatusDto {
 export interface CreateStaffDto {
   email: string;
   password: string;
-}
-
-export interface CreateStaffDto {
-  email: string;
-  password: string;
+  fullName?: string;
+  phone?: string;
 }

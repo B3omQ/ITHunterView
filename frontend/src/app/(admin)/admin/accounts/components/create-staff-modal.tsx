@@ -18,6 +18,8 @@ interface CreateStaffModalProps {
 export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps) {
   const t = useTranslations('AdminAccounts');
   const [open, setOpen] = useState(false);
+  const [staffFullName, setStaffFullName] = useState('');
+  const [staffPhone, setStaffPhone] = useState('');
   const [staffEmail, setStaffEmail] = useState('');
   const [staffPassword, setStaffPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -29,6 +31,8 @@ export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps)
     setOpen(isOpen);
     if (!isOpen) {
       // Reset form on close
+      setStaffFullName('');
+      setStaffPhone('');
       setStaffEmail('');
       setStaffPassword('');
       setShowPassword(false);
@@ -38,6 +42,7 @@ export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!staffEmail.trim()) {
       setError(t('createStaffModal.emailRequired'));
       return;
@@ -46,8 +51,17 @@ export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps)
       setError(t('createStaffModal.passwordRequired'));
       return;
     }
-    if (staffPassword.trim().length < 6) {
+    if (staffPassword.trim().length < 8) {
       setError(t('createStaffModal.passwordLength'));
+      return;
+    }
+
+    const hasUppercase = /[A-Z]/.test(staffPassword);
+    const hasDigit = /\d/.test(staffPassword);
+    const hasSpecial = /[@$!%*?&#^()_+\-=\[\]{}|;:,.<>/]/.test(staffPassword);
+
+    if (!hasUppercase || !hasDigit || !hasSpecial) {
+      setError(t('createStaffModal.passwordComplexity'));
       return;
     }
 
@@ -56,6 +70,8 @@ export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps)
       {
         email: staffEmail.trim(),
         password: staffPassword.trim(),
+        fullName: staffFullName.trim() || undefined,
+        phone: staffPhone.trim() || undefined,
       },
       {
         onSuccess: (res) => {
@@ -93,6 +109,35 @@ export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps)
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+          {/* Họ và tên (Full Name) */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+              {t('createStaffModal.fullNameLabel')}
+            </label>
+            <input
+              type="text"
+              placeholder={t('createStaffModal.fullNamePlaceholder')}
+              value={staffFullName}
+              onChange={(e) => setStaffFullName(e.target.value)}
+              className="w-full py-2 px-3 border border-border rounded-xl bg-background text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground"
+            />
+          </div>
+
+          {/* Số điện thoại (Phone) */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+              {t('createStaffModal.phoneLabel')}
+            </label>
+            <input
+              type="tel"
+              placeholder={t('createStaffModal.phonePlaceholder')}
+              value={staffPhone}
+              onChange={(e) => setStaffPhone(e.target.value)}
+              className="w-full py-2 px-3 border border-border rounded-xl bg-background text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground"
+            />
+          </div>
+
+          {/* Email */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
               {t('createStaffModal.emailLabel')} <span className="text-rose-500">*</span>
@@ -107,6 +152,7 @@ export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps)
             />
           </div>
 
+          {/* Mật khẩu (Password) */}
           <div className="space-y-1.5 relative">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
               {t('createStaffModal.passwordLabel')} <span className="text-rose-500">*</span>
@@ -128,6 +174,9 @@ export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps)
                 {showPassword ? t('createStaffModal.hideBtn') : t('createStaffModal.showBtn')}
               </button>
             </div>
+            <p className="text-[11px] text-muted-foreground italic">
+              {t('createStaffModal.passwordComplexity')}
+            </p>
           </div>
 
           {error && (
