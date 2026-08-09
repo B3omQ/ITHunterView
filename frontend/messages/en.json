@@ -137,7 +137,8 @@
       "signIn": "Sign in",
       "passwordMismatch": "Passwords do not match.",
       "passwordTooShort": "Password must be at least 6 characters.",
-      "registerFailed": "Registration failed"
+      "registerFailed": "Registration failed",
+      "emailExists": "This email is already in use. Please sign in or use another email."
     }
   },
   "Home": {

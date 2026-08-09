@@ -137,7 +137,8 @@
       "signIn": "Đăng nhập",
       "passwordMismatch": "Mật khẩu xác nhận không khớp.",
       "passwordTooShort": "Mật khẩu phải có ít nhất 6 ký tự.",
-      "registerFailed": "Đăng ký thất bại"
+      "registerFailed": "Đăng ký thất bại",
+      "emailExists": "Email này đã được sử dụng. Vui lòng đăng nhập hoặc sử dụng email khác."
     }
   },
   "Home": {

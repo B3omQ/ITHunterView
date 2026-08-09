@@ -48,7 +48,12 @@ export default function RegisterPage() {
       }
 
       if (!res.success) {
-        setError(res.message ?? t('registerFailed'))
+        const msg = res.message || ""
+        if (msg.toLowerCase().includes("already in use") || msg.toLowerCase().includes("trùng")) {
+          setError(t('emailExists'))
+        } else {
+          setError(msg || t('registerFailed'))
+        }
         return
       }
 
@@ -56,7 +61,26 @@ export default function RegisterPage() {
       router.push(`/verify-email?email=${encodeURIComponent(email)}&registered=1`)
     } catch (err: any) {
       console.error("Register error:", err)
-      setError(`${t('registerFailed')}: ${err.message || "Could not connect to server."}`)
+      const serverMsg = err.response?.data?.message || err.response?.data?.Message
+      const validationErrors = err.response?.data?.errors
+      let parsedError = serverMsg
+
+      if (!parsedError && validationErrors) {
+        const firstKey = Object.keys(validationErrors)[0]
+        if (firstKey) {
+          parsedError = Array.isArray(validationErrors[firstKey])
+            ? validationErrors[firstKey][0]
+            : validationErrors[firstKey]
+        }
+      }
+
+      if (parsedError?.toLowerCase().includes("already in use") || parsedError?.toLowerCase().includes("trùng")) {
+        setError(t('emailExists'))
+      } else if (parsedError) {
+        setError(parsedError)
+      } else {
+        setError(`${t('registerFailed')}: ${err.message || "Could not connect to server."}`)
+      }
     } finally {
       setLoading(false)
     }
