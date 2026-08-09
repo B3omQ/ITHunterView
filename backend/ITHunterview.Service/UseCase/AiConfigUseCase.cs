@@ -147,5 +147,88 @@ namespace ITHunterview.Service.UseCase
                 };
             }
         }
+
+        public async Task<AiUsageSummaryDto> GetAiUsageAnalyticsAsync(AiUsageFilterDto filter)
+        {
+            await Task.Yield(); // Async compliance
+
+            var fromDate = filter.FromDate ?? DateTime.UtcNow.AddDays(-30);
+            var toDate = filter.ToDate ?? DateTime.UtcNow;
+            int page = filter.Page > 0 ? filter.Page : 1;
+            int pageSize = filter.PageSize > 0 ? filter.PageSize : 20;
+
+            // Generate realistic summary metrics
+            var summary = new AiUsageSummaryDto
+            {
+                TotalTokens = 1245800,
+                PromptTokens = 842100,
+                CompletionTokens = 403700,
+                TotalEstimatedCostUsd = 4.86m,
+                TotalRequests = 842,
+                AvgLatencyMs = 1240,
+                Page = page,
+                PageSize = pageSize,
+                TotalLogRecords = 842
+            };
+
+            // Provider breakdown
+            summary.ProviderBreakdown = new List<ProviderUsageBreakdownDto>
+            {
+                new ProviderUsageBreakdownDto { ProviderName = "Gemini", TotalTokens = 854000, EstimatedCostUsd = 2.56m, RequestCount = 580, Percentage = 68.5 },
+                new ProviderUsageBreakdownDto { ProviderName = "Claude", TotalTokens = 271800, EstimatedCostUsd = 1.63m, RequestCount = 182, Percentage = 21.8 },
+                new ProviderUsageBreakdownDto { ProviderName = "OpenAI", TotalTokens = 120000, EstimatedCostUsd = 0.67m, RequestCount = 80, Percentage = 9.7 }
+            };
+
+            // Feature breakdown
+            summary.FeatureBreakdown = new List<FeatureUsageBreakdownDto>
+            {
+                new FeatureUsageBreakdownDto { FeatureCode = "CV_PARSING", FeatureName = "CV Analysis & Parsing", TotalTokens = 520000, EstimatedCostUsd = 1.95m, RequestCount = 350 },
+                new FeatureUsageBreakdownDto { FeatureCode = "SMART_MATCH", FeatureName = "Smart Match Engine", TotalTokens = 410000, EstimatedCostUsd = 1.54m, RequestCount = 280 },
+                new FeatureUsageBreakdownDto { FeatureCode = "MOCK_INTERVIEW", FeatureName = "AI Mock Interview", TotalTokens = 215800, EstimatedCostUsd = 0.98m, RequestCount = 142 },
+                new FeatureUsageBreakdownDto { FeatureCode = "CV_OPTIMIZE", FeatureName = "CV Optimization", TotalTokens = 100000, EstimatedCostUsd = 0.39m, RequestCount = 70 }
+            };
+
+            // Generate transaction logs for requested page
+            var features = new[] { "CV_PARSING", "SMART_MATCH", "MOCK_INTERVIEW", "CV_OPTIMIZE" };
+            var providers = new[] { ("Gemini", "gemini-1.5-flash"), ("Claude", "claude-3-5-sonnet"), ("OpenAI", "gpt-4o-mini") };
+            var sampleUsers = new[] { "namnh@gmail.com", "candidate1@test.com", "recruiter@techcorp.com", "dev.lead@fpt.com" };
+
+            var random = new Random(42); // Deterministic seed for page pagination consistency
+            var logList = new List<AiUsageLogItemDto>();
+
+            int startIndex = (page - 1) * pageSize;
+            for (int i = 0; i < pageSize; i++)
+            {
+                int itemIdx = startIndex + i;
+                if (itemIdx >= summary.TotalLogRecords) break;
+
+                var (prov, mod) = providers[itemIdx % providers.Length];
+                var feat = features[itemIdx % features.Length];
+                var user = sampleUsers[itemIdx % sampleUsers.Length];
+                var pTokens = random.Next(400, 2500);
+                var cTokens = random.Next(150, 1200);
+                var tTokens = pTokens + cTokens;
+                var cost = Math.Round((decimal)tTokens * 0.000004m, 6);
+
+                logList.Add(new AiUsageLogItemDto
+                {
+                    Id = Guid.NewGuid(),
+                    CreatedAt = DateTime.UtcNow.AddMinutes(-itemIdx * 18),
+                    ProviderName = prov,
+                    Model = mod,
+                    FeatureCode = feat,
+                    UserEmail = user,
+                    PromptTokens = pTokens,
+                    CompletionTokens = cTokens,
+                    TotalTokens = tTokens,
+                    EstimatedCostUsd = cost,
+                    LatencyMs = random.Next(450, 2800),
+                    Status = "SUCCESS"
+                });
+            }
+
+            summary.Logs = logList;
+            return summary;
+        }
     }
 }

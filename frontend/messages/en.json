@@ -1881,6 +1881,7 @@
     "connectedStatus": "Connected ({ms}ms)",
     "failedStatus": "Connection Failed",
     "saveConfigBtn": "Save Configuration",
+    "saveBtn": "Save Configuration",
     "errorDetailsTitle": "Connection Error Details"
   },
   "AuditLogs": {

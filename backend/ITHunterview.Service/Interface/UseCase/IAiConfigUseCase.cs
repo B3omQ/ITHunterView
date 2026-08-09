@@ -9,5 +9,6 @@ namespace ITHunterview.Service.Interface.UseCase
         Task<AiConfigResponseDto> GetAiConfigAsync();
         Task UpdateAiConfigAsync(Guid userId, UpdateAiConfigRequestDto dto);
         Task<TestConnectionResponseDto> TestConnectionAsync(string providerName, string prompt);
+        Task<AiUsageSummaryDto> GetAiUsageAnalyticsAsync(AiUsageFilterDto filter);
     }
 }

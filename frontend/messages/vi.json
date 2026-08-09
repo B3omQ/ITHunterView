@@ -1881,6 +1881,7 @@
     "connectedStatus": "Đã Kết Nối ({ms}ms)",
     "failedStatus": "Kết Nối Thất Bại",
     "saveConfigBtn": "Lưu Cấu Hình",
+    "saveBtn": "Lưu Cấu Hình",
     "errorDetailsTitle": "Chi Tiết Lỗi Kết Nối"
   },
   "AuditLogs": {
