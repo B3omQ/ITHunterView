@@ -261,6 +261,122 @@ namespace ITHunterview.Service.Tests.UseCase
         }
 
         [Fact]
+        public async Task ExtractFromCvJdAsync_CachedResultBelongsToAnotherCandidate_ShouldNotReturnCachedResult()
+        {
+            var requestingCandidateId = Guid.NewGuid();
+            var ownerCandidateId = Guid.NewGuid();
+            var matchScoreId = Guid.NewGuid();
+            var matchScores = new List<CvJobMatchScores>
+            {
+                new()
+                {
+                    Id = matchScoreId,
+                    UserId = ownerCandidateId,
+                    MatchDetails = "{\"jdFit\":{\"score\":90}}",
+                    SfiaExtractResult = "{\"customRoleName\":\"Private cached role\"}"
+                }
+            };
+            SetupDbSet(matchScores, mock => _contextMock.Setup(c => c.CvJobMatchScores).Returns(mock.Object));
+
+            var act = async () => await _useCase.ExtractFromCvJdAsync(requestingCandidateId, matchScoreId);
+
+            await act.Should().ThrowAsync<InvalidOperationException>();
+            _aiServiceMock.Verify(a => a.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task PreviewHistoryContextAsync_V4Report_ShouldUseTypedReportWithoutLegacyPoolFields()
+        {
+            var candidateId = Guid.NewGuid();
+            var matchScoreId = Guid.NewGuid();
+            var matchScores = new List<CvJobMatchScores>
+            {
+                new()
+                {
+                    Id = matchScoreId,
+                    UserId = candidateId,
+                    MatchType = "AI",
+                    MatchScore = 81.8m,
+                    JdTitle = "Backend Developer",
+                    MatchDetails = """
+                    {
+                      "contract": "jd-matching/v4",
+                      "jdFit": {
+                        "scorePercent": 81.8,
+                        "narrative": "The candidate meets the core Java requirement.",
+                        "requirementGroups": [
+                          {
+                            "groupId": "grp-001",
+                            "operator": "all_of",
+                            "importance": "must_have",
+                            "requirementVerbatim": "Java and Spring Boot are required.",
+                            "groupScore": 0.7,
+                            "items": [
+                              {
+                                "itemId": "item-001",
+                                "normalizedText": "Java",
+                                "score": 0.7,
+                                "reasoning": "Used in project Alpha.",
+                                "evidence": [
+                                  { "quotation": "Built REST APIs with Java", "section": "experience" }
+                                ]
+                              }
+                            ]
+                          }
+                        ],
+                        "criticalGaps": [
+                          {
+                            "code": "CRITICAL_GAP",
+                            "groupId": "grp-002",
+                            "requirement": "English TOEIC 600",
+                            "reasoning": "No English certificate is present."
+                          }
+                        ]
+                      }
+                    }
+                    """
+                }
+            };
+            SetupDbSet(matchScores, mock => _contextMock.Setup(c => c.CvJobMatchScores).Returns(mock.Object));
+
+            var result = await _useCase.PreviewHistoryContextAsync(candidateId, "cv-jd", matchScoreId);
+
+            result.ContextPreview.Should().Contain("Overall Match Score: 81.8/100");
+            result.ContextPreview.Should().Contain("Java (Score: 0.7): Used in project Alpha.");
+            result.ContextPreview.Should().Contain("Evidence [experience]: Built REST APIs with Java");
+            result.ContextPreview.Should().Contain("Critical Gaps: English TOEIC 600 - No English certificate is present.");
+            result.ContextPreview.Should().NotContain("Technical Skills Score");
+            result.ContextPreview.Should().NotContain("Penalty Evidence");
+            result.ContextPreview.Should().NotContain("Areas for Improvement");
+        }
+
+        [Fact]
+        public async Task PreviewHistoryContextAsync_MalformedDetails_ShouldNotExposeRawJson()
+        {
+            var candidateId = Guid.NewGuid();
+            var matchScoreId = Guid.NewGuid();
+            const string malformedDetails = "{\"privateCvEvidence\":\"do-not-leak\"";
+            var matchScores = new List<CvJobMatchScores>
+            {
+                new()
+                {
+                    Id = matchScoreId,
+                    UserId = candidateId,
+                    MatchScore = 42m,
+                    MatchDetails = malformedDetails
+                }
+            };
+            SetupDbSet(matchScores, mock => _contextMock.Setup(c => c.CvJobMatchScores).Returns(mock.Object));
+
+            var result = await _useCase.PreviewHistoryContextAsync(candidateId, "cv-jd", matchScoreId);
+
+            result.ContextPreview.Should().Contain("Overall Match Score: 42.0/100");
+            result.ContextPreview.Should().Contain("Matching details are unavailable for this legacy result.");
+            result.ContextPreview.Should().NotContain("privateCvEvidence");
+            result.ContextPreview.Should().NotContain("do-not-leak");
+        }
+
+        [Fact]
         public async Task ExtractFromCvJdAsync_NoCachedResult_ShouldCallAiAndSave()
         {
             // Arrange

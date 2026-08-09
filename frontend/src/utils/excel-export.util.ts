@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import type { MatchHistoryDto } from '@/types/cv.types';
 import type { ApplicantDto } from '@/types/job-application.types';
+import { getMatchMethodLabel, getScorePercent } from '@/lib/matching-score';
 
 /**
  * Export Candidate Match Results (from Scan DB / Matching History) to Excel (.xlsx)
@@ -11,42 +12,13 @@ export function exportMatchingResultsToExcel(jobTitle: string, matches: MatchHis
     throw new Error('No matching candidate data to export.');
   }
 
-  const exportData = matches.map((match, index) => {
-    const scorePercent = match.matchScore !== undefined && match.matchScore !== null
-      ? `${Math.round(match.matchScore * 100)}%`
-      : 'N/A';
-
-    const formattedDate = match.updatedAt
-      ? new Date(match.updatedAt).toLocaleDateString('vi-VN', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-      : 'N/A';
-
-    return {
-      'STT': index + 1,
-      'JD analysis quality': formatJdAnalysisQuality(match.jdAnalysisQuality),
-      'JD scoring scope': formatJdAnalysisScope(match),
-      'Tên ứng viên / File CV': match.cvFileName || 'Ứng viên ẩn danh',
-      'Vị trí tuyển dụng (JD)': match.jdTitle || jobTitle,
-      'Điểm phù hợp tổng thể': scorePercent,
-      'Phương pháp Đánh giá': match.matchType === 'Hardcode' ? 'Thuật toán Hardcode' : 'AI Vector Embedding',
-      'Trạng thái': match.status === 'Completed' ? 'Hoàn thành' : match.status,
-      'Link File CV': match.fileUrl || 'Chưa có file',
-      'Thời gian Đánh giá': formattedDate,
-    };
-  });
+  const exportData = buildMatchingExportRows(jobTitle, matches);
 
   const worksheet = XLSX.utils.json_to_sheet(exportData);
 
   // Set column widths for better readability
   const columnWidths = [
     { wch: 6 },  // STT
-    { wch: 22 }, // JD analysis quality
-    { wch: 34 }, // JD scoring scope
     { wch: 30 }, // Tên ứng viên / File CV
     { wch: 32 }, // Vị trí tuyển dụng
     { wch: 22 }, // Điểm phù hợp tổng thể
@@ -66,26 +38,31 @@ export function exportMatchingResultsToExcel(jobTitle: string, matches: MatchHis
   XLSX.writeFile(workbook, fileName);
 }
 
-function formatJdAnalysisQuality(quality?: MatchHistoryDto['jdAnalysisQuality']): string {
-  switch (quality) {
-    case 'COMPLETE': return 'Complete';
-    case 'PARTIAL': return 'Partial';
-    case 'INVALID': return 'Invalid';
-    default: return 'Legacy / unavailable';
-  }
-}
+export function buildMatchingExportRows(jobTitle: string, matches: MatchHistoryDto[]) {
+  return matches.map((match, index) => {
+    const scorePercent = `${Math.round(getScorePercent(match))}%`;
 
-function formatJdAnalysisScope(match: MatchHistoryDto): string {
-  const coverage = match.jdAnalysisCoverage;
-  if (match.jdAnalysisScoreBasis === 'accepted_requirements_only') {
-    return coverage
-      ? `${coverage.acceptedGroupCount}/${coverage.inputGroupCount} groups accepted`
-      : 'Accepted requirements only';
-  }
-  if (match.jdAnalysisScoreBasis === 'complete_requirement_set') {
-    return 'Complete requirement set';
-  }
-  return 'Not available';
+    const formattedDate = match.updatedAt
+      ? new Date(match.updatedAt).toLocaleDateString('vi-VN', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : 'N/A';
+
+    return {
+      'STT': index + 1,
+      'Tên ứng viên / File CV': match.cvFileName || 'Ứng viên ẩn danh',
+      'Vị trí tuyển dụng (JD)': match.jdTitle || jobTitle,
+      'Điểm phù hợp tổng thể': scorePercent,
+      'Phương pháp Đánh giá': getMatchMethodLabel(match.matchMethod),
+      'Trạng thái': match.status === 'Completed' ? 'Hoàn thành' : match.status,
+      'Link File CV': match.fileUrl || 'Chưa có file',
+      'Thời gian Đánh giá': formattedDate,
+    };
+  });
 }
 
 /**

@@ -27,6 +27,7 @@ import { useProfileCompletionStatus, useClaimNewbieReward } from "@/hooks/useCan
 import { Progress } from "@/components/ui/progress"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts"
 import { useTranslations } from "next-intl"
+import { getScorePercent } from "@/lib/matching-score"
 
 export default function CandidateDashboard() {
   const { user } = useAuthStore()
@@ -36,7 +37,7 @@ export default function CandidateDashboard() {
   const { data: completionStatus } = useProfileCompletionStatus()
   const { mutate: claimReward, isPending: isClaiming } = useClaimNewbieReward()
   const { data: matchHistoryRes, isLoading: isMatchLoading } = useGetMatchHistory(1, 10)
-  const matchHistory = (matchHistoryRes?.data?.items || []).filter(m => m.matchScore !== null && m.matchScore !== undefined)
+  const matchHistory = matchHistoryRes?.data?.items || []
 
   const { data: interviewsRes, isLoading: isInterviewLoading } = useGetInterviewSessions()
   const interviews = interviewsRes?.data || []
@@ -47,7 +48,7 @@ export default function CandidateDashboard() {
   // 2. Calculate KPIs
   // Average Match Score
   const avgMatchScore = matchHistory.length > 0 
-    ? Math.round(matchHistory.reduce((acc, m) => acc + (m.matchScore || 0) * 100, 0) / matchHistory.length) 
+    ? Math.round(matchHistory.reduce((acc, m) => acc + getScorePercent(m), 0) / matchHistory.length)
     : 0;
 
   // Interviews Completed Count
@@ -435,8 +436,8 @@ export default function CandidateDashboard() {
                         <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${item.status === 'Optimized' ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-100 text-gray-600'}`}>
                           {item.status || t('matched')}
                         </div>
-                        <span className={`text-base font-extrabold w-10 text-right ${item.matchScore && item.matchScore * 100 >= 70 ? 'text-emerald-500' : 'text-amber-500'}`}>
-                          {item.matchScore ? `${Math.round(item.matchScore * 100)}%` : 'N/A'}
+                        <span className={`text-base font-extrabold w-10 text-right ${getScorePercent(item) >= 70 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                          {`${Math.round(getScorePercent(item))}%`}
                         </span>
                       </div>
                     </div>

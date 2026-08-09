@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useTranslations } from 'next-intl';
+import { getScorePercent } from '@/lib/matching-score';
 
 export default function CvMatchingHistoryPage() {
   const router = useRouter();
@@ -165,9 +166,9 @@ export default function CvMatchingHistoryPage() {
                 
                 {/* Right Zone */}
                 <div className="flex items-center gap-3 shrink-0">
-                  {item.status === 'Completed' && item.matchScore !== undefined ? (
-                    <Badge className={`rounded-full px-3 py-1 text-xs font-semibold pointer-events-none ${getScoreColor(item.matchScore * 100)}`} title="Match Score">
-                      {t('matchScore', { score: (item.matchScore * 100).toFixed(0) })}
+                  {item.status === 'Completed' ? (
+                    <Badge className={`rounded-full px-3 py-1 text-xs font-semibold pointer-events-none ${getScoreColor(getScorePercent(item))}`} title="Match Score">
+                      {t('matchScore', { score: getScorePercent(item).toFixed(0) })}
                     </Badge>
                   ) : (
                     <Badge className="rounded-full px-3 py-1 text-xs font-semibold bg-muted/50 text-muted-foreground border border-border/50 pointer-events-none" title="Score Unavailable">

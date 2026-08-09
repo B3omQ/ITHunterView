@@ -43,6 +43,7 @@ namespace ITHunterview.Service.UseCase
         private readonly IMatchingCvPreparationService? _matchingCvPreparationService;
         private readonly IMatchingJdPreparationService? _matchingJdPreparationService;
         private readonly IRawJdFallbackMatchingService? _rawJdFallbackMatchingService;
+        private readonly IJdMatchReportReader _jdMatchReportReader;
 
         public CvJobMatchingUseCase(
             ITHunterviewContext context, 
@@ -62,7 +63,8 @@ namespace ITHunterview.Service.UseCase
             IJobAnalysisInputBuilder? jobAnalysisInputBuilder = null,
             IMatchingCvPreparationService? matchingCvPreparationService = null,
             IMatchingJdPreparationService? matchingJdPreparationService = null,
-            IRawJdFallbackMatchingService? rawJdFallbackMatchingService = null)
+            IRawJdFallbackMatchingService? rawJdFallbackMatchingService = null,
+            IJdMatchReportReader? jdMatchReportReader = null)
         {
             _context = context;
             _aiService = aiService;
@@ -82,6 +84,7 @@ namespace ITHunterview.Service.UseCase
             _matchingCvPreparationService = matchingCvPreparationService;
             _matchingJdPreparationService = matchingJdPreparationService;
             _rawJdFallbackMatchingService = rawJdFallbackMatchingService;
+            _jdMatchReportReader = jdMatchReportReader ?? new JdMatchReportReader();
         }
 
         public string ExtractJsonField(string? jsonString, string fieldName)
@@ -979,6 +982,7 @@ namespace ITHunterview.Service.UseCase
                 
             if (matchRecord == null) return null;
             var jdAnalysis = BuildJdAnalysisResult(matchRecord);
+            var report = _jdMatchReportReader.Read(matchRecord.MatchDetails, matchRecord.MatchScore, matchRecord.MatchType);
 
             return new MatchingResultDto
             {
@@ -993,7 +997,11 @@ namespace ITHunterview.Service.UseCase
                 CanRetry = string.Equals(matchRecord.Status, "Failed", StringComparison.Ordinal)
                     && MatchingRetryPolicy.IsManualRetryAllowed(matchRecord.ErrorCode),
                 MatchDetails = matchRecord.MatchDetails,
-                JdFit = new JdFitResultDto { Score = matchRecord.MatchScore ?? 0m },
+                ScorePercent = report.ScorePercent,
+                ReportKind = report.ReportKind,
+                MatchMethod = report.MatchMethod,
+                Report = report,
+                JdFit = new JdFitResultDto { Score = report.ScorePercent },
                 JdAnalysis = jdAnalysis,
                 CvAnalysis = BuildCvAnalysisResult(matchRecord)
             };
@@ -1093,6 +1101,7 @@ namespace ITHunterview.Service.UseCase
             var mappedItems = items.Select(x =>
             {
                 var jdAnalysis = BuildJdAnalysisResult(x.Score);
+                var report = _jdMatchReportReader.Read(x.Score.MatchDetails, x.Score.MatchScore, x.Score.MatchType);
                 return new ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto
                 {
                 JobId = x.Score.Id,
@@ -1103,6 +1112,9 @@ namespace ITHunterview.Service.UseCase
                 SourceJobId = x.Score.JobId,
                 JdTitle = x.Job?.Title ?? x.Score.JdTitle ?? x.Score.RawJdText,
                 MatchScore = x.Score.MatchScore,
+                ScorePercent = report.ScorePercent,
+                ReportKind = report.ReportKind,
+                MatchMethod = report.MatchMethod,
                 Status = x.Score.Status,
                 ErrorMessage = x.Score.ErrorMessage,
                 UpdatedAt = x.Score.UpdatedAt,
@@ -1198,6 +1210,7 @@ namespace ITHunterview.Service.UseCase
 
                 var itemIndex = index++;
                 var jdAnalysis = BuildJdAnalysisResult(x.Score);
+                var report = _jdMatchReportReader.Read(x.Score.MatchDetails, x.Score.MatchScore, x.Score.MatchType);
 
                 return new ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto
                 {
@@ -1210,6 +1223,9 @@ namespace ITHunterview.Service.UseCase
                     SourceJobId = x.Score.Id,
                     JdTitle = x.Score.JdTitle,
                     MatchScore = x.Score.MatchScore,
+                    ScorePercent = report.ScorePercent,
+                    ReportKind = report.ReportKind,
+                    MatchMethod = report.MatchMethod,
                     Status = x.Score.Status,
                     ErrorMessage = x.Score.ErrorMessage,
                     UpdatedAt = x.Score.UpdatedAt,

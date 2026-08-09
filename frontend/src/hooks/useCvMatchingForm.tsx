@@ -5,7 +5,7 @@ import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { useMatchCvJd, useGetMatchResult, useRetryMatch } from '@/hooks/useCvMatch';
 import { useWalletBalance } from '@/hooks/useWallet';
 import { usePublicCoinConfig } from '@/hooks/useCoin';
-import type { CvAnalysisResult, MatchJdRequest, MatchingOutput, MatchingResultDto } from '@/types/cv.types';
+import type { CvAnalysisResult, MatchJdRequest, MatchReport, MatchingResultDto } from '@/types/cv.types';
 import { toast } from 'sonner';
 import api from '@/services/api-client';
 import {
@@ -19,6 +19,7 @@ import {
   getMatchingFailureMessage,
   shouldOfferMatchingRetry,
 } from '@/lib/matching-failure';
+import { normalizeCompletedMatchReport } from '@/lib/matching-report';
 
 export type MatchingStep = 'select' | 'loading' | 'result';
 
@@ -73,7 +74,7 @@ export function useCvMatchingForm() {
 
   const [pollingJobId, setPollingJobId] = useState<string | null>(initialJobId);
   const [currentJobId, setCurrentJobId] = useState<string | null>(initialJobId);
-  const [matchOutput, setMatchOutput] = useState<MatchingOutput | null>(null);
+  const [matchReport, setMatchReport] = useState<MatchReport | null>(null);
   const [cvAnalysis, setCvAnalysis] = useState<CvAnalysisResult | null>(null);
   const [matchedCvId, setMatchedCvId] = useState<string | null>(null);
   const [retryJobId, setRetryJobId] = useState<string | null>(null);
@@ -104,33 +105,20 @@ export function useCvMatchingForm() {
       setPollingJobId(null);
       setRetryJobId(null);
       setResultError(null);
-      if (!result.matchDetails) {
-        const message = 'The completed matching result is empty. Please refresh or contact support.';
-        console.error('Matching completed result is empty', { jobId });
-        setResultError(message);
-        toast.error(message);
-        setStep('select');
-        return;
-      }
-
-      try {
-        const parsed = JSON.parse(result.matchDetails) as MatchingOutput;
-        setMatchOutput(parsed);
-        setCvAnalysis(result.cvAnalysis ?? null);
-        setMatchedCvId(result.cvId || null);
-        setProgressPercent(100);
-        setLoadingStep(MATCHING_LOADING_STEPS.length - 1);
-        setTimeout(() => setStep('result'), 600);
-      } catch (err) {
-        console.error('Matching result parse failed', {
+      if (!result.report) {
+        console.error('Completed matching response is missing its typed report', {
           jobId,
-          detail: err instanceof Error ? err.message : 'invalid JSON',
+          status: result.status,
+          reportKind: result.reportKind ?? 'missing',
+          matchMethod: result.matchMethod ?? 'missing',
         });
-        const message = 'The matching result is invalid. Please refresh or contact support.';
-        setResultError(message);
-        toast.error(message);
-        setStep('select');
       }
+      setMatchReport(normalizeCompletedMatchReport(result));
+      setCvAnalysis(result.cvAnalysis ?? null);
+      setMatchedCvId(result.cvId || null);
+      setProgressPercent(100);
+      setLoadingStep(MATCHING_LOADING_STEPS.length - 1);
+      setTimeout(() => setStep('result'), 600);
       return;
     }
 
@@ -310,6 +298,7 @@ export function useCvMatchingForm() {
 
     submitInFlightRef.current = true;
     setResultError(null);
+    setMatchReport(null);
     setCvAnalysis(null);
     setProgressPercent(0);
     setCvAnalysis(null);
@@ -434,7 +423,7 @@ export function useCvMatchingForm() {
       currentJobId,
       progressPercent,
       loadingStep,
-      matchOutput,
+      matchReport,
       cvAnalysis,
       matchedCvId,
       retryJobId,

@@ -1,0 +1,56 @@
+{
+  "schema_version": "jd-analysis/v5",
+  "matching_metrics": {
+    "job_titles_normalized": [],
+    "total_years_exp": 3,
+    "domains": [],
+    "requirement_groups": [
+      {
+        "source_requirement_id": "req-004",
+        "intent": "experience_duration",
+        "operator": "all_of",
+        "importance": "must_have",
+        "source_section": "requirements",
+        "requirement_verbatim": "Có ít nhất 3 năm kinh nghiệm phát triển backend bằng Java, NodeJS, Python hoặc Golang.",
+        "items": [
+          {
+            "category": "experience",
+            "skill_name": "backend development experience",
+            "raw_mention": "ít nhất 3 năm kinh nghiệm phát triển backend",
+            "min_years": 3
+          }
+        ]
+      },
+      {
+        "source_requirement_id": "req-004",
+        "intent": "qualification",
+        "operator": "one_of",
+        "importance": "must_have",
+        "source_section": "requirements",
+        "requirement_verbatim": "Có ít nhất 3 năm kinh nghiệm phát triển backend bằng Java, NodeJS, Python hoặc Golang.",
+        "items": [
+          {
+            "category": "tech_skill",
+            "skill_name": "java",
+            "raw_mention": "Java"
+          },
+          {
+            "category": "tech_skill",
+            "skill_name": "node.js",
+            "raw_mention": "NodeJS"
+          },
+          {
+            "category": "tech_skill",
+            "skill_name": "python",
+            "raw_mention": "Python"
+          },
+          {
+            "category": "tech_skill",
+            "skill_name": "go",
+            "raw_mention": "Golang"
+          }
+        ]
+      }
+    ]
+  }
+}

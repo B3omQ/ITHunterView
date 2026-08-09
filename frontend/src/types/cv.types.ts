@@ -83,6 +83,9 @@ export interface MatchHistoryDto {
   sourceJobId?: string;
   jdTitle?: string;
   matchScore?: number;
+  scorePercent: number;
+  reportKind: MatchReportKind;
+  matchMethod: MatchMethodCode;
   status: string;
   errorMessage?: string;
   updatedAt: string;
@@ -127,8 +130,79 @@ export interface MatchingResultDto {
   errorCode?: string;
   errorMessage?: string;
   canRetry: boolean;
-  matchDetails?: string; // The raw JSON string from LLM
+  /** @deprecated Compatibility only. New UI code must use report. */
+  matchDetails?: string;
+  scorePercent?: number;
+  reportKind?: MatchReportKind;
+  matchMethod?: MatchMethodCode;
+  report?: MatchReport | null;
   cvAnalysis?: CvAnalysisResult | null;
+}
+
+export type MatchReportKind = 'structured' | 'raw_text_fallback' | 'legacy_summary';
+export type MatchMethodCode =
+  | 'one_to_one_ai'
+  | 'hardcode'
+  | 'vector'
+  | 'raw_text_ai'
+  | 'legacy_unknown';
+
+export interface MatchEvidenceReport {
+  quotation: string;
+  section?: string | null;
+}
+
+export interface MatchRequirementItemReport {
+  itemId?: string | null;
+  normalizedText?: string | null;
+  detailVerbatim?: string | null;
+  rawMention?: string | null;
+  category?: string | null;
+  score: number;
+  handlerCode?: string | null;
+  reasoning: string;
+  evidence: MatchEvidenceReport[];
+  isCriticalGap: boolean;
+  sourceOrder?: number | null;
+}
+
+export interface MatchRequirementGroupReport {
+  groupId?: string | null;
+  sourceRequirementId?: string | null;
+  intent?: string | null;
+  operator?: string | null;
+  minSatisfied?: number | null;
+  importance?: string | null;
+  sourceSection?: string | null;
+  requirementVerbatim?: string | null;
+  groupScore: number;
+  selectedItemIds: string[];
+  isCriticalGap: boolean;
+  sourceOrder?: number | null;
+  items: MatchRequirementItemReport[];
+}
+
+export interface MatchCriticalGapReport {
+  code: string;
+  scope?: string | null;
+  groupId?: string | null;
+  itemId?: string | null;
+  requirement: string;
+  reasoning: string;
+  evidence: MatchEvidenceReport[];
+}
+
+export interface MatchReport {
+  reportKind: MatchReportKind;
+  schemaVersion?: string | null;
+  matchMethod: MatchMethodCode;
+  scorePercent: number;
+  resultCode?: string | null;
+  resultLabel?: string | null;
+  narrative: string;
+  requirementGroups: MatchRequirementGroupReport[];
+  criticalGaps: MatchCriticalGapReport[];
+  warningFlags: string[];
 }
 
 export interface MatchingOutput {

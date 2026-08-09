@@ -10,22 +10,17 @@ import { Badge } from '@/components/ui/badge';
 import { ResultOverviewCard } from '../components/ResultOverviewCard';
 import { RequirementBreakdown } from '../components/RequirementBreakdown';
 import { CriticalGapsPanel } from '../components/CriticalGapsPanel';
-import { ImprovementSuggestions } from '../components/ImprovementSuggestions';
-import { PenaltyWarningPanel } from '../components/PenaltyWarningPanel';
 
 import { CvSelectionPanel } from '../components/CvSelectionPanel';
 import { JdSelectionPanel } from '../components/JdSelectionPanel';
 import { MatchingLoadingState } from '../components/MatchingLoadingState';
 import { useCvMatchingForm } from '@/hooks/useCvMatchingForm';
-import { toast } from 'sonner';
-import { CvAnalysisQualityNotice } from '@/components/shared/CvAnalysisQualityNotice';
 import { useTranslations } from 'next-intl';
 
 function CvMatchingContent() {
   const router = useRouter();
   const t = useTranslations('CandidateCVMatching');
   const { state, queries, setters, handlers } = useCvMatchingForm();
-  const isRawJdFallback = state.matchOutput?.jdAnalysis?.scoreBasis === 'raw_text_fallback';
 
   return (
     <div className="w-full pb-8">
@@ -191,7 +186,6 @@ function CvMatchingContent() {
       {/* 3. Giao diện Kết quả (Sử dụng Sub-Components) */}
       {state.step === 'result' && (
         <div className="space-y-6 animate-in fade-in duration-500">
-          <CvAnalysisQualityNotice analysis={state.cvAnalysis} />
           <div className="flex flex-col sm:flex-row justify-between items-center bg-muted/20 p-4 rounded-lg border gap-4">
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <Info className="h-5 w-5 text-primary/70" />
@@ -204,27 +198,19 @@ function CvMatchingContent() {
             </div>
           </div>
 
-          {state.matchOutput?.jdFit && (
-            <>
-              <ResultOverviewCard jdFit={state.matchOutput.jdFit} isRawTextFallback={isRawJdFallback} />
-              {!isRawJdFallback && <PenaltyWarningPanel penalties={state.matchOutput.jdFit.penalties} />}
-            </>
-          )}
+          {state.matchReport && <ResultOverviewCard report={state.matchReport} />}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              {state.matchOutput?.jdFit && !isRawJdFallback && (
-                <RequirementBreakdown scores={state.matchOutput.jdFit.requirementScores} />
-              )}
-              {state.matchOutput?.improvements && state.matchOutput.improvements.length > 0 && (
-                <ImprovementSuggestions improvements={state.matchOutput.improvements} />
+              {state.matchReport?.reportKind === 'structured' && (
+                <RequirementBreakdown groups={state.matchReport.requirementGroups} />
               )}
             </div>
             <div className="space-y-6">
-              {state.matchOutput?.jdFit && !isRawJdFallback && (
-                <CriticalGapsPanel 
-                  criticalGaps={state.matchOutput.jdFit.criticalGaps} 
-                  penalties={state.matchOutput.jdFit.penalties} 
+              {state.matchReport?.reportKind === 'structured' && (
+                <CriticalGapsPanel
+                  criticalGaps={state.matchReport.criticalGaps}
+                  warningFlags={state.matchReport.warningFlags}
                 />
               )}
 

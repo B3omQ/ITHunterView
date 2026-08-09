@@ -1,0 +1,182 @@
+{
+  "schema_version": "jd-analysis/v5",
+  "matching_metrics": {
+    "job_titles_normalized": ["backend developer"],
+    "total_years_exp": 3,
+    "domains": ["banking"],
+    "requirement_groups": [
+      {
+        "source_requirement_id": "req-001",
+        "intent": "qualification",
+        "operator": "all_of",
+        "importance": "must_have",
+        "source_section": "requirements",
+        "requirement_verbatim": "Thành thạo Java và Spring Boot.",
+        "items": [
+          {
+            "category": "tech_skill",
+            "skill_name": "java",
+            "raw_mention": "Java"
+          },
+          {
+            "category": "tech_skill",
+            "skill_name": "spring boot",
+            "raw_mention": "Spring Boot"
+          }
+        ]
+      },
+      {
+        "source_requirement_id": "req-002",
+        "intent": "qualification",
+        "operator": "one_of",
+        "importance": "must_have",
+        "source_section": "requirements",
+        "requirement_verbatim": "Có kinh nghiệm với AWS hoặc Azure.",
+        "items": [
+          {
+            "category": "tech_skill",
+            "skill_name": "aws",
+            "raw_mention": "AWS"
+          },
+          {
+            "category": "tech_skill",
+            "skill_name": "azure",
+            "raw_mention": "Azure"
+          }
+        ]
+      },
+      {
+        "source_requirement_id": "req-003",
+        "intent": "qualification",
+        "operator": "at_least_n",
+        "min_satisfied": 2,
+        "importance": "nice_to_have",
+        "source_section": "requirements",
+        "requirement_verbatim": "Ưu tiên biết ít nhất 2 trong các công cụ Docker, Kubernetes, Terraform.",
+        "items": [
+          {
+            "category": "tech_skill",
+            "skill_name": "docker",
+            "raw_mention": "Docker"
+          },
+          {
+            "category": "tech_skill",
+            "skill_name": "kubernetes",
+            "raw_mention": "Kubernetes"
+          },
+          {
+            "category": "tech_skill",
+            "skill_name": "terraform",
+            "raw_mention": "Terraform"
+          }
+        ]
+      },
+      {
+        "source_requirement_id": "req-004",
+        "intent": "experience_duration",
+        "operator": "all_of",
+        "importance": "must_have",
+        "source_section": "requirements",
+        "requirement_verbatim": "Có ít nhất 3 năm kinh nghiệm phát triển backend bằng Java, NodeJS, Python hoặc Golang.",
+        "items": [
+          {
+            "category": "experience",
+            "skill_name": "backend development experience",
+            "raw_mention": "ít nhất 3 năm kinh nghiệm phát triển backend",
+            "min_years": 3
+          }
+        ]
+      },
+      {
+        "source_requirement_id": "req-004",
+        "intent": "qualification",
+        "operator": "one_of",
+        "importance": "must_have",
+        "source_section": "requirements",
+        "requirement_verbatim": "Có ít nhất 3 năm kinh nghiệm phát triển backend bằng Java, NodeJS, Python hoặc Golang.",
+        "items": [
+          {
+            "category": "tech_skill",
+            "skill_name": "java",
+            "raw_mention": "Java"
+          },
+          {
+            "category": "tech_skill",
+            "skill_name": "node.js",
+            "raw_mention": "NodeJS"
+          },
+          {
+            "category": "tech_skill",
+            "skill_name": "python",
+            "raw_mention": "Python"
+          },
+          {
+            "category": "tech_skill",
+            "skill_name": "go",
+            "raw_mention": "Golang"
+          }
+        ]
+      },
+      {
+        "source_requirement_id": "req-005",
+        "intent": "qualification",
+        "operator": "all_of",
+        "importance": "must_have",
+        "source_section": "requirements",
+        "requirement_verbatim": "Có kinh nghiệm trong lĩnh vực ngân hàng.",
+        "items": [
+          {
+            "category": "domain_knowledge",
+            "skill_name": "banking",
+            "raw_mention": "ngân hàng"
+          }
+        ]
+      },
+      {
+        "source_requirement_id": "req-006",
+        "intent": "qualification",
+        "operator": "all_of",
+        "importance": "must_have",
+        "source_section": "requirements",
+        "requirement_verbatim": "TOEIC từ 600 trở lên.",
+        "items": [
+          {
+            "category": "language",
+            "skill_name": "english",
+            "raw_mention": "TOEIC từ 600 trở lên"
+          }
+        ]
+      },
+      {
+        "source_requirement_id": "req-007",
+        "intent": "qualification",
+        "operator": "all_of",
+        "importance": "must_have",
+        "source_section": "requirements",
+        "requirement_verbatim": "Tốt nghiệp đại học chuyên ngành Công nghệ thông tin.",
+        "items": [
+          {
+            "category": "education",
+            "skill_name": "bachelor degree in information technology",
+            "raw_mention": "Tốt nghiệp đại học chuyên ngành Công nghệ thông tin"
+          }
+        ]
+      },
+      {
+        "source_requirement_id": "req-008",
+        "intent": "qualification",
+        "operator": "all_of",
+        "importance": "nice_to_have",
+        "source_section": "requirements",
+        "requirement_verbatim": "Ưu tiên ứng viên có kỹ năng giao tiếp tốt.",
+        "items": [
+          {
+            "category": "soft_skill",
+            "skill_name": "communication",
+            "raw_mention": "kỹ năng giao tiếp tốt"
+          }
+        ]
+      }
+    ]
+  }
+}

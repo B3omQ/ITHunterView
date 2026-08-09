@@ -1,15 +1,19 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
+using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.DTOs.LearningPath;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
+using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Interface.UseCase;
+using ITHunterview.Service.Service.Matching;
 using Microsoft.EntityFrameworkCore;
 
 namespace ITHunterview.Service.UseCase
@@ -21,19 +25,22 @@ namespace ITHunterview.Service.UseCase
         private readonly IInterviewSessionRepository _interviewSessionRepository;
         private readonly IAiService _aiService;
         private readonly ITHunterviewContext _context;
+        private readonly IJdMatchReportReader _matchReportReader;
 
         public LearningPathUseCase(
             ILearningPathRepository learningPathRepository,
             IInterviewAnswerRepository interviewAnswerRepository,
             IInterviewSessionRepository interviewSessionRepository,
             IAiService aiService,
-            ITHunterviewContext context)
+            ITHunterviewContext context,
+            IJdMatchReportReader? matchReportReader = null)
         {
             _learningPathRepository = learningPathRepository;
             _interviewAnswerRepository = interviewAnswerRepository;
             _interviewSessionRepository = interviewSessionRepository;
             _aiService = aiService;
             _context = context;
+            _matchReportReader = matchReportReader ?? new JdMatchReportReader();
         }
 
 
@@ -186,7 +193,8 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
         // ─────────────────────────────────────────────────────────────
         public async Task<ExtractSfiaProfileResponseDto> ExtractFromCvJdAsync(Guid candidateId, Guid matchScoreId)
         {
-            var matchScore = await _context.CvJobMatchScores.FirstOrDefaultAsync(m => m.Id == matchScoreId);
+            var matchScore = await _context.CvJobMatchScores
+                .FirstOrDefaultAsync(m => m.Id == matchScoreId && m.UserId == candidateId);
             if (matchScore != null && !string.IsNullOrWhiteSpace(matchScore.SfiaExtractResult))
             {
                 try
@@ -406,126 +414,89 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
             if (!string.IsNullOrWhiteSpace(matchRecord.JdTitle))
                 sb.AppendLine($"Target Job: {matchRecord.JdTitle}");
 
-            sb.AppendLine($"Overall Match Score: {matchRecord.MatchScore:F1}/100");
+            var report = _matchReportReader.Read(
+                matchRecord.MatchDetails,
+                matchRecord.MatchScore,
+                matchRecord.MatchType);
+            sb.AppendLine($"Overall Match Score: {report.ScorePercent.ToString("F1", CultureInfo.InvariantCulture)}/100");
 
-            // Trích thông tin từ MatchDetails JSON (LLM Bypass format)
-            try
+            if (!string.IsNullOrWhiteSpace(report.Narrative))
+                sb.AppendLine($"AI Narrative Assessment: {report.Narrative}");
+
+            if (report.ReportKind == MatchReportKinds.Structured)
             {
-                using var doc = JsonDocument.Parse(matchRecord.MatchDetails);
-                var root = doc.RootElement;
-
-                if (root.TryGetProperty("jdFit", out var jdFit))
-                {
-                    // Pool A & Pool B
-                    if (jdFit.TryGetProperty("poolA", out var poolA) && poolA.TryGetProperty("score", out var poolAScore))
-                        sb.AppendLine($"Technical Skills Score: {poolAScore}/70");
-                    if (jdFit.TryGetProperty("poolB", out var poolB) && poolB.TryGetProperty("score", out var poolBScore))
-                        sb.AppendLine($"Experience/Soft Skill Score: {poolBScore}/30");
-
-                    // Requirement Scores (Weak & Missing)
-                    if (jdFit.TryGetProperty("requirementScores", out var reqScores) && reqScores.ValueKind == JsonValueKind.Array)
-                    {
-                        var weakReqs = reqScores.EnumerateArray()
-                            .Where(r => r.TryGetProperty("handlerScore", out var hs) && hs.GetDouble() < 0.8)
-                            .Select(r => 
-                            {
-                                var text = r.TryGetProperty("normalizedText", out var t) ? t.GetString() : "Unknown Skill";
-                                var score = r.TryGetProperty("handlerScore", out var s) ? s.GetDouble() : 0.0;
-                                var reason = r.TryGetProperty("reasoning", out var rs) ? rs.GetString() : "";
-                                return $"- {text} (Score: {score}): {reason}";
-                            })
-                            .ToList();
-
-                        if (weakReqs.Any())
-                        {
-                            sb.AppendLine("Identified Skill Gaps & Weaknesses:");
-                            sb.AppendLine(string.Join("\n", weakReqs));
-                        }
-
-                        var strongReqs = reqScores.EnumerateArray()
-                            .Where(r => r.TryGetProperty("handlerScore", out var hs) && hs.GetDouble() >= 0.8)
-                            .Select(r => 
-                            {
-                                var text = r.TryGetProperty("normalizedText", out var t) ? t.GetString() : "Unknown Skill";
-                                var score = r.TryGetProperty("handlerScore", out var s) ? s.GetDouble() : 0.0;
-                                var reason = r.TryGetProperty("reasoning", out var rs) ? rs.GetString() : "";
-                                return $"- {text} (Score: {score}): {reason}";
-                            })
-                            .ToList();
-
-                        if (strongReqs.Any())
-                        {
-                            sb.AppendLine("Identified Strengths & Mastered Skills:");
-                            sb.AppendLine(string.Join("\n", strongReqs));
-                        }
-                    }
-
-                    // Narrative
-                    if (jdFit.TryGetProperty("narrative", out var narrative))
-                    {
-                        var narrativeStr = narrative.GetString();
-                        if (!string.IsNullOrWhiteSpace(narrativeStr))
-                            sb.AppendLine($"AI Narrative Assessment: {narrativeStr}");
-                    }
-
-                    // Critical Gaps
-                    if (jdFit.TryGetProperty("criticalGaps", out var criticalGaps) && criticalGaps.ValueKind == JsonValueKind.Array)
-                    {
-                        var gaps = criticalGaps.EnumerateArray()
-                            .Select(g => g.TryGetProperty("gapDescription", out var desc) ? desc.GetString() : null)
-                            .Where(d => !string.IsNullOrWhiteSpace(d))
-                            .ToList();
-                        if (gaps.Any())
-                            sb.AppendLine($"Critical Gaps: {string.Join("; ", gaps)}");
-                    }
-
-                    // Penalties
-                    if (jdFit.TryGetProperty("penalties", out var penalties) && penalties.ValueKind == JsonValueKind.Array)
-                    {
-                        var triggeredPenalties = penalties.EnumerateArray()
-                            .Where(p => p.TryGetProperty("triggered", out var t) && t.GetBoolean())
-                            .Select(p => p.TryGetProperty("evidence", out var e) ? e.GetString() : null)
-                            .Where(e => !string.IsNullOrWhiteSpace(e))
-                            .ToList();
-
-                        if (triggeredPenalties.Any())
-                            sb.AppendLine($"Penalty Evidence: {string.Join("; ", triggeredPenalties)}");
-                    }
-                }
-
-                // Improvements (Root level)
-                if (root.TryGetProperty("improvements", out var improvements) && improvements.ValueKind == JsonValueKind.Array)
-                {
-                    var issues = improvements.EnumerateArray()
-                        .Select(i => i.TryGetProperty("issue", out var issue) ? issue.GetString() : null)
-                        .Where(i => !string.IsNullOrWhiteSpace(i))
-                        .ToList();
-                    if (issues.Any())
-                        sb.AppendLine($"Areas for Improvement: {string.Join("; ", issues)}");
-                }
-                else if (root.TryGetProperty("Method", out var methodProp) && methodProp.GetString() == "Hardcode")
-                {
-                    sb.AppendLine("Matching Method: Keyword-based (Hardcode)");
-                    if (root.TryGetProperty("TitleScore", out var titleScore)) sb.AppendLine($"Title Score: {titleScore}");
-                    if (root.TryGetProperty("SkillsScore", out var skillsScore)) sb.AppendLine($"Skills Score: {skillsScore}");
-                    if (root.TryGetProperty("ExperienceScore", out var expScore)) sb.AppendLine($"Experience Score: {expScore}");
-                    if (root.TryGetProperty("DomainScore", out var domainScore)) sb.AppendLine($"Domain Score: {domainScore}");
-                    sb.AppendLine();
-                    sb.AppendLine("Note: Keyword-based matching does not provide specific missing skills. The AI will generate a general path based on the target role.");
-                }
-                else
-                {
-                    sb.AppendLine("Match Details: (Custom format)");
-                    // Avoid dumping raw JSON to the UI
-                }
+                AppendRequirementContext(sb, report);
+                AppendCriticalGapContext(sb, report);
             }
-            catch
+            else if (report.MatchMethod == MatchMethodCodes.Hardcode)
             {
-                // JSON không parse được → dùng raw text
-                sb.AppendLine($"Match Details: {matchRecord.MatchDetails}");
+                sb.AppendLine("Matching Method: Keyword-based (Hardcode)");
+                sb.AppendLine("Note: Keyword-based matching does not provide specific requirement evidence. The AI will generate a general path based on the target role.");
+            }
+            else if (report.ReportKind == MatchReportKinds.RawTextFallback)
+            {
+                sb.AppendLine("Matching Method: AI evaluation from raw JD text.");
+            }
+            else
+            {
+                sb.AppendLine("Matching details are unavailable for this legacy result.");
             }
 
             return sb.ToString();
+        }
+
+        private static void AppendRequirementContext(StringBuilder sb, MatchReportDto report)
+        {
+            var items = report.RequirementGroups
+                .SelectMany(group => group.Items.Select(item => (Group: group, Item: item)))
+                .ToList();
+
+            AppendRequirementSection(
+                sb,
+                "Identified Skill Gaps & Weaknesses:",
+                items.Where(entry => entry.Item.Score < 0.8m));
+            AppendRequirementSection(
+                sb,
+                "Identified Strengths & Mastered Skills:",
+                items.Where(entry => entry.Item.Score >= 0.8m));
+        }
+
+        private static void AppendRequirementSection(
+            StringBuilder sb,
+            string heading,
+            IEnumerable<(MatchRequirementGroupReportDto Group, MatchRequirementItemReportDto Item)> entries)
+        {
+            var materialized = entries.ToList();
+            if (materialized.Count == 0) return;
+
+            sb.AppendLine(heading);
+            foreach (var (group, item) in materialized)
+            {
+                var requirement = item.NormalizedText
+                    ?? item.DetailVerbatim
+                    ?? item.RawMention
+                    ?? group.RequirementVerbatim
+                    ?? "Unknown requirement";
+                var score = item.Score.ToString("0.###", CultureInfo.InvariantCulture);
+                sb.AppendLine($"- {requirement} (Score: {score}): {item.Reasoning}");
+                foreach (var evidence in item.Evidence)
+                {
+                    var section = string.IsNullOrWhiteSpace(evidence.Section) ? string.Empty : $" [{evidence.Section}]";
+                    sb.AppendLine($"  Evidence{section}: {evidence.Quotation}");
+                }
+            }
+        }
+
+        private static void AppendCriticalGapContext(StringBuilder sb, MatchReportDto report)
+        {
+            var gaps = report.CriticalGaps
+                .Select(gap => string.IsNullOrWhiteSpace(gap.Reasoning)
+                    ? gap.Requirement
+                    : $"{gap.Requirement} - {gap.Reasoning}")
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .ToList();
+            if (gaps.Count > 0)
+                sb.AppendLine($"Critical Gaps: {string.Join("; ", gaps)}");
         }
 
         private async Task<string> BuildInterviewContextAsync(Guid candidateId, Guid? sessionId)

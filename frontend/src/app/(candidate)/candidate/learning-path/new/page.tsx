@@ -19,6 +19,7 @@ import { useWalletBalance } from '@/hooks/useWallet';
 import { usePublicCoinConfig } from '@/hooks/useCoin';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { getScorePercent } from '@/lib/matching-score';
 
 const SFIA_LEVEL_HINTS: Record<number, { title: string; essence: string }> = {
   1: { title: "Follow", essence: "Works under close supervision. Uses little discretion." },
@@ -297,7 +298,7 @@ export default function NewLearningPathPage() {
                         {selectedMatchScoreId && matchHistoryData?.data?.items?.find(m => m.jobId === selectedMatchScoreId) 
                           ? (() => {
                               const match = matchHistoryData.data.items.find(m => m.jobId === selectedMatchScoreId)!;
-                              return `${match.jdTitle || 'Unknown Job'} - ${match.matchScore?.toFixed(1) || 0}/100`;
+                              return `${match.jdTitle || 'Unknown Job'} - ${getScorePercent(match).toFixed(1)}/100`;
                             })()
                           : null}
                       </SelectValue>
@@ -305,7 +306,7 @@ export default function NewLearningPathPage() {
                     <SelectContent>
                       {matchHistoryData?.data?.items?.filter(m => m.status === 'Completed').map(match => (
                         <SelectItem key={match.jobId} value={match.jobId}>
-                          {match.jdTitle} - {match.matchScore?.toFixed(1)}/100
+                          {match.jdTitle} - {getScorePercent(match).toFixed(1)}/100
                         </SelectItem>
                       ))}
                     </SelectContent>

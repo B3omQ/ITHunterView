@@ -137,6 +137,64 @@ namespace ITHunterview.Service.Tests.UseCase
         }
 
         [Fact]
+        public async Task GetMatchingResultAsync_CompletedMalformedDetails_ReturnsTypedLegacySummary()
+        {
+            var options = new DbContextOptionsBuilder<ITHunterviewContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+            await using var context = new MatchingTestContext(options);
+            var matchId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            context.CvJobMatchScores.Add(new CvJobMatchScores
+            {
+                Id = matchId,
+                UserId = userId,
+                Status = "Completed",
+                MatchType = "AI",
+                MatchScore = 81.8m,
+                MatchDetails = "{not-json",
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var result = await CreateDatabaseUseCase(context).GetMatchingResultAsync(matchId, userId);
+
+            result.Should().NotBeNull();
+            result!.Report.Should().NotBeNull();
+            result.ReportKind.Should().Be("legacy_summary");
+            result.MatchMethod.Should().Be("legacy_unknown");
+            result.ScorePercent.Should().Be(81.8m);
+        }
+
+        [Fact]
+        public async Task GetMatchHistoryAsync_HardcodeFraction_ExposesNormalizedPercentAndMethod()
+        {
+            var options = new DbContextOptionsBuilder<ITHunterviewContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+            await using var context = new MatchingTestContext(options);
+            var userId = Guid.NewGuid();
+            context.CvJobMatchScores.Add(new CvJobMatchScores
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Status = "Completed",
+                MatchType = "Hardcode",
+                MatchScore = 0.818m,
+                MatchDetails = "{\"Method\":\"HardcodeV3\",\"FinalScore\":0.818}",
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var history = await CreateDatabaseUseCase(context).GetMatchHistoryAsync(userId, 1, 10);
+
+            history.Items.Should().ContainSingle();
+            history.Items[0].ScorePercent.Should().Be(81.8m);
+            history.Items[0].ReportKind.Should().Be("legacy_summary");
+            history.Items[0].MatchMethod.Should().Be("hardcode");
+        }
+
+        [Fact]
         public async Task ProcessMatchingJobAsync_WhenBothParsersNeedScopedServices_DoesNotStartThemConcurrently()
         {
             var options = new DbContextOptionsBuilder<ITHunterviewContext>()

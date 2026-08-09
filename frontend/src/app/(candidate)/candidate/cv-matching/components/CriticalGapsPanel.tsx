@@ -1,45 +1,63 @@
 "use client";
 
-import { CriticalGap, Penalty } from "@/types/cv.types";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { MatchCriticalGapReport } from "@/types/cv.types";
 import { AlertTriangle, XCircle } from "lucide-react";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useTranslations } from "next-intl";
 
 interface CriticalGapsPanelProps {
-  criticalGaps: CriticalGap[];
-  penalties: Penalty[];
+  criticalGaps: MatchCriticalGapReport[];
+  warningFlags: string[];
 }
 
-export function CriticalGapsPanel({ criticalGaps, penalties }: CriticalGapsPanelProps) {
-  const t = useTranslations("CandidateCVMatching");
+const aggregateWarningKeys: Record<string, string> = {
+  MULTIPLE_CRITICAL_GAPS: "multipleCriticalGapsWarning",
+  CORE_TECH_MISMATCH: "coreTechMismatchWarning",
+};
 
-  if (criticalGaps.length === 0) {
-    return null;
-  }
+export function CriticalGapsPanel({ criticalGaps, warningFlags }: CriticalGapsPanelProps) {
+  const t = useTranslations("CandidateCVMatching");
+  const aggregateWarnings = warningFlags
+    .map((flag) => aggregateWarningKeys[flag])
+    .filter((key): key is string => Boolean(key));
+  if (criticalGaps.length === 0 && aggregateWarnings.length === 0) return null;
 
   return (
     <Card className="border-red-200/50 dark:border-red-900/30">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2 text-destructive">
+        <CardTitle className="flex items-center gap-2 text-lg text-destructive">
           <AlertTriangle className="h-5 w-5" />
           {t("criticalGapsTitle")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {aggregateWarnings.map((key) => (
+          <Alert key={key} variant="destructive" className="border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/20">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-red-700/90 dark:text-red-400">{t(key)}</AlertDescription>
+          </Alert>
+        ))}
         {criticalGaps.map((gap, index) => (
-          <Alert key={`gap-${index}`} variant="destructive" className="bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50">
+          <Alert
+            key={`${gap.code}-${gap.groupId ?? gap.itemId ?? index}`}
+            variant="destructive"
+            className="border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/20"
+          >
             <XCircle className="h-4 w-4" />
             <AlertTitle className="font-semibold text-red-800 dark:text-red-300">
-              {gap.requirement}
+              {gap.requirement || gap.code}
             </AlertTitle>
-            <AlertDescription className="mt-2 text-red-700/90 dark:text-red-400">
-              <p className="mb-2">{gap.gapDescription}</p>
-              <div className="text-xs bg-red-100 dark:bg-red-900/40 p-2 rounded-md font-medium">
-                <span className="opacity-80 uppercase tracking-wider text-[10px] block mb-1">{t("suggestionLabel")}</span>
-                {gap.suggestion}
-              </div>
-            </AlertDescription>
+            {(gap.reasoning || gap.evidence.length > 0) && (
+              <AlertDescription className="mt-2 space-y-2 text-red-700/90 dark:text-red-400">
+                {gap.reasoning && <p>{gap.reasoning}</p>}
+                {gap.evidence.map((evidence, evidenceIndex) => (
+                  <blockquote key={`${evidence.quotation}-${evidenceIndex}`} className="border-l-2 border-red-300 pl-3 text-xs">
+                    “{evidence.quotation}”{evidence.section ? ` — ${evidence.section}` : ""}
+                  </blockquote>
+                ))}
+              </AlertDescription>
+            )}
           </Alert>
         ))}
       </CardContent>

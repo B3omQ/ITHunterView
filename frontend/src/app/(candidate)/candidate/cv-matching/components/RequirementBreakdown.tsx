@@ -1,62 +1,84 @@
 "use client";
 
-import { RequirementScore, RequirementCategory } from "@/types/cv.types";
-import { CheckCircle2, XCircle, AlertCircle, ChevronDown, Check, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useState } from "react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import type { MatchRequirementGroupReport, MatchRequirementItemReport } from "@/types/cv.types";
+import { AlertCircle, Check, CheckCircle2, ChevronDown, Info, XCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 
 interface RequirementBreakdownProps {
-  scores: RequirementScore[];
+  groups: MatchRequirementGroupReport[];
 }
 
-const CATEGORY_ORDER: RequirementCategory[] = [
-  "tech_skill",
-  "experience",
-  "seniority_fit",
-  "domain_knowledge",
-  "language",
-  "education",
-  "soft_skill",
-];
+interface RequirementDisplayRow {
+  id: string;
+  label: string;
+  score: number;
+  importance?: string | null;
+  operator?: string | null;
+  isCriticalGap: boolean;
+  items: MatchRequirementItemReport[];
+}
 
-const CATEGORY_LABELS: Record<RequirementCategory, string> = {
-  tech_skill: "Technical Skills",
-  experience: "Experience",
-  seniority_fit: "Seniority Fit",
-  domain_knowledge: "Domain Knowledge",
-  language: "Language",
-  education: "Education",
-  soft_skill: "Soft Skills",
-};
+const itemLabel = (item: MatchRequirementItemReport) =>
+  item.normalizedText || item.detailVerbatim || item.rawMention || item.category || "Requirement";
 
-export function RequirementBreakdown({ scores }: RequirementBreakdownProps) {
+function toDisplayRows(groups: MatchRequirementGroupReport[]): RequirementDisplayRow[] {
+  return groups.flatMap((group, groupIndex) => {
+    const groupKey = group.groupId || `group-${groupIndex}`;
+    const items = group.items || [];
+    if (group.operator === "one_of") {
+      return [{
+        id: groupKey,
+        label: items.map(itemLabel).join(" | ") || group.requirementVerbatim || "Alternative requirement",
+        score: group.groupScore,
+        importance: group.importance,
+        operator: group.operator,
+        isCriticalGap: group.isCriticalGap,
+        items,
+      }];
+    }
+    if (group.operator === "at_least_n") {
+      const minimum = group.minSatisfied ?? 1;
+      return [{
+        id: groupKey,
+        label: `Cần ít nhất ${minimum}/${items.length}: ${items.map(itemLabel).join(" | ")}`,
+        score: group.groupScore,
+        importance: group.importance,
+        operator: group.operator,
+        isCriticalGap: group.isCriticalGap,
+        items,
+      }];
+    }
+    if (items.length === 0) {
+      return [{
+        id: groupKey,
+        label: group.requirementVerbatim || "Requirement",
+        score: group.groupScore,
+        importance: group.importance,
+        operator: group.operator,
+        isCriticalGap: group.isCriticalGap,
+        items,
+      }];
+    }
+    return items.map((item, itemIndex) => ({
+      id: item.itemId || `${groupKey}-item-${itemIndex}`,
+      label: itemLabel(item),
+      score: item.score,
+      importance: group.importance,
+      operator: group.operator,
+      isCriticalGap: item.isCriticalGap || group.isCriticalGap,
+      items: [item],
+    }));
+  });
+}
+
+export function RequirementBreakdown({ groups }: RequirementBreakdownProps) {
   const t = useTranslations("CandidateCVMatching");
-
-  // Category labels based on translation
-  const getCategoryLabel = (category: RequirementCategory) => {
-    switch (category) {
-      case "tech_skill": return t("reqTypeTechSkill");
-      case "experience": return t("reqTypeExperience");
-      case "seniority_fit": return t("reqTypeSeniority");
-      case "domain_knowledge": return t("reqTypeDomain");
-      case "language": return t("reqTypeLanguage");
-      case "education": return t("reqTypeEducation");
-      case "soft_skill": return t("reqTypeSoftSkill");
-      default: return category;
-    }
-  };
-
-  // Group by category
-  const groupedScores = CATEGORY_ORDER.reduce((acc, category) => {
-    const catScores = scores.filter(s => s.category === category);
-    if (catScores.length > 0) {
-      acc.push({ category, scores: catScores });
-    }
-    return acc;
-  }, [] as { category: RequirementCategory; scores: RequirementScore[] }[]);
+  const rows = toDisplayRows(groups);
+  if (rows.length === 0) return null;
 
   return (
     <Card className="border-muted">
@@ -64,126 +86,94 @@ export function RequirementBreakdown({ scores }: RequirementBreakdownProps) {
         <CardTitle className="text-lg">{t("reqBreakdownTitle")}</CardTitle>
         <CardDescription>{t("reqBreakdownDesc")}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-8">
-        {groupedScores.map(group => (
-          <div key={group.category}>
-            <div className="flex items-center gap-2 mb-3 border-b pb-2">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">
-                {getCategoryLabel(group.category)}
-              </h3>
-              {group.scores[0]?.categoryWeight && (
-                <Badge variant="outline" className="text-[10px] font-mono text-muted-foreground">
-                  w={group.scores[0].categoryWeight}
-                </Badge>
-              )}
-            </div>
-            <div className="space-y-3">
-              {group.scores.map(req => (
-                <RequirementRow key={req.reqId} req={req} t={t} />
-              ))}
-            </div>
-          </div>
-        ))}
+      <CardContent className="space-y-3">
+        {rows.map((row) => <RequirementRow key={row.id} row={row} />)}
       </CardContent>
     </Card>
   );
 }
 
-function RequirementRow({ req, t }: { req: RequirementScore, t: any }) {
+function RequirementRow({ row }: { row: RequirementDisplayRow }) {
+  const t = useTranslations("CandidateCVMatching");
   const [isOpen, setIsOpen] = useState(false);
+  const score = Math.min(1, Math.max(0, row.score));
 
-  // Status Icon & Colors based on 5 levels
-  let Icon = AlertCircle;
-  let iconClass = "text-yellow-500";
-  let bgClass = "bg-yellow-500/10";
-  
-  if (req.handlerScore === 1.0) {
+  let Icon = XCircle;
+  let iconClass = "text-red-500";
+  let bgClass = "bg-red-500/10";
+  let barClass = "bg-red-500";
+  if (score === 1) {
     Icon = CheckCircle2;
     iconClass = "text-green-500";
     bgClass = "bg-green-500/10";
-  } else if (req.handlerScore >= 0.7) {
+    barClass = "bg-green-500";
+  } else if (score >= 0.75) {
     Icon = Check;
     iconClass = "text-blue-500";
     bgClass = "bg-blue-500/10";
-  } else if (req.handlerScore >= 0.5) {
+    barClass = "bg-blue-500";
+  } else if (score >= 0.5) {
     Icon = AlertCircle;
     iconClass = "text-yellow-500";
     bgClass = "bg-yellow-500/10";
-  } else if (req.handlerScore >= 0.3) {
+    barClass = "bg-yellow-500";
+  } else if (score >= 0.25) {
     Icon = Info;
     iconClass = "text-orange-500";
     bgClass = "bg-orange-500/10";
-  } else {
-    Icon = XCircle;
-    iconClass = "text-red-500";
-    bgClass = "bg-red-500/10";
+    barClass = "bg-orange-500";
   }
-
-  // Display Name
-  const displayName = req.normalizedText || req.entities?.skill_name || req.category;
 
   return (
     <Collapsible
       open={isOpen}
       onOpenChange={setIsOpen}
-      className="border border-border/50 rounded-lg overflow-hidden transition-all hover:border-border"
+      className="overflow-hidden rounded-lg border border-border/50 transition-all hover:border-border"
     >
-      <CollapsibleTrigger className="flex items-center w-full p-3 hover:bg-muted/30 transition-colors text-left group">
-        <div className={`p-1.5 rounded-full mr-3 shrink-0 ${bgClass}`}>
+      <CollapsibleTrigger className="group flex w-full items-center p-3 text-left transition-colors hover:bg-muted/30">
+        <div className={`mr-3 shrink-0 rounded-full p-1.5 ${bgClass}`}>
           <Icon className={`h-4 w-4 ${iconClass}`} />
         </div>
-        
-        <div className="flex-1 min-w-0 pr-4">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className="font-medium text-sm truncate">{displayName}</span>
-            <Badge variant={req.importance === "must_have" ? "default" : "secondary"} className="text-[10px] h-5 px-1.5 font-normal">
-              {req.importance === "must_have" ? t("mustHave") : t("niceToHave")}
-            </Badge>
-            {req.flag === "CRITICAL_GAP" && (
-              <Badge variant="destructive" className="text-[10px] h-5 px-1.5 font-normal animate-pulse">
-                {t("criticalGap")}
+        <div className="min-w-0 flex-1 pr-4">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium">{row.label}</span>
+            {row.importance && (
+              <Badge variant={row.importance === "must_have" ? "default" : "secondary"} className="h-5 px-1.5 text-[10px] font-normal">
+                {row.importance === "must_have" ? t("mustHave") : t("niceToHave")}
               </Badge>
             )}
+            {row.operator && row.operator !== "all_of" && (
+              <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-normal">{row.operator}</Badge>
+            )}
+            {row.isCriticalGap && (
+              <Badge variant="destructive" className="h-5 px-1.5 text-[10px] font-normal">{t("criticalGap")}</Badge>
+            )}
           </div>
-          {/* 5-Level Indicator */}
-          <div className="flex gap-1 mt-1.5">
-            {[0.3, 0.5, 0.7, 1.0].map((step, idx) => {
-              const isActive = req.handlerScore >= step;
-              const isZero = req.handlerScore === 0;
-              let stepColor = "bg-muted";
-              if (isActive) {
-                if (req.handlerScore === 1.0) stepColor = "bg-green-500";
-                else if (req.handlerScore >= 0.7) stepColor = "bg-blue-500";
-                else if (req.handlerScore >= 0.5) stepColor = "bg-yellow-500";
-                else stepColor = "bg-orange-500";
-              } else if (isZero && idx === 0) {
-                 // For 0 score, we show empty bars, but maybe one red bar? 
-                 // Actually 0 means all are empty (bg-muted).
-              }
-              return (
-                <div 
-                  key={step} 
-                  className={`h-1.5 w-6 rounded-full ${stepColor} transition-colors duration-300`} 
-                  title={`Score Level`}
-                />
-              );
-            })}
+          <div className="mt-1.5 flex gap-1" aria-label={`Score ${Math.round(score * 100)} percent`}>
+            {[0.25, 0.5, 0.75, 1].map((step) => (
+              <div key={step} className={`h-1.5 w-6 rounded-full ${score >= step ? barClass : "bg-muted"}`} />
+            ))}
           </div>
         </div>
-
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="text-right">
-            <span className="text-xs font-semibold">{Math.round(req.handlerScore * 100)}%</span>
-          </div>
-          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="text-xs font-semibold">{Math.round(score * 100)}%</span>
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
         </div>
       </CollapsibleTrigger>
-      
+
       <CollapsibleContent>
-        <div className="px-4 pb-4 pt-1 ml-[42px]">
-          <div className="bg-muted/40 p-3 rounded-md border border-border/30 text-sm text-muted-foreground leading-relaxed">
-            {req.reasoning || t("noReasoning")}
-          </div>
+        <div className="ml-[42px] space-y-3 px-4 pb-4 pt-1">
+          {row.items.map((item, index) => (
+            <div key={item.itemId || index} className="rounded-md border border-border/30 bg-muted/40 p-3 text-sm">
+              {row.items.length > 1 && <p className="mb-1 font-medium">{itemLabel(item)} · {Math.round(item.score * 100)}%</p>}
+              <p className="leading-relaxed text-muted-foreground">{item.reasoning || t("noReasoning")}</p>
+              {item.evidence.map((evidence, evidenceIndex) => (
+                <blockquote key={`${evidence.quotation}-${evidenceIndex}`} className="mt-2 border-l-2 pl-3 text-xs text-muted-foreground">
+                  “{evidence.quotation}”{evidence.section ? ` — ${evidence.section}` : ""}
+                </blockquote>
+              ))}
+            </div>
+          ))}
         </div>
       </CollapsibleContent>
     </Collapsible>
