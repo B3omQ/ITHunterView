@@ -27,6 +27,7 @@ import { useProfileCompletionStatus, useClaimNewbieReward } from "@/hooks/useCan
 import { Progress } from "@/components/ui/progress"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts"
 import { useTranslations } from "next-intl"
+import { formatMatchScore, displayMatchScore } from "@/utils/score-format.util"
 
 export default function CandidateDashboard() {
   const { user } = useAuthStore()
@@ -47,7 +48,7 @@ export default function CandidateDashboard() {
   // 2. Calculate KPIs
   // Average Match Score
   const avgMatchScore = matchHistory.length > 0 
-    ? Math.round(matchHistory.reduce((acc, m) => acc + (m.matchScore || 0) * 100, 0) / matchHistory.length) 
+    ? Math.round(matchHistory.reduce((acc, m) => acc + formatMatchScore(m.matchScore), 0) / matchHistory.length) 
     : 0;
 
   // Interviews Completed Count
@@ -115,7 +116,7 @@ export default function CandidateDashboard() {
   // Line Chart Data (Match History reversed for chronological order)
   const lineChartData = matchHistory.slice(0, 5).reverse().map(m => ({
     name: m.jdTitle?.substring(0, 10) + '...',
-    score: m.matchScore,
+    score: formatMatchScore(m.matchScore),
     date: m.updatedAt ? new Date(m.updatedAt).toLocaleDateString() : 'N/A'
   }));
 
@@ -435,8 +436,8 @@ export default function CandidateDashboard() {
                         <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${item.status === 'Optimized' ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-100 text-gray-600'}`}>
                           {item.status || t('matched')}
                         </div>
-                        <span className={`text-base font-extrabold w-10 text-right ${item.matchScore && item.matchScore * 100 >= 70 ? 'text-emerald-500' : 'text-amber-500'}`}>
-                          {item.matchScore ? `${Math.round(item.matchScore * 100)}%` : 'N/A'}
+                        <span className={`text-base font-extrabold w-10 text-right ${formatMatchScore(item.matchScore) >= 70 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                          {displayMatchScore(item.matchScore)}
                         </span>
                       </div>
                     </div>

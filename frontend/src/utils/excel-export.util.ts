@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import type { MatchHistoryDto } from '@/types/cv.types';
 import type { ApplicantDto } from '@/types/job-application.types';
+import { displayMatchScore } from '@/utils/score-format.util';
 
 /**
  * Export Candidate Match Results (from Scan DB / Matching History) to Excel (.xlsx)
@@ -12,9 +13,7 @@ export function exportMatchingResultsToExcel(jobTitle: string, matches: MatchHis
   }
 
   const exportData = matches.map((match, index) => {
-    const scorePercent = match.matchScore !== undefined && match.matchScore !== null
-      ? `${Math.round(match.matchScore * 100)}%`
-      : 'N/A';
+    const scorePercent = displayMatchScore(match.matchScore);
 
     const formattedDate = match.updatedAt
       ? new Date(match.updatedAt).toLocaleDateString('vi-VN', {

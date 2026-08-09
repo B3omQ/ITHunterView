@@ -352,18 +352,18 @@ namespace ITHunterview.Service.UseCase
                 var expScore = CalculateComponentScore(cv.ExperienceEmbedding, job.ExperienceEmbedding);
                 var domainScore = CalculateComponentScore(cv.DomainEmbedding, job.DomainEmbedding);
 
-                var finalScore = (titleScore * 0.15m) +
+                var finalScore = ((titleScore * 0.15m) +
                                  (skillsScore * 0.45m) +
                                  (expScore * 0.30m) +
-                                 (domainScore * 0.10m);
+                                 (domainScore * 0.10m)) * 100m;
 
                 var details = JsonSerializer.Serialize(new 
                 {
-                    TitleScore = Math.Round(titleScore, 4),
-                    SkillsScore = Math.Round(skillsScore, 4),
-                    ExperienceScore = Math.Round(expScore, 4),
-                    DomainScore = Math.Round(domainScore, 4),
-                    FinalScore = Math.Round(finalScore, 4),
+                    TitleScore = Math.Round(titleScore * 100m, 2),
+                    SkillsScore = Math.Round(skillsScore * 100m, 2),
+                    ExperienceScore = Math.Round(expScore * 100m, 2),
+                    DomainScore = Math.Round(domainScore * 100m, 2),
+                    FinalScore = Math.Round(finalScore, 2),
                     Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m }
                 });
 
@@ -433,18 +433,18 @@ namespace ITHunterview.Service.UseCase
                 var expScore = CalculateComponentScore(cv.ExperienceEmbedding, job.ExperienceEmbedding);
                 var domainScore = CalculateComponentScore(cv.DomainEmbedding, job.DomainEmbedding);
 
-                var finalScore = (titleScore * 0.15m) +
+                var finalScore = ((titleScore * 0.15m) +
                                  (skillsScore * 0.45m) +
                                  (expScore * 0.30m) +
-                                 (domainScore * 0.10m);
+                                 (domainScore * 0.10m)) * 100m;
 
                 var details = JsonSerializer.Serialize(new 
                 {
-                    TitleScore = Math.Round(titleScore, 4),
-                    SkillsScore = Math.Round(skillsScore, 4),
-                    ExperienceScore = Math.Round(expScore, 4),
-                    DomainScore = Math.Round(domainScore, 4),
-                    FinalScore = Math.Round(finalScore, 4),
+                    TitleScore = Math.Round(titleScore * 100m, 2),
+                    SkillsScore = Math.Round(skillsScore * 100m, 2),
+                    ExperienceScore = Math.Round(expScore * 100m, 2),
+                    DomainScore = Math.Round(domainScore * 100m, 2),
+                    FinalScore = Math.Round(finalScore, 2),
                     Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m }
                 });
 
@@ -1102,7 +1102,7 @@ namespace ITHunterview.Service.UseCase
                 FileUrl = x.Cv?.FileUrl,
                 SourceJobId = x.Score.JobId,
                 JdTitle = x.Job?.Title ?? x.Score.JdTitle ?? x.Score.RawJdText,
-                MatchScore = x.Score.MatchScore,
+                MatchScore = x.Score.MatchScore.HasValue ? (x.Score.MatchScore.Value <= 1.0m && x.Score.MatchScore.Value > 0m ? Math.Round(x.Score.MatchScore.Value * 100m, 2) : Math.Round(x.Score.MatchScore.Value, 2)) : null,
                 Status = x.Score.Status,
                 ErrorMessage = x.Score.ErrorMessage,
                 UpdatedAt = x.Score.UpdatedAt,
@@ -1209,7 +1209,7 @@ namespace ITHunterview.Service.UseCase
                     FileUrl = isUnlocked ? x.Cv?.FileUrl : null,
                     SourceJobId = x.Score.Id,
                     JdTitle = x.Score.JdTitle,
-                    MatchScore = x.Score.MatchScore,
+                    MatchScore = x.Score.MatchScore.HasValue ? (x.Score.MatchScore.Value <= 1.0m && x.Score.MatchScore.Value > 0m ? Math.Round(x.Score.MatchScore.Value * 100m, 2) : Math.Round(x.Score.MatchScore.Value, 2)) : null,
                     Status = x.Score.Status,
                     ErrorMessage = x.Score.ErrorMessage,
                     UpdatedAt = x.Score.UpdatedAt,

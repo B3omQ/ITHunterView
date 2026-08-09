@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useSignalR } from '@/hooks/useSignalR';
 import { toast } from 'sonner';
+import { formatMatchScore, displayMatchScore } from '@/utils/score-format.util';
 
 interface MatchJobsModalProps {
   isOpen: boolean;
@@ -219,10 +220,10 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
                     <div className="flex flex-col items-end">
                       <span className={cn(
                         "text-lg font-bold",
-                        (match.matchScore || 0) >= 0.7 ? "text-green-600" :
-                          (match.matchScore || 0) >= 0.5 ? "text-amber-600" : "text-slate-600"
+                        formatMatchScore(match.matchScore) >= 70 ? "text-green-600" :
+                          formatMatchScore(match.matchScore) >= 50 ? "text-amber-600" : "text-slate-600"
                       )}>
-                        {Math.round((match.matchScore || 0) * 100)}%
+                        {displayMatchScore(match.matchScore)}
                       </span>
                       <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Match Score</span>
                     </div>

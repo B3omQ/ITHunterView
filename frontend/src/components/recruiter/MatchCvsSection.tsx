@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { exportMatchingResultsToExcel } from '@/utils/excel-export.util';
+import { formatMatchScore, displayMatchScore } from '@/utils/score-format.util';
 import {
   Dialog,
   DialogContent,
@@ -215,10 +216,10 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
                       <div className="flex flex-col items-end">
                         <span className={cn(
                           "text-2xl font-black",
-                          (match.matchScore || 0) >= 0.7 ? "text-emerald-600" :
-                            (match.matchScore || 0) >= 0.5 ? "text-amber-600" : "text-slate-600"
+                          formatMatchScore(match.matchScore) >= 70 ? "text-emerald-600" :
+                            formatMatchScore(match.matchScore) >= 50 ? "text-amber-600" : "text-slate-600"
                         )}>
-                          {Math.round((match.matchScore || 0) * 100)}%
+                          {displayMatchScore(match.matchScore)}
                         </span>
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Match Score</span>
                       </div>
