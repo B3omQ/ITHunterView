@@ -1,4 +1,4 @@
-export const LEVELS = ["Internship", "Fresher", "Junior", "Senior", "Manager"];
+export const LEVELS = ["Internship", "Fresher", "Junior", "Middle", "Senior", "Manager"];
 export const WORKING_MODELS = ["At office", "Remote", "Hybrid"];
 
 export const VIETNAM_PROVINCES = [
