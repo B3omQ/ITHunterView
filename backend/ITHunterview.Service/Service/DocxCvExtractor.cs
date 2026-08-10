@@ -65,7 +65,7 @@ public class DocxCvExtractor : ICvExtractor
         {
             try
             {
-                var json = await _aiService.GenerateTextAsync(prompt);
+                var json = await _aiService.GenerateTextAsync(prompt, featureCode: "CV_EXTRACTION");
                 
                 if (json != null && json.StartsWith("```json"))
                 {

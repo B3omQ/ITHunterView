@@ -44,7 +44,8 @@ public sealed class RawJdFallbackMatchingService : IRawJdFallbackMatchingService
             RawJdFallbackMatchingPrompt.System,
             provider,
             AiGenerationOptions.StrictJsonExtraction,
-            ct) ?? string.Empty;
+            ct,
+            featureCode: "CV_JD_MATCHING_FALLBACK") ?? string.Empty;
         var output = Parse(response);
         var score = Math.Clamp(output.Score, 0m, 100m);
         var warnings = diagnostics.Select(diagnostic => diagnostic.Code)

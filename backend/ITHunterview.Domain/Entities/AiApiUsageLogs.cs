@@ -30,5 +30,20 @@ namespace ITHunterview.Domain.Entities
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }
 
+        [Column("user_id")]
+        public Guid? UserId { get; set; }
+
+        [Column("provider_name")]
+        public string ProviderName { get; set; }
+
+        [Column("feature_code")]
+        public string FeatureCode { get; set; }
+
+        [Column("latency_ms")]
+        public int? LatencyMs { get; set; }
+
+        [Column("status")]
+        [MaxLength(50)]
+        public string Status { get; set; }
     }
 }

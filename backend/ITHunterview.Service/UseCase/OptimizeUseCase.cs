@@ -287,7 +287,7 @@ Ví dụ:
 
         try
         {
-            string aiResponse = await _aiService.GenerateTextAsync(userPrompt, systemPrompt);
+            string aiResponse = await _aiService.GenerateTextAsync(userPrompt, systemPrompt, featureCode: "CV_OPTIMIZATION");
 
             // Clean markdown block format if present (e.g. ```json ... ```)
             string cleanJson = aiResponse.Trim();

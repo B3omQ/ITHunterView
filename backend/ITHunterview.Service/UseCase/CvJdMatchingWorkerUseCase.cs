@@ -80,7 +80,17 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
         timeoutCts.CancelAfter(AttemptTimeout);
         try
         {
-            var result = await _processor.ExecuteAsync(job.Id, snapshot, timeoutCts.Token);
+            ITHunterview.Service.Utils.UserContext.CurrentUserId = job.UserId;
+            CvJdMatchingExecutionResult result;
+            try
+            {
+                result = await _processor.ExecuteAsync(job.Id, snapshot, timeoutCts.Token);
+            }
+            finally
+            {
+                ITHunterview.Service.Utils.UserContext.CurrentUserId = null;
+            }
+
             var completed = await _jobRepository.CompleteAsync(
                 job.Id,
                 workerId,

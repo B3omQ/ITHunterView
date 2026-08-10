@@ -665,7 +665,8 @@ namespace ITHunterview.Service.UseCase
             var responseText = await _aiService.GenerateTextAsync(
                 prompt: $"Lịch sử phỏng vấn:\n{historyText}\n\nỨng viên trả lời mới nhất: \"{dto.Message}\"",
                 systemPrompt: systemPrompt,
-                providerName: session.AiProvider ?? string.Empty
+                providerName: session.AiProvider ?? string.Empty,
+                featureCode: "MOCK_INTERVIEW"
             );
 
             // Parse response
@@ -1099,8 +1100,10 @@ namespace ITHunterview.Service.UseCase
 
             var responseText = await _aiService.GenerateTextAsync(
                 prompt: $"Dưới đây là chi tiết buổi phỏng vấn:\n\n{turnsDescription}",
-                systemPrompt: systemPrompt,
-                providerName: session.AiProvider
+                systemPrompt,
+                null, // Use active provider
+                cancellationToken: CancellationToken.None,
+                featureCode: "MOCK_INTERVIEW"
             );
 
             // Clean & Parse response
