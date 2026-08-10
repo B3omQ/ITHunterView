@@ -86,7 +86,8 @@ namespace ITHunterview.Service.Service
                         composedSystemPrompt,
                         provider,
                         AiGenerationOptions.StrictJsonExtraction,
-                        ct) ?? string.Empty;
+                        ct,
+                        featureCode: "JD_EXTRACTION") ?? string.Empty;
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {

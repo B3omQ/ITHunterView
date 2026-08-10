@@ -275,7 +275,8 @@ namespace ITHunterview.Service.Service.Matching
                         composedSystemPrompt,
                         provider,
                         options,
-                        cancellationToken);
+                        cancellationToken,
+                        featureCode: "CV_EXTRACTION");
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {

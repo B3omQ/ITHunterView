@@ -210,6 +210,18 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 app.UseAuthentication();
+app.Use(async (context, next) =>
+{
+    var userIdClaim = context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                   ?? context.User?.FindFirst("userId")?.Value 
+                   ?? context.User?.FindFirst("sub")?.Value;
+                   
+    if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var uid))
+    {
+        ITHunterview.Service.Utils.UserContext.CurrentUserId = uid;
+    }
+    await next();
+});
 app.UseMiddleware<ITHunterview.WebAPI.Middlewares.UserStatusCheckMiddleware>();
 app.UseMiddleware<ITHunterview.WebAPI.Middlewares.AiRateLimitMiddleware>();
 app.UseAuthorization();

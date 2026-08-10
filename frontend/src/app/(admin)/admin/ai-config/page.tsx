@@ -294,7 +294,7 @@ export default function AiConfigPage() {
                     className="font-mono text-sm max-w-xl"
                   />
                   <p className="text-xs text-muted-foreground">
-                    {t('apiKeyHint')}
+                    {t('apiKeyHint', { provider: activeProvider })}
                   </p>
                 </div>
 
@@ -553,7 +553,17 @@ export default function AiConfigPage() {
                           <span className="block text-[10px] text-muted-foreground font-mono">{log.model}</span>
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
-                          <Badge variant="outline" className="font-mono text-[10px]">{log.featureCode}</Badge>
+                          <Badge variant="outline" className={`font-mono text-[10px] px-2 py-0.5 border ${
+                            log.featureCode === 'CV_OPTIMIZATION' ? 'bg-blue-500/10 text-blue-600 border-blue-500/20' :
+                            log.featureCode === 'CV_EXTRACTION' ? 'bg-purple-500/10 text-purple-600 border-purple-500/20' :
+                            log.featureCode === 'JD_EXTRACTION' ? 'bg-orange-500/10 text-orange-600 border-orange-500/20' :
+                            log.featureCode === 'CV_JD_MATCHING' ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' :
+                            log.featureCode === 'MOCK_INTERVIEW' ? 'bg-pink-500/10 text-pink-600 border-pink-500/20' :
+                            log.featureCode === 'LEARNING_PATH' ? 'bg-teal-500/10 text-teal-600 border-teal-500/20' :
+                            'bg-muted/50 text-muted-foreground border-border'
+                          }`}>
+                            {log.featureCode}
+                          </Badge>
                         </td>
                         <td className="py-3 px-4 text-right font-mono whitespace-nowrap">
                           <span className="font-semibold">{log.totalTokens.toLocaleString()}</span>

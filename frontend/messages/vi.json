@@ -1856,6 +1856,7 @@
   },
   "AiConfig": {
     "title": "Cấu Hình AI",
+    "pageTitle": "Cấu Hình AI",
     "desc": "Quản lý mô hình AI hoạt động, khóa API và giới hạn tốc độ cho các tính năng thông minh của nền tảng.",
     "saveSuccess": "Đã lưu cấu hình AI thành công!",
     "saveError": "Lưu cấu hình AI thất bại",
@@ -1882,7 +1883,23 @@
     "failedStatus": "Kết Nối Thất Bại",
     "saveConfigBtn": "Lưu Cấu Hình",
     "saveBtn": "Lưu Cấu Hình",
-    "errorDetailsTitle": "Chi Tiết Lỗi Kết Nối"
+    "errorDetailsTitle": "Chi Tiết Lỗi Kết Nối",
+    "testErrorMsg": "Kiểm tra kết nối thất bại do lỗi.",
+    "pageDescription": "Quản lý mô hình AI hoạt động, khóa API và giới hạn tốc độ cho các tính năng thông minh của nền tảng.",
+    "activeProviderTitle": "Lựa Chọn Nhà Cung Cấp Hoạt Động",
+    "activeProviderDesc": "Chọn mô hình ngôn ngữ lớn (LLM) chính cung cấp sức mạnh cho các tính năng AI trên toàn ứng dụng.",
+    "configuredBadge": "Đã cấu hình",
+    "unconfiguredBadge": "Chưa cấu hình",
+    "keyLabel": "Khóa API",
+    "providerSettingsTitle": "Cài Đặt Nhà Cung Cấp ({provider})",
+    "providerSettingsDesc": "Định cấu hình khóa xác thực và giới hạn tốc độ cho {provider}.",
+    "apiKeyPlaceholderConfigured": "Để trống để giữ nguyên khóa đã định cấu hình (sk-...)",
+    "apiKeyPlaceholderUnconfigured": "Nhập khóa API cho nhà cung cấp này",
+    "apiKeyHint": "Khóa này sẽ được lưu trữ an toàn trong cơ sở dữ liệu mã hóa và dùng cho các yêu cầu {provider}.",
+    "rpmLabel": "Giới Hạn Tốc Độ Chung (Yêu cầu mỗi phút trên người dùng)",
+    "rpmHint": "Giới hạn số lượng yêu cầu AI tối đa mà một IP hoặc tài khoản người dùng có thể gửi trong 1 phút để bảo vệ hạn mức.",
+    "testPassed": "Kết Nối Thành Công",
+    "testFailed": "Kết Nối Thất Bại"
   },
   "AuditLogs": {
     "title": "Nhật Ký Hệ Thống & Kiểm Toán",

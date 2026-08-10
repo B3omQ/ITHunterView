@@ -88,7 +88,8 @@ public sealed class JdStageTwoMatchingService : IJdStageTwoMatchingService
                     systemPrompt: null,
                     provider,
                     options,
-                    cancellationToken);
+                    cancellationToken,
+                    featureCode: "CV_JD_MATCHING");
 
                 using var recovered = JdMatchingOutputRecovery.Recover(responseText);
                 if (recovered.Document == null)
