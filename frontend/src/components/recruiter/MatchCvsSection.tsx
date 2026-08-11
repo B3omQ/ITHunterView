@@ -62,7 +62,8 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
 
       await fetchMatches();
     } catch (err: any) {
-      setError(err.message || 'Failed to scan for matches.');
+      const serverMsg = err?.response?.data?.message || err?.response?.data?.title || err?.message || 'Failed to scan for matches.';
+      setError(serverMsg);
     } finally {
       setIsScanning(false);
     }

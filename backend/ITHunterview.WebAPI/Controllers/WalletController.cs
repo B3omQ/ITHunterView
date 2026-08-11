@@ -278,6 +278,28 @@ namespace ITHunterview.WebAPI.Controllers
             }
 
             await dbContext.SaveChangesAsync();
+
+            // Grant bonus coins from the package features
+            if (!string.IsNullOrWhiteSpace(subscription.FeaturesConfig))
+            {
+                try
+                {
+                    var features = System.Text.Json.JsonSerializer.Deserialize<ITHunterview.Service.DTOs.Subscription.FeaturesConfigDto>(
+                        subscription.FeaturesConfig, 
+                        new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                    );
+
+                    if (features != null && features.CoinCredit.HasValue && features.CoinCredit.Value > 0)
+                    {
+                        await _walletUseCase.AddBonusCoinsAsync(userId.Value, features.CoinCredit.Value, $"Cheat: Tặng Coin gói {subscription.Name}");
+                    }
+                }
+                catch (System.Text.Json.JsonException ex)
+                {
+                    _logger.LogError(ex, "Failed to parse features for cheat subscribe");
+                }
+            }
+
             return Ok(new { success = true, message = "Subscription activated successfully via cheat!" });
         }
     }

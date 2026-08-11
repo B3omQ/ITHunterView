@@ -68,13 +68,16 @@ namespace ITHunterview.WebAPI.BackgroundServices
                         catch (Exception ex)
                         {
                             _logger.LogError(ex, "Error occurred processing CV match request for CV {CvId}", request.CvId);
-                            // Notify frontend about the error
+                            // Notify frontend about the error with actual message
+                            var errorMessage = ex is NullReferenceException
+                                ? "An internal error occurred during matching. The CV or job data may be incomplete."
+                                : ex.Message;
                             await _hubContext.Clients.Group(request.UserId.ToString()).SendAsync("ReceiveNotification", new
                             {
                                 Type = "CvMatchError",
                                 CvId = request.CvId,
                                 Title = "Smart Match Failed",
-                                Message = "An error occurred while matching your CV. Please try again later."
+                                Message = errorMessage
                             });
                         }
                     }, stoppingToken);

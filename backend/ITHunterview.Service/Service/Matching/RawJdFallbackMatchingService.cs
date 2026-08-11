@@ -42,7 +42,8 @@ public sealed class RawJdFallbackMatchingService : IRawJdFallbackMatchingService
                     attempt == 1
                         ? AiGenerationOptions.StrictJsonExtraction
                         : AiGenerationOptions.JdMatchingJsonRetry,
-                    ct) ?? string.Empty;
+                    ct,
+                    featureCode: "CV_JD_MATCHING_FALLBACK") ?? string.Empty;
                 var recovered = RawJdFallbackOutputRecovery.Recover(response);
                 best = SelectBest(best, recovered);
                 if (recovered.Score.HasValue)

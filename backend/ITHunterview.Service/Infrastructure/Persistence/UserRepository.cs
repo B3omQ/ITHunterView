@@ -19,7 +19,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         }
 
         public Task<User?> GetUserByEmailAsync(string email)
-            => _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        {
+            if (string.IsNullOrWhiteSpace(email)) return Task.FromResult<User?>(null);
+            var normalized = email.Trim().ToLower();
+            return _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == normalized);
+        }
 
         public Task<User?> GetUserByIdAsync(Guid userId)
             => _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
@@ -32,11 +36,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 .FirstOrDefaultAsync(u => u.Id == userId);
 
         public Task<User?> GetUserWithRoleByEmailAsync(string email)
-            => _context.Users
+        {
+            if (string.IsNullOrWhiteSpace(email)) return Task.FromResult<User?>(null);
+            var normalized = email.Trim().ToLower();
+            return _context.Users
                 .Include(u => u.Role)
                 .Include(u => u.CandidateProfile)
                 .Include(u => u.RecruiterProfile)
-                .FirstOrDefaultAsync(u => u.Email == email);
+                .FirstOrDefaultAsync(u => u.Email.ToLower() == normalized);
+        }
 
         public async Task AddUserAsync(User user)
         {

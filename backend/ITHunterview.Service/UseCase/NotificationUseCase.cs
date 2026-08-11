@@ -9,6 +9,7 @@ using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -33,17 +34,49 @@ namespace ITHunterview.Service.UseCase
 
         public async Task<bool> CreateSystemWideNotificationAsync(CreateSystemNotificationDto request)
         {
-            // 1. Enqueue the database insert payload to be processed in background
+            // If TargetEmails is provided but TargetUserIds is empty, resolve emails to user IDs
+            if ((request.TargetUserIds == null || request.TargetUserIds.Count == 0) &&
+                request.TargetEmails != null && request.TargetEmails.Count > 0)
+            {
+                var cleanEmails = request.TargetEmails
+                    .Where(e => !string.IsNullOrWhiteSpace(e))
+                    .Select(e => e.Trim().ToLower())
+                    .Distinct()
+                    .ToList();
+
+                if (cleanEmails.Count > 0)
+                {
+                    request.TargetUserIds = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(_context.Users
+                        .AsNoTracking()
+                        .Where(u => cleanEmails.Contains(u.Email.ToLower()))
+                        .Select(u => u.Id));
+                }
+            }
+
+            // 1. Enqueue database insert payload to be processed in background
             await _notificationQueue.QueueSystemNotificationAsync(request);
 
-            // Give the background worker a tiny head start (500ms) to insert the first batch. 
-            // This ensures when the frontend immediately redirects and fetches the list, the notification is already in the DB.
+            // Give the background worker a tiny head start (500ms)
             await Task.Delay(500);
 
-            // 2. Broadcast to all connected clients in candidate/recruiter role groups
-            // Sending to two role groups is infinitely more scalable than sending to 1,000,000 individual user groups
-            var groups = new List<string> { "Role_candidate", "Role_recruiter" };
-            await _hubContext.Clients.Groups(groups).SendAsync("ReceiveNotification");
+            // 2. Real-time SignalR dispatch based on TargetType
+            var targetType = request.TargetType?.ToUpperInvariant() ?? "ALL";
+
+            if ((targetType == "USER" || targetType == "CUSTOM") && request.TargetUserIds != null && request.TargetUserIds.Count > 0)
+            {
+                var userGroupNames = request.TargetUserIds.Select(id => id.ToString()).ToList();
+                await _hubContext.Clients.Groups(userGroupNames).SendAsync("ReceiveNotification");
+            }
+            else if (targetType == "ROLE" && !string.IsNullOrWhiteSpace(request.TargetRole))
+            {
+                var roleGroupName = $"Role_{request.TargetRole.Trim().ToLower()}";
+                await _hubContext.Clients.Group(roleGroupName).SendAsync("ReceiveNotification");
+            }
+            else // ALL
+            {
+                var groups = new List<string> { "Role_candidate", "Role_recruiter", "Role_staff" };
+                await _hubContext.Clients.Groups(groups).SendAsync("ReceiveNotification");
+            }
 
             return true;
         }

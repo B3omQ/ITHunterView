@@ -355,18 +355,18 @@ namespace ITHunterview.Service.UseCase
                 var expScore = CalculateComponentScore(cv.ExperienceEmbedding, job.ExperienceEmbedding);
                 var domainScore = CalculateComponentScore(cv.DomainEmbedding, job.DomainEmbedding);
 
-                var finalScore = (titleScore * 0.15m) +
+                var finalScore = ((titleScore * 0.15m) +
                                  (skillsScore * 0.45m) +
                                  (expScore * 0.30m) +
-                                 (domainScore * 0.10m);
+                                 (domainScore * 0.10m)) * 100m;
 
                 var details = JsonSerializer.Serialize(new 
                 {
-                    TitleScore = Math.Round(titleScore, 4),
-                    SkillsScore = Math.Round(skillsScore, 4),
-                    ExperienceScore = Math.Round(expScore, 4),
-                    DomainScore = Math.Round(domainScore, 4),
-                    FinalScore = Math.Round(finalScore, 4),
+                    TitleScore = Math.Round(titleScore * 100m, 2),
+                    SkillsScore = Math.Round(skillsScore * 100m, 2),
+                    ExperienceScore = Math.Round(expScore * 100m, 2),
+                    DomainScore = Math.Round(domainScore * 100m, 2),
+                    FinalScore = Math.Round(finalScore, 2),
                     Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m }
                 });
 
@@ -436,18 +436,18 @@ namespace ITHunterview.Service.UseCase
                 var expScore = CalculateComponentScore(cv.ExperienceEmbedding, job.ExperienceEmbedding);
                 var domainScore = CalculateComponentScore(cv.DomainEmbedding, job.DomainEmbedding);
 
-                var finalScore = (titleScore * 0.15m) +
+                var finalScore = ((titleScore * 0.15m) +
                                  (skillsScore * 0.45m) +
                                  (expScore * 0.30m) +
-                                 (domainScore * 0.10m);
+                                 (domainScore * 0.10m)) * 100m;
 
                 var details = JsonSerializer.Serialize(new 
                 {
-                    TitleScore = Math.Round(titleScore, 4),
-                    SkillsScore = Math.Round(skillsScore, 4),
-                    ExperienceScore = Math.Round(expScore, 4),
-                    DomainScore = Math.Round(domainScore, 4),
-                    FinalScore = Math.Round(finalScore, 4),
+                    TitleScore = Math.Round(titleScore * 100m, 2),
+                    SkillsScore = Math.Round(skillsScore * 100m, 2),
+                    ExperienceScore = Math.Round(expScore * 100m, 2),
+                    DomainScore = Math.Round(domainScore * 100m, 2),
+                    FinalScore = Math.Round(finalScore, 2),
                     Weights = new { TitleWeight = 0.15m, SkillsWeight = 0.45m, ExperienceWeight = 0.30m, DomainWeight = 0.10m }
                 });
 

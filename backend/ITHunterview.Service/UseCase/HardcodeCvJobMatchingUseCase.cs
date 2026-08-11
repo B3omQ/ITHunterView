@@ -275,18 +275,18 @@ namespace ITHunterview.Service.UseCase
                 return;
             }
 
-            var finalScore = weightedScore / availableWeight;
+            var finalScore = (weightedScore / availableWeight) * 100m;
             var scoreBasis = availableWeight == 1m ? "complete_cv_metrics" : "available_cv_metrics";
 
             var details = JsonSerializer.Serialize(new 
             {
                 Method = groupEvaluation == null ? "Hardcode" : "HardcodeV3",
                 JdSchemaVersion = projection?.SourceSchemaVersion,
-                TitleScore = Math.Round(titleScore, 4),
-                SkillsScore = Math.Round(skillsScore, 4),
-                ExperienceScore = Math.Round(expScore, 4),
-                DomainScore = Math.Round(domainScore, 4),
-                FinalScore = Math.Round(finalScore, 4),
+                TitleScore = Math.Round(titleScore * 100m, 2),
+                SkillsScore = Math.Round(skillsScore * 100m, 2),
+                ExperienceScore = Math.Round(expScore * 100m, 2),
+                DomainScore = Math.Round(domainScore * 100m, 2),
+                FinalScore = Math.Round(finalScore, 2),
                 ScoreBasis = scoreBasis,
                 CvAnalysisQuality = cv.AnalysisQuality?.ToString(),
                 AvailableDimensions = availableDimensions,

@@ -68,6 +68,7 @@ namespace ITHunterview.Service.UseCase
                 .FirstOrDefaultAsync();
                 
             string? activeSubName = null;
+            decimal? activeSubPrice = null;
             int? mockInterviewLimit = null;
             int? mockInterviewUsed = null;
             int? cvMatchLimit = null;
@@ -99,6 +100,7 @@ namespace ITHunterview.Service.UseCase
                 if (subscription != null)
                 {
                     activeSubName = subscription.Name;
+                    activeSubPrice = subscription.Price;
 
                     if (!string.IsNullOrEmpty(subscription.FeaturesConfig))
                     {
@@ -221,6 +223,7 @@ namespace ITHunterview.Service.UseCase
                 UserId = wallet.UserId,
                 Balance = wallet.Balance,
                 ActiveSubscriptionName = activeSubName,
+                ActiveSubscriptionPrice = activeSubPrice,
                 SubscriptionEndDate = activeSub?.EndDate,
                 MockInterviewLimit = mockInterviewLimit,
                 MockInterviewUsed = mockInterviewUsed,
@@ -354,7 +357,7 @@ namespace ITHunterview.Service.UseCase
 
                 amount = sub.Price;
                 // Parse features to get CoinCredit
-                var features = System.Text.Json.JsonSerializer.Deserialize<DTOs.Subscription.FeaturesConfigDto>(sub.FeaturesConfig);
+                var features = DeserializeSubscriptionFeatures(sub.FeaturesConfig);
                 // Snapshot coin bonus at purchase time so future package edits do not affect this payment.
                 creditsGranted = features?.CoinCredit ?? 0;
                 // Ánh xạ int ID thành Guid: 00000000-0000-0000-0000-XXXXXXXXXXXX

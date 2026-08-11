@@ -66,7 +66,7 @@ public class PdfCvExtractor : ICvExtractor
         {
             try
             {
-                var json = await _aiService.GenerateTextAsync(prompt);
+                var json = await _aiService.GenerateTextAsync(prompt, featureCode: "CV_EXTRACTION");
                 
                 // Clean markdown code blocks if any
                 if (json != null && json.StartsWith("```json"))

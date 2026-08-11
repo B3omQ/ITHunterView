@@ -5,6 +5,10 @@ export interface CreateSystemNotificationDto {
   title: string;
   message: string;
   type: string;
+  targetType?: 'ALL' | 'ROLE' | 'USER' | 'CUSTOM';
+  targetRole?: string;
+  targetUserIds?: string[];
+  targetEmails?: string[];
 }
 
 export interface NotificationDto {

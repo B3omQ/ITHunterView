@@ -287,7 +287,7 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
             userPromptBuilder.AppendLine("=== CANDIDATE CONTEXT ===");
             userPromptBuilder.AppendLine(contextText);
 
-            var aiResponseText = await _aiService.GenerateTextAsync(userPromptBuilder.ToString(), systemPrompt);
+            var aiResponseText = await _aiService.GenerateTextAsync(userPromptBuilder.ToString(), systemPrompt, featureCode: "LEARNING_PATH");
 
             aiResponseText = aiResponseText.Trim();
             if (aiResponseText.StartsWith("```json")) aiResponseText = aiResponseText.Substring(7);
@@ -662,7 +662,7 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
 
         private async Task<LearningPathResponseDto> CallAiAndSaveAsync(Guid candidateId, string userPrompt, string systemPrompt)
         {
-            var aiResponseText = await _aiService.GenerateTextAsync(userPrompt, systemPrompt);
+            var aiResponseText = await _aiService.GenerateTextAsync(userPrompt, systemPrompt, featureCode: "LEARNING_PATH");
 
             // Clean up markdown wrappers if AI adds them
             aiResponseText = aiResponseText.Trim();

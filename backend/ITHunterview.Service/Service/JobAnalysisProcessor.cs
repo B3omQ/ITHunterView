@@ -55,8 +55,8 @@ namespace ITHunterview.Service.Service
             {
                 var systemPromptSnapshot = await _promptService.GetPromptSnapshotByVersionIdAsync(run.SystemPromptVersionId, ct);
                 var userPromptSnapshot = await _promptService.GetPromptSnapshotByVersionIdAsync(run.UserPromptVersionId, ct);
-
                 JobAnalysisInputSnapshot inputSnapshot;
+
                 try
                 {
                     inputSnapshot = JsonSerializer.Deserialize<JobAnalysisInputSnapshot>(run.RawInputSnapshot)
@@ -85,7 +85,22 @@ namespace ITHunterview.Service.Service
                     return;
                 }
 
-                var extraction = await _extractionService.ExtractAsync(inputSnapshot, systemPromptSnapshot.Content, userPromptSnapshot.Content, ct);
+                JobAnalysisExtractionResult extraction;
+                var previousUserId = ITHunterview.Service.Utils.UserContext.CurrentUserId;
+                ITHunterview.Service.Utils.UserContext.CurrentUserId = run.RequestedBy;
+
+                try
+                {
+                    extraction = await _extractionService.ExtractAsync(
+                        inputSnapshot,
+                        systemPromptSnapshot.Content,
+                        userPromptSnapshot.Content,
+                        ct);
+                }
+                finally
+                {
+                    ITHunterview.Service.Utils.UserContext.CurrentUserId = previousUserId;
+                }
                 var validation = extraction.Validation;
                 var quality = extraction.Quality != JdAnalysisQuality.INVALID
                     ? extraction.Quality
@@ -186,7 +201,7 @@ namespace ITHunterview.Service.Service
 
                 if (!completed)
                 {
-                    _logger.LogInformation("JobAnalysisProcessor: Run {RunId} was superseded or revision mismatched during completion.", runId);
+                    ITHunterview.Service.Utils.UserContext.CurrentUserId = null;
                 }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

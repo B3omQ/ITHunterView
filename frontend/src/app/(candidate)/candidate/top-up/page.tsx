@@ -10,8 +10,10 @@ import Image from 'next/image';
 import { Coins, Loader2, Wallet, Zap, Sparkles, BrainCircuit } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 export default function TopUpPage() {
+  const t = useTranslations("CandidateTopUp");
   const { data: balanceData, isLoading: isLoadingBalance } = useWalletBalance();
   const { data: configData, isLoading: isLoadingConfig } = usePublicCoinConfig();
   const { data: customCoinPriceData, isLoading: isLoadingCustomCoinPrice } = useCustomCoinTopupPrice();
@@ -82,13 +84,13 @@ export default function TopUpPage() {
         <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="relative z-10 w-full md:w-3/5">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary">Top Up Coins</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-primary">{t("title")}</h1>
           <p className="text-sm md:text-base text-muted-foreground mt-2 max-w-md">
-            Buy more coins to use advanced AI features like CV Matching and Mock Interviews on the platform.
+            {t("subtitle")}
           </p>
           <div className="mt-4 inline-flex items-center gap-2.5 bg-white shadow-sm text-primary px-4 py-2 rounded-xl border border-primary/20">
             <Wallet className="h-5 w-5" />
-            <span className="text-sm font-medium">Your current balance:</span>
+            <span className="text-sm font-medium">{t("currentBalance")}</span>
             {isLoadingBalance ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -115,21 +117,21 @@ export default function TopUpPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Coins className="h-5 w-5 text-primary" />
-              Top Up Custom Coins
+              {t("customCoinTitle")}
             </CardTitle>
             <CardDescription>
-              Choose the exact number of Coins you need. This price is separate from Coin packages.
+              {t("customCoinDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {isLoadingCustomCoinPrice ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading custom Coin price...
+                <Loader2 className="h-4 w-4 animate-spin" /> {t("loadingPrice")}
               </div>
             ) : unitPrice ? (
               <>
                 <label className="space-y-2 block text-sm font-medium">
-                  Coins to top up
+                  {t("coinsToTopUp")}
                   <Input
                     type="number"
                     min="1"
@@ -142,17 +144,17 @@ export default function TopUpPage() {
                 </label>
                 <div className="rounded-lg border bg-muted/30 p-3 text-sm space-y-1">
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Unit price</span>
-                    <span>{formatCurrency(unitPrice)} / Coin</span>
+                    <span>{t("unitPrice")}</span>
+                    <span>{t("unitPriceValue", { price: formatCurrency(unitPrice) })}</span>
                   </div>
                   <div className="flex justify-between font-semibold text-foreground">
-                    <span>Total payment</span>
+                    <span>{t("totalPayment")}</span>
                     <span>{formatCurrency(customCoinTotal)}</span>
                   </div>
                 </div>
               </>
             ) : (
-              <p className="text-sm text-destructive">Custom Coin pricing is temporarily unavailable.</p>
+              <p className="text-sm text-destructive">{t("unavailable")}</p>
             )}
           </CardContent>
           <CardFooter>
@@ -162,7 +164,7 @@ export default function TopUpPage() {
               disabled={!unitPrice || !isCustomCoinAmountValid || isBuyingCustomCoins}
             >
               {isBuyingCustomCoins ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Pay for custom Coins
+              {t("payForCustom")}
             </Button>
           </CardFooter>
         </Card>
@@ -179,7 +181,7 @@ export default function TopUpPage() {
           </div>
         ) : packages.length === 0 ? (
           <div className="text-center p-8 bg-muted/20 rounded-lg border border-dashed">
-            <p className="text-muted-foreground">There are currently no coin packages available.</p>
+            <p className="text-muted-foreground">{t("noPackages")}</p>
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-3 max-w-4xl mx-auto">
@@ -189,13 +191,13 @@ export default function TopUpPage() {
                 <Card key={pkg.id} className="flex flex-col transition-all border-zinc-200 hover:border-primary/50 relative overflow-hidden">
                   {isPopular && (
                     <div className="absolute top-5 -right-10 w-40 bg-gradient-to-r from-[#1877F2] to-cyan-400 text-white text-[10px] font-bold uppercase tracking-wider text-center py-1 shadow-sm rotate-45 z-10">
-                      Popular
+                      {t("tagPopular")}
                     </div>
                   )}
                   <CardHeader className="text-center pb-4 pt-8">
                     <CardTitle className="text-xl font-bold">{pkg.name}</CardTitle>
                     <CardDescription>
-                      {idx === 0 ? 'For beginners' : idx === 1 ? 'Best value' : 'For professionals'}
+                      {idx === 0 ? t("descBeginner") : idx === 1 ? t("descValue") : t("descPro")}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="flex-1 text-center space-y-4">
@@ -215,7 +217,7 @@ export default function TopUpPage() {
                       disabled={isBuying}
                     >
                       {isBuying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      Buy Now
+                      {t("btnBuyNow")}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -229,21 +231,21 @@ export default function TopUpPage() {
       {!isLoadingConfig && featureCosts && (
         <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-4 text-sm text-zinc-500">
           <div className="flex items-center gap-2 font-medium text-zinc-700">
-            Wondering how much things cost?
+            {t("refTitle")}
           </div>
           <div className="hidden sm:block text-zinc-300">|</div>
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             <span className="flex items-center gap-1.5">
               <Sparkles className="h-4 w-4 text-[#1877F2]" />
-              CV Match: <strong className="text-zinc-900">{new Intl.NumberFormat('en-US').format(featureCosts.cvJdMatching)}</strong>
+              {t("refCvMatch")} <strong className="text-zinc-900">{new Intl.NumberFormat('en-US').format(featureCosts.cvJdMatching)}</strong>
             </span>
             <span className="flex items-center gap-1.5">
               <BrainCircuit className="h-4 w-4 text-[#1877F2]" />
-              Mock Interview: <strong className="text-zinc-900">{new Intl.NumberFormat('en-US').format(featureCosts.mockInterview)}</strong>
+              {t("refMockInterview")} <strong className="text-zinc-900">{new Intl.NumberFormat('en-US').format(featureCosts.mockInterview)}</strong>
             </span>
             <span className="flex items-center gap-1.5">
               <Zap className="h-4 w-4 text-[#1877F2]" />
-              Learning Path: <strong className="text-zinc-900">{new Intl.NumberFormat('en-US').format(featureCosts.learningPath)}</strong>
+              {t("refLearningPath")} <strong className="text-zinc-900">{new Intl.NumberFormat('en-US').format(featureCosts.learningPath)}</strong>
             </span>
           </div>
         </div>
