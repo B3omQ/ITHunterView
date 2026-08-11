@@ -1,226 +1,239 @@
+using FluentAssertions;
 using System.Text.Json;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Service.Matching;
 
 namespace ITHunterview.Service.Tests.Matching;
 
-public class JdStageTwoScoringTests
+public sealed class JdStageTwoScoringTests
 {
     [Fact]
-    public void Build_PreservesItemCategoryAndGroupOperatorInPromptContext()
+    public void Calculate_CrossFamilyHandler_KeepsProjectionCategoryWeight()
     {
-        var context = new JdMatchingRequirementContextBuilder().Build(Projection());
-        using var document = JsonDocument.Parse(context.Json);
-
-        var entries = document.RootElement.EnumerateArray().ToArray();
-        Assert.Equal("one_of", entries[0].GetProperty("Operator").GetString());
-        Assert.Equal(1, entries[0].GetProperty("MinSatisfied").GetInt32());
-        Assert.Equal("tech_skill", entries[0].GetProperty("Category").GetString());
-        Assert.Equal("language", entries[1].GetProperty("Category").GetString());
-    }
-
-    [Fact]
-    public void Build_PreservesExperienceBoundsInPromptContext()
-    {
-        var projection = new JdRequirementProjection("jd-analysis/v3", new[]
-        {
-            Group("g-years", "all_of", "must_have",
-                new ProjectedJdRequirementItem("g-years:i1", "experience", "professional experience", "3-5 years", "3-5 years", "requirements", new[] { "3-5 years" }, 3, 5, JdRequirementCategoryWeights.Get("experience")))
-        }, false);
-
-        var context = new JdMatchingRequirementContextBuilder().Build(projection);
-        using var document = JsonDocument.Parse(context.Json);
-        var item = document.RootElement[0];
-
-        Assert.Equal(3, item.GetProperty("MinYears").GetInt32());
-        Assert.Equal(5, item.GetProperty("MaxYears").GetInt32());
-    }
-
-    [Fact]
-    public void Validate_MissingItemScore_ReturnsPartialWithoutInventingZero()
-    {
-        using var response = JsonDocument.Parse("""
-            {"scores":[{"reqId":"g1:i1","handlerCode":"H_TECH_05","handlerScore":1,"reasoning":"evidence","confidence":"high"}]}
-            """);
-
-        var result = new JdMatchingResponseAdapter().Adapt(response, Projection());
-
-        Assert.Equal(JdStageTwoOutputQuality.PARTIAL, result.Quality);
-        Assert.Single(result.ItemScores);
-        Assert.False(result.ItemScores.ContainsKey("g1:i2"));
-        Assert.Equal(1, result.Coverage?.MissingScoreCount);
-    }
-
-    [Fact]
-    public void Calculate_KswOnlyTriggersWhenEveryCoreTechnicalMustHaveItemScoresZero()
-    {
-        var projection = new JdRequirementProjection("jd-analysis/v3", new[]
-        {
-            Group("g-tech", "all_of", "must_have", Item("g-tech:i1", "react", "tech_skill")),
-            Group("g-language", "all_of", "must_have", Item("g-language:i1", "english", "language"))
-        }, false);
-        using var response = JsonDocument.Parse("""
-            {
-              "scores": [
-                {"reqId":"g-tech:i1","handlerCode":"H_TECH_01","handlerScore":0,"reasoning":"No React evidence","confidence":"high"},
-                {"reqId":"g-language:i1","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"English B2","confidence":"high"}
-              ],
-              "narrative":"Candidate summary",
-              "improvements":[],
-              "penalties":[]
-            }
-            """);
-        var validated = new JdMatchingResponseAdapter().Adapt(response, projection);
-
-        var result = new JdFitScoreCalculator().Calculate(projection, validated);
-        using var final = JsonDocument.Parse(result.JsonString);
-
-        Assert.Equal(15m, result.FinalScore);
-        Assert.True(final.RootElement.GetProperty("jdFit").GetProperty("killSwitchTriggered").GetBoolean());
-        Assert.Equal("KSW_01", final.RootElement.GetProperty("jdFit").GetProperty("penalties")[0].GetProperty("code").GetString());
-    }
-
-    [Fact]
-    public void Calculate_OneOfGroupIsOneRequirementAndKeepsItsItemCategories()
-    {
-        var projection = Projection();
-        using var response = JsonDocument.Parse("""
-            {
-              "scores": [
-                {"reqId":"g1:i1","handlerCode":"H_TECH_01","handlerScore":0,"reasoning":"No React","confidence":"high"},
-                {"reqId":"g1:i2","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"English evidence","confidence":"high"}
-              ],
-              "narrative":"Candidate summary",
-              "improvements":[],
-              "penalties":[]
-            }
-            """);
-        var validated = new JdMatchingResponseAdapter().Adapt(response, projection);
-
-        var result = new JdFitScoreCalculator().Calculate(projection, validated);
-        using var final = JsonDocument.Parse(result.JsonString);
-        var groups = final.RootElement.GetProperty("jdFit").GetProperty("requirementGroups");
-
-        Assert.Equal(1, groups.GetArrayLength());
-        Assert.Equal(1m, groups[0].GetProperty("handlerScore").GetDecimal());
-        Assert.Equal("tech_skill", groups[0].GetProperty("items")[0].GetProperty("category").GetString());
-        Assert.Equal("language", groups[0].GetProperty("items")[1].GetProperty("category").GetString());
-    }
-
-    [Fact]
-    public void Calculate_AtLeastN_SelectsOnlyTheTopNItemsIndependentlyOfInputOrder()
-    {
-        var firstOrder = new JdRequirementProjection("jd-analysis/v3", new[]
-        {
-            Group("g-tech", "at_least_n", "must_have",
-                Item("g-tech:i1", "react", "tech_skill"),
-                Item("g-tech:i2", "angular", "tech_skill"),
-                Item("g-tech:i3", "vue", "tech_skill"))
-        }, false);
-        var reverseOrder = new JdRequirementProjection("jd-analysis/v3", new[]
-        {
-            Group("g-tech", "at_least_n", "must_have",
-                Item("g-tech:i3", "vue", "tech_skill"),
-                Item("g-tech:i2", "angular", "tech_skill"),
-                Item("g-tech:i1", "react", "tech_skill"))
-        }, false);
-        using var response = JsonDocument.Parse("""
-            {"scores":[
-              {"reqId":"g-tech:i1","handlerCode":"H_TECH_05","handlerScore":1,"reasoning":"React evidence","confidence":"high"},
-              {"reqId":"g-tech:i2","handlerCode":"H_TECH_05","handlerScore":0.7,"reasoning":"Angular evidence","confidence":"high"},
-              {"reqId":"g-tech:i3","handlerCode":"H_TECH_05","handlerScore":0.2,"reasoning":"Vue evidence","confidence":"high"}
+        var projection = Projection(Group(
+            "tech", "all_of", 1, "must_have", Item("tech:item", "tech_skill")));
+        using var json = JsonDocument.Parse("""
+            {"schemaVersion":"jd-stage2/v2","scores":[
+              {"reqId":"tech:item","handlerCode":"H_EXP_D04"}
             ]}
             """);
+        var response = new JdMatchingResponseAdapter().Adapt(json, projection);
 
-        var validator = new JdMatchingResponseAdapter();
-        var calculator = new JdFitScoreCalculator();
-        var first = calculator.Calculate(firstOrder, validator.Adapt(response, firstOrder));
-        var second = calculator.Calculate(reverseOrder, validator.Adapt(response, reverseOrder));
-        using var final = JsonDocument.Parse(first.JsonString);
-        var selected = final.RootElement.GetProperty("jdFit").GetProperty("requirementGroups")[0].GetProperty("selectedItemIds");
+        var result = new JdFitScoreCalculator().Calculate(projection, response);
 
-        Assert.Equal(89.5m, first.FinalScore);
-        Assert.Equal(first.FinalScore, second.FinalScore);
-        Assert.Equal(new[] { "g-tech:i1", "g-tech:i2" }, selected.EnumerateArray().Select(item => item.GetString()).ToArray());
+        response.ItemAssessments["tech:item"].Category.Should().Be("tech_skill");
+        response.ItemAssessments["tech:item"].Score.Should().Be(0.75m);
+        result.Groups.Single().CategoryWeight.Should().Be(1m);
+        result.ScorePercent.Should().Be(75m);
     }
 
     [Fact]
-    public void Validate_HandlerCodeFromAnotherCategory_DiscardsInvalidScores()
+    public void Calculate_AllOf_AveragesEveryItemAndSelectsAll()
     {
-        using var response = JsonDocument.Parse("""
-            {
-              "scores": [
-                {"reqId":"g1:i1","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"evidence","confidence":"high"},
-                {"reqId":"g1:i2","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"evidence","confidence":"high"}
-              ]
-            }
-            """);
+        var projection = Projection(Group(
+            "all", "all_of", 3, "must_have",
+            Item("a", "tech_skill"), Item("b", "tech_skill"), Item("c", "tech_skill")));
 
-        var result = new JdMatchingResponseAdapter().Adapt(response, Projection());
+        var result = new JdFitScoreCalculator().Calculate(
+            projection,
+            Response(projection, ("a", 1m), ("b", 0.5m), ("c", 0m)));
 
-        Assert.Equal(JdStageTwoOutputQuality.PARTIAL, result.Quality);
-        Assert.Single(result.ItemScores);
-        Assert.False(result.ItemScores.ContainsKey("g1:i1"));
-        Assert.True(result.ItemScores.ContainsKey("g1:i2"));
-        Assert.Contains("HANDLER_CODE_CATEGORY_MISMATCH", result.WarningCodes!);
+        result.ScorePercent.Should().Be(50m);
+        result.Groups.Single().GroupScore.Should().Be(0.5m);
+        result.Groups.Single().SelectedItemIds.Should().Equal("a", "b", "c");
     }
 
     [Fact]
-    public void Calculate_IgnoresModelControlledCredibilityPenalty()
+    public void Calculate_OneOf_SelectsMaximumAndOneGroupDenominatorUnit()
     {
-        using var response = JsonDocument.Parse("""
-            {
-              "scores": [
-                {"reqId":"g1:i1","handlerCode":"H_TECH_05","handlerScore":1,"reasoning":"evidence","confidence":"high"},
-                {"reqId":"g1:i2","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"evidence","confidence":"high"}
-              ],
-              "penalties": [
-                {"code":"PNL_TC1_01","triggered":true,"evidence":"model claim"}
-              ]
-            }
-            """);
+        var projection = Projection(Group(
+            "one", "one_of", 1, "must_have",
+            Item("a", "tech_skill"), Item("b", "tech_skill"), Item("c", "tech_skill")));
 
-        var validated = new JdMatchingResponseAdapter().Adapt(response, Projection());
-        var result = new JdFitScoreCalculator().Calculate(Projection(), validated);
-        using var final = JsonDocument.Parse(result.JsonString);
+        var result = new JdFitScoreCalculator().Calculate(
+            projection,
+            Response(projection, ("a", 0m), ("b", 0.75m), ("c", 0.5m)));
 
-        Assert.Equal(100m, result.FinalScore);
-        Assert.DoesNotContain(final.RootElement.GetProperty("jdFit").GetProperty("penalties").EnumerateArray(),
-            penalty => penalty.GetProperty("code").GetString() == "PNL_TC1_01");
+        result.ScorePercent.Should().Be(75m);
+        result.Groups.Single().SelectedItemIds.Should().Equal("b");
     }
 
     [Fact]
-    public void Validate_DuplicateModelPenaltyObservation_DiscardsDuplicateWithoutLosingScores()
+    public void Calculate_OneOfTie_IsStableWhenProjectionOrderReverses()
     {
-        using var response = JsonDocument.Parse("""
-            {
-              "scores": [
-                {"reqId":"g1:i1","handlerCode":"H_TECH_05","handlerScore":1,"reasoning":"evidence","confidence":"high"},
-                {"reqId":"g1:i2","handlerCode":"H_LANG_06","handlerScore":1,"reasoning":"evidence","confidence":"high"}
-              ],
-              "penalties": [
-                {"code":"PNL_TC1_01","triggered":true,"evidence":"first observation"},
-                {"code":"PNL_TC1_01","triggered":false,"evidence":"duplicate observation"}
-              ]
-            }
-            """);
+        var first = Projection(Group(
+            "one", "one_of", 1, "must_have",
+            Item("b", "tech_skill"), Item("a", "tech_skill")));
+        var reversed = first with
+        {
+            Groups = new[] { first.Groups[0] with { Items = first.Groups[0].Items.Reverse().ToArray() } }
+        };
 
-        var result = new JdMatchingResponseAdapter().Adapt(response, Projection());
+        var firstResult = new JdFitScoreCalculator().Calculate(first, Response(first, ("a", 0.75m), ("b", 0.75m)));
+        var reversedResult = new JdFitScoreCalculator().Calculate(reversed, Response(reversed, ("b", 0.75m), ("a", 0.75m)));
 
-        Assert.Equal(JdStageTwoOutputQuality.PARTIAL, result.Quality);
-        Assert.Equal(2, result.ItemScores.Count);
-        Assert.Single(result.Penalties);
-        Assert.Contains("PENALTY_ITEM_DISCARDED", result.WarningCodes!);
+        firstResult.Groups.Single().SelectedItemIds.Should().Equal("a");
+        reversedResult.Groups.Single().SelectedItemIds.Should().Equal("a");
+        firstResult.ScorePercent.Should().Be(reversedResult.ScorePercent);
     }
 
-    private static JdRequirementProjection Projection() => new(
-        "jd-analysis/v3",
-        new[] { Group("g1", "one_of", "must_have", Item("g1:i1", "react", "tech_skill"), Item("g1:i2", "english", "language")) },
-        false);
+    [Fact]
+    public void Calculate_AtLeastN_SelectsDeterministicTopNAndAveragesThem()
+    {
+        var projection = Projection(Group(
+            "n", "at_least_n", 2, "must_have",
+            Item("a", "tech_skill"), Item("b", "tech_skill"),
+            Item("c", "tech_skill"), Item("d", "tech_skill")));
 
-    private static ProjectedJdRequirementGroup Group(string id, string operation, string importance, params ProjectedJdRequirementItem[] items) =>
-        new(id, operation, operation == "all_of" ? items.Length : operation == "at_least_n" ? 2 : 1, importance, items);
+        var result = new JdFitScoreCalculator().Calculate(
+            projection,
+            Response(projection, ("a", 1m), ("b", 0.75m), ("c", 0.5m), ("d", 0m)));
 
-    private static ProjectedJdRequirementItem Item(string id, string name, string category) =>
-        new(id, category, name, name, name, "requirements", new[] { name }, null, null, JdRequirementCategoryWeights.Get(category));
+        result.ScorePercent.Should().Be(87.5m);
+        result.Groups.Single().SelectedItemIds.Should().Equal("a", "b");
+    }
+
+    [Fact]
+    public void Calculate_MixedCategoryGroup_UsesMeanDistinctCategoryWeight()
+    {
+        var projection = Projection(Group(
+            "mixed", "one_of", 1, "must_have",
+            Item("tech", "tech_skill"), Item("lang", "language")));
+
+        var result = new JdFitScoreCalculator().Calculate(
+            projection,
+            Response(projection, ("tech", 0.5m), ("lang", 1m)));
+
+        result.ScorePercent.Should().Be(100m);
+        result.Groups.Single().CategoryWeight.Should().Be(0.8m);
+        result.Groups.Single().SelectedItemIds.Should().Equal("lang");
+    }
+
+    [Fact]
+    public void Calculate_ExtraAlternatives_DoNotIncreaseSourceGroupWeight()
+    {
+        var oneItem = Projection(Group("one", "one_of", 1, "must_have", Item("a", "tech_skill")));
+        var threeItems = Projection(Group(
+            "one", "one_of", 1, "must_have",
+            Item("a", "tech_skill"), Item("b", "tech_skill"), Item("c", "tech_skill")));
+
+        var first = new JdFitScoreCalculator().Calculate(oneItem, Response(oneItem, ("a", 0.75m)));
+        var second = new JdFitScoreCalculator().Calculate(
+            threeItems,
+            Response(threeItems, ("a", 0.75m), ("b", 0m), ("c", 0m)));
+
+        first.ScorePercent.Should().Be(75m);
+        second.ScorePercent.Should().Be(75m);
+        first.Groups.Single().CategoryWeight.Should().Be(second.Groups.Single().CategoryWeight);
+    }
+
+    [Fact]
+    public void Calculate_NoPoolBonus_MissingImportanceClassDoesNotGrantFreePoints()
+    {
+        var projection = Projection(
+            Group("must", "all_of", 1, "must_have", Item("m", "tech_skill")),
+            Group("nice", "all_of", 1, "nice_to_have", Item("n", "tech_skill")));
+
+        var result = new JdFitScoreCalculator().Calculate(
+            projection,
+            Response(projection, ("m", 0m), ("n", 1m)));
+
+        result.ScorePercent.Should().BeApproximately(33.333333333333333333333333333m, 0.000000000000000000000000001m);
+    }
+
+    [Theory]
+    [InlineData("all_of", 2)]
+    [InlineData("one_of", 1)]
+    [InlineData("at_least_n", 1)]
+    public void Calculate_IncompleteGroup_DoesNotApplyOperatorToSubset(
+        string operation,
+        int minimum)
+    {
+        var projection = Projection(Group(
+            "partial",
+            operation,
+            minimum,
+            "must_have",
+            Item("a", "tech_skill"),
+            Item("b", "tech_skill")));
+
+        var response = Response(projection, ("a", 1m)) with
+        {
+            Quality = JdStageTwoOutputQuality.PARTIAL,
+            Coverage = new JdStageTwoOutputCoverage(2, 1, 1, 0, new[] { "b" }, false)
+        };
+        var result = new JdFitScoreCalculator().Calculate(projection, response);
+
+        result.ScorePercent.Should().BeNull();
+        result.CompletionDisposition.Should().Be(MatchingCompletionDisposition.UnscoredRefundable);
+        result.Groups.Single().GroupScore.Should().BeNull();
+        result.Groups.Single().IsComplete.Should().BeFalse();
+        result.Groups.Single().ContributesToAggregate.Should().BeFalse();
+        result.Groups.Single().MissingItemIds.Should().Equal("b");
+    }
+
+    [Theory]
+    [InlineData("VERY_SUITABLE", 85)]
+    [InlineData("QUITE_SUITABLE", 84.9)]
+    [InlineData("QUITE_SUITABLE", 70)]
+    [InlineData("PARTIAL_FIT", 69.9)]
+    [InlineData("PARTIAL_FIT", 55)]
+    [InlineData("LIMITED_FIT", 54.9)]
+    [InlineData("LIMITED_FIT", 40)]
+    [InlineData("LOW_FIT", 39.9)]
+    [InlineData("LOW_FIT", 0)]
+    public void ResolveResultBand_UsesExactWorkbookBoundaries(string code, double value)
+    {
+        MatchingScorePolicy.ResolveBand((decimal)value).ResultCode.Should().Be(code);
+    }
+
+    private static JdStageTwoValidatedResponse Response(
+        JdRequirementProjection projection,
+        params (string ItemId, decimal Score)[] values)
+    {
+        var categories = projection.Groups.SelectMany(group => group.Items)
+            .ToDictionary(item => item.ItemId, item => item.Category, StringComparer.Ordinal);
+        var assessments = values.ToDictionary(
+            value => value.ItemId,
+            value => new JdStageTwoItemAssessment(
+                value.ItemId,
+                categories[value.ItemId],
+                Handler(categories[value.ItemId], value.Score),
+                value.Score,
+                "Reasoning",
+                Array.Empty<JdMatchingEvidence>(),
+                Array.Empty<string>()),
+            StringComparer.Ordinal);
+        return new JdStageTwoValidatedResponse(
+            assessments,
+            "Narrative",
+            JdStageTwoOutputQuality.COMPLETE,
+            new JdStageTwoOutputCoverage(assessments.Count, assessments.Count, assessments.Count, 0, Array.Empty<string>(), false),
+            Array.Empty<string>());
+    }
+
+    private static string Handler(string category, decimal score) => (category, score) switch
+    {
+        ("tech_skill", 0m) => "H_TECH_01",
+        ("tech_skill", 0.5m) => "H_TECH_03",
+        ("tech_skill", 0.75m) => "H_TECH_04",
+        ("tech_skill", 1m) => "H_TECH_05",
+        ("language", 1m) => "H_LANG_F05",
+        _ => throw new InvalidOperationException()
+    };
+
+    private static JdRequirementProjection Projection(params ProjectedJdRequirementGroup[] groups) =>
+        new("jd-analysis/v4", groups, false);
+
+    private static ProjectedJdRequirementGroup Group(
+        string id,
+        string operation,
+        int minSatisfied,
+        string importance,
+        params ProjectedJdRequirementItem[] items) =>
+        new(id, operation, minSatisfied, importance, items, "requirements", $"Requirement {id}", id, id);
+
+    private static ProjectedJdRequirementItem Item(string id, string category) =>
+        new(id, category, id, id, id, "requirements", Array.Empty<string>(), null, null,
+            JdRequirementCategoryWeights.Get(category));
 }

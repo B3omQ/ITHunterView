@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FluentAssertions;
@@ -19,6 +20,95 @@ namespace ITHunterview.Service.Tests.Matching;
 
 public sealed class CvJdMatchingWorkerUseCaseTests
 {
+    [Fact]
+    public async Task ProcessClaimedJob_UnscoredResult_CompletesWithNullScoreAndRefundsOnce()
+    {
+        await using var context = CreateContext();
+        var job = CreateJob();
+        context.CvJobMatchScores.Add(job);
+        await context.SaveChangesAsync();
+
+        const string details = """
+            {"mode":"jd_fit","contract":"jd-matching/v5","scoreAvailable":false,
+             "completionDisposition":"unscored_refundable","jdFit":{"scorePercent":null,
+             "requirementGroups":[],"criticalGaps":[]}}
+            """;
+        var processor = new Mock<ICvJdOneToOneMatchingProcessor>(MockBehavior.Strict);
+        processor.Setup(x => x.ExecuteAsync(job.Id, It.IsAny<MatchingInputSnapshotV1>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CvJdMatchingExecutionResult(
+                null,
+                details,
+                null,
+                CompletionDisposition: MatchingCompletionDisposition.UnscoredRefundable));
+        var featureUsage = CreateFeatureUsageMock();
+        var worker = CreateWorker(context, processor.Object, featureUsage.Object);
+        var repository = new CvJdMatchingJobRepository(context);
+        var claimed = (await repository.ClaimRunnableJobsAsync(
+            1,
+            "worker-a",
+            UtcNow,
+            CvJdMatchingWorkerUseCase.LeaseDuration))[0];
+
+        await worker.ProcessClaimedJobAsync(job.Id, "worker-a", claimed.LeaseToken);
+
+        job.Status.Should().Be("Completed");
+        job.MatchScore.Should().BeNull();
+        job.MatchDetails.Should().Be(details);
+        job.ErrorCode.Should().BeNull();
+        processor.Verify(x => x.ExecuteAsync(
+            job.Id,
+            It.IsAny<MatchingInputSnapshotV1>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        featureUsage.Verify(x => x.RefundFeatureReservationAsync(
+            job.UserId,
+            job.Id,
+            "score_unavailable",
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ProcessClaimedJob_StagedUnscoredResult_FinalizesWithoutCallingProcessorAgain()
+    {
+        await using var context = CreateContext();
+        var job = CreateJob();
+        job.Status = "RetryScheduled";
+        job.ErrorCode = ICvJdMatchingJobRepository.ResultFinalizationPending;
+        job.ErrorMessage = ICvJdMatchingJobRepository.ResultFinalizationPending;
+        job.MatchScore = null;
+        job.MatchDetails = """
+            {"mode":"jd_fit","contract":"jd-matching/v5","scoreAvailable":false,
+             "completionDisposition":"unscored_refundable","jdFit":{"scorePercent":null,
+             "requirementGroups":[],"criticalGaps":[]}}
+            """;
+        context.CvJobMatchScores.Add(job);
+        await context.SaveChangesAsync();
+
+        var processor = new Mock<ICvJdOneToOneMatchingProcessor>(MockBehavior.Strict);
+        var featureUsage = CreateFeatureUsageMock();
+        var worker = CreateWorker(context, processor.Object, featureUsage.Object);
+        var repository = new CvJdMatchingJobRepository(context);
+        var claimed = (await repository.ClaimRunnableJobsAsync(
+            1,
+            "worker-b",
+            UtcNow,
+            CvJdMatchingWorkerUseCase.LeaseDuration))[0];
+
+        await worker.ProcessClaimedJobAsync(job.Id, "worker-b", claimed.LeaseToken);
+
+        job.Status.Should().Be("Completed");
+        job.MatchScore.Should().BeNull();
+        job.ErrorCode.Should().BeNull();
+        processor.Verify(x => x.ExecuteAsync(
+            It.IsAny<Guid>(),
+            It.IsAny<MatchingInputSnapshotV1>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        featureUsage.Verify(x => x.RefundFeatureReservationAsync(
+            job.UserId,
+            job.Id,
+            "score_unavailable",
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     [Fact]
     public async Task ClaimRunnableJobs_ClaimsPendingJobWithLeaseAndAttempt()
     {
@@ -59,8 +149,8 @@ public sealed class CvJdMatchingWorkerUseCaseTests
         var diagnostics = new[] { new CvAnalysisDiagnostic("DOMAIN_METRIC_MISSING", "$.matching_metrics.domains") };
         processor.Setup(x => x.ExecuteAsync(job.Id, It.IsAny<MatchingInputSnapshotV1>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CvJdMatchingExecutionResult(
-                0.82m,
-                "details",
+                82m,
+                ScoredDetails(82m),
                 "sfia",
                 CvAnalysisQuality.PARTIAL,
                 coverage,
@@ -75,8 +165,8 @@ public sealed class CvJdMatchingWorkerUseCaseTests
         await worker.ProcessClaimedJobAsync(job.Id, "worker-a", claimed.LeaseToken);
 
         job.Status.Should().Be("Completed");
-        job.MatchScore.Should().Be(0.82m);
-        job.MatchDetails.Should().Be("details");
+        job.MatchScore.Should().Be(82m);
+        job.MatchDetails.Should().Be(ScoredDetails(82m));
         job.SfiaExtractResult.Should().Be("sfia");
         job.CvAnalysisQuality.Should().Be(CvAnalysisQuality.PARTIAL);
         job.CvAnalysisCoverageJson.Should().Contain("accepted_experience_entry_count");
@@ -99,8 +189,8 @@ public sealed class CvJdMatchingWorkerUseCaseTests
         var processor = new Mock<ICvJdOneToOneMatchingProcessor>(MockBehavior.Strict);
         processor.Setup(x => x.ExecuteAsync(job.Id, It.IsAny<MatchingInputSnapshotV1>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CvJdMatchingExecutionResult(
-                0.82m,
-                "details",
+                82m,
+                ScoredDetails(82m),
                 null,
                 CvPersistenceIntent: new CvAnalysisPersistenceIntent(
                     Guid.NewGuid(), job.UserId, "source", "analysis", "{}",
@@ -146,6 +236,66 @@ public sealed class CvJdMatchingWorkerUseCaseTests
         job.NextAttemptAt.Should().NotBeNull();
         featureUsage.Verify(x => x.RefundFeatureReservationAsync(
             It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessClaimedJob_ProviderUnauthorizedFailsAsConfigurationAndRefundsOnce()
+    {
+        await using var context = CreateContext();
+        var job = CreateJob();
+        context.CvJobMatchScores.Add(job);
+        await context.SaveChangesAsync();
+
+        var processor = new Mock<ICvJdOneToOneMatchingProcessor>(MockBehavior.Strict);
+        processor.Setup(x => x.ExecuteAsync(job.Id, It.IsAny<MatchingInputSnapshotV1>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException(
+                "Provider authentication failed.",
+                inner: null,
+                HttpStatusCode.Unauthorized));
+        var featureUsage = CreateFeatureUsageMock();
+        var worker = CreateWorker(context, processor.Object, featureUsage.Object);
+        var repository = new CvJdMatchingJobRepository(context);
+        var claimed = (await repository.ClaimRunnableJobsAsync(
+            1,
+            "worker-a",
+            UtcNow,
+            CvJdMatchingWorkerUseCase.LeaseDuration))[0];
+
+        await worker.ProcessClaimedJobAsync(job.Id, "worker-a", claimed.LeaseToken);
+
+        job.Status.Should().Be("Failed");
+        job.ErrorCode.Should().Be("MATCHING_CONFIGURATION_INVALID");
+        job.NextAttemptAt.Should().BeNull();
+        featureUsage.Verify(x => x.RefundFeatureReservationAsync(
+            job.UserId,
+            job.Id,
+            "matching_configuration_invalid",
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ClaimRunnableJobs_DoesNotReprocessCompletedJob()
+    {
+        await using var context = CreateContext();
+        var job = CreateJob();
+        job.Status = "Completed";
+        job.MatchScore = 84m;
+        job.MatchDetails = "{\"contract\":\"jd-matching/v4\"}";
+        context.CvJobMatchScores.Add(job);
+        await context.SaveChangesAsync();
+
+        var repository = new CvJdMatchingJobRepository(context);
+
+        var claimed = await repository.ClaimRunnableJobsAsync(
+            1,
+            "worker-a",
+            UtcNow,
+            CvJdMatchingWorkerUseCase.LeaseDuration);
+
+        claimed.Should().BeEmpty();
+        job.Status.Should().Be("Completed");
+        job.MatchScore.Should().Be(84m);
+        job.MatchDetails.Should().Be("{\"contract\":\"jd-matching/v4\"}");
     }
 
     [Fact]
@@ -427,6 +577,20 @@ public sealed class CvJdMatchingWorkerUseCaseTests
             InputHash = MatchingInputSnapshotIntegrity.ComputeHash(CreateSnapshot())
         };
     }
+
+    private static string ScoredDetails(decimal score) => JsonSerializer.Serialize(new
+    {
+        mode = "jd_fit",
+        contract = JdFitResultContract.Version5,
+        scoreAvailable = true,
+        completionDisposition = "scored_billable",
+        jdFit = new
+        {
+            scorePercent = score,
+            requirementGroups = Array.Empty<object>(),
+            criticalGaps = Array.Empty<object>()
+        }
+    });
 
     private static string SnapshotJson()
     {

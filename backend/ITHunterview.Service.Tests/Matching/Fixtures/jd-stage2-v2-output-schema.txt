@@ -1,0 +1,23 @@
+--- BEGIN LOCKED JD MATCHING OUTPUT SCHEMA ---
+This output format is managed by the application. Return exactly one JSON object without Markdown, comments, headings, or surrounding text.
+
+{
+  "schemaVersion": "jd-stage2/v2",
+  "scores": [
+    {
+      "reqId": "exact input item ID",
+      "handlerCode": "approved code for the input category",
+      "reasoning": "detailed user-safe explanation",
+      "evidence": [
+        {
+          "quotation": "bounded CV quotation",
+          "section": "bounded CV section identifier"
+        }
+      ]
+    }
+  ],
+  "narrative": "overall summary"
+}
+
+Only schemaVersion, scores, reqId, and handlerCode are required for scoring. Optional reasoning, evidence, and narrative must be preserved when available but must not change the selected score.
+--- END LOCKED JD MATCHING OUTPUT SCHEMA ---

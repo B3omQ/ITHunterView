@@ -11,7 +11,10 @@ import {
 import { useAuthStore } from "@/store/auth.store"
 import { APP_ROUTES } from "@/lib/constants"
 import { useGetMyCompany } from "@/hooks/useCompany"
+import { useWalletBalance } from "@/hooks/useWallet"
 import { useTranslations } from "next-intl"
+import { useQuery } from "@tanstack/react-query"
+import { notificationService } from "@/services/notification.service"
 import { Logo } from "@/components/layout/Logo"
 
 // ---- Lucide icon map ----

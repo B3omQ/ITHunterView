@@ -1,0 +1,13 @@
+{
+  "schema_version": "jd-analysis/v5",
+  "matching_metrics": {
+    "job_titles_normalized": [],
+    "total_years_exp": 0,
+    "domains": [],
+    "requirement_groups": {
+      "source_requirement_id": "req-001",
+      "intent": "qualification",
+      "operator": "all_of"
+    }
+  }
+}

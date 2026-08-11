@@ -91,7 +91,10 @@ namespace ITHunterview.Service.Service.AiProviders
                     response.Content,
                     BoundedHttpContentReader.DefaultMaxBytes,
                     cancellationToken);
-                throw new HttpRequestException($"OpenAI API call failed with status code {response.StatusCode}; ErrorBodyLength: {errorContent.Length}");
+                throw new HttpRequestException(
+                    $"OpenAI API call failed with status code {response.StatusCode}; ErrorBodyLength: {errorContent.Length}",
+                    inner: null,
+                    response.StatusCode);
             }
 
             var responseContent = await BoundedHttpContentReader.ReadAsStringAsync(

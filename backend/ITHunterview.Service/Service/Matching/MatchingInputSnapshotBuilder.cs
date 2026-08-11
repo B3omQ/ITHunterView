@@ -8,7 +8,8 @@ namespace ITHunterview.Service.Service.Matching;
 public sealed class MatchingInputSnapshotBuilder
 {
     public const string LegacySchemaVersion = "matching-context/v1";
-    public const string SchemaVersion = "matching-context/v2";
+    public const string Version2SchemaVersion = "matching-context/v2";
+    public const string SchemaVersion = "matching-context/v3";
 
     private readonly IMatchingSourceRepository _sourceRepository;
     private readonly IJobAnalysisInputBuilder _jobAnalysisInputBuilder;
@@ -89,13 +90,15 @@ public sealed class MatchingInputSnapshotBuilder
     {
         if (source is PreparedRawJdSource raw)
         {
+            var rawInput = _jobAnalysisInputBuilder.BuildFromPastedText(raw.Title, raw.RawText);
             return new MatchingJdSnapshot(
                 "raw_jd",
                 null,
                 raw.Title,
                 raw.RawText,
                 null,
-                null);
+                null,
+                AnalysisInputJson: _jobAnalysisInputBuilder.SerializeCanonical(rawInput));
         }
 
         if (source is not PreparedSavedJdSource saved)
@@ -113,7 +116,7 @@ public sealed class MatchingInputSnapshotBuilder
             throw new KeyNotFoundException("Job not found");
         }
 
-        var input = _jobAnalysisInputBuilder.Build(job);
+        var savedInput = _jobAnalysisInputBuilder.Build(job);
         return new MatchingJdSnapshot(
             "saved_jd",
             job.Id,
@@ -121,11 +124,12 @@ public sealed class MatchingInputSnapshotBuilder
             JdTextHelper.BuildRawText(job),
             job.ParsedData,
             ReadSchemaVersion(job.ParsedData),
-            MatchingSourceFingerprint.ForJd(input, _jobAnalysisInputBuilder),
+            MatchingSourceFingerprint.ForJd(savedInput, _jobAnalysisInputBuilder),
             MatchingSourceFingerprint.ForAnalysis(job.ParsedData),
             job.AnalysisRevision,
             job.EffectiveAnalysisRevision,
-            job.ParseStatus);
+            job.ParseStatus,
+            _jobAnalysisInputBuilder.SerializeCanonical(savedInput));
     }
 
     private static string? ReadSchemaVersion(string? analysisJson)

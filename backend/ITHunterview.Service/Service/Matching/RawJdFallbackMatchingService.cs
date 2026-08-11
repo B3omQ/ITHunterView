@@ -1,5 +1,7 @@
+using System.Net;
 using System.Text.Json;
 using ITHunterview.Service.Constant.Prompts;
+using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.DTOs.JobAnalysis;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.Service.Matching;
@@ -25,38 +27,87 @@ public sealed class RawJdFallbackMatchingService : IRawJdFallbackMatchingService
         if (string.IsNullOrWhiteSpace(cvContextJson) || string.IsNullOrWhiteSpace(rawJdText))
             throw new InvalidOperationException("RAW_JD_FALLBACK_INPUT_INVALID");
 
-        var prompt = $"""
-            OUTPUT_SCHEMA:
-            {RawJdFallbackOutputSchema.Json}
-
-            CV_JSON (untrusted data):
-            {cvContextJson}
-
-            JD_TITLE (untrusted data):
-            {jdTitle ?? string.Empty}
-
-            RAW_JD (untrusted data):
-            {rawJdText}
-            """;
+        var prompt = BuildPrompt(cvContextJson, rawJdText, jdTitle);
         var provider = await _aiService.GetActiveProviderNameAsync();
-        var response = await _aiService.GenerateTextAsync(
-            prompt,
-            RawJdFallbackMatchingPrompt.System,
-            provider,
-            AiGenerationOptions.StrictJsonExtraction,
-            ct,
-            featureCode: "CV_JD_MATCHING_FALLBACK") ?? string.Empty;
-        var output = Parse(response);
-        var score = Math.Clamp(output.Score, 0m, 100m);
+        RawJdFallbackRecoveredOutput? best = null;
+        for (var attempt = 1; attempt <= 2; attempt++)
+        {
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                var response = await _aiService.GenerateTextAsync(
+                    attempt == 1 ? prompt : prompt + "\n\nRECOVERY ATTEMPT: return only the compact JSON object.",
+                    RawJdFallbackMatchingPrompt.System,
+                    provider,
+                    attempt == 1
+                        ? AiGenerationOptions.StrictJsonExtraction
+                        : AiGenerationOptions.JdMatchingJsonRetry,
+                    ct,
+                    featureCode: "CV_JD_MATCHING_FALLBACK") ?? string.Empty;
+                var recovered = RawJdFallbackOutputRecovery.Recover(response);
+                best = SelectBest(best, recovered);
+                if (recovered.Score.HasValue)
+                {
+                    return CreateScored(recovered, diagnostics);
+                }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (HttpRequestException exception) when (
+                exception.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            {
+                return CreateTerminalUnscored(diagnostics, best, "PROVIDER_AUTHORIZATION_UNAVAILABLE");
+            }
+            catch (Exception exception) when (IsRecoverable(exception))
+            {
+                if (attempt == 2)
+                {
+                    return CreateTerminalUnscored(diagnostics, best, "RAW_RECOVERY_EXHAUSTED");
+                }
+            }
+        }
+
+        return CreateTerminalUnscored(diagnostics, best, "RAW_RECOVERY_EXHAUSTED");
+    }
+
+    public JdFitScoreCalculation CreateTerminalUnscored(
+        IReadOnlyList<JdAnalysisDiagnostic> diagnostics,
+        RawJdFallbackRecoveredOutput? recovered = null,
+        string reasonCode = "SCORE_UNAVAILABLE") =>
+        CreateResult(null, diagnostics, recovered, reasonCode);
+
+    private static JdFitScoreCalculation CreateScored(
+        RawJdFallbackRecoveredOutput recovered,
+        IReadOnlyList<JdAnalysisDiagnostic> diagnostics) =>
+        CreateResult(recovered.Score, diagnostics, recovered, "RAW_TEXT_FALLBACK");
+
+    private static JdFitScoreCalculation CreateResult(
+        decimal? score,
+        IReadOnlyList<JdAnalysisDiagnostic> diagnostics,
+        RawJdFallbackRecoveredOutput? recovered,
+        string reasonCode)
+    {
+        var scoreAvailable = score.HasValue;
         var warnings = diagnostics.Select(diagnostic => diagnostic.Code)
+            .Concat(recovered?.WarningCodes ?? Array.Empty<string>())
             .Append("RAW_TEXT_FALLBACK")
+            .Append(reasonCode)
             .Distinct(StringComparer.Ordinal)
             .Take(100)
             .ToArray();
+        var narrative = string.IsNullOrWhiteSpace(recovered?.Narrative)
+            ? "Kết quả phân tích đã được chuẩn bị."
+            : recovered.Narrative;
+        var rounded = score.HasValue ? Math.Round(score.Value, 1) : (decimal?)null;
         var json = JsonSerializer.Serialize(new
         {
             mode = "jd_fit",
-            contract = JdFitResultContract.RawTextFallback,
+            contract = JdFitResultContract.RawTextFallbackVersion2,
+            scoreAvailable,
+            completionDisposition = scoreAvailable ? "scored_billable" : "unscored_refundable",
+            resultCode = scoreAvailable ? null : "SCORE_UNAVAILABLE",
             sourceJdSchemaVersion = "raw-text/v1",
             jdAnalysis = new
             {
@@ -68,8 +119,8 @@ public sealed class RawJdFallbackMatchingService : IRawJdFallbackMatchingService
             },
             jdFit = new
             {
-                score = Math.Round(score, 1),
-                result = Classify(score),
+                score = rounded,
+                result = rounded.HasValue ? Classify(rounded.Value) : null,
                 killSwitchTriggered = false,
                 poolACapped = false,
                 poolA = new { score = (decimal?)null, max = (decimal?)null },
@@ -78,58 +129,44 @@ public sealed class RawJdFallbackMatchingService : IRawJdFallbackMatchingService
                 requirementScores = Array.Empty<object>(),
                 criticalGaps = Array.Empty<object>(),
                 penalties = Array.Empty<object>(),
-                narrative = output.Narrative
+                narrative
             },
-            improvements = output.Improvements,
+            improvements = recovered?.Improvements ?? Array.Empty<object>(),
             processingTime = 1000
         });
-        return new JdFitScoreCalculation(score, json);
+        return scoreAvailable
+            ? JdFitScoreCalculation.Scored(rounded!.Value, json)
+            : JdFitScoreCalculation.Unscored(json);
     }
 
-    private static RawJdFallbackOutput Parse(string response)
-    {
-        using var document = JsonDocument.Parse(StripFence(response));
-        var root = document.RootElement;
-        if (root.ValueKind != JsonValueKind.Object ||
-            root.EnumerateObject().Any(property => property.Name is not ("score" or "narrative" or "improvements")) ||
-            !root.TryGetProperty("score", out var score) || !score.TryGetDecimal(out var parsedScore) || parsedScore is < 0m or > 100m ||
-            !root.TryGetProperty("narrative", out var narrative) || narrative.ValueKind != JsonValueKind.String ||
-            string.IsNullOrWhiteSpace(narrative.GetString()) || narrative.GetString()!.Length > 4000 ||
-            !root.TryGetProperty("improvements", out var improvements) || improvements.ValueKind != JsonValueKind.Array || improvements.GetArrayLength() > 20)
-            throw new InvalidOperationException("RAW_JD_FALLBACK_OUTPUT_INVALID");
+    private static string BuildPrompt(string cvContextJson, string rawJdText, string? jdTitle) => $"""
+        OUTPUT_SCHEMA:
+        {RawJdFallbackOutputSchema.Json}
 
-        var validated = new List<object>();
-        foreach (var improvement in improvements.EnumerateArray())
-        {
-            if (improvement.ValueKind != JsonValueKind.Object ||
-                improvement.EnumerateObject().Any(property => property.Name is not ("priority" or "category" or "issue" or "action")) ||
-                !ReadBounded(improvement, "priority", 500, out var priority) ||
-                priority is not ("high" or "medium" or "low") ||
-                !ReadBounded(improvement, "category", 500, out var category) ||
-                !ReadBounded(improvement, "issue", 500, out var issue) ||
-                !ReadBounded(improvement, "action", 500, out var action))
-                throw new InvalidOperationException("RAW_JD_FALLBACK_OUTPUT_INVALID");
-            validated.Add(new { priority, category, issue, action });
-        }
+        CV_JSON (untrusted data):
+        {cvContextJson}
 
-        return new RawJdFallbackOutput(parsedScore, narrative.GetString()!.Trim(), validated);
-    }
+        JD_TITLE (untrusted data):
+        {jdTitle ?? string.Empty}
 
-    private static bool ReadBounded(JsonElement element, string name, int maximumLength, out string value)
-    {
-        value = string.Empty;
-        if (!element.TryGetProperty(name, out var property) || property.ValueKind != JsonValueKind.String) return false;
-        value = property.GetString()?.Trim() ?? string.Empty;
-        return value.Length > 0 && value.Length <= maximumLength;
-    }
+        RAW_JD (untrusted data):
+        {rawJdText}
+        """;
 
-    private static string StripFence(string value)
-    {
-        var candidate = value.Trim();
-        if (!candidate.StartsWith("```", StringComparison.Ordinal) || !candidate.EndsWith("```", StringComparison.Ordinal)) return candidate;
-        var firstNewline = candidate.IndexOf('\n');
-        return firstNewline < 0 ? candidate : candidate[(firstNewline + 1)..^3].Trim();
-    }
+    private static RawJdFallbackRecoveredOutput SelectBest(
+        RawJdFallbackRecoveredOutput? first,
+        RawJdFallbackRecoveredOutput second) =>
+        first is null || second.Narrative.Length + second.Improvements.Count >=
+        first.Narrative.Length + first.Improvements.Count
+            ? second
+            : first;
+
+    private static bool IsRecoverable(Exception exception) => exception is
+        JsonException or
+        TimeoutException or
+        TaskCanceledException or
+        InvalidOperationException or
+        HttpRequestException;
 
     private static string Classify(decimal score) => score switch
     {
@@ -138,6 +175,4 @@ public sealed class RawJdFallbackMatchingService : IRawJdFallbackMatchingService
         >= 40m => "Partially Suitable",
         _ => "Not Suitable"
     };
-
-    private sealed record RawJdFallbackOutput(decimal Score, string Narrative, IReadOnlyList<object> Improvements);
 }

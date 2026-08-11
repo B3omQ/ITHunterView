@@ -137,6 +137,133 @@ namespace ITHunterview.Service.Tests.UseCase
         }
 
         [Fact]
+        public async Task GetMatchingResultAsync_CompletedMalformedDetails_ReturnsTypedLegacySummary()
+        {
+            var options = new DbContextOptionsBuilder<ITHunterviewContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+            await using var context = new MatchingTestContext(options);
+            var matchId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            context.CvJobMatchScores.Add(new CvJobMatchScores
+            {
+                Id = matchId,
+                UserId = userId,
+                Status = "Completed",
+                MatchType = "AI",
+                MatchScore = 81.8m,
+                MatchDetails = "{not-json",
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var result = await CreateDatabaseUseCase(context).GetMatchingResultAsync(matchId, userId);
+
+            result.Should().NotBeNull();
+            result!.Report.Should().NotBeNull();
+            result.ReportKind.Should().Be("legacy_summary");
+            result.MatchMethod.Should().Be("legacy_unknown");
+            result.ScorePercent.Should().Be(81.8m);
+            result.ScoreAvailable.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task GetMatchingResultAsync_V4_ReturnsTypedReportWithoutRawMatchDetails()
+        {
+            var options = new DbContextOptionsBuilder<ITHunterviewContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+            await using var context = new MatchingTestContext(options);
+            var matchId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            context.CvJobMatchScores.Add(new CvJobMatchScores
+            {
+                Id = matchId,
+                UserId = userId,
+                Status = "Completed",
+                MatchType = "AI",
+                MatchScore = 91m,
+                MatchDetails = "{\"contract\":\"jd-matching/v4\",\"jdFit\":{\"scorePercent\":91,\"requirementGroups\":[],\"criticalGaps\":[]}}",
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var result = await CreateDatabaseUseCase(context).GetMatchingResultAsync(matchId, userId);
+
+            result.Should().NotBeNull();
+            result!.MatchDetails.Should().BeNull();
+            result.Report.Should().NotBeNull();
+            result.Report!.ReportContract.Should().Be("match-report/v3");
+            result.ScorePercent.Should().Be(91m);
+            result.ScoreAvailable.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task GetMatchHistoryAsync_HardcodeFraction_ExposesNormalizedPercentAndMethod()
+        {
+            var options = new DbContextOptionsBuilder<ITHunterviewContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+            await using var context = new MatchingTestContext(options);
+            var userId = Guid.NewGuid();
+            context.CvJobMatchScores.Add(new CvJobMatchScores
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Status = "Completed",
+                MatchType = "Hardcode",
+                MatchScore = 0.818m,
+                MatchDetails = "{\"Method\":\"HardcodeV3\",\"FinalScore\":0.818}",
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var history = await CreateDatabaseUseCase(context).GetMatchHistoryAsync(userId, 1, 10);
+
+            history.Items.Should().ContainSingle();
+            history.Items[0].ScorePercent.Should().Be(81.8m);
+            history.Items[0].ScoreAvailable.Should().BeTrue();
+            history.Items[0].ReportKind.Should().Be("legacy_summary");
+            history.Items[0].MatchMethod.Should().Be("hardcode");
+        }
+
+        [Fact]
+        public async Task GetMatchingResultAndHistory_UnscoredV5_KeepCompletedResultWithoutInventingZero()
+        {
+            var options = new DbContextOptionsBuilder<ITHunterviewContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+            await using var context = new MatchingTestContext(options);
+            var matchId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            context.CvJobMatchScores.Add(new CvJobMatchScores
+            {
+                Id = matchId,
+                UserId = userId,
+                Status = "Completed",
+                MatchType = "AI",
+                MatchScore = null,
+                MatchDetails = "{\"contract\":\"jd-matching/v5\",\"scoreAvailable\":false,\"completionDisposition\":\"unscored_refundable\",\"jdFit\":{\"scorePercent\":null,\"resultCode\":\"INSUFFICIENT_DATA\",\"requirementGroups\":[],\"criticalGaps\":[]}}",
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var sut = CreateDatabaseUseCase(context);
+            var result = await sut.GetMatchingResultAsync(matchId, userId);
+            var history = await sut.GetMatchHistoryAsync(userId, 1, 10);
+
+            result.Should().NotBeNull();
+            result!.Status.Should().Be("Completed");
+            result.ScorePercent.Should().BeNull();
+            result.ScoreAvailable.Should().BeFalse();
+            result.MatchDetails.Should().BeNull();
+            result.CanRetry.Should().BeFalse();
+            history.Items.Should().ContainSingle();
+            history.Items[0].ScorePercent.Should().BeNull();
+            history.Items[0].ScoreAvailable.Should().BeFalse();
+        }
+
+        [Fact]
         public async Task ProcessMatchingJobAsync_WhenBothParsersNeedScopedServices_DoesNotStartThemConcurrently()
         {
             var options = new DbContextOptionsBuilder<ITHunterviewContext>()
@@ -273,6 +400,52 @@ namespace ITHunterview.Service.Tests.UseCase
             item.CandidateId.Should().BeNull("CandidateId must be masked when locked");
             item.FileUrl.Should().BeNull("FileUrl must be masked when locked");
             item.CvFileName.Should().Be("Ứng viên #1", "FileName must be masked when locked");
+        }
+
+        [Fact]
+        public async Task GetJobMatchHistoryAsync_MixedContracts_SortsNormalizedPercentBeforePaging()
+        {
+            var options = new DbContextOptionsBuilder<ITHunterviewContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+            await using var context = new MatchingTestContext(options);
+            var jobId = Guid.NewGuid();
+            var recruiterId = Guid.NewGuid();
+            var v4Id = Guid.NewGuid();
+            var hardcodeId = Guid.NewGuid();
+            var v3Id = Guid.NewGuid();
+            var vectorId = Guid.NewGuid();
+            var now = DateTime.UtcNow;
+
+            context.CvJobMatchScores.AddRange(
+                Score(v4Id, jobId, 91m, "AI", "{\"contract\":\"jd-matching/v4\",\"jdFit\":{\"scorePercent\":91}}", now),
+                Score(hardcodeId, jobId, .85m, "Hardcode", "{\"Method\":\"HardcodeV3\",\"FinalScore\":0.85}", now.AddMinutes(-1)),
+                Score(v3Id, jobId, 80m, "AI", "{\"contract\":\"jd-matching/v3\",\"jdFit\":{\"score\":80}}", now.AddMinutes(-2)),
+                Score(vectorId, jobId, .75m, "Vector", "{\"TitleScore\":0.8,\"FinalScore\":0.75}", now.AddMinutes(-3)));
+            await context.SaveChangesAsync();
+
+            var page = await CreateDatabaseUseCase(context)
+                .GetJobMatchHistoryAsync(jobId, recruiterId, 1, 2);
+
+            page.TotalCount.Should().Be(4);
+            page.Items.Select(item => item.SourceJobId).Should().Equal(v4Id, hardcodeId);
+            page.Items.Select(item => item.ScorePercent).Should().Equal(91m, 85m);
+
+            static CvJobMatchScores Score(
+                Guid id,
+                Guid sourceJobId,
+                decimal score,
+                string type,
+                string details,
+                DateTime updatedAt) => new()
+                {
+                    Id = id,
+                    JobId = sourceJobId,
+                    MatchScore = score,
+                    MatchType = type,
+                    MatchDetails = details,
+                    UpdatedAt = updatedAt
+                };
         }
 
         [Fact]

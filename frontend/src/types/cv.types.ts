@@ -83,10 +83,14 @@ export interface MatchHistoryDto {
   sourceJobId?: string;
   jdTitle?: string;
   matchScore?: number;
+  scorePercent: number | null;
+  scoreAvailable: boolean;
+  reportKind: MatchReportKind;
+  matchMethod: MatchMethodCode;
   status: string;
   errorMessage?: string;
   updatedAt: string;
-  matchType?: 'AI' | 'Hardcode';
+  matchType?: 'AI' | 'Hardcode' | 'Vector';
   jdAnalysisQuality?: JdAnalysisQuality | null;
   jdAnalysisScoreBasis?: string | null;
   jdAnalysisCoverage?: JdAnalysisCoverage | null;
@@ -127,93 +131,92 @@ export interface MatchingResultDto {
   errorCode?: string;
   errorMessage?: string;
   canRetry: boolean;
-  matchDetails?: string; // The raw JSON string from LLM
+  /** @deprecated Compatibility only. New UI code must use report. */
+  matchDetails?: string;
+  scorePercent?: number | null;
+  scoreAvailable?: boolean;
+  reportKind?: MatchReportKind;
+  matchMethod?: MatchMethodCode;
+  report?: MatchReport | null;
   cvAnalysis?: CvAnalysisResult | null;
 }
 
-export interface MatchingOutput {
-  mode: "jd_fit" | "cv_quality" | "both";
-  contract?: string;
-  sourceJdSchemaVersion?: string;
-  jdAnalysis?: {
-    quality: JdAnalysisQuality;
-    scoreBasis: string;
-    requirementSetComplete: boolean;
-    coverage?: JdAnalysisCoverage | null;
-    warningCodes: string[];
-  };
-  jdFit?: {
-    score: number;
-    result: "Highly Suitable" | "Suitable" | "Partially Suitable" | "Not Suitable";
-    killSwitchTriggered: boolean;
-    poolACapped: boolean;
-    poolA: { score: number | null; max: number | null };
-    poolB: { score: number | null; max: number | null };
-    requirementScores: RequirementScore[];
-    criticalGaps: CriticalGap[];
-    penalties: Penalty[];
-    narrative: string;
-  };
-  cvQuality?: {
-    score: number;
-    result: "Excellent" | "Good" | "Fair" | "Poor";
-    breakdown: Record<string, unknown>;
-    penalties: Penalty[];
-  };
-  improvements: ImprovementSuggestion[];
-  processingTime: number;
+export type MatchReportKind = 'structured' | 'raw_text_fallback' | 'legacy_summary';
+export type MatchMethodCode =
+  | 'one_to_one_ai'
+  | 'hardcode'
+  | 'vector'
+  | 'raw_text_ai'
+  | 'legacy_unknown';
+
+export interface MatchEvidenceReport {
+  quotation: string;
+  section?: string | null;
 }
 
-export type RequirementCategory =
-  | "tech_skill"
-  | "experience"
-  | "seniority_fit"
-  | "domain_knowledge"
-  | "language"
-  | "education"
-  | "soft_skill";
-
-export interface RequirementEntities {
-  skill_name?: string;
-  [key: string]: unknown;
-}
-
-export interface RequirementScore {
-  reqId: string;
-  normalizedText: string;
-  importance: "must_have" | "nice_to_have";
-  category: RequirementCategory;
-  categoryWeight: number;
-  entities: RequirementEntities;
-  handlerUsed: string;
-  handlerCode: string;
-  handlerScore: number;
+export interface MatchRequirementItemReport {
+  itemId?: string | null;
+  normalizedText?: string | null;
+  detailVerbatim?: string | null;
+  rawMention?: string | null;
+  category?: string | null;
+  score: number | null;
+  assessmentStatus?: 'assessed' | 'unresolved';
+  handlerCode?: string | null;
   reasoning: string;
-  confidence: "high" | "medium" | "low";
-  flag: "CRITICAL_GAP" | null;
+  evidence: MatchEvidenceReport[];
+  isCriticalGap: boolean;
+  sourceOrder?: number | null;
 }
 
-export interface CriticalGap {
-  requirement: string;
-  gapDescription: string;
-  severity: "high" | "medium";
-  suggestion: string;
+export interface MatchRequirementGroupReport {
+  groupId?: string | null;
+  sourceRequirementId?: string | null;
+  intent?: string | null;
+  operator?: string | null;
+  minSatisfied?: number | null;
+  importance?: string | null;
+  sourceSection?: string | null;
+  requirementVerbatim?: string | null;
+  groupScore: number | null;
+  selectedItemIds: string[];
+  satisfiedItemIds?: string[];
+  isCriticalGap: boolean;
+  sourceOrder?: number | null;
+  items: MatchRequirementItemReport[];
 }
 
-export interface Penalty {
+export interface MatchCriticalGapReport {
+  gapId?: string | null;
   code: string;
-  triggered: boolean;
-  deduction: number;
-  evidence: string;
+  scope?: string | null;
+  groupId?: string | null;
+  itemId?: string | null;
+  sourceRequirementId?: string | null;
+  sourceSection?: string | null;
+  category?: string | null;
+  importance?: string | null;
+  operator?: string | null;
+  requiredCount?: number | null;
+  satisfiedCount?: number | null;
+  affectedItemIds?: string[];
+  requirement: string;
+  requirementVerbatim?: string | null;
+  reasoning: string;
+  evidence: MatchEvidenceReport[];
 }
 
-export interface ImprovementSuggestion {
-  priority: "high" | "medium" | "low";
-  category: string;
-  issue: string;
-  action: string;
-  example?: {
-    before: string;
-    after: string;
-  };
+export interface MatchReport {
+  reportContract?: 'match-report/v2' | 'match-report/v3';
+  reportKind: MatchReportKind;
+  schemaVersion?: string | null;
+  matchMethod: MatchMethodCode;
+  scorePercent: number | null;
+  scoreAvailable: boolean;
+  resultCode?: string | null;
+  resultLabel?: string | null;
+  narrative: string;
+  requirementGroups: MatchRequirementGroupReport[];
+  criticalGaps: MatchCriticalGapReport[];
+  warningFlags: string[];
 }

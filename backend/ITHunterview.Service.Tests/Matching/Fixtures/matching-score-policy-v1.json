@@ -1,0 +1,104 @@
+{
+  "policyVersion": "matching-score-policy/v1",
+  "sourceWorkbook": {
+    "name": "Điểm số Matching (1).xlsx",
+    "sha256": "e06fa8131c1e6a9b92caedb1a80887a39296dc68329fdf8194f63373397fb148"
+  },
+  "sources": {
+    "importance": "Summary Weights!A5:F8",
+    "categories": "Summary Weights!A11:F18",
+    "fixedLevels": "Summary Weights!A21:F27",
+    "formula": "Summary Weights!A29:F34",
+    "bands": "Summary Weights!A46:F51",
+    "handlers": "Detailed Criteria!A4:H48",
+    "guardrails": "Hard Caps & Penalties!A4:F24"
+  },
+  "roundingDecimals": 1,
+  "importance": [
+    { "code": "must_have", "multiplier": 1.0, "scorable": true, "sourceCell": "Summary Weights!A6:F6" },
+    { "code": "nice_to_have", "multiplier": 0.5, "scorable": true, "sourceCell": "Summary Weights!A7:F7" },
+    { "code": "context_eligibility", "multiplier": 0.0, "scorable": false, "sourceCell": "Summary Weights!A8:F8" }
+  ],
+  "categories": [
+    { "code": "tech_skill", "weight": 1.0, "sourceCell": "Summary Weights!A12:F12" },
+    { "code": "experience", "weight": 0.9, "sourceCell": "Summary Weights!A13:F13" },
+    { "code": "domain_knowledge", "weight": 0.7, "sourceCell": "Summary Weights!A14:F14" },
+    { "code": "language", "weight": 0.6, "sourceCell": "Summary Weights!A15:F15" },
+    { "code": "education", "weight": 0.5, "sourceCell": "Summary Weights!A16:F16" },
+    { "code": "soft_skill", "weight": 0.4, "sourceCell": "Summary Weights!A17:F17" }
+  ],
+  "allowedScores": [0.0, 0.25, 0.5, 0.75, 1.0],
+  "handlers": [
+    { "category": "tech_skill", "handlerCode": "H_TECH_01", "matchLevel": "NO_EVIDENCE", "score": 0.0, "outputStatus": "NOT_EVIDENCED", "applicability": "Không tìm thấy exact skill, alias hoặc transferable foundation liên quan", "sourceCell": "Detailed Criteria!A5:H5" },
+    { "category": "tech_skill", "handlerCode": "H_TECH_02", "matchLevel": "INDIRECT_MATCH", "score": 0.25, "outputStatus": "PARTIALLY_MATCHED", "applicability": "Không có exact skill nhưng có nền tảng transferable/adjacent rõ ràng", "sourceCell": "Detailed Criteria!A6:H6" },
+    { "category": "tech_skill", "handlerCode": "H_TECH_03", "matchLevel": "MENTION_ONLY", "score": 0.5, "outputStatus": "PARTIALLY_MATCHED", "applicability": "Exact skill/alias xuất hiện nhưng chưa có hành động hoặc trách nhiệm cụ thể", "sourceCell": "Detailed Criteria!A7:H7" },
+    { "category": "tech_skill", "handlerCode": "H_TECH_04", "matchLevel": "APPLIED_MATCH", "score": 0.75, "outputStatus": "MATCHED", "applicability": "Exact skill/alias được dùng trong project, internship, freelance hoặc work với action rõ", "sourceCell": "Detailed Criteria!A8:H8" },
+    { "category": "tech_skill", "handlerCode": "H_TECH_05", "matchLevel": "FULL_MATCH", "score": 1.0, "outputStatus": "MATCHED", "applicability": "Exact skill và evidence áp dụng đáp ứng wording về mức độ/phạm vi của JD", "sourceCell": "Detailed Criteria!A9:H9" },
+
+    { "category": "experience", "handlerCode": "H_EXP_00", "matchLevel": "NOT_APPLICABLE", "score": null, "outputStatus": "EXCLUDED", "applicability": "JD không yêu cầu số năm, hands-on experience, từng làm nhiệm vụ hoặc professional context", "sourceCell": "Detailed Criteria!A10:H10" },
+    { "category": "experience", "handlerCode": "H_EXP_D01", "matchLevel": "NO_EVIDENCE", "score": 0.0, "outputStatus": "NOT_EVIDENCED", "applicability": "JD có duration requirement nhưng CV không có timeline liên quan đủ để tính", "sourceCell": "Detailed Criteria!A11:H11" },
+    { "category": "experience", "handlerCode": "H_EXP_D02", "matchLevel": "INDIRECT_MATCH", "score": 0.25, "outputStatus": "PARTIALLY_MATCHED", "applicability": "Relevant duration / required duration < 0.50", "sourceCell": "Detailed Criteria!A12:H12" },
+    { "category": "experience", "handlerCode": "H_EXP_D03", "matchLevel": "MENTION_ONLY", "score": 0.5, "outputStatus": "PARTIALLY_MATCHED", "applicability": "0.50 ≤ relevant duration / required duration < 0.80", "sourceCell": "Detailed Criteria!A13:H13" },
+    { "category": "experience", "handlerCode": "H_EXP_D04", "matchLevel": "APPLIED_MATCH", "score": 0.75, "outputStatus": "MATCHED", "applicability": "0.80 ≤ relevant duration / required duration < 1.00", "sourceCell": "Detailed Criteria!A14:H14" },
+    { "category": "experience", "handlerCode": "H_EXP_D05", "matchLevel": "FULL_MATCH", "score": 1.0, "outputStatus": "MATCHED", "applicability": "Relevant duration / required duration ≥ 1.00", "sourceCell": "Detailed Criteria!A15:H15" },
+    { "category": "experience", "handlerCode": "H_EXP_H01", "matchLevel": "NO_EVIDENCE", "score": 0.0, "outputStatus": "NOT_EVIDENCED", "applicability": "JD yêu cầu hands-on/từng làm nhưng CV không có evidence hành động liên quan", "sourceCell": "Detailed Criteria!A16:H16" },
+    { "category": "experience", "handlerCode": "H_EXP_H02", "matchLevel": "INDIRECT_MATCH", "score": 0.25, "outputStatus": "PARTIALLY_MATCHED", "applicability": "Chỉ có exposure gần hoặc academic/personal project trong khi JD yêu cầu professional context", "sourceCell": "Detailed Criteria!A17:H17" },
+    { "category": "experience", "handlerCode": "H_EXP_H03", "matchLevel": "MENTION_ONLY", "score": 0.5, "outputStatus": "PARTIALLY_MATCHED", "applicability": "CV nhắc đã tiếp xúc/biết quy trình nhưng không nêu nhiệm vụ cụ thể", "sourceCell": "Detailed Criteria!A18:H18" },
+    { "category": "experience", "handlerCode": "H_EXP_H04", "matchLevel": "APPLIED_MATCH", "score": 0.75, "outputStatus": "MATCHED", "applicability": "Có nhiệm vụ trực tiếp trong project/internship/work, đúng loại experience mà JD chấp nhận", "sourceCell": "Detailed Criteria!A19:H19" },
+    { "category": "experience", "handlerCode": "H_EXP_H05", "matchLevel": "FULL_MATCH", "score": 1.0, "outputStatus": "MATCHED", "applicability": "Context, responsibility và scope đáp ứng đầy đủ wording của JD", "sourceCell": "Detailed Criteria!A20:H20" },
+
+    { "category": "education", "handlerCode": "H_EDU_00", "matchLevel": "NOT_APPLICABLE", "score": null, "outputStatus": "EXCLUDED", "applicability": "JD không yêu cầu bằng cấp, tình trạng sinh viên hoặc chuyên ngành", "sourceCell": "Detailed Criteria!A21:H21" },
+    { "category": "education", "handlerCode": "H_EDU_01", "matchLevel": "NO_EVIDENCE", "score": 0.0, "outputStatus": "NOT_EVIDENCED", "applicability": "CV không có thông tin học vấn đủ để xác minh requirement", "sourceCell": "Detailed Criteria!A22:H22" },
+    { "category": "education", "handlerCode": "H_EDU_02", "matchLevel": "NO_MATCH", "score": 0.0, "outputStatus": "NOT_MET", "applicability": "Thông tin CV cho thấy không đạt điều kiện tối thiểu bắt buộc và JD không cho phép equivalent", "sourceCell": "Detailed Criteria!A23:H23" },
+    { "category": "education", "handlerCode": "H_EDU_03", "matchLevel": "INDIRECT_MATCH", "score": 0.25, "outputStatus": "PARTIALLY_MATCHED", "applicability": "Có học vấn nhưng thấp hơn đáng kể hoặc major không liên quan khi field là bắt buộc", "sourceCell": "Detailed Criteria!A24:H24" },
+    { "category": "education", "handlerCode": "H_EDU_04", "matchLevel": "MENTION_ONLY", "score": 0.5, "outputStatus": "PARTIALLY_MATCHED", "applicability": "Một bậc thấp hơn hoặc major liên quan gián tiếp", "sourceCell": "Detailed Criteria!A25:H25" },
+    { "category": "education", "handlerCode": "H_EDU_05", "matchLevel": "APPLIED_MATCH", "score": 0.75, "outputStatus": "MATCHED", "applicability": "Đúng major nhưng đang hoàn thành/chờ tốt nghiệp, hoặc equivalent path gần đầy đủ", "sourceCell": "Detailed Criteria!A26:H26" },
+    { "category": "education", "handlerCode": "H_EDU_06", "matchLevel": "FULL_MATCH", "score": 1.0, "outputStatus": "MATCHED", "applicability": "Đáp ứng đúng degree/status/major hoặc đáp ứng đầy đủ nhánh 'or equivalent'", "sourceCell": "Detailed Criteria!A27:H27" },
+
+    { "category": "language", "handlerCode": "H_LANG_00", "matchLevel": "NOT_APPLICABLE", "score": null, "outputStatus": "EXCLUDED", "applicability": "JD không có language requirement", "sourceCell": "Detailed Criteria!A28:H28" },
+    { "category": "language", "handlerCode": "H_LANG_Q01", "matchLevel": "NO_EVIDENCE", "score": 0.0, "outputStatus": "NOT_EVIDENCED", "applicability": "JD yêu cầu ngưỡng chứng chỉ nhưng CV không có chứng chỉ/điểm tương ứng", "sourceCell": "Detailed Criteria!A29:H29" },
+    { "category": "language", "handlerCode": "H_LANG_Q02", "matchLevel": "INDIRECT_MATCH", "score": 0.25, "outputStatus": "PARTIALLY_MATCHED", "applicability": "cert_score / min_score < 0.50", "sourceCell": "Detailed Criteria!A30:H30" },
+    { "category": "language", "handlerCode": "H_LANG_Q03", "matchLevel": "MENTION_ONLY", "score": 0.5, "outputStatus": "PARTIALLY_MATCHED", "applicability": "0.50 ≤ cert_score / min_score < 0.80", "sourceCell": "Detailed Criteria!A31:H31" },
+    { "category": "language", "handlerCode": "H_LANG_Q04", "matchLevel": "APPLIED_MATCH", "score": 0.75, "outputStatus": "MATCHED", "applicability": "0.80 ≤ cert_score / min_score < 1.00", "sourceCell": "Detailed Criteria!A32:H32" },
+    { "category": "language", "handlerCode": "H_LANG_Q05", "matchLevel": "FULL_MATCH", "score": 1.0, "outputStatus": "MATCHED", "applicability": "cert_score / min_score ≥ 1.00", "sourceCell": "Detailed Criteria!A33:H33" },
+    { "category": "language", "handlerCode": "H_LANG_F01", "matchLevel": "NO_EVIDENCE", "score": 0.0, "outputStatus": "NOT_EVIDENCED", "applicability": "JD yêu cầu khả năng sử dụng nhưng CV không có signal", "sourceCell": "Detailed Criteria!A34:H34" },
+    { "category": "language", "handlerCode": "H_LANG_F02", "matchLevel": "INDIRECT_MATCH", "score": 0.25, "outputStatus": "PARTIALLY_MATCHED", "applicability": "Chỉ có evidence gián tiếp", "sourceCell": "Detailed Criteria!A35:H35" },
+    { "category": "language", "handlerCode": "H_LANG_F03", "matchLevel": "MENTION_ONLY", "score": 0.5, "outputStatus": "PARTIALLY_MATCHED", "applicability": "Có mention mức độ hoặc khóa học/chứng chỉ không có ngưỡng kiểm chứng", "sourceCell": "Detailed Criteria!A36:H36" },
+    { "category": "language", "handlerCode": "H_LANG_F04", "matchLevel": "APPLIED_MATCH", "score": 0.75, "outputStatus": "MATCHED", "applicability": "Có sử dụng ngôn ngữ trong học tập/project/work nhưng context chưa hoàn toàn trùng JD", "sourceCell": "Detailed Criteria!A37:H37" },
+    { "category": "language", "handlerCode": "H_LANG_F05", "matchLevel": "FULL_MATCH", "score": 1.0, "outputStatus": "MATCHED", "applicability": "Có direct evidence đúng kỹ năng và context JD yêu cầu", "sourceCell": "Detailed Criteria!A38:H38" },
+
+    { "category": "domain_knowledge", "handlerCode": "H_DOMAIN_01", "matchLevel": "NO_EVIDENCE", "score": 0.0, "outputStatus": "NOT_EVIDENCED", "applicability": "Không có signal về domain được yêu cầu", "sourceCell": "Detailed Criteria!A39:H39" },
+    { "category": "domain_knowledge", "handlerCode": "H_DOMAIN_02", "matchLevel": "INDIRECT_MATCH", "score": 0.25, "outputStatus": "PARTIALLY_MATCHED", "applicability": "Có kiến thức adjacent hoặc concept liên quan gián tiếp", "sourceCell": "Detailed Criteria!A40:H40" },
+    { "category": "domain_knowledge", "handlerCode": "H_DOMAIN_03", "matchLevel": "MENTION_ONLY", "score": 0.5, "outputStatus": "PARTIALLY_MATCHED", "applicability": "Tên domain xuất hiện hoặc có project nhỏ nhưng chưa có nghiệp vụ cụ thể", "sourceCell": "Detailed Criteria!A41:H41" },
+    { "category": "domain_knowledge", "handlerCode": "H_DOMAIN_04", "matchLevel": "APPLIED_MATCH", "score": 0.75, "outputStatus": "MATCHED", "applicability": "Có evidence xử lý bài toán nghiệp vụ trong project/internship/work", "sourceCell": "Detailed Criteria!A42:H42" },
+    { "category": "domain_knowledge", "handlerCode": "H_DOMAIN_05", "matchLevel": "FULL_MATCH", "score": 1.0, "outputStatus": "MATCHED", "applicability": "Evidence trực tiếp đáp ứng depth/context domain trong JD", "sourceCell": "Detailed Criteria!A43:H43" },
+
+    { "category": "soft_skill", "handlerCode": "H_SOFT_01", "matchLevel": "NO_EVIDENCE", "score": 0.0, "outputStatus": "NOT_EVIDENCED", "applicability": "Không có behavioral evidence liên quan", "sourceCell": "Detailed Criteria!A44:H44" },
+    { "category": "soft_skill", "handlerCode": "H_SOFT_02", "matchLevel": "INDIRECT_MATCH", "score": 0.25, "outputStatus": "PARTIALLY_MATCHED", "applicability": "Chỉ có keyword chung hoặc tín hiệu rất yếu", "sourceCell": "Detailed Criteria!A45:H45" },
+    { "category": "soft_skill", "handlerCode": "H_SOFT_03", "matchLevel": "MENTION_ONLY", "score": 0.5, "outputStatus": "PARTIALLY_MATCHED", "applicability": "Có một evidence có context nhưng hành vi/đóng góp chưa rõ", "sourceCell": "Detailed Criteria!A46:H46" },
+    { "category": "soft_skill", "handlerCode": "H_SOFT_04", "matchLevel": "APPLIED_MATCH", "score": 0.75, "outputStatus": "MATCHED", "applicability": "Có một behavioral evidence trực tiếp và phù hợp requirement", "sourceCell": "Detailed Criteria!A47:H47" },
+    { "category": "soft_skill", "handlerCode": "H_SOFT_05", "matchLevel": "FULL_MATCH", "score": 1.0, "outputStatus": "MATCHED", "applicability": "Có nhiều evidence độc lập hoặc một evidence rất mạnh đúng context JD", "sourceCell": "Detailed Criteria!A48:H48" }
+  ],
+  "resultBands": [
+    { "resultCode": "VERY_SUITABLE", "labelVi": "Rất phù hợp", "lowerInclusive": 85.0, "upperInclusive": 100.0, "sourceCell": "Summary Weights!A47:F47" },
+    { "resultCode": "QUITE_SUITABLE", "labelVi": "Khá phù hợp", "lowerInclusive": 70.0, "upperInclusive": 84.9, "sourceCell": "Summary Weights!A48:F48" },
+    { "resultCode": "PARTIAL_FIT", "labelVi": "Phù hợp một phần", "lowerInclusive": 55.0, "upperInclusive": 69.9, "sourceCell": "Summary Weights!A49:F49" },
+    { "resultCode": "LIMITED_FIT", "labelVi": "Độ phù hợp còn hạn chế", "lowerInclusive": 40.0, "upperInclusive": 54.9, "sourceCell": "Summary Weights!A50:F50" },
+    { "resultCode": "LOW_FIT", "labelVi": "Độ phù hợp thấp", "lowerInclusive": 0.0, "upperInclusive": 39.9, "sourceCell": "Summary Weights!A51:F51" }
+  ],
+  "groupPolicy": {
+    "allOf": "arithmetic_mean_all_items",
+    "oneOf": "maximum_item_score",
+    "atLeastN": "arithmetic_mean_top_n",
+    "tieBreak": "item_id_ordinal_ascending",
+    "mixedCategoryWeight": "arithmetic_mean_distinct_item_category_weights",
+    "source": "Approved Release B product decisions; workbook defines category weights but not group operators"
+  },
+  "productOverrides": [
+    "Do not expose or multiply evidence confidence into score.",
+    "Missing optional evidence or reasoning never changes a mechanically valid handler score.",
+    "Critical-gap flags are informational and never cap, freeze, subtract, or overwrite the final score.",
+    "Do not use seniority_fit.",
+    "Do not perform semantic validation in the backend."
+  ]
+}

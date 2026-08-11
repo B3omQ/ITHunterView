@@ -9,7 +9,7 @@ public static class JdAnalysisPromptContract
     public const string ContractV2 = "jd-analysis/v2";
     public const string ContractV3 = "jd-analysis/v3";
     public const string ContractV4 = "jd-analysis/v4";
-    public const string CurrentContract = ContractV4;
+    public const string CurrentPairContract = "jd-analysis-prompt/v6";
     public const string SystemRole = "system";
     public const string UserRole = "user";
 

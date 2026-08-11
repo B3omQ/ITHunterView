@@ -257,7 +257,154 @@ namespace ITHunterview.Service.Tests.UseCase
             // Assert
             result.Should().NotBeNull();
             result.CustomRoleName.Should().Be("Cached Role");
-            _aiServiceMock.Verify(a => a.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _aiServiceMock.Verify(a => a.GenerateTextAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ExtractFromCvJdAsync_CachedResultBelongsToAnotherCandidate_ShouldNotReturnCachedResult()
+        {
+            var requestingCandidateId = Guid.NewGuid();
+            var ownerCandidateId = Guid.NewGuid();
+            var matchScoreId = Guid.NewGuid();
+            var matchScores = new List<CvJobMatchScores>
+            {
+                new()
+                {
+                    Id = matchScoreId,
+                    UserId = ownerCandidateId,
+                    MatchDetails = "{\"jdFit\":{\"score\":90}}",
+                    SfiaExtractResult = "{\"customRoleName\":\"Private cached role\"}"
+                }
+            };
+            SetupDbSet(matchScores, mock => _contextMock.Setup(c => c.CvJobMatchScores).Returns(mock.Object));
+
+            var act = async () => await _useCase.ExtractFromCvJdAsync(requestingCandidateId, matchScoreId);
+
+            await act.Should().ThrowAsync<InvalidOperationException>();
+            _aiServiceMock.Verify(a => a.GenerateTextAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task PreviewHistoryContextAsync_V4Report_ShouldUseTypedReportWithoutLegacyPoolFields()
+        {
+            var candidateId = Guid.NewGuid();
+            var matchScoreId = Guid.NewGuid();
+            var matchScores = new List<CvJobMatchScores>
+            {
+                new()
+                {
+                    Id = matchScoreId,
+                    UserId = candidateId,
+                    MatchType = "AI",
+                    MatchScore = 81.8m,
+                    JdTitle = "Backend Developer",
+                    MatchDetails = """
+                    {
+                      "contract": "jd-matching/v4",
+                      "jdFit": {
+                        "scorePercent": 81.8,
+                        "narrative": "The candidate meets the core Java requirement.",
+                        "requirementGroups": [
+                          {
+                            "groupId": "grp-001",
+                            "operator": "all_of",
+                            "importance": "must_have",
+                            "requirementVerbatim": "Java and Spring Boot are required.",
+                            "groupScore": 0.7,
+                            "items": [
+                              {
+                                "itemId": "item-001",
+                                "normalizedText": "Java",
+                                "score": 0.7,
+                                "reasoning": "Used in project Alpha.",
+                                "evidence": [
+                                  { "quotation": "Built REST APIs with Java", "section": "experience" }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "groupId": "grp-one-of",
+                            "operator": "one_of",
+                            "importance": "must_have",
+                            "groupScore": 1.0,
+                            "selectedItemIds": ["item-aws"],
+                            "items": [
+                              { "itemId": "item-aws", "normalizedText": "AWS", "score": 1.0, "reasoning": "Used AWS professionally.", "evidence": [] },
+                              { "itemId": "item-azure", "normalizedText": "Azure", "score": 0.0, "reasoning": "No Azure evidence.", "evidence": [] }
+                            ]
+                          },
+                          {
+                            "groupId": "grp-at-least",
+                            "operator": "at_least_n",
+                            "minSatisfied": 2,
+                            "importance": "must_have",
+                            "groupScore": 0.5,
+                            "selectedItemIds": ["item-docker", "item-kubernetes"],
+                            "items": [
+                              { "itemId": "item-docker", "normalizedText": "Docker", "score": 1.0, "reasoning": "Used Docker.", "evidence": [] },
+                              { "itemId": "item-kubernetes", "normalizedText": "Kubernetes", "score": 0.0, "reasoning": "No Kubernetes evidence.", "evidence": [] },
+                              { "itemId": "item-monitoring", "normalizedText": "Monitoring", "score": 0.0, "reasoning": "No monitoring evidence.", "evidence": [] }
+                            ]
+                          }
+                        ],
+                        "criticalGaps": [
+                          {
+                            "code": "CRITICAL_GAP",
+                            "groupId": "grp-002",
+                            "requirement": "English TOEIC 600",
+                            "reasoning": "No English certificate is present."
+                          }
+                        ]
+                      }
+                    }
+                    """
+                }
+            };
+            SetupDbSet(matchScores, mock => _contextMock.Setup(c => c.CvJobMatchScores).Returns(mock.Object));
+
+            var result = await _useCase.PreviewHistoryContextAsync(candidateId, "cv-jd", matchScoreId);
+
+            result.ContextPreview.Should().Contain("Overall Match Score: 81.8/100");
+            result.ContextPreview.Should().Contain("Java (Score: 0.7): Used in project Alpha.");
+            result.ContextPreview.Should().Contain("Evidence [experience]: Built REST APIs with Java");
+            result.ContextPreview.Should().Contain("AWS (Score: 1): Used AWS professionally.");
+            result.ContextPreview.Should().NotContain("Azure");
+            result.ContextPreview.Should().Contain("Docker (Score: 1): Used Docker.");
+            result.ContextPreview.Should().Contain("Kubernetes (Score: 0): No Kubernetes evidence.");
+            result.ContextPreview.Should().NotContain("Monitoring");
+            result.ContextPreview.Should().Contain("Critical Gaps: English TOEIC 600 - No English certificate is present.");
+            result.ContextPreview.Should().NotContain("Technical Skills Score");
+            result.ContextPreview.Should().NotContain("Penalty Evidence");
+            result.ContextPreview.Should().NotContain("Areas for Improvement");
+        }
+
+        [Fact]
+        public async Task PreviewHistoryContextAsync_MalformedDetails_ShouldNotExposeRawJson()
+        {
+            var candidateId = Guid.NewGuid();
+            var matchScoreId = Guid.NewGuid();
+            const string malformedDetails = "{\"privateCvEvidence\":\"do-not-leak\"";
+            var matchScores = new List<CvJobMatchScores>
+            {
+                new()
+                {
+                    Id = matchScoreId,
+                    UserId = candidateId,
+                    MatchScore = 42m,
+                    MatchDetails = malformedDetails
+                }
+            };
+            SetupDbSet(matchScores, mock => _contextMock.Setup(c => c.CvJobMatchScores).Returns(mock.Object));
+
+            var result = await _useCase.PreviewHistoryContextAsync(candidateId, "cv-jd", matchScoreId);
+
+            result.ContextPreview.Should().Contain("Overall Match Score: 42.0/100");
+            result.ContextPreview.Should().Contain("Matching details are unavailable for this legacy result.");
+            result.ContextPreview.Should().NotContain("privateCvEvidence");
+            result.ContextPreview.Should().NotContain("do-not-leak");
         }
 
         [Fact]
@@ -273,6 +420,7 @@ namespace ITHunterview.Service.Tests.UseCase
                 { 
                     Id = matchScoreId, 
                     UserId = candidateId, 
+                    MatchScore = 60m,
                     MatchDetails = "{\"jdFit\": {\"poolA\": {\"score\": 60}, \"requirementScores\": []}}",
                     JdTitle = "Backend Dev"
                 }
@@ -282,7 +430,8 @@ namespace ITHunterview.Service.Tests.UseCase
 
             var aiResponse = "{\"customRoleName\": \"New Role\", \"skills\": []}";
             _aiServiceMock
-                .Setup(a => a.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Setup(a => a.GenerateTextAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), null, "LEARNING_PATH"))
                 .ReturnsAsync(aiResponse);
 
             // Act
@@ -339,7 +488,8 @@ namespace ITHunterview.Service.Tests.UseCase
             // Assert
             result.Should().NotBeNull();
             result.CustomRoleName.Should().Be("Cached Int Role");
-            _aiServiceMock.Verify(a => a.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _aiServiceMock.Verify(a => a.GenerateTextAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
@@ -379,7 +529,8 @@ namespace ITHunterview.Service.Tests.UseCase
 
             var aiResponse = "{\"customRoleName\": \"New Int Role\", \"skills\": []}";
             _aiServiceMock
-                .Setup(a => a.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Setup(a => a.GenerateTextAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), null, "LEARNING_PATH"))
                 .ReturnsAsync(aiResponse);
 
             // Act
@@ -553,7 +704,8 @@ namespace ITHunterview.Service.Tests.UseCase
             SetupDbSet(subscriptions, mock => _contextMock.Setup(c => c.UserSubscriptions).Returns(mock.Object));
 
             var aiResponse = "{\"title\": \"My Path\", \"modules\": []}";
-            _aiServiceMock.Setup(a => a.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(aiResponse);
+            _aiServiceMock.Setup(a => a.GenerateTextAsync(
+                It.IsAny<string>(), It.IsAny<string>(), null, "LEARNING_PATH")).ReturnsAsync(aiResponse);
             
             _learningPathRepositoryMock.Setup(repo => repo.GetByCandidateIdAsync(candidateId)).ReturnsAsync(new List<LearningPaths>());
 
@@ -587,7 +739,8 @@ namespace ITHunterview.Service.Tests.UseCase
             SetupDbSet(skills, mock => _contextMock.Setup(c => c.SfiaSkills).Returns(mock.Object));
 
             var aiResponse = "{\"title\": \"Custom Path\", \"modules\": []}";
-            _aiServiceMock.Setup(a => a.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(aiResponse);
+            _aiServiceMock.Setup(a => a.GenerateTextAsync(
+                It.IsAny<string>(), It.IsAny<string>(), null, "LEARNING_PATH")).ReturnsAsync(aiResponse);
             
             _learningPathRepositoryMock.Setup(repo => repo.GetByCandidateIdAsync(candidateId)).ReturnsAsync(new List<LearningPaths>());
 

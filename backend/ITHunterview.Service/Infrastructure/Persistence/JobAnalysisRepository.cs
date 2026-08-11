@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
@@ -422,8 +421,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 ResolvedSkillId = d.ResolvedSkillId,
                 ResolvedSkillName = d.ResolvedSkill?.Name,
                 ResolutionStatus = d.ResolutionStatus,
-                DecisionStatus = d.DecisionStatus,
-                Confidence = d.Confidence
+                DecisionStatus = d.DecisionStatus
             }).ToList();
 
             var blockingReasons = new List<string>();
@@ -499,11 +497,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             CancellationToken ct = default)
         {
             var res = new ApplyDecisionResult();
-            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            await using var tx = IsInMemoryProvider()
+                ? null
+                : await _context.Database.BeginTransactionAsync(ct);
 
-            var job = await _context.JobPostings
-                .FromSqlInterpolated($"SELECT * FROM job_postings WHERE id = {jobId} FOR UPDATE")
-                .FirstOrDefaultAsync(ct);
+            var job = await GetJobForUpdateAsync(jobId, ct);
             if (job == null || job.RecruiterId != recruiterId)
             {
                 res.Success = false;
@@ -575,15 +573,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             run.DecisionVersion = expectedDecisionVersion + 1;
 
-            if (run.AnalysisQuality != JdAnalysisQuality.INVALID)
-            {
-                run.EffectiveAnalysisJson = RebuildEffectiveAnalysisWithAcceptedStandardSkills(
-                    run.EffectiveAnalysisJson ?? run.RawAnalysisJson,
-                    existingDecisions);
-            }
-
             await _context.SaveChangesAsync(ct);
-            await tx.CommitAsync(ct);
+            if (tx != null)
+            {
+                await tx.CommitAsync(ct);
+            }
 
             res.Success = true;
             res.Preview = await GetPreviewAsync(jobId, recruiterId, ct);
@@ -601,11 +595,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             CancellationToken ct = default)
         {
             var res = new FinalizeJobResult();
-            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+            await using var tx = IsInMemoryProvider()
+                ? null
+                : await _context.Database.BeginTransactionAsync(ct);
 
-            var job = await _context.JobPostings
-                .FromSqlInterpolated($"SELECT * FROM job_postings WHERE id = {jobId} FOR UPDATE")
-                .FirstOrDefaultAsync(ct);
+            var job = await GetJobForUpdateAsync(jobId, ct);
             if (job == null || job.RecruiterId != recruiterId)
             {
                 res.Success = false;
@@ -712,19 +706,12 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             _context.JobSkillRequirements.AddRange(newJsrList);
 
-            if (!isRawFallback)
+            if (!isRawFallback && string.IsNullOrWhiteSpace(run.EffectiveAnalysisJson))
             {
-                run.EffectiveAnalysisJson = RebuildEffectiveAnalysisWithAcceptedStandardSkills(
-                    run.EffectiveAnalysisJson ?? run.RawAnalysisJson,
-                    acceptedDecisions);
-
-                if (string.IsNullOrWhiteSpace(run.EffectiveAnalysisJson))
-                {
-                    res.Success = false;
-                    res.ErrorCode = "ANALYSIS_RESULT_INTEGRITY_ERROR";
-                    res.ErrorMessage = "Analysis result is incomplete. Please retry analysis.";
-                    return res;
-                }
+                res.Success = false;
+                res.ErrorCode = "ANALYSIS_RESULT_INTEGRITY_ERROR";
+                res.ErrorMessage = "Analysis result is incomplete. Please retry analysis.";
+                return res;
             }
 
             job.ParsedData = isRawFallback ? null : run.EffectiveAnalysisJson;
@@ -751,7 +738,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             job.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync(ct);
-            await tx.CommitAsync(ct);
+            if (tx != null)
+            {
+                await tx.CommitAsync(ct);
+            }
 
             res.Success = true;
             res.Job = job;
@@ -759,69 +749,22 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             return res;
         }
 
-        private static string? RebuildEffectiveAnalysisWithAcceptedStandardSkills(
-            string? sourceJson,
-            IEnumerable<JobSkillDecisions> decisions)
+        private Task<JobPostings?> GetJobForUpdateAsync(Guid jobId, CancellationToken ct)
         {
-            if (string.IsNullOrWhiteSpace(sourceJson)) return sourceJson;
-
-            try
+            if (IsInMemoryProvider())
             {
-                using var doc = JsonDocument.Parse(sourceJson);
-                var root = doc.RootElement;
-                var metrics = root.TryGetProperty("matching_metrics", out var metricsElement) ? metricsElement : default;
-                var schemaVersion = root.TryGetProperty("schema_version", out var schemaElement)
-                    ? schemaElement.GetString()
-                    : "jd-analysis/v2";
-
-                var acceptedSkills = decisions
-                    .Where(decision => decision.DecisionStatus == SkillDecisionStatus.ACCEPTED && decision.ResolvedSkillId != null)
-                    .OrderBy(decision => decision.Category)
-                    .ThenBy(decision => decision.NormalizedMention)
-                    .ThenBy(decision => decision.RawMention)
-                    .Select(decision => new
-                    {
-                        name = decision.NormalizedMention,
-                        category = decision.Category,
-                        importance = decision.Importance,
-                        raw_mention = decision.RawMention,
-                        source_section = decision.SourceSection,
-                        evidence = decision.EvidenceText,
-                        confidence = decision.Confidence
-                    })
-                    .ToList();
-
-                var effectiveAnalysis = new
-                {
-                    schema_version = schemaVersion,
-                    analysis_quality = root.TryGetProperty("analysis_quality", out var quality)
-                        ? (object?)quality.Clone()
-                        : null,
-                    analysis_coverage = root.TryGetProperty("analysis_coverage", out var coverage)
-                        ? (object?)coverage.Clone()
-                        : null,
-                    analysis_diagnostics = root.TryGetProperty("analysis_diagnostics", out var diagnostics)
-                        ? (object?)diagnostics.Clone()
-                        : null,
-                    matching_metrics = new
-                    {
-                        job_titles_normalized = metrics.ValueKind != JsonValueKind.Undefined && metrics.TryGetProperty("job_titles_normalized", out var titles) ? titles : (object)new string[0],
-                        skills_normalized = acceptedSkills,
-                        total_years_exp = metrics.ValueKind != JsonValueKind.Undefined && metrics.TryGetProperty("total_years_exp", out var totalYears) ? totalYears : (object)null!,
-                        domains = metrics.ValueKind != JsonValueKind.Undefined && metrics.TryGetProperty("domains", out var domains) ? domains : (object)new string[0],
-                        requirements_list = metrics.ValueKind != JsonValueKind.Undefined && metrics.TryGetProperty("requirements_list", out var requirements) ? requirements : (object)new object[0],
-                        requirement_groups = metrics.ValueKind != JsonValueKind.Undefined && metrics.TryGetProperty("requirement_groups", out var groups) ? groups : (object)new object[0]
-                    }
-                };
-
-                return JsonSerializer.Serialize(effectiveAnalysis);
+                return _context.JobPostings.FirstOrDefaultAsync(job => job.Id == jobId, ct);
             }
-            catch (JsonException)
-            {
-                // Do not destroy a persisted analysis document if a legacy payload
-                // is malformed. Finalize will subsequently reject an empty result.
-                return sourceJson;
-            }
+
+            return _context.JobPostings
+                .FromSqlInterpolated($"SELECT * FROM job_postings WHERE id = {jobId} FOR UPDATE")
+                .FirstOrDefaultAsync(ct);
         }
+
+        private bool IsInMemoryProvider()
+            => string.Equals(
+                _context.Database.ProviderName,
+                "Microsoft.EntityFrameworkCore.InMemory",
+                StringComparison.Ordinal);
     }
 }

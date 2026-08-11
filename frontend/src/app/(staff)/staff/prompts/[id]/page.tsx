@@ -21,7 +21,8 @@ import * as z from 'zod';
 import { toast } from 'sonner';
 import { CvAnalysisPairActivationCard } from '@/components/prompts/CvAnalysisPairActivationCard';
 import { JdAnalysisPairActivationCard } from '@/components/prompts/JdAnalysisPairActivationCard';
-import { isJdMatchingPromptKey, sanitizeJdMatchingContentForEditing } from '@/lib/prompts/jd-matching-prompt-policy';
+import { isJdMatchingPromptKey, normalizePromptModelConfigForSubmission, sanitizeJdMatchingContentForEditing } from '@/lib/prompts/jd-matching-prompt-policy';
+import { isJdAnalysisPromptKey, sanitizeJdAnalysisContentForEditing } from '@/lib/prompts/jd-analysis-prompt-policy';
 import { useTranslations } from 'next-intl';
 
 const formSchema = z.object({
@@ -63,12 +64,16 @@ export default function PromptDetailPage() {
 
   const selectedVersion = prompt?.versions?.find(v => v.id === selectedVersionId);
   const isCvAnalysisPrompt = prompt?.promptKey === 'CV_ANALYSIS_SYSTEM' || prompt?.promptKey === 'CV_ANALYSIS_USER';
-  const isJdAnalysisPrompt = prompt?.promptKey === 'JD_ANALYSIS_V2_SYSTEM' || prompt?.promptKey === 'JD_ANALYSIS_V2_USER';
+  const isJdAnalysisPrompt = isJdAnalysisPromptKey(prompt?.promptKey);
   const isJdMatchingPrompt = isJdMatchingPromptKey(prompt?.promptKey);
   const isManagedAnalysisPrompt = isCvAnalysisPrompt || isJdAnalysisPrompt;
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    createMutation.mutate({ ...values, makeActive: isManagedAnalysisPrompt ? false : values.makeActive }, {
+    createMutation.mutate({
+      ...values,
+      modelConfig: normalizePromptModelConfigForSubmission(prompt?.promptKey, values.modelConfig),
+      makeActive: isManagedAnalysisPrompt ? false : values.makeActive,
+    }, {
       onSuccess: () => {
         form.reset();
         setActiveTab('history');
@@ -83,8 +88,13 @@ export default function PromptDetailPage() {
   }
 
   function handleCopyFromExisting(content: string, modelConfig?: string) {
-    form.setValue('content', isJdMatchingPrompt ? sanitizeJdMatchingContentForEditing(content) : content);
-    form.setValue('modelConfig', modelConfig || '');
+    const editableContent = isJdMatchingPrompt
+      ? sanitizeJdMatchingContentForEditing(content)
+      : isJdAnalysisPrompt
+        ? sanitizeJdAnalysisContentForEditing(content)
+        : content;
+    form.setValue('content', editableContent);
+    form.setValue('modelConfig', normalizePromptModelConfigForSubmission(prompt?.promptKey, modelConfig) || '');
     setActiveTab('create');
     toast.info(t('copySuccess'));
   }
@@ -119,6 +129,16 @@ export default function PromptDetailPage() {
                 <CardTitle className="text-base">Application-managed CV analysis output</CardTitle>
                 <CardDescription>
                   This editor controls CV extraction instructions only. The application appends the fixed cv-analysis/v2 JSON schema at runtime. Known historical embedded schemas are removed when a new version is saved; modified schemas are rejected.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
+          {isJdAnalysisPrompt && (
+            <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
+              <CardHeader>
+                <CardTitle className="text-base">Application-managed JD analysis output</CardTitle>
+                <CardDescription>
+                  This editor controls semantic JD extraction instructions only. The application appends the fixed jd-analysis/v5 JSON schema at runtime. System and user versions activate only as a compatible pair; ModelConfig.contract pairs those versions and does not select the output schema.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -236,6 +256,8 @@ export default function PromptDetailPage() {
                   ? ' Edit semantic instructions only; keep the CV and JD input slots intact.'
                   : isCvAnalysisPrompt
                     ? ' Edit semantic extraction instructions only; keep [CV_TEXT] exactly once in the user template. Do not add or modify an output JSON schema.'
+                    : isJdAnalysisPrompt
+                      ? ' Edit semantic extraction instructions only; keep [JD_TEXT] exactly once in the user template. The application owns and appends the output JSON schema.'
                   : ' Remember to keep required placeholders like [CV_TEXT] and [JD_TEXT].'}
               </CardDescription>
             </CardHeader>
@@ -300,6 +322,8 @@ export default function PromptDetailPage() {
                         <FormDescription>
                           {isCvAnalysisPrompt
                             ? 'Edit semantic extraction instructions only. Keep [CV_TEXT] exactly once in the user template. Do not add or modify an output JSON schema.'
+                            : isJdAnalysisPrompt
+                            ? 'Edit semantic extraction instructions only. Keep [JD_TEXT] exactly once in the user template. Do not add or modify an output JSON schema.'
                             : isJdMatchingPrompt
                             ? 'Use raw semantic instructions. Keep exactly one operational CV and JD input slot; the output schema is managed by the application.'
                             : 'Use raw text. Make sure to include variables wrapped in brackets, like [CV_TEXT].'}
@@ -309,28 +333,34 @@ export default function PromptDetailPage() {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="modelConfig"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('modelConfigLabel')}</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder={`{\n  "temperature": 0.2,\n  "topK": 40\n}`} 
-                            className="min-h-[150px] font-mono text-sm" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          {isJdMatchingPrompt
-                            ? 'Optional provider settings only. This JSON does not select the matching output schema.'
-                            : 'Optional JSON overriding default LLM settings. Must be valid JSON.'}
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {isJdMatchingPrompt ? (
+                    <div className="rounded-md border bg-muted/40 p-4 text-sm text-muted-foreground">
+                      Matching provider settings and the JSON output schema are managed by the application. This version stores semantic instructions only, so ModelConfig is not editable.
+                    </div>
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name="modelConfig"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('modelConfigLabel')}</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder={`{\n  "temperature": 0.2,\n  "topK": 40\n}`}
+                              className="min-h-[150px] font-mono text-sm"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            {isJdAnalysisPrompt
+                              ? 'Optional provider settings. ModelConfig.contract only pairs compatible JD system and user prompt versions; it does not select the output schema.'
+                              : 'Optional JSON overriding default LLM settings. Must be valid JSON.'}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   <div className="flex justify-end gap-4">
                     <Button type="button" variant="outline" onClick={() => setActiveTab('history')}>

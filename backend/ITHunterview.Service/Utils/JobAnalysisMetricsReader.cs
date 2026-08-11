@@ -127,15 +127,19 @@ namespace ITHunterview.Service.Utils
             string metricProperty,
             JsonValueKind requiredKind)
         {
+            var metricAvailable = metrics.TryGetProperty(metricProperty, out var metric)
+                                  && metric.ValueKind == requiredKind
+                                  && (requiredKind != JsonValueKind.Array ||
+                                      ProjectArrayStrings(metric).Count > 0);
+
             if (coverage.ValueKind == JsonValueKind.Object
                 && coverage.TryGetProperty(coverageProperty, out var availability)
                 && availability.ValueKind is JsonValueKind.True or JsonValueKind.False)
             {
-                return availability.GetBoolean();
+                return availability.GetBoolean() && metricAvailable;
             }
 
-            return metrics.TryGetProperty(metricProperty, out var metric)
-                   && metric.ValueKind == requiredKind;
+            return metricAvailable;
         }
     }
 }

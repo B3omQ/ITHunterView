@@ -1,6 +1,8 @@
 using System.Reflection;
 using System.Security.Claims;
+using System.Text.Json;
 using FluentAssertions;
+using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Interface.UseCase;
@@ -84,6 +86,44 @@ public class CvControllerMatchingTests
 
         Assert.IsType<AcceptedResult>(result.Result);
         retry.Verify(x => x.RetryAsync(userId, failedJobId, "retry-123", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetMatchResult_CompletedResult_SerializesTypedReportAndLegacyFields()
+    {
+        var userId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var matching = new Mock<ICvJobMatchingUseCase>();
+        matching.Setup(x => x.GetMatchingResultAsync(jobId, userId)).ReturnsAsync(new MatchingResultDto
+        {
+            Id = jobId,
+            Status = "Completed",
+            MatchDetails = "{legacy-compatible-details}",
+            ScorePercent = 81.8m,
+            ReportKind = MatchReportKinds.Structured,
+            MatchMethod = MatchMethodCodes.OneToOneAi,
+            Report = new MatchReportDto
+            {
+                ReportKind = MatchReportKinds.Structured,
+                SchemaVersion = "jd-matching/v4",
+                MatchMethod = MatchMethodCodes.OneToOneAi,
+                ScorePercent = 81.8m,
+                RequirementGroups = new()
+            }
+        });
+        var controller = CreateController(userId, matching.Object, Mock.Of<ICvJdMatchingSubmissionUseCase>());
+
+        var action = await controller.GetMatchResult(jobId);
+
+        var ok = Assert.IsType<OkObjectResult>(action.Result);
+        var envelope = Assert.IsType<ResponseBase<MatchingResultDto>>(ok.Value);
+        envelope.Data!.Report.Should().NotBeNull();
+        envelope.Data.MatchDetails.Should().Be("{legacy-compatible-details}");
+        var json = JsonSerializer.Serialize(envelope, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        json.Should().Contain("\"scorePercent\":81.8");
+        json.Should().Contain("\"reportKind\":\"structured\"");
+        json.Should().Contain("\"matchMethod\":\"one_to_one_ai\"");
+        json.Should().Contain("\"matchDetails\":\"{legacy-compatible-details}\"");
     }
 
     [Fact]

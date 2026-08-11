@@ -26,6 +26,8 @@ import { useMyLearningPaths } from "@/hooks/useLearningPath"
 import { useProfileCompletionStatus, useClaimNewbieReward } from "@/hooks/useCandidateProfile"
 import { Progress } from "@/components/ui/progress"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts"
+import { useTranslations } from "next-intl"
+import { getScorePercent } from "@/lib/matching-score"
 
 export default function CandidateDashboard() {
   const { user } = useAuthStore()
@@ -35,7 +37,7 @@ export default function CandidateDashboard() {
   const { data: completionStatus } = useProfileCompletionStatus()
   const { mutate: claimReward, isPending: isClaiming } = useClaimNewbieReward()
   const { data: matchHistoryRes, isLoading: isMatchLoading } = useGetMatchHistory(1, 10)
-  const matchHistory = (matchHistoryRes?.data?.items || []).filter(m => m.matchScore !== null && m.matchScore !== undefined)
+  const matchHistory = matchHistoryRes?.data?.items || []
 
   const { data: interviewsRes, isLoading: isInterviewLoading } = useGetInterviewSessions()
   const interviews = interviewsRes?.data || []
@@ -45,9 +47,12 @@ export default function CandidateDashboard() {
 
   // 2. Calculate KPIs
   // Average Match Score
-  const avgMatchScore = matchHistory.length > 0 
-    ? Math.round(matchHistory.reduce((acc, m) => acc + formatMatchScore(m.matchScore), 0) / matchHistory.length) 
-    : 0;
+  const scoredMatches = matchHistory
+    .map((match) => ({ match, score: getScorePercent(match) }))
+    .filter((entry): entry is { match: typeof matchHistory[number]; score: number } => entry.score !== null);
+  const avgMatchScore = scoredMatches.length > 0
+    ? Math.round(scoredMatches.reduce((acc, entry) => acc + entry.score, 0) / scoredMatches.length)
+    : null;
 
   // Interviews Completed Count
   const completedInterviews = interviews.filter((i: any) => i.status === 'COMPLETED').length;
@@ -112,10 +117,10 @@ export default function CandidateDashboard() {
 
   // 3. Prepare Chart Data
   // Line Chart Data (Match History reversed for chronological order)
-  const lineChartData = matchHistory.slice(0, 5).reverse().map(m => ({
-    name: m.jdTitle?.substring(0, 10) + '...',
-    score: formatMatchScore(m.matchScore),
-    date: m.updatedAt ? new Date(m.updatedAt).toLocaleDateString() : 'N/A'
+  const lineChartData = scoredMatches.slice(0, 5).reverse().map(({ match, score }) => ({
+    name: match.jdTitle?.substring(0, 10) + '...',
+    score,
+    date: match.updatedAt ? new Date(match.updatedAt).toLocaleDateString() : 'N/A'
   }));
 
   // Real Radar Chart Data (Skill Readiness) from Active Path
@@ -242,7 +247,7 @@ export default function CandidateDashboard() {
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('avgMatchScore')}</p>
             <div className="flex items-end gap-2">
-              <h3 className="text-2xl font-black text-foreground">{avgMatchScore}%</h3>
+              <h3 className="text-2xl font-black text-foreground">{avgMatchScore === null ? '—' : `${avgMatchScore}%`}</h3>
               <span className="text-xs font-medium text-emerald-500 mb-1 flex items-center"><TrendingUp size={12} className="mr-0.5"/> {t('top20')}</span>
             </div>
           </div>
@@ -420,8 +425,8 @@ export default function CandidateDashboard() {
                         <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${item.status === 'Optimized' ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-100 text-gray-600'}`}>
                           {item.status || t('matched')}
                         </div>
-                        <span className={`text-base font-extrabold w-10 text-right ${formatMatchScore(item.matchScore) >= 70 ? 'text-emerald-500' : 'text-amber-500'}`}>
-                          {displayMatchScore(item.matchScore)}
+                        <span className={`text-base font-extrabold w-10 text-right ${(getScorePercent(item) ?? -1) >= 70 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                          {getScorePercent(item) === null ? '—' : `${Math.round(getScorePercent(item)!)}%`}
                         </span>
                       </div>
                     </div>

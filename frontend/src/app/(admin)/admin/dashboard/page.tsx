@@ -28,6 +28,7 @@ import { Loader2 } from "lucide-react";
 const COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#10b981", "#f59e0b"];
 
 export default function AdminDashboard() {
+  const t = useTranslations("AdminDashboard");
   const [filters, setFilters] = useState<DashboardFilter>({});
   const { data, isLoading, isError } = useAdminDashboard(filters);
   if (isLoading) {

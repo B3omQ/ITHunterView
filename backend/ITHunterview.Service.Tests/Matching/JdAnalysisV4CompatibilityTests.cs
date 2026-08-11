@@ -13,26 +13,23 @@ public sealed class JdAnalysisV4CompatibilityTests
     private const string Clause = "Understanding of caching strategies, job queues, and asynchronous processing (e.g., Redis, Horizon, or similar tools).";
 
     [Fact]
-    public void CompactV4_UsesCanonicalV3AcrossProjectorHardcodeAndStageTwo()
+    public void CompactV4_UsesEffectiveV1AcrossProjectorHardcodeAndStageTwo()
     {
         var effectiveJson = ValidateAndSerialize(ReadFixture("jd-v4-compact-caching-group.json"));
 
         using var document = JsonDocument.Parse(effectiveJson);
-        Assert.Equal("jd-analysis/v3", document.RootElement.GetProperty("schema_version").GetString());
+        Assert.Equal("jd-analysis-effective/v1", document.RootElement.GetProperty("schema_version").GetString());
         var group = Assert.Single(document.RootElement.GetProperty("matching_metrics").GetProperty("requirement_groups").EnumerateArray());
         Assert.Equal(3, group.GetProperty("min_satisfied").GetInt32());
         Assert.Equal(3, group.GetProperty("items").GetArrayLength());
-        Assert.All(group.GetProperty("items").EnumerateArray(), item =>
-            Assert.Equal(Clause, item.GetProperty("evidences")[0].GetString()));
         var normalizedSkills = document.RootElement
             .GetProperty("matching_metrics")
             .GetProperty("skills_normalized");
         Assert.Equal(3, normalizedSkills.GetArrayLength());
-        Assert.Contains(normalizedSkills.EnumerateArray(), skill =>
-            skill.GetProperty("name").GetString() == "caching");
+        Assert.Contains(normalizedSkills.EnumerateArray(), skill => skill.GetString() == "caching");
 
         var projection = new JdRequirementProjector().Project(effectiveJson);
-        Assert.Equal("jd-analysis/v3", projection.SourceSchemaVersion);
+        Assert.Equal("jd-analysis-effective/v1", projection.SourceSchemaVersion);
         Assert.False(projection.UsesLegacySemantics);
         var projectedGroup = Assert.Single(projection.Groups);
         Assert.Equal(3, projectedGroup.Items.Count);

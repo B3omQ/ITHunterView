@@ -142,6 +142,58 @@ public sealed class JdMatchingRequirementContextBuilderTests
             .Should().Equal("B", "A");
     }
 
+    [Fact]
+    public void Build_IncludedItemIds_EmitsOnlyRequestedItemsWithOriginalGroupMetadata()
+    {
+        var projection = Projection(new ProjectedJdRequirementGroup(
+            "grp-retry", "at_least_n", 2, "must_have",
+            new[]
+            {
+                Item("grp-retry:a", "tech_skill", "A", null, null, "A"),
+                Item("grp-retry:b", "tech_skill", "B", null, null, "B"),
+                Item("grp-retry:c", "tech_skill", "C", null, null, "C")
+            },
+            "requirements",
+            "Any two of A, B and C"));
+
+        var result = new JdMatchingRequirementContextBuilder().Build(
+            projection,
+            new HashSet<string>(new[] { "grp-retry:c" }, StringComparer.Ordinal));
+        using var document = JsonDocument.Parse(result.Json);
+
+        result.GroupCount.Should().Be(1);
+        result.RequirementCount.Should().Be(1);
+        document.RootElement[0].GetProperty("ReqId").GetString().Should().Be("grp-retry:c");
+        document.RootElement[0].GetProperty("Operator").GetString().Should().Be("at_least_n");
+        document.RootElement[0].GetProperty("MinSatisfied").GetInt32().Should().Be(2);
+        document.RootElement[0].GetProperty("RequirementVerbatim").GetString()
+            .Should().Be("Any two of A, B and C");
+    }
+
+    [Theory]
+    [InlineData("unknown", "all_of", 1)]
+    [InlineData("tech_skill", "unsupported", 1)]
+    [InlineData("tech_skill", "one_of", 2)]
+    public void Build_InvalidCurrentProjection_FailsBeforeProviderUsage(
+        string category,
+        string operation,
+        int minSatisfied)
+    {
+        var projection = Projection(new ProjectedJdRequirementGroup(
+            "grp-invalid", operation, minSatisfied, "must_have",
+            new[]
+            {
+                new ProjectedJdRequirementItem(
+                    "grp-invalid:a", category, "A", "A", "A", "requirements",
+                    new[] { "A" }, null, null, 1m)
+            }));
+
+        var action = () => new JdMatchingRequirementContextBuilder().Build(projection);
+
+        action.Should().Throw<InvalidOperationException>()
+            .Which.Message.Should().Be(JdRequirementProjector.InvalidEffectiveJdAnalysis);
+    }
+
     private static JdRequirementProjection Projection(params ProjectedJdRequirementGroup[] groups) =>
         new("jd-analysis/v4", groups, false);
 

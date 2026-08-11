@@ -430,7 +430,8 @@ public class CvAnalysisPromptManagementTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<AiGenerationOptions>(),
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                "CV_EXTRACTION"))
             .ReturnsAsync("{\"schema_version\":\"cv-analysis/v2\"}");
 
         var promptService = new Mock<IPromptManagementService>();
@@ -488,7 +489,8 @@ public class CvAnalysisPromptManagementTests
             It.Is<AiGenerationOptions>(options =>
                 options.ProfileId == "cv-analysis-json/v1" &&
                 options.ResponseMimeType == "application/json"),
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<CancellationToken>(),
+            "CV_EXTRACTION"), Times.Once);
         responseValidator.Verify(x => x.ValidateAndCanonicalize("{\"schema_version\":\"cv-analysis/v2\"}"), Times.Once);
     }
 
@@ -503,7 +505,8 @@ public class CvAnalysisPromptManagementTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<AiGenerationOptions>(),
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                "CV_EXTRACTION"))
             .ReturnsAsync("{\"schema_version\":\"cv-analysis/v2\"}");
 
         var promptService = new Mock<IPromptManagementService>();
@@ -553,7 +556,7 @@ public class CvAnalysisPromptManagementTests
             default), Times.Once);
         aiService.Verify(x => x.GenerateTextAsync(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
-            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Exactly(2));
     }
 
     private static CvAnalysisCoverage EmptyCoverage() => new(

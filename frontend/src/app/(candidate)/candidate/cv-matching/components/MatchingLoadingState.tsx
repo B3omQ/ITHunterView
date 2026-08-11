@@ -35,7 +35,7 @@ export function MatchingLoadingState({ progressPercent, loadingStep }: MatchingL
 
         {/* List steps */}
         <div className="space-y-3 bg-muted/40 p-4 rounded-lg border">
-          {MATCHING_LOADING_STEPS.map((_, idx) => {
+          {MATCHING_LOADING_STEPS.map((translationKey, idx) => {
             const isDone = idx < loadingStep;
             const isCurrent = idx === loadingStep;
             return (
@@ -50,7 +50,7 @@ export function MatchingLoadingState({ progressPercent, loadingStep }: MatchingL
                   </div>
                 )}
                 <span className={isDone ? 'text-emerald-700/80 font-medium line-through' : isCurrent ? 'text-foreground font-semibold' : 'text-muted-foreground'}>
-                  {t(`step${idx + 1}` as any)}
+                  {t(translationKey)}
                 </span>
               </div>
             );
