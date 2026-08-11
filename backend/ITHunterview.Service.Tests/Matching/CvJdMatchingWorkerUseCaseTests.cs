@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FluentAssertions;
@@ -146,6 +147,66 @@ public sealed class CvJdMatchingWorkerUseCaseTests
         job.NextAttemptAt.Should().NotBeNull();
         featureUsage.Verify(x => x.RefundFeatureReservationAsync(
             It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessClaimedJob_ProviderUnauthorizedFailsAsConfigurationAndRefundsOnce()
+    {
+        await using var context = CreateContext();
+        var job = CreateJob();
+        context.CvJobMatchScores.Add(job);
+        await context.SaveChangesAsync();
+
+        var processor = new Mock<ICvJdOneToOneMatchingProcessor>(MockBehavior.Strict);
+        processor.Setup(x => x.ExecuteAsync(job.Id, It.IsAny<MatchingInputSnapshotV1>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException(
+                "Provider authentication failed.",
+                inner: null,
+                HttpStatusCode.Unauthorized));
+        var featureUsage = CreateFeatureUsageMock();
+        var worker = CreateWorker(context, processor.Object, featureUsage.Object);
+        var repository = new CvJdMatchingJobRepository(context);
+        var claimed = (await repository.ClaimRunnableJobsAsync(
+            1,
+            "worker-a",
+            UtcNow,
+            CvJdMatchingWorkerUseCase.LeaseDuration))[0];
+
+        await worker.ProcessClaimedJobAsync(job.Id, "worker-a", claimed.LeaseToken);
+
+        job.Status.Should().Be("Failed");
+        job.ErrorCode.Should().Be("MATCHING_CONFIGURATION_INVALID");
+        job.NextAttemptAt.Should().BeNull();
+        featureUsage.Verify(x => x.RefundFeatureReservationAsync(
+            job.UserId,
+            job.Id,
+            "matching_configuration_invalid",
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ClaimRunnableJobs_DoesNotReprocessCompletedJob()
+    {
+        await using var context = CreateContext();
+        var job = CreateJob();
+        job.Status = "Completed";
+        job.MatchScore = 84m;
+        job.MatchDetails = "{\"contract\":\"jd-matching/v4\"}";
+        context.CvJobMatchScores.Add(job);
+        await context.SaveChangesAsync();
+
+        var repository = new CvJdMatchingJobRepository(context);
+
+        var claimed = await repository.ClaimRunnableJobsAsync(
+            1,
+            "worker-a",
+            UtcNow,
+            CvJdMatchingWorkerUseCase.LeaseDuration);
+
+        claimed.Should().BeEmpty();
+        job.Status.Should().Be("Completed");
+        job.MatchScore.Should().Be(84m);
+        job.MatchDetails.Should().Be("{\"contract\":\"jd-matching/v4\"}");
     }
 
     [Fact]

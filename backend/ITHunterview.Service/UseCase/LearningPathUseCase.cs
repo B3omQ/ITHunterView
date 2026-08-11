@@ -448,7 +448,8 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
         private static void AppendRequirementContext(StringBuilder sb, MatchReportDto report)
         {
             var items = report.RequirementGroups
-                .SelectMany(group => group.Items.Select(item => (Group: group, Item: item)))
+                .SelectMany(group => SelectItemsForLearningPath(group)
+                    .Select(item => (Group: group, Item: item)))
                 .ToList();
 
             AppendRequirementSection(
@@ -459,6 +460,23 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
                 sb,
                 "Identified Strengths & Mastered Skills:",
                 items.Where(entry => entry.Item.Score >= 0.8m));
+        }
+
+        private static IEnumerable<MatchRequirementItemReportDto> SelectItemsForLearningPath(
+            MatchRequirementGroupReportDto group)
+        {
+            if (group.Operator is not ("one_of" or "at_least_n"))
+            {
+                return group.Items;
+            }
+
+            if (group.SelectedItemIds.Count == 0)
+            {
+                return Array.Empty<MatchRequirementItemReportDto>();
+            }
+
+            var selected = group.SelectedItemIds.ToHashSet(StringComparer.Ordinal);
+            return group.Items.Where(item => item.ItemId != null && selected.Contains(item.ItemId));
         }
 
         private static void AppendRequirementSection(
@@ -490,13 +508,41 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
         private static void AppendCriticalGapContext(StringBuilder sb, MatchReportDto report)
         {
             var gaps = report.CriticalGaps
-                .Select(gap => string.IsNullOrWhiteSpace(gap.Reasoning)
-                    ? gap.Requirement
-                    : $"{gap.Requirement} - {gap.Reasoning}")
+                .Select(gap => DescribeCriticalGap(report, gap))
                 .Where(value => !string.IsNullOrWhiteSpace(value))
                 .ToList();
             if (gaps.Count > 0)
                 sb.AppendLine($"Critical Gaps: {string.Join("; ", gaps)}");
+        }
+
+        private static string DescribeCriticalGap(
+            MatchReportDto report,
+            MatchCriticalGapReportDto gap)
+        {
+            var requirement = gap.Requirement;
+            if (string.IsNullOrWhiteSpace(requirement) && gap.AffectedItemIds.Count > 0)
+            {
+                var affected = gap.AffectedItemIds.ToHashSet(StringComparer.Ordinal);
+                var labels = report.RequirementGroups
+                    .Where(group => string.Equals(group.GroupId, gap.GroupId, StringComparison.Ordinal))
+                    .SelectMany(group => group.Items)
+                    .Where(item => item.ItemId != null && affected.Contains(item.ItemId))
+                    .Select(item => item.NormalizedText ?? item.DetailVerbatim ?? item.RawMention)
+                    .Where(label => !string.IsNullOrWhiteSpace(label))
+                    .Cast<string>()
+                    .ToList();
+                requirement = gap.Operator switch
+                {
+                    "one_of" => string.Join(" | ", labels),
+                    "at_least_n" => $"{gap.SatisfiedCount ?? 0}/{gap.RequiredCount ?? 0}: {string.Join(", ", labels)}",
+                    _ => string.Join(", ", labels)
+                };
+            }
+
+            if (string.IsNullOrWhiteSpace(requirement)) return string.Empty;
+            return string.IsNullOrWhiteSpace(gap.Reasoning)
+                ? requirement
+                : $"{requirement} - {gap.Reasoning}";
         }
 
         private async Task<string> BuildInterviewContextAsync(Guid candidateId, Guid? sessionId)

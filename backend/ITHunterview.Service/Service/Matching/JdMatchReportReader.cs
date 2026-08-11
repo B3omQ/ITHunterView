@@ -117,10 +117,7 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
     {
         var method = DetectMethod(root, matchType, hasDocument: true);
         var finalScore = ReadDecimal(root, "FinalScore") ?? persistedScore ?? 0m;
-        var scorePercent = method is MatchMethodCodes.Hardcode or MatchMethodCodes.Vector
-            ? finalScore * 100m
-            : finalScore;
-        var report = LegacySummary(scorePercent, method);
+        var report = LegacySummary(finalScore, method);
         report.Narrative = method switch
         {
             MatchMethodCodes.Hardcode => "Keyword-based matching result.",
@@ -134,7 +131,7 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
     {
         ReportKind = MatchReportKinds.LegacySummary,
         MatchMethod = method,
-        ScorePercent = ClampPercent(persistedScore ?? 0m)
+        ScorePercent = NormalizeScore(persistedScore ?? 0m, method)
     };
 
     private static MatchRequirementGroupReportDto ReadGroup(JsonElement group, bool isV4)
@@ -156,13 +153,12 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
 
         if (TryGet(group, "selectedItemIds", out var selected) && selected.ValueKind == JsonValueKind.Array)
         {
-            result.SelectedItemIds = selected.EnumerateArray()
-                .Where(item => item.ValueKind == JsonValueKind.String)
-                .Select(item => Bound(item.GetString()))
-                .Where(item => item is not null)
-                .Cast<string>()
-                .Take(MaximumItemsPerGroup)
-                .ToList();
+            result.SelectedItemIds = ReadStringArray(selected, MaximumItemsPerGroup);
+        }
+
+        if (TryGet(group, "satisfiedItemIds", out var satisfied) && satisfied.ValueKind == JsonValueKind.Array)
+        {
+            result.SatisfiedItemIds = ReadStringArray(satisfied, MaximumItemsPerGroup);
         }
 
         if (TryGet(group, "items", out var items) && items.ValueKind == JsonValueKind.Array)
@@ -210,9 +206,16 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
                 Scope = ReadString(gap, "scope"),
                 GroupId = ReadString(gap, "groupId"),
                 ItemId = ReadString(gap, "itemId"),
+                Operator = ReadString(gap, "operator"),
+                RequiredCount = ReadInt(gap, "requiredCount"),
+                SatisfiedCount = ReadInt(gap, "satisfiedCount"),
                 Requirement = ReadString(gap, "requirement") ?? string.Empty,
                 Reasoning = ReadString(gap, "reasoning") ?? ReadString(gap, "gapDescription") ?? string.Empty
             };
+            if (TryGet(gap, "affectedItemIds", out var affected) && affected.ValueKind == JsonValueKind.Array)
+            {
+                result.AffectedItemIds = ReadStringArray(affected, MaximumItemsPerGroup);
+            }
             ReadEvidence(gap, result.Evidence);
             report.CriticalGaps.Add(result);
         }
@@ -280,8 +283,21 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
         {
             return MatchMethodCodes.Hardcode;
         }
+        if (string.Equals(matchType, "Vector", StringComparison.OrdinalIgnoreCase))
+        {
+            return MatchMethodCodes.Vector;
+        }
         return MatchMethodCodes.LegacyUnknown;
     }
+
+    private static List<string> ReadStringArray(JsonElement array, int maximumCount) =>
+        array.EnumerateArray()
+            .Where(item => item.ValueKind == JsonValueKind.String)
+            .Select(item => Bound(item.GetString()))
+            .Where(item => item is not null)
+            .Cast<string>()
+            .Take(maximumCount)
+            .ToList();
 
     private static bool IsCritical(JsonElement element) =>
         string.Equals(ReadString(element, "flag"), "CRITICAL_GAP", StringComparison.OrdinalIgnoreCase);
@@ -331,4 +347,13 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
 
     private static decimal ClampUnit(decimal value) => Math.Clamp(value, 0m, 1m);
     private static decimal ClampPercent(decimal value) => Math.Clamp(value, 0m, 100m);
+
+    private static decimal NormalizeScore(decimal value, string method)
+    {
+        var normalized = (method is MatchMethodCodes.Hardcode or MatchMethodCodes.Vector) &&
+                         value is >= 0m and <= 1m
+            ? value * 100m
+            : value;
+        return ClampPercent(normalized);
+    }
 }

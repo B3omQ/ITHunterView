@@ -1,4 +1,6 @@
 using FluentAssertions;
+using System.Text.Json;
+using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Service.Matching;
 
 namespace ITHunterview.Service.Tests.Matching;
@@ -6,6 +8,79 @@ namespace ITHunterview.Service.Tests.Matching;
 public sealed class JdMatchReportReaderTests
 {
     private readonly JdMatchReportReader _reader = new();
+
+    [Fact]
+    public void SerializerToReader_CrossFamilyHandler_PreservesProjectionCategoryAndCanonicalHandler()
+    {
+        var item = new ProjectedJdRequirementItem(
+            "g1:i1", "tech_skill", "java", "Java", "Java", "requirements",
+            Array.Empty<string>(), null, null, 1m);
+        var group = new ProjectedJdRequirementGroup(
+            "g1", "all_of", 1, "must_have", new[] { item }, "requirements", "Java", "req-1", "java");
+        var projection = new JdRequirementProjection("jd-analysis/v4", new[] { group }, false);
+        using var json = JsonDocument.Parse("""
+            {"schemaVersion":"jd-stage2/v2","scores":[
+              {"reqId":"g1:i1","handlerCode":"h_exp_d04"}
+            ]}
+            """);
+        var response = new JdMatchingResponseAdapter().Adapt(json, projection);
+        var score = new JdFitScoreCalculator().Calculate(projection, response);
+        var gaps = new JdCriticalGapEvaluator().Evaluate(projection, response.ItemAssessments);
+        var persisted = new JdFitResultSerializer().Serialize(
+            projection,
+            response,
+            score,
+            gaps,
+            new JdFitSerializationContext(Guid.NewGuid(), "v3.0.1", "semantic", "schema", 1));
+
+        var report = _reader.Read(persisted.JsonString, persisted.FinalScore, "AI");
+
+        report.RequirementGroups[0].Items[0].Category.Should().Be("tech_skill");
+        report.RequirementGroups[0].Items[0].HandlerCode.Should().Be("H_EXP_D04");
+        report.RequirementGroups[0].Items[0].Score.Should().Be(0.75m);
+    }
+
+    [Fact]
+    public void SerializerToReader_V4_RoundTripsCanonicalGroupTree()
+    {
+        var item = new ProjectedJdRequirementItem(
+            "g1:i1", "tech_skill", "java", "Java 17", "Java", "requirements",
+            Array.Empty<string>(), null, null, 1m);
+        var group = new ProjectedJdRequirementGroup(
+            "g1", "all_of", 1, "must_have", new[] { item }, "requirements",
+            "Thành thạo Java", "req-1", "java");
+        var projection = new JdRequirementProjection("jd-analysis-effective/v1", new[] { group }, false);
+        var assessment = new JdStageTwoItemAssessment(
+            item.ItemId, item.Category, "H_TECH_05", 1m, "Đã dùng Java trong dự án A.",
+            new[] { new JdMatchingEvidence("Built Java API", "projects") }, Array.Empty<string>());
+        var response = new JdStageTwoValidatedResponse(
+            new Dictionary<string, JdStageTwoItemAssessment> { [item.ItemId] = assessment },
+            "Ứng viên đáp ứng yêu cầu Java.",
+            JdStageTwoOutputQuality.COMPLETE,
+            new JdStageTwoOutputCoverage(1, 1, 1, 0, Array.Empty<string>(), false),
+            Array.Empty<string>());
+        var score = new JdFitScoreCalculator().Calculate(projection, response);
+        var gaps = new JdCriticalGapEvaluator().Evaluate(projection, response.ItemAssessments);
+        var persisted = new JdFitResultSerializer().Serialize(
+            projection,
+            response,
+            score,
+            gaps,
+            new JdFitSerializationContext(Guid.NewGuid(), "v3.0.0", "semantic", "schema", 1));
+
+        var report = _reader.Read(persisted.JsonString, persisted.FinalScore, "AI");
+
+        report.ReportContract.Should().Be(MatchReportContracts.Version2);
+        report.SchemaVersion.Should().Be(JdFitResultContract.Version4);
+        report.ScorePercent.Should().Be(100m);
+        report.RequirementGroups.Should().ContainSingle();
+        report.RequirementGroups[0].SourceRequirementId.Should().Be("req-1");
+        report.RequirementGroups[0].SatisfiedItemIds.Should().Equal("g1:i1");
+        report.RequirementGroups[0].Items.Should().ContainSingle();
+        report.RequirementGroups[0].Items[0].Category.Should().Be("tech_skill");
+        report.RequirementGroups[0].Items[0].Evidence.Should().ContainSingle()
+            .Which.Section.Should().Be("projects");
+    }
 
     [Fact]
     public void Read_V4StructuredResult_PreservesGroupsEvidenceAndPercentScore()
@@ -29,6 +104,7 @@ public sealed class JdMatchReportReaderTests
                   "requirementVerbatim":"Java or C#",
                   "groupScore":0.75,
                   "selectedItemIds":["g1:i2"],
+                  "satisfiedItemIds":["g1:i1","g1:i2"],
                   "isCriticalGap":false,
                   "items":[{
                     "itemId":"g1:i1",
@@ -47,6 +123,10 @@ public sealed class JdMatchReportReaderTests
                   "code":"CORE_TECH_MISMATCH",
                   "scope":"group",
                   "groupId":"g1",
+                  "operator":"one_of",
+                  "requiredCount":1,
+                  "satisfiedCount":0,
+                  "affectedItemIds":["g1:i1","g1:i2"],
                   "requirement":"Java or C#",
                   "reasoning":"No production evidence was found.",
                   "evidence":[{"quotation":"Student project only","section":"projects"}]
@@ -59,14 +139,20 @@ public sealed class JdMatchReportReaderTests
         var report = _reader.Read(details, 81.8m, "AI");
 
         report.ReportKind.Should().Be("structured");
+        report.ReportContract.Should().Be("match-report/v2");
         report.MatchMethod.Should().Be("one_to_one_ai");
         report.SchemaVersion.Should().Be("jd-matching/v4");
         report.ScorePercent.Should().Be(81.8m);
         report.RequirementGroups.Should().ContainSingle();
         report.RequirementGroups[0].Operator.Should().Be("one_of");
+        report.RequirementGroups[0].SatisfiedItemIds.Should().Equal("g1:i1", "g1:i2");
         report.RequirementGroups[0].Items[0].Evidence.Should().ContainSingle()
             .Which.Quotation.Should().Be("Built Java API");
         report.CriticalGaps.Should().ContainSingle();
+        report.CriticalGaps[0].Operator.Should().Be("one_of");
+        report.CriticalGaps[0].RequiredCount.Should().Be(1);
+        report.CriticalGaps[0].SatisfiedCount.Should().Be(0);
+        report.CriticalGaps[0].AffectedItemIds.Should().Equal("g1:i1", "g1:i2");
         report.CriticalGaps[0].Evidence.Should().ContainSingle().Which.Should().BeEquivalentTo(new
         {
             Quotation = "Student project only",

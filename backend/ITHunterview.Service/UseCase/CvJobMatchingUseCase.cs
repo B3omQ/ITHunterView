@@ -996,7 +996,9 @@ namespace ITHunterview.Service.UseCase
                 ErrorMessage = matchRecord.ErrorMessage,
                 CanRetry = string.Equals(matchRecord.Status, "Failed", StringComparison.Ordinal)
                     && MatchingRetryPolicy.IsManualRetryAllowed(matchRecord.ErrorCode),
-                MatchDetails = matchRecord.MatchDetails,
+                MatchDetails = string.Equals(report.SchemaVersion, JdFitResultContract.Version4, StringComparison.Ordinal)
+                    ? null
+                    : matchRecord.MatchDetails,
                 ScorePercent = report.ScorePercent,
                 ReportKind = report.ReportKind,
                 MatchMethod = report.MatchMethod,
@@ -1139,15 +1141,30 @@ namespace ITHunterview.Service.UseCase
 
         public async Task<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>> GetJobMatchHistoryAsync(Guid jobId, Guid recruiterId, int page, int pageSize)
         {
-            var query = from s in _context.CvJobMatchScores
+            var query = from s in _context.CvJobMatchScores.AsNoTracking()
                         join c in _context.Cvs on s.CvId equals c.Id into cvs
                         from c in cvs.DefaultIfEmpty()
                         where s.JobId == jobId
-                        orderby s.MatchScore descending
                         select new { Score = s, Cv = c };
 
-            var total = await query.CountAsync();
-            var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+            var authorizedRows = await query.ToListAsync();
+            var total = authorizedRows.Count;
+            var items = authorizedRows
+                .Select(row => new
+                {
+                    row.Score,
+                    row.Cv,
+                    Report = _jdMatchReportReader.Read(
+                        row.Score.MatchDetails,
+                        row.Score.MatchScore,
+                        row.Score.MatchType)
+                })
+                .OrderByDescending(row => row.Report.ScorePercent)
+                .ThenByDescending(row => row.Score.UpdatedAt)
+                .ThenBy(row => row.Score.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
 
             // Get unlocked CV IDs for this recruiter
             var cvIds = items.Where(x => x.Score.CvId.HasValue).Select(x => x.Score.CvId!.Value).ToList();
@@ -1210,7 +1227,7 @@ namespace ITHunterview.Service.UseCase
 
                 var itemIndex = index++;
                 var jdAnalysis = BuildJdAnalysisResult(x.Score);
-                var report = _jdMatchReportReader.Read(x.Score.MatchDetails, x.Score.MatchScore, x.Score.MatchType);
+                var report = x.Report;
 
                 return new ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto
                 {

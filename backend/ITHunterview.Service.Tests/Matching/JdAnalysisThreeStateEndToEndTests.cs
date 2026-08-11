@@ -43,12 +43,12 @@ public sealed class JdAnalysisThreeStateEndToEndTests
         Assert.Equal("COMPLETE", hardcode.AnalysisQuality);
         Assert.NotNull(hardcode.Evaluation);
 
-        var stageTwo = ValidateStageTwo(projection, 0.9m);
-        var calculated = new JdFitScoreCalculator().Calculate(projection, stageTwo);
+        var stageTwo = ValidateStageTwo(projection);
+        var calculated = CalculateAndSerialize(projection, stageTwo);
         using var details = JsonDocument.Parse(calculated.JsonString);
-        Assert.Equal("COMPLETE", details.RootElement.GetProperty("jdAnalysis").GetProperty("quality").GetString());
-        Assert.Equal("complete_requirement_set", details.RootElement.GetProperty("jdAnalysis").GetProperty("scoreBasis").GetString());
-        Assert.Equal("COMPLETE", JdMatchMetadataReader.Read(calculated.JsonString)!.Quality);
+        Assert.Equal(JdFitResultContract.Version4, details.RootElement.GetProperty("contract").GetString());
+        Assert.Equal("jd-analysis-effective/v1", details.RootElement.GetProperty("sourceJdSchemaVersion").GetString());
+        Assert.Equal(1, details.RootElement.GetProperty("analysis").GetProperty("acceptedCount").GetInt32());
     }
 
     [Fact]
@@ -69,14 +69,12 @@ public sealed class JdAnalysisThreeStateEndToEndTests
         Assert.False(projection.RequirementSetComplete);
         Assert.Contains("INVALID_REQUIREMENT_GROUP", projection.WarningCodes!);
 
-        var response = ValidateStageTwo(projection, 0.8m);
-        var calculated = new JdFitScoreCalculator().Calculate(projection, response);
+        var response = ValidateStageTwo(projection);
+        var calculated = CalculateAndSerialize(projection, response);
         using var details = JsonDocument.Parse(calculated.JsonString);
-        var metadata = details.RootElement.GetProperty("jdAnalysis");
-        Assert.Equal("PARTIAL", metadata.GetProperty("quality").GetString());
-        Assert.Equal("accepted_requirements_only", metadata.GetProperty("scoreBasis").GetString());
-        Assert.False(metadata.GetProperty("requirementSetComplete").GetBoolean());
-        Assert.Equal("PARTIAL", JdMatchMetadataReader.Read(calculated.JsonString)!.Quality);
+        Assert.Equal(JdFitResultContract.Version4, details.RootElement.GetProperty("contract").GetString());
+        Assert.Equal(1, details.RootElement.GetProperty("analysis").GetProperty("acceptedCount").GetInt32());
+        Assert.Single(details.RootElement.GetProperty("jdFit").GetProperty("requirementGroups").EnumerateArray());
     }
 
     [Fact]
@@ -96,9 +94,7 @@ public sealed class JdAnalysisThreeStateEndToEndTests
         Assert.Equal(JdAnalysisQuality.INVALID, classification.JdAnalysisQuality);
     }
 
-    private static JdStageTwoValidatedResponse ValidateStageTwo(
-        JdRequirementProjection projection,
-        decimal score)
+    private static JdStageTwoValidatedResponse ValidateStageTwo(JdRequirementProjection projection)
     {
         var scores = projection.Groups
             .SelectMany(group => group.Items.Select(item => (group, item)))
@@ -107,30 +103,40 @@ public sealed class JdAnalysisThreeStateEndToEndTests
                 reqId = value.item.ItemId,
                 handlerCode = value.item.Category switch
                 {
-                    "tech_skill" => "H_TECH_01",
-                    "experience" => "H_EXP_01",
-                    "seniority_fit" => "H_SENIOR_01",
-                    "domain_knowledge" => "H_DOMAIN_01",
-                    "language" => "H_LANG_01",
-                    "education" => "H_EDU_01",
+                    "tech_skill" => "H_TECH_05",
+                    "experience" => "H_EXP_D05",
+                    "domain_knowledge" => "H_DOMAIN_05",
+                    "language" => "H_LANG_Q05",
+                    "education" => "H_EDU_06",
                     _ => "H_SOFT_01"
                 },
-                handlerScore = score,
                 reasoning = "Evidence supports the requirement.",
-                confidence = "high",
-                evidence = new[] { value.group.RequirementVerbatim }
+                evidence = new[] { new { quotation = value.group.RequirementVerbatim, section = "experience" } }
             })
             .ToArray();
         var json = JsonSerializer.Serialize(new
         {
+            schemaVersion = "jd-stage2/v2",
             scores,
-            narrative = "The accepted requirements were scored.",
-            improvements = Array.Empty<object>(),
-            penalties = Array.Empty<object>()
+            narrative = "The accepted requirements were scored."
         });
 
         using var document = JsonDocument.Parse(json);
         return new JdMatchingResponseAdapter().Adapt(document, projection);
+    }
+
+    private static JdFitScoreCalculation CalculateAndSerialize(
+        JdRequirementProjection projection,
+        JdStageTwoValidatedResponse response)
+    {
+        var scoreResult = new JdFitScoreCalculator().Calculate(projection, response);
+        var gaps = new JdCriticalGapEvaluator().Evaluate(projection, response.ItemAssessments);
+        return new JdFitResultSerializer().Serialize(
+            projection,
+            response,
+            scoreResult,
+            gaps,
+            new JdFitSerializationContext(Guid.Empty, "test", "semantic-hash", "schema-hash", 1));
     }
 
     private static string Serialize(ValidatedJobAnalysis analysis)

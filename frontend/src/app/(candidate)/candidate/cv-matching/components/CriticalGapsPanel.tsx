@@ -46,21 +46,35 @@ export function CriticalGapsPanel({ criticalGaps, warningFlags }: CriticalGapsPa
           >
             <XCircle className="h-4 w-4" />
             <AlertTitle className="font-semibold text-red-800 dark:text-red-300">
-              {gap.requirement || gap.code}
+              {gap.requirement || (gap.scope === "item" ? t("requiredItemGap") : t("requiredGroupGap"))}
             </AlertTitle>
-            {(gap.reasoning || gap.evidence.length > 0) && (
-              <AlertDescription className="mt-2 space-y-2 text-red-700/90 dark:text-red-400">
-                {gap.reasoning && <p>{gap.reasoning}</p>}
+            <AlertDescription className="mt-2 space-y-2 text-red-700/90 dark:text-red-400">
+                <p>{gap.reasoning || gapMessage(gap, t)}</p>
                 {gap.evidence.map((evidence, evidenceIndex) => (
                   <blockquote key={`${evidence.quotation}-${evidenceIndex}`} className="border-l-2 border-red-300 pl-3 text-xs">
                     “{evidence.quotation}”{evidence.section ? ` — ${evidence.section}` : ""}
                   </blockquote>
                 ))}
               </AlertDescription>
-            )}
           </Alert>
         ))}
       </CardContent>
     </Card>
   );
+}
+
+function gapMessage(
+  gap: MatchCriticalGapReport,
+  t: (key: string, values?: Record<string, number>) => string,
+) {
+  if (gap.operator === "one_of") {
+    return t("oneOfGapMessage");
+  }
+  if (gap.operator === "at_least_n") {
+    return t("atLeastGapMessage", {
+      required: gap.requiredCount ?? 0,
+      satisfied: gap.satisfiedCount ?? 0,
+    });
+  }
+  return gap.scope === "item" ? t("allOfItemGapMessage") : t("requiredGroupGapMessage");
 }

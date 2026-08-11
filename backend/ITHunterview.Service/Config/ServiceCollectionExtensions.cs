@@ -106,6 +106,8 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IJdMatchReportReader, JdMatchReportReader>();
             services.AddScoped<IJdStageTwoMatchingService, JdStageTwoMatchingService>();
             services.AddScoped<JdFitScoreCalculator>();
+            services.AddScoped<JdCriticalGapEvaluator>();
+            services.AddScoped<JdFitResultSerializer>();
             services.AddScoped<CvStageTwoContextBuilder>();
             services.AddSingleton<IMatchingRequestValidator, MatchingRequestValidator>();
             services.AddScoped<IJdExtractionService, JdExtractionService>();

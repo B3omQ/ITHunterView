@@ -116,7 +116,7 @@ export default function CandidateDashboard() {
   // Line Chart Data (Match History reversed for chronological order)
   const lineChartData = matchHistory.slice(0, 5).reverse().map(m => ({
     name: m.jdTitle?.substring(0, 10) + '...',
-    score: m.matchScore,
+    score: getScorePercent(m),
     date: m.updatedAt ? new Date(m.updatedAt).toLocaleDateString() : 'N/A'
   }));
 

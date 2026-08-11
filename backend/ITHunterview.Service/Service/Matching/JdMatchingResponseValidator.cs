@@ -1,38 +1,26 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using ITHunterview.Service.DTOs.Cv.Matching;
 
 namespace ITHunterview.Service.Service.Matching;
 
-public sealed record JdStageTwoValidationResult(
-    JdStageTwoOutputQuality Quality,
-    IReadOnlyDictionary<string, JdStageTwoItemScore> ItemScores,
-    JdStageTwoOutputCoverage Coverage,
-    string Narrative,
-    JsonElement Improvements,
-    IReadOnlyList<JdStageTwoPenalty> Penalties,
-    IReadOnlyList<string> WarningCodes);
-
 /// <summary>
-/// Validates the mechanical matching-output contract. Invalid individual
-/// items are discarded without invalidating other usable scores. It never
-/// changes IDs, handler codes, scores, or requirement semantics.
+/// Applies only mechanical Stage 2 contract checks. It maps approved handler
+/// codes through the backend score policy and never judges evidence meaning.
 /// </summary>
 public static class JdMatchingResponseValidator
 {
     public const string InvalidStageTwoResponse = "INVALID_STAGE_TWO_RESPONSE";
+    public const string SchemaVersion = "jd-stage2/v2";
 
-    private const string CredibilityPenaltyCode = "PNL_TC1_01";
     private const int MaxReasoningLength = 2_000;
     private const int MaxEvidenceItems = 5;
-    private const int MaxEvidenceLength = 500;
+    private const int MaxEvidenceFieldLength = 500;
     private const int MaxNarrativeLength = 4_000;
-    private const int MaxPenaltyEvidenceLength = 1_000;
+    private const int MaxHandlerCodeLength = 100;
     private const int MaxTopLevelItems = 100;
+    private const int MaxHandlerDiagnostics = 20;
 
-    public static JdStageTwoValidationResult Validate(
+    public static JdStageTwoValidatedResponse Validate(
         JsonDocument response,
         JdRequirementProjection projection,
         bool isCompleteJson = true,
@@ -43,276 +31,333 @@ public static class JdMatchingResponseValidator
         ArgumentNullException.ThrowIfNull(projection);
 
         var expectedItems = projection.Groups.SelectMany(group => group.Items).ToArray();
-        var expectedIds = expectedItems.Select(item => item.ItemId).ToHashSet(StringComparer.Ordinal);
-        var categoryByItem = expectedItems
+        if (expectedItems.Length is 0 or > MaxTopLevelItems)
+        {
+            throw new InvalidOperationException(InvalidStageTwoResponse);
+        }
+
+        var expectedById = expectedItems
             .Where(item => !string.IsNullOrWhiteSpace(item.ItemId))
             .GroupBy(item => item.ItemId, StringComparer.Ordinal)
             .Where(group => group.Count() == 1)
-            .ToDictionary(group => group.Key, group => group.Single().Category, StringComparer.Ordinal);
-        if (expectedIds.Count == 0 || expectedIds.Count != expectedItems.Length || categoryByItem.Count != expectedItems.Length)
+            .ToDictionary(group => group.Key, group => group.Single(), StringComparer.Ordinal);
+        if (expectedById.Count != expectedItems.Length)
         {
             throw new InvalidOperationException(InvalidStageTwoResponse);
         }
 
         var warnings = new HashSet<string>(recoveryWarnings ?? Array.Empty<string>(), StringComparer.Ordinal);
-        var scores = new Dictionary<string, JdStageTwoItemScore>(StringComparer.Ordinal);
-        var inputScoreCount = 0;
-        var discardedScoreCount = 0;
         var root = response.RootElement;
-        if (root.ValueKind != JsonValueKind.Object ||
-            !root.TryGetProperty("scores", out var scoreArray) ||
-            scoreArray.ValueKind != JsonValueKind.Array)
+        if (!HasSupportedRoot(root, warnings, out var scoresElement))
         {
-            warnings.Add("SCORES_ARRAY_MISSING_OR_INVALID");
-        }
-        else
-        {
-            inputScoreCount = scoreArray.GetArrayLength();
-            if (inputScoreCount > MaxTopLevelItems)
-            {
-                discardedScoreCount += inputScoreCount - MaxTopLevelItems;
-                warnings.Add("SCORE_ITEM_LIMIT_EXCEEDED");
-            }
-
-            foreach (var score in scoreArray.EnumerateArray().Take(MaxTopLevelItems))
-            {
-                if (!TryReadScore(score, categoryByItem, scores, out var itemScore, out var warning))
-                {
-                    discardedScoreCount++;
-                    warnings.Add(warning);
-                    continue;
-                }
-
-                scores.Add(itemScore!.ItemId, itemScore);
-            }
+            return Invalid(expectedById.Keys, wasTruncated, warnings);
         }
 
-        var missingScoreCount = Math.Max(0, expectedIds.Count - scores.Count);
-        if (missingScoreCount > 0)
+        var inputCount = scoresElement.GetArrayLength();
+        var discardedCount = 0;
+        if (inputCount > MaxTopLevelItems)
+        {
+            discardedCount += inputCount - MaxTopLevelItems;
+            warnings.Add("SCORE_ITEM_LIMIT_EXCEEDED");
+        }
+
+        var accepted = new Dictionary<string, JdStageTwoItemAssessment>(StringComparer.Ordinal);
+        var handlerDiagnostics = new List<JdStageTwoHandlerDiagnostic>();
+        foreach (var element in scoresElement.EnumerateArray().Take(MaxTopLevelItems))
+        {
+            if (!TryReadAssessment(
+                    element,
+                    expectedById,
+                    accepted,
+                    out var assessment,
+                    out var warning,
+                    out var itemHandlerDiagnostics))
+            {
+                discardedCount++;
+                warnings.Add(warning);
+                AddHandlerDiagnostics(handlerDiagnostics, itemHandlerDiagnostics);
+                continue;
+            }
+
+            AddHandlerDiagnostics(handlerDiagnostics, itemHandlerDiagnostics);
+            accepted.Add(assessment!.ItemId, assessment);
+            foreach (var diagnostic in assessment.DiagnosticCodes)
+            {
+                warnings.Add(diagnostic);
+            }
+        }
+
+        var missingIds = expectedById.Keys
+            .Where(id => !accepted.ContainsKey(id))
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .ToArray();
+        if (missingIds.Length > 0)
         {
             warnings.Add("MISSING_REQUIREMENT_SCORES");
         }
 
-        var narrative = ReadOptionalString(root, "narrative", MaxNarrativeLength, warnings, "NARRATIVE_INVALID");
-        var improvements = ReadImprovements(root, warnings);
-        var penalties = ReadPenalties(root, warnings);
-
-        var quality = scores.Count == 0
+        var quality = accepted.Count == 0
             ? JdStageTwoOutputQuality.INVALID
-            : isCompleteJson && !wasTruncated && missingScoreCount == 0 && discardedScoreCount == 0 && warnings.Count == 0
+            : missingIds.Length == 0
                 ? JdStageTwoOutputQuality.COMPLETE
                 : JdStageTwoOutputQuality.PARTIAL;
 
-        return new JdStageTwoValidationResult(
+        return new JdStageTwoValidatedResponse(
+            accepted,
+            ReadOptionalBoundedString(root, "narrative", MaxNarrativeLength, null),
             quality,
-            scores,
             new JdStageTwoOutputCoverage(
-                expectedIds.Count,
-                inputScoreCount,
-                scores.Count,
-                discardedScoreCount,
-                missingScoreCount,
-                wasTruncated),
-            narrative,
-            improvements,
-            penalties,
-            warnings.OrderBy(code => code, StringComparer.Ordinal).ToArray());
+                expectedById.Count,
+                inputCount,
+                accepted.Count,
+                discardedCount,
+                missingIds,
+                wasTruncated || !isCompleteJson),
+            warnings.OrderBy(code => code, StringComparer.Ordinal).ToArray())
+        {
+            HandlerDiagnostics = handlerDiagnostics
+        };
     }
 
-    private static bool TryReadScore(
-        JsonElement element,
-        IReadOnlyDictionary<string, string> categoryByItem,
-        IReadOnlyDictionary<string, JdStageTwoItemScore> accepted,
-        out JdStageTwoItemScore? score,
-        out string warning)
+    private static bool HasSupportedRoot(
+        JsonElement root,
+        ISet<string> warnings,
+        out JsonElement scores)
     {
-        score = null;
+        scores = default;
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            warnings.Add("ROOT_NOT_OBJECT");
+            return false;
+        }
+
+        if (!root.TryGetProperty("schemaVersion", out var schema) ||
+            schema.ValueKind != JsonValueKind.String ||
+            !string.Equals(schema.GetString(), SchemaVersion, StringComparison.Ordinal))
+        {
+            warnings.Add("UNSUPPORTED_SCHEMA_VERSION");
+            return false;
+        }
+
+        if (!root.TryGetProperty("scores", out scores) || scores.ValueKind != JsonValueKind.Array)
+        {
+            warnings.Add("SCORES_ARRAY_MISSING_OR_INVALID");
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool TryReadAssessment(
+        JsonElement element,
+        IReadOnlyDictionary<string, ProjectedJdRequirementItem> expectedById,
+        IReadOnlyDictionary<string, JdStageTwoItemAssessment> accepted,
+        out JdStageTwoItemAssessment? assessment,
+        out string warning,
+        out IReadOnlyList<JdStageTwoHandlerDiagnostic> handlerDiagnostics)
+    {
+        assessment = null;
         warning = "INVALID_SCORE_ITEM";
+        handlerDiagnostics = Array.Empty<JdStageTwoHandlerDiagnostic>();
         if (element.ValueKind != JsonValueKind.Object ||
-            !TryReadRequiredString(element, "reqId", out var reqId) ||
-            !TryReadRequiredString(element, "handlerCode", out var handlerCode) ||
-            !element.TryGetProperty("handlerScore", out var scoreValue) ||
-            scoreValue.ValueKind != JsonValueKind.Number ||
-            !scoreValue.TryGetDecimal(out var handlerScore) ||
-            handlerScore is < 0m or > 1m)
+            !TryReadRequiredString(element, "reqId", out var itemId) ||
+            !TryReadHandlerCode(element, out var returnedHandlerCode, out var handlerCode))
         {
             return false;
         }
 
-        if (!categoryByItem.TryGetValue(reqId, out var category))
+        if (!expectedById.TryGetValue(itemId, out var expected))
         {
             warning = "UNKNOWN_REQUIREMENT_ID";
             return false;
         }
 
-        if (accepted.ContainsKey(reqId))
+        if (accepted.ContainsKey(itemId))
         {
             warning = "DUPLICATE_REQUIREMENT_ID";
             return false;
         }
 
-        if (!MatchingHandlerCodePolicy.IsValid(category, handlerCode))
+        if (!MatchingScorePolicy.TryResolveHandlerCode(handlerCode, out var resolution))
         {
-            warning = "HANDLER_CODE_CATEGORY_MISMATCH";
+            warning = MatchingHandlerCodePolicy.IsNonScoringCode(handlerCode)
+                ? "NON_SCORING_HANDLER_CODE"
+                : "UNKNOWN_HANDLER_CODE";
+            handlerDiagnostics =
+            [
+                new JdStageTwoHandlerDiagnostic(
+                    warning,
+                    expected.Category,
+                    handlerCode,
+                    null)
+            ];
             return false;
         }
 
-        var reasoning = ReadOptionalString(element, "reasoning", MaxReasoningLength);
-        var confidence = ReadConfidence(element);
-        var evidence = ReadEvidence(element);
-        score = new JdStageTwoItemScore(reqId, handlerCode, handlerScore, reasoning, confidence, evidence);
+        var diagnostics = new HashSet<string>(StringComparer.Ordinal);
+        var resolvedHandlerDiagnostics = new List<JdStageTwoHandlerDiagnostic>(2);
+        if (!string.Equals(resolution.Category, expected.Category, StringComparison.Ordinal))
+        {
+            resolvedHandlerDiagnostics.Add(new JdStageTwoHandlerDiagnostic(
+                "HANDLER_CATEGORY_DIFFERENCE_ACCEPTED",
+                expected.Category,
+                handlerCode,
+                resolution.HandlerCode));
+        }
+
+        if (!string.Equals(returnedHandlerCode, resolution.HandlerCode, StringComparison.Ordinal))
+        {
+            resolvedHandlerDiagnostics.Add(new JdStageTwoHandlerDiagnostic(
+                "HANDLER_CODE_CASE_NORMALIZED",
+                expected.Category,
+                returnedHandlerCode,
+                resolution.HandlerCode));
+        }
+
+        var reasoning = ReadOptionalBoundedString(
+            element,
+            "reasoning",
+            MaxReasoningLength,
+            diagnostics,
+            "REASONING_MISSING_OR_INVALID");
+        var evidence = ReadEvidence(element, diagnostics);
+        assessment = new JdStageTwoItemAssessment(
+            itemId,
+            expected.Category,
+            resolution.HandlerCode,
+            resolution.Score,
+            reasoning,
+            evidence,
+            diagnostics.OrderBy(code => code, StringComparer.Ordinal).ToArray());
+        handlerDiagnostics = resolvedHandlerDiagnostics;
         warning = string.Empty;
         return true;
     }
 
-    private static string ReadConfidence(JsonElement score)
+    private static bool TryReadHandlerCode(
+        JsonElement element,
+        out string returnedValue,
+        out string normalizedValue)
     {
-        if (!score.TryGetProperty("confidence", out var confidence) || confidence.ValueKind == JsonValueKind.Null)
-        {
-            return "unknown";
-        }
-
-        if (confidence.ValueKind != JsonValueKind.String)
-        {
-            return "unknown";
-        }
-
-        var value = confidence.GetString()?.Trim() ?? string.Empty;
-        return value is "high" or "medium" or "low" ? value : "unknown";
-    }
-
-    private static IReadOnlyList<string> ReadEvidence(JsonElement score)
-    {
-        if (!score.TryGetProperty("evidence", out var evidence) || evidence.ValueKind != JsonValueKind.Array)
-        {
-            return Array.Empty<string>();
-        }
-
-        return evidence.EnumerateArray()
-            .Where(value => value.ValueKind == JsonValueKind.String)
-            .Select(value => value.GetString()?.Trim() ?? string.Empty)
-            .Where(value => value.Length is > 0 and <= MaxEvidenceLength)
-            .Distinct(StringComparer.Ordinal)
-            .Take(MaxEvidenceItems)
-            .ToArray();
-    }
-
-    private static JsonElement ReadImprovements(JsonElement root, ISet<string> warnings)
-    {
-        if (root.ValueKind != JsonValueKind.Object)
-        {
-            warnings.Add("ROOT_NOT_OBJECT");
-            return JsonSerializer.SerializeToElement(Array.Empty<object>());
-        }
-
-        if (!root.TryGetProperty("improvements", out var improvements) || improvements.ValueKind == JsonValueKind.Null)
-        {
-            return JsonSerializer.SerializeToElement(Array.Empty<object>());
-        }
-
-        if (improvements.ValueKind != JsonValueKind.Array)
-        {
-            warnings.Add("IMPROVEMENTS_INVALID");
-            return JsonSerializer.SerializeToElement(Array.Empty<object>());
-        }
-
-        var accepted = improvements.EnumerateArray()
-            .Where(item => item.ValueKind == JsonValueKind.Object)
-            .Take(MaxTopLevelItems)
-            .Select(item => item.Clone())
-            .ToArray();
-        if (accepted.Length != improvements.GetArrayLength())
-        {
-            warnings.Add("IMPROVEMENTS_PARTIALLY_DISCARDED");
-        }
-        return JsonSerializer.SerializeToElement(accepted);
-    }
-
-    private static IReadOnlyList<JdStageTwoPenalty> ReadPenalties(JsonElement root, ISet<string> warnings)
-    {
-        if (root.ValueKind != JsonValueKind.Object)
-        {
-            warnings.Add("ROOT_NOT_OBJECT");
-            return Array.Empty<JdStageTwoPenalty>();
-        }
-
-        if (!root.TryGetProperty("penalties", out var penalties) || penalties.ValueKind == JsonValueKind.Null)
-        {
-            return Array.Empty<JdStageTwoPenalty>();
-        }
-
-        if (penalties.ValueKind != JsonValueKind.Array)
-        {
-            warnings.Add("PENALTIES_INVALID");
-            return Array.Empty<JdStageTwoPenalty>();
-        }
-
-        var result = new List<JdStageTwoPenalty>();
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var penalty in penalties.EnumerateArray().Take(MaxTopLevelItems))
-        {
-            if (penalty.ValueKind != JsonValueKind.Object ||
-                !TryReadRequiredString(penalty, "code", out var code) ||
-                !string.Equals(code, CredibilityPenaltyCode, StringComparison.Ordinal) ||
-                !seen.Add(code) ||
-                !penalty.TryGetProperty("triggered", out var triggered) ||
-                triggered.ValueKind is not JsonValueKind.True and not JsonValueKind.False)
-            {
-                warnings.Add("PENALTY_ITEM_DISCARDED");
-                continue;
-            }
-
-            var evidence = ReadOptionalString(penalty, "evidence", MaxPenaltyEvidenceLength);
-            if (triggered.GetBoolean() && evidence.Length == 0)
-            {
-                warnings.Add("PENALTY_ITEM_DISCARDED");
-                continue;
-            }
-            result.Add(new JdStageTwoPenalty(code, triggered.GetBoolean(), evidence));
-        }
-        return result;
-    }
-
-    private static bool TryReadRequiredString(JsonElement element, string property, out string value)
-    {
-        value = string.Empty;
-        if (element.ValueKind != JsonValueKind.Object ||
-            !element.TryGetProperty(property, out var propertyValue) ||
+        returnedValue = string.Empty;
+        normalizedValue = string.Empty;
+        if (!element.TryGetProperty("handlerCode", out var propertyValue) ||
             propertyValue.ValueKind != JsonValueKind.String)
         {
             return false;
         }
-        value = propertyValue.GetString()?.Trim() ?? string.Empty;
-        return value.Length is > 0 and <= MaxNarrativeLength;
+
+        returnedValue = propertyValue.GetString() ?? string.Empty;
+        normalizedValue = returnedValue.Trim();
+        return returnedValue.Length <= MaxHandlerCodeLength &&
+               normalizedValue.Length is > 0 and <= MaxHandlerCodeLength;
     }
 
-    private static string ReadOptionalString(JsonElement element, string property, int maximumLength) =>
-        ReadOptionalString(element, property, maximumLength, null, string.Empty);
+    private static void AddHandlerDiagnostics(
+        ICollection<JdStageTwoHandlerDiagnostic> target,
+        IEnumerable<JdStageTwoHandlerDiagnostic> source)
+    {
+        foreach (var diagnostic in source)
+        {
+            if (target.Count >= MaxHandlerDiagnostics)
+            {
+                return;
+            }
 
-    private static string ReadOptionalString(
+            target.Add(diagnostic);
+        }
+    }
+
+    private static IReadOnlyList<JdMatchingEvidence> ReadEvidence(
+        JsonElement element,
+        ISet<string> diagnostics)
+    {
+        if (!element.TryGetProperty("evidence", out var evidence) ||
+            evidence.ValueKind != JsonValueKind.Array)
+        {
+            diagnostics.Add("EVIDENCE_MISSING_OR_INVALID");
+            return Array.Empty<JdMatchingEvidence>();
+        }
+
+        var accepted = new List<JdMatchingEvidence>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var entry in evidence.EnumerateArray().Take(MaxEvidenceItems))
+        {
+            if (entry.ValueKind != JsonValueKind.Object ||
+                !TryReadRequiredString(entry, "quotation", out var quotation, MaxEvidenceFieldLength) ||
+                !TryReadRequiredString(entry, "section", out var section, MaxEvidenceFieldLength))
+            {
+                diagnostics.Add("EVIDENCE_MISSING_OR_INVALID");
+                continue;
+            }
+
+            var key = $"{quotation}\u001f{section}";
+            if (seen.Add(key))
+            {
+                accepted.Add(new JdMatchingEvidence(quotation, section));
+            }
+        }
+
+        if (accepted.Count == 0)
+        {
+            diagnostics.Add("EVIDENCE_MISSING_OR_INVALID");
+        }
+
+        return accepted;
+    }
+
+    private static bool TryReadRequiredString(
+        JsonElement element,
+        string property,
+        out string value,
+        int maximumLength = MaxNarrativeLength)
+    {
+        value = string.Empty;
+        if (!element.TryGetProperty(property, out var propertyValue) ||
+            propertyValue.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        value = propertyValue.GetString()?.Trim() ?? string.Empty;
+        return value.Length is > 0 && value.Length <= maximumLength;
+    }
+
+    private static string ReadOptionalBoundedString(
         JsonElement element,
         string property,
         int maximumLength,
-        ISet<string>? warnings,
-        string warning)
+        ISet<string>? diagnostics,
+        string diagnostic = "")
     {
-        if (element.ValueKind != JsonValueKind.Object ||
-            !element.TryGetProperty(property, out var value) ||
-            value.ValueKind == JsonValueKind.Null)
+        if (!element.TryGetProperty(property, out var value) ||
+            value.ValueKind != JsonValueKind.String)
         {
+            if (diagnostic.Length > 0) diagnostics?.Add(diagnostic);
             return string.Empty;
         }
-        if (value.ValueKind != JsonValueKind.String)
-        {
-            if (warning.Length > 0) warnings?.Add(warning);
-            return string.Empty;
-        }
+
         var text = value.GetString()?.Trim() ?? string.Empty;
-        if (text.Length <= maximumLength)
+        if (text.Length is > 0 && text.Length <= maximumLength)
         {
             return text;
         }
-        if (warning.Length > 0) warnings?.Add(warning);
-        return text[..maximumLength];
+
+        if (diagnostic.Length > 0) diagnostics?.Add(diagnostic);
+        return string.Empty;
+    }
+
+    private static JdStageTwoValidatedResponse Invalid(
+        IEnumerable<string> expectedIds,
+        bool wasTruncated,
+        ISet<string> warnings)
+    {
+        var missing = expectedIds.OrderBy(id => id, StringComparer.Ordinal).ToArray();
+        return new JdStageTwoValidatedResponse(
+            new Dictionary<string, JdStageTwoItemAssessment>(StringComparer.Ordinal),
+            string.Empty,
+            JdStageTwoOutputQuality.INVALID,
+            new JdStageTwoOutputCoverage(missing.Length, 0, 0, 0, missing, wasTruncated),
+            warnings.OrderBy(code => code, StringComparer.Ordinal).ToArray());
     }
 }

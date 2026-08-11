@@ -34,7 +34,7 @@ public sealed class JdMatchingPromptManagementTests
             {
                 VersionTag = "semantic-copy",
                 Content = fixture,
-                ModelConfig = "{}",
+                ModelConfig = null,
                 MakeActive = false
             },
             Guid.NewGuid());
@@ -80,7 +80,7 @@ public sealed class JdMatchingPromptManagementTests
             {
                 VersionTag = "invalid",
                 Content = mutated,
-                ModelConfig = "{}"
+                ModelConfig = null
             },
             Guid.NewGuid());
 
@@ -90,10 +90,32 @@ public sealed class JdMatchingPromptManagementTests
     }
 
     [Theory]
-    [InlineData(null)]
     [InlineData("{}")]
     [InlineData("{\"contract\":\"historical-contract\"}")]
-    public async Task CreateVersion_ModelConfigDoesNotSelectMatchingContract(string? modelConfig)
+    public async Task CreateVersion_WhenMatchingModelConfigIsNonBlank_RejectsBeforeWrite(string modelConfig)
+    {
+        var repository = CreateRepositoryWithPrompt();
+        var useCase = new PromptAdminUseCase(repository.Object);
+
+        var action = () => useCase.CreatePromptVersionAsync(
+            PromptId,
+            new CreatePromptVersionDto
+            {
+                VersionTag = "invalid-config",
+                Content = "Follow the matching rules.\n[CV_TEXT]\n[PARSED_JD_REQUIREMENTS]",
+                ModelConfig = modelConfig
+            },
+            Guid.NewGuid());
+
+        await action.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*JD_MATCHING_MODEL_CONFIG_NOT_ALLOWED*");
+        repository.Verify(
+            x => x.CreatePromptVersionAsync(It.IsAny<PromptVersions>(), It.IsAny<bool>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateVersion_WhenMatchingModelConfigIsBlank_PersistsNull()
     {
         var repository = CreateRepositoryWithPrompt();
         PromptVersions? captured = null;
@@ -108,12 +130,12 @@ public sealed class JdMatchingPromptManagementTests
             {
                 VersionTag = "config-independent",
                 Content = "Follow the matching rules.\n[CV_TEXT]\n[PARSED_JD_REQUIREMENTS]",
-                ModelConfig = modelConfig
+                ModelConfig = "   "
             },
             Guid.NewGuid());
 
         captured.Should().NotBeNull();
-        captured!.ModelConfig.Should().Be(modelConfig);
+        captured!.ModelConfig.Should().BeNull();
     }
 
     [Fact]
@@ -172,7 +194,7 @@ public sealed class JdMatchingPromptManagementTests
                 Id = VersionId,
                 PromptId = PromptId,
                 Content = ReadActivePrompt(),
-                ModelConfig = "{\"contract\":\"historical-contract\"}",
+                ModelConfig = null,
                 Prompt = new Prompts { Id = PromptId, PromptKey = JdMatchingPromptContract.PromptKey }
             });
 

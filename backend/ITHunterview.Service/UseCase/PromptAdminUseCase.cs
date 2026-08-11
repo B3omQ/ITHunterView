@@ -158,7 +158,9 @@ namespace ITHunterview.Service.UseCase
                 PromptId = promptId,
                 VersionTag = dto.VersionTag,
                 Content = content,
-                ModelConfig = dto.ModelConfig,
+                ModelConfig = prompt.PromptKey == JdMatchingPromptContract.PromptKey
+                    ? null
+                    : dto.ModelConfig,
                 CreatedBy = adminId,
                 CreatedAt = DateTime.UtcNow
             };
@@ -348,6 +350,17 @@ namespace ITHunterview.Service.UseCase
 
         private static void ValidateModelConfig(string promptKey, string? modelConfig)
         {
+            if (promptKey == JdMatchingPromptContract.PromptKey)
+            {
+                if (!string.IsNullOrWhiteSpace(modelConfig))
+                {
+                    throw new ArgumentException(
+                        "JD_MATCHING_MODEL_CONFIG_NOT_ALLOWED: Matching provider and output settings are application-managed.");
+                }
+
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(modelConfig))
             {
                 if (IsManagedAnalysisPromptKey(promptKey))

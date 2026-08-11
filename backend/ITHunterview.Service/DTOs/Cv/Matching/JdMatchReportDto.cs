@@ -16,8 +16,14 @@ public static class MatchMethodCodes
     public const string LegacyUnknown = "legacy_unknown";
 }
 
+public static class MatchReportContracts
+{
+    public const string Version2 = "match-report/v2";
+}
+
 public sealed class MatchReportDto
 {
+    public string ReportContract { get; set; } = MatchReportContracts.Version2;
     public string ReportKind { get; set; } = MatchReportKinds.LegacySummary;
     public string? SchemaVersion { get; set; }
     public string MatchMethod { get; set; } = MatchMethodCodes.LegacyUnknown;
@@ -42,6 +48,7 @@ public sealed class MatchRequirementGroupReportDto
     public string? RequirementVerbatim { get; set; }
     public decimal GroupScore { get; set; }
     public List<string> SelectedItemIds { get; set; } = new();
+    public List<string> SatisfiedItemIds { get; set; } = new();
     public bool IsCriticalGap { get; set; }
     public int? SourceOrder { get; set; }
     public List<MatchRequirementItemReportDto> Items { get; set; } = new();
@@ -74,6 +81,10 @@ public sealed class MatchCriticalGapReportDto
     public string? Scope { get; set; }
     public string? GroupId { get; set; }
     public string? ItemId { get; set; }
+    public string? Operator { get; set; }
+    public int? RequiredCount { get; set; }
+    public int? SatisfiedCount { get; set; }
+    public List<string> AffectedItemIds { get; set; } = new();
     public string Requirement { get; set; } = string.Empty;
     public string Reasoning { get; set; } = string.Empty;
     public List<MatchEvidenceReportDto> Evidence { get; set; } = new();

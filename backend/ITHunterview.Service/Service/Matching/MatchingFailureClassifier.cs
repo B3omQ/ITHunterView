@@ -1,4 +1,5 @@
 using System;
+using System.Net;
 using System.Net.Http;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.Exceptions;
@@ -21,6 +22,21 @@ public static class MatchingFailureClassifier
     {
         ArgumentNullException.ThrowIfNull(exception);
         var message = exception.Message ?? string.Empty;
+
+        if (exception is HttpRequestException providerHttpFailure)
+        {
+            if (providerHttpFailure.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            {
+                return new MatchingFailureClassification("MATCHING_CONFIGURATION_INVALID", false);
+            }
+
+            return new MatchingFailureClassification("AI_PROVIDER_TIMEOUT", true);
+        }
+
+        if (message.Contains("API Key is not configured", StringComparison.OrdinalIgnoreCase))
+        {
+            return new MatchingFailureClassification("MATCHING_CONFIGURATION_INVALID", false);
+        }
 
         if (exception is CvAnalysisValidationException cvAnalysisFailure)
         {
@@ -62,8 +78,7 @@ public static class MatchingFailureClassifier
             return new MatchingFailureClassification(message, false);
 
         if (exception is TimeoutException
-            || exception is OperationCanceledException
-            || exception is HttpRequestException)
+            || exception is OperationCanceledException)
             return new MatchingFailureClassification("AI_PROVIDER_TIMEOUT", true);
 
         if (message is "JOB_ANALYSIS_EXTRACTION_SERVICE_NOT_CONFIGURED"

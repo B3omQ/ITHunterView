@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 import type { MatchHistoryDto } from '@/types/cv.types';
 import type { ApplicantDto } from '@/types/job-application.types';
-import { getMatchMethodLabel, getScorePercent } from '@/lib/matching-score';
+import { getMatchBandLabel, getMatchMethodLabel, getScorePercent } from '@/lib/matching-score';
 
 /**
  * Export Candidate Match Results (from Scan DB / Matching History) to Excel (.xlsx)
@@ -23,6 +23,7 @@ export function exportMatchingResultsToExcel(jobTitle: string, matches: MatchHis
     { wch: 32 }, // Vị trí tuyển dụng
     { wch: 22 }, // Điểm phù hợp tổng thể
     { wch: 25 }, // Phương pháp
+    { wch: 28 }, // Mức độ phù hợp
     { wch: 15 }, // Trạng thái
     { wch: 45 }, // Link File CV
     { wch: 22 }, // Thời gian
@@ -58,6 +59,7 @@ export function buildMatchingExportRows(jobTitle: string, matches: MatchHistoryD
       'Vị trí tuyển dụng (JD)': match.jdTitle || jobTitle,
       'Điểm phù hợp tổng thể': scorePercent,
       'Phương pháp Đánh giá': getMatchMethodLabel(match.matchMethod),
+      'Mức độ phù hợp': getMatchBandLabel(getScorePercent(match)),
       'Trạng thái': match.status === 'Completed' ? 'Hoàn thành' : match.status,
       'Link File CV': match.fileUrl || 'Chưa có file',
       'Thời gian Đánh giá': formattedDate,

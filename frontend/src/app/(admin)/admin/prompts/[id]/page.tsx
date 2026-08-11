@@ -21,7 +21,7 @@ import * as z from 'zod';
 import { toast } from 'sonner';
 import { CvAnalysisPairActivationCard } from '@/components/prompts/CvAnalysisPairActivationCard';
 import { JdAnalysisPairActivationCard } from '@/components/prompts/JdAnalysisPairActivationCard';
-import { isJdMatchingPromptKey, sanitizeJdMatchingContentForEditing } from '@/lib/prompts/jd-matching-prompt-policy';
+import { isJdMatchingPromptKey, normalizePromptModelConfigForSubmission, sanitizeJdMatchingContentForEditing } from '@/lib/prompts/jd-matching-prompt-policy';
 import { isJdAnalysisPromptKey, sanitizeJdAnalysisContentForEditing } from '@/lib/prompts/jd-analysis-prompt-policy';
 import { useTranslations } from 'next-intl';
 
@@ -69,7 +69,11 @@ export default function AdminPromptDetailPage() {
   const isManagedAnalysisPrompt = isCvAnalysisPrompt || isJdAnalysisPrompt;
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    createMutation.mutate({ ...values, makeActive: isManagedAnalysisPrompt ? false : values.makeActive }, {
+    createMutation.mutate({
+      ...values,
+      modelConfig: normalizePromptModelConfigForSubmission(prompt?.promptKey, values.modelConfig),
+      makeActive: isManagedAnalysisPrompt ? false : values.makeActive,
+    }, {
       onSuccess: () => {
         form.reset();
         setActiveTab('history');
@@ -90,7 +94,7 @@ export default function AdminPromptDetailPage() {
         ? sanitizeJdAnalysisContentForEditing(content)
         : content;
     form.setValue('content', editableContent);
-    form.setValue('modelConfig', modelConfig || '');
+    form.setValue('modelConfig', normalizePromptModelConfigForSubmission(prompt?.promptKey, modelConfig) || '');
     setActiveTab('create');
     toast.info(t('copySuccess'));
   }
@@ -329,30 +333,34 @@ export default function AdminPromptDetailPage() {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="modelConfig"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('modelConfigLabel')}</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder={`{\n  "temperature": 0.2,\n  "topK": 40\n}`} 
-                            className="min-h-[150px] font-mono text-sm" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          {isJdMatchingPrompt
-                            ? 'Optional provider settings only. This JSON does not select the matching output schema.'
-                            : isJdAnalysisPrompt
-                            ? 'Optional provider settings. ModelConfig.contract only pairs compatible JD system and user prompt versions; it does not select the output schema.'
-                            : 'Optional JSON overriding default LLM settings. Must be valid JSON.'}
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {isJdMatchingPrompt ? (
+                    <div className="rounded-md border bg-muted/40 p-4 text-sm text-muted-foreground">
+                      Matching provider settings and the JSON output schema are managed by the application. This version stores semantic instructions only, so ModelConfig is not editable.
+                    </div>
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name="modelConfig"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('modelConfigLabel')}</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder={`{\n  "temperature": 0.2,\n  "topK": 40\n}`}
+                              className="min-h-[150px] font-mono text-sm"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            {isJdAnalysisPrompt
+                              ? 'Optional provider settings. ModelConfig.contract only pairs compatible JD system and user prompt versions; it does not select the output schema.'
+                              : 'Optional JSON overriding default LLM settings. Must be valid JSON.'}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   <div className="flex justify-end gap-4">
                     <Button type="button" variant="outline" onClick={() => setActiveTab('history')}>

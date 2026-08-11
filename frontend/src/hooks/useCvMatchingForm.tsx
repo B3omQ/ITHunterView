@@ -24,14 +24,14 @@ import { normalizeCompletedMatchReport } from '@/lib/matching-report';
 export type MatchingStep = 'select' | 'loading' | 'result';
 
 export const MATCHING_LOADING_STEPS = [
-  'Reading and normalizing CV data...',
-  'Extracting key skills and experiences...',
-  'Analyzing Job Description requirements...',
-  'Executing vector search and similarity matching...',
-  'Evaluating match relevance via AI Judge...',
-  'Applying credibility and penalty scoring...',
-  'Generating final feedback report...'
-];
+  'step1',
+  'step2',
+  'step3',
+  'step4',
+  'step5',
+  'step6',
+  'step7',
+] as const;
 
 export function useCvMatchingForm() {
   const searchParams = useSearchParams();

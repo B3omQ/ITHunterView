@@ -59,6 +59,11 @@ public static class JdMatchingOutputRecovery
                 WarningCodes: new[] { "EXTRACTED_COMPLETE_JSON_OBJECT" });
         }
 
+        if (!ContainsSupportedSchemaVersion(candidate))
+        {
+            return Invalid("SCHEMA_VERSION_MISSING_OR_UNSUPPORTED", wasTruncated: true);
+        }
+
         var scores = ExtractCompleteScoreObjects(candidate);
         if (scores.Count == 0)
         {
@@ -67,6 +72,7 @@ public static class JdMatchingOutputRecovery
 
         var recoveredJson = JsonSerializer.Serialize(new Dictionary<string, object?>
         {
+            ["schemaVersion"] = JdMatchingResponseValidator.SchemaVersion,
             ["scores"] = scores
         });
         return new JdMatchingRecoveredOutput(
@@ -159,6 +165,25 @@ public static class JdMatchingOutputRecovery
         }
 
         return results;
+    }
+
+    private static bool ContainsSupportedSchemaVersion(string value)
+    {
+        const string property = "\"schemaVersion\"";
+        var propertyIndex = value.IndexOf(property, StringComparison.Ordinal);
+        if (propertyIndex < 0)
+        {
+            return false;
+        }
+
+        var index = propertyIndex + property.Length;
+        while (index < value.Length && char.IsWhiteSpace(value[index])) index++;
+        if (index >= value.Length || value[index++] != ':') return false;
+        while (index < value.Length && char.IsWhiteSpace(value[index])) index++;
+
+        var expected = $"\"{JdMatchingResponseValidator.SchemaVersion}\"";
+        return index + expected.Length <= value.Length &&
+               value.AsSpan(index, expected.Length).SequenceEqual(expected.AsSpan());
     }
 
     private static int FindScoresArrayStart(string value)

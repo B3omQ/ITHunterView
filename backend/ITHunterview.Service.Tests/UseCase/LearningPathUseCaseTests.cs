@@ -322,6 +322,30 @@ namespace ITHunterview.Service.Tests.UseCase
                                 ]
                               }
                             ]
+                          },
+                          {
+                            "groupId": "grp-one-of",
+                            "operator": "one_of",
+                            "importance": "must_have",
+                            "groupScore": 1.0,
+                            "selectedItemIds": ["item-aws"],
+                            "items": [
+                              { "itemId": "item-aws", "normalizedText": "AWS", "score": 1.0, "reasoning": "Used AWS professionally.", "evidence": [] },
+                              { "itemId": "item-azure", "normalizedText": "Azure", "score": 0.0, "reasoning": "No Azure evidence.", "evidence": [] }
+                            ]
+                          },
+                          {
+                            "groupId": "grp-at-least",
+                            "operator": "at_least_n",
+                            "minSatisfied": 2,
+                            "importance": "must_have",
+                            "groupScore": 0.5,
+                            "selectedItemIds": ["item-docker", "item-kubernetes"],
+                            "items": [
+                              { "itemId": "item-docker", "normalizedText": "Docker", "score": 1.0, "reasoning": "Used Docker.", "evidence": [] },
+                              { "itemId": "item-kubernetes", "normalizedText": "Kubernetes", "score": 0.0, "reasoning": "No Kubernetes evidence.", "evidence": [] },
+                              { "itemId": "item-monitoring", "normalizedText": "Monitoring", "score": 0.0, "reasoning": "No monitoring evidence.", "evidence": [] }
+                            ]
                           }
                         ],
                         "criticalGaps": [
@@ -344,6 +368,11 @@ namespace ITHunterview.Service.Tests.UseCase
             result.ContextPreview.Should().Contain("Overall Match Score: 81.8/100");
             result.ContextPreview.Should().Contain("Java (Score: 0.7): Used in project Alpha.");
             result.ContextPreview.Should().Contain("Evidence [experience]: Built REST APIs with Java");
+            result.ContextPreview.Should().Contain("AWS (Score: 1): Used AWS professionally.");
+            result.ContextPreview.Should().NotContain("Azure");
+            result.ContextPreview.Should().Contain("Docker (Score: 1): Used Docker.");
+            result.ContextPreview.Should().Contain("Kubernetes (Score: 0): No Kubernetes evidence.");
+            result.ContextPreview.Should().NotContain("Monitoring");
             result.ContextPreview.Should().Contain("Critical Gaps: English TOEIC 600 - No English certificate is present.");
             result.ContextPreview.Should().NotContain("Technical Skills Score");
             result.ContextPreview.Should().NotContain("Penalty Evidence");

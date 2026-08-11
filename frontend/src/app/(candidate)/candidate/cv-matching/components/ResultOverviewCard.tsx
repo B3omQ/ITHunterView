@@ -9,12 +9,20 @@ interface ResultOverviewCardProps {
   report: MatchReport;
 }
 
-const methodLabels: Record<MatchReport["matchMethod"], string> = {
-  one_to_one_ai: "AI requirement matching",
-  raw_text_ai: "AI matching from JD text",
-  hardcode: "Keyword matching",
-  vector: "Vector matching",
-  legacy_unknown: "Legacy matching",
+const methodLabelKeys: Record<MatchReport["matchMethod"], string> = {
+  one_to_one_ai: "methodOneToOneAi",
+  raw_text_ai: "methodRawTextAi",
+  hardcode: "methodHardcode",
+  vector: "methodVector",
+  legacy_unknown: "methodLegacy",
+};
+
+const resultLabelKeys: Record<string, string> = {
+  VERY_SUITABLE: "resultVerySuitable",
+  QUITE_SUITABLE: "resultQuiteSuitable",
+  PARTIAL_FIT: "resultPartialFit",
+  LIMITED_FIT: "resultLimitedFit",
+  LOW_FIT: "resultLowFit",
 };
 
 export function ResultOverviewCard({ report }: ResultOverviewCardProps) {
@@ -40,7 +48,9 @@ export function ResultOverviewCard({ report }: ResultOverviewCardProps) {
     ringColor = "stroke-orange-500";
   }
 
-  const resultLabel = report.resultLabel || report.resultCode || "Matching result";
+  const resultLabel = report.resultCode && resultLabelKeys[report.resultCode]
+    ? t(resultLabelKeys[report.resultCode])
+    : report.resultLabel || t("matchingResultFallback");
 
   return (
     <div className="space-y-4">
@@ -78,19 +88,19 @@ export function ResultOverviewCard({ report }: ResultOverviewCardProps) {
                   <Badge variant="outline" className={`${badgeColor} border-0 px-3 py-1 text-sm font-semibold`}>
                     {resultLabel}
                   </Badge>
-                  <Badge variant="secondary">{methodLabels[report.matchMethod]}</Badge>
+                  <Badge variant="secondary">{t(methodLabelKeys[report.matchMethod])}</Badge>
                 </div>
                 {report.narrative && <p className="leading-relaxed text-muted-foreground">{report.narrative}</p>}
               </div>
 
               {report.reportKind === "raw_text_fallback" && (
                 <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                  Kết quả này được đánh giá trực tiếp từ nội dung JD gốc nên chỉ có phần tổng quan.
+                  {t("rawTextResultNotice")}
                 </p>
               )}
               {report.reportKind === "legacy_summary" && (
                 <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                  Chi tiết từng yêu cầu không có trong định dạng kết quả lịch sử này.
+                  {t("legacyResultNotice")}
                 </p>
               )}
             </div>
