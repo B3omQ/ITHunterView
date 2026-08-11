@@ -9,6 +9,7 @@ namespace ITHunterview.Service.Interface.Persistence
 {
     public interface IJobPostingRepository
     {
+        IQueryable<JobPostings> GetQueryable();
         Task<JobPostings?> GetByIdAsync(Guid id);
         Task<(List<JobPostings> Items, int TotalCount)> GetPagedAsync(
             string? search, 

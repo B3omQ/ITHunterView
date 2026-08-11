@@ -8,6 +8,7 @@ namespace ITHunterview.Service.Interface.Persistence
 {
     public interface IAuditLogRepository
     {
+        IQueryable<UserActivityLogs> GetQueryable();
         Task<(List<UserActivityLogs> Items, int Total)> GetPagedActivityLogsAsync(
             int page,
             int pageSize,

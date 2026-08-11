@@ -17,6 +17,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             _context = context;
         }
 
+        public IQueryable<InterviewQuestionBank> GetQueryable() => _context.InterviewQuestionBank;
+
         public async Task<PagedResult<InterviewQuestionBank>> GetPagedAsync(int pageIndex, int pageSize, string? industry, string? level)
         {
             var query = _context.InterviewQuestionBank.AsQueryable();

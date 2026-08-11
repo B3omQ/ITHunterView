@@ -7,6 +7,7 @@ namespace ITHunterview.Service.Interface.Persistence
 {
     public interface ISubscriptionRepository
     {
+        IQueryable<Subscriptions> GetQueryable();
         Task<Subscriptions> CreateAsync(Subscriptions subscription);
         Task UpdateAsync(Subscriptions subscription);
         Task<Subscriptions?> GetByIdAsync(int id);

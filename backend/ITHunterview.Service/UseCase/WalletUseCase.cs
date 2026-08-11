@@ -356,7 +356,6 @@ namespace ITHunterview.Service.UseCase
                 }
 
                 amount = sub.Price;
-                // Parse features to get CoinCredit
                 var features = DeserializeSubscriptionFeatures(sub.FeaturesConfig);
                 // Snapshot coin bonus at purchase time so future package edits do not affect this payment.
                 creditsGranted = features?.CoinCredit ?? 0;
