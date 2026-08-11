@@ -23,7 +23,7 @@ public sealed class JdStageTwoMatchingServiceTests
 
             result.FinalScore.Should().BeGreaterThan(0m);
             ai.Verify(x => x.GenerateTextAsync(
-                It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Once);
+                It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_JD_MATCHING"), Times.Once);
         }
     }
 
@@ -34,8 +34,8 @@ public sealed class JdStageTwoMatchingServiceTests
         ai.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("Gemini");
         string? capturedPrompt = null;
         ai.Setup(x => x.GenerateTextAsync(
-                It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
-            .Callback<string, string?, string?, AiGenerationOptions, CancellationToken>((prompt, _, _, _, _) => capturedPrompt = prompt)
+                It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_JD_MATCHING"))
+            .Callback<string, string?, string?, AiGenerationOptions, CancellationToken, string>((prompt, _, _, _, _, _) => capturedPrompt = prompt)
             .ReturnsAsync(ValidResponse());
 
         await CreateService(ai).ExecuteAsync(Prompt("{}"), "{\"cvMarker\":true}", Projection());
@@ -59,9 +59,9 @@ public sealed class JdStageTwoMatchingServiceTests
 
         result.FinalScore.Should().BeGreaterThan(0m);
         ai.Verify(x => x.GenerateTextAsync(
-            It.IsAny<string>(), null, "Gemini", It.Is<AiGenerationOptions>(o => o.ProfileId == "jd-matching-json/v1"), It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<string>(), null, "Gemini", It.Is<AiGenerationOptions>(o => o.ProfileId == "jd-matching-json/v1"), It.IsAny<CancellationToken>(), "CV_JD_MATCHING"), Times.Once);
         ai.Verify(x => x.GenerateTextAsync(
-            It.IsAny<string>(), null, "Gemini", It.Is<AiGenerationOptions>(o => o.ProfileId == "jd-matching-json-retry/v1"), It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<string>(), null, "Gemini", It.Is<AiGenerationOptions>(o => o.ProfileId == "jd-matching-json-retry/v1"), It.IsAny<CancellationToken>(), "CV_JD_MATCHING"), Times.Once);
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public sealed class JdStageTwoMatchingServiceTests
         result.JsonString.Should().NotContain("PRIVATE-CV-DATA");
         json.RootElement.GetProperty("scoreAvailable").GetBoolean().Should().BeFalse();
         ai.Verify(x => x.GenerateTextAsync(
-            It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_JD_MATCHING"), Times.Exactly(2));
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public sealed class JdStageTwoMatchingServiceTests
         var ai = new Mock<IAiService>(MockBehavior.Strict);
         ai.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("Gemini");
         ai.Setup(x => x.GenerateTextAsync(
-                It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
+                It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_JD_MATCHING"))
             .Callback(() => cancellation.Cancel())
             .ReturnsAsync("{not-json");
 
@@ -96,7 +96,7 @@ public sealed class JdStageTwoMatchingServiceTests
 
         await action.Should().ThrowAsync<OperationCanceledException>();
         ai.Verify(x => x.GenerateTextAsync(
-            It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_JD_MATCHING"), Times.Once);
     }
 
     [Fact]
@@ -111,8 +111,8 @@ public sealed class JdStageTwoMatchingServiceTests
         var ai = new Mock<IAiService>(MockBehavior.Strict);
         ai.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("Gemini");
         ai.Setup(x => x.GenerateTextAsync(
-                It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
-            .Callback<string, string?, string?, AiGenerationOptions, CancellationToken>((prompt, _, _, _, _) => prompts.Add(prompt))
+                It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_JD_MATCHING"))
+            .Callback<string, string?, string?, AiGenerationOptions, CancellationToken, string>((prompt, _, _, _, _, _) => prompts.Add(prompt))
             .ReturnsAsync(() => responses.Dequeue());
 
         var result = await CreateService(ai).ExecuteAsync(Prompt("{}"), "{\"cv\":true}", TwoItemProjection());
@@ -153,7 +153,7 @@ public sealed class JdStageTwoMatchingServiceTests
         json.RootElement.GetProperty("analysis").GetProperty("acceptedCount").GetInt32().Should().Be(2);
         json.RootElement.GetProperty("analysis").GetProperty("providerAttemptCount").GetInt32().Should().Be(1);
         ai.Verify(x => x.GenerateTextAsync(
-            It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_JD_MATCHING"), Times.Once);
     }
 
     [Fact]
@@ -201,7 +201,7 @@ public sealed class JdStageTwoMatchingServiceTests
         json.RootElement.GetProperty("jdFit").GetProperty("requirementGroups")[0]
             .GetProperty("items").GetArrayLength().Should().Be(21);
         ai.Verify(x => x.GenerateTextAsync(
-            It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_JD_MATCHING"), Times.Once);
     }
 
     [Fact]
@@ -234,7 +234,7 @@ public sealed class JdStageTwoMatchingServiceTests
         var ai = new Mock<IAiService>(MockBehavior.Strict);
         ai.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("Gemini");
         ai.SetupSequence(x => x.GenerateTextAsync(
-                It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
+                It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_JD_MATCHING"))
             .ReturnsAsync(Response(("g1:i1", "H_TECH_05")))
             .ThrowsAsync(new ApplicationException("configuration failure"));
 
@@ -268,7 +268,7 @@ public sealed class JdStageTwoMatchingServiceTests
         var ai = new Mock<IAiService>(MockBehavior.Strict);
         ai.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("Gemini");
         ai.Setup(x => x.GenerateTextAsync(
-                It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
+                It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_JD_MATCHING"))
             .ReturnsAsync(response);
         return ai;
     }
@@ -278,7 +278,7 @@ public sealed class JdStageTwoMatchingServiceTests
         var ai = new Mock<IAiService>(MockBehavior.Strict);
         ai.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("Gemini");
         ai.SetupSequence(x => x.GenerateTextAsync(
-                It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
+                It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_JD_MATCHING"))
             .ReturnsAsync(first)
             .ReturnsAsync(second);
         return ai;

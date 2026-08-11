@@ -19,7 +19,8 @@ public sealed class RawJdFallbackMatchingServiceTests
                 It.IsAny<string>(),
                 "Gemini",
                 It.IsAny<AiGenerationOptions>(),
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                "CV_JD_MATCHING_FALLBACK"))
             .ReturnsAsync("""
                 {"score":72.5,"narrative":"The CV covers the main role signals.","improvements":[{"priority":"medium","category":"experience","issue":"Limited evidence","action":"Add measurable outcomes."}]}
                 """);
@@ -50,7 +51,8 @@ public sealed class RawJdFallbackMatchingServiceTests
                 It.IsAny<string>(),
                 "Gemini",
                 It.IsAny<AiGenerationOptions>(),
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                "CV_JD_MATCHING_FALLBACK"))
             .ReturnsAsync("{\"score\":72,\"narrative\":\"Useful\",\"improvements\":[],\"requirementGroups\":[]}");
         var service = new RawJdFallbackMatchingService(ai.Object);
 
@@ -71,7 +73,8 @@ public sealed class RawJdFallbackMatchingServiceTests
                 It.IsAny<string>(),
                 "Gemini",
                 It.IsAny<AiGenerationOptions>(),
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                "CV_JD_MATCHING_FALLBACK"))
             .ReturnsAsync("{not-json")
             .ReturnsAsync("still not json");
         var service = new RawJdFallbackMatchingService(ai.Object);
@@ -90,6 +93,6 @@ public sealed class RawJdFallbackMatchingServiceTests
         Assert.False(document.RootElement.GetProperty("scoreAvailable").GetBoolean());
         ai.Verify(service => service.GenerateTextAsync(
             It.IsAny<string>(), It.IsAny<string>(), "Gemini", It.IsAny<AiGenerationOptions>(),
-            It.IsAny<CancellationToken>()), Times.Exactly(2));
+            It.IsAny<CancellationToken>(), "CV_JD_MATCHING_FALLBACK"), Times.Exactly(2));
     }
 }

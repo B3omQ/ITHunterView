@@ -31,7 +31,7 @@ public sealed class CvTextExtractorServiceTests
                 It.IsAny<string>(),
                 "Gemini",
                 It.IsAny<AiGenerationOptions>(),
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(), "CV_EXTRACTION"))
             .ReturnsAsync(ValidSchemaOnly);
         var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
         validator.Setup(x => x.ValidateAndCanonicalize(ValidSchemaOnly))
@@ -59,9 +59,10 @@ public sealed class CvTextExtractorServiceTests
                 options.MaxOutputTokens == 8192 &&
                 options.ResponseMimeType == "application/json" &&
                 options.MaxTransportAttempts == 1 &&
-                options.ThinkingBudget == 512 &&
+                options.ThinkingBudget == 1000 &&
                 options.ThinkingLevel == "minimal"),
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<CancellationToken>(),
+            "CV_EXTRACTION"), Times.Once);
         aiService.Verify(x => x.GenerateTextAsync(
             It.IsAny<string>(),
             It.IsAny<string>(),
@@ -107,7 +108,7 @@ public sealed class CvTextExtractorServiceTests
             It.IsAny<string>(),
             "Gemini",
             It.IsAny<AiGenerationOptions>(),
-            It.IsAny<CancellationToken>()), Times.Exactly(2));
+            It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Exactly(2));
         handler.CallCount.Should().Be(1);
     }
 
@@ -121,7 +122,7 @@ public sealed class CvTextExtractorServiceTests
                 It.IsAny<string>(),
                 "Gemini",
                 It.IsAny<AiGenerationOptions>(),
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(), "CV_EXTRACTION"))
             .ThrowsAsync(new HttpRequestException("provider unavailable"));
         var handler = CreateDocxHandler();
         var service = CreateService(
@@ -140,7 +141,7 @@ public sealed class CvTextExtractorServiceTests
             It.IsAny<string>(),
             "Gemini",
             It.IsAny<AiGenerationOptions>(),
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Once);
     }
 
     [Fact]
@@ -185,7 +186,7 @@ public sealed class CvTextExtractorServiceTests
             It.IsAny<string>(),
             "Gemini",
             It.IsAny<AiGenerationOptions>(),
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Once);
     }
 
     [Fact]
@@ -234,7 +235,7 @@ public sealed class CvTextExtractorServiceTests
             It.IsAny<string>(),
             "Gemini",
             It.IsAny<AiGenerationOptions>(),
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Once);
         validator.Verify(x => x.ValidateAndCanonicalize(ValidSchemaOnly), Times.Once);
     }
 
@@ -257,11 +258,11 @@ public sealed class CvTextExtractorServiceTests
         aiService.Verify(x => x.GenerateTextAsync(
             It.IsAny<string>(), It.IsAny<string>(), "Gemini",
             It.Is<AiGenerationOptions>(o => o.ProfileId == "cv-analysis-json/v1"),
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Once);
         aiService.Verify(x => x.GenerateTextAsync(
             It.IsAny<string>(), It.IsAny<string>(), "Gemini",
             It.Is<AiGenerationOptions>(o => o.ProfileId == "cv-analysis-json-retry/v1"),
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Once);
     }
 
     [Fact]
@@ -287,7 +288,7 @@ public sealed class CvTextExtractorServiceTests
         result.Should().Be("{\"complete\":true}");
         aiService.Verify(x => x.GenerateTextAsync(
             It.IsAny<string>(), It.IsAny<string>(), "Gemini",
-            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Exactly(2));
     }
 
     [Fact]
@@ -311,7 +312,7 @@ public sealed class CvTextExtractorServiceTests
         result.Should().Be("{\"partial\":true}");
         aiService.Verify(x => x.GenerateTextAsync(
             It.IsAny<string>(), It.IsAny<string>(), "Gemini",
-            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Exactly(2));
     }
 
     [Fact]
@@ -335,7 +336,7 @@ public sealed class CvTextExtractorServiceTests
         result.Should().Be("{\"partial\":true}");
         aiService.Verify(x => x.GenerateTextAsync(
             It.IsAny<string>(), It.IsAny<string>(), "Gemini",
-            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Once);
     }
 
     [Fact]
@@ -346,7 +347,7 @@ public sealed class CvTextExtractorServiceTests
         using var cancellation = new CancellationTokenSource();
         aiService.Setup(x => x.GenerateTextAsync(
                 It.IsAny<string>(), It.IsAny<string>(), "Gemini",
-                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
+                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_EXTRACTION"))
             .Callback(() => cancellation.Cancel())
             .ThrowsAsync(new OperationCanceledException(cancellation.Token));
         var service = CreateService(aiService, new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict));
@@ -357,7 +358,7 @@ public sealed class CvTextExtractorServiceTests
         await action.Should().ThrowAsync<OperationCanceledException>();
         aiService.Verify(x => x.GenerateTextAsync(
             It.IsAny<string>(), It.IsAny<string>(), "Gemini",
-            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Once);
     }
 
     [Fact]
@@ -394,8 +395,9 @@ public sealed class CvTextExtractorServiceTests
                 It.IsAny<string>(),
                 "Gemini",
                 It.IsAny<AiGenerationOptions>(),
-                It.IsAny<CancellationToken>()))
-            .Callback<string, string, string, AiGenerationOptions, CancellationToken>((_, system, _, _, _) =>
+                It.IsAny<CancellationToken>(),
+                "CV_EXTRACTION"))
+            .Callback<string, string, string, AiGenerationOptions, CancellationToken, string>((_, system, _, _, _, _) =>
                 capturedSystems.Add(system))
             .ReturnsAsync(ValidSchemaOnly);
         var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
@@ -426,8 +428,8 @@ public sealed class CvTextExtractorServiceTests
                 It.IsAny<string>(),
                 "Gemini",
                 It.IsAny<AiGenerationOptions>(),
-                It.IsAny<CancellationToken>()))
-            .Callback<string, string, string, AiGenerationOptions, CancellationToken>((_, system, _, _, _) =>
+                It.IsAny<CancellationToken>(), "CV_EXTRACTION"))
+            .Callback<string, string, string, AiGenerationOptions, CancellationToken, string>((_, system, _, _, _, _) =>
                 capturedSystems.Add(system))
             .ReturnsAsync(ValidSchemaOnly);
         var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
@@ -457,8 +459,8 @@ public sealed class CvTextExtractorServiceTests
                 It.IsAny<string>(),
                 "Gemini",
                 It.IsAny<AiGenerationOptions>(),
-                It.IsAny<CancellationToken>()))
-            .Callback<string, string, string, AiGenerationOptions, CancellationToken>((user, _, _, _, _) =>
+                It.IsAny<CancellationToken>(), "CV_EXTRACTION"))
+            .Callback<string, string, string, AiGenerationOptions, CancellationToken, string>((user, _, _, _, _, _) =>
                 capturedUsers.Add(user))
             .ReturnsAsync(ValidSchemaOnly);
         var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
@@ -509,8 +511,8 @@ public sealed class CvTextExtractorServiceTests
                 It.IsAny<string>(),
                 "Gemini",
                 It.IsAny<AiGenerationOptions>(),
-                It.IsAny<CancellationToken>()))
-            .Callback<string, string, string, AiGenerationOptions, CancellationToken>((_, system, _, _, _) =>
+                It.IsAny<CancellationToken>(), "CV_EXTRACTION"))
+            .Callback<string, string, string, AiGenerationOptions, CancellationToken, string>((_, system, _, _, _, _) =>
                 capturedSystems.Add(system))
             .ReturnsAsync(() => callCount++ == 0 ? "{}" : ValidSchemaOnly);
         var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
@@ -534,7 +536,7 @@ public sealed class CvTextExtractorServiceTests
         aiService.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("Gemini");
         aiService.SetupSequence(x => x.GenerateTextAsync(
                 It.IsAny<string>(), It.IsAny<string>(), "Gemini",
-                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
+                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_EXTRACTION"))
             .ReturnsAsync(TruncatedCvResponse)
             .ThrowsAsync(new HttpRequestException("provider unavailable"));
         var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
@@ -550,7 +552,7 @@ public sealed class CvTextExtractorServiceTests
         result.Should().Be("{\"partial\":true}");
         aiService.Verify(x => x.GenerateTextAsync(
             It.IsAny<string>(), It.IsAny<string>(), "Gemini",
-            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Exactly(2));
     }
 
     private const string TruncatedCvResponse = """
@@ -599,7 +601,8 @@ public sealed class CvTextExtractorServiceTests
                 It.IsAny<string>(),
                 "Gemini",
                 It.IsAny<AiGenerationOptions>(),
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                "CV_EXTRACTION"))
             .ReturnsAsync(response);
         return aiService;
     }
@@ -613,7 +616,8 @@ public sealed class CvTextExtractorServiceTests
             It.IsAny<string>(),
             "Gemini",
             It.IsAny<AiGenerationOptions>(),
-            It.IsAny<CancellationToken>()));
+            It.IsAny<CancellationToken>(),
+            "CV_EXTRACTION"));
         foreach (var response in responses)
         {
             setup = setup.ReturnsAsync(response);

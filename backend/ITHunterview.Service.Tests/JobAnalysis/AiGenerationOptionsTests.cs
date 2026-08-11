@@ -40,7 +40,7 @@ public sealed class AiGenerationOptionsTests
         Assert.Equal("application/json", AiGenerationOptions.CvAnalysisJsonExtraction.ResponseMimeType);
         Assert.Equal(1, AiGenerationOptions.CvAnalysisJsonExtraction.MaxTransportAttempts);
         Assert.Equal(1, AiGenerationOptions.CvAnalysisJsonRetry.MaxTransportAttempts);
-        Assert.Equal(512, AiGenerationOptions.CvAnalysisJsonExtraction.ThinkingBudget);
+        Assert.Equal(1000, AiGenerationOptions.CvAnalysisJsonExtraction.ThinkingBudget);
         Assert.Equal("minimal", AiGenerationOptions.CvAnalysisJsonExtraction.ThinkingLevel);
     }
 
@@ -152,7 +152,7 @@ public sealed class AiGenerationOptionsTests
 
         using var payload = JsonDocument.Parse(handler.RequestBody!);
         var thinking = payload.RootElement.GetProperty("generationConfig").GetProperty("thinkingConfig");
-        Assert.Equal(512, thinking.GetProperty("thinkingBudget").GetInt32());
+        Assert.Equal(1000, thinking.GetProperty("thinkingBudget").GetInt32());
         Assert.False(thinking.TryGetProperty("thinkingLevel", out _));
     }
 

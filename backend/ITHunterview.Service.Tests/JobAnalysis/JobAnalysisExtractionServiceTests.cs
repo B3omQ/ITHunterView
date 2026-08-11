@@ -47,7 +47,8 @@ public sealed class JobAnalysisExtractionServiceTests
                 system.Contains("\"schema_version\": \"jd-analysis/v5\"", StringComparison.Ordinal)),
             "test-provider",
             AiGenerationOptions.JdAnalysisJsonExtraction,
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<CancellationToken>(),
+            "JD_EXTRACTION"), Times.Once);
     }
 
     [Fact]
@@ -148,7 +149,7 @@ public sealed class JobAnalysisExtractionServiceTests
         ai.Setup(service => service.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
         ai.SetupSequence(service => service.GenerateTextAsync(
                 It.IsAny<string>(), It.IsAny<string>(), "test-provider",
-                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
+                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "JD_EXTRACTION"))
             .ThrowsAsync(new HttpRequestException("temporary", null, HttpStatusCode.ServiceUnavailable))
             .ReturnsAsync(CompleteSingleGroupV5);
         var service = CreateService(ai);
@@ -169,7 +170,7 @@ public sealed class JobAnalysisExtractionServiceTests
         ai.Setup(service => service.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
         ai.Setup(service => service.GenerateTextAsync(
                 It.IsAny<string>(), It.IsAny<string>(), "test-provider",
-                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
+                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "JD_EXTRACTION"))
             .ThrowsAsync(new HttpRequestException("auth", null, statusCode));
         var service = CreateService(ai);
 
@@ -179,7 +180,7 @@ public sealed class JobAnalysisExtractionServiceTests
         result.ProviderRequestCount.Should().Be(1);
         ai.Verify(service => service.GenerateTextAsync(
             It.IsAny<string>(), It.IsAny<string>(), "test-provider",
-            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "JD_EXTRACTION"), Times.Once);
     }
 
     [Fact]
@@ -189,7 +190,7 @@ public sealed class JobAnalysisExtractionServiceTests
         ai.Setup(service => service.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
         ai.Setup(service => service.GenerateTextAsync(
                 It.IsAny<string>(), It.IsAny<string>(), "test-provider",
-                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
+                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "JD_EXTRACTION"))
             .ThrowsAsync(new InvalidOperationException("AI_PROVIDER_NOT_CONFIGURED"));
         var service = CreateService(ai);
 
@@ -199,7 +200,7 @@ public sealed class JobAnalysisExtractionServiceTests
         result.ProviderRequestCount.Should().Be(1);
         ai.Verify(service => service.GenerateTextAsync(
             It.IsAny<string>(), It.IsAny<string>(), "test-provider",
-            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "JD_EXTRACTION"), Times.Once);
     }
 
     [Fact]
@@ -211,7 +212,7 @@ public sealed class JobAnalysisExtractionServiceTests
         ai.Setup(service => service.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
         ai.Setup(service => service.GenerateTextAsync(
                 It.IsAny<string>(), It.IsAny<string>(), "test-provider",
-                It.IsAny<AiGenerationOptions>(), cancellation.Token))
+                It.IsAny<AiGenerationOptions>(), cancellation.Token, "JD_EXTRACTION"))
             .ThrowsAsync(new OperationCanceledException(cancellation.Token));
         var service = CreateService(ai);
 
@@ -220,7 +221,7 @@ public sealed class JobAnalysisExtractionServiceTests
 
         ai.Verify(service => service.GenerateTextAsync(
             It.IsAny<string>(), It.IsAny<string>(), "test-provider",
-            It.IsAny<AiGenerationOptions>(), cancellation.Token), Times.Once);
+            It.IsAny<AiGenerationOptions>(), cancellation.Token, "JD_EXTRACTION"), Times.Once);
     }
 
     private static JobAnalysisExtractionService CreateService(
@@ -238,7 +239,7 @@ public sealed class JobAnalysisExtractionServiceTests
         ai.Setup(service => service.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
         ai.Setup(service => service.GenerateTextAsync(
                 It.IsAny<string>(), It.IsAny<string>(), "test-provider",
-                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
+                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "JD_EXTRACTION"))
             .ReturnsAsync(response);
         return ai;
     }
@@ -249,7 +250,7 @@ public sealed class JobAnalysisExtractionServiceTests
         ai.Setup(service => service.GetActiveProviderNameAsync()).ReturnsAsync("test-provider");
         var sequence = ai.SetupSequence(service => service.GenerateTextAsync(
             It.IsAny<string>(), It.IsAny<string>(), "test-provider",
-            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()));
+            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "JD_EXTRACTION"));
         foreach (var response in responses)
         {
             sequence.ReturnsAsync(response);
@@ -261,10 +262,10 @@ public sealed class JobAnalysisExtractionServiceTests
     {
         ai.Verify(service => service.GenerateTextAsync(
             It.IsAny<string>(), It.IsAny<string>(), "test-provider",
-            AiGenerationOptions.JdAnalysisJsonExtraction, It.IsAny<CancellationToken>()), Times.Exactly(first));
+            AiGenerationOptions.JdAnalysisJsonExtraction, It.IsAny<CancellationToken>(), "JD_EXTRACTION"), Times.Exactly(first));
         ai.Verify(service => service.GenerateTextAsync(
             It.IsAny<string>(), It.IsAny<string>(), "test-provider",
-            AiGenerationOptions.JdAnalysisJsonRetry, It.IsAny<CancellationToken>()), Times.Exactly(retry));
+            AiGenerationOptions.JdAnalysisJsonRetry, It.IsAny<CancellationToken>(), "JD_EXTRACTION"), Times.Exactly(retry));
     }
 
     private const string EmptyV5 =

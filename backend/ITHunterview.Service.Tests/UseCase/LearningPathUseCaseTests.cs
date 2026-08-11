@@ -257,7 +257,8 @@ namespace ITHunterview.Service.Tests.UseCase
             // Assert
             result.Should().NotBeNull();
             result.CustomRoleName.Should().Be("Cached Role");
-            _aiServiceMock.Verify(a => a.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _aiServiceMock.Verify(a => a.GenerateTextAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
@@ -281,7 +282,8 @@ namespace ITHunterview.Service.Tests.UseCase
             var act = async () => await _useCase.ExtractFromCvJdAsync(requestingCandidateId, matchScoreId);
 
             await act.Should().ThrowAsync<InvalidOperationException>();
-            _aiServiceMock.Verify(a => a.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _aiServiceMock.Verify(a => a.GenerateTextAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
@@ -428,7 +430,8 @@ namespace ITHunterview.Service.Tests.UseCase
 
             var aiResponse = "{\"customRoleName\": \"New Role\", \"skills\": []}";
             _aiServiceMock
-                .Setup(a => a.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Setup(a => a.GenerateTextAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), null, "LEARNING_PATH"))
                 .ReturnsAsync(aiResponse);
 
             // Act
@@ -485,7 +488,8 @@ namespace ITHunterview.Service.Tests.UseCase
             // Assert
             result.Should().NotBeNull();
             result.CustomRoleName.Should().Be("Cached Int Role");
-            _aiServiceMock.Verify(a => a.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _aiServiceMock.Verify(a => a.GenerateTextAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
@@ -525,7 +529,8 @@ namespace ITHunterview.Service.Tests.UseCase
 
             var aiResponse = "{\"customRoleName\": \"New Int Role\", \"skills\": []}";
             _aiServiceMock
-                .Setup(a => a.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .Setup(a => a.GenerateTextAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), null, "LEARNING_PATH"))
                 .ReturnsAsync(aiResponse);
 
             // Act
@@ -699,7 +704,8 @@ namespace ITHunterview.Service.Tests.UseCase
             SetupDbSet(subscriptions, mock => _contextMock.Setup(c => c.UserSubscriptions).Returns(mock.Object));
 
             var aiResponse = "{\"title\": \"My Path\", \"modules\": []}";
-            _aiServiceMock.Setup(a => a.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(aiResponse);
+            _aiServiceMock.Setup(a => a.GenerateTextAsync(
+                It.IsAny<string>(), It.IsAny<string>(), null, "LEARNING_PATH")).ReturnsAsync(aiResponse);
             
             _learningPathRepositoryMock.Setup(repo => repo.GetByCandidateIdAsync(candidateId)).ReturnsAsync(new List<LearningPaths>());
 
@@ -733,7 +739,8 @@ namespace ITHunterview.Service.Tests.UseCase
             SetupDbSet(skills, mock => _contextMock.Setup(c => c.SfiaSkills).Returns(mock.Object));
 
             var aiResponse = "{\"title\": \"Custom Path\", \"modules\": []}";
-            _aiServiceMock.Setup(a => a.GenerateTextAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(aiResponse);
+            _aiServiceMock.Setup(a => a.GenerateTextAsync(
+                It.IsAny<string>(), It.IsAny<string>(), null, "LEARNING_PATH")).ReturnsAsync(aiResponse);
             
             _learningPathRepositoryMock.Setup(repo => repo.GetByCandidateIdAsync(candidateId)).ReturnsAsync(new List<LearningPaths>());
 
