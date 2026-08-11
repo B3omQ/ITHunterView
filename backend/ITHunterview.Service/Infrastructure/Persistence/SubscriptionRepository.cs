@@ -18,6 +18,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             _context = context;
         }
 
+        public IQueryable<Subscriptions> GetQueryable() => _context.Subscriptions;
+
         public async Task<Subscriptions> CreateAsync(Subscriptions subscription)
         {
             _context.Subscriptions.Add(subscription);

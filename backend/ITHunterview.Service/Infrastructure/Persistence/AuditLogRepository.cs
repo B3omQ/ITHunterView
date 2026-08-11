@@ -18,6 +18,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             _context = context;
         }
 
+        public IQueryable<UserActivityLogs> GetQueryable() => _context.UserActivityLogs;
+
         public async Task<(List<UserActivityLogs> Items, int Total)> GetPagedActivityLogsAsync(
             int page,
             int pageSize,

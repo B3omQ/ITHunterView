@@ -126,6 +126,24 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
     enabled: isRecruiter
   })
 
+  // Get Wallet Balance & Subscription
+  const isCandidateOrRecruiter = user?.role?.name?.toLowerCase() === "candidate" || isRecruiter
+  const { data: walletData, isLoading: walletLoading } = useWalletBalance({
+    enabled: isCandidateOrRecruiter
+  })
+  const balance = walletData?.data?.balance ?? 0
+  const activeSubName = walletData?.data?.activeSubscriptionName
+  const subEndDate = walletData?.data?.subscriptionEndDate ? new Date(walletData.data.subscriptionEndDate).toLocaleDateString('vi-VN') : null
+
+  // Poll for notifications to update badge
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => notificationService.getUserNotifications(1, 50),
+    enabled: !!user,
+    refetchInterval: 30000 // Poll every 30 seconds
+  })
+  const unreadCount = notificationsData?.data?.filter(n => !n.isRead)?.length || 0;
+
   const navItems = getNavItems(user?.role?.name ?? "candidate")
 
   const isActive = (href: string) => {

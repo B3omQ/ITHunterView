@@ -18,6 +18,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             _context = context;
         }
 
+        public IQueryable<Companies> GetQueryable() => _context.Companies;
+
         public async Task<Companies> CreateAsync(Companies company)
         {
             _context.Companies.Add(company);

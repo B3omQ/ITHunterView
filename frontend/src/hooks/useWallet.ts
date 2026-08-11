@@ -1,10 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { walletService } from '@/services/wallet.service';
 import type {
   CreateCustomCoinTopupDto,
   CreatePaymentDto,
   CustomCoinTopupPriceDto,
+  WalletBalanceDto
 } from '@/types/wallet.types';
+import type { ApiResponse } from '@/types/api.types';
 
 export function useBuySubscription() {
   return useMutation({
@@ -51,10 +53,11 @@ export function useUpdateAdminCustomCoinTopupPrice() {
   });
 }
 
-export function useWalletBalance() {
+export function useWalletBalance(options?: Omit<UseQueryOptions<ApiResponse<WalletBalanceDto>, Error, ApiResponse<WalletBalanceDto>, string[]>, 'queryKey' | 'queryFn'>) {
   return useQuery({
     queryKey: ['wallet-balance'],
     queryFn: () => walletService.getBalance(),
+    ...options,
   });
 }
 

@@ -22,30 +22,13 @@ import {
 } from "recharts";
 import { useTranslations } from "next-intl";
 
-const dailyApplicationsData = [
-  { day: "1", apps: 12 },
-  { day: "5", apps: 19 },
-  { day: "10", apps: 15 },
-  { day: "15", apps: 28 },
-  { day: "20", apps: 22 },
-  { day: "25", apps: 35 },
-  { day: "30", apps: 41 },
-];
+import { useState } from "react";
+import { useRecruiterDashboard } from "@/hooks/useDashboard";
+import { DashboardFilter } from "@/types/dashboard.types";
+import { DashboardFilterBar } from "@/components/shared/DashboardFilterBar";
+import { Loader2 } from "lucide-react";
 
-const topJobsData = [
-  { title: "Senior React Dev", applicants: 120 },
-  { title: "Backend Node.js", applicants: 85 },
-  { title: "UI/UX Designer", applicants: 65 },
-  { title: "DevOps Engineer", applicants: 45 },
-  { title: "Product Manager", applicants: 30 },
-];
-
-const applicationStatusData = [
-  { name: "Applied", value: 156 },
-  { name: "Viewed", value: 89 },
-];
-
-const COLORS = ["#3b82f6", "#10b981"];
+const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"];
 
 export default function RecruiterDashboard() {
   const { user } = useAuthStore();
@@ -53,32 +36,37 @@ export default function RecruiterDashboard() {
   const { mutate: claimReward, isPending: isClaiming } = useClaimCompanyNewbieReward();
   const t = useTranslations("RecruiterDashboard");
 
-  const stats = [
+  const [filters, setFilters] = useState<DashboardFilter>({});
+  const { data, isLoading, isError } = useRecruiterDashboard(filters);
+
+  if (isLoading) {
+    return (
+      <div className="w-full h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const stats = data ? [
     {
-      title: t('activeJobs'),
-      value: "12",
-      change: `2 ${t('newThisWeek')}`,
+      title: "Active Jobs",
+      value: data.activeJobs.toLocaleString(),
+      change: "Currently open",
       icon: <Briefcase className="h-4 w-4 text-muted-foreground" />,
     },
     {
-      title: t('totalApplications'),
-      value: "245",
-      change: `+18% ${t('fromLastMonth')}`,
+      title: "Total Applications",
+      value: data.totalApplications.toLocaleString(),
+      change: "Across all jobs",
       icon: <Users className="h-4 w-4 text-muted-foreground" />,
     },
     {
-      title: t('totalViews'),
-      value: "12.5K",
-      change: `+24% ${t('fromLastMonth')}`,
-      icon: <Eye className="h-4 w-4 text-muted-foreground" />,
-    },
-    {
-      title: t('applicationStatus'),
-      value: `89 ${t('viewed')}`,
-      change: `156 ${t('appliedPending')}`,
+      title: "Application Status",
+      value: `${data.applicationStatus.reduce((acc, curr) => acc + curr.value, 0)} Total`,
+      change: "Current pipeline",
       icon: <FileText className="h-4 w-4 text-muted-foreground" />,
     },
-  ];
+  ] : [];
 
   return (
     <div className="w-full pb-8 space-y-6">
@@ -88,6 +76,7 @@ export default function RecruiterDashboard() {
           {t('subtitle')}
         </p>
       </div>
+      <DashboardFilterBar onFilterChange={setFilters} />
 
       {/* Recruiter 25,000 Coin Company Verification Reward Banner */}
       {(!company || !company.isNewbieRewardClaimed) && (
@@ -171,7 +160,8 @@ export default function RecruiterDashboard() {
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {data && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat, i) => (
           <Card key={i}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -190,7 +180,10 @@ export default function RecruiterDashboard() {
         ))}
       </div>
 
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
+      )}
+
+      {data && (
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-1 lg:col-span-4">
           <CardHeader>
             <CardTitle>{t('dailyApplications')}</CardTitle>
@@ -198,7 +191,7 @@ export default function RecruiterDashboard() {
           <CardContent className="pl-2">
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dailyApplicationsData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                <LineChart data={data.dailyApplications} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                   <XAxis dataKey="day" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
@@ -219,7 +212,7 @@ export default function RecruiterDashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={applicationStatusData}
+                    data={data.applicationStatus}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -227,7 +220,7 @@ export default function RecruiterDashboard() {
                     paddingAngle={5}
                     dataKey="value"
                   >
-                    {applicationStatusData.map((entry, index) => (
+                    {data.applicationStatus.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -246,7 +239,7 @@ export default function RecruiterDashboard() {
           <CardContent>
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topJobsData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                <BarChart data={data.topJobs} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e5e7eb" />
                   <XAxis type="number" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis dataKey="title" type="category" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} width={100} />
@@ -258,6 +251,7 @@ export default function RecruiterDashboard() {
           </CardContent>
         </Card>
       </div>
+      )}
     </div>
   );
 }

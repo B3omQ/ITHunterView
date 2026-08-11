@@ -21,21 +21,24 @@ namespace ITHunterview.Service.Utils
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+            // Capitalize role names since [Authorize(Roles = "Admin")] is case-sensitive
+            var roleName = user.Role?.Name ?? string.Empty;
+            var capitalizedRole = string.IsNullOrEmpty(roleName) 
+                ? string.Empty 
+                : char.ToUpper(roleName[0]) + roleName.Substring(1).ToLower();
+
             var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                // Role claim for Authorization policies
-                new Claim(ClaimTypes.Role, user.Role?.Name ?? string.Empty),
+                // Role claim for Authorization policies (original lowercase)
+                new Claim(ClaimTypes.Role, roleName.ToLower()),
+                // Role claim for Authorization policies (PascalCase)
+                new Claim(ClaimTypes.Role, capitalizedRole),
                 // Custom claim for easy access
                 new Claim("userId", user.Id.ToString())
             };
-
-            if (user.Role != null)
-            {
-                claims.Add(new Claim(ClaimTypes.Role, user.Role.Name));
-            }
 
             if (!int.TryParse(jwtSettings["ExpiryMinutes"], out var expiryMinutes))
             {

@@ -149,6 +149,11 @@ namespace ITHunterview.WebAPI.BackgroundServices
                         success = true;
                     }
                 }
+                catch (ObjectDisposedException)
+                {
+                    _logger.LogWarning("Service provider disposed during shutdown. Cannot process batch.");
+                    break;
+                }
                 catch (Exception ex)
                 {
                     if (IsTransientException(ex) && attempt < maxRetryAttempts)
@@ -198,6 +203,13 @@ namespace ITHunterview.WebAPI.BackgroundServices
                             await context.SaveChangesAsync(cancellationToken);
                             logSuccess = true;
                         }
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // The application is shutting down and the service provider is already disposed.
+                        _logger.LogWarning("Service provider disposed during shutdown. Cannot save audit log for Action: {Action}", log.Action);
+                        transientFailures.Add(log);
+                        break;
                     }
                     catch (Exception ex)
                     {

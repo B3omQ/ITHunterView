@@ -18,6 +18,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             _context = context;
         }
 
+        public IQueryable<JobApplications> GetQueryable() => _context.JobApplications;
+
         public async Task<PagedResult<ApplicantDto>> GetApplicantsByJobIdAsync(Guid jobId, int page, int pageSize)
         {
             var query = from application in _context.JobApplications

@@ -8,6 +8,7 @@ namespace ITHunterview.Service.Interface.Persistence
 {
     public interface IJobApplicationRepository
     {
+        IQueryable<JobApplications> GetQueryable();
         Task<PagedResult<ApplicantDto>> GetApplicantsByJobIdAsync(Guid jobId, int page, int pageSize);
         Task<JobApplications> CreateAsync(JobApplications entity);
         Task<bool> HasCandidateAppliedAsync(Guid candidateId, Guid jobId);

@@ -156,6 +156,10 @@ namespace ITHunterview.Service.Config
             services.AddScoped<INotificationUseCase, NotificationUseCase>();
             services.AddScoped<IOptimizeUseCase, OptimizeUseCase>();
 
+            // Dashboards
+            services.AddScoped<IAdminDashboardUseCase, AdminDashboardUseCase>();
+            services.AddScoped<IStaffDashboardUseCase, StaffDashboardUseCase>();
+            services.AddScoped<IRecruiterDashboardUseCase, RecruiterDashboardUseCase>();
 
 
             // Use Cases — Candidate Profile
