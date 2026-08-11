@@ -1,6 +1,7 @@
 "use client"
 
 import { useAuthStore } from "@/store/auth.store"
+import { useTranslations } from "next-intl"
 import Link from "next/link"
 import Image from "next/image"
 import { 
@@ -26,6 +27,7 @@ import { useMyLearningPaths } from "@/hooks/useLearningPath"
 import { useProfileCompletionStatus, useClaimNewbieReward } from "@/hooks/useCandidateProfile"
 import { Progress } from "@/components/ui/progress"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts"
+import { formatMatchScore, displayMatchScore } from "@/utils/score-format.util"
 
 export default function CandidateDashboard() {
   const { user } = useAuthStore()
