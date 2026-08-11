@@ -193,6 +193,7 @@ namespace ITHunterview.Service.UseCase
                 .Distinct()
                 .OrderBy(name => name)
                 .ToListAsync();
+            metrics.SkillsAvailable = metrics.Skills.Count > 0;
 
             return metrics;
         }
@@ -210,9 +211,16 @@ namespace ITHunterview.Service.UseCase
             {
                 if (!scoringDecision.CanUseLegacyCompatibilityFallback)
                 {
-                    _logger.LogError(
-                        "Hardcode matching skipped job {JobId}: its JD declares v3 but its effective analysis is invalid.",
+                    _logger.LogWarning(
+                        "Hardcode matching completed without a score for job {JobId}: structured JD analysis has no usable groups.",
                         job.Id);
+                    WriteUnscoredHardcodeResult(
+                        cv,
+                        job,
+                        existingScore,
+                        scoringDecision.Projection,
+                        scoringDecision.Evaluation,
+                        "STRUCTURED_JD_UNAVAILABLE");
                     return;
                 }
 
@@ -222,20 +230,48 @@ namespace ITHunterview.Service.UseCase
             }
             var projection = scoringDecision.Projection;
             var groupEvaluation = scoringDecision.Evaluation;
-            var skillsScore = groupEvaluation?.SkillScore ?? CalculateSkillsScore(cvMetrics.Skills, jobMetrics.Skills);
+            if (projection is { Quality: JdAnalysisQuality.PARTIAL } && groupEvaluation is not null)
+            {
+                WriteUnscoredHardcodeResult(
+                    cv,
+                    job,
+                    existingScore,
+                    projection,
+                    groupEvaluation,
+                    "PARTIAL_REQUIREMENT_SET");
+                return;
+            }
+            var hasStructuredTechnicalTargets = groupEvaluation?.Outcomes.Any(
+                outcome => outcome.EvaluatedBySkillComponent) == true;
+            var skillsScore = hasStructuredTechnicalTargets
+                ? groupEvaluation!.SkillScore
+                : CalculateSkillsScore(cvMetrics.Skills, jobMetrics.Skills);
             var expScore = CalculateExperienceScore(cvMetrics.Exp, jobMetrics.Exp);
             var domainScore = CalculateDomainScore(cvMetrics.Domains, jobMetrics.Domains);
             var availableWeight = 0m;
             var weightedScore = 0m;
             var availableDimensions = new List<string>(4);
-            AddAvailableDimension(cvMetrics.TitleAvailable, "title", 0.15m, titleScore, availableDimensions, ref availableWeight, ref weightedScore);
-            AddAvailableDimension(cvMetrics.SkillsAvailable, "skills", 0.45m, skillsScore, availableDimensions, ref availableWeight, ref weightedScore);
-            AddAvailableDimension(cvMetrics.ExperienceAvailable, "experience", 0.30m, expScore, availableDimensions, ref availableWeight, ref weightedScore);
-            AddAvailableDimension(cvMetrics.DomainsAvailable, "domain", 0.10m, domainScore, availableDimensions, ref availableWeight, ref weightedScore);
+            AddAvailableDimension(cvMetrics.TitleAvailable && jobMetrics.TitleAvailable, "title", 0.15m, titleScore, availableDimensions, ref availableWeight, ref weightedScore);
+            AddAvailableDimension(
+                cvMetrics.SkillsAvailable && (hasStructuredTechnicalTargets || jobMetrics.SkillsAvailable),
+                "skills",
+                0.45m,
+                skillsScore,
+                availableDimensions,
+                ref availableWeight,
+                ref weightedScore);
+            AddAvailableDimension(cvMetrics.ExperienceAvailable && jobMetrics.ExperienceAvailable && jobMetrics.Exp > 0, "experience", 0.30m, expScore, availableDimensions, ref availableWeight, ref weightedScore);
+            AddAvailableDimension(cvMetrics.DomainsAvailable && jobMetrics.DomainsAvailable, "domain", 0.10m, domainScore, availableDimensions, ref availableWeight, ref weightedScore);
 
             if (availableWeight == 0m)
             {
-                WriteUnsupportedHardcodeResult(cv, job, existingScore);
+                WriteUnscoredHardcodeResult(
+                    cv,
+                    job,
+                    existingScore,
+                    projection,
+                    groupEvaluation,
+                    "NO_SAFE_DIMENSIONS");
                 return;
             }
 
@@ -301,17 +337,24 @@ namespace ITHunterview.Service.UseCase
             weightedScore += weight * score;
         }
 
-        private void WriteUnsupportedHardcodeResult(
+        private void WriteUnscoredHardcodeResult(
             Cvs cv,
             JobPostings job,
-            CvJobMatchScores? existingScore)
+            CvJobMatchScores? existingScore,
+            JdRequirementProjection? projection,
+            JdHardcodeRequirementEvaluation? groupEvaluation,
+            string reasonCode)
         {
             var details = JsonSerializer.Serialize(new
             {
                 Method = "Hardcode",
-                ScoreBasis = "no_cv_metrics",
-                ErrorCode = "CV_ANALYSIS_METRICS_UNAVAILABLE",
-                CvAnalysisQuality = cv.AnalysisQuality?.ToString()
+                ScoreBasis = "no_safe_dimensions",
+                ResultCode = "SCORE_UNAVAILABLE",
+                InternalReasonCode = reasonCode,
+                CvAnalysisQuality = cv.AnalysisQuality?.ToString(),
+                JdAnalysisQuality = projection?.AnalysisQuality,
+                JdSchemaVersion = projection?.SourceSchemaVersion,
+                GroupOutcomes = groupEvaluation?.Outcomes
             });
             var target = existingScore ?? new CvJobMatchScores
             {
@@ -323,9 +366,9 @@ namespace ITHunterview.Service.UseCase
             };
             target.MatchScore = null;
             target.MatchDetails = details;
-            target.Status = "Failed";
-            target.ErrorCode = "CV_ANALYSIS_METRICS_UNAVAILABLE";
-            target.ErrorMessage = "CV_ANALYSIS_METRICS_UNAVAILABLE";
+            target.Status = "Completed";
+            target.ErrorCode = null;
+            target.ErrorMessage = null;
             target.UpdatedAt = DateTime.UtcNow;
             ApplyCvAnalysisMetadata(target, cv);
             if (existingScore == null) _context.CvJobMatchScores.Add(target);

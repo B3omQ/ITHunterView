@@ -418,6 +418,7 @@ namespace ITHunterview.Service.Tests.UseCase
                 { 
                     Id = matchScoreId, 
                     UserId = candidateId, 
+                    MatchScore = 60m,
                     MatchDetails = "{\"jdFit\": {\"poolA\": {\"score\": 60}, \"requirementScores\": []}}",
                     JdTitle = "Backend Dev"
                 }

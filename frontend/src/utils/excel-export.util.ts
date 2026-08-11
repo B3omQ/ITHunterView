@@ -41,7 +41,8 @@ export function exportMatchingResultsToExcel(jobTitle: string, matches: MatchHis
 
 export function buildMatchingExportRows(jobTitle: string, matches: MatchHistoryDto[]) {
   return matches.map((match, index) => {
-    const scorePercent = `${Math.round(getScorePercent(match))}%`;
+    const numericScore = getScorePercent(match);
+    const scorePercent = numericScore === null ? 'N/A' : `${Math.round(numericScore)}%`;
 
     const formattedDate = match.updatedAt
       ? new Date(match.updatedAt).toLocaleDateString('vi-VN', {
@@ -59,7 +60,7 @@ export function buildMatchingExportRows(jobTitle: string, matches: MatchHistoryD
       'Vị trí tuyển dụng (JD)': match.jdTitle || jobTitle,
       'Điểm phù hợp tổng thể': scorePercent,
       'Phương pháp Đánh giá': getMatchMethodLabel(match.matchMethod),
-      'Mức độ phù hợp': getMatchBandLabel(getScorePercent(match)),
+      'Mức độ phù hợp': numericScore === null ? 'N/A' : getMatchBandLabel(numericScore),
       'Trạng thái': match.status === 'Completed' ? 'Hoàn thành' : match.status,
       'Link File CV': match.fileUrl || 'Chưa có file',
       'Thời gian Đánh giá': formattedDate,

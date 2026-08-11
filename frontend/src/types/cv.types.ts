@@ -83,7 +83,8 @@ export interface MatchHistoryDto {
   sourceJobId?: string;
   jdTitle?: string;
   matchScore?: number;
-  scorePercent: number;
+  scorePercent: number | null;
+  scoreAvailable: boolean;
   reportKind: MatchReportKind;
   matchMethod: MatchMethodCode;
   status: string;
@@ -132,7 +133,8 @@ export interface MatchingResultDto {
   canRetry: boolean;
   /** @deprecated Compatibility only. New UI code must use report. */
   matchDetails?: string;
-  scorePercent?: number;
+  scorePercent?: number | null;
+  scoreAvailable?: boolean;
   reportKind?: MatchReportKind;
   matchMethod?: MatchMethodCode;
   report?: MatchReport | null;
@@ -158,7 +160,8 @@ export interface MatchRequirementItemReport {
   detailVerbatim?: string | null;
   rawMention?: string | null;
   category?: string | null;
-  score: number;
+  score: number | null;
+  assessmentStatus?: 'assessed' | 'unresolved';
   handlerCode?: string | null;
   reasoning: string;
   evidence: MatchEvidenceReport[];
@@ -175,7 +178,7 @@ export interface MatchRequirementGroupReport {
   importance?: string | null;
   sourceSection?: string | null;
   requirementVerbatim?: string | null;
-  groupScore: number;
+  groupScore: number | null;
   selectedItemIds: string[];
   satisfiedItemIds?: string[];
   isCriticalGap: boolean;
@@ -184,25 +187,32 @@ export interface MatchRequirementGroupReport {
 }
 
 export interface MatchCriticalGapReport {
+  gapId?: string | null;
   code: string;
   scope?: string | null;
   groupId?: string | null;
   itemId?: string | null;
+  sourceRequirementId?: string | null;
+  sourceSection?: string | null;
+  category?: string | null;
+  importance?: string | null;
   operator?: string | null;
   requiredCount?: number | null;
   satisfiedCount?: number | null;
   affectedItemIds?: string[];
   requirement: string;
+  requirementVerbatim?: string | null;
   reasoning: string;
   evidence: MatchEvidenceReport[];
 }
 
 export interface MatchReport {
-  reportContract?: 'match-report/v2';
+  reportContract?: 'match-report/v2' | 'match-report/v3';
   reportKind: MatchReportKind;
   schemaVersion?: string | null;
   matchMethod: MatchMethodCode;
-  scorePercent: number;
+  scorePercent: number | null;
+  scoreAvailable: boolean;
   resultCode?: string | null;
   resultLabel?: string | null;
   narrative: string;

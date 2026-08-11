@@ -60,7 +60,7 @@ public sealed class MatchingInputSnapshotBuilderTests
     }
 
     [Fact]
-    public async Task BuildAsync_SavedSourcesCreatesV2SnapshotWithRecoveryAndConcurrencyMetadata()
+    public async Task BuildAsync_SavedSourcesCreatesV3SnapshotWithCanonicalAnalysisInputAndRecoveryMetadata()
     {
         var userId = Guid.NewGuid();
         var cvId = Guid.NewGuid();
@@ -100,13 +100,18 @@ public sealed class MatchingInputSnapshotBuilderTests
                 MatchingMode.JdFit));
 
         using var json = JsonDocument.Parse(result.Json);
-        json.RootElement.GetProperty("schemaVersion").GetString().Should().Be("matching-context/v2");
+        json.RootElement.GetProperty("schemaVersion").GetString().Should().Be("matching-context/v3");
         json.RootElement.GetProperty("cv").GetProperty("fileUrl").GetString().Should().Be(cv.FileUrl);
         json.RootElement.GetProperty("cv").GetProperty("sourceContentHash").GetString().Should().MatchRegex("^[0-9a-f]{64}$");
         json.RootElement.GetProperty("jd").GetProperty("sourceContentHash").GetString().Should().MatchRegex("^[0-9a-f]{64}$");
         json.RootElement.GetProperty("jd").GetProperty("sourceAnalysisHash").GetString().Should().MatchRegex("^[0-9a-f]{64}$");
         json.RootElement.GetProperty("jd").GetProperty("sourceAnalysisRevision").GetInt32().Should().Be(7);
         json.RootElement.GetProperty("jd").GetProperty("sourceEffectiveAnalysisRevision").GetInt32().Should().Be(7);
+        var canonicalInput = json.RootElement.GetProperty("jd").GetProperty("analysisInputJson").GetString();
+        using var canonicalDocument = JsonDocument.Parse(canonicalInput!);
+        canonicalDocument.RootElement.GetProperty("title").GetString().Should().Be("Backend Engineer");
+        canonicalDocument.RootElement.GetProperty("description").GetString().Should().Be("Build APIs");
+        canonicalDocument.RootElement.GetProperty("requirements").GetString().Should().Be("C# and PostgreSQL");
         MatchingInputSnapshotIntegrity.IsValid(result.Snapshot, result.Sha256).Should().BeTrue();
     }
 
@@ -127,9 +132,38 @@ public sealed class MatchingInputSnapshotBuilderTests
 
         result.Snapshot.Cv.OriginalText.Should().Be(cvText);
         result.Snapshot.Jd.OriginalText.Should().Be(jdText);
+        using var canonicalInput = JsonDocument.Parse(result.Snapshot.Jd.AnalysisInputJson!);
+        canonicalInput.RootElement.GetProperty("description").GetString().Should().Be(new string('j', 100));
+        canonicalInput.RootElement.GetProperty("requirements").GetString().Should().BeEmpty();
         result.Snapshot.Cv.SourceId.Should().BeNull();
         result.Snapshot.Jd.SourceId.Should().BeNull();
         repository.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task BuildAsync_RawJdStoresSeparatedCanonicalInputButKeepsOriginalFallbackText()
+    {
+        var repository = new Mock<IMatchingSourceRepository>(MockBehavior.Strict);
+        var builder = new MatchingInputSnapshotBuilder(repository.Object);
+        const string rawJd = """
+            Mô tả công việc
+            Design backend APIs.
+
+            Yêu cầu ứng viên
+            C# is required.
+            """;
+
+        var result = await builder.BuildAsync(
+            Guid.NewGuid(),
+            new PreparedMatchingRequest(
+                new PreparedRawCvSource(new string('c', 100), "cv.txt"),
+                new PreparedRawJdSource(rawJd, "Backend Engineer"),
+                MatchingMode.JdFit));
+
+        result.Snapshot.Jd.OriginalText.Should().Be(rawJd);
+        using var canonical = JsonDocument.Parse(result.Snapshot.Jd.AnalysisInputJson!);
+        canonical.RootElement.GetProperty("description").GetString().Should().Contain("Design backend APIs.");
+        canonical.RootElement.GetProperty("requirements").GetString().Should().Contain("C# is required.");
     }
 
     [Fact]

@@ -116,6 +116,45 @@ public sealed class JdMatchingResponseAdapterTests
             diagnostic.Code == "HANDLER_CODE_CASE_NORMALIZED");
     }
 
+    [Theory]
+    [InlineData("H_TECH_04_APPLIED_MATCH")]
+    [InlineData("H_TECH_04 - APPLIED_MATCH")]
+    [InlineData("APPLIED_MATCH (H_TECH_04)")]
+    public void Adapt_UniquelyDecoratedHandlerCode_AcceptsCanonicalCode(string decoratedCode)
+    {
+        using var response = JsonDocument.Parse($$"""
+            {"schemaVersion":"jd-stage2/v2","scores":[
+              {"reqId":"grp:tech","handlerCode":"{{decoratedCode}}"}
+            ]}
+            """);
+
+        var result = new JdMatchingResponseAdapter().Adapt(response, SingleProjection());
+
+        result.Quality.Should().Be(JdStageTwoOutputQuality.COMPLETE);
+        result.ItemAssessments["grp:tech"].HandlerCode.Should().Be("H_TECH_04");
+        result.ItemAssessments["grp:tech"].Score.Should().Be(0.75m);
+        result.HandlerDiagnostics.Should().ContainSingle(diagnostic =>
+            diagnostic.Code == "HANDLER_CODE_DECORATION_NORMALIZED");
+    }
+
+    [Fact]
+    public void Adapt_AmbiguousDecoratedHandlerCode_DiscardsOnlyThatAssessment()
+    {
+        using var response = JsonDocument.Parse("""
+            {"schemaVersion":"jd-stage2/v2","scores":[
+              {"reqId":"grp:tech","handlerCode":"H_TECH_04 or H_TECH_05"},
+              {"reqId":"grp:exp","handlerCode":"H_EXP_D05"}
+            ]}
+            """);
+
+        var result = new JdMatchingResponseAdapter().Adapt(response, MixedProjection());
+
+        result.Quality.Should().Be(JdStageTwoOutputQuality.PARTIAL);
+        result.ItemAssessments.Should().ContainSingle().Which.Key.Should().Be("grp:exp");
+        result.HandlerDiagnostics.Should().ContainSingle(diagnostic =>
+            diagnostic.Code == "AMBIGUOUS_HANDLER_CODE");
+    }
+
     [Fact]
     public void Adapt_UnknownHandlerCode_DiscardsOnlyThatAssessment()
     {
@@ -204,6 +243,59 @@ public sealed class JdMatchingResponseAdapterTests
         var result = new JdMatchingResponseAdapter().Adapt(response, MixedProjection());
 
         result.ItemAssessments["grp:tech"].Evidence.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void Adapt_MechanicalPropertySpellings_AreAcceptedWithoutSemanticAliases()
+    {
+        using var response = JsonDocument.Parse("""
+            {"schema_version":"jd-stage2/v2","Scores":[
+              {"ReqId":"grp:tech","handler_code":"H_TECH_05","Reasoning":"Applied React","Evidence":[
+                {"Quotation":"Built React checkout","Section":"Experience"}
+              ]},
+              {"req_id":"grp:exp","HandlerCode":"H_EXP_D05"}
+            ]}
+            """);
+
+        var result = new JdMatchingResponseAdapter().Adapt(response, MixedProjection());
+
+        result.Quality.Should().Be(JdStageTwoOutputQuality.COMPLETE);
+        result.ItemAssessments.Should().HaveCount(2);
+        result.ItemAssessments["grp:tech"].Evidence.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Adapt_ConflictingRequirementIdSpellings_DiscardsOnlyThatAssessment()
+    {
+        using var response = JsonDocument.Parse("""
+            {"schemaVersion":"jd-stage2/v2","scores":[
+              {"reqId":"grp:tech","req_id":"grp:exp","handlerCode":"H_TECH_05"},
+              {"reqId":"grp:exp","handlerCode":"H_EXP_D05"}
+            ]}
+            """);
+
+        var result = new JdMatchingResponseAdapter().Adapt(response, MixedProjection());
+
+        result.Quality.Should().Be(JdStageTwoOutputQuality.PARTIAL);
+        result.ItemAssessments.Should().ContainSingle().Which.Key.Should().Be("grp:exp");
+        result.WarningCodes.Should().Contain("AMBIGUOUS_REQUIREMENT_ID_PROPERTY");
+    }
+
+    [Fact]
+    public void Adapt_UnknownExtraProperties_AreIgnored()
+    {
+        using var response = JsonDocument.Parse("""
+            {"schemaVersion":"jd-stage2/v2","scores":[
+              {"reqId":"grp:tech","handlerCode":"H_TECH_05","providerScore":999,"skill":"do-not-use"},
+              {"reqId":"grp:exp","handlerCode":"H_EXP_D05","resultCode":"do-not-use"}
+            ],"providerSummary":{"unexpected":true}}
+            """);
+
+        var result = new JdMatchingResponseAdapter().Adapt(response, MixedProjection());
+
+        result.Quality.Should().Be(JdStageTwoOutputQuality.COMPLETE);
+        result.ItemAssessments["grp:tech"].Score.Should().Be(1m);
+        result.ItemAssessments["grp:exp"].Score.Should().Be(1m);
     }
 
     [Fact]

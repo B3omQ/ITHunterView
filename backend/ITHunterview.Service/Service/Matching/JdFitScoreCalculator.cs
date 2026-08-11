@@ -4,17 +4,25 @@ namespace ITHunterview.Service.Service.Matching;
 
 public sealed record JdFitGroupScore(
     ProjectedJdRequirementGroup Group,
-    decimal GroupScore,
+    decimal? GroupScore,
     decimal CategoryWeight,
     decimal ImportanceMultiplier,
     IReadOnlyList<string> SelectedItemIds,
     IReadOnlyList<string> SatisfiedItemIds,
+    IReadOnlyList<string> ResolvedItemIds,
+    IReadOnlyList<string> MissingItemIds,
+    bool IsComplete,
+    bool ContributesToAggregate,
     int SourceOrder);
 
 public sealed record JdFitScoreResult(
-    decimal ScorePercent,
-    MatchingResultBand ResultBand,
-    IReadOnlyList<JdFitGroupScore> Groups);
+    decimal? ScorePercent,
+    MatchingResultBand? ResultBand,
+    IReadOnlyList<JdFitGroupScore> Groups,
+    MatchingCompletionDisposition CompletionDisposition)
+{
+    public bool ScoreAvailable => CompletionDisposition == MatchingCompletionDisposition.ScoredBillable;
+}
 
 /// <summary>
 /// Pure workbook-driven group calculator. Every source requirement contributes
@@ -28,29 +36,38 @@ public sealed class JdFitScoreCalculator
     {
         ArgumentNullException.ThrowIfNull(projection);
         ArgumentNullException.ThrowIfNull(response);
-        if (response.Quality != JdStageTwoOutputQuality.COMPLETE)
-        {
-            throw new InvalidOperationException("MATCHING_STAGE2_OUTPUT_INVALID");
-        }
-
         var groups = projection.Groups
             .Select((group, index) => CalculateGroup(group, response.ItemAssessments, index))
             .ToArray();
-        if (groups.Length == 0)
+        if (groups.Length == 0 || response.Quality != JdStageTwoOutputQuality.COMPLETE ||
+            groups.Any(group => !group.IsComplete))
         {
-            throw new InvalidOperationException("MATCHING_SCORE_DENOMINATOR_INVALID");
+            return new JdFitScoreResult(
+                null,
+                null,
+                groups,
+                MatchingCompletionDisposition.UnscoredRefundable);
         }
 
-        var denominator = groups.Sum(group => group.CategoryWeight * group.ImportanceMultiplier);
+        var contributingGroups = groups.Where(group => group.ContributesToAggregate).ToArray();
+        var denominator = contributingGroups.Sum(group => group.CategoryWeight * group.ImportanceMultiplier);
         if (denominator <= 0m)
         {
-            throw new InvalidOperationException("MATCHING_SCORE_DENOMINATOR_INVALID");
+            return new JdFitScoreResult(
+                null,
+                null,
+                groups,
+                MatchingCompletionDisposition.UnscoredRefundable);
         }
 
-        var numerator = groups.Sum(group =>
-            group.GroupScore * group.CategoryWeight * group.ImportanceMultiplier);
+        var numerator = contributingGroups.Sum(group =>
+            group.GroupScore!.Value * group.CategoryWeight * group.ImportanceMultiplier);
         var percent = 100m * numerator / denominator;
-        return new JdFitScoreResult(percent, MatchingScorePolicy.ResolveBand(percent), groups);
+        return new JdFitScoreResult(
+            percent,
+            MatchingScorePolicy.ResolveBand(percent),
+            groups,
+            MatchingCompletionDisposition.ScoredBillable);
     }
 
     private static JdFitGroupScore CalculateGroup(
@@ -58,26 +75,31 @@ public sealed class JdFitScoreCalculator
         IReadOnlyDictionary<string, JdStageTwoItemAssessment> assessments,
         int sourceOrder)
     {
-        if (group.Items.Count == 0 || group.Items.Any(item => !assessments.ContainsKey(item.ItemId)))
-        {
-            throw new InvalidOperationException("MATCHING_STAGE2_OUTPUT_INVALID");
-        }
-
-        var ordered = group.Items
+        var resolved = group.Items
+            .Where(item => assessments.ContainsKey(item.ItemId))
             .Select(item => assessments[item.ItemId])
             .ToArray();
-        var selected = group.Operator switch
-        {
-            "all_of" => CalculateAllOf(ordered),
-            "one_of" => CalculateOneOf(ordered),
-            "at_least_n" => CalculateAtLeastN(ordered, group.MinSatisfied),
-            _ => throw new InvalidOperationException(JdRequirementProjector.InvalidEffectiveJdAnalysis)
-        };
-        var groupScore = selected.Average(item => item.Score);
+        var missingIds = group.Items
+            .Where(item => !assessments.ContainsKey(item.ItemId))
+            .Select(item => item.ItemId)
+            .ToArray();
+        var isComplete = group.Items.Count > 0 && missingIds.Length == 0;
+        var selected = isComplete
+            ? group.Operator switch
+            {
+                "all_of" => CalculateAllOf(resolved),
+                "one_of" => CalculateOneOf(resolved),
+                "at_least_n" => CalculateAtLeastN(resolved, group.MinSatisfied),
+                _ => throw new InvalidOperationException(JdRequirementProjector.InvalidEffectiveJdAnalysis)
+            }
+            : Array.Empty<JdStageTwoItemAssessment>();
+        decimal? groupScore = isComplete && selected.Count > 0
+            ? selected.Average(item => item.Score)
+            : null;
         var categoryWeight = CalculateGroupCategoryWeight(group);
         var importance = MatchingScorePolicy.GetImportanceMultiplier(group.Importance);
         var selectedIds = selected.Select(item => item.ItemId).ToArray();
-        var satisfiedIds = ordered.Where(item => item.Score > 0m).Select(item => item.ItemId).ToArray();
+        var satisfiedIds = resolved.Where(item => item.Score > 0m).Select(item => item.ItemId).ToArray();
 
         return new JdFitGroupScore(
             group,
@@ -86,6 +108,10 @@ public sealed class JdFitScoreCalculator
             importance,
             selectedIds,
             satisfiedIds,
+            resolved.Select(item => item.ItemId).ToArray(),
+            missingIds,
+            isComplete,
+            isComplete && groupScore.HasValue,
             sourceOrder);
     }
 

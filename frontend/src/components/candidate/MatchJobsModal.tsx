@@ -216,10 +216,10 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
                     <div className="flex flex-col items-end">
                       <span className={cn(
                         "text-lg font-bold",
-                        getScorePercent(match) >= 70 ? "text-green-600" :
-                          getScorePercent(match) >= 50 ? "text-amber-600" : "text-slate-600"
+                        (getScorePercent(match) ?? -1) >= 70 ? "text-green-600" :
+                          (getScorePercent(match) ?? -1) >= 50 ? "text-amber-600" : "text-slate-600"
                       )}>
-                        {Math.round(getScorePercent(match))}%
+                        {getScorePercent(match) === null ? "—" : `${Math.round(getScorePercent(match)!)}%`}
                       </span>
                       <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Match Score</span>
                     </div>

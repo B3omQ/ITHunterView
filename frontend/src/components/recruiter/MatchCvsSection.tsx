@@ -215,10 +215,10 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
                       <div className="flex flex-col items-end">
                         <span className={cn(
                           "text-2xl font-black",
-                          getScorePercent(match) >= 70 ? "text-emerald-600" :
-                            getScorePercent(match) >= 50 ? "text-amber-600" : "text-slate-600"
+                          (getScorePercent(match) ?? -1) >= 70 ? "text-emerald-600" :
+                            (getScorePercent(match) ?? -1) >= 50 ? "text-amber-600" : "text-slate-600"
                         )}>
-                          {Math.round(getScorePercent(match))}%
+                          {getScorePercent(match) === null ? "—" : `${Math.round(getScorePercent(match)!)}%`}
                         </span>
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Match Score</span>
                       </div>

@@ -13,4 +13,7 @@ public interface IJdStageTwoMatchingService
         string cvContextJson,
         JdRequirementProjection jdProjection,
         CancellationToken cancellationToken = default);
+
+    JdFitScoreCalculation CreateConfigurationUnavailableResult(
+        JdRequirementProjection jdProjection);
 }

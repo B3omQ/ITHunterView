@@ -28,27 +28,32 @@ public sealed class JdCriticalGapEvaluator
         var gaps = new List<JdCriticalGap>();
         foreach (var group in projection.Groups.Where(group => group.Importance == "must_have"))
         {
-            var items = group.Items.Select(item => assessments[item.ItemId]).ToArray();
+            var resolvedItems = group.Items
+                .Where(item => assessments.ContainsKey(item.ItemId))
+                .Select(item => assessments[item.ItemId])
+                .ToArray();
+            var isComplete = resolvedItems.Length == group.Items.Count;
             switch (group.Operator)
             {
                 case "all_of":
-                    gaps.AddRange(items.Where(item => item.Score == 0m).Select(item => new JdCriticalGap(
+                    gaps.AddRange(resolvedItems.Where(item => item.Score == 0m).Select(item => new JdCriticalGap(
                         "CRITICAL_GAP", "item", group.GroupId, item.ItemId, group.Operator,
                         1, 0, new[] { item.ItemId })));
                     break;
-                case "one_of" when items.All(item => item.Score == 0m):
+                case "one_of" when isComplete && resolvedItems.All(item => item.Score == 0m):
                     gaps.Add(new JdCriticalGap(
                         "CRITICAL_GAP", "group", group.GroupId, null, group.Operator,
-                        1, 0, items.Select(item => item.ItemId).ToArray()));
+                        1, 0, resolvedItems.Select(item => item.ItemId).ToArray()));
                     break;
                 case "at_least_n":
-                    var satisfied = items.Count(item => item.Score > 0m);
-                    if (satisfied < group.MinSatisfied)
+                    var satisfied = resolvedItems.Count(item => item.Score > 0m);
+                    var maximumPossible = satisfied + (group.Items.Count - resolvedItems.Length);
+                    if (maximumPossible < group.MinSatisfied)
                     {
                         gaps.Add(new JdCriticalGap(
                             "CRITICAL_GAP", "group", group.GroupId, null, group.Operator,
                             group.MinSatisfied, satisfied,
-                            items.Where(item => item.Score == 0m).Select(item => item.ItemId).ToArray()));
+                            resolvedItems.Where(item => item.Score == 0m).Select(item => item.ItemId).ToArray()));
                     }
                     break;
             }
@@ -66,7 +71,8 @@ public sealed class JdCriticalGapEvaluator
             .Where(item => item.Category == "tech_skill")
             .ToArray();
         if (mustHaveTechnicalItems.Length > 0 &&
-            mustHaveTechnicalItems.All(item => assessments[item.ItemId].Score == 0m))
+            mustHaveTechnicalItems.All(item => assessments.TryGetValue(item.ItemId, out var assessment) &&
+                                                   assessment.Score == 0m))
         {
             warningFlags.Add("CORE_TECH_MISMATCH");
         }

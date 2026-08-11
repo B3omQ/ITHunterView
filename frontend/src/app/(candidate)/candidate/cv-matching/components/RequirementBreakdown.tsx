@@ -2,8 +2,9 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { MatchRequirementGroupReport } from "@/types/cv.types";
+import { buildRequirementSourceViews } from "@/lib/matching-requirement-sources";
 import { useTranslations } from "next-intl";
-import { RequirementGroupCard } from "./RequirementGroupCard";
+import { RequirementSourceCard } from "./RequirementSourceCard";
 
 interface RequirementBreakdownProps {
   groups: MatchRequirementGroupReport[];
@@ -12,6 +13,7 @@ interface RequirementBreakdownProps {
 export function RequirementBreakdown({ groups }: RequirementBreakdownProps) {
   const t = useTranslations("CandidateCVMatching");
   if (groups.length === 0) return null;
+  const sourceViews = buildRequirementSourceViews(groups);
 
   return (
     <Card className="border-muted">
@@ -20,8 +22,8 @@ export function RequirementBreakdown({ groups }: RequirementBreakdownProps) {
         <CardDescription>{t("reqBreakdownDesc")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {groups.map((group, index) => (
-          <RequirementGroupCard key={group.groupId ?? `requirement-group-${index}`} group={group} groupIndex={index} />
+        {sourceViews.map((source, index) => (
+          <RequirementSourceCard key={source.key} source={source} sourceIndex={index} />
         ))}
       </CardContent>
     </Card>

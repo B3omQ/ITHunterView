@@ -1,4 +1,5 @@
 using ITHunterview.Domain.Enums;
+using ITHunterview.Service.DTOs.JobAnalysis;
 using ITHunterview.Service.Utils;
 using Xunit;
 
@@ -125,13 +126,18 @@ public sealed class JdAnalysisResponseValidatorV5Tests
         Assert.Equal("Context-shaped collaboration", Assert.Single(group.Items).SkillName);
     }
 
-    [Fact]
-    public void ValidateV5_DiscardsOnlyInvalidGroupAndItem_WhenAnotherItemRemains()
+    [Theory]
+    [InlineData("all_of", "")]
+    [InlineData("one_of", "")]
+    [InlineData("at_least_n", ",\"min_satisfied\":1")]
+    public void ValidateV5_InvalidItem_DiscardsEntireGroupWithoutChangingOperatorMeaning(
+        string operation,
+        string cardinality)
     {
-        const string json = """
+        var json = $$$"""
             {"schema_version":"jd-analysis/v5","matching_metrics":{"job_titles_normalized":[],"total_years_exp":0,"domains":[],"requirement_groups":[
-              {"source_requirement_id":"req-001","intent":"qualification","operator":"some_of","importance":"must_have","source_section":"requirements","requirement_verbatim":"Broken operator","items":[{"category":"tech_skill","skill_name":"Java","raw_mention":"Java"}]},
-              {"source_requirement_id":"req-002","intent":"qualification","operator":"all_of","importance":"must_have","source_section":"requirements","requirement_verbatim":"Java and an invalid item","items":[{"category":"tech_skill","skill_name":"Java","raw_mention":"Java"},{"category":"made_up","skill_name":"Invalid","raw_mention":"Invalid"}]}
+              {"source_requirement_id":"req-001","intent":"qualification","operator":"{{{operation}}}"{{{cardinality}}},"importance":"must_have","source_section":"requirements","requirement_verbatim":"Java and invalid item","items":[{"category":"tech_skill","skill_name":"Java","raw_mention":"Java"},{"category":"made_up","skill_name":"Invalid","raw_mention":"Invalid"}]},
+              {"source_requirement_id":"req-002","intent":"qualification","operator":"all_of","importance":"must_have","source_section":"requirements","requirement_verbatim":"Keep PostgreSQL","items":[{"category":"tech_skill","skill_name":"PostgreSQL","raw_mention":"PostgreSQL"}]}
             ]}}
             """;
 
@@ -141,12 +147,14 @@ public sealed class JdAnalysisResponseValidatorV5Tests
         Assert.Equal(JdAnalysisQuality.PARTIAL, result.Quality);
         var group = Assert.Single(result.Data!.RequirementGroups);
         Assert.Equal("req-002", group.SourceRequirementId);
-        Assert.Equal("Java", Assert.Single(group.Items).SkillName);
-        Assert.Equal(1, group.MinSatisfied);
-        Assert.Equal(2, result.Data.Coverage.InputGroupCount);
-        Assert.Equal(1, result.Data.Coverage.AcceptedGroupCount);
-        Assert.Equal(3, result.Data.Coverage.InputItemCount);
-        Assert.Equal(1, result.Data.Coverage.AcceptedItemCount);
+        Assert.Equal("PostgreSQL", Assert.Single(group.Items).SkillName);
+        Assert.Equal(new JdAnalysisCoverage(2, 1, 1, 3, 1, 2, false), result.Data.Coverage);
+        Assert.Contains(result.Data.Diagnostics, diagnostic =>
+            diagnostic.Code == "INVALID_REQUIREMENT_ITEM" &&
+            diagnostic.JsonPath == "$.matching_metrics.requirement_groups[0].items[1]");
+        Assert.Contains(result.Data.Diagnostics, diagnostic =>
+            diagnostic.Code == "INVALID_REQUIREMENT_GROUP" &&
+            diagnostic.JsonPath == "$.matching_metrics.requirement_groups[0]");
     }
 
     [Fact]
@@ -196,27 +204,107 @@ public sealed class JdAnalysisResponseValidatorV5Tests
         Assert.Contains(result.Data.Diagnostics, diagnostic => diagnostic.Code == "EXACT_DUPLICATE_GROUP_REMOVED");
     }
 
-    [Fact]
-    public void ValidateV5_InvalidYears_RemoveOnlyYearsAndRetainItemAsPartial()
+    [Theory]
+    [InlineData("\"min_years\":\"five\"", "INVALID_MIN_YEARS")]
+    [InlineData("\"max_years\":-1", "INVALID_MAX_YEARS")]
+    [InlineData("\"min_years\":5,\"max_years\":2", "INVALID_YEAR_RANGE")]
+    public void ValidateV5_InvalidYears_DiscardWholeGroupWithoutRemovingDurationMeaning(
+        string yearFields,
+        string diagnosticCode)
     {
-        const string json = """
-            {"schema_version":"jd-analysis/v5","matching_metrics":{"job_titles_normalized":[],"total_years_exp":0,"domains":[],"requirement_groups":[{
-              "source_requirement_id":"req-001","intent":"experience_duration","operator":"all_of","importance":"must_have","source_section":"requirements","requirement_verbatim":"Experience range",
-              "items":[{"category":"experience","skill_name":"Backend experience","raw_mention":"experience","min_years":5,"max_years":2}]
-            }]}}
+        var json = $$$"""
+            {"schema_version":"jd-analysis/v5","matching_metrics":{"job_titles_normalized":[],"total_years_exp":0,"domains":[],"requirement_groups":[
+              {"source_requirement_id":"req-001","intent":"experience_duration","operator":"all_of","importance":"must_have","source_section":"requirements","requirement_verbatim":"At least five years backend","items":[{"category":"experience","skill_name":"Backend experience","raw_mention":"five years",{{{yearFields}}}}]},
+              {"source_requirement_id":"req-002","intent":"qualification","operator":"all_of","importance":"must_have","source_section":"requirements","requirement_verbatim":"Java required","items":[{"category":"tech_skill","skill_name":"Java","raw_mention":"Java"}]}
+            ]}}
             """;
 
         var result = _validator.Validate(json, new JobAnalysisInputSnapshot());
 
         Assert.True(result.IsUsable);
         Assert.Equal(JdAnalysisQuality.PARTIAL, result.Quality);
+        Assert.Equal("req-002", Assert.Single(result.Data!.RequirementGroups).SourceRequirementId);
+        Assert.DoesNotContain(
+            result.Data.RequirementGroups.SelectMany(group => group.Items),
+            item => item.SkillName == "Backend experience");
+        Assert.Contains(result.Data.Diagnostics, diagnostic =>
+            diagnostic.Code == diagnosticCode &&
+            diagnostic.JsonPath.StartsWith("$.matching_metrics.requirement_groups[0].items[0]", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ValidateV5_OmittedYears_RetainsItemAsComplete()
+    {
+        const string json = """
+            {"schema_version":"jd-analysis/v5","matching_metrics":{"job_titles_normalized":[],"total_years_exp":0,"domains":[],"requirement_groups":[{"source_requirement_id":"req-001","intent":"qualification","operator":"all_of","importance":"must_have","source_section":"requirements","requirement_verbatim":"Backend experience required","items":[{"category":"experience","skill_name":"Backend experience","raw_mention":"Backend experience"}]}]}}
+            """;
+
+        var result = _validator.Validate(json, new JobAnalysisInputSnapshot());
+
+        Assert.True(result.IsValid);
         var item = Assert.Single(Assert.Single(result.Data!.RequirementGroups).Items);
         Assert.Null(item.MinYears);
         Assert.Null(item.MaxYears);
     }
 
     [Fact]
-    public void ValidateV5_ExplicitEmptyRequirementGroups_IsComplete()
+    public void ValidateV5_LosslessCasingNullAndDigitStrings_RemainComplete()
+    {
+        const string json = """
+            {"schema_version":"jd-analysis/v5","matching_metrics":{"job_titles_normalized":[],"total_years_exp":"3","domains":[],"requirement_groups":[{
+              "source_requirement_id":"req-001","intent":"QUALIFICATION","Operator":"AT_LEAST_N","min_satisfied":"1","importance":"MUST_HAVE","source_section":"REQUIREMENTS","requirement_verbatim":"Java or Kotlin with three years.",
+              "Items":[{"category":"TECH_SKILL","skill_name":"Java","raw_mention":"Java","min_years":null,"max_years":"3"},{"category":"TECH_SKILL","skill_name":"Kotlin","raw_mention":"Kotlin"}]
+            }]}}
+            """;
+
+        var result = _validator.Validate(json, new JobAnalysisInputSnapshot());
+
+        Assert.True(result.IsValid);
+        Assert.Equal(JdAnalysisQuality.COMPLETE, result.Quality);
+        Assert.Equal(3, result.Data!.TotalYearsExp);
+        var group = Assert.Single(result.Data.RequirementGroups);
+        Assert.Equal("at_least_n", group.Operator);
+        Assert.Equal("must_have", group.Importance);
+        Assert.Null(group.Items[0].MinYears);
+        Assert.Equal(3, group.Items[0].MaxYears);
+    }
+
+    [Fact]
+    public void ValidateV5_RecoveredTransportId_DoesNotDowngradeUsableMeaning()
+    {
+        const string json = """
+            {"schema_version":"jd-analysis/v5","matching_metrics":{"job_titles_normalized":[],"total_years_exp":0,"domains":[],"requirement_groups":[{
+              "intent":"qualification","operator":"all_of","importance":"must_have","source_section":"requirements","requirement_verbatim":"Java required.",
+              "items":[{"category":"tech_skill","skill_name":"Java","raw_mention":"Java"}]
+            }]}}
+            """;
+
+        var result = _validator.Validate(json, new JobAnalysisInputSnapshot());
+
+        Assert.True(result.IsValid);
+        Assert.Equal(JdAnalysisQuality.COMPLETE, result.Quality);
+        Assert.Equal("req-recovered-001", Assert.Single(result.Data!.RequirementGroups).SourceRequirementId);
+    }
+
+    [Fact]
+    public void ValidateV5_CaseCollidingProperty_DropsOnlyAffectedGroup()
+    {
+        const string json = """
+            {"schema_version":"jd-analysis/v5","matching_metrics":{"job_titles_normalized":[],"total_years_exp":0,"domains":[],"requirement_groups":[
+              {"source_requirement_id":"req-001","intent":"qualification","operator":"all_of","Operator":"one_of","importance":"must_have","source_section":"requirements","requirement_verbatim":"Ambiguous.","items":[{"category":"tech_skill","skill_name":"Bad","raw_mention":"Bad"}]},
+              {"source_requirement_id":"req-002","intent":"qualification","operator":"all_of","importance":"must_have","source_section":"requirements","requirement_verbatim":"Java.","items":[{"category":"tech_skill","skill_name":"Java","raw_mention":"Java"}]}
+            ]}}
+            """;
+
+        var result = _validator.Validate(json, new JobAnalysisInputSnapshot());
+
+        Assert.True(result.IsUsable);
+        Assert.Equal(JdAnalysisQuality.PARTIAL, result.Quality);
+        Assert.Equal("req-002", Assert.Single(result.Data!.RequirementGroups).SourceRequirementId);
+    }
+
+    [Fact]
+    public void ValidateV5_ExplicitEmptyRequirementGroups_IsInvalidAndUnusable()
     {
         const string json = """
             {"schema_version":"jd-analysis/v5","matching_metrics":{"job_titles_normalized":[],"total_years_exp":0,"domains":[],"requirement_groups":[]}}
@@ -224,9 +312,10 @@ public sealed class JdAnalysisResponseValidatorV5Tests
 
         var result = _validator.Validate(json, new JobAnalysisInputSnapshot());
 
-        Assert.True(result.IsValid);
-        Assert.Equal(JdAnalysisQuality.COMPLETE, result.Quality);
-        Assert.Empty(result.Data!.RequirementGroups);
+        Assert.False(result.IsValid);
+        Assert.False(result.IsUsable);
+        Assert.Equal(JdAnalysisQuality.INVALID, result.Quality);
+        Assert.Equal("NO_USABLE_REQUIREMENT_GROUPS", result.FailureCode);
     }
 
     [Fact]

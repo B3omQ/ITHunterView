@@ -16,7 +16,6 @@ public static class JdMatchingResponseValidator
     private const int MaxEvidenceItems = 5;
     private const int MaxEvidenceFieldLength = 500;
     private const int MaxNarrativeLength = 4_000;
-    private const int MaxHandlerCodeLength = 100;
     private const int MaxTopLevelItems = 100;
     private const int MaxHandlerDiagnostics = 20;
 
@@ -104,7 +103,7 @@ public static class JdMatchingResponseValidator
 
         return new JdStageTwoValidatedResponse(
             accepted,
-            ReadOptionalBoundedString(root, "narrative", MaxNarrativeLength, null),
+            ReadOptionalBoundedString(root, "narrative", null, MaxNarrativeLength, null),
             quality,
             new JdStageTwoOutputCoverage(
                 expectedById.Count,
@@ -131,7 +130,18 @@ public static class JdMatchingResponseValidator
             return false;
         }
 
-        if (!root.TryGetProperty("schemaVersion", out var schema) ||
+        var schemaStatus = JdStageTwoJsonPropertyReader.Read(
+            root,
+            "schemaVersion",
+            "schema_version",
+            out var schema);
+        if (schemaStatus == JdStageTwoPropertyReadStatus.Ambiguous)
+        {
+            warnings.Add("AMBIGUOUS_SCHEMA_VERSION_PROPERTY");
+            return false;
+        }
+
+        if (schemaStatus != JdStageTwoPropertyReadStatus.Found ||
             schema.ValueKind != JsonValueKind.String ||
             !string.Equals(schema.GetString(), SchemaVersion, StringComparison.Ordinal))
         {
@@ -139,7 +149,14 @@ public static class JdMatchingResponseValidator
             return false;
         }
 
-        if (!root.TryGetProperty("scores", out scores) || scores.ValueKind != JsonValueKind.Array)
+        var scoresStatus = JdStageTwoJsonPropertyReader.Read(root, "scores", null, out scores);
+        if (scoresStatus == JdStageTwoPropertyReadStatus.Ambiguous)
+        {
+            warnings.Add("AMBIGUOUS_SCORES_PROPERTY");
+            return false;
+        }
+
+        if (scoresStatus != JdStageTwoPropertyReadStatus.Found || scores.ValueKind != JsonValueKind.Array)
         {
             warnings.Add("SCORES_ARRAY_MISSING_OR_INVALID");
             return false;
@@ -159,10 +176,29 @@ public static class JdMatchingResponseValidator
         assessment = null;
         warning = "INVALID_SCORE_ITEM";
         handlerDiagnostics = Array.Empty<JdStageTwoHandlerDiagnostic>();
-        if (element.ValueKind != JsonValueKind.Object ||
-            !TryReadRequiredString(element, "reqId", out var itemId) ||
-            !TryReadHandlerCode(element, out var returnedHandlerCode, out var handlerCode))
+        if (element.ValueKind != JsonValueKind.Object)
         {
+            return false;
+        }
+
+        if (!TryReadRequiredString(
+                element,
+                "reqId",
+                "req_id",
+                out var itemId,
+                out var itemIdStatus))
+        {
+            warning = itemIdStatus == JdStageTwoPropertyReadStatus.Ambiguous
+                ? "AMBIGUOUS_REQUIREMENT_ID_PROPERTY"
+                : "INVALID_SCORE_ITEM";
+            return false;
+        }
+
+        if (!TryReadHandlerCode(element, out var returnedHandlerCode, out var handlerStatus))
+        {
+            warning = handlerStatus == JdStageTwoPropertyReadStatus.Ambiguous
+                ? "AMBIGUOUS_HANDLER_CODE_PROPERTY"
+                : "INVALID_SCORE_ITEM";
             return false;
         }
 
@@ -178,17 +214,20 @@ public static class JdMatchingResponseValidator
             return false;
         }
 
-        if (!MatchingScorePolicy.TryResolveHandlerCode(handlerCode, out var resolution))
+        if (!MatchingHandlerCodeNormalizer.TryNormalize(
+                returnedHandlerCode,
+                out var resolution,
+                out var normalizationDiagnostic))
         {
-            warning = MatchingHandlerCodePolicy.IsNonScoringCode(handlerCode)
+            warning = MatchingHandlerCodePolicy.IsNonScoringCode(returnedHandlerCode.Trim())
                 ? "NON_SCORING_HANDLER_CODE"
-                : "UNKNOWN_HANDLER_CODE";
+                : normalizationDiagnostic;
             handlerDiagnostics =
             [
                 new JdStageTwoHandlerDiagnostic(
                     warning,
                     expected.Category,
-                    handlerCode,
+                    returnedHandlerCode,
                     null)
             ];
             return false;
@@ -201,14 +240,14 @@ public static class JdMatchingResponseValidator
             resolvedHandlerDiagnostics.Add(new JdStageTwoHandlerDiagnostic(
                 "HANDLER_CATEGORY_DIFFERENCE_ACCEPTED",
                 expected.Category,
-                handlerCode,
+                returnedHandlerCode,
                 resolution.HandlerCode));
         }
 
-        if (!string.Equals(returnedHandlerCode, resolution.HandlerCode, StringComparison.Ordinal))
+        if (!string.IsNullOrEmpty(normalizationDiagnostic))
         {
             resolvedHandlerDiagnostics.Add(new JdStageTwoHandlerDiagnostic(
-                "HANDLER_CODE_CASE_NORMALIZED",
+                normalizationDiagnostic,
                 expected.Category,
                 returnedHandlerCode,
                 resolution.HandlerCode));
@@ -217,6 +256,7 @@ public static class JdMatchingResponseValidator
         var reasoning = ReadOptionalBoundedString(
             element,
             "reasoning",
+            null,
             MaxReasoningLength,
             diagnostics,
             "REASONING_MISSING_OR_INVALID");
@@ -237,20 +277,23 @@ public static class JdMatchingResponseValidator
     private static bool TryReadHandlerCode(
         JsonElement element,
         out string returnedValue,
-        out string normalizedValue)
+        out JdStageTwoPropertyReadStatus status)
     {
         returnedValue = string.Empty;
-        normalizedValue = string.Empty;
-        if (!element.TryGetProperty("handlerCode", out var propertyValue) ||
+        status = JdStageTwoJsonPropertyReader.Read(
+            element,
+            "handlerCode",
+            "handler_code",
+            out var propertyValue);
+        if (status != JdStageTwoPropertyReadStatus.Found ||
             propertyValue.ValueKind != JsonValueKind.String)
         {
             return false;
         }
 
         returnedValue = propertyValue.GetString() ?? string.Empty;
-        normalizedValue = returnedValue.Trim();
-        return returnedValue.Length <= MaxHandlerCodeLength &&
-               normalizedValue.Length is > 0 and <= MaxHandlerCodeLength;
+        return returnedValue.Length <= MatchingHandlerCodeNormalizer.MaximumHandlerCodeLength &&
+               returnedValue.Trim().Length is > 0 and <= MatchingHandlerCodeNormalizer.MaximumHandlerCodeLength;
     }
 
     private static void AddHandlerDiagnostics(
@@ -272,7 +315,8 @@ public static class JdMatchingResponseValidator
         JsonElement element,
         ISet<string> diagnostics)
     {
-        if (!element.TryGetProperty("evidence", out var evidence) ||
+        var evidenceStatus = JdStageTwoJsonPropertyReader.Read(element, "evidence", null, out var evidence);
+        if (evidenceStatus != JdStageTwoPropertyReadStatus.Found ||
             evidence.ValueKind != JsonValueKind.Array)
         {
             diagnostics.Add("EVIDENCE_MISSING_OR_INVALID");
@@ -284,8 +328,20 @@ public static class JdMatchingResponseValidator
         foreach (var entry in evidence.EnumerateArray().Take(MaxEvidenceItems))
         {
             if (entry.ValueKind != JsonValueKind.Object ||
-                !TryReadRequiredString(entry, "quotation", out var quotation, MaxEvidenceFieldLength) ||
-                !TryReadRequiredString(entry, "section", out var section, MaxEvidenceFieldLength))
+                !TryReadRequiredString(
+                    entry,
+                    "quotation",
+                    null,
+                    out var quotation,
+                    out _,
+                    MaxEvidenceFieldLength) ||
+                !TryReadRequiredString(
+                    entry,
+                    "section",
+                    null,
+                    out var section,
+                    out _,
+                    MaxEvidenceFieldLength))
             {
                 diagnostics.Add("EVIDENCE_MISSING_OR_INVALID");
                 continue;
@@ -308,12 +364,19 @@ public static class JdMatchingResponseValidator
 
     private static bool TryReadRequiredString(
         JsonElement element,
-        string property,
+        string canonicalProperty,
+        string? alternateProperty,
         out string value,
+        out JdStageTwoPropertyReadStatus status,
         int maximumLength = MaxNarrativeLength)
     {
         value = string.Empty;
-        if (!element.TryGetProperty(property, out var propertyValue) ||
+        status = JdStageTwoJsonPropertyReader.Read(
+            element,
+            canonicalProperty,
+            alternateProperty,
+            out var propertyValue);
+        if (status != JdStageTwoPropertyReadStatus.Found ||
             propertyValue.ValueKind != JsonValueKind.String)
         {
             return false;
@@ -325,12 +388,18 @@ public static class JdMatchingResponseValidator
 
     private static string ReadOptionalBoundedString(
         JsonElement element,
-        string property,
+        string canonicalProperty,
+        string? alternateProperty,
         int maximumLength,
         ISet<string>? diagnostics,
         string diagnostic = "")
     {
-        if (!element.TryGetProperty(property, out var value) ||
+        var status = JdStageTwoJsonPropertyReader.Read(
+            element,
+            canonicalProperty,
+            alternateProperty,
+            out var value);
+        if (status != JdStageTwoPropertyReadStatus.Found ||
             value.ValueKind != JsonValueKind.String)
         {
             if (diagnostic.Length > 0) diagnostics?.Add(diagnostic);

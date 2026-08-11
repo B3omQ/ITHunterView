@@ -418,7 +418,12 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
                 matchRecord.MatchDetails,
                 matchRecord.MatchScore,
                 matchRecord.MatchType);
-            sb.AppendLine($"Overall Match Score: {report.ScorePercent.ToString("F1", CultureInfo.InvariantCulture)}/100");
+            if (!report.ScoreAvailable || !report.ScorePercent.HasValue)
+            {
+                return string.Empty;
+            }
+
+            sb.AppendLine($"Overall Match Score: {report.ScorePercent.Value.ToString("F1", CultureInfo.InvariantCulture)}/100");
 
             if (!string.IsNullOrWhiteSpace(report.Narrative))
                 sb.AppendLine($"AI Narrative Assessment: {report.Narrative}");
@@ -450,16 +455,17 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
             var items = report.RequirementGroups
                 .SelectMany(group => SelectItemsForLearningPath(group)
                     .Select(item => (Group: group, Item: item)))
+                .Where(entry => entry.Item.AssessmentStatus == "assessed" && entry.Item.Score.HasValue)
                 .ToList();
 
             AppendRequirementSection(
                 sb,
                 "Identified Skill Gaps & Weaknesses:",
-                items.Where(entry => entry.Item.Score < 0.8m));
+                items.Where(entry => entry.Item.Score is decimal score && score < 0.8m));
             AppendRequirementSection(
                 sb,
                 "Identified Strengths & Mastered Skills:",
-                items.Where(entry => entry.Item.Score >= 0.8m));
+                items.Where(entry => entry.Item.Score is decimal score && score >= 0.8m));
         }
 
         private static IEnumerable<MatchRequirementItemReportDto> SelectItemsForLearningPath(
@@ -495,7 +501,7 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
                     ?? item.RawMention
                     ?? group.RequirementVerbatim
                     ?? "Unknown requirement";
-                var score = item.Score.ToString("0.###", CultureInfo.InvariantCulture);
+                var score = item.Score!.Value.ToString("0.###", CultureInfo.InvariantCulture);
                 sb.AppendLine($"- {requirement} (Score: {score}): {item.Reasoning}");
                 foreach (var evidence in item.Evidence)
                 {

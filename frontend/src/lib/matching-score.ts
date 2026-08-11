@@ -1,8 +1,10 @@
 import type { MatchHistoryDto, MatchMethodCode } from "@/types/cv.types";
 
-export function getScorePercent(match: Pick<MatchHistoryDto, "scorePercent">): number {
-  if (!Number.isFinite(match.scorePercent)) return 0;
-  return Math.min(100, Math.max(0, match.scorePercent));
+export function getScorePercent(
+  match: Pick<MatchHistoryDto, "scorePercent" | "scoreAvailable">,
+): number | null {
+  if (match.scoreAvailable === false || !Number.isFinite(match.scorePercent)) return null;
+  return Math.min(100, Math.max(0, match.scorePercent as number));
 }
 
 export function getMatchMethodLabel(method: MatchMethodCode): string {

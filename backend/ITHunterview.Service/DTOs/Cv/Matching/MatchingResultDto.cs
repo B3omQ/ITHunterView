@@ -19,7 +19,8 @@ namespace ITHunterview.Service.DTOs.Cv.Matching
         public string? ErrorMessage { get; set; }
         public bool CanRetry { get; set; }
         public string? MatchDetails { get; set; }
-        public decimal ScorePercent { get; set; }
+        public decimal? ScorePercent { get; set; }
+        public bool ScoreAvailable { get; set; }
         public string ReportKind { get; set; } = MatchReportKinds.LegacySummary;
         public string MatchMethod { get; set; } = MatchMethodCodes.LegacyUnknown;
         public MatchReportDto? Report { get; set; }
@@ -50,7 +51,7 @@ namespace ITHunterview.Service.DTOs.Cv.Matching
 
     public class JdFitResultDto
     {
-        public decimal Score { get; set; }
+        public decimal? Score { get; set; }
         public string Result { get; set; } = string.Empty;
         public decimal PoolAScore { get; set; }
         public decimal PoolBScore { get; set; }

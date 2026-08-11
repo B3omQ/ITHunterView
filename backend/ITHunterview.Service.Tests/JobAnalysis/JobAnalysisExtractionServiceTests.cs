@@ -16,7 +16,7 @@ public sealed class JobAnalysisExtractionServiceTests
     [Fact]
     public async Task ExtractWithActivePrompts_UsesCompatiblePairAndApplicationOwnedV5Schema()
     {
-        var ai = CreateAi(CompleteEmptyV5);
+        var ai = CreateAi(CompleteSingleGroupV5);
         var prompts = new Mock<IPromptManagementService>();
         prompts.Setup(service => service.GetActivePromptPairSnapshotAsync(
                 JdAnalysisPromptContract.SystemPromptKey,
@@ -53,7 +53,7 @@ public sealed class JobAnalysisExtractionServiceTests
     [Fact]
     public async Task ExtractAsync_FirstCompleteResult_DoesNotCallProviderAgain()
     {
-        var ai = CreateAi(CompleteEmptyV5);
+        var ai = CreateAi(CompleteSingleGroupV5);
         var service = CreateService(ai);
 
         var result = await service.ExtractAsync(new JobAnalysisInputSnapshot(), "system", "user [JOB_INPUT_JSON]");
@@ -66,7 +66,7 @@ public sealed class JobAnalysisExtractionServiceTests
     [Fact]
     public async Task ExtractAsync_TruncatedFirstResult_RetriesOnceWithLargerProfileAndReturnsComplete()
     {
-        var ai = CreateAiSequence(TruncatedAfterOneGroup, CompleteEmptyV5);
+        var ai = CreateAiSequence(TruncatedAfterOneGroup, CompleteSingleGroupV5);
         var service = CreateService(ai);
 
         var result = await service.ExtractAsync(
@@ -97,6 +97,38 @@ public sealed class JobAnalysisExtractionServiceTests
     }
 
     [Fact]
+    public async Task ExtractAsync_FirstEmptyGroupSet_RetriesOnceAndReturnsSecondComplete()
+    {
+        var ai = CreateAiSequence(EmptyV5, CompleteSingleGroupV5);
+        var result = await CreateService(ai).ExtractAsync(
+            new JobAnalysisInputSnapshot { Title = "Backend", Requirements = "Use Java." },
+            "system",
+            "user [JOB_INPUT_JSON]");
+
+        result.Quality.Should().Be(JdAnalysisQuality.COMPLETE);
+        result.ProviderRequestCount.Should().Be(2);
+        result.UsesRawTextFallback.Should().BeFalse();
+        VerifyProfileCalls(ai, first: 1, retry: 1);
+    }
+
+    [Fact]
+    public async Task ExtractAsync_BothAttemptsHaveEmptyGroupSet_ReturnsInvalidRawTextFallback()
+    {
+        var ai = CreateAiSequence(EmptyV5, EmptyV5);
+        var result = await CreateService(ai).ExtractAsync(
+            new JobAnalysisInputSnapshot { Title = "Backend", Requirements = "Use Java." },
+            "system",
+            "user [JOB_INPUT_JSON]");
+
+        result.Quality.Should().Be(JdAnalysisQuality.INVALID);
+        result.Validation.FailureCode.Should().Be("NO_USABLE_REQUIREMENT_GROUPS");
+        result.UsesRawTextFallback.Should().BeTrue();
+        result.RawTextFallback.Should().Contain("Backend").And.Contain("Use Java.");
+        result.ProviderRequestCount.Should().Be(2);
+        VerifyProfileCalls(ai, first: 1, retry: 1);
+    }
+
+    [Fact]
     public async Task ExtractAsync_SecondPartialCannotReplaceBetterFirstPartial()
     {
         var ai = CreateAiSequence(TruncatedAfterTwoGroups, TruncatedAfterOneGroup);
@@ -118,7 +150,7 @@ public sealed class JobAnalysisExtractionServiceTests
                 It.IsAny<string>(), It.IsAny<string>(), "test-provider",
                 It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("temporary", null, HttpStatusCode.ServiceUnavailable))
-            .ReturnsAsync(CompleteEmptyV5);
+            .ReturnsAsync(CompleteSingleGroupV5);
         var service = CreateService(ai);
 
         var result = await service.ExtractAsync(new JobAnalysisInputSnapshot(), "system", "user [JOB_INPUT_JSON]");
@@ -235,7 +267,7 @@ public sealed class JobAnalysisExtractionServiceTests
             AiGenerationOptions.JdAnalysisJsonRetry, It.IsAny<CancellationToken>()), Times.Exactly(retry));
     }
 
-    private const string CompleteEmptyV5 =
+    private const string EmptyV5 =
         "{\"schema_version\":\"jd-analysis/v5\",\"matching_metrics\":{\"job_titles_normalized\":[],\"total_years_exp\":0,\"domains\":[],\"requirement_groups\":[]}}";
 
     private const string GroupOne =
@@ -246,6 +278,8 @@ public sealed class JobAnalysisExtractionServiceTests
 
     private const string Prefix =
         "{\"schema_version\":\"jd-analysis/v5\",\"matching_metrics\":{\"job_titles_normalized\":[],\"total_years_exp\":0,\"domains\":[],\"requirement_groups\":[";
+
+    private const string CompleteSingleGroupV5 = Prefix + GroupOne + "]}}";
 
     private static readonly string TruncatedAfterOneGroup = Prefix + GroupOne + ",";
     private static readonly string TruncatedAfterTwoGroups = Prefix + GroupOne + "," + GroupTwo + ",";

@@ -11,6 +11,7 @@ import { getRequirementItemLabel, RequirementItemRow } from "./RequirementItemRo
 interface RequirementGroupCardProps {
   group: MatchRequirementGroupReport;
   groupIndex: number;
+  showSourceClause?: boolean;
 }
 
 const categoryKeys: Record<string, string> = {
@@ -22,17 +23,20 @@ const categoryKeys: Record<string, string> = {
   soft_skill: "categorySoftSkill",
 };
 
-export function RequirementGroupCard({ group, groupIndex }: RequirementGroupCardProps) {
+export function RequirementGroupCard({ group, groupIndex, showSourceClause = true }: RequirementGroupCardProps) {
   const t = useTranslations("CandidateCVMatching");
   const [isOpen, setIsOpen] = useState(false);
   const items = group.items ?? [];
-  const groupTitle = group.requirementVerbatim || group.intent || t("requirementGroupFallback", { index: groupIndex + 1 });
+  const groupTitle = (showSourceClause ? group.requirementVerbatim : null)
+    || group.intent
+    || t("requirementSubgroupFallback", { index: groupIndex + 1 });
   const categoryLabels = [...new Set(items.map((item) => categoryKeys[item.category ?? ""] ?? "categoryOther"))];
+  const isHistoricalSingletonOneOf = group.operator === "one_of" && items.length === 1;
 
-  if (group.operator === "all_of" || !group.operator) {
+  if (group.operator === "all_of" || !group.operator || isHistoricalSingletonOneOf) {
     return (
       <section className="space-y-3 rounded-lg border p-4" aria-label={groupTitle}>
-        <GroupHeader group={group} title={groupTitle} categoryLabels={categoryLabels} />
+        <GroupHeader group={group} title={groupTitle} categoryLabels={categoryLabels} showOperator={!isHistoricalSingletonOneOf} />
         {items.length > 0 ? items.map((item, itemIndex) => (
           <RequirementItemRow
             key={item.itemId ?? `${group.groupId ?? groupIndex}-${itemIndex}`}
@@ -52,11 +56,13 @@ export function RequirementGroupCard({ group, groupIndex }: RequirementGroupCard
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="overflow-hidden rounded-lg border">
       <CollapsibleTrigger className="w-full p-4 text-left hover:bg-muted/30">
-        <GroupHeader group={group} title={groupTitle} categoryLabels={categoryLabels} />
+        <GroupHeader group={group} title={groupTitle} categoryLabels={categoryLabels} showOperator />
         <div className="mt-3 flex items-start gap-3 rounded-md bg-muted/40 p-3">
           <span className="min-w-0 flex-1 text-sm font-medium">{summary}</span>
           {group.isCriticalGap ? <Badge variant="destructive">{t("criticalGap")}</Badge> : null}
-          <span className="shrink-0 text-xs font-semibold">{Math.round(group.groupScore * 100)}%</span>
+          <span className="shrink-0 text-xs font-semibold">
+            {group.groupScore == null ? "—" : `${Math.round(group.groupScore * 100)}%`}
+          </span>
           <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
         </div>
       </CollapsibleTrigger>
@@ -81,10 +87,12 @@ function GroupHeader({
   group,
   title,
   categoryLabels,
+  showOperator,
 }: {
   group: MatchRequirementGroupReport;
   title: string;
   categoryLabels: string[];
+  showOperator: boolean;
 }) {
   const t = useTranslations("CandidateCVMatching");
   return (
@@ -96,8 +104,8 @@ function GroupHeader({
             {group.importance === "must_have" ? t("mustHave") : t("niceToHave")}
           </Badge>
         ) : null}
-        {group.operator === "one_of" ? <Badge variant="outline">{t("operatorOneOf")}</Badge> : null}
-        {group.operator === "at_least_n" ? <Badge variant="outline">{t("operatorAtLeastN")}</Badge> : null}
+        {showOperator && group.operator === "one_of" ? <Badge variant="outline">{t("operatorOneOf")}</Badge> : null}
+        {showOperator && group.operator === "at_least_n" ? <Badge variant="outline">{t("operatorAtLeastN")}</Badge> : null}
       </div>
       <div className="flex flex-wrap gap-1.5">
         {categoryLabels.map((key) => <Badge key={key} variant="outline" className="text-[10px] font-normal">{t(key)}</Badge>)}

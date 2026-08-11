@@ -65,16 +65,18 @@ public sealed class JdStageTwoMatchingServiceTests
     }
 
     [Fact]
-    public async Task Execute_TwoInvalidResponsesReturnBoundedFailureWithoutRawOutput()
+    public async Task Execute_TwoInvalidResponsesReturnStructuredUnscoredResultWithoutRawOutput()
     {
         const string sensitiveModelOutput = "{\"scores\": [\"PRIVATE-CV-DATA\"]";
         var ai = SequenceAi(sensitiveModelOutput, sensitiveModelOutput);
 
-        var action = () => CreateService(ai).ExecuteAsync(Prompt("{}"), "{\"cv\":true}", Projection());
+        var result = await CreateService(ai).ExecuteAsync(Prompt("{}"), "{\"cv\":true}", Projection());
+        using var json = JsonDocument.Parse(result.JsonString);
 
-        var exception = await action.Should().ThrowAsync<InvalidOperationException>();
-        exception.Which.Message.Should().Be("MATCHING_STAGE2_OUTPUT_INVALID");
-        exception.Which.ToString().Should().NotContain("PRIVATE-CV-DATA");
+        result.FinalScore.Should().BeNull();
+        result.CompletionDisposition.Should().Be(MatchingCompletionDisposition.UnscoredRefundable);
+        result.JsonString.Should().NotContain("PRIVATE-CV-DATA");
+        json.RootElement.GetProperty("scoreAvailable").GetBoolean().Should().BeFalse();
         ai.Verify(x => x.GenerateTextAsync(
             It.IsAny<string>(), null, "Gemini", It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
@@ -121,7 +123,7 @@ public sealed class JdStageTwoMatchingServiceTests
         prompts[1].Should().NotContain("\"ReqId\": \"g1:i1\"");
         prompts[1].Should().Contain("\"ReqId\": \"g1:i2\"");
         prompts[1].Should().Contain("RECOVERY ATTEMPT");
-        json.RootElement.GetProperty("contract").GetString().Should().Be(JdFitResultContract.Version4);
+        json.RootElement.GetProperty("contract").GetString().Should().Be(JdFitResultContract.Version5);
         json.RootElement.GetProperty("analysis").GetProperty("acceptedCount").GetInt32().Should().Be(2);
         json.RootElement.GetProperty("analysis").GetProperty("providerAttemptCount").GetInt32().Should().Be(2);
     }
@@ -203,16 +205,27 @@ public sealed class JdStageTwoMatchingServiceTests
     }
 
     [Fact]
-    public async Task Execute_SecondAttemptStillMissing_ThrowsInsteadOfCalculatingPartial()
+    public async Task Execute_SecondAttemptStillMissing_PublishesPartialUnscoredResult()
     {
         var ai = SequenceAi(
             Response(("g1:i1", "H_TECH_05")),
             Response(("g1:i1", "H_TECH_05")));
 
-        var action = () => CreateService(ai).ExecuteAsync(Prompt("{}"), "{\"cv\":true}", TwoItemProjection());
+        var result = await CreateService(ai).ExecuteAsync(Prompt("{}"), "{\"cv\":true}", TwoItemProjection());
+        using var json = JsonDocument.Parse(result.JsonString);
+        var group = json.RootElement.GetProperty("jdFit").GetProperty("requirementGroups")[0];
+        var items = group.GetProperty("items").EnumerateArray().ToArray();
 
-        await action.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("MATCHING_STAGE2_OUTPUT_INVALID");
+        result.FinalScore.Should().BeNull();
+        result.CompletionDisposition.Should().Be(MatchingCompletionDisposition.UnscoredRefundable);
+        json.RootElement.GetProperty("analysis").GetProperty("acceptedCount").GetInt32().Should().Be(1);
+        json.RootElement.GetProperty("analysis").GetProperty("missingItemIds").EnumerateArray()
+            .Select(value => value.GetString()).Should().Equal("g1:i2");
+        group.GetProperty("groupScore").ValueKind.Should().Be(JsonValueKind.Null);
+        items.Should().ContainSingle(item =>
+            item.GetProperty("itemId").GetString() == "g1:i2" &&
+            item.GetProperty("assessmentStatus").GetString() == "unresolved" &&
+            item.GetProperty("score").ValueKind == JsonValueKind.Null);
     }
 
     [Fact]
@@ -229,6 +242,22 @@ public sealed class JdStageTwoMatchingServiceTests
 
         await action.Should().ThrowAsync<ApplicationException>()
             .WithMessage("configuration failure");
+    }
+
+    [Fact]
+    public void CreateConfigurationUnavailableResult_PreservesStructureWithoutInventingScoreOrCallingProvider()
+    {
+        var ai = new Mock<IAiService>(MockBehavior.Strict);
+
+        var result = CreateService(ai).CreateConfigurationUnavailableResult(TwoItemProjection());
+
+        result.FinalScore.Should().BeNull();
+        result.CompletionDisposition.Should().Be(MatchingCompletionDisposition.UnscoredRefundable);
+        using var document = JsonDocument.Parse(result.JsonString);
+        document.RootElement.GetProperty("scoreAvailable").GetBoolean().Should().BeFalse();
+        document.RootElement.GetProperty("jdFit").GetProperty("requirementGroups")[0]
+            .GetProperty("items").GetArrayLength().Should().Be(2);
+        ai.VerifyNoOtherCalls();
     }
 
     private static JdStageTwoMatchingService CreateService(Mock<IAiService> ai) =>

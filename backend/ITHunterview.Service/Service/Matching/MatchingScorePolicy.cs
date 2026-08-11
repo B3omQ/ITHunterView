@@ -96,6 +96,9 @@ public static class MatchingScorePolicy
 
     public static IReadOnlyCollection<string> SupportedCategories => CategoryWeights.Keys.ToArray();
 
+    public static IReadOnlyCollection<string> SupportedHandlerCodes =>
+        ScoringHandlersByCode.Keys.OrderBy(code => code, StringComparer.Ordinal).ToArray();
+
     private static IReadOnlyDictionary<string, IReadOnlyDictionary<string, MatchingHandlerResolution>> BuildHandlers()
     {
         var handlers = new Dictionary<string, IReadOnlyDictionary<string, MatchingHandlerResolution>>(StringComparer.Ordinal)

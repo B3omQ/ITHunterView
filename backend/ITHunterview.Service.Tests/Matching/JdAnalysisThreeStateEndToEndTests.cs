@@ -46,7 +46,7 @@ public sealed class JdAnalysisThreeStateEndToEndTests
         var stageTwo = ValidateStageTwo(projection);
         var calculated = CalculateAndSerialize(projection, stageTwo);
         using var details = JsonDocument.Parse(calculated.JsonString);
-        Assert.Equal(JdFitResultContract.Version4, details.RootElement.GetProperty("contract").GetString());
+        Assert.Equal(JdFitResultContract.Version5, details.RootElement.GetProperty("contract").GetString());
         Assert.Equal("jd-analysis-effective/v1", details.RootElement.GetProperty("sourceJdSchemaVersion").GetString());
         Assert.Equal(1, details.RootElement.GetProperty("analysis").GetProperty("acceptedCount").GetInt32());
     }
@@ -72,9 +72,33 @@ public sealed class JdAnalysisThreeStateEndToEndTests
         var response = ValidateStageTwo(projection);
         var calculated = CalculateAndSerialize(projection, response);
         using var details = JsonDocument.Parse(calculated.JsonString);
-        Assert.Equal(JdFitResultContract.Version4, details.RootElement.GetProperty("contract").GetString());
+        Assert.Equal(JdFitResultContract.Version5, details.RootElement.GetProperty("contract").GetString());
         Assert.Equal(1, details.RootElement.GetProperty("analysis").GetProperty("acceptedCount").GetInt32());
         Assert.Single(details.RootElement.GetProperty("jdFit").GetProperty("requirementGroups").EnumerateArray());
+    }
+
+    [Fact]
+    public void PartialV5_InvalidSiblingDropsWholeGroupBeforeEffectiveProjection()
+    {
+        const string json = """
+            {"schema_version":"jd-analysis/v5","matching_metrics":{"job_titles_normalized":[],"total_years_exp":0,"domains":[],"requirement_groups":[
+              {"source_requirement_id":"req-001","intent":"qualification","operator":"all_of","importance":"must_have","source_section":"requirements","requirement_verbatim":"Java and Spring","items":[{"category":"tech_skill","skill_name":"Java","raw_mention":"Java"},{"category":"invalid","skill_name":"Spring","raw_mention":"Spring"}]},
+              {"source_requirement_id":"req-002","intent":"qualification","operator":"all_of","importance":"must_have","source_section":"requirements","requirement_verbatim":"React required","items":[{"category":"tech_skill","skill_name":"React","raw_mention":"React"}]}
+            ]}}
+            """;
+        var validation = new JdAnalysisResponseValidator().Validate(json, new JobAnalysisInputSnapshot());
+        Assert.True(validation.IsUsable);
+        Assert.Equal(JdAnalysisQuality.PARTIAL, validation.Quality);
+        Assert.Equal("req-002", Assert.Single(validation.Data!.RequirementGroups).SourceRequirementId);
+
+        var projection = new JdRequirementProjector().Project(Serialize(validation.Data));
+        var projectedGroup = Assert.Single(projection.Groups);
+        Assert.Equal("React", Assert.Single(projectedGroup.Items).SkillName);
+        Assert.DoesNotContain(
+            projection.Groups.SelectMany(group => group.Items),
+            item => item.SkillName is "Java" or "Spring");
+        Assert.Equal("PARTIAL", projection.AnalysisQuality);
+        Assert.False(projection.RequirementSetComplete);
     }
 
     [Fact]

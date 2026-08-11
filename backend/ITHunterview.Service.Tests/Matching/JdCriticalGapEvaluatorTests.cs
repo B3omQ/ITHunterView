@@ -96,6 +96,27 @@ public sealed class JdCriticalGapEvaluatorTests
         result.WarningFlags.Should().Contain("CORE_TECH_MISMATCH");
     }
 
+    [Fact]
+    public void Evaluate_MissingAssessment_DoesNotCreateFalseGapOrCoreMismatch()
+    {
+        var group = Group(
+            "g",
+            "all_of",
+            2,
+            "must_have",
+            Item("known", "tech_skill"),
+            Item("missing", "tech_skill"));
+        var projection = new JdRequirementProjection("jd-analysis/v4", new[] { group }, false);
+
+        var result = new JdCriticalGapEvaluator().Evaluate(
+            projection,
+            Assessments(("known", "tech_skill", 0m)));
+
+        result.CriticalGaps.Should().ContainSingle(gap => gap.ItemId == "known");
+        result.CriticalGaps.Should().NotContain(gap => gap.ItemId == "missing");
+        result.WarningFlags.Should().NotContain("CORE_TECH_MISMATCH");
+    }
+
     private static JdCriticalGapEvaluation Evaluate(
         ProjectedJdRequirementGroup group,
         params (string ItemId, decimal Score)[] scores)

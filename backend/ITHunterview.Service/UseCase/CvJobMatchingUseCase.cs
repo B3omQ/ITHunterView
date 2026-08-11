@@ -773,7 +773,8 @@ namespace ITHunterview.Service.UseCase
                             matchRecord.SfiaExtractResult,
                             stageTwoCv.Quality,
                             stageTwoCv.Coverage,
-                            stageTwoCv.Diagnostics);
+                            stageTwoCv.Diagnostics,
+                            CompletionDisposition: finalResult.CompletionDisposition);
                     }
 
                     matchRecord.Status = "Completed";
@@ -904,13 +905,26 @@ namespace ITHunterview.Service.UseCase
             JdAnalysisPersistenceIntent? jdIntent;
             if (preparedJd is PreparedStructuredJdMatchingInput structured)
             {
-                var matchingPrompt = await _promptManagementService.GetActivePromptSnapshotAsync(
-                    ITHunterview.Service.Constant.Prompts.BypassMatchingPrompt.Key);
-                score = await _jdStageTwoMatchingService.ExecuteAsync(
-                    matchingPrompt,
-                    cvContext.Json,
-                    structured.Projection,
-                    cancellationToken);
+                try
+                {
+                    var matchingPrompt = await _promptManagementService.GetActivePromptSnapshotAsync(
+                        ITHunterview.Service.Constant.Prompts.BypassMatchingPrompt.Key,
+                        cancellationToken);
+                    score = await _jdStageTwoMatchingService.ExecuteAsync(
+                        matchingPrompt,
+                        cvContext.Json,
+                        structured.Projection,
+                        cancellationToken);
+                }
+                catch (Exception exception) when (
+                    TryClassifyMatchingPromptAvailability(exception, out var promptFailureCode))
+                {
+                    _logger.LogWarning(
+                        "Structured matching prompt unavailable. Code={Code}; projected requirements remain visible without a fabricated score.",
+                        promptFailureCode);
+                    score = _jdStageTwoMatchingService.CreateConfigurationUnavailableResult(
+                        structured.Projection);
+                }
                 jdQuality = structured.Quality;
                 jdCoverage = structured.Coverage;
                 jdDiagnostics = structured.Diagnostics;
@@ -945,7 +959,52 @@ namespace ITHunterview.Service.UseCase
                 jdCoverage,
                 jdDiagnostics,
                 preparedCv.PersistenceIntent,
-                jdIntent);
+                jdIntent,
+                score.CompletionDisposition);
+        }
+
+        private static bool TryClassifyMatchingPromptAvailability(
+            Exception exception,
+            out string code)
+        {
+            var message = exception.Message ?? string.Empty;
+            if (exception is InvalidOperationException &&
+                message.StartsWith("PROMPT_NOT_CONFIGURED:", StringComparison.Ordinal))
+            {
+                code = "PROMPT_NOT_CONFIGURED";
+                return true;
+            }
+
+            if (exception is InvalidOperationException &&
+                message.StartsWith("PROMPT_CONFIGURATION_INVALID:", StringComparison.Ordinal))
+            {
+                code = "PROMPT_CONFIGURATION_INVALID";
+                return true;
+            }
+
+            if (exception is InvalidOperationException &&
+                message.StartsWith("MATCHING_PROMPT_PLACEHOLDER_MISSING", StringComparison.Ordinal))
+            {
+                code = "MATCHING_PROMPT_PLACEHOLDER_MISSING";
+                return true;
+            }
+
+            if (exception is InvalidOperationException &&
+                message.StartsWith("MATCHING_PROMPT_PLACEHOLDER_INVALID", StringComparison.Ordinal))
+            {
+                code = "MATCHING_PROMPT_PLACEHOLDER_INVALID";
+                return true;
+            }
+
+            if (exception is ArgumentException &&
+                message.StartsWith("MATCHING_PROMPT_SCHEMA_MUTATION", StringComparison.Ordinal))
+            {
+                code = "MATCHING_PROMPT_SCHEMA_MUTATION";
+                return true;
+            }
+
+            code = string.Empty;
+            return false;
         }
 
         private async Task<string> ExtractJdWithV2Async(
@@ -996,10 +1055,11 @@ namespace ITHunterview.Service.UseCase
                 ErrorMessage = matchRecord.ErrorMessage,
                 CanRetry = string.Equals(matchRecord.Status, "Failed", StringComparison.Ordinal)
                     && MatchingRetryPolicy.IsManualRetryAllowed(matchRecord.ErrorCode),
-                MatchDetails = string.Equals(report.SchemaVersion, JdFitResultContract.Version4, StringComparison.Ordinal)
-                    ? null
-                    : matchRecord.MatchDetails,
+                MatchDetails = report.ReportKind == MatchReportKinds.LegacySummary
+                    ? matchRecord.MatchDetails
+                    : null,
                 ScorePercent = report.ScorePercent,
+                ScoreAvailable = report.ScoreAvailable,
                 ReportKind = report.ReportKind,
                 MatchMethod = report.MatchMethod,
                 Report = report,
@@ -1115,6 +1175,7 @@ namespace ITHunterview.Service.UseCase
                 JdTitle = x.Job?.Title ?? x.Score.JdTitle ?? x.Score.RawJdText,
                 MatchScore = x.Score.MatchScore,
                 ScorePercent = report.ScorePercent,
+                ScoreAvailable = report.ScoreAvailable,
                 ReportKind = report.ReportKind,
                 MatchMethod = report.MatchMethod,
                 Status = x.Score.Status,
@@ -1241,6 +1302,7 @@ namespace ITHunterview.Service.UseCase
                     JdTitle = x.Score.JdTitle,
                     MatchScore = x.Score.MatchScore,
                     ScorePercent = report.ScorePercent,
+                    ScoreAvailable = report.ScoreAvailable,
                     ReportKind = report.ReportKind,
                     MatchMethod = report.MatchMethod,
                     Status = x.Score.Status,

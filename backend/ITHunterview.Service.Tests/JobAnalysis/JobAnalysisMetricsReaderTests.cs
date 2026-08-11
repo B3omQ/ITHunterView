@@ -67,7 +67,7 @@ namespace ITHunterview.Service.Tests.JobAnalysis
         }
 
         [Fact]
-        public void Read_MissingMetric_IsUnavailableButPresentEmptyArrayRemainsAvailable()
+        public void Read_MissingOrEmptyArrayMetric_IsUnavailable()
         {
             const string partial = """
                 {"schema_version":"cv-analysis/v2","matching_metrics":{"job_titles_normalized":[],"skills_normalized":["c#"],"total_years_exp":3}}
@@ -75,7 +75,7 @@ namespace ITHunterview.Service.Tests.JobAnalysis
 
             var metrics = JobAnalysisMetricsReader.Read(partial);
 
-            Assert.True(metrics.TitleAvailable);
+            Assert.False(metrics.TitleAvailable);
             Assert.True(metrics.SkillsAvailable);
             Assert.True(metrics.ExperienceAvailable);
             Assert.False(metrics.DomainsAvailable);
@@ -94,7 +94,7 @@ namespace ITHunterview.Service.Tests.JobAnalysis
 
             var metrics = JobAnalysisMetricsReader.Read(partial);
 
-            Assert.True(metrics.TitleAvailable);
+            Assert.False(metrics.TitleAvailable);
             Assert.False(metrics.SkillsAvailable);
             Assert.True(metrics.ExperienceAvailable);
             Assert.False(metrics.DomainsAvailable);

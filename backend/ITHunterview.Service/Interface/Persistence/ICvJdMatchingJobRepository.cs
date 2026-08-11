@@ -10,6 +10,7 @@ namespace ITHunterview.Service.Interface.Persistence;
 
 public interface ICvJdMatchingJobRepository
 {
+    const string ResultFinalizationPending = "RESULT_FINALIZATION_PENDING";
     Task<CvJobMatchScores?> GetByIdempotencyKeyForUpdateAsync(
         Guid userId,
         string idempotencyKey,
@@ -39,7 +40,7 @@ public interface ICvJdMatchingJobRepository
         Guid jobId,
         string workerId,
         Guid leaseToken,
-        decimal score,
+        decimal? score,
         string matchDetails,
         string? sfiaExtractResult,
         CvAnalysisQuality? cvAnalysisQuality,
@@ -49,6 +50,36 @@ public interface ICvJdMatchingJobRepository
         JdAnalysisQuality? jdAnalysisQuality = null,
         string? jdAnalysisCoverageJson = null,
         string? jdAnalysisDiagnosticsJson = null,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> StageTerminalResultAsync(
+        Guid jobId,
+        string workerId,
+        Guid leaseToken,
+        decimal? score,
+        string matchDetails,
+        string? sfiaExtractResult,
+        CvAnalysisQuality? cvAnalysisQuality,
+        string? cvAnalysisCoverageJson,
+        string? cvAnalysisDiagnosticsJson,
+        JdAnalysisQuality? jdAnalysisQuality,
+        string? jdAnalysisCoverageJson,
+        string? jdAnalysisDiagnosticsJson,
+        DateTime utcNow,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> ScheduleFinalizationRetryAsync(
+        Guid jobId,
+        string workerId,
+        Guid leaseToken,
+        DateTime nextAttemptAt,
+        DateTime utcNow,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> ScheduleRecoveredFinalizationRetryAsync(
+        Guid jobId,
+        DateTime nextAttemptAt,
+        DateTime utcNow,
         CancellationToken cancellationToken = default);
 
     Task<bool> ScheduleRetryAsync(

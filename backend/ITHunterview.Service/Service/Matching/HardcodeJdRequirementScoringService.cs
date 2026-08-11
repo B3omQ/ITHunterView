@@ -18,9 +18,9 @@ public sealed record HardcodeJdRequirementScoreDecision(
 
 /// <summary>
 /// Projects the effective JD once, then delegates only technical groups to the
-/// hardcode skill component. A malformed legacy document may use compatibility
-/// metrics, but a malformed v3 document must fail closed: falling back would
-/// silently discard its group semantics.
+/// hardcode skill component. If no usable group remains, callers may inspect
+/// independently safe compatibility metrics; prompt/schema labels never choose
+/// an algorithm or force a terminal failure.
 /// </summary>
 public sealed class HardcodeJdRequirementScoringService
 {
@@ -39,52 +39,48 @@ public sealed class HardcodeJdRequirementScoringService
         string? effectiveJdJson,
         IReadOnlyCollection<string> cvSkills)
     {
-        try
-        {
-            var projection = _projector.Project(effectiveJdJson);
-            if (projection.Groups.Count == 0)
-            {
-                return new HardcodeJdRequirementScoreDecision(false, projection, null, null, true);
-            }
-
-            return new HardcodeJdRequirementScoreDecision(
-                true,
-                projection,
-                _evaluator.Evaluate(projection, cvSkills),
-                null,
-                false);
-        }
-        catch (InvalidOperationException exception) when (exception.Message == JdRequirementProjector.InvalidEffectiveJdAnalysis)
+        var projection = _projector.Project(effectiveJdJson);
+        if (projection.Groups.Count == 0)
         {
             return new HardcodeJdRequirementScoreDecision(
                 false,
+                projection,
                 null,
-                null,
-                JdRequirementProjector.InvalidEffectiveJdAnalysis,
-                !ClaimsStructuredGroupContract(effectiveJdJson));
+                projection.Quality == ITHunterview.Domain.Enums.JdAnalysisQuality.INVALID
+                    ? JdRequirementProjector.InvalidEffectiveJdAnalysis
+                    : null,
+                !ClaimsStructuredAnalysisSchema(effectiveJdJson));
         }
+
+        return new HardcodeJdRequirementScoreDecision(
+            true,
+            projection,
+            _evaluator.Evaluate(projection, cvSkills),
+            null,
+            false);
     }
 
-    private static bool ClaimsStructuredGroupContract(string? effectiveJdJson)
+    // This inspects the analysis document shape only. It is deliberately
+    // unrelated to prompt-pair contract metadata and never selects a scoring
+    // implementation when usable projected groups exist.
+    private static bool ClaimsStructuredAnalysisSchema(string? effectiveJdJson)
     {
-        if (string.IsNullOrWhiteSpace(effectiveJdJson))
-            return false;
-
+        if (string.IsNullOrWhiteSpace(effectiveJdJson)) return false;
         try
         {
             using var document = JsonDocument.Parse(effectiveJdJson);
             if (document.RootElement.ValueKind != JsonValueKind.Object ||
-                !document.RootElement.TryGetProperty("schema_version", out var version) ||
-                version.ValueKind != JsonValueKind.String)
+                !document.RootElement.TryGetProperty("schema_version", out var schema) ||
+                schema.ValueKind != JsonValueKind.String)
             {
                 return false;
             }
 
-            return version.GetString() is { } schemaVersion &&
-                   (schemaVersion.Equals("jd-analysis/v3", StringComparison.OrdinalIgnoreCase) ||
-                    schemaVersion.Equals("jd-analysis/v4", StringComparison.OrdinalIgnoreCase) ||
-                    schemaVersion.Equals("jd-analysis/v5", StringComparison.OrdinalIgnoreCase) ||
-                    schemaVersion.Equals("jd-analysis-effective/v1", StringComparison.OrdinalIgnoreCase));
+            return schema.GetString() is { } version &&
+                   (version.Equals("jd-analysis/v3", StringComparison.OrdinalIgnoreCase) ||
+                    version.Equals("jd-analysis/v4", StringComparison.OrdinalIgnoreCase) ||
+                    version.Equals("jd-analysis/v5", StringComparison.OrdinalIgnoreCase) ||
+                    version.Equals("jd-analysis-effective/v1", StringComparison.OrdinalIgnoreCase));
         }
         catch (JsonException)
         {

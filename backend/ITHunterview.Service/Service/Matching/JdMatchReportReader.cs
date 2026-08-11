@@ -33,13 +33,15 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
 
             var root = document.RootElement;
             var contract = ReadString(root, "contract");
-            if (string.Equals(contract, JdFitResultContract.RawTextFallback, StringComparison.Ordinal))
+            if (string.Equals(contract, JdFitResultContract.RawTextFallback, StringComparison.Ordinal) ||
+                string.Equals(contract, JdFitResultContract.RawTextFallbackVersion2, StringComparison.Ordinal))
             {
                 return ReadRawTextFallback(root, persistedScore, contract);
             }
 
             if (string.Equals(contract, JdFitResultContract.Current, StringComparison.Ordinal) ||
                 string.Equals(contract, JdFitResultContract.Version4, StringComparison.Ordinal) ||
+                string.Equals(contract, JdFitResultContract.Version5, StringComparison.Ordinal) ||
                 (TryGet(root, "jdFit", out var jdFitCandidate) && jdFitCandidate.ValueKind == JsonValueKind.Object))
             {
                 return ReadStructured(root, persistedScore, contract);
@@ -61,13 +63,27 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
         }
 
         var isV4 = string.Equals(contract, JdFitResultContract.Version4, StringComparison.Ordinal);
-        var score = ReadDecimal(jdFit, "scorePercent") ?? ReadDecimal(jdFit, "score") ?? persistedScore ?? 0m;
+        var isV5 = string.Equals(contract, JdFitResultContract.Version5, StringComparison.Ordinal);
+        var isRawV2 = string.Equals(contract, JdFitResultContract.RawTextFallbackVersion2, StringComparison.Ordinal);
+        var hasSemanticStructuredFields = isV4 || isV5;
+        var supportsExplicitAvailability = isV5 || isRawV2;
+        var explicitAvailability = supportsExplicitAvailability
+            ? ReadNullableBool(root, "scoreAvailable")
+            : null;
+        var serializedScore = ReadDecimal(jdFit, "scorePercent") ?? ReadDecimal(jdFit, "score");
+        decimal? score = supportsExplicitAvailability
+            ? explicitAvailability == false
+                ? null
+                : serializedScore
+            : serializedScore ?? persistedScore;
+        score = ClampPercent(score);
         var report = new MatchReportDto
         {
             ReportKind = MatchReportKinds.Structured,
             SchemaVersion = contract,
             MatchMethod = MatchMethodCodes.OneToOneAi,
-            ScorePercent = ClampPercent(score),
+            ScorePercent = score,
+            ScoreAvailable = score.HasValue && explicitAvailability != false,
             ResultCode = ReadString(jdFit, "resultCode"),
             ResultLabel = ReadString(jdFit, "resultLabel") ?? ReadString(jdFit, "result"),
             Narrative = ReadString(jdFit, "narrative") ?? string.Empty
@@ -78,7 +94,7 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
             foreach (var group in groups.EnumerateArray().Take(MaximumGroups))
             {
                 if (group.ValueKind != JsonValueKind.Object) continue;
-                report.RequirementGroups.Add(ReadGroup(group, isV4));
+                report.RequirementGroups.Add(ReadGroup(group, hasSemanticStructuredFields, isV5));
             }
         }
         else if (TryGet(jdFit, "requirementScores", out var scores) && scores.ValueKind == JsonValueKind.Array)
@@ -86,7 +102,7 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
             foreach (var scoreItem in scores.EnumerateArray().Take(MaximumGroups))
             {
                 if (scoreItem.ValueKind != JsonValueKind.Object) continue;
-                var item = ReadItem(scoreItem, isV4: false);
+                var item = ReadItem(scoreItem, hasSemanticStructuredFields: false, isV5: false);
                 report.RequirementGroups.Add(new MatchRequirementGroupReportDto
                 {
                     GroupId = ReadString(scoreItem, "groupId"),
@@ -99,6 +115,10 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
         }
 
         ReadCriticalGaps(jdFit, report);
+        if (isV4)
+        {
+            JdMatchCriticalGapEnricher.Enrich(report);
+        }
         ReadWarnings(jdFit, report);
         return report;
     }
@@ -116,7 +136,7 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
     private static MatchReportDto ReadLegacy(JsonElement root, decimal? persistedScore, string? matchType)
     {
         var method = DetectMethod(root, matchType, hasDocument: true);
-        var finalScore = ReadDecimal(root, "FinalScore") ?? persistedScore ?? 0m;
+        var finalScore = ReadDecimal(root, "FinalScore") ?? persistedScore;
         var report = LegacySummary(finalScore, method);
         report.Narrative = method switch
         {
@@ -131,24 +151,29 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
     {
         ReportKind = MatchReportKinds.LegacySummary,
         MatchMethod = method,
-        ScorePercent = NormalizeScore(persistedScore ?? 0m, method)
+        ScorePercent = persistedScore.HasValue ? NormalizeScore(persistedScore.Value, method) : null,
+        ScoreAvailable = persistedScore.HasValue
     };
 
-    private static MatchRequirementGroupReportDto ReadGroup(JsonElement group, bool isV4)
+    private static MatchRequirementGroupReportDto ReadGroup(
+        JsonElement group,
+        bool hasSemanticStructuredFields,
+        bool isV5)
     {
+        var serializedGroupScore = ReadDecimal(group, "groupScore") ?? ReadDecimal(group, "handlerScore");
         var result = new MatchRequirementGroupReportDto
         {
             GroupId = ReadString(group, "groupId"),
-            SourceRequirementId = isV4 ? ReadString(group, "sourceRequirementId") : null,
-            Intent = isV4 ? ReadString(group, "intent") : null,
+            SourceRequirementId = hasSemanticStructuredFields ? ReadString(group, "sourceRequirementId") : null,
+            Intent = hasSemanticStructuredFields ? ReadString(group, "intent") : null,
             Operator = ReadString(group, "operator"),
             MinSatisfied = ReadInt(group, "minSatisfied"),
             Importance = ReadString(group, "importance"),
-            SourceSection = isV4 ? ReadString(group, "sourceSection") : null,
-            RequirementVerbatim = isV4 ? ReadString(group, "requirementVerbatim") : null,
-            GroupScore = ClampUnit(ReadDecimal(group, "groupScore") ?? ReadDecimal(group, "handlerScore") ?? 0m),
+            SourceSection = hasSemanticStructuredFields ? ReadString(group, "sourceSection") : null,
+            RequirementVerbatim = hasSemanticStructuredFields ? ReadString(group, "requirementVerbatim") : null,
+            GroupScore = isV5 ? ClampUnit(serializedGroupScore) : ClampUnit(serializedGroupScore ?? 0m),
             IsCriticalGap = ReadBool(group, "isCriticalGap") || IsCritical(group),
-            SourceOrder = isV4 ? ReadInt(group, "sourceOrder") : null
+            SourceOrder = hasSemanticStructuredFields ? ReadInt(group, "sourceOrder") : null
         };
 
         if (TryGet(group, "selectedItemIds", out var selected) && selected.ValueKind == JsonValueKind.Array)
@@ -167,27 +192,37 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
             {
                 if (item.ValueKind == JsonValueKind.Object)
                 {
-                    result.Items.Add(ReadItem(item, isV4));
+                    result.Items.Add(ReadItem(item, hasSemanticStructuredFields, isV5));
                 }
             }
         }
         return result;
     }
 
-    private static MatchRequirementItemReportDto ReadItem(JsonElement item, bool isV4)
+    private static MatchRequirementItemReportDto ReadItem(
+        JsonElement item,
+        bool hasSemanticStructuredFields,
+        bool isV5)
     {
+        var serializedScore = ReadDecimal(item, "score") ?? ReadDecimal(item, "handlerScore");
+        var score = isV5 ? ClampUnit(serializedScore) : ClampUnit(serializedScore ?? 0m);
+        var declaredStatus = ReadString(item, "assessmentStatus");
         var result = new MatchRequirementItemReportDto
         {
             ItemId = ReadString(item, "itemId") ?? ReadString(item, "reqId"),
             NormalizedText = ReadString(item, "normalizedText"),
             DetailVerbatim = ReadString(item, "detailVerbatim"),
-            RawMention = isV4 ? ReadString(item, "rawMention") : null,
+            RawMention = hasSemanticStructuredFields ? ReadString(item, "rawMention") : null,
             Category = ReadString(item, "category"),
-            Score = ClampUnit(ReadDecimal(item, "score") ?? ReadDecimal(item, "handlerScore") ?? 0m),
+            Score = score,
+            AssessmentStatus = isV5 &&
+                               (!score.HasValue || !string.Equals(declaredStatus, "assessed", StringComparison.Ordinal))
+                ? "unresolved"
+                : "assessed",
             HandlerCode = ReadString(item, "handlerCode"),
             Reasoning = ReadString(item, "reasoning") ?? string.Empty,
             IsCriticalGap = ReadBool(item, "isCriticalGap") || IsCritical(item),
-            SourceOrder = isV4 ? ReadInt(item, "sourceOrder") : null
+            SourceOrder = hasSemanticStructuredFields ? ReadInt(item, "sourceOrder") : null
         };
 
         ReadEvidence(item, result.Evidence);
@@ -202,14 +237,20 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
             if (gap.ValueKind != JsonValueKind.Object) continue;
             var result = new MatchCriticalGapReportDto
             {
+                GapId = ReadString(gap, "gapId") ?? string.Empty,
                 Code = ReadString(gap, "code") ?? ReadString(gap, "flag") ?? "CRITICAL_GAP",
                 Scope = ReadString(gap, "scope"),
                 GroupId = ReadString(gap, "groupId"),
                 ItemId = ReadString(gap, "itemId"),
+                SourceRequirementId = ReadString(gap, "sourceRequirementId"),
+                SourceSection = ReadString(gap, "sourceSection"),
+                Category = ReadString(gap, "category"),
+                Importance = ReadString(gap, "importance"),
                 Operator = ReadString(gap, "operator"),
                 RequiredCount = ReadInt(gap, "requiredCount"),
                 SatisfiedCount = ReadInt(gap, "satisfiedCount"),
                 Requirement = ReadString(gap, "requirement") ?? string.Empty,
+                RequirementVerbatim = ReadString(gap, "requirementVerbatim") ?? string.Empty,
                 Reasoning = ReadString(gap, "reasoning") ?? ReadString(gap, "gapDescription") ?? string.Empty
             };
             if (TryGet(gap, "affectedItemIds", out var affected) && affected.ValueKind == JsonValueKind.Array)
@@ -338,6 +379,16 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
     private static bool ReadBool(JsonElement element, string property) =>
         TryGet(element, property, out var value) && value.ValueKind == JsonValueKind.True;
 
+    private static bool? ReadNullableBool(JsonElement element, string property) =>
+        TryGet(element, property, out var value)
+            ? value.ValueKind switch
+            {
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                _ => null
+            }
+            : null;
+
     private static string? Bound(string? value)
     {
         var normalized = value?.Trim();
@@ -346,7 +397,8 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
     }
 
     private static decimal ClampUnit(decimal value) => Math.Clamp(value, 0m, 1m);
-    private static decimal ClampPercent(decimal value) => Math.Clamp(value, 0m, 100m);
+    private static decimal? ClampUnit(decimal? value) => value.HasValue ? ClampUnit(value.Value) : null;
+    private static decimal? ClampPercent(decimal? value) => value.HasValue ? Math.Clamp(value.Value, 0m, 100m) : null;
 
     private static decimal NormalizeScore(decimal value, string method)
     {
@@ -354,6 +406,6 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
                          value is >= 0m and <= 1m
             ? value * 100m
             : value;
-        return ClampPercent(normalized);
+        return ClampPercent(normalized)!.Value;
     }
 }

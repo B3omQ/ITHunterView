@@ -35,7 +35,7 @@ public sealed class HardcodeCvJobMatchingUseCaseTests
     }
 
     [Fact]
-    public async Task MatchCvWithAllJobs_PresentEmptyDomain_RemainsAnAvailableZeroScore()
+    public async Task MatchCvWithAllJobs_PresentButEmptyDomain_IsExcludedInsteadOfCreatingNeutralOrZeroScore()
     {
         await using var context = CreateContext();
         var (cv, job) = CreateEntities(includeCvDomains: true);
@@ -48,8 +48,87 @@ public sealed class HardcodeCvJobMatchingUseCaseTests
 
         var score = await context.CvJobMatchScores.SingleAsync();
         score.Status.Should().Be("Completed");
-        score.MatchScore.Should().Be(.9m);
-        score.MatchDetails.Should().Contain("complete_cv_metrics");
+        score.MatchScore.Should().Be(1m);
+        score.MatchDetails.Should().Contain("available_cv_metrics");
+    }
+
+    [Fact]
+    public async Task MatchCvWithAllJobs_NoSafeJdDimension_CompletesUnscoredWithoutTechnicalError()
+    {
+        await using var context = CreateContext();
+        var (cv, job) = CreateEntities(includeCvDomains: true);
+        job.ParsedData = """{"matching_metrics":{"job_titles_normalized":[],"skills_normalized":[],"total_years_exp":0,"domains":[]}}""";
+        context.Cvs.Add(cv);
+        context.JobPostings.Add(job);
+        await context.SaveChangesAsync();
+
+        await CreateUseCase(context).MatchCvWithAllJobsHardcodeAsync(cv.Id, cv.UserId);
+
+        var score = await context.CvJobMatchScores.SingleAsync();
+        score.Status.Should().Be("Completed");
+        score.MatchScore.Should().BeNull();
+        score.ErrorCode.Should().BeNull();
+        score.ErrorMessage.Should().BeNull();
+        score.MatchDetails.Should().Contain("SCORE_UNAVAILABLE");
+    }
+
+    [Fact]
+    public async Task MatchCvWithAllJobs_PartialStructuredRequirements_PreservesOutcomesButDoesNotInventOverallScore()
+    {
+        await using var context = CreateContext();
+        var (cv, job) = CreateEntities(includeCvDomains: true);
+        job.ParsedData = """
+            {"schema_version":"jd-analysis-effective/v1","analysis_quality":"PARTIAL","analysis_coverage":{"input_group_count":2,"accepted_group_count":1,"discarded_group_count":1,"input_item_count":2,"accepted_item_count":1,"discarded_item_count":1,"requirement_set_complete":false},"matching_metrics":{"job_titles_normalized":[],"skills_normalized":[],"total_years_exp":0,"domains":[],"requirement_groups":[{"group_id":"grp-001","source_requirement_id":"req-001","intent":"qualification","operator":"all_of","min_satisfied":1,"importance":"must_have","source_section":"requirements","requirement_verbatim":"C# required.","items":[{"item_id":"grp-001:item-001","category":"tech_skill","skill_name":"C#","raw_mention":"C#","min_years":null,"max_years":null}]}]}}
+            """;
+        context.Cvs.Add(cv);
+        context.JobPostings.Add(job);
+        await context.SaveChangesAsync();
+
+        await CreateUseCase(context).MatchCvWithAllJobsHardcodeAsync(cv.Id, cv.UserId);
+
+        var score = await context.CvJobMatchScores.SingleAsync();
+        score.Status.Should().Be("Completed");
+        score.MatchScore.Should().BeNull();
+        score.MatchDetails.Should().Contain("PARTIAL_REQUIREMENT_SET");
+        score.MatchDetails.Should().Contain("GroupOutcomes");
+    }
+
+    [Fact]
+    public async Task MatchJobWithAllCvs_EligibleVisibleCandidate_WithNoSafeJdDimension_CompletesUnscored()
+    {
+        await using var context = CreateContext();
+        var (cv, job) = CreateEntities(includeCvDomains: true);
+        job.ParsedData = """{"matching_metrics":{"job_titles_normalized":[],"skills_normalized":[],"total_years_exp":0,"domains":[]}}""";
+        cv.IsPrimary = true;
+        var user = new User
+        {
+            Id = cv.UserId,
+            Email = "candidate@example.test",
+            Status = UserStatus.ACTIVE
+        };
+        var profile = new CandidateProfiles
+        {
+            UserId = user.Id,
+            IsVisibleToRecruiters = true,
+            User = user
+        };
+        user.CandidateProfile = profile;
+        cv.User = user;
+        user.Cvs.Add(cv);
+
+        context.Users.Add(user);
+        context.CandidateProfiles.Add(profile);
+        context.Cvs.Add(cv);
+        context.JobPostings.Add(job);
+        await context.SaveChangesAsync();
+
+        await CreateUseCase(context).MatchJobWithAllCvsHardcodeAsync(job.Id, job.RecruiterId);
+
+        var score = await context.CvJobMatchScores.SingleAsync();
+        score.Status.Should().Be("Completed");
+        score.MatchScore.Should().BeNull();
+        score.ErrorCode.Should().BeNull();
+        score.MatchDetails.Should().Contain("SCORE_UNAVAILABLE");
     }
 
     private static HardcodeCvJobMatchingUseCase CreateUseCase(ITHunterviewContext context)
@@ -126,14 +205,17 @@ public sealed class HardcodeCvJobMatchingUseCaseTests
             foreach (var entityType in modelBuilder.Model.GetEntityTypes()
                          .Where(type => type.ClrType != typeof(Cvs)
                                         && type.ClrType != typeof(JobPostings)
-                                        && type.ClrType != typeof(CvJobMatchScores))
+                                        && type.ClrType != typeof(CvJobMatchScores)
+                                        && type.ClrType != typeof(JobSkillRequirements)
+                                        && type.ClrType != typeof(Skills)
+                                        && type.ClrType != typeof(User)
+                                        && type.ClrType != typeof(CandidateProfiles))
                          .Select(type => type.ClrType)
                          .Distinct()
                          .ToList())
             {
                 modelBuilder.Ignore(entityType);
             }
-            modelBuilder.Entity<Cvs>().Ignore(value => value.User);
             modelBuilder.Entity<Cvs>().Ignore(value => value.TitleEmbedding);
             modelBuilder.Entity<Cvs>().Ignore(value => value.SkillsEmbedding);
             modelBuilder.Entity<Cvs>().Ignore(value => value.ExperienceEmbedding);
@@ -142,6 +224,8 @@ public sealed class HardcodeCvJobMatchingUseCaseTests
             modelBuilder.Entity<JobPostings>().Ignore(value => value.SkillsEmbedding);
             modelBuilder.Entity<JobPostings>().Ignore(value => value.ExperienceEmbedding);
             modelBuilder.Entity<JobPostings>().Ignore(value => value.DomainEmbedding);
+            modelBuilder.Entity<Skills>().Ignore(value => value.Category);
+            modelBuilder.Entity<Skills>().Ignore(value => value.Aliases);
         }
     }
 }

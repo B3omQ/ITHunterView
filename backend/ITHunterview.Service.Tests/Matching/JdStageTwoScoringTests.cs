@@ -142,6 +142,37 @@ public sealed class JdStageTwoScoringTests
     }
 
     [Theory]
+    [InlineData("all_of", 2)]
+    [InlineData("one_of", 1)]
+    [InlineData("at_least_n", 1)]
+    public void Calculate_IncompleteGroup_DoesNotApplyOperatorToSubset(
+        string operation,
+        int minimum)
+    {
+        var projection = Projection(Group(
+            "partial",
+            operation,
+            minimum,
+            "must_have",
+            Item("a", "tech_skill"),
+            Item("b", "tech_skill")));
+
+        var response = Response(projection, ("a", 1m)) with
+        {
+            Quality = JdStageTwoOutputQuality.PARTIAL,
+            Coverage = new JdStageTwoOutputCoverage(2, 1, 1, 0, new[] { "b" }, false)
+        };
+        var result = new JdFitScoreCalculator().Calculate(projection, response);
+
+        result.ScorePercent.Should().BeNull();
+        result.CompletionDisposition.Should().Be(MatchingCompletionDisposition.UnscoredRefundable);
+        result.Groups.Single().GroupScore.Should().BeNull();
+        result.Groups.Single().IsComplete.Should().BeFalse();
+        result.Groups.Single().ContributesToAggregate.Should().BeFalse();
+        result.Groups.Single().MissingItemIds.Should().Equal("b");
+    }
+
+    [Theory]
     [InlineData("VERY_SUITABLE", 85)]
     [InlineData("QUITE_SUITABLE", 84.9)]
     [InlineData("QUITE_SUITABLE", 70)]

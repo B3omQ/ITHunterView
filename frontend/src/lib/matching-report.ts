@@ -7,8 +7,8 @@ import type {
   MatchingResultDto,
 } from "@/types/cv.types";
 
-const clamp = (value: number | null | undefined, min: number, max: number) =>
-  Math.min(max, Math.max(min, Number.isFinite(value) ? (value as number) : 0));
+const clampNullable = (value: number | null | undefined, min: number, max: number): number | null =>
+  Number.isFinite(value) ? Math.min(max, Math.max(min, value as number)) : null;
 
 const normalizeEvidence = (evidence: MatchEvidenceReport[] | null | undefined): MatchEvidenceReport[] =>
   (Array.isArray(evidence) ? evidence : []).filter(
@@ -22,7 +22,8 @@ const normalizeStringArray = (values: string[] | null | undefined): string[] =>
 
 const normalizeItem = (item: MatchRequirementItemReport): MatchRequirementItemReport => ({
   ...item,
-  score: clamp(item.score, 0, 1),
+  score: item.assessmentStatus === "unresolved" ? null : clampNullable(item.score, 0, 1),
+  assessmentStatus: item.assessmentStatus === "unresolved" || item.score == null ? "unresolved" : "assessed",
   reasoning: typeof item.reasoning === "string" ? item.reasoning : "",
   evidence: normalizeEvidence(item.evidence),
   isCriticalGap: item.isCriticalGap === true,
@@ -30,7 +31,7 @@ const normalizeItem = (item: MatchRequirementItemReport): MatchRequirementItemRe
 
 const normalizeGroup = (group: MatchRequirementGroupReport): MatchRequirementGroupReport => ({
   ...group,
-  groupScore: clamp(group.groupScore, 0, 1),
+  groupScore: clampNullable(group.groupScore, 0, 1),
   selectedItemIds: Array.isArray(group.selectedItemIds) ? group.selectedItemIds : [],
   satisfiedItemIds: normalizeStringArray(group.satisfiedItemIds),
   isCriticalGap: group.isCriticalGap === true,
@@ -51,11 +52,15 @@ const normalizeGap = (gap: MatchCriticalGapReport): MatchCriticalGapReport => ({
 export function normalizeCompletedMatchReport(result: MatchingResultDto): MatchReport {
   const source = result.report;
   if (!source) {
+    const scorePercent = result.scoreAvailable === false
+      ? null
+      : clampNullable(result.scorePercent, 0, 100);
     return {
-      reportContract: "match-report/v2",
+      reportContract: "match-report/v3",
       reportKind: result.reportKind ?? "legacy_summary",
       matchMethod: result.matchMethod ?? "legacy_unknown",
-      scorePercent: clamp(result.scorePercent, 0, 100),
+      scorePercent,
+      scoreAvailable: result.scoreAvailable ?? scorePercent !== null,
       narrative: "Detailed matching breakdown is unavailable for this completed result.",
       requirementGroups: [],
       criticalGaps: [],
@@ -63,12 +68,18 @@ export function normalizeCompletedMatchReport(result: MatchingResultDto): MatchR
     };
   }
 
+  const scoreAvailable = source.scoreAvailable ?? result.scoreAvailable ??
+    Number.isFinite(source.scorePercent ?? result.scorePercent);
+  const scorePercent = scoreAvailable
+    ? clampNullable(source.scorePercent ?? result.scorePercent, 0, 100)
+    : null;
   return {
     ...source,
-    reportContract: "match-report/v2",
+    reportContract: source.reportContract ?? "match-report/v3",
     reportKind: source.reportKind ?? result.reportKind ?? "legacy_summary",
     matchMethod: source.matchMethod ?? result.matchMethod ?? "legacy_unknown",
-    scorePercent: clamp(source.scorePercent ?? result.scorePercent, 0, 100),
+    scorePercent,
+    scoreAvailable: scoreAvailable && scorePercent !== null,
     narrative: typeof source.narrative === "string" ? source.narrative : "",
     requirementGroups: (Array.isArray(source.requirementGroups) ? source.requirementGroups : [])
       .filter(Boolean)

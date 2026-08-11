@@ -21,6 +21,7 @@ public sealed record JdMatchingRecoveredOutput(
 public static class JdMatchingOutputRecovery
 {
     private const int MaxProviderCharacters = 1_000_000;
+    private const int MaxRecoveredScoreObjects = 100;
     private static readonly JsonDocumentOptions TolerantOptions = new()
     {
         AllowTrailingCommas = true,
@@ -154,6 +155,10 @@ public static class JdMatchingOutputRecovery
                         results.Add(item.RootElement.Clone());
                     }
                 }
+                if (results.Count >= MaxRecoveredScoreObjects)
+                {
+                    break;
+                }
                 objectStart = -1;
                 continue;
             }
@@ -169,36 +174,29 @@ public static class JdMatchingOutputRecovery
 
     private static bool ContainsSupportedSchemaVersion(string value)
     {
-        const string property = "\"schemaVersion\"";
-        var propertyIndex = value.IndexOf(property, StringComparison.Ordinal);
-        if (propertyIndex < 0)
-        {
-            return false;
-        }
-
-        var index = propertyIndex + property.Length;
-        while (index < value.Length && char.IsWhiteSpace(value[index])) index++;
-        if (index >= value.Length || value[index++] != ':') return false;
-        while (index < value.Length && char.IsWhiteSpace(value[index])) index++;
-
-        var expected = $"\"{JdMatchingResponseValidator.SchemaVersion}\"";
-        return index + expected.Length <= value.Length &&
-               value.AsSpan(index, expected.Length).SequenceEqual(expected.AsSpan());
+        return TryFindStringPropertyValue(
+                   value,
+                   "schemaVersion",
+                   "schema_version",
+                   out var schemaVersion) &&
+               string.Equals(
+                   schemaVersion,
+                   JdMatchingResponseValidator.SchemaVersion,
+                   StringComparison.Ordinal);
     }
 
     private static int FindScoresArrayStart(string value)
     {
-        const string property = "\"scores\"";
         var searchFrom = 0;
-        while (searchFrom < value.Length)
+        while (TryReadQuotedToken(value, searchFrom, out var propertyName, out var tokenEnd))
         {
-            var propertyIndex = value.IndexOf(property, searchFrom, StringComparison.Ordinal);
-            if (propertyIndex < 0)
+            searchFrom = tokenEnd;
+            if (!JdStageTwoJsonPropertyReader.IsApprovedName(propertyName, "scores", null))
             {
-                return -1;
+                continue;
             }
 
-            var index = propertyIndex + property.Length;
+            var index = tokenEnd;
             while (index < value.Length && char.IsWhiteSpace(value[index])) index++;
             if (index < value.Length && value[index] == ':') index++;
             while (index < value.Length && char.IsWhiteSpace(value[index])) index++;
@@ -206,10 +204,90 @@ public static class JdMatchingOutputRecovery
             {
                 return index;
             }
-            searchFrom = propertyIndex + property.Length;
         }
 
         return -1;
+    }
+
+    private static bool TryFindStringPropertyValue(
+        string source,
+        string canonicalName,
+        string? alternateName,
+        out string value)
+    {
+        value = string.Empty;
+        var searchFrom = 0;
+        while (TryReadQuotedToken(source, searchFrom, out var propertyName, out var tokenEnd))
+        {
+            searchFrom = tokenEnd;
+            if (!JdStageTwoJsonPropertyReader.IsApprovedName(
+                    propertyName,
+                    canonicalName,
+                    alternateName))
+            {
+                continue;
+            }
+
+            var index = tokenEnd;
+            while (index < source.Length && char.IsWhiteSpace(source[index])) index++;
+            if (index >= source.Length || source[index++] != ':')
+            {
+                continue;
+            }
+            while (index < source.Length && char.IsWhiteSpace(source[index])) index++;
+            if (!TryReadQuotedToken(source, index, out value, out _))
+            {
+                value = string.Empty;
+                return false;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryReadQuotedToken(
+        string source,
+        int searchFrom,
+        out string value,
+        out int tokenEnd)
+    {
+        value = string.Empty;
+        tokenEnd = source.Length;
+        var start = source.IndexOf('"', searchFrom);
+        if (start < 0)
+        {
+            return false;
+        }
+
+        var escaped = false;
+        for (var index = start + 1; index < source.Length; index++)
+        {
+            var character = source[index];
+            if (escaped)
+            {
+                escaped = false;
+                continue;
+            }
+
+            if (character == '\\')
+            {
+                escaped = true;
+                continue;
+            }
+
+            if (character != '"')
+            {
+                continue;
+            }
+
+            value = source[(start + 1)..index];
+            tokenEnd = index + 1;
+            return true;
+        }
+
+        return false;
     }
 
     private static bool TryExtractBalancedRootObject(string value, out string rootObject)

@@ -252,6 +252,53 @@ namespace ITHunterview.Service.Tests.JobAnalysis
         }
 
         [Fact]
+        public void BuildFromCanonicalJson_RequiresOnlyCanonicalEvidenceFields()
+        {
+            const string canonical = "{\"title\":\"Backend Engineer\",\"description\":\"Build APIs.\",\"requirements\":\"C# required.\"}";
+
+            var snapshot = _builder.BuildFromCanonicalJson(canonical);
+
+            Assert.Equal("Backend Engineer", snapshot.Title);
+            Assert.Equal("Build APIs.", snapshot.Description);
+            Assert.Equal("C# required.", snapshot.Requirements);
+            Assert.Equal(canonical, _builder.SerializeCanonical(snapshot));
+        }
+
+        [Fact]
+        public void BuildFromCanonicalJson_RejectsUnknownOrMalformedShape()
+        {
+            Assert.Throws<InvalidOperationException>(() =>
+                _builder.BuildFromCanonicalJson("{\"title\":\"Dev\",\"description\":\"Desc\",\"requirements\":\"Req\",\"benefits\":\"ignored\"}"));
+            Assert.Throws<InvalidOperationException>(() =>
+                _builder.BuildFromCanonicalJson("{not-json"));
+        }
+
+        [Fact]
+        public void BuildFromSavedSnapshotText_PreservesMultilineDescriptionAndRequirementsOnly()
+        {
+            const string original = """
+                Title: Backend Engineer
+                Description: Design APIs.
+                Improve performance.
+                Requirements: C# required.
+                PostgreSQL required.
+                Benefits: Health insurance.
+                Income: Negotiable.
+                Work Location: Hanoi.
+                Working Hours: Monday-Friday.
+                How to Apply: Click Apply.
+                """;
+
+            var snapshot = _builder.BuildFromSavedSnapshotText("Backend Engineer", original);
+
+            Assert.Equal("Backend Engineer", snapshot.Title);
+            Assert.Equal("Design APIs.\nImprove performance.", snapshot.Description);
+            Assert.Equal("C# required.\nPostgreSQL required.", snapshot.Requirements);
+            Assert.DoesNotContain("Health insurance", snapshot.Description + snapshot.Requirements);
+            Assert.DoesNotContain("Hanoi", snapshot.Description + snapshot.Requirements);
+        }
+
+        [Fact]
         public void ComputeAnalysisHash_RequiresAndIncludesExplicitPromptContract()
         {
             var snapshot = _builder.Build(new JobPostings { Title = "Dev", Description = "Desc", Requirements = "Req" });

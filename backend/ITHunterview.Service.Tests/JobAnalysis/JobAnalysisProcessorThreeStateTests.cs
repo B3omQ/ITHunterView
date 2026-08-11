@@ -42,10 +42,13 @@ public sealed class JobAnalysisProcessorThreeStateTests
                 analysis.Diagnostics.Any(diagnostic => diagnostic.Code == "SKILL_RESOLUTION_UNAVAILABLE"))), Times.Once);
     }
 
-    [Fact]
-    public async Task ProcessAsync_InvalidExtraction_PersistsRawFallbackAndDoesNotInvokeResolver()
+    [Theory]
+    [InlineData("INVALID_JSON_FORMAT")]
+    [InlineData("NO_USABLE_REQUIREMENT_GROUPS")]
+    public async Task ProcessAsync_InvalidExtraction_PersistsRawFallbackAndDoesNotInvokeResolver(
+        string failureCode)
     {
-        var context = CreateContext(JdAnalysisQuality.INVALID);
+        var context = CreateContext(JdAnalysisQuality.INVALID, failureCode);
 
         await context.Processor.ProcessAsync(context.RunId);
 
@@ -58,7 +61,9 @@ public sealed class JobAnalysisProcessorThreeStateTests
             It.Is<JobAnalysisCompletion>(completion =>
                 completion.Quality == JdAnalysisQuality.INVALID &&
                 completion.RawAnalysisJson == null &&
-                completion.EffectiveAnalysisJson == null),
+                completion.EffectiveAnalysisJson == null &&
+                completion.AnalysisDiagnosticsJson != null &&
+                completion.AnalysisDiagnosticsJson.Contains(failureCode, StringComparison.Ordinal)),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -94,7 +99,9 @@ public sealed class JobAnalysisProcessorThreeStateTests
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    private static ProcessorContext CreateContext(JdAnalysisQuality quality)
+    private static ProcessorContext CreateContext(
+        JdAnalysisQuality quality,
+        string invalidFailureCode = "INVALID_JSON_FORMAT")
     {
         var runId = Guid.NewGuid();
         var run = new JobAnalysisRuns
@@ -142,12 +149,12 @@ public sealed class JobAnalysisProcessorThreeStateTests
                     Quality = JdAnalysisQuality.INVALID,
                     RawTextFallback = "raw JD",
                     UsesRawTextFallback = true,
-                    Diagnostics = new[] { new JdAnalysisDiagnostic("INVALID_JSON_FORMAT", "$") },
+                    Diagnostics = new[] { new JdAnalysisDiagnostic(invalidFailureCode, "$") },
                     Validation = new ValidationResult<ValidatedJobAnalysis>
                     {
                         IsValid = false,
                         Quality = JdAnalysisQuality.INVALID,
-                        FailureCode = "INVALID_JSON_FORMAT"
+                        FailureCode = invalidFailureCode
                     }
                 }
                 : new JobAnalysisExtractionResult

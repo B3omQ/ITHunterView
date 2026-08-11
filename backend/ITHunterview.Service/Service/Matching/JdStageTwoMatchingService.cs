@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -29,6 +30,7 @@ public sealed class JdStageTwoMatchingService : IJdStageTwoMatchingService
     private readonly JdFitScoreCalculator _calculator;
     private readonly JdCriticalGapEvaluator _criticalGapEvaluator;
     private readonly JdFitResultSerializer _resultSerializer;
+    private readonly JdStructuredUnscoredResultFactory _unscoredResultFactory;
 
     public JdStageTwoMatchingService(
         IAiService aiService,
@@ -37,7 +39,8 @@ public sealed class JdStageTwoMatchingService : IJdStageTwoMatchingService
         JdMatchingResponseAdapter? responseAdapter = null,
         JdFitScoreCalculator? calculator = null,
         JdCriticalGapEvaluator? criticalGapEvaluator = null,
-        JdFitResultSerializer? resultSerializer = null)
+        JdFitResultSerializer? resultSerializer = null,
+        JdStructuredUnscoredResultFactory? unscoredResultFactory = null)
     {
         _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -46,6 +49,10 @@ public sealed class JdStageTwoMatchingService : IJdStageTwoMatchingService
         _calculator = calculator ?? new JdFitScoreCalculator();
         _criticalGapEvaluator = criticalGapEvaluator ?? new JdCriticalGapEvaluator();
         _resultSerializer = resultSerializer ?? new JdFitResultSerializer();
+        _unscoredResultFactory = unscoredResultFactory ?? new JdStructuredUnscoredResultFactory(
+            _calculator,
+            _criticalGapEvaluator,
+            _resultSerializer);
     }
 
     public async Task<JdFitScoreCalculation> ExecuteAsync(
@@ -136,13 +143,18 @@ public sealed class JdStageTwoMatchingService : IJdStageTwoMatchingService
                     candidate,
                     allExpectedIds,
                     requestedIds);
-                if (merged.Quality == JdStageTwoOutputQuality.COMPLETE)
+                if (IsPublishable(merged))
                 {
                     return CalculateAndSerialize(activePrompt, jdProjection, merged, attempt);
                 }
 
                 LogOutputEvaluation(activePrompt, provider, attempt, responseText, merged);
-                throw new InvalidOperationException(StageTwoOutputInvalid);
+                return CreateStructuredUnscored(
+                    activePrompt,
+                    jdProjection,
+                    merged,
+                    attempt,
+                    JdStructuredUnscoredReason.NoUsableAssessments);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -155,15 +167,91 @@ public sealed class JdStageTwoMatchingService : IJdStageTwoMatchingService
                 requestedIds = allExpectedIds;
                 continue;
             }
+            catch (HttpRequestException exception) when (IsAuthorizationFailure(exception))
+            {
+                LogOutputFailure(activePrompt, provider, attempt, responseText, exception);
+                var unavailable = firstAttempt ?? CreateInvalidResponse(
+                    allExpectedIds,
+                    false,
+                    new[] { "PROVIDER_AUTHORIZATION_UNAVAILABLE" });
+                return IsPublishable(unavailable)
+                    ? CalculateAndSerialize(
+                        activePrompt,
+                        jdProjection,
+                        AddWarning(unavailable, "RECOVERY_ATTEMPT_FAILED"),
+                        attempt)
+                    : CreateStructuredUnscored(
+                        activePrompt,
+                        jdProjection,
+                        unavailable,
+                        attempt,
+                        JdStructuredUnscoredReason.ProviderAuthorizationUnavailable);
+            }
             catch (Exception exception) when (attempt == 2 && IsRetryableOutputFailure(exception))
             {
                 LogOutputFailure(activePrompt, provider, attempt, responseText, exception);
-                throw new InvalidOperationException(StageTwoOutputInvalid);
+                if (firstAttempt is not null && IsPublishable(firstAttempt))
+                {
+                    return CalculateAndSerialize(
+                        activePrompt,
+                        jdProjection,
+                        AddWarning(firstAttempt, "RECOVERY_ATTEMPT_FAILED"),
+                        attempt);
+                }
+
+                return CreateStructuredUnscored(
+                    activePrompt,
+                    jdProjection,
+                    firstAttempt ?? CreateInvalidResponse(allExpectedIds, false, Array.Empty<string>()),
+                    attempt,
+                    JdStructuredUnscoredReason.TransientProviderExhausted);
             }
         }
 
-        throw new InvalidOperationException(StageTwoOutputInvalid);
+        return CreateStructuredUnscored(
+            activePrompt,
+            jdProjection,
+            firstAttempt ?? CreateInvalidResponse(allExpectedIds, false, Array.Empty<string>()),
+            2,
+            JdStructuredUnscoredReason.NoUsableAssessments);
     }
+
+    public JdFitScoreCalculation CreateConfigurationUnavailableResult(
+        JdRequirementProjection jdProjection)
+    {
+        ArgumentNullException.ThrowIfNull(jdProjection);
+        var expectedIds = jdProjection.Groups
+            .SelectMany(group => group.Items)
+            .Select(item => item.ItemId)
+            .ToHashSet(StringComparer.Ordinal);
+        return _unscoredResultFactory.Create(
+            jdProjection,
+            CreateInvalidResponse(
+                expectedIds,
+                wasTruncated: false,
+                new[] { "MATCHING_CONFIGURATION_UNAVAILABLE" }),
+            new JdFitSerializationContext(
+                Guid.Empty,
+                "unavailable",
+                HashForStorage(string.Empty),
+                HashForStorage(JdMatchingOutputSchema.LockedBlock),
+                0),
+            JdStructuredUnscoredReason.MatchingConfigurationUnavailable);
+    }
+
+    private static bool IsPublishable(JdStageTwoValidatedResponse response) =>
+        response.Quality != JdStageTwoOutputQuality.INVALID && response.Coverage.AcceptedCount > 0;
+
+    private static JdStageTwoValidatedResponse AddWarning(
+        JdStageTwoValidatedResponse response,
+        string warning) => response with
+        {
+            WarningCodes = response.WarningCodes
+                .Append(warning)
+                .Distinct(StringComparer.Ordinal)
+                .Take(100)
+                .ToArray()
+        };
 
     private JdFitScoreCalculation CalculateAndSerialize(
         PromptSnapshotDto activePrompt,
@@ -185,6 +273,26 @@ public sealed class JdStageTwoMatchingService : IJdStageTwoMatchingService
                 HashForStorage(semanticContent),
                 HashForStorage(JdMatchingOutputSchema.LockedBlock),
                 providerAttemptCount));
+    }
+
+    private JdFitScoreCalculation CreateStructuredUnscored(
+        PromptSnapshotDto activePrompt,
+        JdRequirementProjection projection,
+        JdStageTwoValidatedResponse response,
+        int providerAttemptCount,
+        JdStructuredUnscoredReason reason)
+    {
+        var semanticContent = JdMatchingOutputSchema.NormalizeManagedContent(activePrompt.Content).SemanticContent;
+        return _unscoredResultFactory.Create(
+            projection,
+            response,
+            new JdFitSerializationContext(
+                activePrompt.VersionId,
+                activePrompt.VersionTag,
+                HashForStorage(semanticContent),
+                HashForStorage(JdMatchingOutputSchema.LockedBlock),
+                providerAttemptCount),
+            reason);
     }
 
     private static string BuildRetryInstruction(IReadOnlySet<string> requestedIds) =>
@@ -228,10 +336,20 @@ public sealed class JdStageTwoMatchingService : IJdStageTwoMatchingService
     private static bool IsRetryableOutputFailure(Exception exception) =>
         exception is JsonException ||
         exception is AiProviderOutputTruncatedException ||
+        exception is TimeoutException ||
+        exception is TaskCanceledException ||
+        exception is HttpRequestException request && IsTransientStatus(request.StatusCode) ||
         exception is InvalidOperationException invalid &&
         invalid.Message is JdMatchingResponseValidator.InvalidStageTwoResponse or
             "AI_OUTPUT_TRUNCATED" or
             "AI_PROVIDER_INVALID_JSON";
+
+    private static bool IsAuthorizationFailure(HttpRequestException exception) =>
+        exception.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden;
+
+    private static bool IsTransientStatus(HttpStatusCode? statusCode) =>
+        statusCode is null or HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests ||
+        (int)statusCode.Value >= 500;
 
     private void LogOutputFailure(
         PromptSnapshotDto prompt,

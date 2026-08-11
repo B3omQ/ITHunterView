@@ -114,16 +114,67 @@ public sealed class JdRequirementProjectorTests
     }
 
     [Fact]
-    public void Project_InvalidGroupCardinality_FailsClosed()
+    public void Project_InvalidGroupCardinality_ReturnsInvalidProjectionWithoutThrowing()
     {
         const string invalid = """
             {"schema_version":"jd-analysis/v3","matching_metrics":{"requirement_groups":[{"group_id":"grp-001","operator":"one_of","min_satisfied":2,"importance":"must_have","items":[{"category":"tech_skill","skill_name":"react"}]}]}}
             """;
         var projector = new JdRequirementProjector();
 
-        var exception = Assert.Throws<InvalidOperationException>((Action)(() => projector.Project(invalid)));
+        var projection = projector.Project(invalid);
 
-        Assert.Equal("INVALID_EFFECTIVE_JD_ANALYSIS", exception.Message);
+        Assert.Equal(JdAnalysisQuality.INVALID, projection.Quality);
+        Assert.Empty(projection.Groups);
+    }
+
+    [Fact]
+    public void Project_EffectiveV1_InvalidGroupDoesNotDiscardValidSiblingOrPoisonItsIds()
+    {
+        const string effective = """
+            {
+              "schema_version":"jd-analysis-effective/v1",
+              "analysis_quality":"COMPLETE",
+              "analysis_coverage":{"input_group_count":2,"accepted_group_count":2,"discarded_group_count":0,"input_item_count":2,"accepted_item_count":2,"discarded_item_count":0,"requirement_set_complete":true},
+              "matching_metrics":{"requirement_groups":[
+                {
+                  "group_id":"grp-001","source_requirement_id":"req-001","intent":"qualification",
+                  "operator":"one_of","min_satisfied":2,"importance":"must_have","source_section":"requirements",
+                  "requirement_verbatim":"Invalid cardinality.",
+                  "items":[{"item_id":"shared:item-001","category":"tech_skill","skill_name":"bad","raw_mention":"bad","min_years":null,"max_years":null}]
+                },
+                {
+                  "group_id":"grp-002","source_requirement_id":"req-002","intent":"qualification",
+                  "operator":"all_of","min_satisfied":1,"importance":"must_have","source_section":"requirements",
+                  "requirement_verbatim":"Valid sibling.",
+                  "items":[{"item_id":"shared:item-001","category":"tech_skill","skill_name":"Java","raw_mention":"Java","min_years":null,"max_years":null}]
+                }
+              ]}
+            }
+            """;
+
+        var projection = new JdRequirementProjector().Project(effective);
+
+        Assert.Equal(JdAnalysisQuality.PARTIAL, projection.Quality);
+        var group = Assert.Single(projection.Groups);
+        Assert.Equal("grp-002", group.GroupId);
+        Assert.Equal("shared:item-001", Assert.Single(group.Items).ItemId);
+        Assert.Contains(projection.Diagnostics!, diagnostic => diagnostic.Code == "PROJECTOR_GROUP_DROPPED");
+        Assert.False(projection.RequirementSetComplete);
+    }
+
+    [Fact]
+    public void Project_EffectiveV1_MalformedQualityMetadata_KeepsUsableGroupAsPartial()
+    {
+        const string effective = """
+            {"schema_version":"jd-analysis-effective/v1","analysis_quality":"maybe","analysis_coverage":{"input_group_count":1,"accepted_group_count":1,"discarded_group_count":0,"input_item_count":1,"accepted_item_count":1,"discarded_item_count":0,"requirement_set_complete":true},"matching_metrics":{"requirement_groups":[{"group_id":"grp-001","source_requirement_id":"req-001","intent":"qualification","operator":"all_of","min_satisfied":1,"importance":"must_have","source_section":"requirements","requirement_verbatim":"Java.","items":[{"item_id":"grp-001:item-001","category":"tech_skill","skill_name":"Java","raw_mention":"Java","min_years":null,"max_years":null}]}]}}
+            """;
+
+        var projection = new JdRequirementProjector().Project(effective);
+
+        Assert.Equal(JdAnalysisQuality.PARTIAL, projection.Quality);
+        Assert.Single(projection.Groups);
+        Assert.Contains(projection.Diagnostics!, diagnostic =>
+            diagnostic.Code == "PROJECTOR_QUALITY_METADATA_INVALID");
     }
 
     [Fact]

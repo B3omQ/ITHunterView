@@ -60,7 +60,7 @@ public class HardcodeJdRequirementScoringServiceTests
     }
 
     [Fact]
-    public void Evaluate_InvalidV3Analysis_DoesNotAllowLegacyCompatibilityFallback()
+    public void Evaluate_InvalidV3Analysis_IsTerminalUnscoredInsteadOfFlatteningLostSemantics()
     {
         var service = new HardcodeJdRequirementScoringService(
             new JdRequirementProjector(),
@@ -98,7 +98,7 @@ public class HardcodeJdRequirementScoringServiceTests
     }
 
     [Fact]
-    public void Evaluate_InvalidEffectiveV1_DoesNotAllowLegacyCompatibilityFallback()
+    public void Evaluate_InvalidEffectiveV1_IsTerminalUnscoredInsteadOfFlatteningLostSemantics()
     {
         var service = new HardcodeJdRequirementScoringService(
             new JdRequirementProjector(),

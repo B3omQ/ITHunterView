@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
+using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.Persistence;
@@ -26,6 +27,7 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
     private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
     private readonly ILogger<CvJdMatchingWorkerUseCase> _logger;
     private readonly IMatchingSourceAnalysisPersistence? _sourceAnalysisPersistence;
+    private readonly StagedMatchingResultReader _stagedResultReader;
 
     public CvJdMatchingWorkerUseCase(
         ITHunterviewContext context,
@@ -33,7 +35,8 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
         ICvJdOneToOneMatchingProcessor processor,
         ICandidateFeatureUsageUseCase featureUsageUseCase,
         ILogger<CvJdMatchingWorkerUseCase> logger,
-        IMatchingSourceAnalysisPersistence? sourceAnalysisPersistence = null)
+        IMatchingSourceAnalysisPersistence? sourceAnalysisPersistence = null,
+        StagedMatchingResultReader? stagedResultReader = null)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _jobRepository = jobRepository ?? throw new ArgumentNullException(nameof(jobRepository));
@@ -41,6 +44,7 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
         _featureUsageUseCase = featureUsageUseCase ?? throw new ArgumentNullException(nameof(featureUsageUseCase));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _sourceAnalysisPersistence = sourceAnalysisPersistence;
+        _stagedResultReader = stagedResultReader ?? new StagedMatchingResultReader();
     }
 
     public Task<IReadOnlyList<ClaimedMatchingJob>> ClaimRunnableJobsAsync(
@@ -60,6 +64,15 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
         var job = await _jobRepository.GetClaimedJobAsync(jobId, workerId, leaseToken, cancellationToken);
         if (job == null)
             return;
+
+        if (string.Equals(
+                job.ErrorCode,
+                ICvJdMatchingJobRepository.ResultFinalizationPending,
+                StringComparison.Ordinal))
+        {
+            await FinalizeAlreadyStagedAsync(job, workerId, leaseToken, cancellationToken);
+            return;
+        }
 
         MatchingInputSnapshotV1 snapshot;
         try
@@ -81,24 +94,69 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
         try
         {
             var result = await _processor.ExecuteAsync(job.Id, snapshot, timeoutCts.Token);
-            var completed = await _jobRepository.CompleteAsync(
+            var stagedResult = _stagedResultReader.ReadOrCreateSafeFallback(
+                result.Score,
+                result.MatchDetails);
+            var staged = await _jobRepository.StageTerminalResultAsync(
                 job.Id,
                 workerId,
                 leaseToken,
-                result.Score,
-                result.MatchDetails,
+                stagedResult.Score,
+                stagedResult.MatchDetails,
                 result.SfiaExtractResult,
                 result.CvAnalysisQuality,
                 CvAnalysisMetadataReader.SerializeCoverage(result.CvAnalysisCoverage),
                 CvAnalysisMetadataReader.SerializeDiagnostics(result.CvAnalysisDiagnostics),
-                DateTime.UtcNow,
                 result.JdAnalysisQuality,
                 JdAnalysisMetadataReader.SerializeCoverage(result.JdAnalysisCoverage),
                 JdAnalysisMetadataReader.SerializeDiagnostics(result.JdAnalysisDiagnostics),
+                DateTime.UtcNow,
                 cancellationToken);
-            if (!completed)
-                _logger.LogInformation("Matching lease lost before completion for job {JobId}.", job.Id);
-            else if (_sourceAnalysisPersistence is not null)
+            if (!staged)
+            {
+                _logger.LogInformation("Matching lease lost before terminal staging for job {JobId}.", job.Id);
+                return;
+            }
+
+            try
+            {
+                var completed = await FinalizeStagedAsync(
+                    job,
+                    workerId,
+                    leaseToken,
+                    stagedResult,
+                    result.SfiaExtractResult,
+                    result.CvAnalysisQuality,
+                    CvAnalysisMetadataReader.SerializeCoverage(result.CvAnalysisCoverage),
+                    CvAnalysisMetadataReader.SerializeDiagnostics(result.CvAnalysisDiagnostics),
+                    result.JdAnalysisQuality,
+                    JdAnalysisMetadataReader.SerializeCoverage(result.JdAnalysisCoverage),
+                    JdAnalysisMetadataReader.SerializeDiagnostics(result.JdAnalysisDiagnostics),
+                    cancellationToken);
+                if (!completed)
+                {
+                    _logger.LogInformation("Matching lease lost before finalization for job {JobId}.", job.Id);
+                    return;
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(exception, "Matching terminal finalization deferred for job {JobId}.", job.Id);
+                await _jobRepository.ScheduleFinalizationRetryAsync(
+                    job.Id,
+                    workerId,
+                    leaseToken,
+                    DateTime.UtcNow.Add(GetRetryDelay(job.AttemptCount)),
+                    DateTime.UtcNow,
+                    cancellationToken);
+                return;
+            }
+
+            if (_sourceAnalysisPersistence is not null)
             {
                 if (result.CvPersistenceIntent is not null)
                     await TryPersistCvSourceAnalysisAsync(job.Id, result.CvPersistenceIntent, cancellationToken);
@@ -137,6 +195,19 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
             var expired = await _jobRepository.GetExpiredLeasesForUpdateAsync(utcNow, 50, cancellationToken);
             foreach (var job in expired)
             {
+                if (string.Equals(
+                        job.ErrorCode,
+                        ICvJdMatchingJobRepository.ResultFinalizationPending,
+                        StringComparison.Ordinal))
+                {
+                    await _jobRepository.ScheduleRecoveredFinalizationRetryAsync(
+                        job.Id,
+                        utcNow,
+                        utcNow,
+                        cancellationToken);
+                    continue;
+                }
+
                 if (job.AttemptCount < Math.Max(1, job.MaxAttempts))
                 {
                     await _jobRepository.ScheduleRecoveredRetryAsync(
@@ -246,6 +317,113 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
             2 => TimeSpan.FromSeconds(30),
             _ => TimeSpan.FromSeconds(120)
         };
+
+    private async Task FinalizeAlreadyStagedAsync(
+        CvJobMatchScores job,
+        string workerId,
+        Guid leaseToken,
+        CancellationToken cancellationToken)
+    {
+        var staged = _stagedResultReader.ReadOrCreateSafeFallback(job);
+        try
+        {
+            await FinalizeStagedAsync(
+                job,
+                workerId,
+                leaseToken,
+                staged,
+                job.SfiaExtractResult,
+                job.CvAnalysisQuality,
+                job.CvAnalysisCoverageJson,
+                job.CvAnalysisDiagnosticsJson,
+                job.JdAnalysisQuality,
+                job.JdAnalysisCoverageJson,
+                job.JdAnalysisDiagnosticsJson,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Matching staged finalization deferred for job {JobId}.", job.Id);
+            await _jobRepository.ScheduleFinalizationRetryAsync(
+                job.Id,
+                workerId,
+                leaseToken,
+                DateTime.UtcNow.Add(GetRetryDelay(job.AttemptCount)),
+                DateTime.UtcNow,
+                cancellationToken);
+        }
+    }
+
+    private async Task<bool> FinalizeStagedAsync(
+        CvJobMatchScores job,
+        string workerId,
+        Guid leaseToken,
+        StagedMatchingResult staged,
+        string? sfiaExtractResult,
+        CvAnalysisQuality? cvAnalysisQuality,
+        string? cvAnalysisCoverageJson,
+        string? cvAnalysisDiagnosticsJson,
+        JdAnalysisQuality? jdAnalysisQuality,
+        string? jdAnalysisCoverageJson,
+        string? jdAnalysisDiagnosticsJson,
+        CancellationToken cancellationToken)
+    {
+        var transaction = IsInMemoryProvider()
+            ? null
+            : await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var completed = await _jobRepository.CompleteAsync(
+                job.Id,
+                workerId,
+                leaseToken,
+                staged.Score,
+                staged.MatchDetails,
+                sfiaExtractResult,
+                cvAnalysisQuality,
+                cvAnalysisCoverageJson,
+                cvAnalysisDiagnosticsJson,
+                DateTime.UtcNow,
+                jdAnalysisQuality,
+                jdAnalysisCoverageJson,
+                jdAnalysisDiagnosticsJson,
+                cancellationToken);
+            if (!completed)
+            {
+                if (transaction != null)
+                    await transaction.RollbackAsync(cancellationToken);
+                return false;
+            }
+
+            if (staged.RequiresRefund)
+            {
+                await _featureUsageUseCase.RefundFeatureReservationAsync(
+                    job.UserId,
+                    job.Id,
+                    "score_unavailable",
+                    cancellationToken);
+            }
+
+            if (transaction != null)
+                await transaction.CommitAsync(cancellationToken);
+            return true;
+        }
+        catch
+        {
+            if (transaction != null)
+                await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+        finally
+        {
+            if (transaction != null)
+                await transaction.DisposeAsync();
+        }
+    }
 
     // Source-analysis caching is intentionally best-effort after the immutable
     // matching result is committed. A later source edit or a cache-write fault

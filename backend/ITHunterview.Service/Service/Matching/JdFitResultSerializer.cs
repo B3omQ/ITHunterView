@@ -10,10 +10,48 @@ public sealed record JdFitSerializationContext(
     string LockedSchemaHash,
     int ProviderAttemptCount);
 
-public sealed record JdFitScoreCalculation(decimal FinalScore, string JsonString);
+public sealed record JdFitScoreCalculation
+{
+    private JdFitScoreCalculation(
+        decimal? finalScore,
+        string jsonString,
+        MatchingCompletionDisposition completionDisposition)
+    {
+        if (string.IsNullOrWhiteSpace(jsonString))
+        {
+            throw new ArgumentException("A persisted matching result is required.", nameof(jsonString));
+        }
+
+        if (completionDisposition == MatchingCompletionDisposition.ScoredBillable &&
+            (!finalScore.HasValue || finalScore.Value is < 0m or > 100m))
+        {
+            throw new ArgumentException("A billable result requires a score in [0,100].", nameof(finalScore));
+        }
+
+        if (completionDisposition == MatchingCompletionDisposition.UnscoredRefundable && finalScore.HasValue)
+        {
+            throw new ArgumentException("A refundable result cannot carry a score.", nameof(finalScore));
+        }
+
+        FinalScore = finalScore;
+        JsonString = jsonString;
+        CompletionDisposition = completionDisposition;
+    }
+
+    public decimal? FinalScore { get; }
+    public string JsonString { get; }
+    public MatchingCompletionDisposition CompletionDisposition { get; }
+    public bool ScoreAvailable => CompletionDisposition == MatchingCompletionDisposition.ScoredBillable;
+
+    public static JdFitScoreCalculation Scored(decimal score, string jsonString) =>
+        new(score, jsonString, MatchingCompletionDisposition.ScoredBillable);
+
+    public static JdFitScoreCalculation Unscored(string jsonString) =>
+        new(null, jsonString, MatchingCompletionDisposition.UnscoredRefundable);
+}
 
 /// <summary>
-/// Writes the application-owned jd-matching/v4 persistence contract. It only
+/// Writes the application-owned jd-matching/v5 persistence contract. It only
 /// serializes the projection, accepted provider assessments and deterministic
 /// backend calculations; it never reinterprets requirement semantics.
 /// </summary>
@@ -33,7 +71,8 @@ public sealed class JdFitResultSerializer
         ArgumentNullException.ThrowIfNull(scoreResult);
         ArgumentNullException.ThrowIfNull(gapEvaluation);
         ArgumentNullException.ThrowIfNull(context);
-        if (response.Quality != JdStageTwoOutputQuality.COMPLETE)
+        if (scoreResult.CompletionDisposition == MatchingCompletionDisposition.ScoredBillable &&
+            response.Quality != JdStageTwoOutputQuality.COMPLETE)
         {
             throw new InvalidOperationException("MATCHING_STAGE2_OUTPUT_INVALID");
         }
@@ -50,20 +89,26 @@ public sealed class JdFitResultSerializer
             .OrderBy(group => group.SourceOrder)
             .Select(groupScore => SerializeGroup(groupScore, response, itemGapIds, groupGapIds))
             .ToArray();
-        var roundedPercent = Math.Round(
-            Math.Clamp(scoreResult.ScorePercent, 0m, 100m),
-            1,
-            MidpointRounding.AwayFromZero);
+        decimal? roundedPercent = scoreResult.ScorePercent.HasValue
+            ? Math.Round(
+                Math.Clamp(scoreResult.ScorePercent.Value, 0m, 100m),
+                1,
+                MidpointRounding.AwayFromZero)
+            : null;
         var narrative = Bound(response.Narrative, MaximumNarrativeLength);
         if (narrative.Length == 0)
         {
-            narrative = $"Kết quả đánh giá: {scoreResult.ResultBand.Label}.";
+            narrative = scoreResult.ResultBand is null
+                ? "Kết quả phân tích đã được chuẩn bị."
+                : $"Kết quả đánh giá: {scoreResult.ResultBand.Label}.";
         }
 
         var persisted = new
         {
             mode = "jd_fit",
             contract = JdFitResultContract.Current,
+            scoreAvailable = scoreResult.ScoreAvailable,
+            completionDisposition = ToContractValue(scoreResult.CompletionDisposition),
             sourceJdSchemaVersion = projection.SourceSchemaVersion,
             analysis = new
             {
@@ -74,8 +119,12 @@ public sealed class JdFitResultSerializer
                 lockedSchemaHash = context.LockedSchemaHash,
                 scoringPolicyVersion = MatchingScorePolicy.Version,
                 providerAttemptCount = context.ProviderAttemptCount,
+                outputQuality = response.Quality.ToString(),
                 expectedCount = response.Coverage.ExpectedCount,
                 acceptedCount = response.Coverage.AcceptedCount,
+                discardedCount = response.Coverage.DiscardedCount,
+                missingItemIds = response.Coverage.MissingItemIds,
+                wasTruncated = response.Coverage.WasTruncated,
                 recoveryWarningCodes = response.WarningCodes
                     .Where(code => !string.IsNullOrWhiteSpace(code))
                     .Distinct(StringComparer.Ordinal)
@@ -85,21 +134,13 @@ public sealed class JdFitResultSerializer
             jdFit = new
             {
                 scorePercent = roundedPercent,
-                resultCode = scoreResult.ResultBand.ResultCode,
-                resultLabel = scoreResult.ResultBand.Label,
+                resultCode = scoreResult.ResultBand?.ResultCode,
+                resultLabel = scoreResult.ResultBand?.Label,
                 narrative,
                 requirementGroups = groups,
-                criticalGaps = gapEvaluation.CriticalGaps.Select(gap => new
-                {
-                    code = gap.Code,
-                    scope = gap.Scope,
-                    groupId = gap.GroupId,
-                    itemId = gap.ItemId,
-                    @operator = gap.Operator,
-                    requiredCount = gap.RequiredCount,
-                    satisfiedCount = gap.SatisfiedCount,
-                    affectedItemIds = gap.AffectedItemIds
-                }).ToArray(),
+                criticalGaps = gapEvaluation.CriticalGaps
+                    .Select(gap => SerializeGap(gap, projection, response))
+                    .ToArray(),
                 warningFlags = gapEvaluation.WarningFlags
                     .Distinct(StringComparer.Ordinal)
                     .Take(100)
@@ -107,9 +148,10 @@ public sealed class JdFitResultSerializer
             }
         };
 
-        return new JdFitScoreCalculation(
-            roundedPercent,
-            JsonSerializer.Serialize(persisted));
+        var json = JsonSerializer.Serialize(persisted);
+        return scoreResult.CompletionDisposition == MatchingCompletionDisposition.ScoredBillable
+            ? JdFitScoreCalculation.Scored(roundedPercent!.Value, json)
+            : JdFitScoreCalculation.Unscored(json);
     }
 
     private static object SerializeGroup(
@@ -121,7 +163,7 @@ public sealed class JdFitResultSerializer
         var group = groupScore.Group;
         var items = group.Items.Select((item, sourceOrder) =>
         {
-            var assessment = response.ItemAssessments[item.ItemId];
+            var isAssessed = response.ItemAssessments.TryGetValue(item.ItemId, out var assessment);
             return new
             {
                 itemId = item.ItemId,
@@ -129,15 +171,16 @@ public sealed class JdFitResultSerializer
                 detailVerbatim = item.DetailVerbatim,
                 rawMention = item.RawMention,
                 category = item.Category,
-                score = RoundUnit(assessment.Score),
-                handlerCode = assessment.HandlerCode,
-                reasoning = assessment.Reasoning,
-                evidence = assessment.Evidence.Select(evidence => new
+                assessmentStatus = isAssessed ? "assessed" : "unresolved",
+                score = isAssessed ? RoundUnit(assessment!.Score) : (decimal?)null,
+                handlerCode = isAssessed ? assessment!.HandlerCode : null,
+                reasoning = isAssessed ? assessment!.Reasoning : string.Empty,
+                evidence = (isAssessed ? assessment!.Evidence : Array.Empty<JdMatchingEvidence>()).Select(evidence => new
                 {
                     quotation = evidence.Quotation,
                     section = evidence.Section
                 }).ToArray(),
-                isCriticalGap = itemGapIds.Contains(item.ItemId),
+                isCriticalGap = isAssessed && itemGapIds.Contains(item.ItemId),
                 sourceOrder
             };
         }).ToArray();
@@ -161,8 +204,104 @@ public sealed class JdFitResultSerializer
         };
     }
 
-    private static decimal RoundUnit(decimal value) =>
-        Math.Round(Math.Clamp(value, 0m, 1m), 4, MidpointRounding.AwayFromZero);
+    private static object SerializeGap(
+        JdCriticalGap gap,
+        JdRequirementProjection projection,
+        JdStageTwoValidatedResponse response)
+    {
+        var group = projection.Groups.FirstOrDefault(candidate =>
+            string.Equals(candidate.GroupId, gap.GroupId, StringComparison.Ordinal));
+        var affectedIds = gap.AffectedItemIds.ToHashSet(StringComparer.Ordinal);
+        var affectedItems = group?.Items
+            .Where(item => affectedIds.Contains(item.ItemId))
+            .ToArray() ?? Array.Empty<ProjectedJdRequirementItem>();
+
+        var item = gap.ItemId is null
+            ? null
+            : group?.Items.FirstOrDefault(candidate =>
+                string.Equals(candidate.ItemId, gap.ItemId, StringComparison.Ordinal));
+        var requirement = item is not null
+            ? ItemLabel(item, group?.RequirementVerbatim)
+            : string.Join(" | ", affectedItems.Select(candidate => ItemLabel(candidate, group?.RequirementVerbatim)));
+        if (requirement.Length == 0)
+        {
+            requirement = Bound(group?.RequirementVerbatim, MaximumNarrativeLength);
+        }
+
+        var assessments = affectedItems
+            .Select(candidate => response.ItemAssessments.TryGetValue(candidate.ItemId, out var assessment)
+                ? (Item: candidate, Assessment: assessment)
+                : (Item: candidate, Assessment: (JdStageTwoItemAssessment?)null))
+            .Where(entry => entry.Assessment is not null)
+            .Select(entry => (entry.Item, Assessment: entry.Assessment!))
+            .ToArray();
+        var reasoning = item is not null
+            ? assessments.FirstOrDefault(entry => string.Equals(entry.Item.ItemId, item.ItemId, StringComparison.Ordinal)).Assessment?.Reasoning
+            : string.Join(" ", assessments
+                .Where(entry => !string.IsNullOrWhiteSpace(entry.Assessment.Reasoning))
+                .Select(entry => $"{ItemLabel(entry.Item, group?.RequirementVerbatim)}: {entry.Assessment.Reasoning.Trim()}"));
+        var evidence = assessments
+            .SelectMany(entry => entry.Assessment.Evidence)
+            .Where(entry => !string.IsNullOrWhiteSpace(entry.Quotation))
+            .DistinctBy(entry => (entry.Quotation, entry.Section))
+            .Take(50)
+            .Select(entry => new
+            {
+                quotation = Bound(entry.Quotation, MaximumNarrativeLength),
+                section = Bound(entry.Section, MaximumNarrativeLength)
+            })
+            .ToArray();
+        var categories = affectedItems
+            .Select(candidate => candidate.Category)
+            .Where(category => !string.IsNullOrWhiteSpace(category))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        return new
+        {
+            gapId = BuildGapId(gap),
+            code = gap.Code,
+            scope = gap.Scope,
+            groupId = gap.GroupId,
+            itemId = gap.ItemId,
+            sourceRequirementId = group?.SourceRequirementId,
+            sourceSection = group?.SourceSection,
+            category = item?.Category ?? (categories.Length == 1 ? categories[0] : null),
+            importance = group?.Importance,
+            @operator = gap.Operator,
+            requiredCount = gap.RequiredCount,
+            satisfiedCount = gap.SatisfiedCount,
+            affectedItemIds = gap.AffectedItemIds,
+            requirement = Bound(requirement, MaximumNarrativeLength),
+            requirementVerbatim = Bound(group?.RequirementVerbatim, MaximumNarrativeLength),
+            reasoning = Bound(reasoning, MaximumNarrativeLength),
+            evidence
+        };
+    }
+
+    private static string BuildGapId(JdCriticalGap gap) =>
+        string.Equals(gap.Scope, "item", StringComparison.Ordinal) && !string.IsNullOrWhiteSpace(gap.ItemId)
+            ? $"{gap.Code}:item:{gap.GroupId}:{gap.ItemId}"
+            : $"{gap.Code}:group:{gap.GroupId}:{string.Join(',', gap.AffectedItemIds)}";
+
+    private static string ItemLabel(ProjectedJdRequirementItem item, string? groupVerbatim)
+    {
+        if (!string.IsNullOrWhiteSpace(item.SkillName)) return Bound(item.SkillName, MaximumNarrativeLength);
+        if (!string.IsNullOrWhiteSpace(item.RawMention)) return Bound(item.RawMention, MaximumNarrativeLength);
+        return Bound(groupVerbatim, MaximumNarrativeLength);
+    }
+
+    private static decimal? RoundUnit(decimal? value) =>
+        value.HasValue
+            ? Math.Round(Math.Clamp(value.Value, 0m, 1m), 4, MidpointRounding.AwayFromZero)
+            : null;
+
+    private static string ToContractValue(MatchingCompletionDisposition disposition) => disposition switch
+    {
+        MatchingCompletionDisposition.ScoredBillable => "scored_billable",
+        MatchingCompletionDisposition.UnscoredRefundable => "unscored_refundable",
+        _ => throw new ArgumentOutOfRangeException(nameof(disposition), disposition, null)
+    };
 
     private static string Bound(string? value, int maximumLength)
     {

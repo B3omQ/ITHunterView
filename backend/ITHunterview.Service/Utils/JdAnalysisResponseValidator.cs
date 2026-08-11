@@ -164,7 +164,7 @@ namespace ITHunterview.Service.Utils
                     return result;
                 }
 
-                if (!root.TryGetProperty("schema_version", out var schemaProp) ||
+                if (!TryGetMechanicalProperty(root, "schema_version", out var schemaProp, out _) ||
                     schemaProp.ValueKind != JsonValueKind.String ||
                     (schemaProp.GetString() != "jd-analysis/v2" &&
                      schemaProp.GetString() != "jd-analysis/v3" &&
@@ -177,7 +177,7 @@ namespace ITHunterview.Service.Utils
                     return result;
                 }
 
-                if (!root.TryGetProperty("matching_metrics", out var metricsProp) ||
+                if (!TryGetMechanicalProperty(root, "matching_metrics", out var metricsProp, out _) ||
                     metricsProp.ValueKind != JsonValueKind.Object)
                 {
                     result.IsValid = false;
@@ -345,18 +345,17 @@ namespace ITHunterview.Service.Utils
 
             ReadV5StringArray(metrics, "job_titles_normalized", validated.JobTitlesNormalized, validated.Diagnostics);
             ReadV5StringArray(metrics, "domains", validated.Domains, validated.Diagnostics);
-            if (metrics.TryGetProperty("total_years_exp", out var yearsElement) &&
-                yearsElement.ValueKind == JsonValueKind.Number &&
-                yearsElement.TryGetInt32(out var years) && years >= 0)
+            if (TryReadV5NonNegativeInt(metrics, "total_years_exp", allowNull: false, out var yearsValue) &&
+                yearsValue.HasValue)
             {
-                validated.TotalYearsExp = years;
+                validated.TotalYearsExp = yearsValue.Value;
             }
             else
             {
                 AddDiagnostic(validated.Diagnostics, "INVALID_TOTAL_YEARS_EXP", "$.matching_metrics.total_years_exp");
             }
 
-            if (!metrics.TryGetProperty("requirement_groups", out var groupsElement) ||
+            if (!TryGetMechanicalProperty(metrics, "requirement_groups", out var groupsElement, out _) ||
                 groupsElement.ValueKind != JsonValueKind.Array)
             {
                 return Invalid(result, "MISSING_REQUIREMENT_GROUPS", "Missing required array 'requirement_groups'.");
@@ -371,7 +370,7 @@ namespace ITHunterview.Service.Utils
                 var path = $"$.matching_metrics.requirement_groups[{groupIndex}]";
                 var rawItemCount = 0;
                 if (groupElement.ValueKind == JsonValueKind.Object &&
-                    groupElement.TryGetProperty("items", out var rawItems) &&
+                    TryGetMechanicalProperty(groupElement, "items", out var rawItems, out _) &&
                     rawItems.ValueKind == JsonValueKind.Array)
                 {
                     rawItemCount = rawItems.GetArrayLength();
@@ -413,7 +412,7 @@ namespace ITHunterview.Service.Utils
                 groupIndex++;
             }
 
-            if (inputGroupCount > 0 && validated.RequirementGroups.Count == 0)
+            if (validated.RequirementGroups.Count == 0)
             {
                 return Invalid(result, "NO_USABLE_REQUIREMENT_GROUPS", "No structurally usable requirement group remains.");
             }
@@ -424,7 +423,9 @@ namespace ITHunterview.Service.Utils
             var acceptedItemCount = validated.RequirementGroups.Sum(group => group.Items.Count);
             var discardedGroupCount = Math.Max(0, inputGroupCount - acceptedGroupCount);
             var discardedItemCount = Math.Max(0, inputItemCount - acceptedItemCount);
-            var complete = validated.Diagnostics.Count == 0 && discardedGroupCount == 0 && discardedItemCount == 0;
+            var complete = discardedGroupCount == 0 &&
+                           discardedItemCount == 0 &&
+                           !validated.Diagnostics.Any(diagnostic => IsLossyV5Diagnostic(diagnostic.Code));
             validated.Coverage = new JdAnalysisCoverage(
                 inputGroupCount,
                 acceptedGroupCount,
@@ -451,16 +452,21 @@ namespace ITHunterview.Service.Utils
         {
             group = new ValidatedRequirementGroup();
             if (element.ValueKind != JsonValueKind.Object ||
-                !element.TryGetProperty("items", out var itemsElement) ||
+                !TryGetMechanicalProperty(element, "items", out var itemsElement, out _) ||
                 itemsElement.ValueKind != JsonValueKind.Array ||
                 itemsElement.GetArrayLength() == 0)
             {
                 return false;
             }
 
-            var operation = ReadString(element, "operator");
-            var importance = ReadString(element, "importance");
-            var requirementVerbatim = ReadString(element, "requirement_verbatim");
+            if (!TryReadMechanicalString(element, "operator", out var operation) ||
+                !TryReadMechanicalString(element, "importance", out var importance) ||
+                !TryReadMechanicalString(element, "requirement_verbatim", out var requirementVerbatim))
+            {
+                return false;
+            }
+            operation = operation.ToLowerInvariant();
+            importance = importance.ToLowerInvariant();
             if (!JdAnalysisEffectiveContract.Operators.Contains(operation) ||
                 !JdAnalysisEffectiveContract.Importances.Contains(importance) ||
                 string.IsNullOrWhiteSpace(requirementVerbatim))
@@ -468,21 +474,32 @@ namespace ITHunterview.Service.Utils
                 return false;
             }
 
-            var sourceRequirementId = ReadString(element, "source_requirement_id");
+            if (!TryReadMechanicalString(element, "source_requirement_id", out var sourceRequirementId))
+            {
+                return false;
+            }
             if (!IsProviderSourceRequirementId(sourceRequirementId))
             {
                 sourceRequirementId = $"req-recovered-{groupIndex + 1:000}";
                 AddDiagnostic(diagnostics, "SOURCE_REQUIREMENT_ID_RECOVERED", path + ".source_requirement_id");
             }
 
-            var intent = ReadString(element, "intent");
+            if (!TryReadMechanicalString(element, "intent", out var intent))
+            {
+                return false;
+            }
+            intent = intent.ToLowerInvariant();
             if (!JdAnalysisEffectiveContract.ProviderIntents.Contains(intent))
             {
                 intent = JdAnalysisEffectiveContract.UnspecifiedIntent;
                 AddDiagnostic(diagnostics, "INTENT_UNSPECIFIED", path + ".intent");
             }
 
-            var sourceSection = ReadString(element, "source_section");
+            if (!TryReadMechanicalString(element, "source_section", out var sourceSection))
+            {
+                return false;
+            }
+            sourceSection = sourceSection.ToLowerInvariant();
             if (!JdAnalysisEffectiveContract.SourceSections.Contains(sourceSection))
             {
                 sourceSection = JdAnalysisEffectiveContract.UnknownSourceSection;
@@ -490,6 +507,7 @@ namespace ITHunterview.Service.Utils
             }
 
             var parsedItems = new List<ValidatedRequirementItem>();
+            var hasInvalidItem = false;
             var itemIndex = 0;
             foreach (var itemElement in itemsElement.EnumerateArray())
             {
@@ -506,13 +524,14 @@ namespace ITHunterview.Service.Utils
                 }
                 else
                 {
+                    hasInvalidItem = true;
                     AddDiagnostic(diagnostics, "INVALID_REQUIREMENT_ITEM", path + $".items[{itemIndex}]");
                 }
 
                 itemIndex++;
             }
 
-            if (parsedItems.Count == 0)
+            if (hasInvalidItem || parsedItems.Count != itemsElement.GetArrayLength())
             {
                 return false;
             }
@@ -526,10 +545,10 @@ namespace ITHunterview.Service.Utils
             {
                 minSatisfied = 1;
             }
-            else if (!element.TryGetProperty("min_satisfied", out var minSatisfiedElement) ||
-                     minSatisfiedElement.ValueKind != JsonValueKind.Number ||
-                     !minSatisfiedElement.TryGetInt32(out minSatisfied) ||
-                     minSatisfied < 1 || minSatisfied > parsedItems.Count)
+            else if (!TryReadV5NonNegativeInt(element, "min_satisfied", allowNull: false, out var parsedMinSatisfied) ||
+                     !parsedMinSatisfied.HasValue ||
+                     (minSatisfied = parsedMinSatisfied.Value) < 1 ||
+                     minSatisfied > parsedItems.Count)
             {
                 return false;
             }
@@ -563,9 +582,13 @@ namespace ITHunterview.Service.Utils
                 return false;
             }
 
-            var category = ReadString(element, "category");
-            var skillName = ReadString(element, "skill_name");
-            var rawMention = ReadString(element, "raw_mention");
+            if (!TryReadMechanicalString(element, "category", out var category) ||
+                !TryReadMechanicalString(element, "skill_name", out var skillName) ||
+                !TryReadMechanicalString(element, "raw_mention", out var rawMention))
+            {
+                return false;
+            }
+            category = category.ToLowerInvariant();
             if (!JdAnalysisEffectiveContract.Categories.Contains(category) ||
                 string.IsNullOrWhiteSpace(skillName) ||
                 string.IsNullOrWhiteSpace(rawMention))
@@ -573,23 +596,22 @@ namespace ITHunterview.Service.Utils
                 return false;
             }
 
-            var minYearsValid = TryReadV5Year(element, "min_years", out var minYears);
-            var maxYearsValid = TryReadV5Year(element, "max_years", out var maxYears);
-            if (!minYearsValid)
+            if (!TryReadV5Year(element, "min_years", out var minYears))
             {
-                minYears = null;
-                AddDiagnostic(diagnostics, "INVALID_MIN_YEARS_REMOVED", path + ".min_years");
+                AddDiagnostic(diagnostics, "INVALID_MIN_YEARS", path + ".min_years");
+                return false;
             }
-            if (!maxYearsValid)
+
+            if (!TryReadV5Year(element, "max_years", out var maxYears))
             {
-                maxYears = null;
-                AddDiagnostic(diagnostics, "INVALID_MAX_YEARS_REMOVED", path + ".max_years");
+                AddDiagnostic(diagnostics, "INVALID_MAX_YEARS", path + ".max_years");
+                return false;
             }
+
             if (minYears.HasValue && maxYears.HasValue && minYears > maxYears)
             {
-                minYears = null;
-                maxYears = null;
-                AddDiagnostic(diagnostics, "REVERSED_YEAR_RANGE_REMOVED", path);
+                AddDiagnostic(diagnostics, "INVALID_YEAR_RANGE", path);
+                return false;
             }
 
             item = new ValidatedRequirementItem
@@ -609,22 +631,49 @@ namespace ITHunterview.Service.Utils
             return true;
         }
 
-        private static bool TryReadV5Year(JsonElement element, string property, out int? value)
+        private static bool TryReadV5Year(JsonElement element, string property, out int? value) =>
+            TryReadV5NonNegativeInt(element, property, allowNull: true, out value);
+
+        private static bool TryReadV5NonNegativeInt(
+            JsonElement element,
+            string property,
+            bool allowNull,
+            out int? value)
         {
             value = null;
-            if (!element.TryGetProperty(property, out var yearElement))
+            if (!TryGetMechanicalProperty(element, property, out var numberElement, out var collision))
             {
-                return true;
+                return !collision && allowNull;
             }
 
-            if (yearElement.ValueKind != JsonValueKind.Number ||
-                !yearElement.TryGetInt32(out var year) ||
-                year < 0)
+            if (numberElement.ValueKind == JsonValueKind.Null)
+            {
+                return allowNull;
+            }
+
+            int number;
+            if (numberElement.ValueKind == JsonValueKind.Number)
+            {
+                if (!numberElement.TryGetInt32(out number)) return false;
+            }
+            else if (numberElement.ValueKind == JsonValueKind.String)
+            {
+                var text = numberElement.GetString();
+                if (string.IsNullOrEmpty(text) ||
+                    text.Any(character => character is < '0' or > '9') ||
+                    !int.TryParse(text, System.Globalization.NumberStyles.None,
+                        System.Globalization.CultureInfo.InvariantCulture, out number))
+                {
+                    return false;
+                }
+            }
+            else
             {
                 return false;
             }
 
-            value = year;
+            if (number < 0) return false;
+            value = number;
             return true;
         }
 
@@ -634,7 +683,7 @@ namespace ITHunterview.Service.Utils
             List<string> destination,
             List<JdAnalysisDiagnostic> diagnostics)
         {
-            if (!metrics.TryGetProperty(property, out var values) || values.ValueKind != JsonValueKind.Array)
+            if (!TryGetMechanicalProperty(metrics, property, out var values, out _) || values.ValueKind != JsonValueKind.Array)
             {
                 AddDiagnostic(diagnostics, $"INVALID_{property.ToUpperInvariant()}", $"$.matching_metrics.{property}");
                 return;
@@ -954,6 +1003,64 @@ namespace ITHunterview.Service.Utils
             {
                 diagnostics.Add(new JdAnalysisDiagnostic(code, path));
             }
+        }
+
+        private static bool IsLossyV5Diagnostic(string code) => code is not
+            "SOURCE_REQUIREMENT_ID_RECOVERED";
+
+        private static bool TryReadMechanicalString(
+            JsonElement element,
+            string property,
+            out string value)
+        {
+            value = string.Empty;
+            if (!TryGetMechanicalProperty(element, property, out var propertyValue, out var collision))
+            {
+                return !collision;
+            }
+
+            if (propertyValue.ValueKind != JsonValueKind.String)
+            {
+                return false;
+            }
+
+            value = propertyValue.GetString()?.Trim() ?? string.Empty;
+            return true;
+        }
+
+        private static bool TryGetMechanicalProperty(
+            JsonElement element,
+            string property,
+            out JsonElement value,
+            out bool collision)
+        {
+            value = default;
+            collision = false;
+            if (element.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
+            var found = false;
+            foreach (var candidate in element.EnumerateObject())
+            {
+                if (!string.Equals(candidate.Name, property, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (found)
+                {
+                    collision = true;
+                    value = default;
+                    return false;
+                }
+
+                found = true;
+                value = candidate.Value;
+            }
+
+            return found;
         }
 
         private static bool ParseV3Groups(

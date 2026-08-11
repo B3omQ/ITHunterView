@@ -164,6 +164,7 @@ namespace ITHunterview.Service.Tests.UseCase
             result.ReportKind.Should().Be("legacy_summary");
             result.MatchMethod.Should().Be("legacy_unknown");
             result.ScorePercent.Should().Be(81.8m);
+            result.ScoreAvailable.Should().BeTrue();
         }
 
         [Fact]
@@ -192,8 +193,9 @@ namespace ITHunterview.Service.Tests.UseCase
             result.Should().NotBeNull();
             result!.MatchDetails.Should().BeNull();
             result.Report.Should().NotBeNull();
-            result.Report!.ReportContract.Should().Be("match-report/v2");
+            result.Report!.ReportContract.Should().Be("match-report/v3");
             result.ScorePercent.Should().Be(91m);
+            result.ScoreAvailable.Should().BeTrue();
         }
 
         [Fact]
@@ -220,8 +222,45 @@ namespace ITHunterview.Service.Tests.UseCase
 
             history.Items.Should().ContainSingle();
             history.Items[0].ScorePercent.Should().Be(81.8m);
+            history.Items[0].ScoreAvailable.Should().BeTrue();
             history.Items[0].ReportKind.Should().Be("legacy_summary");
             history.Items[0].MatchMethod.Should().Be("hardcode");
+        }
+
+        [Fact]
+        public async Task GetMatchingResultAndHistory_UnscoredV5_KeepCompletedResultWithoutInventingZero()
+        {
+            var options = new DbContextOptionsBuilder<ITHunterviewContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+            await using var context = new MatchingTestContext(options);
+            var matchId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            context.CvJobMatchScores.Add(new CvJobMatchScores
+            {
+                Id = matchId,
+                UserId = userId,
+                Status = "Completed",
+                MatchType = "AI",
+                MatchScore = null,
+                MatchDetails = "{\"contract\":\"jd-matching/v5\",\"scoreAvailable\":false,\"completionDisposition\":\"unscored_refundable\",\"jdFit\":{\"scorePercent\":null,\"resultCode\":\"INSUFFICIENT_DATA\",\"requirementGroups\":[],\"criticalGaps\":[]}}",
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var sut = CreateDatabaseUseCase(context);
+            var result = await sut.GetMatchingResultAsync(matchId, userId);
+            var history = await sut.GetMatchHistoryAsync(userId, 1, 10);
+
+            result.Should().NotBeNull();
+            result!.Status.Should().Be("Completed");
+            result.ScorePercent.Should().BeNull();
+            result.ScoreAvailable.Should().BeFalse();
+            result.MatchDetails.Should().BeNull();
+            result.CanRetry.Should().BeFalse();
+            history.Items.Should().ContainSingle();
+            history.Items[0].ScorePercent.Should().BeNull();
+            history.Items[0].ScoreAvailable.Should().BeFalse();
         }
 
         [Fact]
