@@ -51,6 +51,26 @@ public sealed record AiGenerationOptions(
         ThinkingBudget: 3000,
         ThinkingLevel: "medium");
 
+    public static readonly AiGenerationOptions JdAnalysisJsonExtraction = new(
+        Temperature: 0m,
+        TopP: 0.1m,
+        MaxOutputTokens: 16384,
+        ResponseMimeType: "application/json",
+        ProfileId: "jd-analysis-json/v2",
+        MaxTransportAttempts: 1,
+        ThinkingBudget: 3000,
+        ThinkingLevel: "medium");
+
+    public static readonly AiGenerationOptions JdAnalysisJsonRetry = new(
+        Temperature: 0m,
+        TopP: 0.1m,
+        MaxOutputTokens: 20480,
+        ResponseMimeType: "application/json",
+        ProfileId: "jd-analysis-json-retry/v2",
+        MaxTransportAttempts: 1,
+        ThinkingBudget: 3000,
+        ThinkingLevel: "medium");
+
     public static readonly AiGenerationOptions JdMatchingJsonRetry = new(
         Temperature: 0.2m,
         TopP: 0.1m,

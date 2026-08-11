@@ -145,7 +145,7 @@ public sealed class CvJdMatchingJobRepository : ICvJdMatchingJobRepository
         Guid jobId,
         string workerId,
         Guid leaseToken,
-        decimal score,
+        decimal? score,
         string matchDetails,
         string? sfiaExtractResult,
         CvAnalysisQuality? cvAnalysisQuality,
@@ -186,6 +186,94 @@ public sealed class CvJdMatchingJobRepository : ICvJdMatchingJobRepository
         var cvAnalysisQualityValue = cvAnalysisQuality?.ToString();
         var jdAnalysisQualityValue = jdAnalysisQuality?.ToString();
         var affected = await _context.Database.ExecuteSqlInterpolatedAsync($"UPDATE cv_job_match_scores SET status = 'Completed', match_score = {score}, match_details = {matchDetails}, sfia_extract_result = {sfiaExtractResult}, cv_analysis_quality = {cvAnalysisQualityValue}, cv_analysis_coverage_json = CAST({cvAnalysisCoverageJson} AS jsonb), cv_analysis_diagnostics_json = CAST({cvAnalysisDiagnosticsJson} AS jsonb), jd_analysis_quality = {jdAnalysisQualityValue}, jd_analysis_coverage_json = CAST({jdAnalysisCoverageJson} AS jsonb), jd_analysis_diagnostics_json = CAST({jdAnalysisDiagnosticsJson} AS jsonb), completed_at = {utcNow}, updated_at = {utcNow}, error_code = NULL, error_message = NULL, lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL, last_heartbeat_at = NULL WHERE id = {jobId} AND match_type = 'AI' AND status = 'Processing' AND lease_owner = {workerId} AND lease_token = {leaseToken}", cancellationToken);
+        return affected == 1;
+    }
+
+    public async Task<bool> StageTerminalResultAsync(
+        Guid jobId,
+        string workerId,
+        Guid leaseToken,
+        decimal? score,
+        string matchDetails,
+        string? sfiaExtractResult,
+        CvAnalysisQuality? cvAnalysisQuality,
+        string? cvAnalysisCoverageJson,
+        string? cvAnalysisDiagnosticsJson,
+        JdAnalysisQuality? jdAnalysisQuality,
+        string? jdAnalysisCoverageJson,
+        string? jdAnalysisDiagnosticsJson,
+        DateTime utcNow,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(matchDetails);
+        if (IsInMemoryProvider())
+        {
+            var job = await GetClaimedJobAsync(jobId, workerId, leaseToken, cancellationToken);
+            if (job == null) return false;
+            job.MatchScore = score;
+            job.MatchDetails = matchDetails;
+            job.SfiaExtractResult = sfiaExtractResult;
+            job.CvAnalysisQuality = cvAnalysisQuality;
+            job.CvAnalysisCoverageJson = cvAnalysisCoverageJson;
+            job.CvAnalysisDiagnosticsJson = cvAnalysisDiagnosticsJson;
+            job.JdAnalysisQuality = jdAnalysisQuality;
+            job.JdAnalysisCoverageJson = jdAnalysisCoverageJson;
+            job.JdAnalysisDiagnosticsJson = jdAnalysisDiagnosticsJson;
+            job.ErrorCode = ICvJdMatchingJobRepository.ResultFinalizationPending;
+            job.ErrorMessage = ICvJdMatchingJobRepository.ResultFinalizationPending;
+            job.UpdatedAt = utcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+
+        var cvQuality = cvAnalysisQuality?.ToString();
+        var jdQuality = jdAnalysisQuality?.ToString();
+        var marker = ICvJdMatchingJobRepository.ResultFinalizationPending;
+        var affected = await _context.Database.ExecuteSqlInterpolatedAsync($"UPDATE cv_job_match_scores SET match_score = {score}, match_details = {matchDetails}, sfia_extract_result = {sfiaExtractResult}, cv_analysis_quality = {cvQuality}, cv_analysis_coverage_json = CAST({cvAnalysisCoverageJson} AS jsonb), cv_analysis_diagnostics_json = CAST({cvAnalysisDiagnosticsJson} AS jsonb), jd_analysis_quality = {jdQuality}, jd_analysis_coverage_json = CAST({jdAnalysisCoverageJson} AS jsonb), jd_analysis_diagnostics_json = CAST({jdAnalysisDiagnosticsJson} AS jsonb), error_code = {marker}, error_message = {marker}, updated_at = {utcNow} WHERE id = {jobId} AND match_type = 'AI' AND status = 'Processing' AND lease_owner = {workerId} AND lease_token = {leaseToken}", cancellationToken);
+        return affected == 1;
+    }
+
+    public async Task<bool> ScheduleFinalizationRetryAsync(
+        Guid jobId,
+        string workerId,
+        Guid leaseToken,
+        DateTime nextAttemptAt,
+        DateTime utcNow,
+        CancellationToken cancellationToken = default)
+    {
+        if (IsInMemoryProvider())
+        {
+            var job = await GetClaimedJobAsync(jobId, workerId, leaseToken, cancellationToken);
+            if (job == null) return false;
+            ApplyFinalizationRetry(job, nextAttemptAt, utcNow);
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+
+        var marker = ICvJdMatchingJobRepository.ResultFinalizationPending;
+        var affected = await _context.Database.ExecuteSqlInterpolatedAsync($"UPDATE cv_job_match_scores SET status = 'RetryScheduled', next_attempt_at = {nextAttemptAt}, updated_at = {utcNow}, error_code = {marker}, error_message = {marker}, lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL, last_heartbeat_at = NULL WHERE id = {jobId} AND match_type = 'AI' AND status = 'Processing' AND lease_owner = {workerId} AND lease_token = {leaseToken} AND error_code = {marker}", cancellationToken);
+        return affected == 1;
+    }
+
+    public async Task<bool> ScheduleRecoveredFinalizationRetryAsync(
+        Guid jobId,
+        DateTime nextAttemptAt,
+        DateTime utcNow,
+        CancellationToken cancellationToken = default)
+    {
+        var marker = ICvJdMatchingJobRepository.ResultFinalizationPending;
+        if (IsInMemoryProvider())
+        {
+            var job = await _context.CvJobMatchScores.SingleOrDefaultAsync(
+                x => x.Id == jobId && x.MatchType == "AI" && x.Status == "Processing" && x.ErrorCode == marker,
+                cancellationToken);
+            if (job == null) return false;
+            ApplyFinalizationRetry(job, nextAttemptAt, utcNow);
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+
+        var affected = await _context.Database.ExecuteSqlInterpolatedAsync($"UPDATE cv_job_match_scores SET status = 'RetryScheduled', next_attempt_at = {nextAttemptAt}, updated_at = {utcNow}, error_code = {marker}, error_message = {marker}, lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL, last_heartbeat_at = NULL WHERE id = {jobId} AND match_type = 'AI' AND status = 'Processing' AND error_code = {marker} AND (lease_expires_at IS NULL OR lease_expires_at <= {utcNow})", cancellationToken);
         return affected == 1;
     }
 
@@ -305,6 +393,22 @@ public sealed class CvJdMatchingJobRepository : ICvJdMatchingJobRepository
         job.CvAnalysisQuality = null;
         job.CvAnalysisCoverageJson = null;
         job.CvAnalysisDiagnosticsJson = null;
+        job.LeaseOwner = null;
+        job.LeaseToken = null;
+        job.LeaseExpiresAt = null;
+        job.LastHeartbeatAt = null;
+    }
+
+    private static void ApplyFinalizationRetry(
+        CvJobMatchScores job,
+        DateTime nextAttemptAt,
+        DateTime utcNow)
+    {
+        job.Status = "RetryScheduled";
+        job.NextAttemptAt = nextAttemptAt;
+        job.UpdatedAt = utcNow;
+        job.ErrorCode = ICvJdMatchingJobRepository.ResultFinalizationPending;
+        job.ErrorMessage = ICvJdMatchingJobRepository.ResultFinalizationPending;
         job.LeaseOwner = null;
         job.LeaseToken = null;
         job.LeaseExpiresAt = null;

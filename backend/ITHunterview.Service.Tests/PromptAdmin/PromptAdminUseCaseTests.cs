@@ -191,7 +191,7 @@ namespace ITHunterview.Service.Tests.PromptAdmin
             {
                 VersionTag = "v2.0",
                 Content = "Content without required placeholders",
-                ModelConfig = "{}"
+                ModelConfig = null
             };
 
             // Act
@@ -199,7 +199,7 @@ namespace ITHunterview.Service.Tests.PromptAdmin
 
             // Assert
             await act.Should().ThrowAsync<ArgumentException>()
-                .WithMessage("*Missing required placeholders in prompt content*");
+                .WithMessage("*must contain exactly one operational input slot for each placeholder*");
         }
 
         [Fact]

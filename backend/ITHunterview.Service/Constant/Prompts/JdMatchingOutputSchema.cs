@@ -24,12 +24,7 @@ public static class JdMatchingOutputSchema
     private const string LegacyFormatFooter =
         "Chỉ trả về JSON hợp lệ. Bắt đầu bằng { và kết thúc bằng }.";
 
-    /// <summary>
-    /// This JSON example is copied from the reviewed active JD_MATCHING_PROMPT
-    /// v2.0. Field names, nesting, enum text, and score representation are
-    /// intentionally unchanged.
-    /// </summary>
-    public const string LockedBlock = """
+    private static readonly string LegacyV2LockedBlock = NormalizeLineEndings("""
         --- BEGIN LOCKED JD MATCHING OUTPUT SCHEMA ---
         This output format is managed by the application. Return exactly one JSON object without Markdown, comments, headings, or surrounding text.
 
@@ -74,12 +69,83 @@ public static class JdMatchingOutputSchema
 
         Chỉ trả về JSON hợp lệ. Bắt đầu bằng { và kết thúc bằng }.
         --- END LOCKED JD MATCHING OUTPUT SCHEMA ---
+        """);
+
+    private const string LegacyV2SchemaBlock = """
+        SCHEMA OUTPUT BẮT BUỘC (Chỉ trả về JSON này, không có markdown block hay text thừa):
+        {
+          "scores": [
+            {
+              "reqId": "string (giữ nguyên reqId từ input)",
+              "handlerCode": "string (Mã code, vd: H_TECH_03...)",
+              "handlerScore": 0.0 | 0.3 | 0.5 | 0.7 | 1.0,
+              "reasoning": "string (Ngắn gọn tối đa 15 từ)",
+              "confidence": "high" | "medium" | "low",
+              "flag": "CRITICAL_GAP" | null
+            }
+          ],
+          "criticalGaps": [
+            {
+              "requirement": "string",
+              "gapDescription": "string",
+              "severity": "high" | "medium",
+              "suggestion": "string"
+            }
+          ],
+          "penalties": [
+            {
+              "code": "PNL_TC1_01",
+              "triggered": true/false,
+              "evidence": "string"
+            }
+          ],
+          "narrative": "string (Tóm tắt tổng quan mức độ phù hợp CV-JD, khoảng 3-4 câu)",
+          "improvements": [
+            {
+              "priority": "high" | "medium" | "low",
+              "category": "tech_skill" | "experience" | "education" | "soft_skill",
+              "issue": "string",
+              "action": "string",
+              "example": { "before": "string", "after": "string" }
+            }
+          ]
+        }
         """;
+
+    /// <summary>
+    /// Application-owned Stage 2 provider contract. Prompt Management stores
+    /// semantic instructions only; this LF-normalized block is appended once.
+    /// </summary>
+    public static readonly string LockedBlock = NormalizeLineEndings("""
+        --- BEGIN LOCKED JD MATCHING OUTPUT SCHEMA ---
+        This output format is managed by the application. Return exactly one JSON object without Markdown, comments, headings, or surrounding text.
+
+        {
+          "schemaVersion": "jd-stage2/v2",
+          "scores": [
+            {
+              "reqId": "exact input item ID",
+              "handlerCode": "approved code for the input category",
+              "reasoning": "detailed user-safe explanation",
+              "evidence": [
+                {
+                  "quotation": "bounded CV quotation",
+                  "section": "bounded CV section identifier"
+                }
+              ]
+            }
+          ],
+          "narrative": "overall summary"
+        }
+
+        Only schemaVersion, scores, reqId, and handlerCode are required for scoring. Optional reasoning, evidence, and narrative must be preserved when available but must not change the selected score.
+        --- END LOCKED JD MATCHING OUTPUT SCHEMA ---
+        """);
 
     public static string Compose(string managedContent)
     {
         var normalized = NormalizeManagedContent(managedContent);
-        return $"{normalized.SemanticContent.Trim()}\n\n{LockedBlock.Trim()}";
+        return $"{NormalizeLineEndings(normalized.SemanticContent).Trim()}\n\n{LockedBlock.Trim()}";
     }
 
     public static JdMatchingPromptNormalization NormalizeManagedContent(string content)
@@ -89,7 +155,7 @@ public static class JdMatchingOutputSchema
             throw new ArgumentException("JD matching prompt content is required.", nameof(content));
         }
 
-        var normalized = content.Trim();
+        var normalized = NormalizeLineEndings(content).Trim();
         var removedKnownSchema = false;
         var removedKnownFooter = false;
 
@@ -103,7 +169,8 @@ public static class JdMatchingOutputSchema
             }
 
             var lockedBlock = normalized[lockedStart..(lockedEnd + EndMarker.Length)].Trim();
-            if (!SameBlock(lockedBlock, LockedBlock))
+            if (!SameBlock(lockedBlock, LockedBlock) &&
+                !SameBlock(lockedBlock, LegacyV2LockedBlock))
             {
                 throw new ArgumentException("MATCHING_PROMPT_SCHEMA_MUTATION");
             }
@@ -124,7 +191,7 @@ public static class JdMatchingOutputSchema
             }
 
             var legacySchemaBlock = normalized[legacyStart..legacyEnd].Trim();
-            if (!SameBlock(legacySchemaBlock, KnownLegacySchemaBlock))
+            if (!SameBlock(legacySchemaBlock, LegacyV2SchemaBlock))
             {
                 throw new ArgumentException("MATCHING_PROMPT_SCHEMA_MUTATION");
             }
@@ -157,30 +224,23 @@ public static class JdMatchingOutputSchema
         return new JdMatchingPromptNormalization(normalized, removedKnownSchema, removedKnownFooter);
     }
 
-    private static string KnownLegacySchemaBlock => ExtractKnownLegacySchemaBlock();
-
-    private static string ExtractKnownLegacySchemaBlock()
-    {
-        var start = LockedBlock.IndexOf(LegacySchemaStartMarker, StringComparison.Ordinal);
-        var end = LockedBlock.IndexOf(LegacyFormatFooter, start, StringComparison.Ordinal);
-        if (start < 0 || end <= start)
-        {
-            throw new InvalidOperationException("The locked matching schema is incomplete.");
-        }
-
-        return LockedBlock[start..end].Trim();
-    }
-
     private static bool SameBlock(string left, string right) =>
         string.Equals(NormalizeForComparison(left), NormalizeForComparison(right), StringComparison.Ordinal);
 
     private static string NormalizeForComparison(string value) =>
-        value.Replace("\r\n", "\n", StringComparison.Ordinal).Trim();
+        NormalizeLineEndings(value).Trim();
 
     private static bool ContainsUnmarkedSchemaSignature(string value) =>
         value.Contains("\"scores\"", StringComparison.Ordinal) &&
         value.Contains("\"reqId\"", StringComparison.Ordinal) &&
-        value.Contains("\"handlerScore\"", StringComparison.Ordinal);
+        (value.Contains("\"handlerScore\"", StringComparison.Ordinal) ||
+         (value.Contains("\"schemaVersion\"", StringComparison.Ordinal) &&
+          value.Contains("\"jd-stage2/v2\"", StringComparison.Ordinal) &&
+          value.Contains("\"handlerCode\"", StringComparison.Ordinal)));
+
+    private static string NormalizeLineEndings(string value) =>
+        value.Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
 
     private static bool HasSingleOrderedPair(
         string content,

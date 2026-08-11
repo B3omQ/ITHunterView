@@ -225,7 +225,10 @@ namespace ITHunterview.Service.Service.AiProviders
 
             if (response == null || !response.IsSuccessStatusCode)
             {
-                throw new HttpRequestException($"Gemini API call failed after {maxRetries} attempts. Status: {response?.StatusCode}; ErrorBodyLength: {errorContent.Length}");
+                throw new HttpRequestException(
+                    $"Gemini API call failed after {maxRetries} attempts. Status: {response?.StatusCode}; ErrorBodyLength: {errorContent.Length}",
+                    inner: null,
+                    response?.StatusCode);
             }
 
             var responseContent = await BoundedHttpContentReader.ReadAsStringAsync(

@@ -31,7 +31,8 @@ public sealed record MatchingJdSnapshot(
     string? SourceAnalysisHash = null,
     int? SourceAnalysisRevision = null,
     int? SourceEffectiveAnalysisRevision = null,
-    string? SourceParseStatus = null);
+    string? SourceParseStatus = null,
+    string? AnalysisInputJson = null);
 
 public sealed record MatchingSnapshotResult(
     MatchingInputSnapshotV1 Snapshot,

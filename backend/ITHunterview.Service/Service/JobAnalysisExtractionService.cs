@@ -1,15 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Service.Constant.Prompts;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.JobAnalysis;
+using ITHunterview.Service.Exceptions;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Utils;
 using Microsoft.Extensions.Logging;
@@ -34,9 +37,7 @@ namespace ITHunterview.Service.Service
     {
         Task<JobAnalysisExtractionResult> ExtractAsync(JobAnalysisInputSnapshot input, string systemPrompt, string userPromptTemplate, CancellationToken ct = default);
         Task<JobAnalysisExtractionResult> ExtractWithActivePromptsAsync(JobAnalysisInputSnapshot input, CancellationToken ct = default);
-        string SerializeEffectiveAnalysis(
-            ValidatedJobAnalysis analysis,
-            IReadOnlyCollection<string>? acceptedNormalizedSkillNames = null);
+        string SerializeEffectiveAnalysis(ValidatedJobAnalysis analysis);
     }
 
     public sealed class JobAnalysisExtractionService : IJobAnalysisExtractionService
@@ -79,14 +80,17 @@ namespace ITHunterview.Service.Service
             for (var attempt = 1; attempt <= 2; attempt++)
             {
                 string response;
+                var generationOptions = attempt == 1
+                    ? AiGenerationOptions.JdAnalysisJsonExtraction
+                    : AiGenerationOptions.JdAnalysisJsonRetry;
                 try
                 {
                     response = await _aiService.GenerateTextAsync(
                         userPrompt,
                         composedSystemPrompt,
                         provider,
-                        AiGenerationOptions.StrictJsonExtraction,
-                        ct,
+                        generationOptions,
+                        ct ,
                         featureCode: "JD_EXTRACTION") ?? string.Empty;
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -95,18 +99,21 @@ namespace ITHunterview.Service.Service
                 }
                 catch (Exception exception)
                 {
+                    var retryable = IsRetryableProviderFailure(exception);
+                    var failureCode = ClassifyProviderFailure(exception);
                     _logger.LogWarning(
-                        "JD analysis provider attempt failed. Provider={Provider}; Attempt={Attempt}; ErrorType={ErrorType}; ErrorCode={ErrorCode}",
+                        "JD analysis provider attempt failed. Provider={Provider}; Attempt={Attempt}; ErrorType={ErrorType}; ErrorCode={ErrorCode}; Retryable={Retryable}",
                         provider,
                         attempt,
                         exception.GetType().Name,
-                        "PROVIDER_REQUEST_FAILED");
+                        failureCode,
+                        retryable);
                     if (best is not null && best.Quality != JdAnalysisQuality.INVALID)
                     {
                         return CopyWithAttemptCount(best, attempt);
                     }
 
-                    if (attempt < 2)
+                    if (attempt < 2 && retryable)
                     {
                         continue;
                     }
@@ -115,8 +122,8 @@ namespace ITHunterview.Service.Service
                         provider,
                         input,
                         attempt,
-                        "PROVIDER_REQUEST_FAILED",
-                        new[] { new JdAnalysisDiagnostic("PROVIDER_REQUEST_FAILED", "$") });
+                        failureCode,
+                        new[] { new JdAnalysisDiagnostic(failureCode, "$") });
                 }
 
                 var rawCandidate = CleanJsonFence(response);
@@ -253,10 +260,39 @@ namespace ITHunterview.Service.Service
                 {
                     return candidate.Coverage.AcceptedItemCount > current.Coverage.AcceptedItemCount;
                 }
+
+                var candidateDiscarded = candidate.Coverage.DiscardedGroupCount + candidate.Coverage.DiscardedItemCount;
+                var currentDiscarded = current.Coverage.DiscardedGroupCount + current.Coverage.DiscardedItemCount;
+                if (candidateDiscarded != currentDiscarded)
+                {
+                    return candidateDiscarded < currentDiscarded;
+                }
             }
 
             return candidate.Diagnostics.Count < current.Diagnostics.Count;
         }
+
+        private static bool IsRetryableProviderFailure(Exception exception) => exception switch
+        {
+            AiProviderOutputTruncatedException => true,
+            TimeoutException => true,
+            OperationCanceledException => true,
+            HttpRequestException { StatusCode: null } => true,
+            HttpRequestException { StatusCode: HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests } => true,
+            HttpRequestException { StatusCode: >= HttpStatusCode.InternalServerError } => true,
+            _ => false
+        };
+
+        private static string ClassifyProviderFailure(Exception exception) => exception switch
+        {
+            AiProviderOutputTruncatedException => "AI_OUTPUT_TRUNCATED",
+            OperationCanceledException => "AI_PROVIDER_TIMEOUT",
+            TimeoutException => "AI_PROVIDER_TIMEOUT",
+            HttpRequestException { StatusCode: HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden } => "AI_PROVIDER_AUTHENTICATION_FAILED",
+            InvalidOperationException => "AI_PROVIDER_CONFIGURATION_INVALID",
+            HttpRequestException => "AI_PROVIDER_REQUEST_FAILED",
+            _ => "PROVIDER_REQUEST_FAILED"
+        };
 
         private static int QualityRank(JdAnalysisQuality quality) => quality switch
         {
@@ -319,29 +355,75 @@ namespace ITHunterview.Service.Service
         private static string HashForLog(string value) =>
             Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value ?? string.Empty)))[..16].ToLowerInvariant();
 
-        public string SerializeEffectiveAnalysis(
-            ValidatedJobAnalysis analysis,
-            IReadOnlyCollection<string>? acceptedNormalizedSkillNames = null)
+        public string SerializeEffectiveAnalysis(ValidatedJobAnalysis analysis)
         {
-            // requirements_list remains the full, AI-validated matching contract.
-            // skills_normalized is deliberately narrower: it contains only skills that
-            // were resolved to the active master-skill dictionary and can therefore
-            // safely drive tags, filters, and skill-oriented matching.
-            var acceptedSkillNames = acceptedNormalizedSkillNames == null
-                ? null
-                : new HashSet<string>(acceptedNormalizedSkillNames, StringComparer.OrdinalIgnoreCase);
+            ArgumentNullException.ThrowIfNull(analysis);
 
-            var effectiveSkills = acceptedSkillNames == null
-                ? analysis.SkillsNormalized
-                : analysis.SkillsNormalized
-                    .Where(s => acceptedSkillNames.Contains(s.Name))
-                    .ToList();
+            var jobTitles = ExactDistinct(analysis.JobTitlesNormalized);
+            var domains = ExactDistinct(analysis.Domains);
+            var skillNames = ExactDistinct(
+                analysis.RequirementGroups
+                    .SelectMany(group => group.Items)
+                    .Where(item => item.Category == "tech_skill")
+                    .Select(item => item.SkillName));
 
-            return JsonSerializer.Serialize(new
+            var groups = analysis.RequirementGroups.Select((group, groupIndex) =>
             {
-                // Provider v4 is intentionally compact. Projector, hardcode and
-                // Stage 2 consume the stable expanded v3 shape.
-                schema_version = JdAnalysisPromptContract.ContractV3,
+                var groupId = $"grp-{groupIndex + 1:000}";
+                var firstItem = group.Items.FirstOrDefault();
+                var sourceRequirementId = string.IsNullOrWhiteSpace(group.SourceRequirementId)
+                    ? $"req-recovered-{groupIndex + 1:000}"
+                    : group.SourceRequirementId;
+                var intent = string.IsNullOrWhiteSpace(group.Intent)
+                    ? JdAnalysisEffectiveContract.UnspecifiedIntent
+                    : group.Intent;
+                var sourceSection = !string.IsNullOrWhiteSpace(group.SourceSection)
+                    ? group.SourceSection
+                    : !string.IsNullOrWhiteSpace(firstItem?.SourceSection)
+                        ? firstItem.SourceSection
+                        : JdAnalysisEffectiveContract.UnknownSourceSection;
+                var requirementVerbatim = !string.IsNullOrWhiteSpace(group.RequirementVerbatim)
+                    ? group.RequirementVerbatim
+                    : firstItem is null
+                        ? string.Empty
+                        : !string.IsNullOrWhiteSpace(firstItem.DetailVerbatim)
+                            ? firstItem.DetailVerbatim
+                            : !string.IsNullOrWhiteSpace(firstItem.Evidence)
+                                ? firstItem.Evidence
+                                : firstItem.Evidences.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))
+                                  ?? firstItem.RawMention;
+                var minSatisfied = group.Operator switch
+                {
+                    "all_of" => group.Items.Count,
+                    "one_of" => 1,
+                    _ => group.MinSatisfied
+                };
+
+                return new
+                {
+                    group_id = groupId,
+                    source_requirement_id = sourceRequirementId,
+                    intent,
+                    @operator = group.Operator,
+                    min_satisfied = minSatisfied,
+                    importance = group.Importance,
+                    source_section = sourceSection,
+                    requirement_verbatim = requirementVerbatim,
+                    items = group.Items.Select((item, itemIndex) => new
+                    {
+                        item_id = $"{groupId}:item-{itemIndex + 1:000}",
+                        category = item.Category,
+                        skill_name = item.SkillName,
+                        raw_mention = item.RawMention,
+                        min_years = item.MinYears,
+                        max_years = item.MaxYears
+                    }).ToList()
+                };
+            }).ToList();
+
+            var payload = new
+            {
+                schema_version = JdAnalysisEffectiveContract.SchemaVersion,
                 analysis_quality = analysis.Quality.ToString(),
                 analysis_coverage = new
                 {
@@ -351,62 +433,41 @@ namespace ITHunterview.Service.Service
                     input_item_count = analysis.Coverage.InputItemCount,
                     accepted_item_count = analysis.Coverage.AcceptedItemCount,
                     discarded_item_count = analysis.Coverage.DiscardedItemCount,
-                    requirement_set_complete = analysis.Coverage.RequirementSetComplete
+                    was_truncated = analysis.Diagnostics.Any(diagnostic => diagnostic.Code == "OUTPUT_TRUNCATED")
                 },
                 analysis_diagnostics = analysis.Diagnostics.Take(100).Select(diagnostic => new
                 {
                     code = diagnostic.Code,
                     json_path = diagnostic.JsonPath
-                }),
+                }).ToList(),
                 matching_metrics = new
                 {
-                    job_titles_normalized = analysis.JobTitlesNormalized,
-                    skills_normalized = effectiveSkills.ConvertAll(s => new
-                    {
-                        name = s.Name,
-                        category = s.Category,
-                        importance = s.Importance,
-                        raw_mention = s.RawMention,
-                        source_section = s.SourceSection,
-                        evidence = s.Evidence,
-                        confidence = s.Confidence
-                    }),
+                    job_titles_normalized = jobTitles,
+                    skills_normalized = skillNames,
                     total_years_exp = analysis.TotalYearsExp,
-                    domains = analysis.Domains,
-                    requirements_list = analysis.RequirementsList.ConvertAll(r => new
-                    {
-                        category = r.Category,
-                        importance = r.Importance,
-                        skill_name = r.SkillName,
-                        detail_verbatim = r.DetailVerbatim,
-                        raw_mention = r.RawMention,
-                        source_section = r.SourceSection,
-                        evidence = r.Evidence,
-                        confidence = r.Confidence
-                    }),
-                    requirement_groups = analysis.RequirementGroups.ConvertAll(group => new
-                    {
-                        group_id = group.GroupId,
-                        @operator = group.Operator,
-                        min_satisfied = group.MinSatisfied,
-                        importance = group.Importance,
-                        source_section = group.SourceSection,
-                        requirement_verbatim = group.RequirementVerbatim,
-                        items = group.Items.ConvertAll(item => new
-                        {
-                            category = item.Category,
-                            skill_name = item.SkillName,
-                            detail_verbatim = item.DetailVerbatim,
-                            raw_mention = item.RawMention,
-                            source_section = item.SourceSection,
-                            evidences = item.Evidences,
-                            min_years = item.MinYears,
-                            max_years = item.MaxYears,
-                            confidence = item.Confidence
-                        })
-                    })
+                    domains,
+                    requirement_groups = groups
                 }
+            };
+
+            return JsonSerializer.Serialize(payload, new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
             });
+        }
+
+        private static List<string> ExactDistinct(IEnumerable<string> values)
+        {
+            var result = new List<string>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var value in values)
+            {
+                if (!string.IsNullOrWhiteSpace(value) && seen.Add(value))
+                {
+                    result.Add(value);
+                }
+            }
+            return result;
         }
 
         private static string CleanJsonFence(string input)

@@ -1,3 +1,4 @@
+using System.Net;
 using FluentAssertions;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Cv.Matching;
@@ -95,6 +96,33 @@ public sealed class MatchingFailureClassifierTests
 
         result.ErrorCode.Should().Be("MATCHING_TECHNICAL_ERROR");
         result.Retryable.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public void Classify_ProviderAuthenticationFailure_IsNonRetryableConfigurationFailure(
+        HttpStatusCode statusCode)
+    {
+        var exception = new HttpRequestException(
+            "Provider authentication failed.",
+            inner: null,
+            statusCode);
+
+        var result = MatchingFailureClassifier.Classify(exception);
+
+        result.ErrorCode.Should().Be("MATCHING_CONFIGURATION_INVALID");
+        result.Retryable.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Classify_MissingProviderApiKey_IsNonRetryableConfigurationFailure()
+    {
+        var result = MatchingFailureClassifier.Classify(
+            new InvalidOperationException("Gemini API Key is not configured in DB or appsettings."));
+
+        result.ErrorCode.Should().Be("MATCHING_CONFIGURATION_INVALID");
+        result.Retryable.Should().BeFalse();
     }
 
     public static TheoryData<Exception> TransientProviderFailures => new()

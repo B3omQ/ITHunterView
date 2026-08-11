@@ -4,7 +4,7 @@ using ITHunterview.Service.DTOs.JobAnalysis;
 namespace ITHunterview.Service.DTOs.Cv.Matching;
 
 public sealed record CvJdMatchingExecutionResult(
-    decimal Score,
+    decimal? Score,
     string MatchDetails,
     string? SfiaExtractResult,
     CvAnalysisQuality? CvAnalysisQuality = null,
@@ -14,4 +14,8 @@ public sealed record CvJdMatchingExecutionResult(
     JdAnalysisCoverage? JdAnalysisCoverage = null,
     IReadOnlyList<JdAnalysisDiagnostic>? JdAnalysisDiagnostics = null,
     CvAnalysisPersistenceIntent? CvPersistenceIntent = null,
-    JdAnalysisPersistenceIntent? JdPersistenceIntent = null);
+    JdAnalysisPersistenceIntent? JdPersistenceIntent = null,
+    MatchingCompletionDisposition CompletionDisposition = MatchingCompletionDisposition.ScoredBillable)
+{
+    public bool ScoreAvailable => CompletionDisposition == MatchingCompletionDisposition.ScoredBillable && Score.HasValue;
+}

@@ -112,7 +112,6 @@ namespace ITHunterview.Service.DTOs.JobAnalysis
         public string? ResolvedSkillName { get; set; }
         public SkillResolutionStatus ResolutionStatus { get; set; }
         public SkillDecisionStatus DecisionStatus { get; set; }
-        public decimal? Confidence { get; set; }
     }
 
     public sealed class OtherRequirementDto
