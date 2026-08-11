@@ -76,9 +76,9 @@ export default function AdminDashboard() {
   return (
     <div className="w-full pb-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Admin Dashboard</h1>
         <p className="text-muted-foreground">
-          {t("desc")}
+          Platform overview, financial growth, and AI usage metrics.
         </p>
       </div>
       <DashboardFilterBar onFilterChange={setFilters} />
