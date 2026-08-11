@@ -25,7 +25,7 @@ import { useGetInterviewSessions } from "@/hooks/useInterview"
 import { useMyLearningPaths } from "@/hooks/useLearningPath"
 import { useProfileCompletionStatus, useClaimNewbieReward } from "@/hooks/useCandidateProfile"
 import { Progress } from "@/components/ui/progress"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts"
 
 export default function CandidateDashboard() {
   const { user } = useAuthStore()
@@ -315,23 +315,9 @@ export default function CandidateDashboard() {
             </h2>
             <p className="text-xs text-muted-foreground mt-1">Your competency gap across core dimensions (from active path).</p>
           </div>
-          {radarChartData.length >= 3 ? (
-            <div className="flex-1 min-h-[250px] -mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarChartData}>
-                  <PolarGrid stroke="#e5e7eb" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: '#4b5563', fontWeight: 500 }} />
-                  <Radar name="Target Level" dataKey="Target" stroke="#d1d5db" strokeWidth={2} fill="#e5e7eb" fillOpacity={0.3} />
-                  <Radar name="Current Level" dataKey="Current" stroke="#6366f1" strokeWidth={2} fill="#6366f1" fillOpacity={0.5} />
-                  <RechartsTooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-          ) : radarChartData.length > 0 ? (
-            <div className="flex-1 min-h-[250px] flex flex-col justify-between py-2 space-y-6">
-              <div className="space-y-5 my-auto">
+          {radarChartData.length > 0 ? (
+            <div className="flex-1 min-h-[250px] flex flex-col py-2 space-y-6 overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-5">
                 {radarChartData.map((item, idx) => {
                   const current = Math.min(Math.max(0, Number(item.Current) || 0), item.fullMark || 7);
                   const target = Math.min(Math.max(0, Number(item.Target) || 0), item.fullMark || 7);

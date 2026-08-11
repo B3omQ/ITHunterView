@@ -18,6 +18,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             _context = context;
         }
 
+        public IQueryable<User> GetQueryable() => _context.Users;
+
         public Task<User?> GetUserByEmailAsync(string email)
             => _context.Users.FirstOrDefaultAsync(u => u.Email == email);
 

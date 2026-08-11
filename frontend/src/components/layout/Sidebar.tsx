@@ -151,7 +151,10 @@ export function Sidebar() {
   })
 
   // Get Wallet Balance & Subscription
-  const { data: walletData, isLoading: walletLoading } = useWalletBalance()
+  const isCandidateOrRecruiter = user?.role?.name?.toLowerCase() === "candidate" || isRecruiter
+  const { data: walletData, isLoading: walletLoading } = useWalletBalance({
+    enabled: isCandidateOrRecruiter
+  })
   const balance = walletData?.data?.balance ?? 0
   const activeSubName = walletData?.data?.activeSubscriptionName
   const subEndDate = walletData?.data?.subscriptionEndDate ? new Date(walletData.data.subscriptionEndDate).toLocaleDateString('vi-VN') : null

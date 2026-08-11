@@ -8,6 +8,7 @@ namespace ITHunterview.Service.Interface.Persistence
 {
     public interface IUserRepository
     {
+        IQueryable<User> GetQueryable();
         Task<User?> GetUserByEmailAsync(string email);
         Task<User?> GetUserByIdAsync(Guid userId);
         Task<User?> GetUserWithRoleAsync(Guid userId);

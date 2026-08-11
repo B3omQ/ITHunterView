@@ -18,60 +18,63 @@ import {
   Legend,
 } from "recharts";
 
-const categoryData = [
-  { name: "Frontend", value: 340 },
-  { name: "Backend", value: 410 },
-  { name: "DevOps", value: 180 },
-  { name: "Data", value: 120 },
-  { name: "Mobile", value: 90 },
-];
-
-const levelData = [
-  { level: "Intern", count: 80 },
-  { level: "Fresher", count: 250 },
-  { level: "Junior", count: 420 },
-  { level: "Middle", count: 280 },
-  { level: "Senior", count: 110 },
-];
-
-const verificationData = [
-  { week: "Week 1", new: 45, verified: 30 },
-  { week: "Week 2", new: 52, verified: 48 },
-  { week: "Week 3", new: 38, verified: 40 },
-  { week: "Week 4", new: 65, verified: 55 },
-];
+import { useState } from "react";
+import { useStaffDashboard } from "@/hooks/useDashboard";
+import { DashboardFilter } from "@/types/dashboard.types";
+import { DashboardFilterBar } from "@/components/shared/DashboardFilterBar";
+import { Loader2 } from "lucide-react";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"];
 
 export default function StaffDashboard() {
+  const [filters, setFilters] = useState<DashboardFilter>({});
+  const { data, isLoading, isError } = useStaffDashboard(filters);
+
+  if (isLoading) {
+    return (
+      <div className="w-full h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="w-full h-[60vh] flex flex-col items-center justify-center text-muted-foreground">
+        <p>Failed to load dashboard data.</p>
+      </div>
+    );
+  }
+
   const stats = [
     {
       title: "Total Questions",
-      value: "1,140",
-      change: "+120 this month",
+      value: data.totalQuestions.toLocaleString(),
+      change: "In the question bank",
       icon: <FileQuestion className="h-4 w-4 text-muted-foreground" />,
     },
     {
       title: "New Questions",
-      value: "35",
-      change: "Added this week",
+      value: data.newQuestions.toLocaleString(),
+      change: "Added in this period",
       icon: <HelpCircle className="h-4 w-4 text-muted-foreground" />,
     },
     {
       title: "Pending Companies",
-      value: "18",
+      value: data.pendingCompanies.toLocaleString(),
       change: "Needs verification",
       icon: <Building2 className="h-4 w-4 text-muted-foreground" />,
     },
     {
       title: "Audit Warnings",
-      value: "3",
+      value: data.auditWarnings.toLocaleString(),
       change: "System flags",
       icon: <AlertTriangle className="h-4 w-4 text-amber-500" />,
     },
   ];
 
   return (
+
     <div className="w-full pb-8 space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Staff Dashboard</h1>
@@ -79,6 +82,7 @@ export default function StaffDashboard() {
           Question bank analytics and company verification tracking.
         </p>
       </div>
+      <DashboardFilterBar onFilterChange={setFilters} />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, i) => (
@@ -109,7 +113,7 @@ export default function StaffDashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={categoryData}
+                    data={data.questionsByCategory}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -117,7 +121,7 @@ export default function StaffDashboard() {
                     paddingAngle={5}
                     dataKey="value"
                   >
-                    {categoryData.map((entry, index) => (
+                    {data.questionsByCategory.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -136,7 +140,7 @@ export default function StaffDashboard() {
           <CardContent>
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={levelData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                <BarChart data={data.questionsByLevel} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                   <XAxis dataKey="level" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
@@ -155,7 +159,7 @@ export default function StaffDashboard() {
           <CardContent className="pl-2">
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={verificationData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                <LineChart data={data.companyVerifications} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                   <XAxis dataKey="week" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />

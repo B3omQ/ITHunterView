@@ -8,6 +8,7 @@ namespace ITHunterview.Service.Interface.Persistence
 {
     public interface ICompanyRepository
     {
+        IQueryable<Companies> GetQueryable();
         Task<Companies> CreateAsync(Companies company);
         Task UpdateAsync(Companies company);
         Task<Companies?> GetByIdAsync(Guid id);

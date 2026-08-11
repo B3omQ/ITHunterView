@@ -19,6 +19,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             _context = context;
         }
 
+        public IQueryable<JobPostings> GetQueryable() => _context.JobPostings;
+
         public async Task<JobPostings?> GetByIdAsync(Guid id)
         {
             return await _context.JobPostings.FirstOrDefaultAsync(j => j.Id == id && j.DeletedAt == null);

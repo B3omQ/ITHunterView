@@ -341,8 +341,9 @@ namespace ITHunterview.Service.UseCase
                 }
 
                 amount = sub.Price;
+                var features = DeserializeSubscriptionFeatures(sub.FeaturesConfig);
                 // Snapshot coin bonus at purchase time so future package edits do not affect this payment.
-                creditsGranted = features.CoinCredit ?? 0;
+                creditsGranted = features?.CoinCredit ?? 0;
                 // Ánh xạ int ID thành Guid: 00000000-0000-0000-0000-XXXXXXXXXXXX
                 targetIdGuid = Guid.Parse(sub.Id.ToString().PadLeft(32, '0'));
                 descriptionText = $"Mua goi {sub.Name}";
