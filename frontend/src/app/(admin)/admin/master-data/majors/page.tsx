@@ -9,8 +9,10 @@ import { MajorDeleteDialog } from "../components/MajorDeleteDialog";
 import { MajorsTable } from "../components/MajorsTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useTranslations } from 'next-intl';
 
 export default function MajorsPage() {
+  const t = useTranslations('AdminMasterData');
   const [majorSearch, setMajorSearch] = useState("");
   const [debouncedMajorSearch, setDebouncedMajorSearch] = useState("");
 
@@ -98,10 +100,10 @@ export default function MajorsPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
               <FolderTree className="text-[#1877F2] shrink-0 h-8 w-8" />
-              Specializations (Majors)
+              {t('majorsTitle')}
             </h1>
             <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
-              Manage the hierarchy of IT specializations and master data definitions.
+              {t('majorsDesc')}
             </p>
           </div>
 
@@ -110,7 +112,7 @@ export default function MajorsPage() {
             className="bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium h-10 px-4 rounded-lg shadow-2xs active:scale-[0.98] transition-all gap-2 cursor-pointer w-full sm:w-auto"
           >
             <Plus className="h-4 w-4" />
-            Add new specialization
+            {t('addMajor')}
           </Button>
         </div>
 
@@ -123,7 +125,7 @@ export default function MajorsPage() {
               <Input
                 value={majorSearch}
                 onChange={(e) => setMajorSearch(e.target.value)}
-                placeholder="Search specializations by name or code..."
+                placeholder={t('searchPlaceholder')}
                 className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
               />
               {majorSearch && (
@@ -144,7 +146,7 @@ export default function MajorsPage() {
                 variant="ghost"
                 className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
               >
-                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> {t('resetFilters')}
               </Button>
             )}
           </div>

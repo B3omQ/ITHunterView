@@ -32,6 +32,62 @@ export interface TestConnectionResponse {
     responseTimeMs: number;
 }
 
+export interface AiUsageFilter {
+    fromDate?: string;
+    toDate?: string;
+    providerName?: string;
+    featureCode?: string;
+    page?: number;
+    pageSize?: number;
+}
+
+export interface ProviderUsageBreakdown {
+    providerName: string;
+    totalTokens: number;
+    estimatedCostUsd: number;
+    requestCount: number;
+    percentage: number;
+}
+
+export interface FeatureUsageBreakdown {
+    featureCode: string;
+    featureName: string;
+    totalTokens: number;
+    estimatedCostUsd: number;
+    requestCount: number;
+}
+
+export interface AiUsageLogItem {
+    id: string;
+    createdAt: string;
+    providerName: string;
+    model: string;
+    featureCode: string;
+    userEmail: string;
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    estimatedCostUsd: number;
+    latencyMs: number;
+    status: string;
+}
+
+export interface AiUsageSummaryResponse {
+    totalTokens: number;
+    promptTokens: number;
+    completionTokens: number;
+    totalEstimatedCostUsd: number;
+    totalRequests: number;
+    avgLatencyMs: number;
+    providerBreakdown: ProviderUsageBreakdown[];
+    featureBreakdown: FeatureUsageBreakdown[];
+    logs: AiUsageLogItem[];
+    page: number;
+    pageSize: number;
+    totalLogRecords: number;
+    totalPages: number;
+}
+
 export const aiConfigService = {
     getConfigs: async () => {
         const response = await apiClient.get<ApiResponse<AiConfigResponse>>('/api/ai/configs');
@@ -45,6 +101,11 @@ export const aiConfigService = {
 
     testConnection: async (data: TestConnectionRequest) => {
         const response = await apiClient.post<ApiResponse<TestConnectionResponse>>('/api/ai/test-connection', data);
+        return response.data;
+    },
+
+    getUsageAnalytics: async (filter?: AiUsageFilter) => {
+        const response = await apiClient.get<ApiResponse<AiUsageSummaryResponse>>('/api/ai/usage', { params: filter });
         return response.data;
     }
 };

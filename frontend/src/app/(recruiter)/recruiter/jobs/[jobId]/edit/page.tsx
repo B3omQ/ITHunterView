@@ -23,11 +23,13 @@ import {
   validateRecruiterJobPostingRichTextFields,
 } from "@/lib/recruiter-job-posting-form"
 import { JOB_POSTING_RICH_TEXT_LIMITS } from "@/lib/job-posting-markdown"
+import { useTranslations } from "next-intl"
 
 export default function EditJobPage() {
   const router = useRouter()
   const params = useParams()
   const id = params.jobId as string
+  const t = useTranslations("RecruiterJobEdit")
 
   const [formData, setFormData] = useState({
     jobCode: "",
@@ -36,7 +38,7 @@ export default function EditJobPage() {
     minSalary: "",
     maxSalary: "",
     currency: "USD",
-    expiresAt: "",
+    applicationDeadline: "",
     description: "",
     incomeText: "",
     workLocation: "",
@@ -63,9 +65,6 @@ export default function EditJobPage() {
   const error = metadataError || detailError
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const maxDateObj = new Date(job?.createdAt || new Date());
-  maxDateObj.setDate(maxDateObj.getDate() + 30);
-  const maxDateStr = maxDateObj.toISOString().split('T')[0];
 
   useEffect(() => {
     if (job && !initializedRef.current) {
@@ -79,7 +78,7 @@ export default function EditJobPage() {
         minSalary: job.minSalary ? job.minSalary.toString() : "",
         maxSalary: job.maxSalary ? job.maxSalary.toString() : "",
         currency: job.currency || "USD",
-        expiresAt: job.expiresAt ? new Date(job.expiresAt).toISOString().split("T")[0] : "",
+        applicationDeadline: job.applicationDeadline ? new Date(job.applicationDeadline).toISOString().split("T")[0] : "",
         description: job.description || "",
         incomeText: job.incomeText || "",
         workLocation: parsedWorkLoc.workLocation || "",
@@ -112,18 +111,18 @@ export default function EditJobPage() {
   }
 
   const validateForm = () => {
-    if (!formData.title.trim()) return "Job Title is required"
-    if (!formData.location.trim()) return "Location is required"
-    if (!formData.level) return "Level is required"
-    if (!formData.workingModel) return "Working Model is required"
-    if (!formData.jobExpertise) return "Specialization (Expertise) is required"
+    if (!formData.title.trim()) return t("errTitleReq")
+    if (!formData.location.trim()) return t("errLocReq")
+    if (!formData.level) return t("errLevelReq")
+    if (!formData.workingModel) return t("errModelReq")
+    if (!formData.jobExpertise) return t("errExpReq")
 
     const richTextError = validateRecruiterJobPostingRichTextFields(formData)
     if (richTextError) return richTextError.message
 
-    if (!formData.workLocation.trim()) return "Work location is required"
-    if (!formData.workingHours.trim()) return "Working hours are required"
-    if (!formData.howToApply.trim()) return "How to apply is required"
+    if (!formData.workLocation.trim()) return t("errWorkLocReq")
+    if (!formData.workingHours.trim()) return t("errWorkHourReq")
+    if (!formData.howToApply.trim()) return t("errApplyReq")
 
     const serializedLen = getSerializedWorkLocationLength({
       workLocation: formData.workLocation,
@@ -131,22 +130,16 @@ export default function EditJobPage() {
       howToApply: formData.howToApply,
     })
     if (serializedLen > 4000) {
-      return "Work location details must not exceed 4,000 characters after formatting"
+      return t("errLimit")
     }
 
-    if (!formData.expiresAt) return "Expiration Date is required"
+    if (!formData.applicationDeadline) return t("errExpDateReq")
 
-    const created = job ? new Date(job.createdAt) : new Date()
-    created.setHours(0, 0, 0, 0)
-    const expDate = new Date(formData.expiresAt)
-    if (expDate <= new Date()) {
-      return "Expiration Date must be in the future (after today)"
-    }
-
-    const maxExpDate = new Date(created)
-    maxExpDate.setDate(maxExpDate.getDate() + 30)
-    if (expDate > maxExpDate) {
-      return "Expiration Date cannot exceed 30 days from creation"
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const expDate = new Date(formData.applicationDeadline)
+    if (expDate <= today) {
+      return t("errExpFuture")
     }
 
     return null
@@ -175,7 +168,7 @@ export default function EditJobPage() {
         minSalary: formData.minSalary ? Number(formData.minSalary) : null,
         maxSalary: formData.maxSalary ? Number(formData.maxSalary) : null,
         currency: formData.currency,
-        expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null,
+        applicationDeadline: formData.applicationDeadline ? new Date(formData.applicationDeadline).toISOString() : null,
         description: richText.description,
         incomeText: richText.incomeText,
         workLocationText: serializedWorkLocation,
@@ -196,7 +189,7 @@ export default function EditJobPage() {
           router.push("/recruiter/jobs")
         }
       } else {
-        alert(res.message || "Failed to update job posting")
+        alert(res.message || t("updateFail"))
       }
     } finally {
       setSubmittingAction(null)
@@ -208,7 +201,7 @@ export default function EditJobPage() {
   if (companyLoading || detailLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center text-muted-foreground">Loading job details...</div>
+        <div className="text-center text-muted-foreground">{t("loading")}</div>
       </div>
     )
   }
@@ -216,12 +209,12 @@ export default function EditJobPage() {
   if (!company || company.status !== 'VERIFIED') {
     return (
       <div className="max-w-2xl mx-auto mt-12 p-8 border rounded-xl bg-card text-center space-y-4">
-        <h2 className="text-2xl font-bold">Verification Required</h2>
+        <h2 className="text-2xl font-bold">{t("verificationRequired")}</h2>
         <p className="text-muted-foreground">
-          Your company needs to be verified before you can edit job postings.
+          {t("verificationMsg")}
         </p>
         <Button onClick={() => router.push('/recruiter/company/legal')}>
-          Complete Verification
+          {t("completeVerification")}
         </Button>
       </div>
     );
@@ -242,8 +235,8 @@ export default function EditJobPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Chỉnh sửa tin tuyển dụng (Bản thảo)</h1>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">Cập nhật thông tin chi tiết. Khi thay đổi mô tả/yêu cầu, hệ thống sẽ tăng phiên bản phân tích AI.</p>
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">{t("pageTitle")}</h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">{t("pageDesc")}</p>
           </div>
         </div>
 
@@ -257,22 +250,22 @@ export default function EditJobPage() {
           <div className="flex flex-col gap-2 text-sm font-medium text-red-700 bg-red-50 dark:bg-red-950/40 p-4 rounded-xl border border-red-200 dark:border-red-900/50">
             <div className="flex items-center gap-2">
               <Ban className="h-5 w-5 shrink-0" />
-              <span className="font-bold">Bài đăng này đã bị khóa và không thể chỉnh sửa.</span>
+              <span className="font-bold">{t("banned")}</span>
             </div>
-            {job.banReason && <p className="text-red-600 dark:text-red-400 pl-7 text-xs">Lý do: {job.banReason}</p>}
+            {job.banReason && <p className="text-red-600 dark:text-red-400 pl-7 text-xs">{t("banReason", { reason: job.banReason })}</p>}
           </div>
         )}
 
         <Card className="border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
           <CardHeader>
-            <CardTitle className="text-lg font-bold">Thông tin vị trí tuyển dụng</CardTitle>
-            <CardDescription>Mã tin: {formData.jobCode || id}</CardDescription>
+            <CardTitle className="text-lg font-bold">{t("generalInfoTitle")}</CardTitle>
+            <CardDescription>{t("generalInfoDesc", { code: formData.jobCode || id })}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="title" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Title *</Label>
+                <Label htmlFor="title" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("jobTitle")}</Label>
                 <Input
                   id="title"
                   name="title"
@@ -284,7 +277,7 @@ export default function EditJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="jobCode" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Code</Label>
+                <Label htmlFor="jobCode" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("jobCode")}</Label>
                 <Input
                   id="jobCode"
                   name="jobCode"
@@ -297,7 +290,7 @@ export default function EditJobPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="location" className="font-semibold text-zinc-700 dark:text-zinc-300">Primary Location (City) *</Label>
+                <Label htmlFor="location" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("location")}</Label>
                 <select
                   id="location"
                   name="location"
@@ -306,7 +299,7 @@ export default function EditJobPage() {
                   value={formData.location}
                   onChange={handleChange}
                 >
-                  <option value="">Select City / Province</option>
+                  <option value="">{t("selectLocation")}</option>
                   {VIETNAM_PROVINCES.map((prov) => (
                     <option key={prov} value={prov}>
                       {prov}
@@ -316,7 +309,7 @@ export default function EditJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="level" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Level *</Label>
+                <Label htmlFor="level" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("jobLevel")}</Label>
                 <select
                   id="level"
                   name="level"
@@ -325,7 +318,7 @@ export default function EditJobPage() {
                   value={formData.level}
                   onChange={handleChange}
                 >
-                  <option value="">Select Job Level</option>
+                  <option value="">{t("selectLevel")}</option>
                   {LEVELS.map((lvl) => (
                     <option key={lvl} value={lvl}>
                       {lvl}
@@ -335,7 +328,7 @@ export default function EditJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="workingModel" className="font-semibold text-zinc-700 dark:text-zinc-300">Working Model *</Label>
+                <Label htmlFor="workingModel" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("workingModel")}</Label>
                 <select
                   id="workingModel"
                   name="workingModel"
@@ -344,7 +337,7 @@ export default function EditJobPage() {
                   value={formData.workingModel}
                   onChange={handleChange}
                 >
-                  <option value="">Select Working Model</option>
+                  <option value="">{t("selectModel")}</option>
                   {WORKING_MODELS.map((wm) => (
                     <option key={wm} value={wm}>
                       {wm}
@@ -355,7 +348,7 @@ export default function EditJobPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="howToApply" className="font-semibold text-zinc-700 dark:text-zinc-300">How to Apply *</Label>
+              <Label htmlFor="howToApply" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("howToApply")}</Label>
               <textarea
                 id="howToApply"
                 name="howToApply"
@@ -365,12 +358,12 @@ export default function EditJobPage() {
                 value={formData.howToApply}
                 onChange={handleChange}
               />
-              <p className="text-xs text-muted-foreground">The default text guides candidates to the online application button; you may adapt it for this role.</p>
+              <p className="text-xs text-muted-foreground">{t("howToApplyHint")}</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Specialization (Job Expertise / Major) *</Label>
+                <Label className="font-semibold text-zinc-700 dark:text-zinc-300">{t("specialization")}</Label>
                 <MajorCombobox
                   majors={majors}
                   value={formData.jobExpertise}
@@ -379,9 +372,9 @@ export default function EditJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Industry / Domain</Label>
+                <Label className="font-semibold text-zinc-700 dark:text-zinc-300">{t("industry")}</Label>
                 <Input
-                  placeholder="Filter domain options..."
+                  placeholder={t("filterDomain")}
                   value={searchDomain}
                   onChange={(e) => setSearchDomain(e.target.value)}
                   className="mb-2 text-xs h-8"
@@ -409,7 +402,7 @@ export default function EditJobPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description" className="font-semibold text-zinc-700 dark:text-zinc-300">Job Description *</Label>
+              <Label htmlFor="description" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("jobDesc")}</Label>
               <JobPostingRichTextEditor
                 id="description"
                 required
@@ -423,7 +416,7 @@ export default function EditJobPage() {
             {/* Compensation & Additional Details */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="minSalary" className="font-semibold text-zinc-700 dark:text-zinc-300">Min Salary</Label>
+                <Label htmlFor="minSalary" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("minSalary")}</Label>
                 <Input
                   id="minSalary"
                   name="minSalary"
@@ -435,7 +428,7 @@ export default function EditJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="maxSalary" className="font-semibold text-zinc-700 dark:text-zinc-300">Max Salary</Label>
+                <Label htmlFor="maxSalary" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("maxSalary")}</Label>
                 <Input
                   id="maxSalary"
                   name="maxSalary"
@@ -447,23 +440,26 @@ export default function EditJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="expiresAt" className="font-semibold text-zinc-700 dark:text-zinc-300">Expiration Date *</Label>
+                <Label htmlFor="applicationDeadline" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("applicationDeadline")}</Label>
                 <Input
-                  id="expiresAt"
-                  name="expiresAt"
+                  id="applicationDeadline"
+                  name="applicationDeadline"
                   type="date"
                   min={todayStr}
-                  max={maxDateStr}
-                  value={formData.expiresAt}
+                  value={formData.applicationDeadline}
                   onChange={handleChange}
                   className="focus-visible:ring-blue-500"
+                />
+                <p 
+                  className="text-[11.5px] text-zinc-500 dark:text-zinc-400 mt-1 italic leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: t("sysVisibilityNotice") }}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="incomeText" className="font-semibold text-zinc-700 dark:text-zinc-300">Income Details *</Label>
+                <Label htmlFor="incomeText" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("incomeDetails")}</Label>
                 <JobPostingRichTextEditor
                   id="incomeText"
                   required
@@ -475,7 +471,7 @@ export default function EditJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="workLocation" className="font-semibold text-zinc-700 dark:text-zinc-300">Work Location Address *</Label>
+                <Label htmlFor="workLocation" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("workLocation")}</Label>
                 <textarea
                   id="workLocation"
                   name="workLocation"
@@ -488,7 +484,7 @@ export default function EditJobPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="workingHours" className="font-semibold text-zinc-700 dark:text-zinc-300">Working Hours *</Label>
+                <Label htmlFor="workingHours" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("workingHours")}</Label>
                 <textarea
                   id="workingHours"
                   name="workingHours"
@@ -502,7 +498,7 @@ export default function EditJobPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="requirements" className="font-semibold text-zinc-700 dark:text-zinc-300">Requirements *</Label>
+              <Label htmlFor="requirements" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("requirements")}</Label>
               <JobPostingRichTextEditor
                 id="requirements"
                 required
@@ -514,7 +510,7 @@ export default function EditJobPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="benefits" className="font-semibold text-zinc-700 dark:text-zinc-300">Benefits *</Label>
+              <Label htmlFor="benefits" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("benefits")}</Label>
               <JobPostingRichTextEditor
                 id="benefits"
                 required
@@ -535,7 +531,7 @@ export default function EditJobPage() {
             onClick={() => router.push("/recruiter/jobs")}
             disabled={loading}
           >
-            Hủy
+            {t("cancel")}
           </Button>
 
           <Button
@@ -550,7 +546,7 @@ export default function EditJobPage() {
             ) : (
               <Save className="w-4 h-4 mr-2" />
             )}
-            Lưu thay đổi
+            {t("saveDraft")}
           </Button>
 
           <Button
@@ -564,7 +560,7 @@ export default function EditJobPage() {
             ) : (
               <Send className="w-4 h-4 mr-2" />
             )}
-            Publish
+            {t("publish")}
           </Button>
         </div>
       </div>

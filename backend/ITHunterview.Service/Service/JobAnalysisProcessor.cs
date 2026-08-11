@@ -6,11 +6,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
+using ITHunterview.Service.DTOs.JobAnalysis;
 using ITHunterview.Service.Utils;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
-using ITHunterview.Service.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace ITHunterview.Service.Service
@@ -56,85 +56,146 @@ namespace ITHunterview.Service.Service
                 var systemPromptSnapshot = await _promptService.GetPromptSnapshotByVersionIdAsync(run.SystemPromptVersionId, ct);
                 var userPromptSnapshot = await _promptService.GetPromptSnapshotByVersionIdAsync(run.UserPromptVersionId, ct);
 
-                JobAnalysisInputSnapshot inputSnapshot;
+                ITHunterview.Service.Utils.UserContext.CurrentUserId = run.RequestedBy;
+
                 try
                 {
-                    inputSnapshot = JsonSerializer.Deserialize<JobAnalysisInputSnapshot>(run.RawInputSnapshot) ?? new JobAnalysisInputSnapshot();
-                }
-                catch
-                {
-                    inputSnapshot = new JobAnalysisInputSnapshot();
-                }
-
-                var extraction = await _extractionService.ExtractAsync(inputSnapshot, systemPromptSnapshot.Content, userPromptSnapshot.Content, ct);
-                var validation = extraction.Validation;
-                if (!validation.IsValid || validation.Data == null)
-                {
-                    string failureCode = validation.FailureCode ?? "INVALID_MODEL_OUTPUT";
-                    string errJson = JsonSerializer.Serialize(validation.Errors);
-                    _logger.LogWarning("JobAnalysisProcessor: Validation failed for run {RunId} with code '{FailureCode}'. Errors: {ErrJson}", runId, failureCode, errJson);
-                    await _jobAnalysisRepository.MarkFailedAsync(runId, failureCode, errJson, ct);
-                    return;
-                }
-
-                var validatedData = validation.Data;
-                var resolutions = await _skillResolver.ResolveAsync(validatedData.SkillsNormalized, ct);
-
-                var decisions = new List<JobSkillDecisions>();
-                DateTime now = DateTime.UtcNow;
-
-                foreach (var res in resolutions)
-                {
-                    // Recruiters are not asked to make technical decisions. A skill
-                    // resolved to the active master dictionary becomes a tag/filter;
-                    // an unresolved/ambiguous mention remains in requirements_list
-                    // for detailed matching but is excluded from standardized tags.
-                    var decisionStatus = res.ResolvedSkillId.HasValue
-                        ? SkillDecisionStatus.ACCEPTED
-                        : SkillDecisionStatus.REJECTED;
-
-                    decisions.Add(new JobSkillDecisions
+                    JobAnalysisInputSnapshot inputSnapshot;
+                    try
                     {
-                        Id = Guid.NewGuid(),
-                        JobAnalysisRunId = runId,
-                        RawMention = res.RawMention,
-                        NormalizedMention = res.NormalizedMention,
-                        Category = res.Category,
-                        Importance = res.Importance,
-                        SourceSection = res.SourceSection,
-                        EvidenceText = res.EvidenceText,
-                        SuggestedSkillId = res.SuggestedSkillId,
-                        ResolvedSkillId = res.ResolvedSkillId,
-                        ResolutionStatus = res.ResolutionStatus,
-                        DecisionStatus = decisionStatus,
-                        Confidence = res.Confidence,
-                        DecisionVersion = 1,
-                        CreatedAt = now,
-                        UpdatedAt = now
-                    });
+                        inputSnapshot = JsonSerializer.Deserialize<JobAnalysisInputSnapshot>(run.RawInputSnapshot)
+                            ?? throw new JsonException("Raw input snapshot is null.");
+                    }
+                    catch (Exception exception) when (exception is JsonException or NotSupportedException)
+                    {
+                        var errorJson = JsonSerializer.Serialize(new[] { "INVALID_INPUT_SNAPSHOT" });
+                        await _jobAnalysisRepository.MarkFailedAsync(runId, "INVALID_INPUT_SNAPSHOT", errorJson, ct);
+                        return;
+                    }
+
+                    // A persisted marker means the previous worker may have exited
+                    // while the provider call was in flight. Do not spend another
+                    // request after restart; complete the run with the immutable raw
+                    // JD snapshot instead.
+                    if (run.ProviderCallStartedAt.HasValue)
+                    {
+                        await CompleteRawFallbackAsync(run, "PROVIDER_CALL_INTERRUPTED", ct);
+                        return;
+                    }
+
+                    if (!await _jobAnalysisRepository.TryMarkProviderCallStartedAsync(runId, ct))
+                    {
+                        _logger.LogInformation("JobAnalysisProcessor: Run {RunId} was claimed by another worker before provider start.", runId);
+                        return;
+                    }
+
+                    var extraction = await _extractionService.ExtractAsync(inputSnapshot, systemPromptSnapshot.Content, userPromptSnapshot.Content, ct);
+                    var validation = extraction.Validation;
+                    var quality = extraction.Quality != JdAnalysisQuality.INVALID
+                        ? extraction.Quality
+                        : validation.Quality;
+                    if (quality == JdAnalysisQuality.INVALID || validation.Data == null)
+                    {
+                        await CompleteRawFallbackAsync(
+                            run,
+                            validation.FailureCode ?? "INVALID_MODEL_OUTPUT",
+                            ct,
+                            extraction.Diagnostics);
+                        return;
+                    }
+
+                    var validatedData = validation.Data;
+                    IReadOnlyList<SkillResolution> resolutions;
+                    try
+                    {
+                        resolutions = await _skillResolver.ResolveAsync(validatedData.SkillsNormalized, ct);
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger.LogWarning(
+                            exception,
+                            "JobAnalysisProcessor: Skill resolution failed for run {RunId}; preserving raw snapshot fallback.",
+                            runId);
+                        await CompleteRawFallbackAsync(
+                            run,
+                            "SKILL_RESOLUTION_FAILED",
+                            ct,
+                            new[] { new JdAnalysisDiagnostic("SKILL_RESOLUTION_FAILED", "$") });
+                        return;
+                    }
+
+                    var decisions = new List<JobSkillDecisions>();
+                    DateTime now = DateTime.UtcNow;
+
+                    foreach (var res in resolutions)
+                    {
+                        // Recruiters are not asked to make technical decisions. A skill
+                        // resolved to the active master dictionary becomes a tag/filter;
+                        // an unresolved/ambiguous mention remains in requirements_list
+                        // for detailed matching but is excluded from standardized tags.
+                        var decisionStatus = res.ResolvedSkillId.HasValue
+                            ? SkillDecisionStatus.ACCEPTED
+                            : SkillDecisionStatus.REJECTED;
+
+                        decisions.Add(new JobSkillDecisions
+                        {
+                            Id = Guid.NewGuid(),
+                            JobAnalysisRunId = runId,
+                            RawMention = res.RawMention,
+                            NormalizedMention = res.NormalizedMention,
+                            Category = res.Category,
+                            Importance = res.Importance,
+                            SourceSection = res.SourceSection,
+                            EvidenceText = res.EvidenceText,
+                            SuggestedSkillId = res.SuggestedSkillId,
+                            ResolvedSkillId = res.ResolvedSkillId,
+                            ResolutionStatus = res.ResolutionStatus,
+                            DecisionStatus = decisionStatus,
+                            Confidence = res.Confidence,
+                            DecisionVersion = 1,
+                            CreatedAt = now,
+                            UpdatedAt = now
+                        });
+                    }
+
+                    string effectiveJson = _extractionService.SerializeEffectiveAnalysis(
+                        validatedData,
+                        resolutions
+                            .Where(resolution => resolution.ResolvedSkillId.HasValue)
+                            .Select(resolution => resolution.NormalizedMention)
+                            .ToHashSet(StringComparer.OrdinalIgnoreCase));
+
+                    bool completed = await _jobAnalysisRepository.TryCompleteReadyAsync(
+                        runId,
+                        new JobAnalysisCompletion(
+                            run.InputRevision,
+                            quality,
+                            extraction.PersistableAnalysisJson ?? extraction.RawJson,
+                            effectiveJson,
+                            JdAnalysisMetadataReader.SerializeCoverage(extraction.Coverage),
+                            JdAnalysisMetadataReader.SerializeDiagnostics(extraction.Diagnostics),
+                            decisions,
+                            extraction.ProviderName,
+                            null),
+                        ct);
+
+                    if (!completed)
+                    {
+                        _logger.LogInformation("JobAnalysisProcessor: Run {RunId} was superseded or revision mismatched during completion.", runId);
+                    }
                 }
-
-                string effectiveJson = _extractionService.SerializeEffectiveAnalysis(
-                    validatedData,
-                    resolutions
-                        .Where(resolution => resolution.ResolvedSkillId.HasValue)
-                        .Select(resolution => resolution.NormalizedMention)
-                        .ToHashSet(StringComparer.OrdinalIgnoreCase));
-
-                bool completed = await _jobAnalysisRepository.TryCompleteReadyAsync(
-                    runId,
-                    run.InputRevision,
-                    extraction.RawJson,
-                    effectiveJson,
-                    decisions,
-                    extraction.ProviderName,
-                    null,
-                    ct);
-
-                if (!completed)
+                finally
                 {
-                    _logger.LogInformation("JobAnalysisProcessor: Run {RunId} was superseded or revision mismatched during completion.", runId);
+                    ITHunterview.Service.Utils.UserContext.CurrentUserId = null;
                 }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -142,6 +203,32 @@ namespace ITHunterview.Service.Service
                 string errJson = JsonSerializer.Serialize(new[] { ex.Message });
                 await _jobAnalysisRepository.MarkFailedAsync(runId, "INTERNAL_ANALYSIS_ERROR", errJson, ct);
             }
+        }
+
+        private async Task CompleteRawFallbackAsync(
+            JobAnalysisRuns run,
+            string failureCode,
+            CancellationToken ct,
+            IReadOnlyList<JdAnalysisDiagnostic>? diagnostics = null)
+        {
+            var boundedDiagnostics = diagnostics?.Take(100).ToList()
+                ?? new List<JdAnalysisDiagnostic>
+                {
+                    new(failureCode, "$")
+                };
+            await _jobAnalysisRepository.TryCompleteReadyAsync(
+                run.Id,
+                new JobAnalysisCompletion(
+                    run.InputRevision,
+                    JdAnalysisQuality.INVALID,
+                    null,
+                    null,
+                    JdAnalysisMetadataReader.SerializeCoverage(new JdAnalysisCoverage(0, 0, 0, 0, 0, 0, false)),
+                    JdAnalysisMetadataReader.SerializeDiagnostics(boundedDiagnostics),
+                    Array.Empty<JobSkillDecisions>(),
+                    run.ProviderName,
+                    run.ModelName),
+                ct);
         }
 
     }

@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import type { CoinPackageDto, UpdateCoinConfigDto } from '@/types/subscription.types';
 
 interface PackageRowProps {
@@ -18,6 +19,7 @@ interface PackageRowProps {
 }
 
 function PackageRow({ pkg, index, onUpdate, onRemove }: PackageRowProps) {
+  const t = useTranslations('AdminSubscriptions');
   const [localName, setLocalName] = useState(pkg.name);
   const [localCoins, setLocalCoins] = useState(pkg.coins);
   const [localPrice, setLocalPrice] = useState(pkg.price);
@@ -36,7 +38,7 @@ function PackageRow({ pkg, index, onUpdate, onRemove }: PackageRowProps) {
           value={localName}
           onChange={(e) => setLocalName(e.target.value)}
           onBlur={() => onUpdate(index, 'name', localName)}
-          placeholder="Example: Top-up 20 Coins"
+          placeholder={t('placeholderPkgName')}
           className="h-9"
         />
       </TableCell>
@@ -68,7 +70,7 @@ function PackageRow({ pkg, index, onUpdate, onRemove }: PackageRowProps) {
             onCheckedChange={(checked) => onUpdate(index, 'isActive', checked)}
           />
           <span className="text-xs text-neutral-500">
-            {pkg.isActive ? 'Active' : 'Inactive'}
+            {pkg.isActive ? t('statusActive') : t('statusInactive')}
           </span>
         </div>
       </TableCell>
@@ -79,7 +81,7 @@ function PackageRow({ pkg, index, onUpdate, onRemove }: PackageRowProps) {
           onClick={() => onRemove(index)}
           className="text-red-500 hover:text-red-700 hover:bg-red-50"
         >
-          Delete
+          {t('btnDelete')}
         </Button>
       </TableCell>
     </TableRow>
@@ -87,6 +89,7 @@ function PackageRow({ pkg, index, onUpdate, onRemove }: PackageRowProps) {
 }
 
 export function CoinConfigTab() {
+  const t = useTranslations('AdminSubscriptions');
   const { data, isLoading } = useCoinConfig();
   const updateMutation = useUpdateCoinConfig();
 
@@ -98,6 +101,7 @@ export function CoinConfigTab() {
   const [postJob, setPostJob] = useState<number>(20000);
   const [extendJob, setExtendJob] = useState<number>(10000);
   const [pushTop, setPushTop] = useState<number>(5000);
+  const [cvOptimize, setCvOptimize] = useState<number>(500);
 
   // State danh sách các gói nạp coin
   const [packages, setPackages] = useState<CoinPackageDto[]>([]);
@@ -113,6 +117,7 @@ export function CoinConfigTab() {
       setPostJob(config.featureCosts?.postJob ?? 20000);
       setExtendJob(config.featureCosts?.extendJob ?? 10000);
       setPushTop(config.featureCosts?.pushTop ?? 5000);
+      setCvOptimize(config.featureCosts?.cvOptimize ?? 500);
       setPackages(config.packages || []);
     }
   }, [data]);
@@ -149,7 +154,7 @@ export function CoinConfigTab() {
   // Xử lý submit lưu cấu hình lên API
   const handleSave = () => {
     // Validate cơ bản
-    if (cvJdMatching < 0 || mockInterview < 0 || learningPath < 0 || unlockCv < 0 || postJob < 0 || extendJob < 0 || pushTop < 0) {
+    if (cvJdMatching < 0 || mockInterview < 0 || learningPath < 0 || unlockCv < 0 || postJob < 0 || extendJob < 0 || pushTop < 0 || cvOptimize < 0) {
       toast.error('AI feature cost cannot be negative');
       return;
     }
@@ -183,6 +188,7 @@ export function CoinConfigTab() {
         postJob: postJob,
         extendJob: extendJob,
         pushTop: pushTop,
+        cvOptimize: cvOptimize,
       },
       packages: packages.map(p => ({
         id: p.id,
@@ -196,7 +202,7 @@ export function CoinConfigTab() {
     updateMutation.mutate(payload, {
       onSuccess: (res) => {
         if (res.success) {
-          toast.success('Coin configuration updated successfully');
+          toast.success(t('toastUpdateSuccess'));
         } else {
           toast.error(res.message || 'Update failed');
         }
@@ -208,7 +214,7 @@ export function CoinConfigTab() {
   };
 
   if (isLoading) {
-    return <div className="p-8 text-center text-muted-foreground text-sm">Loading coin configuration...</div>;
+    return <div className="p-8 text-center text-muted-foreground text-sm">{t('coinConfigLoading')}</div>;
   }
 
   return (
@@ -218,13 +224,13 @@ export function CoinConfigTab() {
         {/* Card 1: AI Cost Configuration */}
         <Card className="md:col-span-1 border-neutral-200/80 shadow-sm">
           <CardHeader className="border-b bg-neutral-50/50">
-            <CardTitle className="text-lg font-bold text-neutral-800">AI Costs (Coins)</CardTitle>
-            <CardDescription>Configure the number of coins consumed per AI service usage.</CardDescription>
+            <CardTitle className="text-lg font-bold text-neutral-800">{t('aiCostsTitle')}</CardTitle>
+            <CardDescription>{t('aiCostsDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
             
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-neutral-700">CV-JD Matching</label>
+              <label className="text-sm font-semibold text-neutral-700">{t('cvJdMatching')}</label>
               <div className="relative flex items-center">
                 <Input
                   type="number"
@@ -233,12 +239,12 @@ export function CoinConfigTab() {
                   onChange={(e) => setCvJdMatching(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="pr-12"
                 />
-                <span className="absolute right-3 text-xs font-semibold text-neutral-400">Coin</span>
+                <span className="absolute right-3 text-xs font-semibold text-neutral-400">{t('coinLabel')}</span>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-neutral-700">Mock Interview</label>
+              <label className="text-sm font-semibold text-neutral-700">{t('mockInterview')}</label>
               <div className="relative flex items-center">
                 <Input
                   type="number"
@@ -247,73 +253,71 @@ export function CoinConfigTab() {
                   onChange={(e) => setMockInterview(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="pr-12"
                 />
-                <span className="absolute right-3 text-xs font-semibold text-neutral-400">Coin</span>
+                <span className="absolute right-3 text-xs font-semibold text-neutral-400">{t('coinLabel')}</span>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-neutral-700">Learning Path</label>
+              <label className="text-sm font-semibold text-neutral-700">{t('learningPath')}</label>
               <div className="relative flex items-center">
                 <Input
                   type="number" min="0" value={learningPath}
                   onChange={(e) => setLearningPath(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="pr-12"
                 />
-                <span className="absolute right-3 text-xs font-semibold text-neutral-400">Coin</span>
+                <span className="absolute right-3 text-xs font-semibold text-neutral-400">{t('coinLabel')}</span>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-neutral-700">Unlock CV</label>
+              <label className="text-sm font-semibold text-neutral-700">{t('unlockCv')}</label>
               <div className="relative flex items-center">
                 <Input
                   type="number" min="0" value={unlockCv}
                   onChange={(e) => setUnlockCv(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="pr-12"
                 />
-                <span className="absolute right-3 text-xs font-semibold text-neutral-400">Coin</span>
+                <span className="absolute right-3 text-xs font-semibold text-neutral-400">{t('coinLabel')}</span>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-neutral-700">Post Job</label>
+              <label className="text-sm font-semibold text-neutral-700">{t('postJob')}</label>
               <div className="relative flex items-center">
                 <Input
                   type="number" min="0" value={postJob}
                   onChange={(e) => setPostJob(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="pr-12"
                 />
-                <span className="absolute right-3 text-xs font-semibold text-neutral-400">Coin</span>
+                <span className="absolute right-3 text-xs font-semibold text-neutral-400">{t('coinLabel')}</span>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-neutral-700">Extend Job</label>
+              <label className="text-sm font-semibold text-neutral-700">{t('extendJob')}</label>
               <div className="relative flex items-center">
                 <Input
                   type="number" min="0" value={extendJob}
                   onChange={(e) => setExtendJob(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="pr-12"
                 />
-                <span className="absolute right-3 text-xs font-semibold text-neutral-400">Coin</span>
+                <span className="absolute right-3 text-xs font-semibold text-neutral-400">{t('coinLabel')}</span>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-neutral-700">Push Top</label>
+              <label className="text-sm font-semibold text-neutral-700">{t('pushTop')}</label>
               <div className="relative flex items-center">
                 <Input
                   type="number" min="0" value={pushTop}
                   onChange={(e) => setPushTop(e.target.value === '' ? 0 : Number(e.target.value))}
                   className="pr-12"
                 />
-                <span className="absolute right-3 text-xs font-semibold text-neutral-400">Coin</span>
+                <span className="absolute right-3 text-xs font-semibold text-neutral-400">{t('coinLabel')}</span>
               </div>
             </div>
 
-            <div className="pt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200/50 rounded-lg p-3">
-              The default top-up rate is set at <strong>1 Coin = 2,000 VND</strong> when configuring wallet top-up packages.
-            </div>
+            <div className="pt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200/50 rounded-lg p-3" dangerouslySetInnerHTML={{ __html: t.raw('coinRateInfo') }} />
           </CardContent>
         </Card>
 
@@ -321,11 +325,11 @@ export function CoinConfigTab() {
         <Card className="md:col-span-2 border-neutral-200/80 shadow-sm">
           <CardHeader className="border-b bg-neutral-50/50 flex flex-row items-center justify-between space-y-0">
             <div>
-              <CardTitle className="text-lg font-bold text-neutral-800">Coin Top-up Packages</CardTitle>
-              <CardDescription>Manage the list of coin top-up amounts displayed to candidates.</CardDescription>
+              <CardTitle className="text-lg font-bold text-neutral-800">{t('coinPackagesTitle')}</CardTitle>
+              <CardDescription>{t('coinPackagesDesc')}</CardDescription>
             </div>
             <Button size="sm" onClick={handleAddPackage} className="bg-neutral-900 text-white hover:bg-neutral-800">
-              Add Package
+              {t('addPackageBtn')}
             </Button>
           </CardHeader>
           <CardContent className="pt-6">
@@ -333,10 +337,10 @@ export function CoinConfigTab() {
               <Table>
                 <TableHeader className="bg-neutral-50">
                   <TableRow>
-                    <TableHead className="w-[40%]">Package Name</TableHead>
-                    <TableHead className="w-[15%]">Coins Amount</TableHead>
-                    <TableHead className="w-[20%]">Price (VND)</TableHead>
-                    <TableHead className="w-[15%]">Status</TableHead>
+                    <TableHead className="w-[40%]">{t('colPkgName')}</TableHead>
+                    <TableHead className="w-[15%]">{t('colCoinsAmount')}</TableHead>
+                    <TableHead className="w-[20%]">{t('colPriceVnd')}</TableHead>
+                    <TableHead className="w-[15%]">{t('colStatus')}</TableHead>
                     <TableHead className="w-[10%] text-right"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -364,7 +368,7 @@ export function CoinConfigTab() {
           disabled={updateMutation.isPending}
           className="bg-neutral-900 text-white hover:bg-neutral-800 px-6"
         >
-          {updateMutation.isPending ? 'Saving changes...' : 'Save All Configuration'}
+          {updateMutation.isPending ? t('savingChangesBtn') : t('saveAllConfigBtn')}
         </Button>
       </div>
     </div>

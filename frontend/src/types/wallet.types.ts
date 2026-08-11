@@ -2,11 +2,14 @@ export interface WalletBalanceDto {
   userId: string;
   balance: number;
   activeSubscriptionName?: string | null;
+  activeSubscriptionPrice?: number | null;
   subscriptionEndDate?: string | null;
   mockInterviewLimit?: number | null;
   mockInterviewUsed?: number | null;
   cvMatchLimit?: number | null;
   cvMatchUsed?: number | null;
+  cvOptimizeLimit?: number | null;
+  cvOptimizeUsed?: number | null;
   learningPathLimit?: number | null;
   learningPathUsed?: number | null;
   learningPathSlotLimit?: number | null;

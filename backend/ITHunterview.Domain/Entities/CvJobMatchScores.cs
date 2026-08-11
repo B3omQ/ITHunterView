@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ITHunterview.Domain.Enums;
 
 namespace ITHunterview.Domain.Entities
 {
@@ -50,6 +51,81 @@ namespace ITHunterview.Domain.Entities
 
         [Column("sfia_extract_result")]
         public string? SfiaExtractResult { get; set; }
+
+        [Column("input_snapshot_json")]
+        public string? InputSnapshotJson { get; set; }
+
+        [Column("input_hash")]
+        public string? InputHash { get; set; }
+
+        [Column("idempotency_key")]
+        public string? IdempotencyKey { get; set; }
+
+        [Column("idempotency_request_hash")]
+        public string? IdempotencyRequestHash { get; set; }
+
+        [Column("attempt_count")]
+        public int AttemptCount { get; set; }
+
+        [Column("max_attempts")]
+        public int MaxAttempts { get; set; } = 3;
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; }
+
+        [Column("started_at")]
+        public DateTime? StartedAt { get; set; }
+
+        [Column("completed_at")]
+        public DateTime? CompletedAt { get; set; }
+
+        [Column("next_attempt_at")]
+        public DateTime? NextAttemptAt { get; set; }
+
+        [Column("lease_owner")]
+        public string? LeaseOwner { get; set; }
+
+        [Column("lease_token")]
+        public Guid? LeaseToken { get; set; }
+
+        [Column("lease_expires_at")]
+        public DateTime? LeaseExpiresAt { get; set; }
+
+        [Column("last_heartbeat_at")]
+        public DateTime? LastHeartbeatAt { get; set; }
+
+        [Column("billing_reservation_id")]
+        public Guid? BillingReservationId { get; set; }
+
+        [Column("error_code")]
+        public string? ErrorCode { get; set; }
+
+        [Column("jd_analysis_quality")]
+        public JdAnalysisQuality? JdAnalysisQuality { get; set; }
+
+        [Column("jd_analysis_coverage_json", TypeName = "jsonb")]
+        public string? JdAnalysisCoverageJson { get; set; }
+
+        [Column("jd_analysis_diagnostics_json", TypeName = "jsonb")]
+        public string? JdAnalysisDiagnosticsJson { get; set; }
+
+        [Column("cv_analysis_quality")]
+        public CvAnalysisQuality? CvAnalysisQuality { get; set; }
+
+        [Column("cv_analysis_coverage_json", TypeName = "jsonb")]
+        public string? CvAnalysisCoverageJson { get; set; }
+
+        [Column("cv_analysis_diagnostics_json", TypeName = "jsonb")]
+        public string? CvAnalysisDiagnosticsJson { get; set; }
+
+        [Column("manual_retry_used")]
+        public bool ManualRetryUsed { get; set; }
+
+        [Column("retry_of_job_id")]
+        public Guid? RetryOfJobId { get; set; }
+
+        [Column("history_hidden_at")]
+        public DateTime? HistoryHiddenAt { get; set; }
 
     }
 }

@@ -5,6 +5,7 @@ import { X, FileText, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AuditLogDto } from '@/types/audit-log.types';
 import { SnapshotDiff } from './snapshot-diff';
+import { useTranslations } from 'next-intl';
 
 interface LogDetailsModalProps {
   log: AuditLogDto | null;
@@ -19,6 +20,7 @@ export function LogDetailsModal({
   getOperationBadgeColor,
   getCategoryBadgeColor,
 }: LogDetailsModalProps) {
+  const t = useTranslations('AdminAuditLogs');
   if (!log) return null;
 
   return (
@@ -28,7 +30,7 @@ export function LogDetailsModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-2.5">
             <FileText className="h-5 w-5 text-muted-foreground" />
-            <h3 className="text-sm font-bold text-foreground">Audit Log Record Details</h3>
+            <h3 className="text-sm font-bold text-foreground">{t('detailsModal.title')}</h3>
           </div>
           <Button
             variant="ghost"
@@ -47,7 +49,7 @@ export function LogDetailsModal({
             {/* Col 1 */}
             <div className="bg-muted/30 p-4 rounded-lg border border-border/60 space-y-2">
               <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                Actor
+                {t('detailsModal.actorLabel')}
               </div>
               <div>
                 <div className="text-xs font-semibold text-foreground">{log.actorEmail}</div>
@@ -60,15 +62,15 @@ export function LogDetailsModal({
             {/* Col 2 */}
             <div className="bg-muted/30 p-4 rounded-lg border border-border/60 space-y-2">
               <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                Network Environment
+                {t('detailsModal.networkLabel')}
               </div>
               <div className="text-xs space-y-1">
                 <div>
-                  <span className="text-muted-foreground">IP:</span>{' '}
+                  <span className="text-muted-foreground">{t('detailsModal.ipLabel')}</span>{' '}
                   <span className="font-mono text-foreground">{log.ipAddress}</span>
                 </div>
                 <div className="truncate" title={log.userAgent}>
-                  <span className="text-muted-foreground">UA:</span>{' '}
+                  <span className="text-muted-foreground">{t('detailsModal.uaLabel')}</span>{' '}
                   <span className="text-muted-foreground font-mono text-[10px]">
                     {log.userAgent}
                   </span>
@@ -79,7 +81,7 @@ export function LogDetailsModal({
             {/* Col 3 */}
             <div className="bg-muted/30 p-4 rounded-lg border border-border/60 space-y-2">
               <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                Recorded Time
+                {t('detailsModal.recordedTimeLabel')}
               </div>
               <div className="text-xs text-foreground">
                 <div>{new Date(log.createdAt).toLocaleString()}</div>
@@ -93,7 +95,7 @@ export function LogDetailsModal({
           {/* Action Description */}
           <div className="bg-muted/30 p-4 rounded-lg border border-border/60 space-y-2">
             <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-              Action
+              {t('detailsModal.actionLabel')}
             </div>
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -108,7 +110,7 @@ export function LogDetailsModal({
                   </span>
                   {log.tableName && (
                     <span className="font-mono text-[10px] bg-muted border border-border px-2 py-0.5 rounded text-muted-foreground">
-                      Table: {log.tableName}
+                      {t('detailsModal.tableLabel')} {log.tableName}
                     </span>
                   )}
                 </div>
@@ -129,7 +131,7 @@ export function LogDetailsModal({
           <div className="space-y-2">
             <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
               <Database className="h-3.5 w-3.5 text-muted-foreground" />
-              Payload Diff
+              {t('detailsModal.payloadDiffLabel')}
             </div>
             <SnapshotDiff diffStr={log.snapshotDiff} operation={log.operationType} />
           </div>
@@ -138,7 +140,7 @@ export function LogDetailsModal({
         {/* Modal Footer */}
         <div className="flex items-center justify-end px-6 py-4 border-t border-border bg-muted/10">
           <Button variant="outline" size="default" onClick={onClose} className="cursor-pointer">
-            Close
+            {t('detailsModal.closeBtn')}
           </Button>
         </div>
       </div>

@@ -10,8 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 export default function AdminCreateQuestionPage() {
+  const t = useTranslations("AdminQuestionBank");
   const router = useRouter();
   const { importExcel, createQuestion } = useQuestionBank();
 
@@ -34,17 +36,17 @@ export default function AdminCreateQuestionPage() {
     setFormError("");
 
     if (!formData.industry || !formData.level) {
-      setFormError("Industry and Level are required.");
+      setFormError(t('industryRequired'));
       return;
     }
 
     if (!hasFile && !hasText) {
-      setFormError("You must provide EITHER an Excel file OR enter a manual question.");
+      setFormError(t('eitherFileOrText'));
       return;
     }
 
     if (hasFile && hasText) {
-      setFormError("You can only choose ONE method: either upload an Excel file OR enter a manual question, not both.");
+      setFormError(t('onlyOneMethod'));
       return;
     }
 
@@ -56,12 +58,12 @@ export default function AdminCreateQuestionPage() {
       if (hasFile) {
         const res = await importExcel(formData.industry, formData.level, formData.file!);
         if (res.success) {
-          setSuccessMsg(`Successfully imported ${res.importedCount} questions.`);
+          setSuccessMsg(t('importSuccess').replace('{count}', (res.importedCount ?? 0).toString()));
           setTimeout(() => {
             router.push("/admin/question-bank");
           }, 1500);
         } else {
-          setFormError(res.message || "Failed to import questions");
+          setFormError(res.message || t('importFail'));
         }
       } else {
         const res = await createQuestion({
@@ -70,16 +72,16 @@ export default function AdminCreateQuestionPage() {
           questionText: formData.questionText.trim(),
         });
         if (res.success) {
-          setSuccessMsg(`Successfully added the question.`);
+          setSuccessMsg(t('addSuccess'));
           setTimeout(() => {
             router.push("/admin/question-bank");
           }, 1500);
         } else {
-          setFormError(res.message || "Failed to add question");
+          setFormError(res.message || t('addFail'));
         }
       }
     } catch (err) {
-      setFormError("An unexpected error occurred");
+      setFormError(t('unexpectedError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -95,8 +97,8 @@ export default function AdminCreateQuestionPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">Add / Import Questions (Admin)</h1>
-            <p className="text-zinc-500 dark:text-zinc-400 mt-1 text-sm">Upload an Excel file or add single question manually</p>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">{t('createTitleAdmin')}</h1>
+            <p className="text-zinc-500 dark:text-zinc-400 mt-1 text-sm">{t('createDescAdmin')}</p>
           </div>
         </div>
 
@@ -115,39 +117,39 @@ export default function AdminCreateQuestionPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="industry">Industry <span className="text-red-500">*</span></Label>
+                <Label htmlFor="industry">{t('industryLabel')} <span className="text-red-500">*</span></Label>
                 <Select value={formData.industry} onValueChange={(v) => setFormData({ ...formData, industry: v || "" })}>
                   <SelectTrigger id="industry" className="bg-white dark:bg-zinc-950">
-                    <SelectValue placeholder="Select Industry" />
+                    <SelectValue placeholder={t('selectIndustry')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="BA">BA</SelectItem>
-                    <SelectItem value="DEV">Dev</SelectItem>
-                    <SelectItem value="TEST">Test</SelectItem>
+                    <SelectItem value="BA">{t('industryBA')}</SelectItem>
+                    <SelectItem value="DEV">{t('industryDev')}</SelectItem>
+                    <SelectItem value="TEST">{t('industryTest')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="level">Level <span className="text-red-500">*</span></Label>
+                <Label htmlFor="level">{t('levelLabel')} <span className="text-red-500">*</span></Label>
                 <Select value={formData.level} onValueChange={(v) => setFormData({ ...formData, level: v || "" })}>
                   <SelectTrigger id="level" className="bg-white dark:bg-zinc-950">
-                    <SelectValue placeholder="Select Level" />
+                    <SelectValue placeholder={t('selectLevel')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="INTERN_FRESHER">Intern/Fresher</SelectItem>
-                    <SelectItem value="JUNIOR">Junior</SelectItem>
-                    <SelectItem value="MIDDLE">Middle</SelectItem>
-                    <SelectItem value="SENIOR">Senior</SelectItem>
+                    <SelectItem value="INTERN_FRESHER">{t('levelInternFresher')}</SelectItem>
+                    <SelectItem value="JUNIOR">{t('levelJunior')}</SelectItem>
+                    <SelectItem value="MIDDLE">{t('levelMiddle')}</SelectItem>
+                    <SelectItem value="SENIOR">{t('levelSenior')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div className="space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Method 1: Import Excel File</h3>
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{t('method1')}</h3>
               <div className="space-y-2">
-                <Label htmlFor="excelFile">Excel File (.xlsx)</Label>
+                <Label htmlFor="excelFile">{t('excelFileShort')}</Label>
                 <Input
                   id="excelFile"
                   type="file"
@@ -163,12 +165,12 @@ export default function AdminCreateQuestionPage() {
             </div>
 
             <div className="space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Method 2: Single Manual Question</h3>
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{t('method2')}</h3>
               <div className="space-y-2">
-                <Label htmlFor="questionText">Question Content</Label>
+                <Label htmlFor="questionText">{t('questionContent')}</Label>
                 <Textarea
                   id="questionText"
-                  placeholder="Enter the single question content..."
+                  placeholder={t('manualPlaceholderAdmin')}
                   rows={4}
                   disabled={hasFile}
                   value={formData.questionText}
@@ -181,12 +183,12 @@ export default function AdminCreateQuestionPage() {
             <div className="flex justify-end gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
               <Link href="/admin/question-bank">
                 <Button type="button" variant="outline">
-                  Cancel
+                  {t('cancelBtn')}
                 </Button>
               </Link>
               <Button type="submit" disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]">
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Submit
+                {t('submitBtn')}
               </Button>
             </div>
           </form>

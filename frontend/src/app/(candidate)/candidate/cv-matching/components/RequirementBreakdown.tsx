@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { useTranslations } from "next-intl";
 
 interface RequirementBreakdownProps {
   scores: RequirementScore[];
@@ -32,6 +33,22 @@ const CATEGORY_LABELS: Record<RequirementCategory, string> = {
 };
 
 export function RequirementBreakdown({ scores }: RequirementBreakdownProps) {
+  const t = useTranslations("CandidateCVMatching");
+
+  // Category labels based on translation
+  const getCategoryLabel = (category: RequirementCategory) => {
+    switch (category) {
+      case "tech_skill": return t("reqTypeTechSkill");
+      case "experience": return t("reqTypeExperience");
+      case "seniority_fit": return t("reqTypeSeniority");
+      case "domain_knowledge": return t("reqTypeDomain");
+      case "language": return t("reqTypeLanguage");
+      case "education": return t("reqTypeEducation");
+      case "soft_skill": return t("reqTypeSoftSkill");
+      default: return category;
+    }
+  };
+
   // Group by category
   const groupedScores = CATEGORY_ORDER.reduce((acc, category) => {
     const catScores = scores.filter(s => s.category === category);
@@ -44,15 +61,15 @@ export function RequirementBreakdown({ scores }: RequirementBreakdownProps) {
   return (
     <Card className="border-muted">
       <CardHeader>
-        <CardTitle className="text-lg">JD Fit Requirement Breakdown</CardTitle>
-        <CardDescription>Detailed mapping and scores of specific job requirements against your resume.</CardDescription>
+        <CardTitle className="text-lg">{t("reqBreakdownTitle")}</CardTitle>
+        <CardDescription>{t("reqBreakdownDesc")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-8">
         {groupedScores.map(group => (
           <div key={group.category}>
             <div className="flex items-center gap-2 mb-3 border-b pb-2">
               <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">
-                {CATEGORY_LABELS[group.category]}
+                {getCategoryLabel(group.category)}
               </h3>
               {group.scores[0]?.categoryWeight && (
                 <Badge variant="outline" className="text-[10px] font-mono text-muted-foreground">
@@ -62,7 +79,7 @@ export function RequirementBreakdown({ scores }: RequirementBreakdownProps) {
             </div>
             <div className="space-y-3">
               {group.scores.map(req => (
-                <RequirementRow key={req.reqId} req={req} />
+                <RequirementRow key={req.reqId} req={req} t={t} />
               ))}
             </div>
           </div>
@@ -72,7 +89,7 @@ export function RequirementBreakdown({ scores }: RequirementBreakdownProps) {
   );
 }
 
-function RequirementRow({ req }: { req: RequirementScore }) {
+function RequirementRow({ req, t }: { req: RequirementScore, t: any }) {
   const [isOpen, setIsOpen] = useState(false);
 
   // Status Icon & Colors based on 5 levels
@@ -120,11 +137,11 @@ function RequirementRow({ req }: { req: RequirementScore }) {
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <span className="font-medium text-sm truncate">{displayName}</span>
             <Badge variant={req.importance === "must_have" ? "default" : "secondary"} className="text-[10px] h-5 px-1.5 font-normal">
-              {req.importance === "must_have" ? "Must Have" : "Nice To Have"}
+              {req.importance === "must_have" ? t("mustHave") : t("niceToHave")}
             </Badge>
             {req.flag === "CRITICAL_GAP" && (
               <Badge variant="destructive" className="text-[10px] h-5 px-1.5 font-normal animate-pulse">
-                Critical Gap
+                {t("criticalGap")}
               </Badge>
             )}
           </div>
@@ -165,7 +182,7 @@ function RequirementRow({ req }: { req: RequirementScore }) {
       <CollapsibleContent>
         <div className="px-4 pb-4 pt-1 ml-[42px]">
           <div className="bg-muted/40 p-3 rounded-md border border-border/30 text-sm text-muted-foreground leading-relaxed">
-            {req.reasoning || "No detailed reasoning provided."}
+            {req.reasoning || t("noReasoning")}
           </div>
         </div>
       </CollapsibleContent>

@@ -20,6 +20,7 @@ namespace ITHunterview.Service.Tests.UseCase
     {
         private readonly Mock<ITHunterviewContext> _contextMock;
         private readonly Mock<ISystemConfigRepository> _configRepoMock;
+        private readonly Mock<IFeatureUsageReservationRepository> _reservationRepoMock;
         private readonly CandidateFeatureUsageUseCase _useCase;
 
         public CandidateFeatureUsageUseCaseTests()
@@ -28,7 +29,11 @@ namespace ITHunterview.Service.Tests.UseCase
 
             _contextMock = new Mock<ITHunterviewContext>(options);
             _configRepoMock = new Mock<ISystemConfigRepository>();
-            _useCase = new CandidateFeatureUsageUseCase(_contextMock.Object, _configRepoMock.Object);
+            _reservationRepoMock = new Mock<IFeatureUsageReservationRepository>();
+            _useCase = new CandidateFeatureUsageUseCase(
+                _contextMock.Object,
+                _configRepoMock.Object,
+                _reservationRepoMock.Object);
         }
 
         private void SetupDbSets(

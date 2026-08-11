@@ -24,6 +24,7 @@ import {
 import { GraduationCap, Award, Plus, AlertTriangle, Loader2 } from 'lucide-react';
 import { EducationForm } from './EducationForm';
 import { CertificationForm } from './CertificationForm';
+import { useTranslations } from 'next-intl';
 
 export function EducationTab() {
   const { data: majors } = useMajors();
@@ -32,6 +33,7 @@ export function EducationTab() {
 
   const { mutate: deleteEdu, isPending: isDeletingEdu } = useDeleteEducation();
   const { mutate: deleteCert, isPending: isDeletingCert } = useDeleteCertification();
+  const t = useTranslations("CandidateProfile");
 
   // Orchestration states for Educations
   const [isAddingEdu, setIsAddingEdu] = useState(false);
@@ -60,13 +62,13 @@ export function EducationTab() {
   };
 
   if (isLoadingEdu || isLoadingCert) {
-    return <PageLoader message="Loading academic details..." />;
+    return <PageLoader message={t('academicLoading')} />;
   }
 
   if (isErrorEdu || isErrorCert || !educations || !certifications) {
     return (
       <div className="p-8 border rounded-xl bg-card text-center text-muted-foreground">
-        Failed to load academic records. Please try again.
+        {t('academicLoadError')}
       </div>
     );
   }
@@ -86,9 +88,9 @@ export function EducationTab() {
       <Card className="border border-border/40 bg-card/60 backdrop-blur-md rounded-xl shadow-md overflow-hidden">
         <CardHeader className="border-b pb-4 flex flex-row items-start justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <CardTitle className="text-xl font-bold mt-1">Education</CardTitle>
+            <CardTitle className="text-xl font-bold mt-1">{t('education')}</CardTitle>
             {mappedEducations.length === 0 && (
-              <CardDescription className="text-sm">Your academic background and credentials</CardDescription>
+              <CardDescription className="text-sm">{t('educationDesc')}</CardDescription>
             )}
           </div>
           <Button
@@ -137,10 +139,10 @@ export function EducationTab() {
         <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl">
-              {isAddingEdu ? 'Add Education' : 'Edit Education'}
+              {isAddingEdu ? t('addEducation') : t('editEducation')}
             </DialogTitle>
             <DialogDescription>
-              Fill in the details of your academic background below.
+              {t('eduFormDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="pt-2">
@@ -163,9 +165,9 @@ export function EducationTab() {
       <Card className="border border-border/40 bg-card/60 backdrop-blur-md rounded-xl shadow-md overflow-hidden">
         <CardHeader className="border-b pb-4 flex flex-row items-start justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <CardTitle className="text-xl font-bold mt-1">Certifications</CardTitle>
+            <CardTitle className="text-xl font-bold mt-1">{t('certifications')}</CardTitle>
             {certifications.length === 0 && (
-              <CardDescription className="text-sm">Professional certifications and licenses</CardDescription>
+              <CardDescription className="text-sm">{t('certificationsDesc')}</CardDescription>
             )}
           </div>
           <Button
@@ -214,10 +216,10 @@ export function EducationTab() {
         <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl">
-              {isAddingCert ? 'Add Certification' : 'Edit Certification'}
+              {isAddingCert ? t('addCertification') : t('editCertification')}
             </DialogTitle>
             <DialogDescription>
-              Fill in the details of your certification below.
+              {t('certFormDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="pt-2">
@@ -245,9 +247,9 @@ export function EducationTab() {
             <div className="w-12 h-12 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center mb-4">
               <AlertTriangle className="w-6 h-6" />
             </div>
-            <DialogTitle className="text-lg font-bold">Delete Education</DialogTitle>
+            <DialogTitle className="text-lg font-bold">{t('deleteEduTitle')}</DialogTitle>
             <DialogDescription className="text-xs">
-              Are you sure you want to delete this academic record? This action cannot be undone.
+              {t('deleteEduConfirm')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="pt-2">
@@ -257,7 +259,7 @@ export function EducationTab() {
               disabled={isDeletingEdu}
               className="border-border/60 hover:bg-muted/40 transition-all font-semibold rounded-lg"
             >
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               onClick={handleEduDelete}
@@ -265,7 +267,7 @@ export function EducationTab() {
               className="bg-destructive hover:bg-destructive/95 transition-all text-destructive-foreground font-semibold px-6 shadow-md shadow-destructive/10 rounded-lg flex items-center gap-2"
             >
               {isDeletingEdu && <Loader2 className="w-4 h-4 animate-spin" />}
-              Delete
+              {t('delete')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -280,9 +282,9 @@ export function EducationTab() {
             <div className="w-12 h-12 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center mb-4">
               <AlertTriangle className="w-6 h-6" />
             </div>
-            <DialogTitle className="text-lg font-bold">Delete Certification</DialogTitle>
+            <DialogTitle className="text-lg font-bold">{t('deleteCertTitle')}</DialogTitle>
             <DialogDescription className="text-xs">
-              Are you sure you want to delete this certification? This action cannot be undone.
+              {t('deleteCertConfirm')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="pt-2">
@@ -292,7 +294,7 @@ export function EducationTab() {
               disabled={isDeletingCert}
               className="border-border/60 hover:bg-muted/40 transition-all font-semibold rounded-lg"
             >
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               onClick={handleCertDelete}
@@ -300,7 +302,7 @@ export function EducationTab() {
               className="bg-destructive hover:bg-destructive/95 transition-all text-destructive-foreground font-semibold px-6 shadow-md shadow-destructive/10 rounded-lg flex items-center gap-2"
             >
               {isDeletingCert && <Loader2 className="w-4 h-4 animate-spin" />}
-              Delete
+              {t('delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

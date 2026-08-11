@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Interface.Service.Matching;
 
@@ -9,12 +10,17 @@ public sealed record HardcodeJdRequirementScoreDecision(
     bool HasRequirementGroups,
     JdRequirementProjection? Projection,
     JdHardcodeRequirementEvaluation? Evaluation,
-    string? FailureCode);
+    string? FailureCode,
+    bool CanUseLegacyCompatibilityFallback)
+{
+    public string? AnalysisQuality => Projection?.AnalysisQuality;
+}
 
 /// <summary>
 /// Projects the effective JD once, then delegates only technical groups to the
-/// hardcode skill component. Invalid analysis deliberately falls back to the
-/// legacy normalized metrics path owned by the caller.
+/// hardcode skill component. A malformed legacy document may use compatibility
+/// metrics, but a malformed v3 document must fail closed: falling back would
+/// silently discard its group semantics.
 /// </summary>
 public sealed class HardcodeJdRequirementScoringService
 {
@@ -38,14 +44,15 @@ public sealed class HardcodeJdRequirementScoringService
             var projection = _projector.Project(effectiveJdJson);
             if (projection.Groups.Count == 0)
             {
-                return new HardcodeJdRequirementScoreDecision(false, projection, null, null);
+                return new HardcodeJdRequirementScoreDecision(false, projection, null, null, true);
             }
 
             return new HardcodeJdRequirementScoreDecision(
                 true,
                 projection,
                 _evaluator.Evaluate(projection, cvSkills),
-                null);
+                null,
+                false);
         }
         catch (InvalidOperationException exception) when (exception.Message == JdRequirementProjector.InvalidEffectiveJdAnalysis)
         {
@@ -53,7 +60,26 @@ public sealed class HardcodeJdRequirementScoringService
                 false,
                 null,
                 null,
-                JdRequirementProjector.InvalidEffectiveJdAnalysis);
+                JdRequirementProjector.InvalidEffectiveJdAnalysis,
+                !ClaimsV3Contract(effectiveJdJson));
+        }
+    }
+
+    private static bool ClaimsV3Contract(string? effectiveJdJson)
+    {
+        if (string.IsNullOrWhiteSpace(effectiveJdJson))
+            return false;
+
+        try
+        {
+            using var document = JsonDocument.Parse(effectiveJdJson);
+            return document.RootElement.ValueKind == JsonValueKind.Object &&
+                   document.RootElement.TryGetProperty("schema_version", out var version) &&
+                   string.Equals(version.GetString(), "jd-analysis/v3", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
 }

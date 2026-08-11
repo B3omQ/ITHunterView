@@ -5,8 +5,10 @@ import Link from "next/link"
 import { Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
 import { authService } from "@/services/auth.service"
 import { useAuthStore } from "@/store/auth.store"
+import { useTranslations } from "next-intl"
 
 export default function SecuritySettingsPage() {
+  const t = useTranslations("StaffChangePassword")
   const { logout } = useAuthStore()
 
   const [currentPassword, setCurrentPassword] = useState("")
@@ -27,7 +29,12 @@ export default function SecuritySettingsPage() {
     setSuccess("")
 
     if (newPassword !== confirmNewPassword) {
-      setError("Confirm password does not match.")
+      setError(t("errMatch"))
+      return
+    }
+
+    if (newPassword.length < 6) {
+      setError("New password must be at least 6 characters long.")
       return
     }
 
@@ -35,15 +42,19 @@ export default function SecuritySettingsPage() {
     try {
       const res = await authService.changePassword({ currentPassword, newPassword, confirmNewPassword })
       if (!res.success) {
-        setError(res.message ?? "Failed to change password.")
+        setError(res.message ?? t("errFailed"))
         return
       }
-      setSuccess("Password updated successfully. You will be logged out shortly to sign in with your new password.")
+      setSuccess(t("success"))
       setTimeout(async () => {
         await logout()
       }, 3000)
-    } catch {
-      setError("Cannot connect to the server.")
+    } catch (err: any) {
+      const serverMsg = err?.response?.data?.message 
+        || err?.response?.data?.errors?.NewPassword?.[0]
+        || err?.response?.data?.title
+        || t("errServer")
+      setError(serverMsg)
     } finally {
       setLoading(false)
     }
@@ -53,8 +64,8 @@ export default function SecuritySettingsPage() {
     <div className="w-full pb-8 space-y-6">
       <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-foreground">Password &amp; Security</h2>
-        <p className="text-sm text-muted-foreground mt-1">Manage your password and account security settings.</p>
+        <h2 className="text-xl font-bold text-foreground">{t("pageTitle")}</h2>
+        <p className="text-sm text-muted-foreground mt-1">{t("pageDesc")}</p>
       </div>
 
       {error && (
@@ -74,12 +85,12 @@ export default function SecuritySettingsPage() {
       <form onSubmit={handleSubmit} className="space-y-6 max-w-lg">
         {/* Current Password */}
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-foreground">Current Password</label>
+          <label className="text-sm font-medium text-foreground">{t("lblCurrent")}</label>
           <div className="relative">
             <input
               type={showCurrent ? "text" : "password"}
               required
-              placeholder="Enter current password"
+              placeholder={t("phCurrent")}
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               className="w-full h-11 px-3 pr-10 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
@@ -94,7 +105,7 @@ export default function SecuritySettingsPage() {
             </button>
           </div>
           <Link href="/forgot-password" className="text-xs text-primary hover:text-primary/80 inline-block mt-1">
-            Forgot current password?
+            {t("forgot")}
           </Link>
         </div>
 
@@ -102,12 +113,12 @@ export default function SecuritySettingsPage() {
 
         {/* New Password */}
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-foreground">New Password</label>
+          <label className="text-sm font-medium text-foreground">{t("lblNew")}</label>
           <div className="relative">
             <input
               type={showNew ? "text" : "password"}
               required
-              placeholder="Enter new password"
+              placeholder={t("phNew")}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               className="w-full h-11 px-3 pr-10 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
@@ -125,12 +136,12 @@ export default function SecuritySettingsPage() {
 
         {/* Confirm New Password */}
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-foreground">Confirm New Password</label>
+          <label className="text-sm font-medium text-foreground">{t("lblConfirm")}</label>
           <div className="relative">
             <input
               type={showConfirm ? "text" : "password"}
               required
-              placeholder="Confirm new password"
+              placeholder={t("phConfirm")}
               value={confirmNewPassword}
               onChange={(e) => setConfirmNewPassword(e.target.value)}
               className="w-full h-11 px-3 pr-10 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
@@ -153,13 +164,13 @@ export default function SecuritySettingsPage() {
             disabled={loading}
             className="btn-primary h-10 px-5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : "Save New Password"}
+            {loading ? <><Loader2 size={16} className="animate-spin" /> {t("btnSaving")}</> : t("btnSave")}
           </button>
           <button
             type="button"
             className="h-10 px-5 rounded-lg text-sm font-semibold text-primary border border-primary hover:bg-primary/5 transition-colors"
           >
-            Cancel
+            {t("btnCancel")}
           </button>
         </div>
       </form>

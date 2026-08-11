@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { MATCHING_LOADING_STEPS } from '@/hooks/useCvMatchingForm';
+import { useTranslations } from "next-intl";
 
 interface MatchingLoadingStateProps {
   progressPercent: number;
@@ -10,21 +11,23 @@ interface MatchingLoadingStateProps {
 }
 
 export function MatchingLoadingState({ progressPercent, loadingStep }: MatchingLoadingStateProps) {
+  const t = useTranslations("CandidateCVMatching");
+
   return (
     <Card className="max-w-xl mx-auto w-full mt-12 border-muted">
       <CardHeader className="space-y-1 text-center">
         <CardTitle className="text-xl font-bold flex items-center justify-center gap-2">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          Analyzing Suitability
+          {t("analyzingSuitability")}
         </CardTitle>
         <CardDescription>
-          This might take around 15–30 seconds. Do not close this window.
+          {t("loadingDesc")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
           <div className="flex justify-between text-sm font-semibold">
-            <span>Progress</span>
+            <span>{t("progressLabel")}</span>
             <span>{progressPercent}%</span>
           </div>
           <Progress value={progressPercent} className="w-full" />
@@ -32,7 +35,7 @@ export function MatchingLoadingState({ progressPercent, loadingStep }: MatchingL
 
         {/* List steps */}
         <div className="space-y-3 bg-muted/40 p-4 rounded-lg border">
-          {MATCHING_LOADING_STEPS.map((stepMsg, idx) => {
+          {MATCHING_LOADING_STEPS.map((_, idx) => {
             const isDone = idx < loadingStep;
             const isCurrent = idx === loadingStep;
             return (
@@ -47,7 +50,7 @@ export function MatchingLoadingState({ progressPercent, loadingStep }: MatchingL
                   </div>
                 )}
                 <span className={isDone ? 'text-emerald-700/80 font-medium line-through' : isCurrent ? 'text-foreground font-semibold' : 'text-muted-foreground'}>
-                  {stepMsg}
+                  {t(`step${idx + 1}` as any)}
                 </span>
               </div>
             );

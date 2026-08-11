@@ -3,9 +3,11 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Service.Config;
 using ITHunterview.Service.Interface.Service;
+using ITHunterview.Service.Service.Matching;
 using Microsoft.Extensions.Options;
 
 namespace ITHunterview.Service.Service.AiProviders
@@ -30,7 +32,17 @@ namespace ITHunterview.Service.Service.AiProviders
             }
         }
 
-        public async Task<string> GenerateTextAsync(string prompt, string systemPrompt = null)
+        public Task<string> GenerateTextAsync(string prompt, string systemPrompt = null)
+            => GenerateTextAsync(prompt, systemPrompt, CancellationToken.None);
+
+        public async Task<string> GenerateTextAsync(string prompt, string systemPrompt, CancellationToken cancellationToken)
+            => await GenerateTextAsync(prompt, systemPrompt, null, cancellationToken);
+
+        public async Task<string> GenerateTextAsync(
+            string prompt,
+            string systemPrompt,
+            AiGenerationOptions? options,
+            CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(_config.ApiKey) || _config.ApiKey == "YOUR_GROQ_API_KEY")
             {
@@ -50,18 +62,20 @@ namespace ITHunterview.Service.Service.AiProviders
             }
             messages.Add(new { role = "user", content = prompt });
 
-            var payload = new
+            var payload = new System.Collections.Generic.Dictionary<string, object?>
             {
-                model = model,
-                messages = messages,
-                temperature = 0.7
+                ["model"] = model,
+                ["messages"] = messages,
+                ["temperature"] = options?.Temperature ?? 0.7m
             };
+            if (options?.TopP is decimal topP) payload["top_p"] = topP;
+            if (options?.MaxOutputTokens is int maxTokens) payload["max_tokens"] = maxTokens;
 
             var jsonPayload = JsonSerializer.Serialize(payload);
 
             HttpResponseMessage response = null;
             string errorContent = string.Empty;
-            int maxRetries = 3;
+            int maxRetries = Math.Clamp(options?.MaxTransportAttempts ?? 3, 1, 3);
 
             for (int i = 0; i < maxRetries; i++)
             {
@@ -71,13 +85,19 @@ namespace ITHunterview.Service.Service.AiProviders
                 
                 try
                 {
-                    response = await _httpClient.SendAsync(requestMessage);
+                    response = await _httpClient.SendAsync(
+                        requestMessage,
+                        HttpCompletionOption.ResponseHeadersRead,
+                        cancellationToken);
                     if (response.IsSuccessStatusCode)
                     {
                         break;
                     }
                     
-                    errorContent = await response.Content.ReadAsStringAsync();
+                    errorContent = await BoundedHttpContentReader.ReadAsStringAsync(
+                        response.Content,
+                        BoundedHttpContentReader.DefaultMaxBytes,
+                        cancellationToken);
                     
                     // If it is NOT a transient error, do not retry
                     if (response.StatusCode != System.Net.HttpStatusCode.ServiceUnavailable && // 503
@@ -89,6 +109,14 @@ namespace ITHunterview.Service.Service.AiProviders
                         break;
                     }
                 }
+                catch (InvalidOperationException ex) when (ex.Message == "AI_RESPONSE_TOO_LARGE")
+                {
+                    throw;
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     errorContent = ex.Message;
@@ -97,16 +125,19 @@ namespace ITHunterview.Service.Service.AiProviders
                 if (i < maxRetries - 1)
                 {
                     Console.WriteLine($"[WARNING] Groq API call returned transient status {response?.StatusCode} or threw exception. Retrying in 2 seconds... (Attempt {i + 1} of {maxRetries})");
-                    await Task.Delay(2000);
+                    await Task.Delay(2000, cancellationToken);
                 }
             }
 
             if (response == null || !response.IsSuccessStatusCode)
             {
-                throw new HttpRequestException($"Groq API call failed after {maxRetries} attempts. Status: {response?.StatusCode}, Error: {errorContent}");
+                throw new HttpRequestException($"Groq API call failed after {maxRetries} attempts. Status: {response?.StatusCode}; ErrorBodyLength: {errorContent.Length}");
             }
 
-            var responseContent = await response.Content.ReadAsStringAsync();
+            var responseContent = await BoundedHttpContentReader.ReadAsStringAsync(
+                response.Content,
+                BoundedHttpContentReader.DefaultMaxBytes,
+                cancellationToken);
             using var doc = JsonDocument.Parse(responseContent);
             
             // Extract choice content

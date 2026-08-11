@@ -1,6 +1,7 @@
 'use client';
 
 import { Sidebar } from './Sidebar';
+import { DashboardHeader } from './DashboardHeader';
 import { useAuthStore } from '@/store/auth.store';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -16,6 +17,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, accessToken } = useAuthStore();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
     setMounted(true);
@@ -50,8 +52,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
+      <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <DashboardHeader />
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
+      </div>
       <CheatMenu />
     </div>
   );

@@ -17,6 +17,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { useTranslations } from "next-intl";
 
 import { useState } from "react";
 import { useStaffDashboard } from "@/hooks/useDashboard";
@@ -77,9 +78,9 @@ export default function StaffDashboard() {
 
     <div className="w-full pb-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Staff Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground">
-          Question bank analytics and company verification tracking.
+          {t("desc")}
         </p>
       </div>
       <DashboardFilterBar onFilterChange={setFilters} />
@@ -106,7 +107,7 @@ export default function StaffDashboard() {
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-6">
         <Card className="col-span-1 lg:col-span-2">
           <CardHeader>
-            <CardTitle>Questions by Category</CardTitle>
+            <CardTitle>{t("chartQCat")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full flex items-center justify-center">
@@ -135,7 +136,7 @@ export default function StaffDashboard() {
 
         <Card className="col-span-1 lg:col-span-4">
           <CardHeader>
-            <CardTitle>Questions by Level</CardTitle>
+            <CardTitle>{t("chartQLevel")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
@@ -154,7 +155,7 @@ export default function StaffDashboard() {
 
         <Card className="col-span-1 lg:col-span-6">
           <CardHeader>
-            <CardTitle>Company Verifications</CardTitle>
+            <CardTitle>{t("chartVerif")}</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
             <div className="h-[300px] w-full">

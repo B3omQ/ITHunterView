@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <data name="ItemNotFound" xml:space="preserve">
+    <value>Không tìm thấy mục</value>
+  </data>
+  <data name="Unauthorized" xml:space="preserve">
+    <value>Không có quyền truy cập</value>
+  </data>
+  <data name="SystemError" xml:space="preserve">
+    <value>Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.</value>
+  </data>
+</root>

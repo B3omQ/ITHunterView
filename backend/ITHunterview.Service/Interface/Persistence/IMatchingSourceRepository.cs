@@ -17,4 +17,10 @@ public interface IMatchingSourceRepository
         Guid jobId,
         DateTime utcNow,
         CancellationToken ct = default);
+
+    Task<JobPostings?> GetAccessibleJobAsync(
+        Guid jobId,
+        Guid candidateId,
+        DateTime utcNow,
+        CancellationToken ct = default);
 }

@@ -68,6 +68,11 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
                   Applied
                 </Badge>
               )}
+              {job.status === 'EXPIRED' && (
+                <Badge variant="secondary" className="bg-slate-200 text-slate-600 hover:bg-slate-200 border-none px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ml-auto">
+                  Hết hạn
+                </Badge>
+              )}
             </div>
 
             {/* Title */}

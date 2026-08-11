@@ -112,6 +112,21 @@ namespace ITHunterview.WebAPI.Controllers
                 return StatusCode(500, new ResponseBase<string>($"Error generating text: {ex.Message}"));
             }
         }
+
+        [HttpGet("usage")]
+        [Authorize(Policy = "StaffOrAdmin")]
+        public async Task<ActionResult<ResponseBase<AiUsageSummaryDto>>> GetUsageAnalytics([FromQuery] AiUsageFilterDto filter)
+        {
+            try
+            {
+                var summary = await _aiConfigUseCase.GetAiUsageAnalyticsAsync(filter ?? new AiUsageFilterDto());
+                return Ok(new ResponseBase<AiUsageSummaryDto>(summary, "AI Usage Analytics retrieved successfully."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ResponseBase<AiUsageSummaryDto>($"Error retrieving usage analytics: {ex.Message}"));
+            }
+        }
     }
 
     public class GenerateRequestDto

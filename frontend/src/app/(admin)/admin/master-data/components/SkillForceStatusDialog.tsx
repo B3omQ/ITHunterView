@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { useUpdateSkillStatus } from '@/hooks/useSkill';
 import type { SkillStatus } from '@/types/master-data.types';
+import { useTranslations } from 'next-intl';
 
 interface SkillForceStatusDialogProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ interface SkillForceStatusDialogProps {
 }
 
 export function SkillForceStatusDialog({ isOpen, onClose, forceStatusData, onSuccess, onError }: SkillForceStatusDialogProps) {
+  const t = useTranslations('AdminMasterData');
   const updateSkillStatusMutation = useUpdateSkillStatus();
 
   const handleConfirm = () => {
@@ -36,12 +38,12 @@ export function SkillForceStatusDialog({ isOpen, onClose, forceStatusData, onSuc
       {
         onSuccess: (res) => {
           if (res.success) {
-            onSuccess(`Force updated skill status to ${forceStatusData.status} successfully!`);
+            onSuccess(t('toastSkillStatusUpdateSuccess', { status: forceStatusData.status }));
             onClose();
           }
         },
         onError: (err: any) => {
-          onError(err.response?.data?.message || 'Error force updating status.');
+          onError(err.response?.data?.message || t('toastSkillStatusUpdateError'));
           onClose();
         },
       }
@@ -52,19 +54,19 @@ export function SkillForceStatusDialog({ isOpen, onClose, forceStatusData, onSuc
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="hidden">
-            <DialogTitle>Force Status Change Required</DialogTitle>
+            <DialogTitle>{t('skillForceStatusTitle')}</DialogTitle>
         </DialogHeader>
         <div className="flex items-start gap-3 pt-4">
           <div className="p-2 rounded-full bg-amber-500/10 text-amber-500 shrink-0">
             <AlertTriangle size={24} />
           </div>
           <div className="space-y-1.5">
-            <h3 className="text-base font-bold text-foreground">Force Status Change Required</h3>
+            <h3 className="text-base font-bold text-foreground">{t('skillForceStatusTitle')}</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              {forceStatusData?.message}
+              {forceStatusData?.message || t('skillForceStatusDesc')}
             </p>
             <p className="text-xs text-muted-foreground italic">
-              * When disabled, this skill will be hidden and cannot be searched by new candidates or job postings.
+              {t('skillForceStatusNote')}
             </p>
           </div>
         </div>
@@ -75,7 +77,7 @@ export function SkillForceStatusDialog({ isOpen, onClose, forceStatusData, onSuc
             onClick={onClose}
             className="px-4 py-2 border border-border hover:bg-muted text-foreground font-medium text-sm rounded-xl transition-colors"
           >
-            Cancel
+            {t('cancelBtn')}
           </button>
           <button
             type="button"
@@ -84,7 +86,7 @@ export function SkillForceStatusDialog({ isOpen, onClose, forceStatusData, onSuc
             className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium text-sm rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
           >
             {updateSkillStatusMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-            <span>Agree to Disable</span>
+            <span>{t('skillForceStatusBtn')}</span>
           </button>
         </div>
       </DialogContent>

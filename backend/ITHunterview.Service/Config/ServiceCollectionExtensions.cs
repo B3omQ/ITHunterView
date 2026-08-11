@@ -21,6 +21,8 @@ namespace ITHunterview.Service.Config
     {
         public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
         {
+            services.AddLocalization();
+            
             // Repositories — Auth
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<ITokenRepository, TokenRepository>();
@@ -34,6 +36,10 @@ namespace ITHunterview.Service.Config
 
             services.AddScoped<ICvRepository, CvRepository>();
             services.AddScoped<IMatchingSourceRepository, MatchingSourceRepository>();
+            services.AddScoped<IMatchingSourceAnalysisPersistence, MatchingSourceAnalysisPersistence>();
+            services.AddScoped<IFeatureUsageReservationRepository, FeatureUsageReservationRepository>();
+            services.AddScoped<ICvJdMatchingJobRepository, CvJdMatchingJobRepository>();
+            services.AddScoped<ICvJdMatchingHistoryRepository, CvJdMatchingHistoryRepository>();
             services.AddScoped<ICompanyRepository, CompanyRepository>();
             services.AddScoped<ISkillRepository, SkillRepository>();
             services.AddScoped<ISkillCategoryRepository, SkillCategoryRepository>();
@@ -62,7 +68,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IOptimizeSessionRepository, OptimizeSessionRepository>();
 
             // Application Services
-            services.AddHttpClient();
+            services.AddHttpClient("", client => client.Timeout = TimeSpan.FromMinutes(3));
             services.Configure<AiSettings>(configuration.GetSection("AiSettings"));
             services.AddScoped<IAiProvider, OpenAiProvider>();
             services.AddScoped<IAiProvider, GeminiProvider>();
@@ -88,12 +94,16 @@ namespace ITHunterview.Service.Config
 
             // Matching AI Services
             services.AddScoped<ICvTextExtractorService, CvTextExtractorService>();
+            services.AddScoped<IMatchingCvPreparationService, MatchingCvPreparationService>();
+            services.AddScoped<IMatchingJdPreparationService, MatchingJdPreparationService>();
+            services.AddScoped<IRawJdFallbackMatchingService, RawJdFallbackMatchingService>();
             services.AddScoped<ICvAnalysisResponseValidator, CvAnalysisResponseValidator>();
             services.AddScoped<IJdRequirementProjector, JdRequirementProjector>();
             services.AddScoped<JdHardcodeRequirementEvaluator>();
             services.AddScoped<HardcodeJdRequirementScoringService>();
-            services.AddScoped<JdStageTwoContextBuilder>();
-            services.AddScoped<JdStageTwoResponseValidator>();
+            services.AddScoped<JdMatchingRequirementContextBuilder>();
+            services.AddScoped<JdMatchingResponseAdapter>();
+            services.AddScoped<IJdStageTwoMatchingService, JdStageTwoMatchingService>();
             services.AddScoped<JdFitScoreCalculator>();
             services.AddScoped<CvStageTwoContextBuilder>();
             services.AddSingleton<IMatchingRequestValidator, MatchingRequestValidator>();
@@ -122,7 +132,15 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICvUseCase, CvUseCase>();
             services.AddScoped<ICompanyUseCase, CompanyUseCase>();
             services.AddScoped<ISkillUseCase, SkillUseCase>();
-            services.AddScoped<ICvJobMatchingUseCase, CvJobMatchingUseCase>();
+            services.AddScoped<CvJobMatchingUseCase>();
+            services.AddScoped<ICvJobMatchingUseCase>(sp => sp.GetRequiredService<CvJobMatchingUseCase>());
+            services.AddScoped<ICvJdOneToOneMatchingEngine>(sp => sp.GetRequiredService<CvJobMatchingUseCase>());
+            services.AddScoped<ICvJdOneToOneMatchingProcessor, CvJdOneToOneMatchingProcessor>();
+            services.AddScoped<ICvJdMatchingWorkerUseCase, CvJdMatchingWorkerUseCase>();
+            services.AddScoped<MatchingInputSnapshotBuilder>();
+            services.AddScoped<ICvJdMatchingSubmissionUseCase, CvJdMatchingSubmissionUseCase>();
+            services.AddScoped<ICvJdMatchingRetryUseCase, CvJdMatchingRetryUseCase>();
+            services.AddScoped<ICvJdMatchingHistoryUseCase, CvJdMatchingHistoryUseCase>();
             services.AddScoped<IMatchingInputPreflightUseCase, MatchingInputPreflightUseCase>();
             services.AddScoped<IHardcodeCvJobMatchingUseCase, HardcodeCvJobMatchingUseCase>();
             services.AddScoped<IMajorUseCase, MajorUseCase>();

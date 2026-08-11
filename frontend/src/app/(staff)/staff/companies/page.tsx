@@ -51,16 +51,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-
-const STATUS_FILTERS = [
-  { value: 'ALL', label: 'All Statuses' },
-  { value: 'PENDING', label: 'Pending Review' },
-  { value: 'PENDING_UPDATE', label: 'Pending Update' },
-  { value: 'VERIFIED', label: 'Verified' },
-  { value: 'REJECTED', label: 'Rejected' },
-];
+import { useTranslations } from 'next-intl';
 
 export default function StaffCompaniesPage() {
+  const t = useTranslations('StaffCompanies');
+
+  const STATUS_FILTERS = [
+    { value: 'ALL', label: t("allStatuses") },
+    { value: 'PENDING', label: t("pending") },
+    { value: 'PENDING_UPDATE', label: t("pendingUpdate") },
+    { value: 'VERIFIED', label: t("verified") },
+    { value: 'REJECTED', label: t("rejected") },
+  ];
+
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('PENDING'); // Default to PENDING for staff action items
@@ -112,7 +115,7 @@ export default function StaffCompaniesPage() {
 
   const handleStatusUpdate = async (companyId: string, status: 'VERIFIED' | 'REJECTED') => {
     if (status === 'REJECTED' && !rejectReasonInput.trim()) {
-      toast.error('Please provide a reason for the rejection.');
+      toast.error(t("toastRejectEmpty"));
       return;
     }
 
@@ -126,8 +129,8 @@ export default function StaffCompaniesPage() {
       });
       toast.success(
         status === 'VERIFIED'
-          ? 'Company verified successfully!'
-          : 'Company rejected successfully!'
+          ? t("toastVerifySuccess")
+          : t("toastRejectSuccess")
       );
 
       // Update selected company status in detail modal if open
@@ -177,7 +180,7 @@ export default function StaffCompaniesPage() {
       setConfirmAction(null);
       setRejectReasonInput('');
     } catch (err) {
-      toast.error('An error occurred while updating the company verification status.');
+      toast.error(t("toastError"));
     }
   };
 
@@ -203,10 +206,10 @@ export default function StaffCompaniesPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
               <Building2 className="text-[#1877F2] shrink-0 h-8 w-8" />
-              Company Verification Portal
+              {t("title")}
             </h1>
             <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
-              Review legal registration documents and verify recruiter company accounts.
+              {t("desc")}
             </p>
           </div>
         </div>
@@ -220,14 +223,14 @@ export default function StaffCompaniesPage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by company name, tax code, address..."
+                placeholder={t("searchPlaceholder")}
                 className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
               />
               {search && (
                 <button
                   onClick={() => setSearch('')}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#65676B] hover:text-[#050505] dark:hover:text-white transition-colors p-1 cursor-pointer"
-                  title="Clear search"
+                  title={t("clearSearch")}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -243,7 +246,7 @@ export default function StaffCompaniesPage() {
               }}
             >
               <SelectTrigger className="w-full sm:w-[190px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
-                <SelectValue placeholder="Status Filter" />
+                <SelectValue placeholder={t("statusFilter")} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
                 {STATUS_FILTERS.map((tab) => (
@@ -261,7 +264,7 @@ export default function StaffCompaniesPage() {
                 variant="ghost"
                 className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
               >
-                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> {t("clearFilters")}
               </Button>
             )}
           </div>
@@ -274,31 +277,31 @@ export default function StaffCompaniesPage() {
             <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
               <TableRow className="hover:bg-transparent border-none">
                 <TableHead className="w-[7%] py-3 px-2 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  LOGO
+                  {t("colLogo")}
                 </TableHead>
 
                 <TableHead className="w-[28%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  COMPANY NAME
+                  {t("colName")}
                 </TableHead>
 
                 <TableHead className="w-[14%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  TAX CODE
+                  {t("colTax")}
                 </TableHead>
 
                 <TableHead className="w-[14%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  INDUSTRY
+                  {t("colIndustry")}
                 </TableHead>
 
                 <TableHead className="w-[17%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  HEADQUARTERS
+                  {t("colHq")}
                 </TableHead>
 
                 <TableHead className="w-[12%] text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400 px-3 py-3">
-                  STATUS
+                  {t("colStatus")}
                 </TableHead>
 
                 <TableHead className="w-[8%] text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400 px-2 py-3">
-                  ACTIONS
+                  {t("colActions")}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -341,10 +344,10 @@ export default function StaffCompaniesPage() {
                   <TableCell colSpan={7} className="h-64 text-center">
                     <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
                       <p className="font-semibold text-rose-600 dark:text-rose-400 text-base">
-                        Failed to load company records
+                        {t("loadError")}
                       </p>
                       <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
-                        An error occurred while fetching company verification data.
+                        {t("loadErrorDesc")}
                       </p>
                     </div>
                   </TableCell>
@@ -358,12 +361,10 @@ export default function StaffCompaniesPage() {
                         <SearchX className="h-6 w-6" />
                       </div>
                       <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">
-                        No companies found
+                        {t("noData")}
                       </p>
                       <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
-                        {isFilterActive
-                          ? 'No records match the current filters. Try clearing or adjusting your search criteria.'
-                          : 'No company verification requests found.'}
+                        {isFilterActive ? t("noDataFilter") : t("noDataEmpty")}
                       </p>
                       {isFilterActive && (
                         <Button
@@ -371,7 +372,7 @@ export default function StaffCompaniesPage() {
                           variant="outline"
                           className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
                         >
-                          <RotateCcw className="h-4 w-4 mr-2" /> Clear All Filters
+                          <RotateCcw className="h-4 w-4 mr-2" /> {t("clearAllFilters")}
                         </Button>
                       )}
                     </div>
@@ -408,7 +409,7 @@ export default function StaffCompaniesPage() {
                         {company.createdByName && (
                           <span className="text-[11px] text-[#65676B] dark:text-zinc-400 flex items-center gap-1">
                             <User size={10} className="text-[#1877F2] shrink-0" />
-                            <span>By: {company.createdByName}</span>
+                            <span>{t("byUser", { name: company.createdByName })}</span>
                           </span>
                         )}
                         {company.website && (
@@ -468,7 +469,7 @@ export default function StaffCompaniesPage() {
                             setIsDetailOpen(true);
                           }}
                           className="h-8 w-8 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
-                          title="View Details"
+                          title={t("viewDetails")}
                         >
                           <Eye size={15} />
                         </Button>
@@ -482,7 +483,7 @@ export default function StaffCompaniesPage() {
                                 setConfirmAction({ company, targetStatus: 'VERIFIED' });
                               }}
                               className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
-                              title="Approve Verification"
+                              title={t("approve")}
                             >
                               <Check size={15} />
                             </Button>
@@ -493,7 +494,7 @@ export default function StaffCompaniesPage() {
                                 setConfirmAction({ company, targetStatus: 'REJECTED' });
                               }}
                               className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
-                              title="Reject Verification"
+                              title={t("reject")}
                             >
                               <Ban size={15} />
                             </Button>
@@ -511,9 +512,7 @@ export default function StaffCompaniesPage() {
         {/* TẦNG 3: PAGINATION FOOTER */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 px-1">
           <div className="flex items-center space-x-3 text-sm text-[#65676B] dark:text-zinc-400">
-            <div>
-              Showing <span className="font-semibold text-[#050505] dark:text-zinc-200">{startResult} - {endResult}</span> of <span className="font-semibold text-[#050505] dark:text-zinc-200">{totalItems}</span> companies
-            </div>
+            <div dangerouslySetInnerHTML={{ __html: t.raw("showingText").replace('{start}', startResult.toString()).replace('{end}', endResult.toString()).replace('{total}', totalItems.toString()) }} />
             <Select
               value={String(pageSize)}
               onValueChange={(val) => {
@@ -522,12 +521,12 @@ export default function StaffCompaniesPage() {
               }}
             >
               <SelectTrigger className="h-8 w-[110px] border-[#CED0D4] dark:border-zinc-800 text-xs font-medium focus:ring-[#1877F2]">
-                <SelectValue placeholder="Page size" />
+                <SelectValue placeholder={t("pageSize")} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
-                <SelectItem value="10">10 / page</SelectItem>
-                <SelectItem value="20">20 / page</SelectItem>
-                <SelectItem value="50">50 / page</SelectItem>
+                <SelectItem value="10">{t("perPage", { size: 10 })}</SelectItem>
+                <SelectItem value="20">{t("perPage", { size: 20 })}</SelectItem>
+                <SelectItem value="50">{t("perPage", { size: 50 })}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -602,10 +601,10 @@ export default function StaffCompaniesPage() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-xl font-bold">
                 <Building size={20} className="text-[#1877F2]" />
-                Company Verification Details
+                {t("detailTitle")}
               </DialogTitle>
               <DialogDescription>
-                Review detailed profile information and legal verification documents.
+                {t("detailDesc")}
               </DialogDescription>
             </DialogHeader>
 
@@ -636,72 +635,72 @@ export default function StaffCompaniesPage() {
                 <div className="col-span-2 space-y-4 text-sm max-h-[450px] overflow-y-auto pr-2">
                   <div className="grid grid-cols-2 gap-4 border-b border-border pb-2 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
                     <div>
-                      <h4 className="font-bold text-xs text-muted-foreground uppercase tracking-wider">Current Verified Info</h4>
+                      <h4 className="font-bold text-xs text-muted-foreground uppercase tracking-wider">{t("currentVerifiedInfo")}</h4>
                     </div>
                     <div>
-                      <h4 className="font-bold text-xs text-primary uppercase tracking-wider">Requested Changes</h4>
+                      <h4 className="font-bold text-xs text-primary uppercase tracking-wider">{t("requestedChanges")}</h4>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 p-1">
                     <div className={selectedCompany.name !== selectedCompany.pendingName ? "bg-rose-50/70 border border-rose-100 p-2.5 rounded-xl" : "p-2.5"}>
-                      <label className="text-xs text-muted-foreground font-semibold">Company Name</label>
+                      <label className="text-xs text-muted-foreground font-semibold">{t("compNameLabel")}</label>
                       <p className="font-semibold text-foreground mt-0.5">{selectedCompany.name}</p>
                     </div>
                     <div className={selectedCompany.name !== selectedCompany.pendingName ? "bg-emerald-50/70 border border-emerald-100 p-2.5 rounded-xl" : "p-2.5"}>
-                      <label className="text-xs text-emerald-800 font-semibold">Company Name (Pending)</label>
+                      <label className="text-xs text-emerald-800 font-semibold">{t("compNamePending")}</label>
                       <p className="font-bold text-foreground mt-0.5">{selectedCompany.pendingName || selectedCompany.name}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 p-1">
                     <div className={selectedCompany.taxCode !== selectedCompany.pendingTaxCode ? "bg-rose-50/70 border border-rose-100 p-2.5 rounded-xl" : "p-2.5"}>
-                      <label className="text-xs text-muted-foreground font-semibold">Tax Code</label>
-                      <p className="font-mono font-medium text-foreground mt-0.5">{selectedCompany.taxCode || 'Not provided'}</p>
+                      <label className="text-xs text-muted-foreground font-semibold">{t("taxCodeLabel")}</label>
+                      <p className="font-mono font-medium text-foreground mt-0.5">{selectedCompany.taxCode || t("notProvided")}</p>
                     </div>
                     <div className={selectedCompany.taxCode !== selectedCompany.pendingTaxCode ? "bg-emerald-50/70 border border-emerald-100 p-2.5 rounded-xl" : "p-2.5"}>
-                      <label className="text-xs text-emerald-800 font-semibold">Tax Code (Pending)</label>
-                      <p className="font-mono font-bold text-foreground mt-0.5">{selectedCompany.pendingTaxCode || selectedCompany.taxCode || 'Not provided'}</p>
+                      <label className="text-xs text-emerald-800 font-semibold">{t("taxCodePending")}</label>
+                      <p className="font-mono font-bold text-foreground mt-0.5">{selectedCompany.pendingTaxCode || selectedCompany.taxCode || t("notProvided")}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 p-1">
                     <div className={selectedCompany.headquartersAddress !== selectedCompany.pendingHeadquartersAddress ? "bg-rose-50/70 border border-rose-100 p-2.5 rounded-xl" : "p-2.5"}>
-                      <label className="text-xs text-muted-foreground font-semibold">Headquarters Address</label>
-                      <p className="font-medium text-foreground mt-0.5">{selectedCompany.headquartersAddress || 'Not provided'}</p>
+                      <label className="text-xs text-muted-foreground font-semibold">{t("hqAddressLabel")}</label>
+                      <p className="font-medium text-foreground mt-0.5">{selectedCompany.headquartersAddress || t("notProvided")}</p>
                     </div>
                     <div className={selectedCompany.headquartersAddress !== selectedCompany.pendingHeadquartersAddress ? "bg-emerald-50/70 border border-emerald-100 p-2.5 rounded-xl" : "p-2.5"}>
-                      <label className="text-xs text-emerald-800 font-semibold">Headquarters Address (Pending)</label>
-                      <p className="font-bold text-foreground mt-0.5">{selectedCompany.pendingHeadquartersAddress || selectedCompany.headquartersAddress || 'Not provided'}</p>
+                      <label className="text-xs text-emerald-800 font-semibold">{t("hqAddressPending")}</label>
+                      <p className="font-bold text-foreground mt-0.5">{selectedCompany.pendingHeadquartersAddress || selectedCompany.headquartersAddress || t("notProvided")}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 p-1">
                     <div className={selectedCompany.verificationMethod !== selectedCompany.pendingVerificationMethod ? "bg-rose-50/70 border border-rose-100 p-2.5 rounded-xl" : "p-2.5"}>
-                      <label className="text-xs text-muted-foreground font-semibold">Verification Method</label>
+                      <label className="text-xs text-muted-foreground font-semibold">{t("verMethod")}</label>
                       <p className="font-medium text-foreground mt-0.5">
                         {selectedCompany.verificationMethod === 'BUSINESS_REGISTRATION'
-                          ? 'Business Registration License'
+                          ? t("methodBrc")
                           : selectedCompany.verificationMethod === 'POA_AND_ID'
-                          ? 'Power of Attorney & ID Card'
-                          : 'Not selected'}
+                          ? t("methodPoa")
+                          : t("notSelected")}
                       </p>
                     </div>
                     <div className={selectedCompany.verificationMethod !== selectedCompany.pendingVerificationMethod ? "bg-emerald-50/70 border border-emerald-100 p-2.5 rounded-xl" : "p-2.5"}>
-                      <label className="text-xs text-emerald-800 font-semibold">Verification Method (Pending)</label>
+                      <label className="text-xs text-emerald-800 font-semibold">{t("verMethodPending")}</label>
                       <p className="font-bold text-foreground mt-0.5">
                         {selectedCompany.pendingVerificationMethod === 'BUSINESS_REGISTRATION'
-                          ? 'Business Registration License'
+                          ? t("methodBrc")
                           : selectedCompany.pendingVerificationMethod === 'POA_AND_ID'
-                          ? 'Power of Attorney & ID Card'
-                          : 'Not selected'}
+                          ? t("methodPoa")
+                          : t("notSelected")}
                       </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 p-2 bg-muted/40 rounded-xl border border-border">
                     <div className="p-2">
-                      <label className="text-xs text-muted-foreground font-semibold">Verification Document</label>
+                      <label className="text-xs text-muted-foreground font-semibold">{t("verDoc")}</label>
                       <p className="mt-0.5">
                         {selectedCompany.verificationDocumentUrl ? (
                           <a
@@ -711,16 +710,16 @@ export default function StaffCompaniesPage() {
                             className="inline-flex items-center gap-1.5 text-[#1877F2] hover:underline font-bold"
                           >
                             <FileText size={14} />
-                            <span>Original Doc</span>
+                            <span>{t("originalDoc")}</span>
                             <ExternalLink size={10} />
                           </a>
                         ) : (
-                          <span className="text-muted-foreground italic">No document</span>
+                          <span className="text-muted-foreground italic">{t("noDoc")}</span>
                         )}
                       </p>
                     </div>
                     <div className="p-2">
-                      <label className="text-xs text-emerald-800 font-semibold">Verification Document (Pending)</label>
+                      <label className="text-xs text-emerald-800 font-semibold">{t("verDocPending")}</label>
                       <p className="mt-0.5">
                         {selectedCompany.pendingVerificationDocumentUrl ? (
                           <a
@@ -730,11 +729,11 @@ export default function StaffCompaniesPage() {
                             className="inline-flex items-center gap-1.5 text-emerald-600 hover:underline font-bold"
                           >
                             <FileText size={14} />
-                            <span>Pending Doc</span>
+                            <span>{t("pendingDoc")}</span>
                             <ExternalLink size={10} />
                           </a>
                         ) : (
-                          <span className="text-muted-foreground italic">No pending document</span>
+                          <span className="text-muted-foreground italic">{t("noPendingDoc")}</span>
                         )}
                       </p>
                     </div>
@@ -742,11 +741,11 @@ export default function StaffCompaniesPage() {
 
                   <div className="border-t border-border pt-4 grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs text-muted-foreground font-semibold">Company Size</label>
-                      <p className="font-medium text-foreground mt-0.5">{selectedCompany.companySize || 'Not provided'}</p>
+                      <label className="text-xs text-muted-foreground font-semibold">{t("compSizeLabel")}</label>
+                      <p className="font-medium text-foreground mt-0.5">{selectedCompany.companySize || t("notProvided")}</p>
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground font-semibold">Submitted By</label>
+                      <label className="text-xs text-muted-foreground font-semibold">{t("submittedBy")}</label>
                       <p className="font-medium text-foreground mt-0.5">
                         {selectedCompany.createdByName ? (
                           <span className="flex flex-col">
@@ -754,7 +753,7 @@ export default function StaffCompaniesPage() {
                             <span className="text-xs text-muted-foreground">{selectedCompany.createdByEmail}</span>
                           </span>
                         ) : (
-                          'N/A'
+                          t("na")
                         )}
                       </p>
                     </div>
@@ -764,22 +763,22 @@ export default function StaffCompaniesPage() {
                 <div className="col-span-2 space-y-4 text-sm">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs text-muted-foreground font-semibold">Tax Code</label>
-                      <p className="font-mono font-medium text-foreground mt-0.5">{selectedCompany.taxCode || 'Not provided'}</p>
+                      <label className="text-xs text-muted-foreground font-semibold">{t("taxCodeLabel")}</label>
+                      <p className="font-mono font-medium text-foreground mt-0.5">{selectedCompany.taxCode || t("notProvided")}</p>
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground font-semibold">Company Size</label>
-                      <p className="font-medium text-foreground mt-0.5">{selectedCompany.companySize || 'Not provided'}</p>
+                      <label className="text-xs text-muted-foreground font-semibold">{t("compSizeLabel")}</label>
+                      <p className="font-medium text-foreground mt-0.5">{selectedCompany.companySize || t("notProvided")}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs text-muted-foreground font-semibold">Headquarters Address</label>
-                      <p className="font-medium text-foreground mt-0.5">{selectedCompany.headquartersAddress || 'Not provided'}</p>
+                      <label className="text-xs text-muted-foreground font-semibold">{t("hqAddressLabel")}</label>
+                      <p className="font-medium text-foreground mt-0.5">{selectedCompany.headquartersAddress || t("notProvided")}</p>
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground font-semibold">Submitted By (Applicant)</label>
+                      <label className="text-xs text-muted-foreground font-semibold">{t("submittedByApplicant")}</label>
                       <p className="font-medium text-foreground mt-0.5">
                         {selectedCompany.createdByName ? (
                           <span className="flex flex-col">
@@ -787,7 +786,7 @@ export default function StaffCompaniesPage() {
                             <span className="text-xs text-muted-foreground">{selectedCompany.createdByEmail}</span>
                           </span>
                         ) : (
-                          'N/A'
+                          t("na")
                         )}
                       </p>
                     </div>
@@ -795,7 +794,7 @@ export default function StaffCompaniesPage() {
 
                   {selectedCompany.website && (
                     <div>
-                      <label className="text-xs text-muted-foreground font-semibold">Website</label>
+                      <label className="text-xs text-muted-foreground font-semibold">{t("website")}</label>
                       <p className="mt-0.5">
                         <a
                           href={selectedCompany.website.startsWith('http') ? selectedCompany.website : `https://${selectedCompany.website}`}
@@ -857,32 +856,31 @@ export default function StaffCompaniesPage() {
               )}
             </div>
 
-            <DialogFooter className="flex sm:justify-between items-center border-t border-border pt-4">
-              <Button variant="ghost" onClick={() => setIsDetailOpen(false)}>
-                Close
+            <DialogFooter className="border-t border-border pt-4 sm:justify-between flex-col sm:flex-row gap-3">
+              <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
+                {t("close")}
               </Button>
-              
+
               {(selectedCompany.status === 'PENDING' || selectedCompany.hasPendingChange) && (
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Button
                     variant="destructive"
                     onClick={() => {
+                      setIsDetailOpen(false);
                       setConfirmAction({ company: selectedCompany, targetStatus: 'REJECTED' });
                     }}
-                    className="cursor-pointer"
+                    className="gap-2"
                   >
-                    <Ban size={14} className="mr-1.5" />
-                    Reject
+                    <Ban size={16} /> {t("rejectBtn")}
                   </Button>
                   <Button
-                    variant="default"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
                     onClick={() => {
+                      setIsDetailOpen(false);
                       setConfirmAction({ company: selectedCompany, targetStatus: 'VERIFIED' });
                     }}
-                    className="bg-green-600 hover:bg-green-700 text-white cursor-pointer"
                   >
-                    <Check size={14} className="mr-1.5" />
-                    Approve
+                    <Check size={16} /> {t("approveBtn")}
                   </Button>
                 </div>
               )}
@@ -891,61 +889,64 @@ export default function StaffCompaniesPage() {
         </Dialog>
       )}
 
-      {/* Confirmation Dialog */}
-      {confirmAction && (
-        <Dialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
+      {/* Confirm Action Modal */}
+      <Dialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+        <DialogContent className="sm:max-w-md">
+          {confirmAction && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {confirmAction.targetStatus === 'VERIFIED' ? (
+                    <CheckCircle className="text-emerald-500" size={20} />
+                  ) : (
+                    <XCircle className="text-rose-500" size={20} />
+                  )}
+                  {confirmAction.targetStatus === 'VERIFIED' ? t("approveTitle") : t("rejectTitle")}
+                </DialogTitle>
+                <DialogDescription>
+                  <span dangerouslySetInnerHTML={{ __html: t.raw("companyLabel").replace('{name}', confirmAction.company.name) }} />
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="py-4">
                 {confirmAction.targetStatus === 'VERIFIED' ? (
-                  <CheckCircle className="text-green-600" size={20} />
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {t("approveConfirmDesc")}
+                  </p>
                 ) : (
-                  <XCircle className="text-red-600" size={20} />
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-foreground">
+                      <span dangerouslySetInnerHTML={{ __html: t.raw("rejectReasonLabel") }} />
+                    </label>
+                    <textarea
+                      rows={4}
+                      placeholder={t("rejectReasonPlaceholder")}
+                      value={rejectReasonInput}
+                      onChange={(e) => setRejectReasonInput(e.target.value)}
+                      className="w-full p-3 border border-border rounded-lg bg-muted/30 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none"
+                    />
+                  </div>
                 )}
-                Confirm Action
-              </DialogTitle>
-              <DialogDescription>
-                Are you sure you want to {confirmAction.targetStatus === 'VERIFIED' ? 'APPROVE' : 'REJECT'}{' '}
-                {confirmAction.company.hasPendingChange ? 'the pending update request for' : 'the company'}{' '}
-                <strong>{confirmAction.company.name}</strong>?
-              </DialogDescription>
-            </DialogHeader>
-
-            {confirmAction.targetStatus === 'REJECTED' && (
-              <div className="mt-4 space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground block">
-                  Rejection Reason (Required)
-                </label>
-                <textarea
-                  className="w-full min-h-[80px] p-2.5 border border-border rounded-xl text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all bg-background text-foreground"
-                  placeholder="Provide details about why the registration or change request is being rejected..."
-                  value={rejectReasonInput}
-                  onChange={(e) => setRejectReasonInput(e.target.value)}
-                />
               </div>
-            )}
 
-            <DialogFooter className="mt-6">
-              <Button
-                variant="ghost"
-                onClick={() => setConfirmAction(null)}
-                disabled={isUpdating}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant={confirmAction.targetStatus === 'VERIFIED' ? 'default' : 'destructive'}
-                onClick={() => handleStatusUpdate(confirmAction.company.id, confirmAction.targetStatus)}
-                disabled={isUpdating}
-                className={confirmAction.targetStatus === 'VERIFIED' ? 'bg-green-600 hover:bg-green-700 text-white cursor-pointer' : 'cursor-pointer'}
-              >
-                {isUpdating && <Loader2 className="animate-spin mr-1.5" size={14} />}
-                Confirm
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setConfirmAction(null)}>
+                  {t("cancel")}
+                </Button>
+                <Button
+                  variant={confirmAction.targetStatus === 'VERIFIED' ? 'default' : 'destructive'}
+                  className={confirmAction.targetStatus === 'VERIFIED' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}
+                  onClick={() => handleStatusUpdate(confirmAction.company.id, confirmAction.targetStatus)}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  {confirmAction.targetStatus === 'VERIFIED' ? t("confirmBtn") : t("rejectBtn")}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

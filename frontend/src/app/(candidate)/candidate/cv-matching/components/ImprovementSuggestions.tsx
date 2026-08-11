@@ -4,12 +4,15 @@ import { ImprovementSuggestion } from "@/types/cv.types";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Lightbulb, ArrowRight, ArrowRightCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface ImprovementSuggestionsProps {
   improvements: ImprovementSuggestion[];
 }
 
 export function ImprovementSuggestions({ improvements }: ImprovementSuggestionsProps) {
+  const t = useTranslations("CandidateCVMatching");
+
   if (!improvements || improvements.length === 0) {
     return null;
   }
@@ -27,7 +30,7 @@ export function ImprovementSuggestions({ improvements }: ImprovementSuggestionsP
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <Lightbulb className="h-5 w-5 text-amber-500" />
-          Actionable Improvements
+          {t("suggestionsTitle")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -36,7 +39,7 @@ export function ImprovementSuggestions({ improvements }: ImprovementSuggestionsP
             <div className="flex items-start justify-between gap-4 mb-2">
               <div>
                 <Badge variant="outline" className={`mb-2 capitalize text-[10px] h-5 ${getPriorityColor(improvement.priority)}`}>
-                  {improvement.priority} Priority
+                  {t("priorityLabel", { priority: improvement.priority === 'high' ? t("priorityHigh") : improvement.priority === 'medium' ? t("priorityMedium") : t("priorityLow") })}
                 </Badge>
                 <h4 className="font-semibold text-sm">{improvement.issue}</h4>
               </div>
@@ -46,7 +49,7 @@ export function ImprovementSuggestions({ improvements }: ImprovementSuggestionsP
             </div>
             
             <p className="text-sm text-muted-foreground mb-4">
-              <span className="font-medium text-foreground mr-1">Action:</span>
+              <span className="font-medium text-foreground mr-1">{t("actionLabel")}</span>
               {improvement.action}
             </p>
 
@@ -54,13 +57,13 @@ export function ImprovementSuggestions({ improvements }: ImprovementSuggestionsP
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 text-xs">
                 <div className="bg-red-50/50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 p-3 rounded-md">
                   <div className="text-red-800 dark:text-red-400 font-semibold mb-1 flex items-center gap-1">
-                    <XCircleMini /> Instead of:
+                    <XCircleMini /> {t("insteadOf")}
                   </div>
                   <div className="text-muted-foreground italic">"{improvement.example.before}"</div>
                 </div>
                 <div className="bg-green-50/50 dark:bg-green-950/20 border border-green-100 dark:border-green-900/30 p-3 rounded-md">
                   <div className="text-green-800 dark:text-green-400 font-semibold mb-1 flex items-center gap-1">
-                    <CheckCircleMini /> Try this:
+                    <CheckCircleMini /> {t("tryThis")}
                   </div>
                   <div className="text-foreground">"{improvement.example.after}"</div>
                 </div>

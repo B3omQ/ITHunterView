@@ -78,6 +78,7 @@ namespace ITHunterview.Service.UseCase
                 ApplicationCount = j.ApplicationCount,
                 ViewCount = j.ViewCount,
                 PublishedAt = j.PublishedAt,
+                ApplicationDeadline = j.ApplicationDeadline,
                 ExpiresAt = j.ExpiresAt,
                 CreatedAt = j.CreatedAt,
                 Level = j.Level,
@@ -127,11 +128,10 @@ namespace ITHunterview.Service.UseCase
                 return new ResponseBase<JobPostingDetailDto>("Recruiter company not found. Please link recruiter to a company first.");
             }
 
-            if (dto.ExpiresAt.HasValue && dto.ExpiresAt.Value > DateTime.UtcNow.AddDays(30))
+            if (dto.ApplicationDeadline.HasValue && dto.ApplicationDeadline.Value < DateTime.UtcNow)
             {
-                return new ResponseBase<JobPostingDetailDto>("Thời gian xuất bản tin không được vượt quá 30 ngày.");
+                return new ResponseBase<JobPostingDetailDto>("Thời hạn ứng tuyển phải ở tương lai.");
             }
-
             var text = NormalizeRichTextFields(dto.Description, dto.Requirements, dto.Benefits, dto.IncomeText);
 
             var job = new JobPostings
@@ -161,7 +161,8 @@ namespace ITHunterview.Service.UseCase
                 ApplicationCount = 0,
                 ViewCount = 0,
                 PublishedAt = null,
-                ExpiresAt = dto.ExpiresAt,
+                ExpiresAt = null,
+                ApplicationDeadline = dto.ApplicationDeadline,
                 AnalysisRevision = 1,
                 ParseStatus = "NOT_REQUESTED",
                 CreatedAt = DateTime.UtcNow,
@@ -209,11 +210,10 @@ namespace ITHunterview.Service.UseCase
                 return new ResponseBase<JobPostingDetailDto>("Job posting is banned and cannot be updated.");
             }
 
-            if (dto.ExpiresAt.HasValue && dto.ExpiresAt.Value > job.CreatedAt.AddDays(30))
+            if (dto.ApplicationDeadline.HasValue && dto.ApplicationDeadline.Value < DateTime.UtcNow)
             {
-                return new ResponseBase<JobPostingDetailDto>("Thời gian xuất bản tin không được vượt quá 30 ngày kể từ lúc tạo.");
+                return new ResponseBase<JobPostingDetailDto>("Thời hạn ứng tuyển phải ở tương lai.");
             }
-
             var oldSnapshot = _inputBuilder.Build(job);
             var oldSemanticHash = _inputBuilder.ComputeSemanticHash(oldSnapshot);
             var text = NormalizeRichTextFields(dto.Description, dto.Requirements, dto.Benefits, dto.IncomeText);
@@ -229,7 +229,7 @@ namespace ITHunterview.Service.UseCase
             job.MaxSalary = dto.MaxSalary;
             job.Currency = dto.Currency;
             job.Location = dto.Location;
-            job.ExpiresAt = dto.ExpiresAt;
+            job.ApplicationDeadline = dto.ApplicationDeadline;
 
             job.Level = dto.Level;
             job.WorkingModel = dto.WorkingModel;
@@ -462,6 +462,7 @@ namespace ITHunterview.Service.UseCase
                 ApplicationCount = j.ApplicationCount,
                 ViewCount = j.ViewCount,
                 PublishedAt = j.PublishedAt,
+                ApplicationDeadline = j.ApplicationDeadline,
                 ExpiresAt = j.ExpiresAt,
                 CreatedAt = j.CreatedAt,
                 IsBanned = j.IsBanned,

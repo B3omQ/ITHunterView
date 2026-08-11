@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Check, ChevronsUpDown, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 import {
   Form,
@@ -49,53 +50,77 @@ import { useGetMyCompany, useCreateOrUpdateProfile, useUpdateProfile } from '@/h
 import { uploadService } from '@/services/upload.service';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
 
-const profileObjectSchema = z.object({
-  name: z.string().min(1, 'Please enter company name'),
-  sameAsCompanyName: z.boolean().optional(),
-  tradeName: z.string().min(1, 'Please enter trade name'),
-  contactPhone: z.string().min(1, 'Please enter contact phone number'),
-  industry: z.string().min(1, 'Please select industry'),
-  mainField: z.string().min(1, 'Please enter main business field'),
-  companyEmail: z.string().min(1, 'Please enter company email').email('Invalid email address'),
-  companySize: z.string().min(1, 'Please select company size'),
-  provinceCode: z.string().min(1, 'Province Code is required'),
-  detailedLocation: z.string().min(1, 'Please enter detailed location'),
-  latitude: z.number(),
-  longitude: z.number(),
-  description: z.string().min(500, 'Company description must be at least 500 characters'),
-  noWebsite: z.boolean().optional(),
-  website: z.string().optional(),
-  logoUrl: z.string().optional(),
-  companyType: z.string().optional(),
-  employeeBenefits: z.string().optional(),
-  targetCustomers: z.array(z.string()).default([]),
-  operatingMarkets: z.array(z.string()).default([]),
-  companyImages: z.array(z.string()).default([]),
-});
-
-type ProfileFormValues = z.infer<typeof profileObjectSchema>;
-
-const profileSchema = profileObjectSchema.refine((data) => {
-  if (data.noWebsite) return true;
-  if (!data.website || data.website.trim() === '') return false;
-  try {
-    const urlStr = data.website.includes('://') ? data.website : `https://${data.website}`;
-    new URL(urlStr);
-    return true;
-  } catch {
-    return false;
-  }
-}, {
-  message: 'Please enter a valid website URL (or check "No website")',
-  path: ['website'],
-});
-
 const COMPANY_SIZES = ['1-10', '11-50', '51-200', '201-500', '500+'];
 const TARGET_CUSTOMERS_OPTIONS = ['B2B', 'B2C', 'B2G', 'Other'];
 const OPERATING_MARKETS_OPTIONS = ['Domestic', 'Asia', 'Europe', 'Americas', 'Australia', 'Other'];
 
+type ProfileFormValues = {
+  name: string;
+  sameAsCompanyName?: boolean;
+  tradeName: string;
+  contactPhone: string;
+  industry: string;
+  mainField: string;
+  companyEmail: string;
+  companySize: string;
+  provinceCode: string;
+  detailedLocation: string;
+  latitude: number;
+  longitude: number;
+  description: string;
+  noWebsite?: boolean;
+  website?: string;
+  logoUrl?: string;
+  companyType?: string;
+  employeeBenefits?: string;
+  targetCustomers: string[];
+  operatingMarkets: string[];
+  companyImages: string[];
+};
+
 export default function CompanyProfilePage() {
   const router = useRouter();
+  const t = useTranslations('RecruiterCompanyProfile');
+  
+  const profileSchema = React.useMemo(() => {
+    return z.object({
+      name: z.string().min(1, t('zodName')),
+      sameAsCompanyName: z.boolean().optional(),
+      tradeName: z.string().min(1, t('zodTradeName')),
+      contactPhone: z.string().min(1, t('zodPhone')),
+      industry: z.string().min(1, t('zodIndustry')),
+      mainField: z.string().min(1, t('zodMainField')),
+      companyEmail: z.string().min(1, t('zodEmail')).email(t('zodEmailInvalid')),
+      companySize: z.string().min(1, t('zodSize')),
+      provinceCode: z.string().min(1, t('zodProvince')),
+      detailedLocation: z.string().min(1, t('zodLocation')),
+      latitude: z.number(),
+      longitude: z.number(),
+      description: z.string().min(500, t('zodDesc')),
+      noWebsite: z.boolean().optional(),
+      website: z.string().optional(),
+      logoUrl: z.string().optional(),
+      companyType: z.string().optional(),
+      employeeBenefits: z.string().optional(),
+      targetCustomers: z.array(z.string()).default([]),
+      operatingMarkets: z.array(z.string()).default([]),
+      companyImages: z.array(z.string()).default([]),
+    }).refine((data) => {
+      if (data.noWebsite) return true;
+      if (!data.website || data.website.trim() === '') return false;
+      try {
+        const urlStr = data.website.includes('://') ? data.website : `https://${data.website}`;
+        new URL(urlStr);
+        return true;
+      } catch {
+        return false;
+      }
+    }, {
+      message: t('zodWebsite'),
+      path: ['website'],
+    });
+  }, [t]);
+
   const { data: company, isLoading: isFetchingCompany } = useGetMyCompany();
   const { mutateAsync: createProfile, isPending: isCreating } = useCreateOrUpdateProfile();
   const { mutateAsync: updateProfile, isPending: isUpdating } = useUpdateProfile();
@@ -173,12 +198,12 @@ export default function CompanyProfilePage() {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file (jpeg, jpg, png)');
+      toast.error(t('uploadLogoError'));
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Logo size must be smaller than 5MB');
+      toast.error(t('uploadLogoSizeError'));
       return;
     }
 
@@ -186,9 +211,9 @@ export default function CompanyProfilePage() {
       setIsUploading(true);
       const res = await uploadService.uploadFile(file, 'company_logos');
       form.setValue('logoUrl', res.data || '', { shouldValidate: true });
-      toast.success('Logo uploaded successfully');
+      toast.success(t('uploadLogoSuccess'));
     } catch (error) {
-      toast.error('Error uploading logo');
+      toast.error(t('uploadLogoFail'));
     } finally {
       setIsUploading(false);
     }
@@ -200,7 +225,7 @@ export default function CompanyProfilePage() {
 
     const currentImages = form.getValues('companyImages') || [];
     if (currentImages.length + files.length > 5) {
-      toast.error('You can only upload up to 5 company images');
+      toast.error(t('uploadImagesLimitError'));
       return;
     }
 
@@ -210,11 +235,11 @@ export default function CompanyProfilePage() {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (!file.type.startsWith('image/')) {
-          toast.error(`${file.name} is not an image file.`);
+          toast.error(t('uploadImagesTypeError', { name: file.name }));
           continue;
         }
         if (file.size > 5 * 1024 * 1024) {
-          toast.error(`${file.name} is too large (max 5MB).`);
+          toast.error(t('uploadImagesSizeError', { name: file.name }));
           continue;
         }
         const res = await uploadService.uploadFile(file, 'company_images');
@@ -223,9 +248,9 @@ export default function CompanyProfilePage() {
         }
       }
       form.setValue('companyImages', newUrls, { shouldValidate: true });
-      toast.success('Company gallery images uploaded successfully');
+      toast.success(t('uploadImagesSuccess'));
     } catch (error) {
-      toast.error('Error uploading images');
+      toast.error(t('uploadImagesFail'));
     } finally {
       setIsUploadingImages(false);
     }
@@ -250,15 +275,15 @@ export default function CompanyProfilePage() {
       } else {
         await createProfile(payload);
       }
-      toast.success('Company profile saved successfully!');
+      toast.success(t('saveSuccess'));
       router.push('/recruiter/company');
     } catch (error) {
-      toast.error('An error occurred while saving profile');
+      toast.error(t('saveFail'));
     }
   };
 
   if (isFetchingCompany) {
-    return <div className="p-8 text-center text-muted-foreground">Loading profile information...</div>;
+    return <div className="p-8 text-center text-muted-foreground">{t('loadingProfile')}</div>;
   }
 
   const descriptionLength = form.watch('description')?.length || 0;
@@ -268,7 +293,7 @@ export default function CompanyProfilePage() {
   return (
     <div className="w-full pb-8 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
       <div className="bg-card rounded-xl border p-6 shadow-sm">
-        <h2 className="text-xl font-semibold mb-6">Company Profile Details</h2>
+        <h2 className="text-xl font-semibold mb-6">{t('pageTitle')}</h2>
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -284,10 +309,10 @@ export default function CompanyProfilePage() {
                 )}
               </div>
               <div>
-                <FormLabel className="text-base font-semibold">Company Logo</FormLabel>
-                <p className="text-xs text-muted-foreground mb-2">Square image, recommended size at least 200 × 200 px. JPEG/PNG format.</p>
+                <FormLabel className="text-base font-semibold">{t('logoLabel')}</FormLabel>
+                <p className="text-xs text-muted-foreground mb-2">{t('logoHint')}</p>
                 <label className="cursor-pointer text-sm font-medium text-primary hover:underline">
-                  Upload image
+                  {t('uploadImage')}
                   <input type="file" className="hidden" accept="image/jpeg,image/png,image/jpg" onChange={handleLogoUpload} disabled={isUploading} />
                 </label>
               </div>
@@ -301,10 +326,10 @@ export default function CompanyProfilePage() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-semibold">Company Name *</FormLabel>
+                    <FormLabel className="font-semibold">{t('companyName')}</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="e.g. Acme Technology Joint Stock Company" 
+                        placeholder={t('companyNamePlaceholder')} 
                         {...field} 
                         disabled={company?.status === 'VERIFIED'} 
                       />
@@ -312,7 +337,7 @@ export default function CompanyProfilePage() {
                     {company?.status === 'VERIFIED' && (
                       <p className="text-[11px] text-amber-600 mt-1 flex items-start gap-1 font-medium">
                         <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                        Name verified. To change, please submit an update request in the Legal Verification tab.
+                        {t('nameVerified')}
                       </p>
                     )}
                     <FormMessage />
@@ -323,7 +348,7 @@ export default function CompanyProfilePage() {
               {/* Sibling Fields for Trade Name and sameAsCompanyName Checkbox */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between h-5">
-                  <span className="text-sm font-semibold">Trade Name *</span>
+                  <span className="text-sm font-semibold">{t('tradeName')}</span>
                   <FormField
                     control={form.control}
                     name="sameAsCompanyName"
@@ -348,7 +373,7 @@ export default function CompanyProfilePage() {
                             }
                           }}
                         >
-                          Same as company name
+                          {t('sameAsCompany')}
                         </span>
                       </div>
                     )}
@@ -361,7 +386,7 @@ export default function CompanyProfilePage() {
                     <FormItem>
                       <FormControl>
                         <Input 
-                          placeholder="e.g. Acme Tech" 
+                          placeholder={t('tradeNamePlaceholder')} 
                           {...field} 
                           disabled={watchSameAsCompanyName} 
                         />
@@ -377,7 +402,7 @@ export default function CompanyProfilePage() {
                 name="industry"
                 render={({ field }) => (
                   <FormItem className="flex flex-col justify-end">
-                    <FormLabel className="font-semibold mb-2">Industry *</FormLabel>
+                    <FormLabel className="font-semibold mb-2">{t('industry')}</FormLabel>
                     <Popover>
                       <FormControl>
                         <PopoverTrigger render={
@@ -392,7 +417,7 @@ export default function CompanyProfilePage() {
                             <span className="truncate">
                               {field.value
                                 ? COMPANY_INDUSTRIES.find((industry) => industry === field.value)
-                                : "Select industry..."}
+                                : t('selectIndustry')}
                             </span>
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
@@ -400,9 +425,9 @@ export default function CompanyProfilePage() {
                       </FormControl>
                       <PopoverContent className="w-[300px] p-0" align="start">
                         <Command>
-                          <CommandInput placeholder="Search industry..." />
+                          <CommandInput placeholder={t('searchIndustry')} />
                           <CommandList>
-                            <CommandEmpty>No matching industry found.</CommandEmpty>
+                            <CommandEmpty>{t('noIndustryFound')}</CommandEmpty>
                             <CommandGroup>
                               <ScrollArea className="h-64">
                                 {COMPANY_INDUSTRIES.map((industry) => (
@@ -440,9 +465,9 @@ export default function CompanyProfilePage() {
                 name="mainField"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-semibold">Main Field *</FormLabel>
+                    <FormLabel className="font-semibold">{t('mainField')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Software Development, IT Services..." {...field} />
+                      <Input placeholder={t('mainFieldPlaceholder')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -454,9 +479,9 @@ export default function CompanyProfilePage() {
                 name="contactPhone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-semibold">Contact Phone *</FormLabel>
+                    <FormLabel className="font-semibold">{t('contactPhone')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. 0987654321" {...field} />
+                      <Input placeholder={t('contactPhonePlaceholder')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -468,9 +493,9 @@ export default function CompanyProfilePage() {
                 name="companyEmail"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-semibold">Company Email *</FormLabel>
+                    <FormLabel className="font-semibold">{t('companyEmail')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. contact@acme.com" type="email" {...field} />
+                      <Input placeholder={t('companyEmailPlaceholder')} type="email" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -482,16 +507,16 @@ export default function CompanyProfilePage() {
                 name="companySize"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-semibold">Company Size *</FormLabel>
+                    <FormLabel className="font-semibold">{t('companySize')}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="h-10">
-                          <SelectValue placeholder="Select size..." />
+                          <SelectValue placeholder={t('selectSize')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {COMPANY_SIZES.map(size => (
-                          <SelectItem key={size} value={size}>{size} employees</SelectItem>
+                          <SelectItem key={size} value={size}>{t('employees', { size })}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -505,11 +530,11 @@ export default function CompanyProfilePage() {
                 name="companyType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-semibold">Company Type</FormLabel>
+                    <FormLabel className="font-semibold">{t('companyType')}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="h-10">
-                          <SelectValue placeholder="Select type..." />
+                          <SelectValue placeholder={t('selectType')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -553,7 +578,7 @@ export default function CompanyProfilePage() {
                           }
                         }}
                       >
-                        No website
+                        {t('noWebsite')}
                       </span>
                     </FormItem>
                   )}
@@ -564,7 +589,7 @@ export default function CompanyProfilePage() {
                   name="website"
                   render={({ field }) => (
                     <FormItem className="space-y-2">
-                      <FormLabel className="font-semibold">Company Website</FormLabel>
+                      <FormLabel className="font-semibold">{t('website')}</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="https://acme.com" 
@@ -579,7 +604,7 @@ export default function CompanyProfilePage() {
               </div>
 
               <div className="col-span-1 md:col-span-2">
-                <FormLabel className="font-semibold mb-2 block">Headquarters Address *</FormLabel>
+                <FormLabel className="font-semibold mb-2 block">{t('hqAddress')}</FormLabel>
                 <LocationPicker
                   disabled={company?.status === 'VERIFIED'}
                   value={{
@@ -597,13 +622,13 @@ export default function CompanyProfilePage() {
                 />
                 {(form.formState.errors.detailedLocation || form.formState.errors.provinceCode) && (
                   <p className="text-[0.8rem] font-medium text-destructive mt-2">
-                    Please search and select a valid location from the map or suggestions.
+                    {t('locationError')}
                   </p>
                 )}
                 {company?.status === 'VERIFIED' && (
                   <p className="text-[11px] text-amber-600 mt-1 flex items-start gap-1 font-medium">
                     <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                    Address verified. To change, please submit an update request in the Legal Verification tab.
+                    {t('addressVerified')}
                   </p>
                 )}
               </div>
@@ -614,7 +639,7 @@ export default function CompanyProfilePage() {
                 name="targetCustomers"
                 render={({ field }) => (
                   <FormItem className="p-4 border rounded-lg bg-muted/15">
-                    <FormLabel className="text-sm font-semibold">Target Customers</FormLabel>
+                    <FormLabel className="text-sm font-semibold">{t('targetCustomers')}</FormLabel>
                     <div className="grid grid-cols-2 gap-3 mt-3">
                       {TARGET_CUSTOMERS_OPTIONS.map((option) => {
                         const value = field.value || [];
@@ -656,7 +681,7 @@ export default function CompanyProfilePage() {
                 name="operatingMarkets"
                 render={({ field }) => (
                   <FormItem className="p-4 border rounded-lg bg-muted/15">
-                    <FormLabel className="text-sm font-semibold">Operating Markets</FormLabel>
+                    <FormLabel className="text-sm font-semibold">{t('operatingMarkets')}</FormLabel>
                     <div className="grid grid-cols-2 gap-3 mt-3">
                       {OPERATING_MARKETS_OPTIONS.map((option) => {
                         const value = field.value || [];
@@ -697,10 +722,10 @@ export default function CompanyProfilePage() {
                 name="employeeBenefits"
                 render={({ field }) => (
                   <FormItem className="col-span-1 md:col-span-2">
-                    <FormLabel className="font-semibold">Employee Benefits</FormLabel>
+                    <FormLabel className="font-semibold">{t('employeeBenefits')}</FormLabel>
                     <FormControl>
                       <Textarea 
-                        placeholder="e.g. Premium Health Insurance, Free Lunch, 13th Month Salary..." 
+                        placeholder={t('employeeBenefitsPlaceholder')} 
                         className="min-h-[100px]" 
                         {...field} 
                       />
@@ -712,7 +737,7 @@ export default function CompanyProfilePage() {
 
               {/* Images upload Section */}
               <div className="space-y-3 col-span-1 md:col-span-2 border p-4 rounded-lg bg-muted/20">
-                <FormLabel className="text-sm font-semibold">Company Gallery (Max 5 images)</FormLabel>
+                <FormLabel className="text-sm font-semibold">{t('companyGallery')}</FormLabel>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mt-2">
                   {currentImages.map((imgUrl, idx) => (
                     <div key={idx} className="relative aspect-video rounded-lg border overflow-hidden bg-muted group shadow-sm">
@@ -722,15 +747,15 @@ export default function CompanyProfilePage() {
                         onClick={() => removeImage(idx)}
                         className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity duration-200 text-xs font-semibold cursor-pointer"
                       >
-                        Remove
+                        {t('remove')}
                       </button>
                     </div>
                   ))}
                   {currentImages.length < 5 && (
                     <label className="relative aspect-video rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary flex flex-col items-center justify-center bg-background/50 hover:bg-muted/10 cursor-pointer transition-colors shadow-sm min-h-[70px]">
-                      <span className="text-xs font-semibold text-muted-foreground">Add image</span>
+                      <span className="text-xs font-semibold text-muted-foreground">{t('addImage')}</span>
                       {isUploadingImages && (
-                        <span className="text-[10px] text-primary animate-pulse font-medium">Uploading...</span>
+                        <span className="text-[10px] text-primary animate-pulse font-medium">{t('uploading')}</span>
                       )}
                       <input
                         type="file"
@@ -750,18 +775,18 @@ export default function CompanyProfilePage() {
                 name="description"
                 render={({ field }) => (
                   <FormItem className="col-span-1 md:col-span-2">
-                    <FormLabel className="font-semibold">Company Description *</FormLabel>
+                    <FormLabel className="font-semibold">{t('companyDesc')}</FormLabel>
                     <FormControl>
                       <Textarea 
-                        placeholder="Share your mission, culture, product direction, and what makes your company a great place to work..." 
+                        placeholder={t('companyDescPlaceholder')} 
                         className="min-h-[220px]" 
                         {...field} 
                       />
                     </FormControl>
                     <div className="flex justify-between items-center text-xs text-muted-foreground mt-2 font-medium">
-                      <span>Required minimum 500 characters</span>
+                      <span>{t('reqMinChars')}</span>
                       <span className={descriptionLength < 500 ? 'text-destructive font-bold' : 'text-green-600 font-bold'}>
-                        {descriptionLength} / 500 characters
+                        {t('charCount', { current: descriptionLength })}
                       </span>
                     </div>
                     <FormMessage />
@@ -772,7 +797,7 @@ export default function CompanyProfilePage() {
             </div>
 
             <div className="flex items-center justify-between pt-6 border-t gap-4">
-              <p className="text-xs text-muted-foreground font-medium">Note: Fields marked with * are required.</p>
+              <p className="text-xs text-muted-foreground font-medium">{t('requiredNote')}</p>
               <div className="flex items-center gap-3">
                 <Button 
                   type="button" 
@@ -780,10 +805,10 @@ export default function CompanyProfilePage() {
                   onClick={() => router.push('/recruiter/company')}
                   className="cursor-pointer"
                 >
-                  Back
+                  {t('back')}
                 </Button>
                 <Button type="submit" disabled={isCreating || isUpdating || isUploading || isUploadingImages} className="cursor-pointer">
-                  {isCreating || isUpdating ? 'Saving...' : 'Save Company Profile'}
+                  {isCreating || isUpdating ? t('saving') : t('saveProfile')}
                 </Button>
               </div>
             </div>
@@ -795,13 +820,13 @@ export default function CompanyProfilePage() {
       <div className="space-y-6">
         <div className="bg-card rounded-xl border p-5 shadow-sm self-start">
            <h3 className="font-bold text-sm mb-3 flex items-center gap-1.5 text-primary">
-             <Info className="w-4 h-4" /> Profile Completion Tips
+             <Info className="w-4 h-4" /> {t('tipsTitle')}
            </h3>
            <ul className="text-xs text-muted-foreground space-y-2.5 list-disc list-inside leading-relaxed">
-             <li><strong>Upload high-quality logo:</strong> Increases trust and brand recognition with candidates.</li>
-             <li><strong>Detailed description &ge; 500 chars:</strong> Clearly introduce the working environment and benefits to attract talent.</li>
-             <li><strong>Provide real images:</strong> Office photos and team building activities help candidates visualize the workplace.</li>
-             <li><strong>Complete contact info:</strong> Helps partners and candidates connect easily.</li>
+             <li><strong>{t('tip1')}</strong> {t('tip1Desc')}</li>
+             <li><strong>{t('tip2')}</strong> {t('tip2Desc')}</li>
+             <li><strong>{t('tip3')}</strong> {t('tip3Desc')}</li>
+             <li><strong>{t('tip4')}</strong> {t('tip4Desc')}</li>
            </ul>
         </div>
       </div>

@@ -35,8 +35,10 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export default function FinancePage() {
+  const t = useTranslations('AdminFinance');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
@@ -97,20 +99,20 @@ export default function FinancePage() {
       case 'SUCCESS':
         return (
           <Badge className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none">
-            Success
+            {t('statusSuccess')}
           </Badge>
         );
       case 'FAILED':
         return (
           <Badge className="bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none">
-            Failed
+            {t('statusFailed')}
           </Badge>
         );
       case 'PENDING':
       default:
         return (
           <Badge className="bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-none">
-            Pending
+            {t('statusPending')}
           </Badge>
         );
     }
@@ -124,10 +126,10 @@ export default function FinancePage() {
           <div>
             <h1 className="text-3xl font-extrabold text-[#050505] dark:text-zinc-50 tracking-tight flex items-center gap-2.5">
               <CreditCard className="text-[#1877F2] shrink-0 h-8 w-8" />
-              Financial Management & Transactions
+              {t('pageTitle')}
             </h1>
             <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
-              Monitor, track, and audit payment transactions and financial records across the platform.
+              {t('pageDesc')}
             </p>
           </div>
         </div>
@@ -141,14 +143,14 @@ export default function FinancePage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by user name, email..."
+                placeholder={t('searchPlaceholder')}
                 className="pl-9 pr-8 !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus-visible:ring-[#1877F2] transition-all duration-150"
               />
               {search && (
                 <button
                   onClick={() => setSearch('')}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#65676B] hover:text-[#050505] dark:hover:text-white transition-colors p-1 cursor-pointer"
-                  title="Clear search"
+                  title={t('clearSearch')}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -164,13 +166,13 @@ export default function FinancePage() {
               }}
             >
               <SelectTrigger className="w-full sm:w-[170px] !h-10 border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-[#1877F2]">
-                <SelectValue placeholder="Status Filter" />
+                <SelectValue placeholder={t('statusFilterLabel')} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
-                <SelectItem value="ALL">All Statuses</SelectItem>
-                <SelectItem value="SUCCESS">Success</SelectItem>
-                <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="FAILED">Failed</SelectItem>
+                <SelectItem value="ALL">{t('allStatuses')}</SelectItem>
+                <SelectItem value="SUCCESS">{t('statusSuccess')}</SelectItem>
+                <SelectItem value="PENDING">{t('statusPending')}</SelectItem>
+                <SelectItem value="FAILED">{t('statusFailed')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -181,7 +183,7 @@ export default function FinancePage() {
                 variant="ghost"
                 className="h-10 px-3 text-[#65676B] hover:text-[#1877F2] hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 font-medium transition-colors cursor-pointer"
               >
-                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Clear Filters
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> {t('clearFilters')}
               </Button>
             )}
           </div>
@@ -194,23 +196,23 @@ export default function FinancePage() {
             <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
               <TableRow className="hover:bg-transparent border-none">
                 <TableHead className="w-[22%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  USER NAME
+                  {t('colUserName')}
                 </TableHead>
 
                 <TableHead className="w-[26%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  EMAIL
+                  {t('colEmail')}
                 </TableHead>
 
                 <TableHead className="w-[20%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  AMOUNT
+                  {t('colAmount')}
                 </TableHead>
 
                 <TableHead className="w-[15%] py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  STATUS
+                  {t('colStatus')}
                 </TableHead>
 
                 <TableHead className="w-[17%] py-3 px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
-                  TRANSACTION TIME
+                  {t('colTime')}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -245,17 +247,17 @@ export default function FinancePage() {
                   <TableCell colSpan={5} className="h-64 text-center">
                     <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center">
                       <p className="font-semibold text-rose-600 dark:text-rose-400 text-base">
-                        Failed to load transaction history
+                        {t('loadFailTitle')}
                       </p>
                       <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
-                        An error occurred while fetching payment records. Please try again.
+                        {t('loadFailDesc')}
                       </p>
                       <Button
                         onClick={() => refetch()}
                         variant="outline"
                         className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
                       >
-                        <RotateCcw className="h-4 w-4 mr-2" /> Retry Loading
+                        <RotateCcw className="h-4 w-4 mr-2" /> {t('retryBtn')}
                       </Button>
                     </div>
                   </TableCell>
@@ -269,12 +271,12 @@ export default function FinancePage() {
                         <SearchX className="h-6 w-6" />
                       </div>
                       <p className="font-semibold text-[#050505] dark:text-zinc-100 text-base">
-                        No transactions found
+                        {t('noDataTitle')}
                       </p>
                       <p className="text-sm text-[#65676B] dark:text-zinc-400 mt-1 mb-4">
                         {isFilterActive
-                          ? 'No transactions match the current filters. Try clearing or adjusting your search criteria.'
-                          : 'No payment transactions recorded yet.'}
+                          ? t('noDataFilterDesc')
+                          : t('noDataEmptyDesc')}
                       </p>
                       {isFilterActive && (
                         <Button
@@ -282,7 +284,7 @@ export default function FinancePage() {
                           variant="outline"
                           className="border-[#1877F2] text-[#1877F2] dark:border-blue-500 dark:text-blue-400 hover:bg-[#E7F3FF] dark:hover:bg-blue-950/40 cursor-pointer"
                         >
-                          <RotateCcw className="h-4 w-4 mr-2" /> Clear All Filters
+                          <RotateCcw className="h-4 w-4 mr-2" /> {t('clearAllFilters')}
                         </Button>
                       )}
                     </div>
@@ -300,13 +302,13 @@ export default function FinancePage() {
                       {/* User Name */}
                       <TableCell className="py-3.5 px-3 align-middle">
                         <span className="font-bold text-sm text-[#050505] dark:text-zinc-100 group-hover:text-[#1877F2] dark:group-hover:text-blue-400 transition-colors">
-                          {payment.userName || 'Unknown'}
+                          {payment.userName || t('unknownUser')}
                         </span>
                       </TableCell>
 
                       {/* Email */}
                       <TableCell className="py-3.5 px-3 align-middle text-sm text-[#65676B] dark:text-zinc-300 font-medium">
-                        {payment.userEmail || 'N/A'}
+                        {payment.userEmail || t('notAvailable')}
                       </TableCell>
 
                       {/* Amount */}
@@ -343,9 +345,7 @@ export default function FinancePage() {
         {/* TẦNG 3: PAGINATION FOOTER */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 px-1">
           <div className="flex items-center space-x-3 text-sm text-[#65676B] dark:text-zinc-400">
-            <div>
-              Showing <span className="font-semibold text-[#050505] dark:text-zinc-200">{startResult} - {endResult}</span> of <span className="font-semibold text-[#050505] dark:text-zinc-200">{totalCount}</span> transactions
-            </div>
+            <div dangerouslySetInnerHTML={{ __html: t.raw('showingText').replace('{start}', startResult.toString()).replace('{end}', endResult.toString()).replace('{total}', totalCount.toString()) }} />
             <Select
               value={String(pageSize)}
               onValueChange={(val) => {
@@ -354,7 +354,7 @@ export default function FinancePage() {
               }}
             >
               <SelectTrigger className="h-8 w-[110px] border-[#CED0D4] dark:border-zinc-800 text-xs font-medium focus:ring-[#1877F2]">
-                <SelectValue placeholder="Page size" />
+                <SelectValue placeholder={t('pageSize')} />
               </SelectTrigger>
               <SelectContent className="border-[#CED0D4] dark:border-zinc-800">
                 <SelectItem value="10">10 / page</SelectItem>

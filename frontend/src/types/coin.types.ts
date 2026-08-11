@@ -10,6 +10,7 @@ export interface CoinPackageDto {
 
 export interface CoinFeatureCostsDto {
   cvJdMatching: number;
+  cvOptimize: number;
   mockInterview: number;
   learningPath: number;
   unlockCv: number;

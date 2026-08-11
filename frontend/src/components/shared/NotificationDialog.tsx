@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { notificationService, type NotificationDto } from "@/services/notification.service"
 import { useSignalR } from "@/hooks/useSignalR"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { CheckCircle2, Circle, Bell } from "lucide-react"
@@ -57,17 +56,16 @@ export function NotificationDialog({ open, onOpenChange }: NotificationDialogPro
   const notifications = data?.data || []
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-md p-0 flex flex-col gap-0 border-l border-border/50">
-        <SheetHeader className="px-6 pt-6 pb-4 border-b border-border/50 shrink-0 text-left">
-          <SheetTitle className="flex items-center gap-2">
-            <Bell size={20} className="text-primary" />
-            Your Notifications
-          </SheetTitle>
-          <SheetDescription>
-            Stay updated with the latest alerts and activities.
-          </SheetDescription>
-        </SheetHeader>
+    <div className="flex flex-col w-full bg-popover rounded-lg overflow-hidden h-[450px]">
+      <div className="px-4 pt-4 pb-3 border-b border-border/50 shrink-0 text-left bg-muted/20">
+        <h3 className="flex items-center gap-2 font-semibold">
+          <Bell size={18} className="text-primary" />
+          Your Notifications
+        </h3>
+        <p className="text-xs text-muted-foreground mt-1">
+          Stay updated with the latest alerts and activities.
+        </p>
+      </div>
 
         <ScrollArea className="flex-1 w-full h-full">
           {isLoading ? (
@@ -126,7 +124,6 @@ export function NotificationDialog({ open, onOpenChange }: NotificationDialogPro
             </div>
           )}
         </ScrollArea>
-      </SheetContent>
-    </Sheet>
+    </div>
   )
 }

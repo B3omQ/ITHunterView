@@ -23,8 +23,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner"
 import { JobApplicationDetailDto } from "@/types/job-application.types"
 import { exportApplicantsToExcel } from "@/utils/excel-export.util"
+import { useTranslations } from "next-intl"
 
 export default function JobApplicantsPage() {
+  const t = useTranslations("RecruiterApplicants")
   const router = useRouter()
   const params = useParams()
   const jobId = params.jobId as string
@@ -83,11 +85,11 @@ export default function JobApplicantsPage() {
   const handleStatusChange = async (applicantId: string, newStatus: ApplicationStatus) => {
     try {
       await JobApplicationService.updateApplicationStatus(applicantId, newStatus)
-      toast.success("Status updated successfully")
+      toast.success(t("toastStatusUpdateSuccess"))
       // Update local state
       setApplicants(prev => prev.map(a => a.id === applicantId ? { ...a, status: newStatus } : a))
     } catch (err) {
-      toast.error("Failed to update status")
+      toast.error(t("toastStatusUpdateFail"))
     }
   }
 
@@ -111,7 +113,7 @@ export default function JobApplicantsPage() {
       const detail = await JobApplicationService.getApplicationDetail(applicant.id)
       setSelectedDetail(detail)
     } catch (err) {
-      toast.error("Failed to load application details.")
+      toast.error(t("toastLoadDetailFail"))
       setDetailModalOpen(false)
     } finally {
       setDetailLoading(false)
@@ -202,13 +204,13 @@ export default function JobApplicantsPage() {
   const handleExportExcel = () => {
     try {
       if (filteredApplicants.length === 0) {
-        toast.error("Không có dữ liệu ứng viên để xuất Excel.")
+        toast.error(t("toastNoDataExcel"))
         return
       }
       exportApplicantsToExcel(job?.title || "Job", filteredApplicants)
-      toast.success("Đã xuất danh sách ứng viên ra file Excel thành công!")
+      toast.success(t("toastExportSuccess"))
     } catch (err: any) {
-      toast.error(err.message || "Có lỗi xảy ra khi xuất Excel.")
+      toast.error(err.message || t("toastExportFail"))
     }
   }
 
@@ -222,17 +224,17 @@ export default function JobApplicantsPage() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center text-sm text-zinc-500 font-medium mb-2">
-              <span className="hover:text-zinc-900 cursor-pointer" onClick={() => router.push("/recruiter/dashboard")}>Dashboard</span>
+              <span className="hover:text-zinc-900 cursor-pointer" onClick={() => router.push("/recruiter/dashboard")}>{t("breadcrumbDashboard")}</span>
               <span className="mx-2">›</span>
-              <span className="hover:text-zinc-900 cursor-pointer" onClick={() => router.push("/recruiter/jobs")}>Active Jobs</span>
+              <span className="hover:text-zinc-900 cursor-pointer" onClick={() => router.push("/recruiter/jobs")}>{t("breadcrumbActiveJobs")}</span>
               <span className="mx-2">›</span>
-              <span className="text-zinc-900 font-semibold">Applicants</span>
+              <span className="text-zinc-900 font-semibold">{t("breadcrumbApplicants")}</span>
             </div>
             <h1 className="text-2xl font-black text-zinc-900 dark:text-zinc-50 tracking-tight flex items-center gap-2">
-              Applicants for {jobLoading ? <span className="h-6 w-48 bg-zinc-200 rounded animate-pulse"></span> : job?.title}
+              {t("pageTitle")} {jobLoading ? <span className="h-6 w-48 bg-zinc-200 rounded animate-pulse"></span> : job?.title}
             </h1>
             <p className="text-sm text-zinc-500">
-              <span className="font-semibold text-zinc-700">Total: {totalCount} candidates</span>
+              <span className="font-semibold text-zinc-700">{t("totalCandidates", { total: totalCount })}</span>
             </p>
           </div>
 
@@ -240,7 +242,7 @@ export default function JobApplicantsPage() {
             <div className="relative w-full sm:w-64">
               <input
                 type="text"
-                placeholder="Search by name..."
+                placeholder={t("searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-3 pr-9 py-2 border border-zinc-200 rounded-md text-sm outline-none focus:border-zinc-400 transition-colors"
@@ -254,15 +256,15 @@ export default function JobApplicantsPage() {
               disabled={filteredApplicants.length === 0 || loading}
               variant="outline"
               className="border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 font-semibold gap-2 w-full sm:w-auto"
-              title="Xuất danh sách ứng viên ra Excel để nộp Cấp trên"
+              title={t("exportExcelTitle")}
             >
-              <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Xuất Excel
+              <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> {t("exportExcel")}
             </Button>
             <Button variant="outline" className="bg-white border-zinc-200 text-zinc-700 font-medium gap-2 w-full sm:w-auto hidden sm:flex">
-              <Filter className="h-4 w-4" /> Filter
+              <Filter className="h-4 w-4" /> {t("filter")}
             </Button>
             <Button onClick={() => router.push(`/recruiter/jobs`)} className="bg-slate-900 hover:bg-slate-800 text-white gap-2 shadow-sm w-full sm:w-auto">
-              <ArrowLeft className="h-4 w-4" /> Back to Jobs
+              <ArrowLeft className="h-4 w-4" /> {t("backToJobs")}
             </Button>
           </div>
         </div>
@@ -273,11 +275,11 @@ export default function JobApplicantsPage() {
             <table className="w-full text-sm text-left">
               <thead className="bg-zinc-50/80 border-b border-zinc-200/80 text-zinc-500 font-semibold text-xs uppercase tracking-wider">
                 <tr>
-                  <th className="px-6 py-4">Candidate Name</th>
-                  <th className="px-6 py-4">Contact Details</th>
-                  <th className="px-6 py-4">Apply Date</th>
-                  <th className="px-6 py-4">Current Stage</th>
-                  <th className="px-6 py-4 text-right">Action</th>
+                  <th className="px-6 py-4">{t("colName")}</th>
+                  <th className="px-6 py-4">{t("colContact")}</th>
+                  <th className="px-6 py-4">{t("colDate")}</th>
+                  <th className="px-6 py-4">{t("colStage")}</th>
+                  <th className="px-6 py-4 text-right">{t("colAction")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
@@ -285,7 +287,7 @@ export default function JobApplicantsPage() {
                   <tr>
                     <td colSpan={5} className="px-6 py-12 text-center">
                       <Loader2 className="h-6 w-6 text-blue-500 animate-spin mx-auto mb-2" />
-                      <p className="text-zinc-500">Loading applicants...</p>
+                      <p className="text-zinc-500">{t("loading")}</p>
                     </td>
                   </tr>
                 ) : error ? (
@@ -301,8 +303,8 @@ export default function JobApplicantsPage() {
                         <div className="bg-zinc-50 p-4 rounded-full">
                           <Users className="h-8 w-8 text-zinc-300" />
                         </div>
-                        <p className="text-sm font-medium text-zinc-600">No applicants found</p>
-                        <p className="text-xs">Try adjusting your search or filters.</p>
+                        <p className="text-sm font-medium text-zinc-600">{t("noApplicants")}</p>
+                        <p className="text-xs">{t("noApplicantsDesc")}</p>
                       </div>
                     </td>
                   </tr>
@@ -319,7 +321,7 @@ export default function JobApplicantsPage() {
                             )}
                           </div>
                           <span className="font-bold text-zinc-900 group-hover:text-blue-600 transition-colors">
-                            {applicant.candidateName || "Unknown Candidate"}
+                            {applicant.candidateName || t("unknownCandidate")}
                           </span>
                         </div>
                       </td>
@@ -353,7 +355,7 @@ export default function JobApplicantsPage() {
                               variant="outline"
                               onClick={() => handleDownloadCv(applicant)}
                               className="bg-white border-zinc-200 text-zinc-700 h-8 text-xs px-3 font-semibold shadow-sm hover:bg-zinc-50"
-                              title="Download CV"
+                              title={t("downloadCv")}
                             >
                               <Download className="h-3.5 w-3.5" />
                             </Button>
@@ -363,7 +365,7 @@ export default function JobApplicantsPage() {
                             className="bg-slate-900 hover:bg-slate-800 text-white h-8 text-xs px-3 font-semibold shadow-sm"
                           >
                             <Eye className="h-3.5 w-3.5 mr-1.5" />
-                            View Profile
+                            {t("viewProfile")}
                           </Button>
                         </div>
                       </td>
@@ -378,7 +380,12 @@ export default function JobApplicantsPage() {
           {!loading && applicants.length > 0 && totalPages > 1 && (
             <div className="border-t border-zinc-100 px-6 py-4 flex items-center justify-between">
               <div className="text-sm text-zinc-500">
-                Showing <span className="font-semibold text-zinc-700">{(page - 1) * pageSize + 1}</span> to <span className="font-semibold text-zinc-700">{Math.min(page * pageSize, totalCount)}</span> of <span className="font-semibold text-zinc-700">{totalCount}</span> applicants
+                {t.rich("showingText", { 
+                  start: () => (page - 1) * pageSize + 1,
+                  end: () => Math.min(page * pageSize, totalCount),
+                  total: () => totalCount,
+                  span: (chunks) => <span className="font-semibold text-zinc-700">{chunks}</span>
+                })}
               </div>
               <div className="flex gap-1">
                 {Array.from({ length: totalPages }).map((_, i) => (
@@ -403,14 +410,14 @@ export default function JobApplicantsPage() {
         <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
           <DialogContent className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto bg-white">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-zinc-900">Application Details</DialogTitle>
+              <DialogTitle className="text-xl font-bold text-zinc-900">{t("modalTitle")}</DialogTitle>
             </DialogHeader>
             
             <div className="py-4 space-y-6">
               {detailLoading ? (
                 <div className="flex flex-col items-center justify-center py-10 space-y-3">
                   <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
-                  <p className="text-sm text-zinc-500">Loading details...</p>
+                  <p className="text-sm text-zinc-500">{t("loadingDetails")}</p>
                 </div>
               ) : selectedDetail ? (
                 <>
@@ -437,14 +444,14 @@ export default function JobApplicantsPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                     <div className="space-y-3">
-                      <h4 className="text-sm font-semibold text-zinc-900">Cover Letter</h4>
+                      <h4 className="text-sm font-semibold text-zinc-900">{t("coverLetter")}</h4>
                       <div className="bg-zinc-50 p-4 rounded-lg border border-zinc-200/60 text-sm text-zinc-700 whitespace-pre-wrap min-h-[500px] max-h-[500px] overflow-y-auto">
-                        {selectedDetail.coverLetter || <span className="text-zinc-400 italic">No cover letter provided.</span>}
+                        {selectedDetail.coverLetter || <span className="text-zinc-400 italic">{t("noCoverLetter")}</span>}
                       </div>
                     </div>
 
                     <div className="space-y-3">
-                      <h4 className="text-sm font-semibold text-zinc-900">Resume / CV</h4>
+                      <h4 className="text-sm font-semibold text-zinc-900">{t("resume")}</h4>
                       {selectedDetail.cvUrl ? (
                         <div className="flex flex-col h-[500px] border border-slate-200 rounded-xl bg-slate-50 overflow-hidden shadow-xs">
                           <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
@@ -453,7 +460,7 @@ export default function JobApplicantsPage() {
                                 {selectedDetail.cvFileName || "candidate_cv.pdf"}
                               </span>
                               <span className="text-xs text-slate-500">
-                                Live Preview
+                                {t("livePreview")}
                               </span>
                             </div>
                           </div>
@@ -468,14 +475,14 @@ export default function JobApplicantsPage() {
                       ) : (
                         <div className="bg-zinc-50 p-4 rounded-lg border border-zinc-200/60 flex items-center gap-3">
                           <FileText className="h-5 w-5 text-zinc-400" />
-                          <span className="text-sm text-zinc-500 italic">No CV attached.</span>
+                          <span className="text-sm text-zinc-500 italic">{t("noCv")}</span>
                         </div>
                       )}
                     </div>
                   </div>
                 </>
               ) : (
-                <div className="py-10 text-center text-zinc-500">Failed to load details.</div>
+                <div className="py-10 text-center text-zinc-500">{t("failedToLoadDetails")}</div>
               )}
             </div>
           </DialogContent>

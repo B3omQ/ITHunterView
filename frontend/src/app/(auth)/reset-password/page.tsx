@@ -45,7 +45,11 @@ function ResetPasswordContent() {
       setSuccess(true)
     } catch (err: any) {
       console.error("Reset password error:", err)
-      setError(`Lỗi kết nối: ${err.message || "Không thể kết nối đến máy chủ."}`)
+      const serverMsg = err?.response?.data?.message 
+        || err?.response?.data?.errors?.NewPassword?.[0]
+        || err?.response?.data?.title
+        || "Không thể kết nối đến máy chủ."
+      setError(serverMsg)
     } finally {
       setLoading(false)
     }

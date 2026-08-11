@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2, XCircle } from 'lucide-react';
 import { useCreateStaff } from '@/hooks/useUserGovernance';
+import { useTranslations } from 'next-intl';
 
 interface CreateStaffModalProps {
   children: React.ReactElement;
@@ -15,7 +16,10 @@ interface CreateStaffModalProps {
 }
 
 export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps) {
+  const t = useTranslations('AdminAccounts');
   const [open, setOpen] = useState(false);
+  const [staffFullName, setStaffFullName] = useState('');
+  const [staffPhone, setStaffPhone] = useState('');
   const [staffEmail, setStaffEmail] = useState('');
   const [staffPassword, setStaffPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -27,6 +31,8 @@ export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps)
     setOpen(isOpen);
     if (!isOpen) {
       // Reset form on close
+      setStaffFullName('');
+      setStaffPhone('');
       setStaffEmail('');
       setStaffPassword('');
       setShowPassword(false);
@@ -36,16 +42,26 @@ export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!staffEmail.trim()) {
-      setError('Please enter an email address.');
+      setError(t('createStaffModal.emailRequired'));
       return;
     }
     if (!staffPassword.trim()) {
-      setError('Please enter an initial password.');
+      setError(t('createStaffModal.passwordRequired'));
       return;
     }
-    if (staffPassword.trim().length < 6) {
-      setError('Password must be at least 6 characters.');
+    if (staffPassword.trim().length < 8) {
+      setError(t('createStaffModal.passwordLength'));
+      return;
+    }
+
+    const hasUppercase = /[A-Z]/.test(staffPassword);
+    const hasDigit = /\d/.test(staffPassword);
+    const hasSpecial = /[@$!%*?&#^()_+\-=\[\]{}|;:,.<>/]/.test(staffPassword);
+
+    if (!hasUppercase || !hasDigit || !hasSpecial) {
+      setError(t('createStaffModal.passwordComplexity'));
       return;
     }
 
@@ -54,14 +70,16 @@ export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps)
       {
         email: staffEmail.trim(),
         password: staffPassword.trim(),
+        fullName: staffFullName.trim() || undefined,
+        phone: staffPhone.trim() || undefined,
       },
       {
         onSuccess: (res) => {
           if (res.success) {
-            onSuccess?.('Staff account created successfully!');
+            onSuccess?.(t('createStaffModal.successMsg'));
             handleOpenChange(false);
           } else {
-            setError(res.message || 'Failed to create staff account.');
+            setError(res.message || t('createStaffModal.failMsg'));
           }
         },
         onError: (err: any) => {
@@ -76,7 +94,7 @@ export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps)
           }
           
           // Fallback to standard message or default error
-          setError(err.response?.data?.message || 'An error occurred while creating staff account.');
+          setError(err.response?.data?.message || t('createStaffModal.defaultErrorMsg'));
         },
       }
     );
@@ -87,17 +105,46 @@ export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps)
       <DialogTrigger render={children} />
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Create Staff Account</DialogTitle>
+          <DialogTitle>{t('createStaffModal.title')}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+          {/* Họ và tên (Full Name) */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              Email Address <span className="text-rose-500">*</span>
+              {t('createStaffModal.fullNameLabel')}
+            </label>
+            <input
+              type="text"
+              placeholder={t('createStaffModal.fullNamePlaceholder')}
+              value={staffFullName}
+              onChange={(e) => setStaffFullName(e.target.value)}
+              className="w-full py-2 px-3 border border-border rounded-xl bg-background text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground"
+            />
+          </div>
+
+          {/* Số điện thoại (Phone) */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+              {t('createStaffModal.phoneLabel')}
+            </label>
+            <input
+              type="tel"
+              placeholder={t('createStaffModal.phonePlaceholder')}
+              value={staffPhone}
+              onChange={(e) => setStaffPhone(e.target.value)}
+              className="w-full py-2 px-3 border border-border rounded-xl bg-background text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground"
+            />
+          </div>
+
+          {/* Email */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+              {t('createStaffModal.emailLabel')} <span className="text-rose-500">*</span>
             </label>
             <input
               type="email"
-              placeholder="Enter staff email address..."
+              placeholder={t('createStaffModal.emailPlaceholder')}
               value={staffEmail}
               onChange={(e) => setStaffEmail(e.target.value)}
               required
@@ -105,14 +152,15 @@ export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps)
             />
           </div>
 
+          {/* Mật khẩu (Password) */}
           <div className="space-y-1.5 relative">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              Initial Password <span className="text-rose-500">*</span>
+              {t('createStaffModal.passwordLabel')} <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Enter initial password (min 6 chars)..."
+                placeholder={t('createStaffModal.passwordPlaceholder')}
                 value={staffPassword}
                 onChange={(e) => setStaffPassword(e.target.value)}
                 required
@@ -123,9 +171,12 @@ export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps)
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
               >
-                {showPassword ? 'Hide' : 'Show'}
+                {showPassword ? t('createStaffModal.hideBtn') : t('createStaffModal.showBtn')}
               </button>
             </div>
+            <p className="text-[11px] text-muted-foreground italic">
+              {t('createStaffModal.passwordComplexity')}
+            </p>
           </div>
 
           {error && (
@@ -141,7 +192,7 @@ export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps)
               onClick={() => handleOpenChange(false)}
               className="px-4 py-2 border border-border hover:bg-muted text-foreground font-semibold text-sm rounded-xl transition-colors"
             >
-              Cancel
+              {t('createStaffModal.cancelBtn')}
             </button>
             <button
               type="submit"
@@ -149,7 +200,7 @@ export function CreateStaffModal({ children, onSuccess }: CreateStaffModalProps)
               className="px-4 py-2 bg-primary hover:bg-primary/95 text-primary-foreground font-semibold text-sm rounded-xl shadow-xs transition-colors flex items-center gap-1.5 disabled:opacity-50"
             >
               {createStaffMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-              <span>Create</span>
+              <span>{t('createStaffModal.createBtn')}</span>
             </button>
           </div>
         </form>

@@ -4,7 +4,6 @@ import React, { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { APP_ROUTES } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Sparkles, ArrowRight, Info, History, Coins, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -19,10 +18,14 @@ import { JdSelectionPanel } from '../components/JdSelectionPanel';
 import { MatchingLoadingState } from '../components/MatchingLoadingState';
 import { useCvMatchingForm } from '@/hooks/useCvMatchingForm';
 import { toast } from 'sonner';
+import { CvAnalysisQualityNotice } from '@/components/shared/CvAnalysisQualityNotice';
+import { useTranslations } from 'next-intl';
 
 function CvMatchingContent() {
   const router = useRouter();
+  const t = useTranslations('CandidateCVMatching');
   const { state, queries, setters, handlers } = useCvMatchingForm();
+  const isRawJdFallback = state.matchOutput?.jdAnalysis?.scoreBasis === 'raw_text_fallback';
 
   return (
     <div className="w-full pb-8">
@@ -31,10 +34,10 @@ function CvMatchingContent() {
         <div className="flex flex-col space-y-2 text-center md:text-left">
           <h1 className="text-3xl font-extrabold tracking-tight flex items-center justify-center md:justify-start gap-2">
             <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-            AI CV-JD Matching
+            {t('newTitle')}
           </h1>
           <p className="text-muted-foreground text-sm max-w-2xl">
-            Evaluate the fit between your resume and job requirements using standard vector search and LLM scoring methodologies.
+            {t('newDesc')}
           </p>
         </div>
         
@@ -44,12 +47,17 @@ function CvMatchingContent() {
           className="gap-2 self-start sm:self-auto"
         >
           <History className="h-4 w-4" />
-          View History
+          {t('viewHistory')}
         </Button>
       </div>
 
       {state.step === 'select' && (
         <div className="space-y-8">
+          {state.resultError && (
+            <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {state.resultError}
+            </div>
+          )}
           {/* Feature Cost & Wallet Balance Banner */}
           <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500/10 via-amber-500/10 to-transparent border border-purple-500/20 shadow-sm flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -58,30 +66,30 @@ function CvMatchingContent() {
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Phí dịch vụ:</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('serviceFee')}</span>
                   {state.hasActiveSub ? (
                     <>
                       <Badge className="bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 shadow-sm">
-                        FREE ({state.activeSubName})
+                        {t('freeSub', { subName: state.activeSubName ?? '' })}
                       </Badge>
                       <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
-                        {state.isSubUnlimited ? "• Vô hạn lượt" : `• Còn ${state.subRemaining}/${state.matchLimit} lượt`}
+                        {state.isSubUnlimited ? t('unlimitedMatches') : t('remainingMatches', { remaining: state.subRemaining, limit: state.matchLimit })}
                       </span>
                     </>
                   ) : (
                     <span className="text-sm font-black text-amber-600 dark:text-amber-400">
-                      {(state.cvMatchCost ?? 1000).toLocaleString()} Coin / Lượt
+                      {t('coinPerMatch', { coin: (state.cvMatchCost ?? 1000).toLocaleString() })}
                     </span>
                   )}
                 </div>
                 {!!state.activeSubName && !state.hasActiveSub && (
                   <span className="text-xs text-rose-500 mt-0.5 font-medium">
-                    Gói {state.activeSubName} đã hết lượt miễn phí. Chuyển sang trừ Coin:
+                    {t('subExpired', { subName: state.activeSubName ?? '' })}
                   </span>
                 )}
                 {!state.hasActiveSub && (
                   <span className="text-xs text-muted-foreground mt-0.5 font-medium">
-                    Số dư hiện tại: <strong className={(state.balance ?? 0) < (state.cvMatchCost ?? 1000) ? "text-rose-500 font-bold" : "text-emerald-600 font-bold"}>{(state.balance ?? 0).toLocaleString()} Coin</strong>
+                    {t('currentBalance')} <strong className={(state.balance ?? 0) < (state.cvMatchCost ?? 1000) ? "text-rose-500 font-bold" : "text-emerald-600 font-bold"}>{(state.balance ?? 0).toLocaleString()} Coin</strong>
                   </span>
                 )}
               </div>
@@ -94,7 +102,7 @@ function CvMatchingContent() {
                 onClick={() => router.push('/candidate/top-up')}
                 className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold px-3 py-1.5 text-xs rounded-lg shadow-md hover:shadow-amber-500/25 transition-all shrink-0"
               >
-                Nạp Coin
+                {t('topUpCoin')}
               </Button>
             )}
           </div>
@@ -131,6 +139,19 @@ function CvMatchingContent() {
 
           {/* Action Button */}
           <div className="flex justify-center pt-4">
+            {state.retryJobId && (
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={handlers.handleRetry}
+                disabled={state.isRetrying}
+                className="mr-3 gap-2 font-semibold"
+              >
+                {state.isRetrying ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+                Retry failed match
+              </Button>
+            )}
             <Button 
               size="lg" 
               onClick={handlers.handleStartAnalysis} 
@@ -144,13 +165,13 @@ function CvMatchingContent() {
               {state.isUploading ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  Uploading Resume...
+                  {t('uploadingResume')}
                 </>
               ) : !state.hasActiveSub && (state.balance ?? 0) < (state.cvMatchCost ?? 1000) ? (
-                <>Không đủ Coin ({state.balance?.toLocaleString()}/{state.cvMatchCost?.toLocaleString()})</>
+                <>{t('notEnoughCoinBtn', { balance: state.balance?.toLocaleString(), cost: state.cvMatchCost?.toLocaleString() })}</>
               ) : (
                 <>
-                  Start Analysis {state.hasActiveSub ? "(Free)" : `(-${(state.cvMatchCost ?? 1000).toLocaleString()} Coin)`}
+                  {state.hasActiveSub ? t('startAnalysisFree') : t('startAnalysisCoin', { cost: (state.cvMatchCost ?? 1000).toLocaleString() })}
                   <ArrowRight className="h-5 w-5" />
                 </>
               )}
@@ -170,49 +191,29 @@ function CvMatchingContent() {
       {/* 3. Giao diện Kết quả (Sử dụng Sub-Components) */}
       {state.step === 'result' && (
         <div className="space-y-6 animate-in fade-in duration-500">
+          <CvAnalysisQualityNotice analysis={state.cvAnalysis} />
           <div className="flex flex-col sm:flex-row justify-between items-center bg-muted/20 p-4 rounded-lg border gap-4">
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <Info className="h-5 w-5 text-primary/70" />
-              This match result is generated by our AI using your provided CV and Job Description.
+              {t('matchResultInfo')}
             </div>
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setters.setStep('select')}>
-                Analyze Another
+                {t('analyzeAnother')}
               </Button>
-              {state.matchOutput?.improvements && state.matchOutput.improvements.some(imp => imp.example?.before && imp.example?.after) && (
-                <Button 
-                  className="bg-primary hover:bg-primary/90 gap-2"
-                  onClick={() => {
-                    const queryParams = new URLSearchParams();
-                    const cvId = state.matchedCvId
-                      ?? (state.cvTab === 'saved' ? state.selectedCvId : null);
-                    if (cvId) queryParams.set('cvId', cvId);
-                    
-                    if (!queryParams.has('cvId')) {
-                      toast.error("Cannot optimize a pasted or temporary CV. Save the CV first, then match again.");
-                      return;
-                    }
-
-                    router.push(`${APP_ROUTES.CANDIDATE.CV_MATCHING}/${state.currentJobId}/optimize?${queryParams.toString()}`);
-                  }}
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Optimize CV
-                </Button>
-              )}
             </div>
           </div>
 
           {state.matchOutput?.jdFit && (
             <>
-              <ResultOverviewCard jdFit={state.matchOutput.jdFit} />
-              <PenaltyWarningPanel penalties={state.matchOutput.jdFit.penalties} />
+              <ResultOverviewCard jdFit={state.matchOutput.jdFit} isRawTextFallback={isRawJdFallback} />
+              {!isRawJdFallback && <PenaltyWarningPanel penalties={state.matchOutput.jdFit.penalties} />}
             </>
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              {state.matchOutput?.jdFit && (
+              {state.matchOutput?.jdFit && !isRawJdFallback && (
                 <RequirementBreakdown scores={state.matchOutput.jdFit.requirementScores} />
               )}
               {state.matchOutput?.improvements && state.matchOutput.improvements.length > 0 && (
@@ -220,7 +221,7 @@ function CvMatchingContent() {
               )}
             </div>
             <div className="space-y-6">
-              {state.matchOutput?.jdFit && (
+              {state.matchOutput?.jdFit && !isRawJdFallback && (
                 <CriticalGapsPanel 
                   criticalGaps={state.matchOutput.jdFit.criticalGaps} 
                   penalties={state.matchOutput.jdFit.penalties} 

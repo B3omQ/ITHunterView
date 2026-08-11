@@ -4,6 +4,7 @@ export interface FeaturesConfigDto {
   role: 'CANDIDATE' | 'RECRUITER';
   // Quota cho Candidate
   cvMatchLimit?: number | null;
+  cvOptimizeLimit?: number | null;
   mockInterviewLimit?: number | null;
   learningPathLimit?: number | null;
   learningPathSlotLimit?: number | null;
@@ -54,6 +55,7 @@ export interface PagedResult<T> {
 
 export interface CoinFeatureCostsDto {
   cvJdMatching: number;
+  cvOptimize: number;
   mockInterview: number;
   learningPath: number;
   unlockCv: number;

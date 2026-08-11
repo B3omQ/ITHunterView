@@ -55,8 +55,8 @@ namespace ITHunterview.Service.UseCase
                 Status = u.Status,
                 FullName = u.RoleId == (int)SystemRole.Recruiter 
                     ? (u.RecruiterProfile?.FullName ?? string.Empty) 
-                    : u.RoleId == (int)SystemRole.Candidate 
-                        ? ($"{u.CandidateProfile?.FirstName} {u.CandidateProfile?.LastName}").Trim()
+                    : u.CandidateProfile != null && !string.IsNullOrWhiteSpace(u.CandidateProfile.FirstName)
+                        ? ($"{u.CandidateProfile.FirstName} {u.CandidateProfile.LastName}").Trim()
                         : u.RoleId == (int)SystemRole.Staff 
                             ? "Staff Account"
                             : u.RoleId == (int)SystemRole.Admin 
@@ -276,6 +276,16 @@ namespace ITHunterview.Service.UseCase
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
+
+                if (!string.IsNullOrWhiteSpace(dto.FullName) || !string.IsNullOrWhiteSpace(dto.Phone))
+                {
+                    newStaff.CandidateProfile = new CandidateProfiles
+                    {
+                        FirstName = dto.FullName?.Trim(),
+                        LastName = string.Empty,
+                        Phone = dto.Phone?.Trim()
+                    };
+                }
 
                 await _userRepository.AddUserAsync(newStaff);
 

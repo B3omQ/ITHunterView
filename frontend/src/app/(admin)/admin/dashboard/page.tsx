@@ -17,6 +17,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { useTranslations } from "next-intl";
 
 import { useState } from "react";
 import { useAdminDashboard } from "@/hooks/useDashboard";
@@ -75,9 +76,9 @@ export default function AdminDashboard() {
   return (
     <div className="w-full pb-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Admin Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground">
-          Platform overview, financial growth, and AI usage metrics.
+          {t("desc")}
         </p>
       </div>
       <DashboardFilterBar onFilterChange={setFilters} />

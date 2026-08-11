@@ -9,6 +9,9 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Service.DTOs.Cv;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
+using ITHunterview.Domain.Enums;
+using ITHunterview.Service.Exceptions;
+using ITHunterview.Service.Utils;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -96,6 +99,9 @@ namespace ITHunterview.Service.UseCase
                 ParsedData = string.Empty,
                 ParseStatus = "PENDING",
                 ParseError = null,
+                AnalysisQuality = null,
+                AnalysisCoverageJson = null,
+                AnalysisDiagnosticsJson = null,
                 RawText = extractedRawText,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
@@ -150,9 +156,19 @@ namespace ITHunterview.Service.UseCase
                 {
                     using (System.Text.Json.JsonDocument.Parse(parsedJson))
                     {
+                        var quality = CvAnalysisMetadataReader.ReadQuality(parsedJson);
+                        if (quality is not (CvAnalysisQuality.COMPLETE or CvAnalysisQuality.PARTIAL))
+                        {
+                            throw new InvalidOperationException("CV_ANALYSIS_METADATA_MISSING");
+                        }
+                        var coverage = CvAnalysisMetadataReader.ReadCoverage(parsedJson);
+                        var diagnostics = CvAnalysisMetadataReader.ReadDiagnostics(parsedJson);
                         freshCv.ParsedData = parsedJson;
                         freshCv.ParseStatus = "SUCCESS";
                         freshCv.ParseError = null;
+                        freshCv.AnalysisQuality = quality;
+                        freshCv.AnalysisCoverageJson = CvAnalysisMetadataReader.SerializeCoverage(coverage);
+                        freshCv.AnalysisDiagnosticsJson = CvAnalysisMetadataReader.SerializeDiagnostics(diagnostics);
                         freshCv.UpdatedAt = DateTime.UtcNow;
                         await cvRepo.UpdateAsync(freshCv);
                         _logger.LogInformation("Successfully parsed and updated CV {CvId}", cvId);
@@ -161,7 +177,8 @@ namespace ITHunterview.Service.UseCase
                 else
                 {
                     freshCv.ParseStatus = "FAILED";
-                    freshCv.ParseError = "AI returned empty JSON content";
+                    freshCv.ParseError = "CV_ANALYSIS_EMPTY_OUTPUT";
+                    ClearAnalysisMetadata(freshCv);
                     freshCv.UpdatedAt = DateTime.UtcNow;
                     await cvRepo.UpdateAsync(freshCv);
                     _logger.LogWarning("Background parsing resulted in empty JSON for CV {CvId}", cvId);
@@ -174,7 +191,8 @@ namespace ITHunterview.Service.UseCase
                 if (freshCv != null)
                 {
                     freshCv.ParseStatus = "FAILED";
-                    freshCv.ParseError = ex.Message;
+                    freshCv.ParseError = BoundedParseFailureCode(ex);
+                    ClearAnalysisMetadata(freshCv);
                     freshCv.UpdatedAt = DateTime.UtcNow;
                     await cvRepo.UpdateAsync(freshCv);
                 }
@@ -262,10 +280,32 @@ namespace ITHunterview.Service.UseCase
                 ParsedData = cv.ParsedData,
                 ParseStatus = cv.ParseStatus ?? "PENDING",
                 ParseError = cv.ParseError,
+                AnalysisQuality = cv.AnalysisQuality,
+                AnalysisCoverage = CvAnalysisMetadataReader.ReadCoverageJson(cv.AnalysisCoverageJson),
+                AnalysisWarningCodes = CvAnalysisMetadataReader.ReadDiagnosticsJson(cv.AnalysisDiagnosticsJson)
+                    .Select(diagnostic => diagnostic.Code)
+                    .Distinct(StringComparer.Ordinal)
+                    .Take(20)
+                    .ToList(),
                 CreatedAt = cv.CreatedAt,
                 UpdatedAt = cv.UpdatedAt
             };
         }
+
+        private static void ClearAnalysisMetadata(Cvs cv)
+        {
+            cv.AnalysisQuality = null;
+            cv.AnalysisCoverageJson = null;
+            cv.AnalysisDiagnosticsJson = null;
+        }
+
+        private static string BoundedParseFailureCode(Exception exception) => exception switch
+        {
+            CvAnalysisValidationException validation => validation.FailureCode,
+            TimeoutException or OperationCanceledException or HttpRequestException => "AI_PROVIDER_TIMEOUT",
+            InvalidOperationException { Message: "CV_ANALYSIS_METADATA_MISSING" } => "CV_ANALYSIS_METADATA_MISSING",
+            _ => "CV_ANALYSIS_PARSE_FAILED"
+        };
 
         private bool CheckAndRecordPrimaryCvRateLimit(Guid userId, bool isCheckOnly)
         {

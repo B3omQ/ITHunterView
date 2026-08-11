@@ -43,21 +43,49 @@ namespace ITHunterview.WebAPI.BackgroundServices
                     using var scope = _serviceProvider.CreateScope();
                     var context = scope.ServiceProvider.GetRequiredService<ITHunterviewContext>();
 
-                    // 1. Fetch Target Role IDs
-                    var targetRoleIds = await context.Roles
-                        .Where(r => r.Name == "candidate" || r.Name == "recruiter")
-                        .Select(r => r.Id)
-                        .ToListAsync(stoppingToken);
+                    var targetType = request.TargetType?.ToUpperInvariant() ?? "ALL";
+                    var targetUserIds = new List<Guid>();
 
-                    // 2. Fetch all target user IDs
-                    // For 1,000,000 users, we can just load the IDs into memory, which is roughly 16MB of Guids.
-                    var targetUserIds = await context.Users
-                        .AsNoTracking()
-                        .Where(u => u.RoleId.HasValue && targetRoleIds.Contains(u.RoleId.Value) && u.Status == UserStatus.ACTIVE)
-                        .Select(u => u.Id)
-                        .ToListAsync(stoppingToken);
+                    if ((targetType == "USER" || targetType == "CUSTOM") && request.TargetUserIds != null && request.TargetUserIds.Count > 0)
+                    {
+                        targetUserIds = await context.Users
+                            .AsNoTracking()
+                            .Where(u => request.TargetUserIds.Contains(u.Id))
+                            .Select(u => u.Id)
+                            .ToListAsync(stoppingToken);
+                    }
+                    else if (targetType == "ROLE" && !string.IsNullOrWhiteSpace(request.TargetRole))
+                    {
+                        var roleName = request.TargetRole.Trim().ToLower();
+                        var roleId = await context.Roles
+                            .Where(r => r.Name == roleName)
+                            .Select(r => r.Id)
+                            .FirstOrDefaultAsync(stoppingToken);
 
-                    _logger.LogInformation($"Found {targetUserIds.Count} target users for system notification.");
+                        if (roleId > 0)
+                        {
+                            targetUserIds = await context.Users
+                                .AsNoTracking()
+                                .Where(u => u.RoleId == roleId && u.Status == UserStatus.ACTIVE)
+                                .Select(u => u.Id)
+                                .ToListAsync(stoppingToken);
+                        }
+                    }
+                    else // ALL
+                    {
+                        var targetRoleIds = await context.Roles
+                            .Where(r => r.Name == "candidate" || r.Name == "recruiter" || r.Name == "staff")
+                            .Select(r => r.Id)
+                            .ToListAsync(stoppingToken);
+
+                        targetUserIds = await context.Users
+                            .AsNoTracking()
+                            .Where(u => u.RoleId.HasValue && targetRoleIds.Contains(u.RoleId.Value) && u.Status == UserStatus.ACTIVE)
+                            .Select(u => u.Id)
+                            .ToListAsync(stoppingToken);
+                    }
+
+                    _logger.LogInformation($"Found {targetUserIds.Count} target users for system notification (TargetType: {targetType}).");
 
                     var now = DateTime.UtcNow;
 

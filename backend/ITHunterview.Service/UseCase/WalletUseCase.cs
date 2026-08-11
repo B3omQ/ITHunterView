@@ -68,10 +68,13 @@ namespace ITHunterview.Service.UseCase
                 .FirstOrDefaultAsync();
                 
             string? activeSubName = null;
+            decimal? activeSubPrice = null;
             int? mockInterviewLimit = null;
             int? mockInterviewUsed = null;
             int? cvMatchLimit = null;
             int? cvMatchUsed = null;
+            int? cvOptimizeLimit = null;
+            int? cvOptimizeUsed = null;
             int? learningPathLimit = null;
             int? learningPathUsed = null;
             int? learningPathSlotLimit = null;
@@ -97,6 +100,7 @@ namespace ITHunterview.Service.UseCase
                 if (subscription != null)
                 {
                     activeSubName = subscription.Name;
+                    activeSubPrice = subscription.Price;
 
                     if (!string.IsNullOrEmpty(subscription.FeaturesConfig))
                     {
@@ -117,6 +121,7 @@ namespace ITHunterview.Service.UseCase
                         {
                             mockInterviewLimit = features.MockInterviewLimit;
                             cvMatchLimit = features.CvMatchLimit;
+                            cvOptimizeLimit = features.CvOptimizeLimit;
                             learningPathLimit = features.LearningPathLimit ?? features.LearningPathSlotLimit;
                             learningPathSlotLimit = features.LearningPathSlotLimit;
 
@@ -134,6 +139,13 @@ namespace ITHunterview.Service.UseCase
                                                 m.UpdatedAt >= start &&
                                                 m.UpdatedAt <= end &&
                                                 m.Status != "Failed")
+                                    .CountAsync();
+                            }
+
+                            if (cvOptimizeLimit.HasValue)
+                            {
+                                cvOptimizeUsed = await _context.OptimizeSessions
+                                    .Where(x => x.UserId == userId && x.CreatedAt >= start && x.CreatedAt <= end)
                                     .CountAsync();
                             }
 
@@ -211,11 +223,14 @@ namespace ITHunterview.Service.UseCase
                 UserId = wallet.UserId,
                 Balance = wallet.Balance,
                 ActiveSubscriptionName = activeSubName,
+                ActiveSubscriptionPrice = activeSubPrice,
                 SubscriptionEndDate = activeSub?.EndDate,
                 MockInterviewLimit = mockInterviewLimit,
                 MockInterviewUsed = mockInterviewUsed,
                 CvMatchLimit = cvMatchLimit,
                 CvMatchUsed = cvMatchUsed,
+                CvOptimizeLimit = cvOptimizeLimit,
+                CvOptimizeUsed = cvOptimizeUsed,
                 LearningPathLimit = learningPathLimit,
                 LearningPathUsed = learningPathUsed,
                 LearningPathSlotLimit = learningPathSlotLimit,

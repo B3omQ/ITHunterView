@@ -1,4 +1,5 @@
 using ITHunterview.Domain.Entities;
+using ITHunterview.Domain.Entities.Cv;
 using ITHunterview.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -59,6 +60,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
         public virtual DbSet<LearningPaths> LearningPaths { get; set; } = null!;
         public virtual DbSet<AiApiUsageLogs> AiApiUsageLogs { get; set; } = null!;
         public virtual DbSet<OptimizeSession> OptimizeSessions { get; set; } = null!;
+        public virtual DbSet<FeatureUsageReservations> FeatureUsageReservations { get; set; } = null!;
 
         // SFIA & Learning Paths
         public virtual DbSet<SfiaSkill> SfiaSkills { get; set; } = null!;
@@ -142,6 +144,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             // Cvs
             modelBuilder.Entity<Cvs>(entity =>
             {
+                entity.Property(e => e.AnalysisQuality)
+                      .HasConversion<string>()
+                      .HasMaxLength(16);
+                entity.Property(e => e.AnalysisCoverageJson).HasColumnType("jsonb");
+                entity.Property(e => e.AnalysisDiagnosticsJson).HasColumnType("jsonb");
+                entity.ToTable(table => table.HasCheckConstraint(
+                    "ck_cvs_analysis_quality",
+                    "\"analysis_quality\" IS NULL OR \"analysis_quality\" IN ('COMPLETE', 'PARTIAL', 'INVALID')"));
+
                 entity.HasOne(c => c.User)
                       .WithMany(u => u.Cvs)
                       .HasForeignKey(c => c.UserId)
@@ -380,6 +391,82 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 entity.HasKey(e => e.Id);
             });
 
+            // Durable one-CV/one-JD AI matching jobs. Legacy and hardcode/vector
+            // rows remain valid because all new runtime fields are nullable or
+            // have safe defaults, and every queue index is filtered to MatchType=AI.
+            modelBuilder.Entity<CvJobMatchScores>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.CvAnalysisQuality)
+                      .HasConversion<string>()
+                      .HasMaxLength(16);
+                entity.Property(e => e.JdAnalysisQuality)
+                      .HasConversion<string>()
+                      .HasMaxLength(16);
+                entity.Property(e => e.JdAnalysisCoverageJson).HasColumnType("jsonb");
+                entity.Property(e => e.JdAnalysisDiagnosticsJson).HasColumnType("jsonb");
+                entity.ToTable(table => table.HasCheckConstraint(
+                    "ck_cv_job_match_scores_jd_analysis_quality",
+                    "\"jd_analysis_quality\" IS NULL OR \"jd_analysis_quality\" IN ('COMPLETE', 'PARTIAL', 'INVALID')"));
+                entity.Property(e => e.CvAnalysisCoverageJson).HasColumnType("jsonb");
+                entity.Property(e => e.CvAnalysisDiagnosticsJson).HasColumnType("jsonb");
+                entity.ToTable(table => table.HasCheckConstraint(
+                    "ck_cv_job_match_scores_cv_analysis_quality",
+                    "\"cv_analysis_quality\" IS NULL OR \"cv_analysis_quality\" IN ('COMPLETE', 'PARTIAL', 'INVALID')"));
+
+                entity.Property(e => e.InputSnapshotJson).HasColumnType("jsonb");
+                entity.Property(e => e.InputHash).HasMaxLength(64);
+                entity.Property(e => e.IdempotencyRequestHash).HasMaxLength(64);
+                entity.Property(e => e.AttemptCount).HasDefaultValue(0);
+                entity.Property(e => e.MaxAttempts).HasDefaultValue(3);
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.ManualRetryUsed).HasDefaultValue(false);
+
+                entity.HasIndex(e => new { e.UserId, e.HistoryHiddenAt, e.UpdatedAt });
+
+                entity.HasIndex(e => new { e.UserId, e.IdempotencyKey })
+                    .IsUnique()
+                    .HasFilter("\"match_type\" = 'AI' AND \"idempotency_key\" IS NOT NULL");
+
+                entity.HasIndex(e => new { e.Status, e.NextAttemptAt, e.CreatedAt })
+                    .HasFilter("\"match_type\" = 'AI' AND \"status\" IN ('Pending', 'RetryScheduled')");
+
+                entity.HasIndex(e => new { e.Status, e.LeaseExpiresAt })
+                    .HasFilter("\"match_type\" = 'AI' AND \"status\" = 'Processing'");
+
+                entity.HasIndex(e => e.RetryOfJobId)
+                    .IsUnique()
+                    .HasFilter("\"retry_of_job_id\" IS NOT NULL");
+
+                entity.HasOne<FeatureUsageReservations>()
+                    .WithMany()
+                    .HasForeignKey(e => e.BillingReservationId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne<CvJobMatchScores>()
+                    .WithMany()
+                    .HasForeignKey(e => e.RetryOfJobId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<FeatureUsageReservations>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.ReferenceId).IsUnique();
+                entity.HasIndex(e => new { e.UserId, e.Status, e.FeatureKey });
+                entity.Property(e => e.Status).HasMaxLength(32);
+                entity.Property(e => e.Source).HasMaxLength(32);
+                entity.Property(e => e.FeatureKey).HasMaxLength(128);
+            });
+
+            modelBuilder.Entity<CreditTransactions>(entity =>
+            {
+                entity.HasIndex(e => new { e.TransactionType, e.ReferenceId })
+                    .IsUnique()
+                    .HasFilter($"\"transaction_type\" = {(int)CreditTransactionType.REFUND} AND \"reference_id\" IS NOT NULL");
+            });
+
             // UserWallets
             modelBuilder.Entity<UserWallets>(entity =>
             {
@@ -416,6 +503,14 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 entity.Property(e => e.RawInputSnapshot).HasColumnType("jsonb");
                 entity.Property(e => e.RawAnalysisJson).HasColumnType("jsonb");
                 entity.Property(e => e.EffectiveAnalysisJson).HasColumnType("jsonb");
+                entity.Property(e => e.AnalysisQuality)
+                      .HasConversion<string>()
+                      .HasMaxLength(16);
+                entity.Property(e => e.AnalysisCoverageJson).HasColumnType("jsonb");
+                entity.Property(e => e.AnalysisDiagnosticsJson).HasColumnType("jsonb");
+                entity.ToTable(table => table.HasCheckConstraint(
+                    "ck_job_analysis_runs_analysis_quality",
+                    "\"analysis_quality\" IS NULL OR \"analysis_quality\" IN ('COMPLETE', 'PARTIAL', 'INVALID')"));
                 entity.Property(e => e.ValidationErrorsJson).HasColumnType("jsonb");
 
                 entity.HasOne(e => e.Job)
@@ -482,6 +577,18 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             modelBuilder.Entity<RecruiterUnlockedCvs>(entity =>
             {
                 entity.HasIndex(e => new { e.RecruiterId, e.CvId }).IsUnique();
+            });
+
+            // OptimizeSession
+            modelBuilder.Entity<OptimizeSession>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.CvDocument)
+                      .HasConversion(
+                          v => v == null ? null : System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                          v => v == null ? null : System.Text.Json.JsonSerializer.Deserialize<CvDocument>(v, (System.Text.Json.JsonSerializerOptions?)null)
+                      )
+                      .HasColumnType("jsonb");
             });
         }
     }

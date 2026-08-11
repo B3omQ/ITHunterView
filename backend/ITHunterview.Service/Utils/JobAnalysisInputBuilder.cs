@@ -39,10 +39,11 @@ namespace ITHunterview.Service.Utils
     public interface IJobAnalysisInputBuilder
     {
         JobAnalysisInputSnapshot Build(JobPostings job);
+        JobAnalysisInputSnapshot BuildFromPastedText(string? title, string? rawJdText);
         string SerializeCanonical(JobAnalysisInputSnapshot snapshot);
         string ComputeSemanticHash(JobAnalysisInputSnapshot snapshot);
-        string ComputeAnalysisHash(JobAnalysisInputSnapshot snapshot, Guid systemPromptVersionId, Guid userPromptVersionId, string schemaVersion = "jd-analysis/v2");
-        string ComputeHash(JobAnalysisInputSnapshot snapshot, Guid systemPromptVersionId, Guid userPromptVersionId, string schemaVersion = "jd-analysis/v2");
+        string ComputeAnalysisHash(JobAnalysisInputSnapshot snapshot, Guid systemPromptVersionId, Guid userPromptVersionId, string schemaVersion);
+        string ComputeHash(JobAnalysisInputSnapshot snapshot, Guid systemPromptVersionId, Guid userPromptVersionId, string schemaVersion);
     }
 
     public class JobAnalysisInputBuilder : IJobAnalysisInputBuilder
@@ -67,6 +68,18 @@ namespace ITHunterview.Service.Utils
             };
         }
 
+        public JobAnalysisInputSnapshot BuildFromPastedText(string? title, string? rawJdText)
+        {
+            var normalizedRawText = NormalizeAnalysisSourceText(rawJdText);
+            var sections = JdSectionSplitter.Split(normalizedRawText);
+            return new JobAnalysisInputSnapshot
+            {
+                Title = NormalizeAnalysisSourceText(title),
+                Description = NormalizeAnalysisSourceText(sections.Description),
+                Requirements = NormalizeAnalysisSourceText(sections.Requirements)
+            };
+        }
+
         public string SerializeCanonical(JobAnalysisInputSnapshot snapshot)
         {
             if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
@@ -81,8 +94,9 @@ namespace ITHunterview.Service.Utils
             return Convert.ToHexStringLower(hashBytes);
         }
 
-        public string ComputeAnalysisHash(JobAnalysisInputSnapshot snapshot, Guid systemPromptVersionId, Guid userPromptVersionId, string schemaVersion = "jd-analysis/v2")
+        public string ComputeAnalysisHash(JobAnalysisInputSnapshot snapshot, Guid systemPromptVersionId, Guid userPromptVersionId, string schemaVersion)
         {
+            if (string.IsNullOrWhiteSpace(schemaVersion)) throw new ArgumentException("A prompt-pair contract is required.", nameof(schemaVersion));
             string canonicalJson = SerializeCanonical(snapshot);
             string rawPayload = $"{schemaVersion}:{systemPromptVersionId}:{userPromptVersionId}:{canonicalJson}";
 
@@ -91,7 +105,7 @@ namespace ITHunterview.Service.Utils
             return Convert.ToHexStringLower(hashBytes);
         }
 
-        public string ComputeHash(JobAnalysisInputSnapshot snapshot, Guid systemPromptVersionId, Guid userPromptVersionId, string schemaVersion = "jd-analysis/v2")
+        public string ComputeHash(JobAnalysisInputSnapshot snapshot, Guid systemPromptVersionId, Guid userPromptVersionId, string schemaVersion)
         {
             return ComputeAnalysisHash(snapshot, systemPromptVersionId, userPromptVersionId, schemaVersion);
         }

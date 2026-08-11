@@ -6,20 +6,22 @@ import { usePathname } from 'next/navigation';
 import { useGetMyCompany } from '@/hooks/useCompany';
 import { CompanyStatusBadge } from '@/components/shared/CompanyStatusBadge';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 export default function CompanyLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: company, isLoading } = useGetMyCompany();
+  const t = useTranslations('RecruiterCompany');
 
   const tabs = [
-    { name: 'Company Profile', href: '/recruiter/company/profile' },
-    { name: 'Legal Verification', href: '/recruiter/company/legal' },
+    { name: t('tabProfile'), href: '/recruiter/company/profile' },
+    { name: t('tabLegal'), href: '/recruiter/company/legal' },
   ];
 
   return (
     <div className="w-full pb-8 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Company Profile Management</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t('layoutTitle')}</h1>
         {!isLoading && company && (
           <CompanyStatusBadge status={company.status} />
         )}
@@ -28,7 +30,7 @@ export default function CompanyLayout({ children }: { children: React.ReactNode 
       <div className="border-b">
         <nav className="-mb-px flex space-x-8" aria-label="Tabs">
           {tabs.map((tab) => {
-            if (tab.name === 'Legal Verification' && !company) return null;
+            if (tab.name === t('tabLegal') && !company) return null;
             
             const isActive = pathname === tab.href;
             return (

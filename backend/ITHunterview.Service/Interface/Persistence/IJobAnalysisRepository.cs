@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
+using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.JobAnalysis;
 
 namespace ITHunterview.Service.Interface.Persistence
@@ -30,6 +31,17 @@ namespace ITHunterview.Service.Interface.Persistence
         public int SkillCount { get; set; }
     }
 
+    public sealed record JobAnalysisCompletion(
+        int ExpectedRevision,
+        JdAnalysisQuality Quality,
+        string? RawAnalysisJson,
+        string? EffectiveAnalysisJson,
+        string? AnalysisCoverageJson,
+        string? AnalysisDiagnosticsJson,
+        IReadOnlyList<JobSkillDecisions> Decisions,
+        string? Provider,
+        string? Model);
+
     public interface IJobAnalysisRepository
     {
         Task<JobAnalysisRequestContext?> GetRequestContextAsync(Guid jobId, Guid recruiterId, CancellationToken ct = default);
@@ -42,15 +54,8 @@ namespace ITHunterview.Service.Interface.Persistence
         Task<JobAnalysisRuns> AddPendingRunAsync(JobAnalysisRuns run, CancellationToken ct = default);
         Task<JobAnalysisRuns> CreatePendingRunAsync(JobAnalysisRuns run, CancellationToken ct = default);
         Task<IReadOnlyList<Guid>> ClaimPendingRunIdsAsync(int limit, CancellationToken ct = default);
-        Task<bool> TryCompleteReadyAsync(
-            Guid runId,
-            int expectedRevision,
-            string rawJson,
-            string effectiveJson,
-            IReadOnlyList<JobSkillDecisions> decisions,
-            string? provider,
-            string? model,
-            CancellationToken ct = default);
+        Task<bool> TryMarkProviderCallStartedAsync(Guid runId, CancellationToken ct = default);
+        Task<bool> TryCompleteReadyAsync(Guid runId, JobAnalysisCompletion completion, CancellationToken ct = default);
         Task MarkFailedAsync(Guid runId, string failureCode, string validationErrorsJson, CancellationToken ct = default);
         Task MarkSupersededAsync(Guid runId, CancellationToken ct = default);
         Task<JobAnalysisPreviewDto?> GetPreviewAsync(Guid jobId, Guid recruiterId, CancellationToken ct = default);

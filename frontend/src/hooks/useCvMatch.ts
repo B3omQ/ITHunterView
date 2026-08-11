@@ -4,8 +4,18 @@ import type { MatchJdRequest, MatchingResultDto } from '@/types/cv.types';
 import type { ApiResponse } from '@/types/api.types';
 
 export const useMatchCvJd = () => {
-  return useMutation<ApiResponse<string>, Error, MatchJdRequest>({
-    mutationFn: (data: MatchJdRequest) => cvService.matchCvJd(data),
+  return useMutation<ApiResponse<string>, Error, { data: MatchJdRequest; idempotencyKey: string }>({
+    mutationFn: ({ data, idempotencyKey }) => cvService.matchCvJd(data, idempotencyKey),
+  });
+};
+
+export const useRetryMatch = () => {
+  const queryClient = useQueryClient();
+  return useMutation<ApiResponse<string>, Error, { jobId: string; idempotencyKey: string }>({
+    mutationFn: ({ jobId, idempotencyKey }) => cvService.retryMatch(jobId, idempotencyKey),
+    onSuccess: (_response, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['match-result', variables.jobId] });
+    },
   });
 };
 
@@ -17,7 +27,7 @@ export const useGetMatchResult = (jobId: string | null) => {
     refetchInterval: (query) => {
       // Poll every 2 seconds if status is still processing or pending
       const status = query.state.data?.data?.status;
-      if (status === 'Pending' || status === 'Processing') return 2000;
+      if (status === 'Pending' || status === 'Processing' || status === 'RetryScheduled') return 2000;
       return false;
     },
   });

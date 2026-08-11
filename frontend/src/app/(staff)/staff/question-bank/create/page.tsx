@@ -10,8 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 export default function CreateQuestionPage() {
+  const t = useTranslations("StaffQuestionBank");
   const router = useRouter();
   const { importExcel, createQuestion } = useQuestionBank();
 
@@ -34,17 +36,17 @@ export default function CreateQuestionPage() {
     setFormError("");
 
     if (!formData.industry || !formData.level) {
-      setFormError("Industry and Level are required.");
+      setFormError(t('industryRequired'));
       return;
     }
 
     if (!hasFile && !hasText) {
-      setFormError("You must provide EITHER an Excel file OR enter a manual question.");
+      setFormError(t('eitherFileOrText'));
       return;
     }
 
     if (hasFile && hasText) {
-      setFormError("You can only choose ONE method: either upload an Excel file OR enter a manual question, not both.");
+      setFormError(t('onlyOneMethod'));
       return;
     }
 
@@ -56,12 +58,12 @@ export default function CreateQuestionPage() {
       if (hasFile) {
         const res = await importExcel(formData.industry, formData.level, formData.file!);
         if (res.success) {
-          setSuccessMsg(`Successfully imported ${res.importedCount} questions.`);
+          setSuccessMsg(t('importSuccess').replace('{count}', (res.importedCount ?? 0).toString()));
           setTimeout(() => {
             router.push("/staff/question-bank");
           }, 1500);
         } else {
-          setFormError(res.message || "Failed to import questions");
+          setFormError(res.message || t('importFail'));
         }
       } else {
         const res = await createQuestion({
@@ -70,16 +72,16 @@ export default function CreateQuestionPage() {
           questionText: formData.questionText.trim(),
         });
         if (res.success) {
-          setSuccessMsg(`Successfully added the question.`);
+          setSuccessMsg(t('addSuccess'));
           setTimeout(() => {
             router.push("/staff/question-bank");
           }, 1500);
         } else {
-          setFormError(res.message || "Failed to add question");
+          setFormError(res.message || t('addFail'));
         }
       }
     } catch (err) {
-      setFormError("An unexpected error occurred");
+      setFormError(t('unexpectedError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -95,8 +97,8 @@ export default function CreateQuestionPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">Import Questions</h1>
-            <p className="text-zinc-500 dark:text-zinc-400 mt-1 text-sm">Upload an Excel file to add multiple questions</p>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">{t('createTitle')}</h1>
+            <p className="text-zinc-500 dark:text-zinc-400 mt-1 text-sm">{t('createDesc')}</p>
           </div>
         </div>
 
@@ -104,29 +106,29 @@ export default function CreateQuestionPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="industry">Industry <span className="text-red-500">*</span></Label>
+                <Label htmlFor="industry">{t('industryLabel')} <span className="text-red-500">*</span></Label>
                 <Select value={formData.industry} onValueChange={(v) => setFormData({...formData, industry: v || ""})}>
                   <SelectTrigger id="industry" className="bg-white dark:bg-zinc-950">
-                    <SelectValue placeholder="Select Industry" />
+                    <SelectValue placeholder={t('selectIndustry')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="BA">BA</SelectItem>
-                    <SelectItem value="DEV">Dev</SelectItem>
-                    <SelectItem value="TEST">Test</SelectItem>
+                    <SelectItem value="BA">{t('industryBA')}</SelectItem>
+                    <SelectItem value="DEV">{t('industryDev')}</SelectItem>
+                    <SelectItem value="TEST">{t('industryTest')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="level">Level <span className="text-red-500">*</span></Label>
+                <Label htmlFor="level">{t('levelLabel')} <span className="text-red-500">*</span></Label>
                 <Select value={formData.level} onValueChange={(v) => setFormData({...formData, level: v || ""})}>
                   <SelectTrigger id="level" className="bg-white dark:bg-zinc-950">
-                    <SelectValue placeholder="Select Level" />
+                    <SelectValue placeholder={t('selectLevel')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="INTERN_FRESHER">Intern/Fresher</SelectItem>
-                    <SelectItem value="JUNIOR">Junior</SelectItem>
-                    <SelectItem value="MIDDLE">Middle</SelectItem>
-                    <SelectItem value="SENIOR">Senior</SelectItem>
+                    <SelectItem value="INTERN_FRESHER">{t('levelInternFresher')}</SelectItem>
+                    <SelectItem value="JUNIOR">{t('levelJunior')}</SelectItem>
+                    <SelectItem value="MIDDLE">{t('levelMiddle')}</SelectItem>
+                    <SelectItem value="SENIOR">{t('levelSenior')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -134,10 +136,10 @@ export default function CreateQuestionPage() {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="questionText" className={hasFile ? "opacity-50" : ""}>Manual Question Entry</Label>
+                <Label htmlFor="questionText" className={hasFile ? "opacity-50" : ""}>{t('manualEntry')}</Label>
                 <Textarea
                   id="questionText"
-                  placeholder="Enter the question text here..."
+                  placeholder={t('manualPlaceholder')}
                   value={formData.questionText}
                   onChange={(e) => setFormData({ ...formData, questionText: e.target.value })}
                   className="bg-white dark:bg-zinc-950 min-h-[100px]"
@@ -147,12 +149,12 @@ export default function CreateQuestionPage() {
 
               <div className="flex items-center">
                 <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
-                <span className="px-4 text-xs font-medium text-zinc-500 uppercase">OR</span>
+                <span className="px-4 text-xs font-medium text-zinc-500 uppercase">{t('orText')}</span>
                 <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="fileUpload" className={hasText ? "opacity-50" : ""}>Question Excel File</Label>
+                <Label htmlFor="fileUpload" className={hasText ? "opacity-50" : ""}>{t('excelFile')}</Label>
                 <div className="flex gap-2 items-center">
                   <Input
                     id="fileUpload"
@@ -172,11 +174,11 @@ export default function CreateQuestionPage() {
                         setFormData({ ...formData, file: null });
                       }}
                     >
-                      Clear
+                      {t('clearBtn')}
                     </Button>
                   )}
                 </div>
-                <p className={`text-xs mt-1 ${hasText ? 'text-zinc-400' : 'text-zinc-500'}`}>Upload an Excel (.xlsx) file containing questions in the first column (Column A). Row 1 is skipped as header.</p>
+                <p className={`text-xs mt-1 ${hasText ? 'text-zinc-400' : 'text-zinc-500'}`}>{t('excelHelp')}</p>
               </div>
             </div>
 
@@ -199,11 +201,11 @@ export default function CreateQuestionPage() {
                 onClick={() => router.back()}
                 disabled={isSubmitting}
               >
-                Cancel
+                {t('cancelBtn')}
               </Button>
               <Button type="submit" disabled={isSubmitting} className="bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                {isSubmitting ? "Importing..." : "Import Questions"}
+                {isSubmitting ? t('importingBtn') : t('importBtn')}
               </Button>
             </div>
           </form>

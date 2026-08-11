@@ -74,6 +74,7 @@ dataSourceBuilder.MapEnum<NotificationType>("notification_type");
 dataSourceBuilder.MapEnum<EmailLogStatus>("email_log_status");
 dataSourceBuilder.MapEnum<ActivityLogCategory>("activity_log_category");
 dataSourceBuilder.MapEnum<ActivityLogStatus>("activity_log_status");
+dataSourceBuilder.EnableDynamicJson();
 dataSourceBuilder.UseVector();
 var dataSource = dataSourceBuilder.Build();
 
@@ -95,7 +96,12 @@ builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.AuditLo
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.NotificationCleanupBackgroundService>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.NotificationProcessorBackgroundService>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.PaymentCleanupBackgroundService>();
+builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.JobExpirationBackgroundService>();
 builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.JobAnalysisWorker>();
+builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.CvJdMatchingWorker>();
+builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.JobExpirationBackgroundService>();
+builder.Services.AddSingleton<ITHunterview.WebAPI.BackgroundServices.ICvMatchingQueue, ITHunterview.WebAPI.BackgroundServices.CvMatchingQueue>();
+builder.Services.AddHostedService<ITHunterview.WebAPI.BackgroundServices.CvMatchingWorker>();
 
 
 // ─── JWT Authentication ───────────────────────────────────────────────────────
@@ -175,13 +181,21 @@ if (!app.Environment.IsEnvironment("Testing"))
         catch (Exception ex)
         {
             var logger = services.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, "An error occurred seeding the DB.");
+            logger.LogCritical(ex, "Database migration or seeding failed. Application startup aborted.");
+            throw;
         }
     }
 }
 
 // ─── Middleware Pipeline ──────────────────────────────────────────────────────
 app.UseMiddleware<ITHunterview.WebAPI.Middlewares.ExceptionMiddleware>();
+
+var supportedCultures = new[] { "en", "vi" };
+var localizationOptions = new RequestLocalizationOptions()
+    .SetDefaultCulture(supportedCultures[0])
+    .AddSupportedCultures(supportedCultures)
+    .AddSupportedUICultures(supportedCultures);
+app.UseRequestLocalization(localizationOptions);
 
 if (app.Environment.IsDevelopment())
 {
@@ -196,6 +210,18 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 app.UseAuthentication();
+app.Use(async (context, next) =>
+{
+    var userIdClaim = context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                   ?? context.User?.FindFirst("userId")?.Value 
+                   ?? context.User?.FindFirst("sub")?.Value;
+                   
+    if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var uid))
+    {
+        ITHunterview.Service.Utils.UserContext.CurrentUserId = uid;
+    }
+    await next();
+});
 app.UseMiddleware<ITHunterview.WebAPI.Middlewares.UserStatusCheckMiddleware>();
 app.UseMiddleware<ITHunterview.WebAPI.Middlewares.AiRateLimitMiddleware>();
 app.UseAuthorization();

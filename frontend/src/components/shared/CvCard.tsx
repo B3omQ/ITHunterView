@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, Eye, Trash2, Star, Loader2 } from 'lucide-react';
+import { FileText, Trash2, Star, Loader2 } from 'lucide-react';
 import { useIsMutating } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import type { Cv } from '@/types/cv.types';
@@ -7,6 +7,7 @@ import type { Cv } from '@/types/cv.types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useSetPrimaryCv } from '@/hooks/useCv';
+import { useTranslations } from 'next-intl';
 
 interface CvCardProps {
   cv: Cv;
@@ -20,6 +21,7 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
   const [showConfirm, setShowConfirm] = useState(false);
   const { mutate: setPrimary, isPending: isSettingPrimary } = useSetPrimaryCv();
   const isAnySettingPrimary = useIsMutating({ mutationKey: ['set-primary-cv'] }) > 0;
+  const t = useTranslations("CandidateResumes");
 
   // Format date: "Jun 10, 2026"
   const formattedDate = new Date(cv.createdAt).toLocaleDateString('en-US', {
@@ -31,7 +33,7 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
   // Format size: "184 KB"
   const formattedSize = cv.fileSize
     ? `${Math.round(cv.fileSize / 1024)} KB`
-    : 'Unknown size';
+    : t('unknownSize');
 
   return (
     <div
@@ -63,18 +65,23 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
             </p>
             {cv.isPrimary && (
               <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
-                Primary
+                {t('primary')}
               </span>
             )}
             {cv.parseStatus === 'PROCESSING' && (
               <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-1">
                 <Loader2 className="h-2 w-2 animate-spin" />
-                Analyzing AI...
+                {t('analyzingAI')}
               </span>
             )}
             {cv.parseStatus === 'FAILED' && (
               <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-medium" title={cv.parseError || undefined}>
-                Analysis Failed
+                {t('analysisFailed')}
+              </span>
+            )}
+            {cv.parseStatus === 'SUCCESS' && cv.analysisQuality === 'PARTIAL' && (
+              <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-medium">
+                Partially read
               </span>
             )}
           </div>
@@ -83,7 +90,7 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
 
       <div className="flex flex-wrap items-center justify-between border-t border-border/50 pt-2.5 mt-1">
         <span className="text-sm text-muted-foreground">
-          {isActive ? 'Viewing' : 'Click to view'}
+          {isActive ? t('viewing') : t('clickToView')}
         </span>
         
         <div className="flex items-center gap-2">
@@ -105,7 +112,7 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
                 : "text-muted-foreground hover:text-yellow-500 hover:bg-yellow-50",
               (isDeleting || isAnySettingPrimary) && "opacity-50 cursor-not-allowed"
             )}
-            title={cv.isPrimary ? "This is your primary CV" : "Set as primary"}
+            title={cv.isPrimary ? t('thisIsPrimary') : t('setAsPrimary')}
           >
             {isSettingPrimary ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -113,7 +120,7 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
               <Star className={cn("h-3.5 w-3.5", cv.isPrimary && "fill-current")} />
             )}
             <span className="hidden sm:inline">
-              {isSettingPrimary ? 'Setting...' : cv.isPrimary ? 'Primary' : 'Set Primary'}
+              {isSettingPrimary ? t('setting') : cv.isPrimary ? t('primary') : t('setPrimary')}
             </span>
           </Button>
 
@@ -131,15 +138,15 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
             )}
           >
             <Trash2 className="h-3.5 w-3.5" />
-            {isDeleting ? 'Deleting...' : 'Delete'}
+            {isDeleting ? t('deleting') : t('delete')}
           </Button>
 
           <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
             <DialogContent onClick={(e) => e.stopPropagation()}>
               <DialogHeader>
-                <DialogTitle>Delete Resume</DialogTitle>
+                <DialogTitle>{t('deleteResume')}</DialogTitle>
                 <DialogDescription>
-                  Are you sure you want to delete <strong>{cv.fileName}</strong>? This action cannot be undone.
+                  {t('deleteResumeConfirm', { fileName: cv.fileName })}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="mt-4 flex sm:justify-end gap-2">
@@ -147,14 +154,14 @@ export function CvCard({ cv, onDelete, isDeleting, isActive, onSelect }: CvCardP
                   e.stopPropagation();
                   setShowConfirm(false);
                 }}>
-                  Cancel
+                  {t('cancel', { defaultValue: 'Cancel' })}
                 </Button>
                 <Button variant="destructive" onClick={(e) => {
                   e.stopPropagation();
                   onDelete(cv.id);
                   setShowConfirm(false);
                 }} disabled={isDeleting}>
-                  {isDeleting ? 'Deleting...' : 'Delete'}
+                  {isDeleting ? t('deleting') : t('delete')}
                 </Button>
               </DialogFooter>
             </DialogContent>
