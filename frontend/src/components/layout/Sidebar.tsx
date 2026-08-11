@@ -16,9 +16,6 @@ import { useTranslations } from "next-intl"
 import { useQuery } from "@tanstack/react-query"
 import { notificationService } from "@/services/notification.service"
 import { Logo } from "@/components/layout/Logo"
-import { useWalletBalance } from "@/hooks/useWallet"
-import { useQuery } from "@tanstack/react-query"
-import { notificationService } from "@/services/notification.service"
 
 // ---- Lucide icon map ----
 const iconProps = { size: 18, strokeWidth: 2.5, className: "drop-shadow-sm" };

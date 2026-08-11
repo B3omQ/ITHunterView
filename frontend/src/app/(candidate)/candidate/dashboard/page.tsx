@@ -28,7 +28,6 @@ import { useProfileCompletionStatus, useClaimNewbieReward } from "@/hooks/useCan
 import { Progress } from "@/components/ui/progress"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts"
 import { formatMatchScore, displayMatchScore } from "@/utils/score-format.util"
-import { useTranslations } from "next-intl"
 import { getScorePercent } from "@/lib/matching-score"
 
 export default function CandidateDashboard() {
