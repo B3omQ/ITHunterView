@@ -648,7 +648,7 @@ namespace ITHunterview.Service.Service.Matching
             }
         }
 
-        private async Task<string> ExtractWithGeminiVisionAsync(byte[] fileBytes, string mimeType, string? customPrompt = null)
+        private async Task<string> ExtractWithGeminiVisionAsync(byte[] fileBytes, string mimeType, string? customPrompt = null, CancellationToken cancellationToken = default)
         {
             try
             {
