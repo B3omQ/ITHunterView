@@ -160,6 +160,7 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
             </div>
           )}
 
+          {/* jobExpertise — temporarily hidden
           {job.jobExpertise && (
             <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
               <span className="font-bold text-slate-900 w-28 shrink-0 py-1">Job Expertise:</span>
@@ -170,6 +171,7 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
               </div>
             </div>
           )}
+          */}
 
           {job.jobDomain && job.jobDomain.length > 0 && (
             <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">

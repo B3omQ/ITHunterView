@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -134,11 +135,13 @@ namespace ITHunterview.Service.UseCase
             }
             var text = NormalizeRichTextFields(dto.Description, dto.Requirements, dto.Benefits, dto.IncomeText);
 
+            var jobCode = string.IsNullOrWhiteSpace(dto.JobCode) 
+                ? await GenerateUniqueJobCodeAsync(dto.Title) 
+                : dto.JobCode;
+
             var job = new JobPostings
             {
-                JobCode = string.IsNullOrWhiteSpace(dto.JobCode) 
-                    ? $"JB-{DateTime.UtcNow:yyyyMMddHHmmss}-{Random.Shared.Next(100, 999)}" 
-                    : dto.JobCode,
+                JobCode = jobCode,
                 RecruiterId = recruiterId,
                 CompanyId = companyId.Value,
 
@@ -513,6 +516,25 @@ namespace ITHunterview.Service.UseCase
         public Task<ResponseBase<string>> ReparsePendingJobsAsync(int limit = 50)
         {
             return Task.FromResult(new ResponseBase<string>(string.Empty, "LEGACY_REPARSE_DISABLED: Request V2 analysis from the job preview instead."));
+        }
+
+        private async Task<string> GenerateUniqueJobCodeAsync(string? title)
+        {
+            string baseCode = JobCodeGenerator.GenerateSmartJobCode(title);
+
+            bool exists = await _context.JobPostings.AnyAsync(j => j.JobCode == baseCode);
+            if (!exists)
+            {
+                return baseCode;
+            }
+
+            int counter = 2;
+            while (await _context.JobPostings.AnyAsync(j => j.JobCode == $"{baseCode}-{counter}"))
+            {
+                counter++;
+            }
+
+            return $"{baseCode}-{counter}";
         }
     }
 }

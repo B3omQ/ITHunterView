@@ -7,6 +7,7 @@ import {
   useGetInterviewSessions,
   useCreateInterviewSession,
   useDeleteInterviewSession,
+  useRenameInterviewSession,
 } from '@/hooks/useInterview';
 import { useGetMyCvs } from '@/hooks/useCv';
 import { usePublicJobs } from '@/hooks/usePublicJobs';
@@ -15,6 +16,7 @@ import { useWalletBalance } from '@/hooks/useWallet';
 import { usePublicCoinConfig } from '@/hooks/useCoin';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { ListPagination } from '@/components/shared/ListPagination';
@@ -64,8 +66,9 @@ import {
   Globe,
   Coins,
   Zap,
+  Pencil,
 } from 'lucide-react';
-import type { DifficultyLevel } from '@/types/interview.types';
+import type { DifficultyLevel, InterviewSession } from '@/types/interview.types';
 
 import { Suspense } from 'react';
 import { PageLoader } from '@/components/shared/PageLoader';
@@ -84,6 +87,15 @@ function CandidateInterviewContent() {
   const [isJdPopoverOpen, setIsJdPopoverOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+
+  // Setup info modal states
+  const [setupModalSession, setSetupModalSession] = useState<InterviewSession | null>(null);
+  const [setupTab, setSetupTab] = useState<'cv' | 'jd'>('cv');
+  const { data: setupJobDetailRes, isLoading: setupJobDetailLoading } = useJobDetail(
+    setupModalSession?.jobId || '',
+    !!setupModalSession?.jobId
+  );
+  const setupJobDetail = setupJobDetailRes?.data;
 
   const { data: sessionsRes, isLoading: sessionsLoading } = useGetInterviewSessions();
   const { data: cvsRes } = useGetMyCvs();
@@ -215,6 +227,41 @@ function CandidateInterviewContent() {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  // Inline rename session states
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingTitleValue, setEditingTitleValue] = useState('');
+  const renameSessionMutation = useRenameInterviewSession();
+
+  const handleStartInlineEdit = (e: React.MouseEvent, session: InterviewSession) => {
+    e.stopPropagation();
+    setEditingSessionId(session.id);
+    setEditingTitleValue(session.title || session.jobTitle || t('freeMockInterview'));
+  };
+
+  const handleInlineSaveRename = async (sessionId: string) => {
+    if (!sessionId) return;
+    try {
+      const res = await renameSessionMutation.mutateAsync({
+        sessionId,
+        title: editingTitleValue,
+      });
+      if (res.success) {
+        toast.success(t('renameSuccess'));
+        setEditingSessionId(null);
+      } else {
+        toast.error(res.message || 'Error renaming session');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Error renaming session');
+    }
+  };
+
+  const handleOpenSetupModal = (e: React.MouseEvent, session: InterviewSession) => {
+    e.stopPropagation();
+    setSetupModalSession(session);
+    setSetupTab('cv');
   };
 
   const renderCvPreview = () => {
@@ -391,6 +438,176 @@ function CandidateInterviewContent() {
     );
   };
 
+  const renderSetupCvPreview = (cvId: string) => {
+    const activeCv = cvs.find((c) => c.id === cvId);
+    if (!activeCv) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground bg-card border border-border rounded-xl p-6">
+          <FileText className="w-8 h-8 mb-2 opacity-40" />
+          <p>{t('cvDataNotFound')}</p>
+        </div>
+      );
+    }
+
+    const formatSize = (bytes: number | null) => {
+      if (!bytes) return '—';
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    };
+
+    return (
+      <div className="flex flex-col h-full bg-card border border-border rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between border-b border-border bg-muted/20 px-4 py-2 shrink-0">
+          <div className="flex flex-col min-w-0">
+            <span className="text-xs font-semibold text-foreground truncate max-w-[300px]" title={activeCv.fileName}>
+              {activeCv.fileName}
+            </span>
+            <span className="text-[10px] text-muted-foreground">
+              {t('size', { size: formatSize(activeCv.fileSize) })}
+            </span>
+          </div>
+          <a
+            href={activeCv.fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-muted transition-colors"
+          >
+            <ExternalLink className="h-3 w-3" />
+            <span>{t('openInNewTab')}</span>
+          </a>
+        </div>
+        <div className="flex-1 bg-muted/30">
+          <iframe
+            src={getEmbedUrl(activeCv.fileUrl)}
+            className="w-full h-full border-0"
+            title={activeCv.fileName}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  const renderSetupJdPreview = () => {
+    if (setupJobDetailLoading) {
+      return (
+        <div className="p-6 space-y-4 h-full overflow-y-auto border border-border rounded-xl bg-card">
+          <Skeleton className="h-6 w-2/3" />
+          <Skeleton className="h-4 w-1/3" />
+          <div className="space-y-2 pt-4">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+          </div>
+        </div>
+      );
+    }
+
+    if (!setupJobDetail) {
+      return (
+        <div className="flex items-center justify-center h-full text-sm text-muted-foreground border border-border rounded-xl bg-card">
+          {t('jdNotFound')}
+        </div>
+      );
+    }
+
+    const formatSalary = (min?: number, max?: number, curr: string = 'VND') => {
+      if (min && max) return `${min.toLocaleString()} - ${max.toLocaleString()} ${curr}`;
+      if (min) return `From ${min.toLocaleString()} ${curr}`;
+      if (max) return `Up to ${max.toLocaleString()} ${curr}`;
+      return t('negotiable');
+    };
+
+    return (
+      <div className="h-full flex flex-col bg-card border border-border rounded-xl overflow-hidden">
+        <div className="p-4 border-b border-border bg-muted/5 shrink-0">
+          <div className="flex items-start gap-3">
+            {setupJobDetail.logoUrl ? (
+              <img
+                src={setupJobDetail.logoUrl}
+                alt={setupJobDetail.companyName}
+                className="w-10 h-10 rounded-lg object-cover border border-border bg-white"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-lg border border-border bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm">
+                {setupJobDetail.companyName?.substring(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0">
+              <h4 className="text-sm font-bold text-foreground truncate">{setupJobDetail.title}</h4>
+              <p className="text-xs text-muted-foreground truncate">{setupJobDetail.companyName}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 mt-3 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <DollarSign className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+              <span className="truncate font-medium text-foreground">
+                {formatSalary(setupJobDetail.minSalary, setupJobDetail.maxSalary, setupJobDetail.currency)}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="truncate">{setupJobDetail.location}</span>
+            </div>
+            {setupJobDetail.level && (
+              <div className="flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                <span className="truncate">{setupJobDetail.level}</span>
+              </div>
+            )}
+            {setupJobDetail.workingModel && (
+              <div className="flex items-center gap-1.5">
+                <Briefcase className="h-3.5 w-3.5 text-cyan-500 shrink-0" />
+                <span className="truncate">{setupJobDetail.workingModel}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs leading-relaxed">
+          {setupJobDetail.skills && setupJobDetail.skills.length > 0 && (
+            <div className="space-y-1">
+              <h5 className="font-bold text-foreground">{t('reqSkills')}</h5>
+              <div className="flex flex-wrap gap-1">
+                {setupJobDetail.skills.map((s) => (
+                  <Badge key={s} variant="secondary" className="text-[10px] py-0 px-1.5 bg-muted font-normal text-muted-foreground">
+                    {s}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {setupJobDetail.requirements && (
+            <div className="space-y-1">
+              <h5 className="font-bold text-foreground">{t('jobReqs')}</h5>
+              <div className="text-muted-foreground whitespace-pre-line text-[11px] bg-muted/20 p-2.5 rounded-lg border border-border/40">
+                {setupJobDetail.requirements}
+              </div>
+            </div>
+          )}
+
+          {setupJobDetail.description && (
+            <div className="space-y-1">
+              <h5 className="font-bold text-foreground">{t('jobDesc')}</h5>
+              <div className="text-muted-foreground whitespace-pre-line text-[11px] bg-muted/20 p-2.5 rounded-lg border border-border/40">
+                {setupJobDetail.description}
+              </div>
+            </div>
+          )}
+
+          {setupJobDetail.benefits && (
+            <div className="space-y-1">
+              <h5 className="font-bold text-foreground">{t('benefits')}</h5>
+              <div className="text-muted-foreground whitespace-pre-line text-[11px] bg-muted/20 p-2.5 rounded-lg border border-border/40">
+                {setupJobDetail.benefits}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="w-full pb-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -448,9 +665,52 @@ function CandidateInterviewContent() {
                         {/* Center: Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className="font-medium text-base text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug">
-                              {session.jobTitle || t('freeMockInterview')}
-                            </span>
+                            {editingSessionId === session.id ? (
+                              <div className="flex items-center gap-1.5 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                                <Input
+                                  value={editingTitleValue}
+                                  onChange={(e) => setEditingTitleValue(e.target.value)}
+                                  placeholder={session.jobTitle || t('freeMockInterview')}
+                                  className="h-9 text-sm font-medium border-primary focus-visible:ring-1 focus-visible:ring-primary py-1 px-3 bg-card shadow-sm rounded-lg"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleInlineSaveRename(session.id);
+                                    if (e.key === 'Escape') setEditingSessionId(null);
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleInlineSaveRename(session.id)}
+                                  disabled={renameSessionMutation.isPending}
+                                  className="p-1.5 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 rounded-lg shrink-0 transition-colors"
+                                  title={t('save')}
+                                >
+                                  <Check className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingSessionId(null)}
+                                  className="p-1.5 bg-muted text-muted-foreground hover:bg-muted/80 rounded-lg shrink-0 transition-colors"
+                                  title={t('cancel')}
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <span className="font-medium text-base text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug">
+                                  {session.title || session.jobTitle || t('freeMockInterview')}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleStartInlineEdit(e, session)}
+                                  className="p-1 text-muted-foreground hover:text-primary transition-colors rounded-md hover:bg-muted shrink-0"
+                                  title={t('renameSession')}
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
                           </div>
                           <div className="flex items-center gap-4 flex-wrap mt-1 text-sm text-slate-600">
                             <div className="flex items-center">
@@ -479,6 +739,16 @@ function CandidateInterviewContent() {
 
                       {/* Action Zone (Right side) */}
                       <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5 h-9 bg-blue-500/5 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 hover:bg-blue-500/10 transition-colors"
+                          onClick={(e) => handleOpenSetupModal(e, session)}
+                        >
+                          <Info className="w-4 h-4 text-blue-500" />
+                          <span>{t('setupInfo')}</span>
+                        </Button>
+
                         <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={(e) => { e.stopPropagation(); router.push(`/candidate/interview/${session.id}`); }}>
                           {session.status === 'IN_PROGRESS' ? (
                             <><Play className="w-4 h-4 fill-current" /> {t('resume')}</>
@@ -493,6 +763,14 @@ function CandidateInterviewContent() {
                           </PopoverTrigger>
                           <PopoverContent align="end" className="w-48 p-1">
                             <div className="flex flex-col">
+                              <Button
+                                variant="ghost"
+                                className="w-full justify-start gap-2 h-9 text-foreground hover:bg-muted"
+                                onClick={(e) => handleStartInlineEdit(e, session)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                                <span>{t('renameSession')}</span>
+                              </Button>
                               <Button
                                 variant="ghost"
                                 className="w-full justify-start gap-2 h-9 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
@@ -878,6 +1156,111 @@ function CandidateInterviewContent() {
               {deleteSessionMutation.isPending ? t('deleting') : t('delete')}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Setup Info Modal */}
+      <Dialog open={!!setupModalSession} onOpenChange={(open) => !open && setSetupModalSession(null)}>
+        <DialogContent className="max-w-[95vw] md:max-w-6xl w-full h-[90vh] md:h-[85vh] min-h-[600px] overflow-hidden bg-card border border-border rounded-2xl p-0 flex flex-col shadow-2xl">
+          {/* Header */}
+          <div className="p-5 border-b border-border bg-muted/10 shrink-0 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <Info className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-bold text-foreground">
+                  {t('setupInfoTitle')}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  {setupModalSession?.title || setupModalSession?.jobTitle || t('freeMockInterview')}
+                </DialogDescription>
+              </div>
+            </div>
+          </div>
+
+          {/* Setup Meta Badges Bar */}
+          <div className="px-5 py-3 border-b border-border bg-muted/20 flex flex-wrap items-center gap-4 text-xs shrink-0">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-muted-foreground">{t('diffLevel')}:</span>
+              <Badge variant="outline" className="bg-background font-medium">
+                {setupModalSession?.difficultyLevel === 'EASY' ? 'Intern / Fresher' : setupModalSession?.difficultyLevel === 'HARD' ? 'Senior' : 'Middle'}
+              </Badge>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-muted-foreground">{t('interviewLang')}:</span>
+              <Badge variant="outline" className="bg-background font-medium">
+                {setupModalSession?.language === 'en' ? t('en') : t('vi')}
+              </Badge>
+            </div>
+
+            <div className="flex items-center gap-1.5 ml-auto text-muted-foreground">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>{setupModalSession?.startedAt ? new Date(setupModalSession.startedAt).toLocaleDateString('vi-VN') : 'N/A'}</span>
+            </div>
+          </div>
+
+          {/* Content Tabs (CV & JD) */}
+          <div className="flex-1 overflow-hidden p-4">
+            <Tabs value={setupTab} onValueChange={(val) => setSetupTab(val as 'cv' | 'jd')} className="h-full flex flex-col">
+              <TabsList className="grid grid-cols-2 w-full max-w-xs shrink-0 mb-3">
+                <TabsTrigger value="cv" className="text-xs gap-1.5">
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>{t('cvTab')}</span>
+                </TabsTrigger>
+                <TabsTrigger value="jd" className="text-xs gap-1.5">
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>{t('jdTab')}</span>
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="cv" className="flex-1 min-h-0 h-full m-0">
+                {setupModalSession?.cvId ? (
+                  renderSetupCvPreview(setupModalSession.cvId)
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full border border-dashed border-border rounded-xl p-8 text-center text-muted-foreground bg-muted/10">
+                    <FileText className="w-10 h-10 mb-2 opacity-40 text-muted-foreground" />
+                    <p className="text-sm font-medium">{t('noCvAttached')}</p>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="jd" className="flex-1 min-h-0 h-full m-0">
+                {setupModalSession?.jobId ? (
+                  renderSetupJdPreview()
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full border border-dashed border-border rounded-xl p-8 text-center text-muted-foreground bg-muted/10">
+                    <Briefcase className="w-10 h-10 mb-2 opacity-40 text-muted-foreground" />
+                    <p className="text-sm font-medium">{t('noJdAttached')}</p>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* Footer */}
+          <div className="p-4 border-t border-border bg-muted/10 shrink-0 flex items-center justify-between">
+            <Button variant="outline" size="sm" onClick={() => setSetupModalSession(null)}>
+              {t('close')}
+            </Button>
+            {setupModalSession && (
+              <Button
+                size="sm"
+                className="bg-primary text-primary-foreground gap-1.5"
+                onClick={() => {
+                  setSetupModalSession(null);
+                  router.push(`/candidate/interview/${setupModalSession.id}`);
+                }}
+              >
+                {setupModalSession.status === 'IN_PROGRESS' ? (
+                  <><Play className="w-4 h-4 fill-current" /> {t('resume')}</>
+                ) : (
+                  <><Eye className="w-4 h-4" /> {t('review')}</>
+                )}
+              </Button>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
