@@ -16,9 +16,7 @@ import { useTranslations } from "next-intl"
 import { useQuery } from "@tanstack/react-query"
 import { notificationService } from "@/services/notification.service"
 import { Logo } from "@/components/layout/Logo"
-import { useWalletBalance } from "@/hooks/useWallet"
-import { notificationService } from "@/services/notification.service"
-import { useQuery } from "@tanstack/react-query"
+
 
 
 
