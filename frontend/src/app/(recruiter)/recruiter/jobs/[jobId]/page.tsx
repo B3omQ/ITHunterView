@@ -177,6 +177,7 @@ export default function JobDetailPage() {
                 </div>
               )}
 
+              {/* jobExpertise — temporarily hidden
               {job.jobExpertise && (
                 <div className="flex items-start gap-2.5">
                   <Target className="h-5 w-5 text-rose-500 mt-0.5 shrink-0" />
@@ -186,6 +187,7 @@ export default function JobDetailPage() {
                   </div>
                 </div>
               )}
+              */}
 
               {job.jobDomain && job.jobDomain.length > 0 && (
                 <div className="flex items-start gap-2.5">

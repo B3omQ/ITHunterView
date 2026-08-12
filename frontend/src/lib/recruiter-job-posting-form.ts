@@ -25,6 +25,13 @@ const fieldLabels: Record<JobPostingRichTextField, string> = {
   incomeText: "Income Details",
 }
 
+/** Fields that must have visible text (required). */
+const REQUIRED_RICH_TEXT_FIELDS: JobPostingRichTextField[] = [
+  "description",
+  "requirements",
+  "benefits",
+]
+
 export function normalizeRecruiterJobPostingRichTextFields(
   fields: RecruiterJobPostingRichTextFields,
 ): RecruiterJobPostingRichTextFields {
@@ -41,7 +48,8 @@ export function validateRecruiterJobPostingRichTextFields(
 ): RichTextValidationError | null {
   const normalized = normalizeRecruiterJobPostingRichTextFields(fields)
 
-  for (const field of Object.keys(JOB_POSTING_RICH_TEXT_LIMITS) as JobPostingRichTextField[]) {
+  // Validate required fields (description, requirements, benefits)
+  for (const field of REQUIRED_RICH_TEXT_FIELDS) {
     const value = normalized[field]
     const label = fieldLabels[field]
     if (!hasJobPostingMarkdownVisibleText(value)) {
@@ -58,5 +66,20 @@ export function validateRecruiterJobPostingRichTextFields(
     }
   }
 
+  // Validate incomeText only when it has content (optional field)
+  const incomeValue = normalized.incomeText
+  if (hasJobPostingMarkdownVisibleText(incomeValue)) {
+    if (containsRawHtmlTag(incomeValue)) {
+      return { field: "incomeText", message: `${fieldLabels.incomeText} must not contain HTML tags` }
+    }
+    if (incomeValue.length > JOB_POSTING_RICH_TEXT_LIMITS.incomeText) {
+      return {
+        field: "incomeText",
+        message: `${fieldLabels.incomeText} must not exceed ${JOB_POSTING_RICH_TEXT_LIMITS.incomeText.toLocaleString()} characters`,
+      }
+    }
+  }
+
   return null
 }
+
