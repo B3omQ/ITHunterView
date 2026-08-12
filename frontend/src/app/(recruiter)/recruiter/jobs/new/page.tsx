@@ -251,6 +251,7 @@ export default function CreateJobPage() {
                 />
               </div>
 
+              {/* 
               <div className="space-y-2">
                 <Label htmlFor="jobCode" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("jobCode")}</Label>
                 <Input
@@ -262,6 +263,7 @@ export default function CreateJobPage() {
                   className="focus-visible:ring-blue-500"
                 />
               </div>
+              */}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
