@@ -112,6 +112,11 @@ export default function CandidateDashboard() {
     }
   }
 
+  // Filter matches with valid scores
+  const scoredMatches = matchHistory
+    .filter(m => m.matchScore !== null && m.matchScore !== undefined)
+    .map(m => ({ match: m, score: formatMatchScore(m.matchScore) }));
+
   // 3. Prepare Chart Data
   // Line Chart Data (Match History reversed for chronological order)
   const lineChartData = scoredMatches.slice(0, 5).reverse().map(({ match, score }) => ({
@@ -421,8 +426,8 @@ export default function CandidateDashboard() {
                         <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${item.status === 'Optimized' ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-100 text-gray-600'}`}>
                           {item.status || t('matched')}
                         </div>
-                        <span className={`text-base font-extrabold w-10 text-right ${(getScorePercent(item) ?? -1) >= 70 ? 'text-emerald-500' : 'text-amber-500'}`}>
-                          {getScorePercent(item) === null ? '—' : `${Math.round(getScorePercent(item)!)}%`}
+                        <span className={`text-base font-extrabold w-10 text-right ${formatMatchScore(item.matchScore) >= 70 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                          {displayMatchScore(item.matchScore)}
                         </span>
                       </div>
                     </div>
