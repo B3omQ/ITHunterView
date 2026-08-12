@@ -88,7 +88,7 @@ export default function EditJobPage() {
         benefits: job.benefits || "",
         level: job.level || "",
         workingModel: job.workingModel || "",
-        // jobExpertise: job.jobExpertise || "",
+        jobExpertise: job.jobExpertise || "",
         jobDomain: job.jobDomain || [],
       })
     }
