@@ -29,7 +29,9 @@ public sealed record ProjectedJdRequirementGroup(
     string Importance,
     IReadOnlyList<ProjectedJdRequirementItem> Items,
     string SourceSection = "",
-    string RequirementVerbatim = "");
+    string RequirementVerbatim = "",
+    string SourceRequirementId = "",
+    string Intent = "");
 
 public sealed record ProjectedJdRequirementItem(
     string ItemId,

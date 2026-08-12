@@ -40,6 +40,8 @@ namespace ITHunterview.Service.Utils
     {
         JobAnalysisInputSnapshot Build(JobPostings job);
         JobAnalysisInputSnapshot BuildFromPastedText(string? title, string? rawJdText);
+        JobAnalysisInputSnapshot BuildFromCanonicalJson(string canonicalJson);
+        JobAnalysisInputSnapshot BuildFromSavedSnapshotText(string? title, string? originalText);
         string SerializeCanonical(JobAnalysisInputSnapshot snapshot);
         string ComputeSemanticHash(JobAnalysisInputSnapshot snapshot);
         string ComputeAnalysisHash(JobAnalysisInputSnapshot snapshot, Guid systemPromptVersionId, Guid userPromptVersionId, string schemaVersion);
@@ -77,6 +79,72 @@ namespace ITHunterview.Service.Utils
                 Title = NormalizeAnalysisSourceText(title),
                 Description = NormalizeAnalysisSourceText(sections.Description),
                 Requirements = NormalizeAnalysisSourceText(sections.Requirements)
+            };
+        }
+
+        public JobAnalysisInputSnapshot BuildFromCanonicalJson(string canonicalJson)
+        {
+            if (string.IsNullOrWhiteSpace(canonicalJson))
+            {
+                throw InvalidCanonicalInput();
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(canonicalJson, new JsonDocumentOptions
+                {
+                    AllowTrailingCommas = false,
+                    CommentHandling = JsonCommentHandling.Disallow,
+                    MaxDepth = 8
+                });
+                var root = document.RootElement;
+                if (root.ValueKind != JsonValueKind.Object)
+                {
+                    throw InvalidCanonicalInput();
+                }
+
+                var propertyNames = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var property in root.EnumerateObject())
+                {
+                    if (!propertyNames.Add(property.Name) ||
+                        property.Name is not ("title" or "description" or "requirements") ||
+                        property.Value.ValueKind != JsonValueKind.String)
+                    {
+                        throw InvalidCanonicalInput();
+                    }
+                }
+
+                if (propertyNames.Count != 3 ||
+                    !root.TryGetProperty("title", out var title) ||
+                    !root.TryGetProperty("description", out var description) ||
+                    !root.TryGetProperty("requirements", out var requirements))
+                {
+                    throw InvalidCanonicalInput();
+                }
+
+                return new JobAnalysisInputSnapshot
+                {
+                    Title = NormalizeAnalysisSourceText(title.GetString()),
+                    Description = NormalizeAnalysisSourceText(description.GetString()),
+                    Requirements = NormalizeAnalysisSourceText(requirements.GetString())
+                };
+            }
+            catch (JsonException)
+            {
+                throw InvalidCanonicalInput();
+            }
+        }
+
+        public JobAnalysisInputSnapshot BuildFromSavedSnapshotText(string? title, string? originalText)
+        {
+            var parsed = SavedJdSnapshotInputParser.Parse(originalText);
+            return new JobAnalysisInputSnapshot
+            {
+                Title = NormalizeAnalysisSourceText(
+                    string.IsNullOrWhiteSpace(title) ? parsed.Title : title),
+                Description = NormalizeAnalysisSourceText(
+                    parsed.HasRecognizedLabels ? parsed.Description : originalText),
+                Requirements = NormalizeAnalysisSourceText(parsed.Requirements)
             };
         }
 
@@ -162,5 +230,8 @@ namespace ITHunterview.Service.Utils
             }
             return builder.ToString();
         }
+
+        private static InvalidOperationException InvalidCanonicalInput() =>
+            new("INVALID_CANONICAL_JD_INPUT");
     }
 }

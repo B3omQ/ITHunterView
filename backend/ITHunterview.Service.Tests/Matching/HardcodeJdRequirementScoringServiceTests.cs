@@ -60,7 +60,7 @@ public class HardcodeJdRequirementScoringServiceTests
     }
 
     [Fact]
-    public void Evaluate_InvalidV3Analysis_DoesNotAllowLegacyCompatibilityFallback()
+    public void Evaluate_InvalidV3Analysis_IsTerminalUnscoredInsteadOfFlatteningLostSemantics()
     {
         var service = new HardcodeJdRequirementScoringService(
             new JdRequirementProjector(),
@@ -73,6 +73,41 @@ public class HardcodeJdRequirementScoringServiceTests
             new[] { "React" });
 
         Assert.False(result.HasRequirementGroups);
+        Assert.False(result.CanUseLegacyCompatibilityFallback);
+        Assert.Equal(JdRequirementProjector.InvalidEffectiveJdAnalysis, result.FailureCode);
+    }
+
+    [Fact]
+    public void Evaluate_EffectiveV1_ReceivesEveryTechnicalRequirement()
+    {
+        var service = new HardcodeJdRequirementScoringService(
+            new JdRequirementProjector(),
+            new JdHardcodeRequirementEvaluator());
+
+        var result = service.Evaluate(
+            """
+            {"schema_version":"jd-analysis-effective/v1","analysis_quality":"COMPLETE","matching_metrics":{"requirement_groups":[{"group_id":"grp-001","source_requirement_id":"req-001","intent":"qualification","operator":"all_of","min_satisfied":2,"importance":"must_have","source_section":"requirements","requirement_verbatim":"Java and Spring Boot.","items":[{"item_id":"grp-001:item-001","category":"tech_skill","skill_name":"Java","raw_mention":"Java"},{"item_id":"grp-001:item-002","category":"tech_skill","skill_name":"Spring Boot","raw_mention":"Spring Boot"}]}]}}
+            """,
+            new[] { "Java", "Spring Boot" });
+
+        Assert.True(result.HasRequirementGroups);
+        var outcome = Assert.Single(result.Evaluation!.Outcomes);
+        Assert.True(outcome.EvaluatedBySkillComponent);
+        Assert.Equal(2, outcome.MatchedItems);
+        Assert.Equal(1m, result.Evaluation.SkillScore);
+    }
+
+    [Fact]
+    public void Evaluate_InvalidEffectiveV1_IsTerminalUnscoredInsteadOfFlatteningLostSemantics()
+    {
+        var service = new HardcodeJdRequirementScoringService(
+            new JdRequirementProjector(),
+            new JdHardcodeRequirementEvaluator());
+
+        var result = service.Evaluate(
+            """{"schema_version":"jd-analysis-effective/v1","matching_metrics":{"requirement_groups":"invalid"}}""",
+            new[] { "Java" });
+
         Assert.False(result.CanUseLegacyCompatibilityFallback);
         Assert.Equal(JdRequirementProjector.InvalidEffectiveJdAnalysis, result.FailureCode);
     }

@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { exportMatchingResultsToExcel } from '@/utils/excel-export.util';
-import { formatMatchScore, displayMatchScore } from '@/utils/score-format.util';
+import { getMatchMethodLabel, getScorePercent } from '@/lib/matching-score';
 import {
   Dialog,
   DialogContent,
@@ -199,12 +199,12 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
                         <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-500">
                           <span className={cn(
                             "inline-flex items-center rounded-md px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wider",
-                            match.matchType === 'Hardcode' ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"
+                            match.matchMethod === 'hardcode' ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"
                           )}>
-                            {match.matchType === 'Hardcode' ? (
-                              <><FileCode className="w-3 h-3 mr-1" /> Hardcode</>
+                            {match.matchMethod === 'hardcode' ? (
+                              <><FileCode className="w-3 h-3 mr-1" /> {getMatchMethodLabel(match.matchMethod)}</>
                             ) : (
-                              <><Brain className="w-3 h-3 mr-1" /> AI Vector</>
+                              <><Brain className="w-3 h-3 mr-1" /> {getMatchMethodLabel(match.matchMethod)}</>
                             )}
                           </span>
                           <span>Matched on {new Date(match.updatedAt).toLocaleDateString()}</span>
@@ -216,10 +216,10 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
                       <div className="flex flex-col items-end">
                         <span className={cn(
                           "text-2xl font-black",
-                          formatMatchScore(match.matchScore) >= 70 ? "text-emerald-600" :
-                            formatMatchScore(match.matchScore) >= 50 ? "text-amber-600" : "text-slate-600"
+                          (getScorePercent(match) ?? -1) >= 70 ? "text-emerald-600" :
+                            (getScorePercent(match) ?? -1) >= 50 ? "text-amber-600" : "text-slate-600"
                         )}>
-                          {displayMatchScore(match.matchScore)}
+                          {getScorePercent(match) === null ? "—" : `${Math.round(getScorePercent(match)!)}%`}
                         </span>
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Match Score</span>
                       </div>

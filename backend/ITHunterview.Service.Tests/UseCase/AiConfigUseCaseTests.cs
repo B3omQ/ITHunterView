@@ -6,7 +6,9 @@ using ITHunterview.Service.Config;
 using ITHunterview.Service.DTOs.Ai;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
+using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.UseCase;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -14,11 +16,12 @@ using FluentAssertions;
 
 namespace ITHunterview.Service.Tests.UseCase
 {
-    public class AiConfigUseCaseTests
+    public class AiConfigUseCaseTests : IDisposable
     {
         private readonly Mock<IAiProviderFactory> _mockProviderFactory;
         private readonly Mock<ISystemConfigRepository> _mockSystemConfigRepository;
         private readonly AiSettings _settings;
+        private readonly ITHunterviewContext _context;
         private readonly AiConfigUseCase _sut;
 
         public AiConfigUseCaseTests()
@@ -38,7 +41,15 @@ namespace ITHunterview.Service.Tests.UseCase
                 }
             };
             var options = Options.Create(_settings);
-            _sut = new AiConfigUseCase(_mockProviderFactory.Object, _mockSystemConfigRepository.Object, options);
+            var contextOptions = new DbContextOptionsBuilder<ITHunterviewContext>()
+                .UseInMemoryDatabase($"ai-config-tests-{Guid.NewGuid():N}")
+                .Options;
+            _context = new ITHunterviewContext(contextOptions);
+            _sut = new AiConfigUseCase(
+                _mockProviderFactory.Object,
+                _mockSystemConfigRepository.Object,
+                options,
+                _context);
         }
 
         [Fact]
@@ -102,7 +113,11 @@ namespace ITHunterview.Service.Tests.UseCase
                     }
                 }
             };
-            var sut = new AiConfigUseCase(_mockProviderFactory.Object, _mockSystemConfigRepository.Object, Options.Create(unconfiguredSettings));
+            var sut = new AiConfigUseCase(
+                _mockProviderFactory.Object,
+                _mockSystemConfigRepository.Object,
+                Options.Create(unconfiguredSettings),
+                _context);
 
             // Act
             var result = await sut.GetAiConfigAsync();
@@ -209,6 +224,8 @@ namespace ITHunterview.Service.Tests.UseCase
             result.Success.Should().BeFalse();
             result.Message.Should().Contain("API Key Invalid");
         }
+
+        public void Dispose() => _context.Dispose();
     }
 }
 

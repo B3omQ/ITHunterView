@@ -43,6 +43,7 @@ namespace ITHunterview.Service.UseCase
         private readonly IMatchingCvPreparationService? _matchingCvPreparationService;
         private readonly IMatchingJdPreparationService? _matchingJdPreparationService;
         private readonly IRawJdFallbackMatchingService? _rawJdFallbackMatchingService;
+        private readonly IJdMatchReportReader _jdMatchReportReader;
 
         public CvJobMatchingUseCase(
             ITHunterviewContext context, 
@@ -62,7 +63,8 @@ namespace ITHunterview.Service.UseCase
             IJobAnalysisInputBuilder? jobAnalysisInputBuilder = null,
             IMatchingCvPreparationService? matchingCvPreparationService = null,
             IMatchingJdPreparationService? matchingJdPreparationService = null,
-            IRawJdFallbackMatchingService? rawJdFallbackMatchingService = null)
+            IRawJdFallbackMatchingService? rawJdFallbackMatchingService = null,
+            IJdMatchReportReader? jdMatchReportReader = null)
         {
             _context = context;
             _aiService = aiService;
@@ -82,6 +84,7 @@ namespace ITHunterview.Service.UseCase
             _matchingCvPreparationService = matchingCvPreparationService;
             _matchingJdPreparationService = matchingJdPreparationService;
             _rawJdFallbackMatchingService = rawJdFallbackMatchingService;
+            _jdMatchReportReader = jdMatchReportReader ?? new JdMatchReportReader();
         }
 
         public string ExtractJsonField(string? jsonString, string fieldName)
@@ -770,7 +773,8 @@ namespace ITHunterview.Service.UseCase
                             matchRecord.SfiaExtractResult,
                             stageTwoCv.Quality,
                             stageTwoCv.Coverage,
-                            stageTwoCv.Diagnostics);
+                            stageTwoCv.Diagnostics,
+                            CompletionDisposition: finalResult.CompletionDisposition);
                     }
 
                     matchRecord.Status = "Completed";
@@ -901,13 +905,26 @@ namespace ITHunterview.Service.UseCase
             JdAnalysisPersistenceIntent? jdIntent;
             if (preparedJd is PreparedStructuredJdMatchingInput structured)
             {
-                var matchingPrompt = await _promptManagementService.GetActivePromptSnapshotAsync(
-                    ITHunterview.Service.Constant.Prompts.BypassMatchingPrompt.Key);
-                score = await _jdStageTwoMatchingService.ExecuteAsync(
-                    matchingPrompt,
-                    cvContext.Json,
-                    structured.Projection,
-                    cancellationToken);
+                try
+                {
+                    var matchingPrompt = await _promptManagementService.GetActivePromptSnapshotAsync(
+                        ITHunterview.Service.Constant.Prompts.BypassMatchingPrompt.Key,
+                        cancellationToken);
+                    score = await _jdStageTwoMatchingService.ExecuteAsync(
+                        matchingPrompt,
+                        cvContext.Json,
+                        structured.Projection,
+                        cancellationToken);
+                }
+                catch (Exception exception) when (
+                    TryClassifyMatchingPromptAvailability(exception, out var promptFailureCode))
+                {
+                    _logger.LogWarning(
+                        "Structured matching prompt unavailable. Code={Code}; projected requirements remain visible without a fabricated score.",
+                        promptFailureCode);
+                    score = _jdStageTwoMatchingService.CreateConfigurationUnavailableResult(
+                        structured.Projection);
+                }
                 jdQuality = structured.Quality;
                 jdCoverage = structured.Coverage;
                 jdDiagnostics = structured.Diagnostics;
@@ -942,7 +959,52 @@ namespace ITHunterview.Service.UseCase
                 jdCoverage,
                 jdDiagnostics,
                 preparedCv.PersistenceIntent,
-                jdIntent);
+                jdIntent,
+                score.CompletionDisposition);
+        }
+
+        private static bool TryClassifyMatchingPromptAvailability(
+            Exception exception,
+            out string code)
+        {
+            var message = exception.Message ?? string.Empty;
+            if (exception is InvalidOperationException &&
+                message.StartsWith("PROMPT_NOT_CONFIGURED:", StringComparison.Ordinal))
+            {
+                code = "PROMPT_NOT_CONFIGURED";
+                return true;
+            }
+
+            if (exception is InvalidOperationException &&
+                message.StartsWith("PROMPT_CONFIGURATION_INVALID:", StringComparison.Ordinal))
+            {
+                code = "PROMPT_CONFIGURATION_INVALID";
+                return true;
+            }
+
+            if (exception is InvalidOperationException &&
+                message.StartsWith("MATCHING_PROMPT_PLACEHOLDER_MISSING", StringComparison.Ordinal))
+            {
+                code = "MATCHING_PROMPT_PLACEHOLDER_MISSING";
+                return true;
+            }
+
+            if (exception is InvalidOperationException &&
+                message.StartsWith("MATCHING_PROMPT_PLACEHOLDER_INVALID", StringComparison.Ordinal))
+            {
+                code = "MATCHING_PROMPT_PLACEHOLDER_INVALID";
+                return true;
+            }
+
+            if (exception is ArgumentException &&
+                message.StartsWith("MATCHING_PROMPT_SCHEMA_MUTATION", StringComparison.Ordinal))
+            {
+                code = "MATCHING_PROMPT_SCHEMA_MUTATION";
+                return true;
+            }
+
+            code = string.Empty;
+            return false;
         }
 
         private async Task<string> ExtractJdWithV2Async(
@@ -979,6 +1041,7 @@ namespace ITHunterview.Service.UseCase
                 
             if (matchRecord == null) return null;
             var jdAnalysis = BuildJdAnalysisResult(matchRecord);
+            var report = _jdMatchReportReader.Read(matchRecord.MatchDetails, matchRecord.MatchScore, matchRecord.MatchType);
 
             return new MatchingResultDto
             {
@@ -992,8 +1055,15 @@ namespace ITHunterview.Service.UseCase
                 ErrorMessage = matchRecord.ErrorMessage,
                 CanRetry = string.Equals(matchRecord.Status, "Failed", StringComparison.Ordinal)
                     && MatchingRetryPolicy.IsManualRetryAllowed(matchRecord.ErrorCode),
-                MatchDetails = matchRecord.MatchDetails,
-                JdFit = new JdFitResultDto { Score = matchRecord.MatchScore ?? 0m },
+                MatchDetails = report.ReportKind == MatchReportKinds.LegacySummary
+                    ? matchRecord.MatchDetails
+                    : null,
+                ScorePercent = report.ScorePercent,
+                ScoreAvailable = report.ScoreAvailable,
+                ReportKind = report.ReportKind,
+                MatchMethod = report.MatchMethod,
+                Report = report,
+                JdFit = new JdFitResultDto { Score = report.ScorePercent },
                 JdAnalysis = jdAnalysis,
                 CvAnalysis = BuildCvAnalysisResult(matchRecord)
             };
@@ -1093,6 +1163,7 @@ namespace ITHunterview.Service.UseCase
             var mappedItems = items.Select(x =>
             {
                 var jdAnalysis = BuildJdAnalysisResult(x.Score);
+                var report = _jdMatchReportReader.Read(x.Score.MatchDetails, x.Score.MatchScore, x.Score.MatchType);
                 return new ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto
                 {
                 JobId = x.Score.Id,
@@ -1102,7 +1173,11 @@ namespace ITHunterview.Service.UseCase
                 FileUrl = x.Cv?.FileUrl,
                 SourceJobId = x.Score.JobId,
                 JdTitle = x.Job?.Title ?? x.Score.JdTitle ?? x.Score.RawJdText,
-                MatchScore = x.Score.MatchScore.HasValue ? (x.Score.MatchScore.Value <= 1.0m && x.Score.MatchScore.Value > 0m ? Math.Round(x.Score.MatchScore.Value * 100m, 2) : Math.Round(x.Score.MatchScore.Value, 2)) : null,
+                MatchScore = x.Score.MatchScore,
+                ScorePercent = report.ScorePercent,
+                ScoreAvailable = report.ScoreAvailable,
+                ReportKind = report.ReportKind,
+                MatchMethod = report.MatchMethod,
                 Status = x.Score.Status,
                 ErrorMessage = x.Score.ErrorMessage,
                 UpdatedAt = x.Score.UpdatedAt,
@@ -1127,15 +1202,30 @@ namespace ITHunterview.Service.UseCase
 
         public async Task<ITHunterview.Service.DTOs.Common.PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>> GetJobMatchHistoryAsync(Guid jobId, Guid recruiterId, int page, int pageSize)
         {
-            var query = from s in _context.CvJobMatchScores
+            var query = from s in _context.CvJobMatchScores.AsNoTracking()
                         join c in _context.Cvs on s.CvId equals c.Id into cvs
                         from c in cvs.DefaultIfEmpty()
                         where s.JobId == jobId
-                        orderby s.MatchScore descending
                         select new { Score = s, Cv = c };
 
-            var total = await query.CountAsync();
-            var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+            var authorizedRows = await query.ToListAsync();
+            var total = authorizedRows.Count;
+            var items = authorizedRows
+                .Select(row => new
+                {
+                    row.Score,
+                    row.Cv,
+                    Report = _jdMatchReportReader.Read(
+                        row.Score.MatchDetails,
+                        row.Score.MatchScore,
+                        row.Score.MatchType)
+                })
+                .OrderByDescending(row => row.Report.ScorePercent)
+                .ThenByDescending(row => row.Score.UpdatedAt)
+                .ThenBy(row => row.Score.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
 
             // Get unlocked CV IDs for this recruiter
             var cvIds = items.Where(x => x.Score.CvId.HasValue).Select(x => x.Score.CvId!.Value).ToList();
@@ -1198,6 +1288,7 @@ namespace ITHunterview.Service.UseCase
 
                 var itemIndex = index++;
                 var jdAnalysis = BuildJdAnalysisResult(x.Score);
+                var report = x.Report;
 
                 return new ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto
                 {
@@ -1209,7 +1300,11 @@ namespace ITHunterview.Service.UseCase
                     FileUrl = isUnlocked ? x.Cv?.FileUrl : null,
                     SourceJobId = x.Score.Id,
                     JdTitle = x.Score.JdTitle,
-                    MatchScore = x.Score.MatchScore.HasValue ? (x.Score.MatchScore.Value <= 1.0m && x.Score.MatchScore.Value > 0m ? Math.Round(x.Score.MatchScore.Value * 100m, 2) : Math.Round(x.Score.MatchScore.Value, 2)) : null,
+                    MatchScore = x.Score.MatchScore,
+                    ScorePercent = report.ScorePercent,
+                    ScoreAvailable = report.ScoreAvailable,
+                    ReportKind = report.ReportKind,
+                    MatchMethod = report.MatchMethod,
                     Status = x.Score.Status,
                     ErrorMessage = x.Score.ErrorMessage,
                     UpdatedAt = x.Score.UpdatedAt,

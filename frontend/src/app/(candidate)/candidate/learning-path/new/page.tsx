@@ -19,7 +19,7 @@ import { useWalletBalance } from '@/hooks/useWallet';
 import { usePublicCoinConfig } from '@/hooks/useCoin';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
-import { formatMatchScore } from '@/utils/score-format.util';
+import { getScorePercent } from '@/lib/matching-score';
 
 const SFIA_LEVEL_HINTS: Record<number, { title: string; essence: string }> = {
   1: { title: "Follow", essence: "Works under close supervision. Uses little discretion." },
@@ -298,15 +298,16 @@ export default function NewLearningPathPage() {
                         {selectedMatchScoreId && matchHistoryData?.data?.items?.find(m => m.jobId === selectedMatchScoreId) 
                           ? (() => {
                               const match = matchHistoryData.data.items.find(m => m.jobId === selectedMatchScoreId)!;
-                              return `${match.jdTitle || 'Unknown Job'} - ${formatMatchScore(match.matchScore)}%`;
+                              const score = getScorePercent(match);
+                              return score === null ? null : `${match.jdTitle || 'Unknown Job'} - ${score.toFixed(1)}/100`;
                             })()
                           : null}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {matchHistoryData?.data?.items?.filter(m => m.status === 'Completed').map(match => (
+                      {matchHistoryData?.data?.items?.filter(m => m.status === 'Completed' && getScorePercent(m) !== null).map(match => (
                         <SelectItem key={match.jobId} value={match.jobId}>
-                          {match.jdTitle} - {formatMatchScore(match.matchScore)}%
+                          {match.jdTitle} - {getScorePercent(match)!.toFixed(1)}/100
                         </SelectItem>
                       ))}
                     </SelectContent>

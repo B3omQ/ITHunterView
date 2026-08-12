@@ -22,6 +22,32 @@ namespace ITHunterview.Service.Tests.JobAnalysis
         }
 
         [Fact]
+        public void Read_EffectiveV1_UsesCompactStringSkillMetrics()
+        {
+            const string effectiveV1 = """
+                {"schema_version":"jd-analysis-effective/v1","matching_metrics":{"job_titles_normalized":["Backend Developer"],"skills_normalized":["Spring Boot","Java"],"total_years_exp":3,"domains":["banking"],"requirement_groups":[]}}
+                """;
+
+            var metrics = JobAnalysisMetricsReader.Read(effectiveV1);
+
+            Assert.Equal(new[] { "Java", "Spring Boot" }, metrics.Skills);
+            Assert.True(metrics.SkillsAvailable);
+        }
+
+        [Fact]
+        public void JdAnalysisMetadataReader_EffectiveV1DerivesCompleteRequirementSetFromCounts()
+        {
+            const string effectiveV1 = """
+                {"schema_version":"jd-analysis-effective/v1","analysis_coverage":{"input_group_count":2,"accepted_group_count":2,"discarded_group_count":0,"input_item_count":3,"accepted_item_count":3,"discarded_item_count":0,"was_truncated":false}}
+                """;
+
+            var coverage = JdAnalysisMetadataReader.ReadCoverage(effectiveV1);
+
+            Assert.NotNull(coverage);
+            Assert.True(coverage!.RequirementSetComplete);
+        }
+
+        [Fact]
         public void Read_CvAnalysisV2_UsesTheRequiredStringMetricArraysForHardcodeCompatibility()
         {
             const string cvAnalysisV2 = """
@@ -41,7 +67,7 @@ namespace ITHunterview.Service.Tests.JobAnalysis
         }
 
         [Fact]
-        public void Read_MissingMetric_IsUnavailableButPresentEmptyArrayRemainsAvailable()
+        public void Read_MissingOrEmptyArrayMetric_IsUnavailable()
         {
             const string partial = """
                 {"schema_version":"cv-analysis/v2","matching_metrics":{"job_titles_normalized":[],"skills_normalized":["c#"],"total_years_exp":3}}
@@ -49,7 +75,7 @@ namespace ITHunterview.Service.Tests.JobAnalysis
 
             var metrics = JobAnalysisMetricsReader.Read(partial);
 
-            Assert.True(metrics.TitleAvailable);
+            Assert.False(metrics.TitleAvailable);
             Assert.True(metrics.SkillsAvailable);
             Assert.True(metrics.ExperienceAvailable);
             Assert.False(metrics.DomainsAvailable);
@@ -68,7 +94,7 @@ namespace ITHunterview.Service.Tests.JobAnalysis
 
             var metrics = JobAnalysisMetricsReader.Read(partial);
 
-            Assert.True(metrics.TitleAvailable);
+            Assert.False(metrics.TitleAvailable);
             Assert.False(metrics.SkillsAvailable);
             Assert.True(metrics.ExperienceAvailable);
             Assert.False(metrics.DomainsAvailable);

@@ -82,7 +82,6 @@ export interface JobSkillDecisionDto {
   resolvedSkillName?: string | null
   resolutionStatus: SkillResolutionStatus
   decisionStatus: SkillDecisionStatus
-  confidence?: number | null
 }
 
 export interface OtherRequirementDto {

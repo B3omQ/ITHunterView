@@ -14,8 +14,15 @@ namespace ITHunterview.Service.Utils;
 /// </summary>
 public static class JdAnalysisOutputRecovery
 {
+    private const int MaxProviderCharacters = 262_144;
     private const int MaxGroups = 50;
     private const int MaxItems = 100;
+    private static readonly JsonDocumentOptions DocumentOptions = new()
+    {
+        AllowTrailingCommas = false,
+        CommentHandling = JsonCommentHandling.Disallow,
+        MaxDepth = 64
+    };
 
     public static JdAnalysisRecoveryResult Recover(string? providerOutput)
     {
@@ -25,9 +32,14 @@ public static class JdAnalysisOutputRecovery
             return JdAnalysisRecoveryResult.Invalid("EMPTY_MODEL_OUTPUT");
         }
 
+        if (text.Length > MaxProviderCharacters)
+        {
+            return JdAnalysisRecoveryResult.Invalid("PAYLOAD_TOO_LARGE");
+        }
+
         try
         {
-            using var document = JsonDocument.Parse(text);
+            using var document = JsonDocument.Parse(text, DocumentOptions);
             return JdAnalysisRecoveryResult.Complete(text);
         }
         catch (JsonException)
@@ -60,7 +72,12 @@ public static class JdAnalysisOutputRecovery
 
         try
         {
-            var reader = new Utf8JsonReader(bytes, isFinalBlock: true, new JsonReaderState());
+            var reader = new Utf8JsonReader(bytes, isFinalBlock: true, new JsonReaderState(new JsonReaderOptions
+            {
+                AllowTrailingCommas = false,
+                CommentHandling = JsonCommentHandling.Disallow,
+                MaxDepth = 64
+            }));
             while (reader.Read())
             {
                 switch (reader.TokenType)
@@ -195,7 +212,7 @@ public static class JdAnalysisOutputRecovery
         var discardedItemCount = Math.Max(0, inputItemCount - acceptedItemCount);
         if (groups.Count == 0 || !groupArraySeen && groupsDepth < 0 && inputGroupCount == 0)
         {
-            AddDiagnostic(diagnostics, "NO_COMPLETE_REQUIREMENT_GROUPS", "$.matching_metrics.requirement_groups");
+            AddDiagnostic(diagnostics, "NO_COMPLETE_GROUP_RECOVERED", "$.matching_metrics.requirement_groups");
             return new JdAnalysisRecoveryResult(
                 true,
                 null,
@@ -216,7 +233,7 @@ public static class JdAnalysisOutputRecovery
         AddDiagnostic(diagnostics, "RECOVERED_COMPLETE_GROUPS", "$.matching_metrics.requirement_groups");
         var json = JsonSerializer.Serialize(new
         {
-            schema_version = "jd-analysis/v4",
+            schema_version = "jd-analysis/v5",
             matching_metrics = new
             {
                 job_titles_normalized = titles,
@@ -250,7 +267,7 @@ public static class JdAnalysisOutputRecovery
         JsonDocument? document = null;
         try
         {
-            document = JsonDocument.Parse(bytes.AsMemory(start, end - start));
+            document = JsonDocument.Parse(bytes.AsMemory(start, end - start), DocumentOptions);
             var group = document.RootElement.Clone();
             var itemCount = group.TryGetProperty("items", out var items) && items.ValueKind == JsonValueKind.Array
                 ? items.GetArrayLength()

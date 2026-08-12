@@ -13,6 +13,10 @@ namespace ITHunterview.Service.DTOs.Cv.Matching
         public Guid? SourceJobId { get; set; }
         public string? JdTitle { get; set; }
         public decimal? MatchScore { get; set; }
+        public decimal? ScorePercent { get; set; }
+        public bool ScoreAvailable { get; set; }
+        public string ReportKind { get; set; } = MatchReportKinds.LegacySummary;
+        public string MatchMethod { get; set; } = MatchMethodCodes.LegacyUnknown;
         public string Status { get; set; } = string.Empty;
         public string? ErrorMessage { get; set; }
         public string? MatchType { get; set; }

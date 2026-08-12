@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { NextIntlClientProvider } from 'next-intl'
 import { AnalysisStateCard } from './AnalysisStateCard'
 
 describe('AnalysisStateCard quality states', () => {
@@ -15,9 +16,10 @@ describe('AnalysisStateCard quality states', () => {
 
   it('keeps a partial analysis publishable and explains accepted coverage', () => {
     render(
-      <AnalysisStateCard
-        {...baseProps}
-        preview={{
+      <NextIntlClientProvider locale="vi" messages={{}}>
+        <AnalysisStateCard
+          {...baseProps}
+          preview={{
           jobId: 'job-1',
           hasAnalysisRun: true,
           analysisRunId: 'run-1',
@@ -43,8 +45,9 @@ describe('AnalysisStateCard quality states', () => {
             discardedItemCount: 1,
             requirementSetComplete: false,
           },
-        }}
-      />,
+          }}
+        />
+      </NextIntlClientProvider>,
     )
 
     expect(screen.getByText(/3\/4/)).toBeInTheDocument()

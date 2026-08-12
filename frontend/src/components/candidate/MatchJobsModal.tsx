@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useSignalR } from '@/hooks/useSignalR';
 import { toast } from 'sonner';
-import { formatMatchScore, displayMatchScore } from '@/utils/score-format.util';
+import { getMatchMethodLabel, getScorePercent } from '@/lib/matching-score';
 
 interface MatchJobsModalProps {
   isOpen: boolean;
@@ -198,7 +198,7 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
               </div>
             ) : (
               matches.map((match) => (
-                <div key={match.jobId + match.matchType} className="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-300 transition-colors shadow-sm">
+                <div key={match.jobId + match.matchMethod} className="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-300 transition-colors shadow-sm">
                   <div className="flex flex-col gap-1 min-w-0 flex-1">
                     <h5 className="text-sm font-semibold text-slate-900 truncate" title={match.jdTitle}>
                       {match.jdTitle || "Unknown Job"}
@@ -206,9 +206,9 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
                     <div className="flex items-center gap-2 text-xs">
                       <span className={cn(
                         "inline-flex items-center rounded-full px-2 py-0.5 font-medium",
-                        match.matchType === 'Hardcode' ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"
+                        match.matchMethod === 'hardcode' ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"
                       )}>
-                        {match.matchType === 'Hardcode' ? 'Hardcode' : 'AI'}
+                        {getMatchMethodLabel(match.matchMethod)}
                       </span>
                       <span className="text-slate-500">
                         {new Date(match.updatedAt).toLocaleDateString()}
@@ -220,10 +220,10 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
                     <div className="flex flex-col items-end">
                       <span className={cn(
                         "text-lg font-bold",
-                        formatMatchScore(match.matchScore) >= 70 ? "text-green-600" :
-                          formatMatchScore(match.matchScore) >= 50 ? "text-amber-600" : "text-slate-600"
+                        (getScorePercent(match) ?? -1) >= 70 ? "text-green-600" :
+                          (getScorePercent(match) ?? -1) >= 50 ? "text-amber-600" : "text-slate-600"
                       )}>
-                        {displayMatchScore(match.matchScore)}
+                        {getScorePercent(match) === null ? "—" : `${Math.round(getScorePercent(match)!)}%`}
                       </span>
                       <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Match Score</span>
                     </div>

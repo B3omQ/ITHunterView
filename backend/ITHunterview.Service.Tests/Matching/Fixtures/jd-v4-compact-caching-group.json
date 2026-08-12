@@ -1,0 +1,33 @@
+{
+  "schema_version": "jd-analysis/v4",
+  "matching_metrics": {
+    "job_titles_normalized": [],
+    "total_years_exp": 0,
+    "domains": [],
+    "requirement_groups": [
+      {
+        "operator": "all_of",
+        "importance": "must_have",
+        "source_section": "requirements",
+        "requirement_verbatim": "Understanding of caching strategies, job queues, and asynchronous processing (e.g., Redis, Horizon, or similar tools).",
+        "items": [
+          {
+            "category": "tech_skill",
+            "skill_name": "caching",
+            "raw_mention": "caching strategies"
+          },
+          {
+            "category": "tech_skill",
+            "skill_name": "job queues",
+            "raw_mention": "job queues"
+          },
+          {
+            "category": "tech_skill",
+            "skill_name": "asynchronous processing",
+            "raw_mention": "asynchronous processing"
+          }
+        ]
+      }
+    ]
+  }
+}

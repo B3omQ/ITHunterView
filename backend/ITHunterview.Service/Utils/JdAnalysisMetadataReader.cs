@@ -43,15 +43,29 @@ public static class JdAnalysisMetadataReader
                 return null;
             }
 
+            var inputGroupCount = ReadInt(value, "input_group_count");
+            var acceptedGroupCount = ReadInt(value, "accepted_group_count");
+            var discardedGroupCount = ReadInt(value, "discarded_group_count");
+            var inputItemCount = ReadInt(value, "input_item_count");
+            var acceptedItemCount = ReadInt(value, "accepted_item_count");
+            var discardedItemCount = ReadInt(value, "discarded_item_count");
+            var requirementSetComplete = value.TryGetProperty("requirement_set_complete", out var complete) &&
+                                         complete.ValueKind is JsonValueKind.True or JsonValueKind.False
+                ? complete.GetBoolean()
+                : discardedGroupCount == 0 &&
+                  discardedItemCount == 0 &&
+                  inputGroupCount == acceptedGroupCount &&
+                  inputItemCount == acceptedItemCount &&
+                  !(value.TryGetProperty("was_truncated", out var truncated) && truncated.ValueKind == JsonValueKind.True);
+
             return new JdAnalysisCoverage(
-                ReadInt(value, "input_group_count"),
-                ReadInt(value, "accepted_group_count"),
-                ReadInt(value, "discarded_group_count"),
-                ReadInt(value, "input_item_count"),
-                ReadInt(value, "accepted_item_count"),
-                ReadInt(value, "discarded_item_count"),
-                value.TryGetProperty("requirement_set_complete", out var complete) &&
-                complete.ValueKind == JsonValueKind.True);
+                inputGroupCount,
+                acceptedGroupCount,
+                discardedGroupCount,
+                inputItemCount,
+                acceptedItemCount,
+                discardedItemCount,
+                requirementSetComplete);
         }
         catch (JsonException)
         {
