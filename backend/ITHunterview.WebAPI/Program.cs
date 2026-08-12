@@ -181,8 +181,7 @@ if (!app.Environment.IsEnvironment("Testing"))
         catch (Exception ex)
         {
             var logger = services.GetRequiredService<ILogger<Program>>();
-            logger.LogCritical(ex, "Database migration or seeding failed. Application startup aborted.");
-            throw;
+            logger.LogWarning(ex, "Database migration or seeding skipped/failed: {Message}", ex.Message);
         }
     }
 }
@@ -227,19 +226,7 @@ app.UseMiddleware<ITHunterview.WebAPI.Middlewares.AiRateLimitMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
-using (var scope = app.Services.CreateScope())
-{
-    try
-    {
-        var dbContext = scope.ServiceProvider.GetRequiredService<ITHunterview.Service.Infrastructure.Persistence.ITHunterviewContext>();
-        dbContext.Database.Migrate();
-        Console.WriteLine("[INFO] Database migration applied successfully.");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"[WARNING] Auto DB Migration warning: {ex.Message}");
-    }
-}
+app.MapHub<NotificationHub>("/hubs/notification");
 
 app.Run();
 
