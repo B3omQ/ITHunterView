@@ -41,7 +41,9 @@ import {
   ArrowUpRight,
   ExternalLink,
   SearchX,
-  Lightbulb
+  Lightbulb,
+  Copy,
+  Check
 } from "lucide-react"
 import { useTranslations } from "next-intl"
 
@@ -71,6 +73,16 @@ export default function JobPostingsPage() {
   // 2. Local UI state for sorting & modals
   const [sortField, setSortField] = useState<"title" | "applicationCount" | "date">("date")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
+  const [copiedCode, setCopiedCode] = useState<string | null>(null)
+
+  const handleCopyCode = (code: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!code) return
+    navigator.clipboard.writeText(code)
+    setCopiedCode(code)
+    setTimeout(() => setCopiedCode(null), 2000)
+  }
 
   const { data: walletRes, refetch: refetchWallet } = useWalletBalance()
   const walletData = walletRes?.data
@@ -420,15 +432,15 @@ export default function JobPostingsPage() {
         </div>
 
         {/* TẦNG 2: MAIN TABLE CONTAINER (TABLE_STANDARD - SHADCN TABLE) */}
-        <div className="rounded-lg border border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-2xs w-full">
-          <Table className="w-full text-left border-collapse table-fixed">
+        <div className="rounded-lg border border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-2xs w-full overflow-x-auto">
+          <Table className="w-full min-w-[1080px] text-left border-collapse table-fixed">
             <TableHeader className="bg-slate-50 dark:bg-zinc-950 border-b border-[#CED0D4] dark:border-zinc-800">
               <TableRow className="hover:bg-transparent border-none">
-                <TableHead className="w-[14%] py-3 px-2.5 sm:px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
+                <TableHead className="w-[16%] min-w-[165px] py-3 px-2.5 sm:px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
                   {t("colJobCode")}
                 </TableHead>
 
-                <TableHead className="w-[26%] py-3 px-2.5 sm:px-3">
+                <TableHead className="w-[26%] min-w-[210px] py-3 px-2.5 sm:px-3">
                   <button
                     onClick={() => handleSort("title")}
                     className={`flex items-center text-xs font-semibold uppercase tracking-wider ${sortField === "title" ? "text-[#1877F2] dark:text-blue-400" : "text-[#65676B] dark:text-zinc-400"
@@ -439,7 +451,7 @@ export default function JobPostingsPage() {
                   </button>
                 </TableHead>
 
-                <TableHead className="w-[11%] py-3 px-2.5 sm:px-3">
+                <TableHead className="w-[11%] min-w-[110px] py-3 px-2.5 sm:px-3">
                   <button
                     onClick={() => handleSort("date")}
                     className={`flex items-center text-xs font-semibold uppercase tracking-wider whitespace-normal text-left ${sortField === "date" ? "text-[#1877F2] dark:text-blue-400" : "text-[#65676B] dark:text-zinc-400"
@@ -450,15 +462,15 @@ export default function JobPostingsPage() {
                   </button>
                 </TableHead>
 
-                <TableHead className="w-[11%] py-3 px-2.5 sm:px-3 text-xs font-semibold uppercase tracking-wider whitespace-normal text-[#65676B] dark:text-zinc-400">
+                <TableHead className="w-[13%] min-w-[130px] py-3 px-2.5 sm:px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
                   {t("colAppDeadline")}
                 </TableHead>
 
-                <TableHead className="w-[11%] py-3 px-2.5 sm:px-3 text-xs font-semibold uppercase tracking-wider whitespace-normal text-[#65676B] dark:text-zinc-400">
+                <TableHead className="w-[13%] min-w-[130px] py-3 px-2.5 sm:px-3 text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400">
                   {t("colSysExpiry")}
                 </TableHead>
 
-                <TableHead className="w-[9%] text-center py-3 px-2.5 sm:px-3">
+                <TableHead className="w-[7%] min-w-[80px] text-center py-3 px-2.5 sm:px-3">
                   <button
                     onClick={() => handleSort("applicationCount")}
                     className={`inline-flex items-center justify-center text-xs font-semibold uppercase tracking-wider ${sortField === "applicationCount" ? "text-[#1877F2] dark:text-blue-400" : "text-[#65676B] dark:text-zinc-400"
@@ -469,11 +481,11 @@ export default function JobPostingsPage() {
                   </button>
                 </TableHead>
 
-                <TableHead className="w-[10%] text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400 px-2.5 sm:px-3 py-3">
+                <TableHead className="w-[8%] min-w-[90px] text-center text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400 px-2.5 sm:px-3 py-3">
                   {t("colStatus")}
                 </TableHead>
 
-                <TableHead className="w-[8%] text-right text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400 px-2.5 sm:px-3 py-3">
+                <TableHead className="w-[6%] min-w-[70px] text-right text-xs font-semibold uppercase tracking-wider text-[#65676B] dark:text-zinc-400 px-2.5 sm:px-3 py-3">
                   {t("colActions")}
                 </TableHead>
               </TableRow>
@@ -499,7 +511,7 @@ export default function JobPostingsPage() {
               ) : sortedJobs.length === 0 ? (
                 // Empty State
                 <TableRow>
-                  <TableCell colSpan={7} className="h-72 text-center">
+                  <TableCell colSpan={8} className="h-72 text-center">
                     <div className="flex flex-col items-center justify-center max-w-sm mx-auto py-6">
                       <div className="h-12 w-12 rounded-full bg-[#E7F3FF] dark:bg-blue-950/60 flex items-center justify-center text-[#1877F2] dark:text-blue-400 mb-3">
                         <SearchX className="h-6 w-6" />
@@ -529,11 +541,21 @@ export default function JobPostingsPage() {
                     key={job.id}
                     className="border-b border-[#CED0D4]/60 dark:border-zinc-800/60 hover:bg-[#E7F3FF]/40 dark:hover:bg-blue-950/20 transition-colors duration-150 group"
                   >
-                    {/* Cột 1: Mã Tin */}
-                    <TableCell className="py-3 px-2.5 sm:px-3 align-top font-mono text-xs whitespace-normal break-all">
-                      <div className="mt-1 font-semibold text-[#666666] dark:text-zinc-400 select-all">
-                        {job.jobCode}
-                      </div>
+                    {/* Cột 1: Mã Tin (Hiển thị trọn vẹn + 1-Click Copy Badge) */}
+                    <TableCell className="py-3 px-2.5 sm:px-3 align-top font-mono text-xs whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={(e) => handleCopyCode(job.jobCode, e)}
+                        title={copiedCode === job.jobCode ? "Đã sao chép mã tin!" : "Click để sao chép mã tin"}
+                        className="group/code inline-flex items-center gap-1.5 px-2 py-1 rounded bg-slate-100 dark:bg-zinc-800/90 hover:bg-blue-50 dark:hover:bg-blue-950/50 border border-slate-200/90 dark:border-zinc-700/70 hover:border-blue-300 dark:hover:border-blue-700 text-zinc-800 dark:text-zinc-200 font-semibold transition-all cursor-pointer select-all mt-0.5 shadow-2xs"
+                      >
+                        <span>{job.jobCode}</span>
+                        {copiedCode === job.jobCode ? (
+                          <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        ) : (
+                          <Copy className="h-3 w-3 text-zinc-400 group-hover/code:text-blue-600 dark:group-hover/code:text-blue-400 transition-colors shrink-0" />
+                        )}
+                      </button>
                     </TableCell>
 
                     {/* Cột 2: Tên Việc Làm */}

@@ -830,6 +830,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     var jobs = new List<JobPostings>();
                     var jobSkills = new List<JobSkillRequirements>();
                     var random = new System.Random();
+                    var seededJobCodes = new HashSet<string>();
 
                     string[] locations = { "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Remote" };
                     JobStatus[] statuses = { JobStatus.PUBLISHED, JobStatus.PUBLISHED, JobStatus.PUBLISHED, JobStatus.DRAFT, JobStatus.CLOSED };
@@ -886,13 +887,15 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                             "- Sign-on bonus up to $2000 for successful candidates.\n- Full 100% salary during the probation period.\n- Unlimited paid time off (PTO) policy focusing on results over hours.\n- Modern office in the city center with a breathtaking view and relaxation zones.\n- Opportunities for internal mobility and fast-track career progression.\n- Mentorship programs led by industry experts and senior leaders."
                         };
 
+                        string jobTitle = $"{prefix} {category.Name}";
+
                         jobs.Add(new JobPostings
                         {
                             Id = jobId,
-                            JobCode = $"JB-{random.Next(10000, 99999)}",
+                            JobCode = JobCodeGenerator.GenerateUniqueSeededCode(jobTitle, seededJobCodes),
                             RecruiterId = recruiter.Id,
                             CompanyId = company.Id,
-                            Title = $"{prefix} {category.Name}",
+                            Title = jobTitle,
                             Description = descTemplates[random.Next(descTemplates.Length)] + "\n\nTrách nhiệm chính:\n" + respTemplates[random.Next(respTemplates.Length)],
                             Requirements = reqTemplates[random.Next(reqTemplates.Length)],
                             Benefits = benTemplates[random.Next(benTemplates.Length)],
@@ -956,6 +959,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 var recruiter = recruiters.First();
                 var jobs = new List<JobPostings>();
                 var jobSkills = new List<JobSkillRequirements>();
+                var seededJobCodes = new HashSet<string>();
                 
                 var jobData = new[]
                 {
@@ -1039,7 +1043,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     jobs.Add(new JobPostings
                     {
                         Id = jobId,
-                        JobCode = $"JB-REAL-{System.Guid.NewGuid().ToString().Substring(0, 4).ToUpper()}",
+                        JobCode = JobCodeGenerator.GenerateUniqueSeededCode(data.Title, seededJobCodes),
                         RecruiterId = recruiter.Id,
                         CompanyId = company.Id,
                         Title = data.Title,
