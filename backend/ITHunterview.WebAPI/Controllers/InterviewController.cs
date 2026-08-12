@@ -240,6 +240,35 @@ namespace ITHunterview.WebAPI.Controllers
             }
         }
 
+        [HttpPut("sessions/{sessionId:guid}/title")]
+        public async Task<ActionResult<ResponseBase<string>>> RenameSession(Guid sessionId, [FromBody] RenameInterviewSessionDto dto)
+        {
+            if (dto == null)
+            {
+                return BadRequest(new ResponseBase<string>("Request body is required."));
+            }
+
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized(new ResponseBase<string>("Unauthorized."));
+            }
+
+            try
+            {
+                await _interviewUseCase.RenameSessionAsync(sessionId, userId, dto.Title);
+                return Ok(new ResponseBase<string>(dto.Title, "Interview session title updated successfully."));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new ResponseBase<string>(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ResponseBase<string>($"Error: {ex.Message}"));
+            }
+        }
+
         [HttpPost("transcribe")]
         public async Task<ActionResult<ResponseBase<string>>> TranscribeAudio(IFormFile audio, [FromQuery] string? lang = "vi")
         {

@@ -227,7 +227,19 @@ app.UseMiddleware<ITHunterview.WebAPI.Middlewares.AiRateLimitMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
-app.MapHub<NotificationHub>("/hubs/notification");
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<ITHunterview.Service.Infrastructure.Persistence.ITHunterviewContext>();
+        dbContext.Database.Migrate();
+        Console.WriteLine("[INFO] Database migration applied successfully.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[WARNING] Auto DB Migration warning: {ex.Message}");
+    }
+}
 
 app.Run();
 

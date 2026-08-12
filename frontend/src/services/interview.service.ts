@@ -41,4 +41,7 @@ export const interviewService = {
 
   deleteSession: (sessionId: string) =>
     api.delete<ApiResponse<string>>(`/api/interview/sessions/${sessionId}`).then((r) => r.data),
+
+  renameSession: (sessionId: string, title: string) =>
+    api.put<ApiResponse<string>>(`/api/interview/sessions/${sessionId}/title`, { title }).then((r) => r.data),
 };
