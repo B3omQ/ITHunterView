@@ -40,6 +40,16 @@ namespace ITHunterview.Service.UseCase;
         var jobIds = await jobsQuery.Select(x => x.Id).ToListAsync();
         var appsQuery = _jobApplicationRepository.GetQueryable().Where(x => jobIds.Contains(x.JobId));
 
+        // Ensure DateTime kinds are set to Utc for Npgsql/Postgres compatibility
+        if (request.FromDate.HasValue)
+        {
+            request.FromDate = DateTime.SpecifyKind(request.FromDate.Value, DateTimeKind.Utc);
+        }
+        if (request.ToDate.HasValue)
+        {
+            request.ToDate = DateTime.SpecifyKind(request.ToDate.Value, DateTimeKind.Utc);
+        }
+
         // Apply filters to appsQuery
         if (request.FromDate.HasValue && !request.ToDate.HasValue)
         {

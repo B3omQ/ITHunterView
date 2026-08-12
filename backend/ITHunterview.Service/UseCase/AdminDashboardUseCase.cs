@@ -3,6 +3,7 @@ using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Dashboard;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
+using ITHunterview.Service.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
@@ -15,18 +16,18 @@ public class AdminDashboardUseCase : IAdminDashboardUseCase
     private readonly IUserRepository _userRepository;
     private readonly IAuditLogRepository _auditLogRepository;
     private readonly ISubscriptionRepository _subscriptionRepository;
-    // Assuming transactions/revenue come from a transaction repository or audit log, 
-    // but the system has ITokenRepository or we use placeholder logic for revenue if no transaction table exists.
-    // Based on previous analysis, we will use IUserRepository and IAuditLogRepository.
+    private readonly ITHunterviewContext _context;
 
     public AdminDashboardUseCase(
         IUserRepository userRepository,
         IAuditLogRepository auditLogRepository,
-        ISubscriptionRepository subscriptionRepository)
+        ISubscriptionRepository subscriptionRepository,
+        ITHunterviewContext context)
     {
         _userRepository = userRepository;
         _auditLogRepository = auditLogRepository;
         _subscriptionRepository = subscriptionRepository;
+        _context = context;
     }
 
     public async Task<AdminDashboardResponseDto> GetDashboardAsync(DashboardFilterRequest request)
@@ -34,6 +35,17 @@ public class AdminDashboardUseCase : IAdminDashboardUseCase
         var usersQuery = _userRepository.GetQueryable();
         var auditLogsQuery = _auditLogRepository.GetQueryable();
         var subscriptionsQuery = _subscriptionRepository.GetQueryable();
+        var paymentsQuery = _context.Payments.Where(x => x.Status == PaymentStatus.SUCCESS);
+
+        // Ensure DateTime kinds are set to Utc for Npgsql/Postgres compatibility
+        if (request.FromDate.HasValue)
+        {
+            request.FromDate = DateTime.SpecifyKind(request.FromDate.Value, DateTimeKind.Utc);
+        }
+        if (request.ToDate.HasValue)
+        {
+            request.ToDate = DateTime.SpecifyKind(request.ToDate.Value, DateTimeKind.Utc);
+        }
 
         // Apply filters
         if (request.FromDate.HasValue && !request.ToDate.HasValue)
@@ -41,18 +53,21 @@ public class AdminDashboardUseCase : IAdminDashboardUseCase
             usersQuery = usersQuery.Where(x => x.CreatedAt >= request.FromDate.Value);
             auditLogsQuery = auditLogsQuery.Where(x => x.CreatedAt >= request.FromDate.Value);
             subscriptionsQuery = subscriptionsQuery.Where(x => x.CreatedAt >= request.FromDate.Value);
+            paymentsQuery = paymentsQuery.Where(x => x.CreatedAt >= request.FromDate.Value);
         }
         else if (!request.FromDate.HasValue && request.ToDate.HasValue)
         {
             usersQuery = usersQuery.Where(x => x.CreatedAt <= request.ToDate.Value);
             auditLogsQuery = auditLogsQuery.Where(x => x.CreatedAt <= request.ToDate.Value);
             subscriptionsQuery = subscriptionsQuery.Where(x => x.CreatedAt <= request.ToDate.Value);
+            paymentsQuery = paymentsQuery.Where(x => x.CreatedAt <= request.ToDate.Value);
         }
         else if (request.FromDate.HasValue && request.ToDate.HasValue)
         {
             usersQuery = usersQuery.Where(x => x.CreatedAt >= request.FromDate.Value && x.CreatedAt <= request.ToDate.Value);
             auditLogsQuery = auditLogsQuery.Where(x => x.CreatedAt >= request.FromDate.Value && x.CreatedAt <= request.ToDate.Value);
             subscriptionsQuery = subscriptionsQuery.Where(x => x.CreatedAt >= request.FromDate.Value && x.CreatedAt <= request.ToDate.Value);
+            paymentsQuery = paymentsQuery.Where(x => x.CreatedAt >= request.FromDate.Value && x.CreatedAt <= request.ToDate.Value);
         }
         else
         {
@@ -61,20 +76,20 @@ public class AdminDashboardUseCase : IAdminDashboardUseCase
                 usersQuery = usersQuery.Where(x => x.CreatedAt.Year == request.Year.Value);
                 auditLogsQuery = auditLogsQuery.Where(x => x.CreatedAt.Year == request.Year.Value);
                 subscriptionsQuery = subscriptionsQuery.Where(x => x.CreatedAt.Year == request.Year.Value);
+                paymentsQuery = paymentsQuery.Where(x => x.CreatedAt.Year == request.Year.Value);
             }
             if (request.Month.HasValue)
             {
                 usersQuery = usersQuery.Where(x => x.CreatedAt.Month == request.Month.Value);
                 auditLogsQuery = auditLogsQuery.Where(x => x.CreatedAt.Month == request.Month.Value);
                 subscriptionsQuery = subscriptionsQuery.Where(x => x.CreatedAt.Month == request.Month.Value);
+                paymentsQuery = paymentsQuery.Where(x => x.CreatedAt.Month == request.Month.Value);
             }
         }
 
         var totalUsers = await usersQuery.CountAsync();
-        
-        // Mock revenue/transactions if no tables
-        var totalRevenue = 13500m;
-        var transactions = 1204;
+        var totalRevenue = await paymentsQuery.SumAsync(x => x.Amount);
+        var transactions = await paymentsQuery.CountAsync();
         
         // Use audit log for AI token usage (mock logic depending on actual log types)
         // var totalTokens = await auditLogsQuery.Where(x => x.Action == "AI_USAGE").SumAsync(x => x.TokenCount);
@@ -86,11 +101,21 @@ public class AdminDashboardUseCase : IAdminDashboardUseCase
             .Select(g => new { g.Key.Year, g.Key.Month, Count = g.Count() })
             .ToListAsync();
 
-        var userRevenueGrowth = usersByMonth.Select(x => new UserRevenueGrowthDto
+        var paymentsByMonth = await paymentsQuery
+            .GroupBy(x => new { x.CreatedAt.Year, x.CreatedAt.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, Revenue = g.Sum(x => x.Amount) })
+            .ToListAsync();
+
+        var allMonths = usersByMonth.Select(u => new { u.Year, u.Month })
+            .Union(paymentsByMonth.Select(p => new { p.Year, p.Month }))
+            .OrderBy(x => x.Year).ThenBy(x => x.Month)
+            .ToList();
+
+        var userRevenueGrowth = allMonths.Select(m => new UserRevenueGrowthDto
         {
-            Month = $"{x.Month}/{x.Year}",
-            Users = x.Count,
-            Revenue = x.Count * 25 // Mock revenue
+            Month = $"{m.Month}/{m.Year}",
+            Users = usersByMonth.FirstOrDefault(u => u.Year == m.Year && u.Month == m.Month)?.Count ?? 0,
+            Revenue = paymentsByMonth.FirstOrDefault(p => p.Year == m.Year && p.Month == m.Month)?.Revenue ?? 0
         }).ToList();
 
         return new AdminDashboardResponseDto
