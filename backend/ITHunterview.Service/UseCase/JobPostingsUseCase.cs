@@ -520,7 +520,7 @@ namespace ITHunterview.Service.UseCase
 
         private async Task<string> GenerateUniqueJobCodeAsync(string? title)
         {
-            string baseCode = GenerateSmartJobCode(title);
+            string baseCode = JobCodeGenerator.GenerateSmartJobCode(title);
 
             bool exists = await _context.JobPostings.AnyAsync(j => j.JobCode == baseCode);
             if (!exists)
@@ -535,86 +535,6 @@ namespace ITHunterview.Service.UseCase
             }
 
             return $"{baseCode}-{counter}";
-        }
-
-        private static string GenerateSmartJobCode(string? title)
-        {
-            if (string.IsNullOrWhiteSpace(title))
-            {
-                return $"JOB-{DateTime.UtcNow:yyMMdd}";
-            }
-
-            // 1. Remove diacritics and convert to uppercase
-            string cleanTitle = RemoveDiacritics(title).ToUpper();
-
-            // 2. Keep letters, numbers, spaces, plus (+), and sharp (#)
-            cleanTitle = System.Text.RegularExpressions.Regex.Replace(cleanTitle, @"[^A-Z0-9\s\+#]", " ");
-
-            // 3. Filter common generic stop words (English & Vietnamese)
-            var stopWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "DEVELOPER", "ENGINEER", "SPECIALIST", "OFFICER", "EXPERT", "SENIOR", "JUNIOR",
-                "MIDDLE", "INTERN", "FRESHER", "STAFF", "MANAGER", "CONSULTANT", "POSITION",
-                "LAP", "TRINH", "VIEN", "CHUYEN", "KY", "SU", "NHAN", "TRUONG", "PHONG",
-                "TUYEN", "DUNG", "CAN", "FOR", "AT", "WITH", "AND", "OR", "IN", "THE"
-            };
-
-            var words = cleanTitle.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                .Where(w => !stopWords.Contains(w))
-                .ToList();
-
-            // Fallback if all words were filtered out
-            if (words.Count == 0)
-            {
-                words = cleanTitle.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
-            }
-
-            string prefix;
-            if (words.Count == 1)
-            {
-                // Single core term (e.g. "DEVOPS", "QA", "FLUTTER", "CYBERSECURITY")
-                string w = words[0];
-                prefix = w.Length > 6 ? w.Substring(0, 5) : w;
-            }
-            else if (words.Count == 2)
-            {
-                // Two core terms (e.g. "JAVA", "BACKEND" -> "JAVA-BAC", "REACT", "NATIVE" -> "REACT-NAT")
-                string w1 = words[0].Length > 5 ? words[0].Substring(0, 4) : words[0];
-                string w2 = words[1].Length > 4 ? words[1].Substring(0, 3) : words[1];
-                prefix = $"{w1}-{w2}";
-            }
-            else
-            {
-                // 3+ core terms: take top 3 terms abbreviated
-                var parts = words.Take(3).Select(w => w.Length <= 4 ? w : w.Substring(0, 3));
-                prefix = string.Join("-", parts);
-            }
-
-            prefix = System.Text.RegularExpressions.Regex.Replace(prefix, @"\-+", "-").Trim('-');
-
-            return $"{prefix}-{DateTime.UtcNow:yyMMdd}";
-        }
-
-        private static string RemoveDiacritics(string text)
-        {
-            var normalizedString = text.Normalize(System.Text.NormalizationForm.FormD);
-            var stringBuilder = new System.Text.StringBuilder(capacity: normalizedString.Length);
-
-            for (int i = 0; i < normalizedString.Length; i++)
-            {
-                char c = normalizedString[i];
-                var unicodeCategory = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
-                if (unicodeCategory != System.Globalization.UnicodeCategory.NonSpacingMark)
-                {
-                    stringBuilder.Append(c);
-                }
-            }
-
-            return stringBuilder
-                .ToString()
-                .Normalize(System.Text.NormalizationForm.FormC)
-                .Replace('đ', 'd')
-                .Replace('Đ', 'D');
         }
     }
 }
