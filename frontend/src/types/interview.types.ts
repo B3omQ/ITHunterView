@@ -15,6 +15,7 @@ export interface InterviewSession {
   endedAt?: string;
   aiProvider?: string;
   language?: string;
+  title?: string;
 }
 
 export interface InterviewAnswer {

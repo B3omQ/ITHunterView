@@ -85,3 +85,18 @@ export function useDeleteInterviewSession() {
     },
   });
 }
+
+export function useRenameInterviewSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sessionId, title }: { sessionId: string; title: string }) =>
+      interviewService.renameSession(sessionId, title),
+    onSuccess: (res, variables) => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ['interview-sessions'] });
+        queryClient.refetchQueries({ queryKey: ['interview-sessions'] });
+        queryClient.invalidateQueries({ queryKey: ['interview-session', variables.sessionId] });
+      }
+    },
+  });
+}

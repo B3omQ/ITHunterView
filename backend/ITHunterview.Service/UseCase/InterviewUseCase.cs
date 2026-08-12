@@ -84,7 +84,8 @@ namespace ITHunterview.Service.UseCase
                     StartedAt = session.StartedAt,
                     EndedAt = session.EndedAt,
                     AiProvider = session.AiProvider,
-                    Language = session.Language
+                    Language = session.Language,
+                    Title = session.Title
                 });
             }
 
@@ -126,7 +127,8 @@ namespace ITHunterview.Service.UseCase
                 StartedAt = session.StartedAt,
                 EndedAt = session.EndedAt,
                 AiProvider = session.AiProvider,
-                Language = session.Language
+                Language = session.Language,
+                Title = session.Title
             };
 
             var answers = await _answerRepository.GetBySessionIdAsync(sessionId);
@@ -1146,6 +1148,19 @@ namespace ITHunterview.Service.UseCase
             await _context.SaveChangesAsync();
 
             return report;
+        }
+
+        public async Task RenameSessionAsync(Guid sessionId, Guid candidateId, string title)
+        {
+            var session = await _sessionRepository.GetByIdAsync(sessionId);
+            if (session == null || session.CandidateId != candidateId)
+            {
+                throw new KeyNotFoundException("Interview session not found.");
+            }
+
+            session.Title = string.IsNullOrWhiteSpace(title) ? null : title.Trim();
+            await _sessionRepository.UpdateAsync(session);
+            await _sessionRepository.SaveChangesAsync();
         }
     }
 }
