@@ -197,7 +197,9 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
                 </p>
               </div>
             ) : (
-              matches.map((match) => (
+              [...matches]
+                .sort((a, b) => (getScorePercent(b) ?? -1) - (getScorePercent(a) ?? -1))
+                .map((match) => (
                 <div key={match.jobId + match.matchMethod} className="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-300 transition-colors shadow-sm">
                   <div className="flex flex-col gap-1 min-w-0 flex-1">
                     <h5 className="text-sm font-semibold text-slate-900 truncate" title={match.jdTitle}>

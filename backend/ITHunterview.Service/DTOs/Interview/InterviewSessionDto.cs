@@ -17,5 +17,6 @@ namespace ITHunterview.Service.DTOs.Interview
         public DateTime? EndedAt { get; set; }
         public string? AiProvider { get; set; }
         public string? Language { get; set; }
+        public string? Title { get; set; }
     }
 }

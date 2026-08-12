@@ -14,5 +14,6 @@ namespace ITHunterview.Service.Interface.UseCase
         Task SwitchModelAsync(Guid sessionId, Guid candidateId, SwitchModelDto dto);
         Task CompleteSessionAsync(Guid sessionId, Guid candidateId);
         Task DeleteSessionAsync(Guid sessionId, Guid candidateId);
+        Task RenameSessionAsync(Guid sessionId, Guid candidateId, string title);
     }
 }

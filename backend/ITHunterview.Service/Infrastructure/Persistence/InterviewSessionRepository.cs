@@ -35,10 +35,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             await _context.InterviewSessions.AddAsync(session);
         }
 
-        public Task UpdateAsync(InterviewSessions session)
+        public async Task UpdateAsync(InterviewSessions session)
         {
             _context.InterviewSessions.Update(session);
-            return Task.CompletedTask;
+            await _context.SaveChangesAsync();
         }
 
         public Task SaveChangesAsync()
@@ -46,10 +46,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             return _context.SaveChangesAsync();
         }
 
-        public Task DeleteAsync(InterviewSessions session)
+        public async Task DeleteAsync(InterviewSessions session)
         {
             _context.InterviewSessions.Remove(session);
-            return Task.CompletedTask;
+            await _context.SaveChangesAsync();
         }
     }
 }

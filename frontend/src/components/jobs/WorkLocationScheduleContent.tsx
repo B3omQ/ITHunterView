@@ -16,7 +16,7 @@ export const WorkLocationScheduleContent: React.FC<WorkLocationScheduleContentPr
 }) => {
   const details = parseWorkLocationText(workLocationText);
 
-  if (!details.workLocation && !details.workingHours && !details.howToApply) {
+  if (!details.workLocation && !details.workingHours) {
     return null;
   }
 
@@ -43,13 +43,7 @@ export const WorkLocationScheduleContent: React.FC<WorkLocationScheduleContentPr
         </div>
       ) : null}
 
-      {/* 3. How to Apply */}
-      {details.howToApply ? (
-        <div>
-          <h4 className={cn(defaultSubheadingClass, subheadingClassName)}>How to Apply</h4>
-          <JobTextContent value={details.howToApply} variant="bullet" allowInlineStrong={true} />
-        </div>
-      ) : null}
+
     </div>
   );
 };
