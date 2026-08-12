@@ -35,6 +35,16 @@ public class StaffDashboardUseCase : IStaffDashboardUseCase
         var companiesQuery = _companyRepository.GetQueryable();
         var logsQuery = _auditLogRepository.GetQueryable();
 
+        // Ensure DateTime kinds are set to Utc for Npgsql/Postgres compatibility
+        if (request.FromDate.HasValue)
+        {
+            request.FromDate = DateTime.SpecifyKind(request.FromDate.Value, DateTimeKind.Utc);
+        }
+        if (request.ToDate.HasValue)
+        {
+            request.ToDate = DateTime.SpecifyKind(request.ToDate.Value, DateTimeKind.Utc);
+        }
+
         // Apply date filters only to entities that have CreatedAt
         if (request.FromDate.HasValue && !request.ToDate.HasValue)
         {

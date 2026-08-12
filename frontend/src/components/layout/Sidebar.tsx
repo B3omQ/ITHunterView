@@ -14,8 +14,10 @@ import { useGetMyCompany } from "@/hooks/useCompany"
 import { useTranslations } from "next-intl"
 import { Logo } from "@/components/layout/Logo"
 import { useWalletBalance } from "@/hooks/useWallet"
-import { useQuery } from "@tanstack/react-query"
 import { notificationService } from "@/services/notification.service"
+import { useQuery } from "@tanstack/react-query"
+
+
 
 // ---- Lucide icon map ----
 const iconProps = { size: 18, strokeWidth: 2.5, className: "drop-shadow-sm" };
@@ -203,9 +205,8 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                   }
                 }}
                 title={!isOpen ? translatedLabel : undefined}
-                className={`sidebar-item cursor-pointer flex items-center h-10 rounded-xl text-sm font-medium transition-all group ${
-                  isOpen ? 'gap-3 px-3' : 'justify-center px-0'
-                } ${(active || (item.children && item.children.some(c => isActive(c.href)))) && !item.children
+                className={`sidebar-item cursor-pointer flex items-center h-10 rounded-xl text-sm font-medium transition-all group ${isOpen ? 'gap-3 px-3' : 'justify-center px-0'
+                  } ${(active || (item.children && item.children.some(c => isActive(c.href)))) && !item.children
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
                     : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
                   }`}
@@ -246,8 +247,8 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                         key={child.labelKey}
                         href={child.href}
                         className={`flex items-center h-8 px-3 rounded-lg text-[13px] font-medium transition-all ${childActive
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/30"
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/30"
                           }`}
                       >
                         {t(child.labelKey as any)}

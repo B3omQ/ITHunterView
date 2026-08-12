@@ -4,9 +4,9 @@ import { useAuthStore } from "@/store/auth.store"
 import { useTranslations } from "next-intl"
 import Link from "next/link"
 import Image from "next/image"
-import { 
-  Sparkles, FileSearch, 
-  MessageCircleQuestion, 
+import {
+  Sparkles, FileSearch,
+  MessageCircleQuestion,
   ChevronRight,
   Clock,
   Briefcase,
@@ -27,7 +27,7 @@ import { useMyLearningPaths } from "@/hooks/useLearningPath"
 import { useProfileCompletionStatus, useClaimNewbieReward } from "@/hooks/useCandidateProfile"
 import { Progress } from "@/components/ui/progress"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts"
-import { formatMatchScore, displayMatchScore } from "@/utils/score-format.util"
+import { displayMatchScore, formatMatchScore } from "@/utils/score-format.util"
 
 export default function CandidateDashboard() {
   const { user } = useAuthStore()
@@ -47,8 +47,8 @@ export default function CandidateDashboard() {
 
   // 2. Calculate KPIs
   // Average Match Score
-  const avgMatchScore = matchHistory.length > 0 
-    ? Math.round(matchHistory.reduce((acc, m) => acc + formatMatchScore(m.matchScore), 0) / matchHistory.length) 
+  const avgMatchScore = matchHistory.length > 0
+    ? Math.round(matchHistory.reduce((acc, m) => acc + formatMatchScore(m.matchScore), 0) / matchHistory.length)
     : 0;
 
   // Interviews Completed Count
@@ -66,7 +66,7 @@ export default function CandidateDashboard() {
         try { pd = JSON.parse(pd); } catch { pd = {}; }
       }
       pd = pd || {};
-      
+
       let progress = 0;
       let totalTasks = 0;
       let completedTasksCount = 0;
@@ -81,8 +81,8 @@ export default function CandidateDashboard() {
         progress = totalTasks > 0 ? Math.round((completedTasksCount / totalTasks) * 100) : 0;
       }
 
-      return { 
-        ...path, 
+      return {
+        ...path,
         progress,
         roleName: pd.target_profile?.role_name || pd.title || path.title || 'Untitled Path',
         modules: pd.modules || [],
@@ -135,7 +135,7 @@ export default function CandidateDashboard() {
 
   return (
     <div className="w-full pb-10 space-y-6">
-      
+
       {/* Header Greeting */}
       <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -162,7 +162,7 @@ export default function CandidateDashboard() {
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-700 p-6 sm:p-8 text-white shadow-xl shadow-purple-500/20 border border-white/10 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/30 mb-8">
           <div className="absolute -top-24 -right-24 w-72 h-72 bg-white/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
-          
+
           <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
             <div className="space-y-3 max-w-2xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-amber-300 text-xs font-bold tracking-wide uppercase border border-white/20 shadow-sm animate-pulse">
@@ -245,7 +245,7 @@ export default function CandidateDashboard() {
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{t('avgMatchScore')}</p>
             <div className="flex items-end gap-2">
               <h3 className="text-2xl font-black text-foreground">{avgMatchScore}%</h3>
-              <span className="text-xs font-medium text-emerald-500 mb-1 flex items-center"><TrendingUp size={12} className="mr-0.5"/> {t('top20')}</span>
+              <span className="text-xs font-medium text-emerald-500 mb-1 flex items-center"><TrendingUp size={12} className="mr-0.5" /> {t('top20')}</span>
             </div>
           </div>
         </div>
@@ -296,7 +296,7 @@ export default function CandidateDashboard() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} domain={[0, 100]} />
-                  <RechartsTooltip 
+                  <RechartsTooltip
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     labelStyle={{ fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}
                   />
@@ -325,7 +325,7 @@ export default function CandidateDashboard() {
                   const current = Math.min(Math.max(0, Number(item.Current) || 0), item.fullMark || 7);
                   const target = Math.min(Math.max(0, Number(item.Target) || 0), item.fullMark || 7);
                   const maxLevel = item.fullMark || 7;
-                  
+
                   return (
                     <div key={idx} className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
@@ -344,17 +344,16 @@ export default function CandidateDashboard() {
                           const stepLevel = stepIdx + 1;
                           const isCurrent = stepLevel <= current;
                           const isTargetGap = stepLevel > current && stepLevel <= target;
-                          
+
                           return (
-                            <div 
-                              key={stepIdx} 
-                              className={`h-3 rounded-sm transition-all duration-300 ${
-                                isCurrent 
-                                  ? "bg-indigo-500" 
-                                  : isTargetGap 
-                                  ? "bg-indigo-100 border border-indigo-300 dark:bg-indigo-950 dark:border-indigo-700" 
+                            <div
+                              key={stepIdx}
+                              className={`h-3 rounded-sm transition-all duration-300 ${isCurrent
+                                ? "bg-indigo-500"
+                                : isTargetGap
+                                  ? "bg-indigo-100 border border-indigo-300 dark:bg-indigo-950 dark:border-indigo-700"
                                   : "bg-muted/40"
-                              }`}
+                                }`}
                               title={`Level ${stepLevel}${isCurrent ? ' (Current)' : isTargetGap ? ' (Target Gap)' : ''}`}
                             />
                           );
@@ -387,7 +386,7 @@ export default function CandidateDashboard() {
 
       {/* Row 3: Data Tables & Actionable Lists */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
+
         {/* Recent Matches */}
         <div className="bg-card border border-border rounded-2xl p-6 shadow-sm flex flex-col">
           <div className="flex items-center justify-between mb-6">
@@ -399,7 +398,7 @@ export default function CandidateDashboard() {
               {t('viewAll')} <ChevronRight size={14} />
             </Link>
           </div>
-          
+
           <div className="flex-1">
             {isMatchLoading ? <div className="text-sm text-muted-foreground animate-pulse">{t('loadingMatches')}</div> : null}
             {!isMatchLoading && matchHistory.length === 0 ? (
@@ -445,7 +444,7 @@ export default function CandidateDashboard() {
               {t('continueLearning')} <ChevronRight size={14} />
             </Link>
           </div>
-          
+
           <div className="flex-1">
             {isPathsLoading ? <div className="text-sm text-muted-foreground animate-pulse">{t('loadingTasks')}</div> : null}
             {!isPathsLoading && pendingTasks.length === 0 ? (
@@ -464,9 +463,9 @@ export default function CandidateDashboard() {
                     </div>
                     <div className="flex-shrink-0">
                       <Link href={`/candidate/learning-path/${activePath?.id}`}>
-                         <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center hover:bg-teal-100 transition-colors">
-                            <PlayCircle size={16} className="text-teal-600" />
-                         </div>
+                        <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center hover:bg-teal-100 transition-colors">
+                          <PlayCircle size={16} className="text-teal-600" />
+                        </div>
                       </Link>
                     </div>
                   </div>
