@@ -113,10 +113,20 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
                 <span className="leading-snug underline decoration-slate-300 underline-offset-4">{job.level === 'Fresher' ? 'Fresher Accepted' : job.level}</span>
               </div>
             )}
+            {/* jobExpertise — temporarily hidden
             {job.jobExpertise && (
               <div className="flex items-center gap-2 text-slate-600 text-sm">
                 <Briefcase className="w-4 h-4 text-slate-400 shrink-0" />
                 <span className="leading-snug underline decoration-slate-300 underline-offset-4">{job.jobExpertise}</span>
+              </div>
+            )}
+            */}
+            {job.jobDomain && job.jobDomain.length > 0 && (
+              <div className="flex items-center gap-2 text-slate-600 text-sm">
+                <Briefcase className="w-4 h-4 text-slate-400 shrink-0" />
+                <span className="leading-snug underline decoration-slate-300 underline-offset-4">
+                  {job.jobDomain.slice(0, 2).join(', ')}{job.jobDomain.length > 2 ? ` +${job.jobDomain.length - 2}` : ''}
+                </span>
               </div>
             )}
             <div className="flex items-center gap-2 text-slate-600 text-sm">

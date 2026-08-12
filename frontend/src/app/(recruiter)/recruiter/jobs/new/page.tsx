@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { AlertCircle, ArrowLeft, Loader2, Save, Send } from "lucide-react"
 import { LEVELS, WORKING_MODELS, JOB_DOMAINS, VIETNAM_PROVINCES } from "@/lib/job-constants"
-import { MajorCombobox } from "@/components/shared/MajorCombobox"
+// import { MajorCombobox } from "@/components/shared/MajorCombobox"
 import { JobPostingRichTextEditor } from "@/components/forms/JobPostingRichTextEditor"
 import {
   DEFAULT_HOW_TO_APPLY,
@@ -56,7 +56,7 @@ export default function CreateJobPage() {
     jobDomain: [] as string[],
   })
 
-  const { majors, loading: metadataLoading, error: metadataError } = useJobMetadata()
+  const { /* majors, */ loading: metadataLoading, error: metadataError } = useJobMetadata()
   const { createJob, saving, error: saveError } = useJobDetails()
 
   const [searchDomain, setSearchDomain] = useState("")
@@ -88,19 +88,18 @@ export default function CreateJobPage() {
     if (!formData.location.trim()) return t("errLocReq")
     if (!formData.level) return t("errLevelReq")
     if (!formData.workingModel) return t("errModelReq")
-    if (!formData.jobExpertise) return t("errExpReq")
+    // if (!formData.jobExpertise) return t("errExpReq")
 
     const richTextError = validateRecruiterJobPostingRichTextFields(formData)
     if (richTextError) return richTextError.message
 
     if (!formData.workLocation.trim()) return t("errWorkLocReq")
     if (!formData.workingHours.trim()) return t("errWorkHourReq")
-    if (!formData.howToApply.trim()) return t("errApplyReq")
 
     const serializedLen = getSerializedWorkLocationLength({
       workLocation: formData.workLocation,
       workingHours: formData.workingHours,
-      howToApply: formData.howToApply,
+      howToApply: DEFAULT_HOW_TO_APPLY,
     })
     if (serializedLen > 4000) {
       return t("errLimit")
@@ -130,7 +129,7 @@ export default function CreateJobPage() {
       const serializedWorkLocation = serializeWorkLocationText({
         workLocation: formData.workLocation,
         workingHours: formData.workingHours,
-        howToApply: formData.howToApply,
+        howToApply: DEFAULT_HOW_TO_APPLY,
       })
       const richText = normalizeRecruiterJobPostingRichTextFields(formData)
 
@@ -143,7 +142,7 @@ export default function CreateJobPage() {
         currency: formData.currency,
         applicationDeadline: formData.applicationDeadline ? new Date(formData.applicationDeadline).toISOString() : null,
         description: richText.description,
-        incomeText: richText.incomeText,
+        incomeText: richText.incomeText || "Thỏa thuận",
         workLocationText: serializedWorkLocation,
         requirements: richText.requirements,
         benefits: richText.benefits,
@@ -324,21 +323,10 @@ export default function CreateJobPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="howToApply" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("howToApply")}</Label>
-              <textarea
-                id="howToApply"
-                name="howToApply"
-                rows={2}
-                required
-                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-950 focus:outline-none focus:ring-2 focus:ring-ring dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
-                value={formData.howToApply}
-                onChange={handleChange}
-              />
-              <p className="text-xs text-muted-foreground">{t("howToApplyHint")}</p>
-            </div>
+
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/*
               <div className="space-y-2">
                 <Label className="font-semibold text-zinc-700 dark:text-zinc-300">{t("specialization")}</Label>
                 <MajorCombobox
@@ -347,6 +335,7 @@ export default function CreateJobPage() {
                   onChange={(val) => setFormData(prev => ({ ...prev, jobExpertise: val }))}
                 />
               </div>
+              */}
 
               <div className="space-y-2">
                 <Label className="font-semibold text-zinc-700 dark:text-zinc-300">{t("industry")}</Label>
@@ -456,7 +445,6 @@ export default function CreateJobPage() {
                 <Label htmlFor="incomeText" className="font-semibold text-zinc-700 dark:text-zinc-300">{t("incomeDetails")}</Label>
                 <JobPostingRichTextEditor
                   id="incomeText"
-                  required
                   placeholder={t("incomePlaceholder")}
                   value={formData.incomeText}
                   maxLength={JOB_POSTING_RICH_TEXT_LIMITS.incomeText}

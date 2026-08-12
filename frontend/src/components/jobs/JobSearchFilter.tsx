@@ -21,7 +21,7 @@ import {
   COMPANY_TYPES,
   VIETNAM_PROVINCES
 } from '@/lib/job-constants';
-import { useJobMetadata } from '@/hooks/useJobs';
+// import { useJobMetadata } from '@/hooks/useJobs';
 import { MatchJobsModal } from '@/components/candidate/MatchJobsModal';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -105,8 +105,8 @@ export function JobSearchFilter() {
   const router = useRouter();
   const pathname = usePathname();
   
-  const { majors } = useJobMetadata();
-  const specializationOptions = React.useMemo(() => majors.map(m => m.name), [majors]);
+  // const { majors } = useJobMetadata();
+  // const specializationOptions = React.useMemo(() => majors.map(m => m.name), [majors]);
 
   // URL States
   const urlQuery = searchParams.get('query') || '';
@@ -364,6 +364,7 @@ export function JobSearchFilter() {
             searchPlaceholder="Search domain..."
           />
         </div>
+        {/* Specialization quick filter — temporarily hidden
         <div className="w-[180px]">
           <FilterCombobox
             title="Specialization"
@@ -373,6 +374,7 @@ export function JobSearchFilter() {
             searchPlaceholder="Search specialization..."
           />
         </div>
+        */}
 
         {/* Filter Button (Opens Modal) */}
         <div className="ml-auto flex items-center gap-2">
@@ -524,7 +526,7 @@ export function JobSearchFilter() {
                     </div>
                   </div>
 
-                  {/* Row 4.5: Specialization */}
+                  {/* Row 4.5: Specialization — temporarily hidden
                   <div className="space-y-3">
                     <h4 className="font-medium text-sm text-slate-700">Specialization</h4>
                     <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
@@ -553,6 +555,7 @@ export function JobSearchFilter() {
                       </Command>
                     </div>
                   </div>
+                  */}
 
                   {/* Row 5: Company Industry */}
                   <div className="space-y-3">
