@@ -4,7 +4,6 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.JobAnalysis;
 using ITHunterview.Service.Utils;
-using ITHunterview.Service.Utils;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.UseCase;
@@ -92,7 +91,7 @@ public class JobAnalysisUseCaseTests
     }
 
     [Fact]
-    public async Task RequestAnalysisAsync_WhenJobIsNotDraft_ThrowsInvalidOperationException()
+    public async Task RequestAnalysisAsync_WhenPublishedAnalysisIsCurrent_ThrowsInvalidOperationException()
     {
         var jobId = Guid.NewGuid();
         var recruiterId = Guid.NewGuid();
@@ -101,7 +100,14 @@ public class JobAnalysisUseCaseTests
             .Setup(x => x.GetRequestContextAsync(jobId, recruiterId, default))
             .ReturnsAsync(new JobAnalysisRequestContext
             {
-                Job = new JobPostings { Id = jobId, Status = JobStatus.PUBLISHED },
+                Job = new JobPostings
+                {
+                    Id = jobId,
+                    Status = JobStatus.PUBLISHED,
+                    AnalysisRevision = 1,
+                    EffectiveAnalysisRevision = 1,
+                    ParseStatus = "SUCCESS"
+                },
                 IsCompanyVerified = true
             });
 
@@ -110,7 +116,99 @@ public class JobAnalysisUseCaseTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => useCase.RequestAnalysisAsync(
             jobId, recruiterId, new AnalyzeJobRequestDto { ExpectedRevision = 1 }));
 
-        Assert.Contains("ONLY_DRAFT_JOB_CAN_BE_ANALYZED", ex.Message);
+        Assert.Contains("JOB_ANALYSIS_NOT_REQUIRED", ex.Message);
+    }
+
+    [Fact]
+    public async Task RequestAnalysisAsync_WhenPublishedHasUnappliedSemanticRevision_ReusesCurrentRun()
+    {
+        var jobId = Guid.NewGuid();
+        var recruiterId = Guid.NewGuid();
+        var run = new JobAnalysisRuns
+        {
+            Id = Guid.NewGuid(),
+            JobId = jobId,
+            InputRevision = 2,
+            Status = JobAnalysisStatus.READY,
+            IdempotencyKey = "published-edit"
+        };
+        var repository = new Mock<IJobAnalysisRepository>();
+        repository
+            .Setup(x => x.GetRequestContextAsync(jobId, recruiterId, default))
+            .ReturnsAsync(new JobAnalysisRequestContext
+            {
+                Job = new JobPostings
+                {
+                    Id = jobId,
+                    Status = JobStatus.PUBLISHED,
+                    AnalysisRevision = 2,
+                    EffectiveAnalysisRevision = 1,
+                    ParseStatus = "STALE"
+                },
+                IsCompanyVerified = true
+            });
+        repository
+            .Setup(x => x.FindByIdempotencyKeyAsync(jobId, "published-edit", default))
+            .ReturnsAsync(run);
+        repository
+            .Setup(x => x.ActivateReusableRunAsync(jobId, run.Id, 2, default))
+            .ReturnsAsync(true);
+
+        var result = await CreateUseCase(repository.Object).RequestAnalysisAsync(
+            jobId,
+            recruiterId,
+            new AnalyzeJobRequestDto { ExpectedRevision = 2, IdempotencyKey = "published-edit" });
+
+        Assert.Equal(run.Id, result.RunId);
+        Assert.True(result.IsReused);
+    }
+
+    [Fact]
+    public async Task RetryAnalysisAsync_WhenPublishedCurrentRunFailed_AllowsRetry()
+    {
+        var jobId = Guid.NewGuid();
+        var recruiterId = Guid.NewGuid();
+        var failedRunId = Guid.NewGuid();
+        var reusableRun = new JobAnalysisRuns
+        {
+            Id = Guid.NewGuid(),
+            JobId = jobId,
+            InputRevision = 3,
+            Status = JobAnalysisStatus.PENDING,
+            IdempotencyKey = "published-retry"
+        };
+        var context = new JobAnalysisRequestContext
+        {
+            Job = new JobPostings
+            {
+                Id = jobId,
+                Status = JobStatus.PUBLISHED,
+                AnalysisRevision = 3,
+                EffectiveAnalysisRevision = 2,
+                ParseStatus = "FAILED"
+            },
+            IsCompanyVerified = true
+        };
+        var repository = new Mock<IJobAnalysisRepository>();
+        repository.Setup(x => x.GetRequestContextAsync(jobId, recruiterId, default)).ReturnsAsync(context);
+        repository.Setup(x => x.GetRunAsync(failedRunId, default)).ReturnsAsync(new JobAnalysisRuns
+        {
+            Id = failedRunId,
+            JobId = jobId,
+            InputRevision = 3,
+            Status = JobAnalysisStatus.FAILED
+        });
+        repository.Setup(x => x.FindByIdempotencyKeyAsync(jobId, "published-retry", default)).ReturnsAsync(reusableRun);
+        repository.Setup(x => x.ActivateReusableRunAsync(jobId, reusableRun.Id, 3, default)).ReturnsAsync(true);
+
+        var result = await CreateUseCase(repository.Object).RetryAnalysisAsync(
+            jobId,
+            failedRunId,
+            recruiterId,
+            new AnalyzeJobRequestDto { ExpectedRevision = 3, IdempotencyKey = "published-retry" });
+
+        Assert.Equal(reusableRun.Id, result.RunId);
+        Assert.True(result.IsQueued);
     }
 
     [Fact]

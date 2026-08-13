@@ -69,6 +69,7 @@ namespace ITHunterview.Service.DTOs.Job
         public System.Collections.Generic.List<string>? JobDomain { get; set; }
         public System.Collections.Generic.List<JobSkillRequirementDto> Skills { get; set; } = new();
         public int AnalysisRevision { get; set; } = 1;
+        public bool RequiresAnalysis { get; set; }
 
         public bool IsBanned { get; set; }
         public string? BanReason { get; set; }

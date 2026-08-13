@@ -1023,6 +1023,8 @@
   "RecruiterJobEdit": {
     "pageTitle": "Edit Job Posting (Draft)",
     "pageDesc": "Update detailed information. When changing description/requirements, the system will increase the AI analysis version.",
+    "publishedPageTitle": "Edit published job posting",
+    "publishedPageDesc": "Changes are saved to the live posting. AI analysis only runs again when the job description or requirements change.",
     "loading": "Loading job details...",
     "verificationRequired": "Verification Required",
     "verificationMsg": "Your company needs to be verified before you can edit job postings.",
@@ -1056,6 +1058,7 @@
     "cancel": "Cancel",
     "saveDraft": "Save Changes",
     "publish": "Publish",
+    "updateAndPreview": "Update and preview",
     "updateFail": "Failed to update job posting",
     "errTitleReq": "Job Title is required",
     "errLocReq": "Location is required",
@@ -1075,18 +1078,26 @@
     "startAiError": "Unable to start AI analysis.",
     "retryAiError": "Unable to retry AI analysis.",
     "publishError": "Unable to publish this job posting.",
+    "updateError": "Unable to complete this job posting update.",
     "loading": "Loading job posting details...",
     "notFound": "Job posting not found or an error occurred.",
     "goBackList": "Back to jobs list",
     "pageTitle": "Preview and publish job posting",
     "pageDesc": "Job Code: {code} · Revision #{rev}",
+    "publishedPageTitle": "Preview published job changes",
+    "publishedPageDesc": "Job Code: {code} · Update revision #{rev}",
     "editDraft": "Edit Draft",
+    "editPublished": "Edit changes",
     "publishBtn": "Publish job posting",
+    "finalizeChanges": "Complete update",
+    "analysisNotRequiredTitle": "No new AI analysis is required.",
+    "analysisNotRequiredDesc": "The job description and requirements did not change. Review the posting and complete the update.",
     "publishBlock": "Cannot publish job posting yet:",
     "noSkillsTitle": "Publish without standard skill tags?",
     "noSkillsDesc": "AI has saved the requirements for detailed matching. However, no skills match the standard dictionary yet, so this posting will not have standard skill tags or filters.",
     "cancel": "Go back",
-    "publishAnyway": "Publish anyway"
+    "publishAnyway": "Publish anyway",
+    "updateAnyway": "Complete update"
   },
   "RecruiterJobPreviewComp": {
     "AnalysisStateCard": {
@@ -1096,6 +1107,9 @@
       "editDraft": "Edit Draft",
       "staleTitle": "Job requirements content has changed.",
       "staleDesc": "Old results are no longer applicable. Go back to draft, then click Publish to run analysis for the new content.",
+      "publishedStaleTitle": "The analyzed content of the published job has changed.",
+      "publishedStaleDesc": "AI must analyze the new job description or requirements before this update can be completed.",
+      "editPublished": "Edit changes",
       "analyzing": "AI is analyzing job description{rev}...",
       "analyzingDesc": "The system automatically updates when there is a result. You can continue waiting on this page.",
       "failed": "AI analysis failed{code}.",
@@ -1104,6 +1118,7 @@
       "readyTitle": "AI analysis is ready.",
       "readyStaleTitle": "Analysis result is no longer current.",
       "readyDesc": "Skills matched to the dictionary have been automatically tagged. You can check the preview and publish the job posting.",
+      "publishedReadyDesc": "The updated skill analysis is ready. Review the preview and complete the update.",
       "readyStaleDesc": "Please re-analyze the draft before continuing."
     },
     "CandidateJobPreview": {

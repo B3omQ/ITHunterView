@@ -68,7 +68,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
         public async Task UpdateAsync(JobPostings job)
         {
-            _context.JobPostings.Update(job);
+            if (_context.Entry(job).State == EntityState.Detached)
+            {
+                _context.JobPostings.Update(job);
+            }
             await _context.SaveChangesAsync();
         }
 

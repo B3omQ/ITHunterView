@@ -1023,6 +1023,8 @@
   "RecruiterJobEdit": {
     "pageTitle": "Chỉnh sửa tin tuyển dụng (Bản thảo)",
     "pageDesc": "Cập nhật thông tin chi tiết. Khi thay đổi mô tả/yêu cầu, hệ thống sẽ tăng phiên bản phân tích AI.",
+    "publishedPageTitle": "Chỉnh sửa tin tuyển dụng đang đăng",
+    "publishedPageDesc": "Thay đổi được lưu vào tin đang hiển thị. AI chỉ phân tích lại khi mô tả công việc hoặc yêu cầu ứng viên thay đổi.",
     "loading": "Đang tải chi tiết công việc...",
     "verificationRequired": "Yêu cầu Xác minh",
     "verificationMsg": "Công ty của bạn cần được xác minh trước khi có thể chỉnh sửa tin tuyển dụng.",
@@ -1056,6 +1058,7 @@
     "cancel": "Hủy",
     "saveDraft": "Lưu thay đổi",
     "publish": "Xuất bản",
+    "updateAndPreview": "Cập nhật và xem trước",
     "updateFail": "Không thể cập nhật tin tuyển dụng",
     "errTitleReq": "Vui lòng nhập Tiêu đề công việc",
     "errLocReq": "Vui lòng chọn Địa điểm",
@@ -1075,18 +1078,26 @@
     "startAiError": "Không thể bắt đầu phân tích AI.",
     "retryAiError": "Không thể thử lại phân tích AI.",
     "publishError": "Không thể xuất bản tin tuyển dụng này.",
+    "updateError": "Không thể hoàn tất cập nhật tin tuyển dụng này.",
     "loading": "Đang tải thông tin tin tuyển dụng...",
     "notFound": "Không tìm thấy tin tuyển dụng hoặc đã xảy ra lỗi.",
     "goBackList": "Quay lại danh sách",
     "pageTitle": "Xem trước và xuất bản tin tuyển dụng",
     "pageDesc": "Mã tin: {code} · Lượt sửa #{rev}",
+    "publishedPageTitle": "Xem trước thay đổi của tin đang đăng",
+    "publishedPageDesc": "Mã tin: {code} · Phiên bản cập nhật #{rev}",
     "editDraft": "Chỉnh sửa bản thảo",
+    "editPublished": "Chỉnh sửa thay đổi",
     "publishBtn": "Xuất bản tin tuyển dụng",
+    "finalizeChanges": "Hoàn tất cập nhật",
+    "analysisNotRequiredTitle": "Không cần chạy lại phân tích AI.",
+    "analysisNotRequiredDesc": "Mô tả công việc và yêu cầu ứng viên không thay đổi. Hãy kiểm tra tin và hoàn tất cập nhật.",
     "publishBlock": "Chưa thể xuất bản tin tuyển dụng:",
     "noSkillsTitle": "Xuất bản khi chưa có skill tag chuẩn?",
     "noSkillsDesc": "AI vẫn đã lưu các yêu cầu để matching chi tiết. Tuy nhiên, chưa có kỹ năng nào khớp từ điển chuẩn nên tin này sẽ không có tag hoặc bộ lọc theo kỹ năng.",
     "cancel": "Quay lại",
-    "publishAnyway": "Vẫn xuất bản"
+    "publishAnyway": "Vẫn xuất bản",
+    "updateAnyway": "Hoàn tất cập nhật"
   },
   "RecruiterJobPreviewComp": {
     "AnalysisStateCard": {
@@ -1096,6 +1107,9 @@
       "editDraft": "Chỉnh sửa bản thảo",
       "staleTitle": "Nội dung yêu cầu công việc đã thay đổi.",
       "staleDesc": "Kết quả cũ không còn áp dụng. Quay lại bản thảo, sau đó bấm Publish để chạy phân tích cho nội dung mới.",
+      "publishedStaleTitle": "Nội dung phân tích của tin đang đăng đã thay đổi.",
+      "publishedStaleDesc": "AI cần phân tích lại mô tả công việc hoặc yêu cầu ứng viên mới trước khi hoàn tất cập nhật.",
+      "editPublished": "Chỉnh sửa thay đổi",
       "analyzing": "AI đang phân tích mô tả công việc{rev}...",
       "analyzingDesc": "Hệ thống tự động cập nhật khi có kết quả. Bạn có thể tiếp tục chờ tại trang này.",
       "failed": "Phân tích AI thất bại{code}.",
@@ -1104,6 +1118,7 @@
       "readyTitle": "Phân tích AI đã sẵn sàng.",
       "readyStaleTitle": "Kết quả phân tích không còn là bản hiện hành.",
       "readyDesc": "Kỹ năng khớp từ điển đã được tự động gắn tag. Bạn có thể kiểm tra bản xem trước và xuất bản tin tuyển dụng.",
+      "publishedReadyDesc": "Phân tích kỹ năng cho nội dung mới đã sẵn sàng. Hãy kiểm tra bản xem trước và hoàn tất cập nhật.",
       "readyStaleDesc": "Hãy phân tích lại bản thảo trước khi tiếp tục."
     },
     "CandidateJobPreview": {

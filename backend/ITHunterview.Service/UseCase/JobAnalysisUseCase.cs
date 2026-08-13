@@ -42,10 +42,7 @@ namespace ITHunterview.Service.UseCase
             }
 
             var job = reqContext.Job;
-            if (job.Status != JobStatus.DRAFT)
-            {
-                throw new InvalidOperationException("ONLY_DRAFT_JOB_CAN_BE_ANALYZED: Analysis can only be requested for jobs in DRAFT status.");
-            }
+            EnsureCanAnalyze(job);
 
             if (!reqContext.IsCompanyVerified)
             {
@@ -148,10 +145,7 @@ namespace ITHunterview.Service.UseCase
             }
 
             var job = reqContext.Job;
-            if (job.Status != JobStatus.DRAFT)
-            {
-                throw new InvalidOperationException("ONLY_DRAFT_JOB_CAN_BE_ANALYZED: Job is not in DRAFT status.");
-            }
+            EnsureCanAnalyze(job);
 
             var targetRun = await _jobAnalysisRepository.GetRunAsync(runId, ct);
             if (targetRun == null || targetRun.JobId != jobId)
@@ -271,6 +265,32 @@ namespace ITHunterview.Service.UseCase
                 IsReused = isReused,
                 IsQueued = isQueued
             };
+        }
+
+        private static void EnsureCanAnalyze(JobPostings job)
+        {
+            if (job.Status == JobStatus.DRAFT || IsPublishedWithPendingAnalysis(job))
+            {
+                return;
+            }
+
+            if (job.Status == JobStatus.PUBLISHED)
+            {
+                throw new InvalidOperationException("JOB_ANALYSIS_NOT_REQUIRED: The published job has no unapplied analysis revision.");
+            }
+
+            throw new InvalidOperationException("ONLY_EDITABLE_JOB_CAN_BE_ANALYZED: Analysis can only be requested for editable draft or published jobs.");
+        }
+
+        private static bool IsPublishedWithPendingAnalysis(JobPostings job)
+        {
+            if (job.Status != JobStatus.PUBLISHED || job.EffectiveAnalysisRevision == job.AnalysisRevision)
+            {
+                return false;
+            }
+
+            return job.ParseStatus?.ToUpperInvariant() is
+                "STALE" or "PENDING" or "PROCESSING" or "READY" or "FAILED" or "RAW_FALLBACK";
         }
     }
 }

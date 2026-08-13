@@ -608,7 +608,13 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 return res;
             }
 
-            if (job.Status == JobStatus.PUBLISHED)
+            var isPublishedEdit = job.Status == JobStatus.PUBLISHED;
+            var hasPendingPublishedAnalysis = isPublishedEdit
+                && job.EffectiveAnalysisRevision != job.AnalysisRevision
+                && job.ParseStatus?.ToUpperInvariant() is
+                    "STALE" or "PENDING" or "PROCESSING" or "READY" or "FAILED" or "RAW_FALLBACK";
+
+            if (isPublishedEdit && !hasPendingPublishedAnalysis)
             {
                 res.Success = true;
                 res.Job = job;
@@ -616,11 +622,19 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 return res;
             }
 
-            if (job.Status != JobStatus.DRAFT)
+            if (job.Status != JobStatus.DRAFT && !isPublishedEdit)
             {
                 res.Success = false;
-                res.ErrorCode = "JOB_NOT_DRAFT";
-                res.ErrorMessage = "Only a DRAFT job can be finalized.";
+                res.ErrorCode = "JOB_NOT_EDITABLE";
+                res.ErrorMessage = "Only an editable DRAFT or PUBLISHED job can be finalized.";
+                return res;
+            }
+
+            if (job.IsBanned)
+            {
+                res.Success = false;
+                res.ErrorCode = "JOB_BANNED";
+                res.ErrorMessage = "A banned job posting cannot be finalized.";
                 return res;
             }
 
@@ -678,12 +692,22 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 return res;
             }
 
-            // The publish entitlement participates in this same transaction. A
-            // failed finalization therefore cannot leave the recruiter charged for
-            // a job that did not become PUBLISHED.
-            await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "PostJob", job.Id.ToString());
+            if (!isPublishedEdit)
+            {
+                // The initial publish entitlement participates in this same transaction.
+                // Updating an already-published job must not charge PostJob again.
+                await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "PostJob", job.Id.ToString());
+            }
 
             bool isRawFallback = run.AnalysisQuality == JdAnalysisQuality.INVALID;
+
+            if (!isRawFallback && string.IsNullOrWhiteSpace(run.EffectiveAnalysisJson))
+            {
+                res.Success = false;
+                res.ErrorCode = "ANALYSIS_RESULT_INTEGRITY_ERROR";
+                res.ErrorMessage = "Analysis result is incomplete. Please retry analysis.";
+                return res;
+            }
 
             // Remove existing JSR
             var oldJsr = await _context.JobSkillRequirements.Where(jsr => jsr.JobId == jobId).ToListAsync(ct);
@@ -706,14 +730,6 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             _context.JobSkillRequirements.AddRange(newJsrList);
 
-            if (!isRawFallback && string.IsNullOrWhiteSpace(run.EffectiveAnalysisJson))
-            {
-                res.Success = false;
-                res.ErrorCode = "ANALYSIS_RESULT_INTEGRITY_ERROR";
-                res.ErrorMessage = "Analysis result is incomplete. Please retry analysis.";
-                return res;
-            }
-
             job.ParsedData = isRawFallback ? null : run.EffectiveAnalysisJson;
             job.ParseStatus = isRawFallback ? "RAW_FALLBACK" : "SUCCESS";
             job.ParseError = null;
@@ -728,9 +744,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             job.ExperienceEmbedding = null;
             job.DomainEmbedding = null;
 
-            var targetStatus = reviewRequired ? JobStatus.PENDING_REVIEW : JobStatus.PUBLISHED;
+            var targetStatus = isPublishedEdit
+                ? JobStatus.PUBLISHED
+                : reviewRequired ? JobStatus.PENDING_REVIEW : JobStatus.PUBLISHED;
             job.Status = targetStatus;
-            if (targetStatus == JobStatus.PUBLISHED && !job.PublishedAt.HasValue)
+            if (!isPublishedEdit && targetStatus == JobStatus.PUBLISHED && !job.PublishedAt.HasValue)
             {
                 job.PublishedAt = DateTime.UtcNow;
                 job.ExpiresAt = job.PublishedAt.Value.AddDays(30);

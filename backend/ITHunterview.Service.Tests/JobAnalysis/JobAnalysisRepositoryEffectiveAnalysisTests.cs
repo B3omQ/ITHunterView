@@ -109,7 +109,184 @@ public sealed class JobAnalysisRepositoryEffectiveAnalysisTests : IDisposable
         (await _context.JobSkillRequirements.CountAsync(item => item.JobId == seed.Job.Id)).Should().Be(0);
     }
 
-    private async Task<SeedResult> SeedAsync(JdAnalysisQuality quality, bool includeAcceptedSkill)
+    [Fact]
+    public async Task FinalizeAsync_WhenPublishedEditIsReady_AppliesAnalysisWithoutRepublishingOrChargingQuota()
+    {
+        var seed = await SeedAsync(JdAnalysisQuality.COMPLETE, includeAcceptedSkill: true, publishedEdit: true);
+        var publishedAt = seed.Job.PublishedAt;
+        var expiresAt = seed.Job.ExpiresAt;
+
+        var result = await _sut.FinalizeAsync(
+            seed.Job.Id,
+            seed.Run.Id,
+            seed.RecruiterId,
+            seed.Job.AnalysisRevision,
+            seed.Run.DecisionVersion,
+            confirmNoStandardSkills: false,
+            reviewRequired: false);
+
+        result.Success.Should().BeTrue();
+        _context.ChangeTracker.Clear();
+        var persisted = await _context.JobPostings.SingleAsync(job => job.Id == seed.Job.Id);
+        persisted.Status.Should().Be(JobStatus.PUBLISHED);
+        persisted.PublishedAt.Should().Be(publishedAt);
+        persisted.ExpiresAt.Should().Be(expiresAt);
+        persisted.ApplicationCount.Should().Be(12);
+        persisted.ViewCount.Should().Be(34);
+        persisted.ParsedData.Should().Be(EffectiveAnalysis);
+        persisted.EffectiveAnalysisRevision.Should().Be(seed.Job.AnalysisRevision);
+        persisted.EffectiveAnalysisRunId.Should().Be(seed.Run.Id);
+        (await _context.JobSkillRequirements.SingleAsync(item => item.JobId == seed.Job.Id)).SkillId.Should().Be(101);
+        _featureUsage.Verify(
+            service => service.TryConsumeFeatureAsync(It.IsAny<Guid>(), "PostJob", It.IsAny<string?>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task FinalizeAsync_WhenPublishedEditWasAlreadyApplied_IsIdempotent()
+    {
+        var seed = await SeedAsync(JdAnalysisQuality.COMPLETE, includeAcceptedSkill: true, publishedEdit: true);
+
+        var first = await _sut.FinalizeAsync(
+            seed.Job.Id,
+            seed.Run.Id,
+            seed.RecruiterId,
+            seed.Job.AnalysisRevision,
+            seed.Run.DecisionVersion,
+            confirmNoStandardSkills: false,
+            reviewRequired: false);
+        var second = await _sut.FinalizeAsync(
+            seed.Job.Id,
+            seed.Run.Id,
+            seed.RecruiterId,
+            seed.Job.AnalysisRevision,
+            seed.Run.DecisionVersion,
+            confirmNoStandardSkills: false,
+            reviewRequired: false);
+
+        first.Success.Should().BeTrue();
+        second.Success.Should().BeTrue();
+        (await _context.JobSkillRequirements.CountAsync(item => item.JobId == seed.Job.Id)).Should().Be(1);
+        _featureUsage.Verify(
+            service => service.TryConsumeFeatureAsync(It.IsAny<Guid>(), "PostJob", It.IsAny<string?>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task FinalizeAsync_WhenLegacyPublishedJobNeedsNoAnalysis_CompletesAsNoOp()
+    {
+        var seed = await SeedAsync(JdAnalysisQuality.COMPLETE, includeAcceptedSkill: true, publishedEdit: true);
+        var persisted = await _context.JobPostings.SingleAsync(job => job.Id == seed.Job.Id);
+        persisted.EffectiveAnalysisRevision = null;
+        persisted.ActiveAnalysisRunId = null;
+        persisted.ParseStatus = "SUCCESS";
+        await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear();
+
+        var result = await _sut.FinalizeAsync(
+            seed.Job.Id,
+            Guid.Empty,
+            seed.RecruiterId,
+            seed.Job.AnalysisRevision,
+            expectedDecisionVersion: 0,
+            confirmNoStandardSkills: false,
+            reviewRequired: false);
+
+        result.Success.Should().BeTrue();
+        (await _context.JobPostings.SingleAsync(job => job.Id == seed.Job.Id)).ParsedData
+            .Should().Be("{\"skills\":[\"Legacy\"]}");
+        _featureUsage.Verify(
+            service => service.TryConsumeFeatureAsync(It.IsAny<Guid>(), "PostJob", It.IsAny<string?>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task FinalizeAsync_WhenPublishedEditWasBanned_PreservesEffectiveAnalysisAndSkills()
+    {
+        var seed = await SeedAsync(JdAnalysisQuality.COMPLETE, includeAcceptedSkill: true, publishedEdit: true);
+        var persisted = await _context.JobPostings.SingleAsync(job => job.Id == seed.Job.Id);
+        persisted.IsBanned = true;
+        await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear();
+
+        var result = await _sut.FinalizeAsync(
+            seed.Job.Id,
+            seed.Run.Id,
+            seed.RecruiterId,
+            seed.Job.AnalysisRevision,
+            seed.Run.DecisionVersion,
+            confirmNoStandardSkills: false,
+            reviewRequired: false);
+
+        result.Success.Should().BeFalse();
+        result.ErrorCode.Should().Be("JOB_BANNED");
+        (await _context.JobPostings.SingleAsync(job => job.Id == seed.Job.Id)).ParsedData
+            .Should().Be("{\"skills\":[\"Legacy\"]}");
+        (await _context.JobSkillRequirements.SingleAsync(item => item.JobId == seed.Job.Id)).SkillId
+            .Should().Be(102);
+        _featureUsage.Verify(
+            service => service.TryConsumeFeatureAsync(It.IsAny<Guid>(), "PostJob", It.IsAny<string?>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task JobPostingRepository_UpdateTrackedEntity_DoesNotOverwriteConcurrentCounters()
+    {
+        var databaseName = Guid.NewGuid().ToString("N");
+        var options = new DbContextOptionsBuilder<ITHunterviewContext>()
+            .UseInMemoryDatabase(databaseName)
+            .Options;
+        var jobId = Guid.NewGuid();
+
+        await using (var seedContext = new TestContext(options))
+        {
+            seedContext.JobPostings.Add(new JobPostings
+            {
+                Id = jobId,
+                JobCode = "JB-CONCURRENCY",
+                RecruiterId = Guid.NewGuid(),
+                CompanyId = Guid.NewGuid(),
+                Title = "Original title",
+                Description = "Description",
+                Requirements = "Requirements",
+                Benefits = string.Empty,
+                Currency = "VND",
+                Location = "HCMC",
+                Status = JobStatus.PUBLISHED,
+                ApplicationCount = 1,
+                ViewCount = 2,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using var editContext = new TestContext(options);
+        var repository = new JobPostingRepository(editContext);
+        var editingJob = await repository.GetByIdAsync(jobId);
+
+        await using (var counterContext = new TestContext(options))
+        {
+            var counterJob = await counterContext.JobPostings.SingleAsync(job => job.Id == jobId);
+            counterJob.ApplicationCount = 7;
+            counterJob.ViewCount = 11;
+            await counterContext.SaveChangesAsync();
+        }
+
+        editingJob!.Title = "Edited title";
+        await repository.UpdateAsync(editingJob);
+
+        await using var verifyContext = new TestContext(options);
+        var persisted = await verifyContext.JobPostings.SingleAsync(job => job.Id == jobId);
+        persisted.Title.Should().Be("Edited title");
+        persisted.ApplicationCount.Should().Be(7);
+        persisted.ViewCount.Should().Be(11);
+    }
+
+    private async Task<SeedResult> SeedAsync(
+        JdAnalysisQuality quality,
+        bool includeAcceptedSkill,
+        bool publishedEdit = false)
     {
         var recruiterId = Guid.NewGuid();
         var company = new Companies
@@ -140,9 +317,16 @@ public sealed class JobAnalysisRepositoryEffectiveAnalysisTests : IDisposable
             Benefits = string.Empty,
             Currency = "VND",
             Location = "HCMC",
-            Status = JobStatus.DRAFT,
+            Status = publishedEdit ? JobStatus.PUBLISHED : JobStatus.DRAFT,
             AnalysisRevision = 3,
             ParseStatus = "READY",
+            EffectiveAnalysisRevision = publishedEdit ? 2 : null,
+            EffectiveAnalysisRunId = publishedEdit ? Guid.NewGuid() : null,
+            ParsedData = publishedEdit ? "{\"skills\":[\"Legacy\"]}" : null,
+            PublishedAt = publishedEdit ? DateTime.UtcNow.AddDays(-10) : null,
+            ExpiresAt = publishedEdit ? DateTime.UtcNow.AddDays(20) : null,
+            ApplicationCount = publishedEdit ? 12 : 0,
+            ViewCount = publishedEdit ? 34 : 0,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -197,6 +381,24 @@ public sealed class JobAnalysisRepositoryEffectiveAnalysisTests : IDisposable
             };
             _context.Skills.Add(skill);
             _context.JobSkillDecisions.Add(decision);
+        }
+
+        if (publishedEdit)
+        {
+            var legacySkill = new Skills
+            {
+                Id = 102,
+                Name = "Legacy",
+                NormalizedName = "legacy",
+                Status = SkillStatus.ACTIVE
+            };
+            _context.Skills.Add(legacySkill);
+            _context.JobSkillRequirements.Add(new JobSkillRequirements
+            {
+                JobId = job.Id,
+                SkillId = legacySkill.Id,
+                IsMandatory = true
+            });
         }
 
         await _context.SaveChangesAsync();

@@ -23,6 +23,7 @@ import {
   validateRecruiterJobPostingRichTextFields,
 } from "@/lib/recruiter-job-posting-form"
 import { JOB_POSTING_RICH_TEXT_LIMITS } from "@/lib/job-posting-markdown"
+import { canSaveJobAsDraft, getJobPreviewRoute } from "@/lib/recruiter-job-edit-flow"
 import { useTranslations } from "next-intl"
 
 export default function EditJobPage() {
@@ -63,6 +64,7 @@ export default function EditJobPage() {
 
   const loading = metadataLoading || detailLoading || companyLoading
   const error = metadataError || detailError
+  const isPublishedJob = job?.status === "PUBLISHED"
 
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -182,8 +184,7 @@ export default function EditJobPage() {
       const res = await updateJob(payload)
       if (res.success && res.data) {
         if (action === "PUBLISH") {
-          const needsAnalysis = res.data.parseStatus === "NOT_REQUESTED" || res.data.parseStatus === "STALE"
-          router.push("/recruiter/jobs/" + id + "/preview" + (needsAnalysis ? "?publish=1" : ""))
+          router.push(getJobPreviewRoute(id, res.data.requiresAnalysis))
         } else {
           router.push("/recruiter/jobs")
         }
@@ -234,8 +235,12 @@ export default function EditJobPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">{t("pageTitle")}</h1>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">{t("pageDesc")}</p>
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+              {isPublishedJob ? t("publishedPageTitle") : t("pageTitle")}
+            </h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              {isPublishedJob ? t("publishedPageDesc") : t("pageDesc")}
+            </p>
           </div>
         </div>
 
@@ -525,20 +530,22 @@ export default function EditJobPage() {
             {t("cancel")}
           </Button>
 
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => handleSubmit("DRAFT")}
-            disabled={loading || submittingAction !== null}
-            className="bg-slate-200 hover:bg-slate-300 text-slate-800"
-          >
-            {submittingAction === "DRAFT" ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4 mr-2" />
-            )}
-            {t("saveDraft")}
-          </Button>
+          {job && canSaveJobAsDraft(job.status) && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => handleSubmit("DRAFT")}
+              disabled={loading || submittingAction !== null}
+              className="bg-slate-200 hover:bg-slate-300 text-slate-800"
+            >
+              {submittingAction === "DRAFT" ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              {t("saveDraft")}
+            </Button>
+          )}
 
           <Button
             type="button"
@@ -551,7 +558,7 @@ export default function EditJobPage() {
             ) : (
               <Send className="w-4 h-4 mr-2" />
             )}
-            {t("publish")}
+            {isPublishedJob ? t("updateAndPreview") : t("publish")}
           </Button>
         </div>
       </div>
