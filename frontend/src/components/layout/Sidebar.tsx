@@ -203,9 +203,8 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                   }
                 }}
                 title={!isOpen ? translatedLabel : undefined}
-                className={`sidebar-item cursor-pointer flex items-center h-10 rounded-xl text-sm font-medium transition-all group ${
-                  isOpen ? 'gap-3 px-3' : 'justify-center px-0'
-                } ${(active || (item.children && item.children.some(c => isActive(c.href)))) && !item.children
+                className={`sidebar-item cursor-pointer flex items-center h-10 rounded-xl text-sm font-medium transition-all group ${isOpen ? 'gap-3 px-3' : 'justify-center px-0'
+                  } ${(active || (item.children && item.children.some(c => isActive(c.href)))) && !item.children
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
                     : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
                   }`}
@@ -246,8 +245,8 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                         key={child.labelKey}
                         href={child.href}
                         className={`flex items-center h-8 px-3 rounded-lg text-[13px] font-medium transition-all ${childActive
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/30"
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/30"
                           }`}
                       >
                         {t(child.labelKey as any)}
