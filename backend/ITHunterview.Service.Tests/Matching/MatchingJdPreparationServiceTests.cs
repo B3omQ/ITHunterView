@@ -31,6 +31,39 @@ public sealed class MatchingJdPreparationServiceTests
     }
 
     [Fact]
+    public async Task PrepareAsync_PublishedEditHasUnappliedRevision_DoesNotReuseOrPersistOldAnalysis()
+    {
+        var extractor = new Mock<IJobAnalysisExtractionService>(MockBehavior.Strict);
+        var validated = new ValidatedJobAnalysis { Quality = JdAnalysisQuality.COMPLETE };
+        extractor.Setup(service => service.ExtractWithActivePromptsAsync(
+                It.IsAny<JobAnalysisInputSnapshot>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new JobAnalysisExtractionResult
+            {
+                Quality = JdAnalysisQuality.COMPLETE,
+                Validation = new ValidationResult<ValidatedJobAnalysis>
+                {
+                    IsValid = true,
+                    Quality = JdAnalysisQuality.COMPLETE,
+                    Data = validated
+                },
+                Coverage = new JdAnalysisCoverage(1, 1, 0, 1, 1, 0, true)
+            });
+        extractor.Setup(service => service.SerializeEffectiveAnalysis(validated))
+            .Returns(EffectiveJson("COMPLETE"));
+        var service = new MatchingJdPreparationService(
+            extractor.Object,
+            new JobAnalysisInputBuilder(),
+            new JdRequirementProjector());
+        var snapshot = SavedSnapshot(EffectiveJson("COMPLETE"), "STALE", 8, 7);
+
+        var prepared = Assert.IsType<PreparedStructuredJdMatchingInput>(await service.PrepareAsync(snapshot));
+
+        Assert.Null(prepared.PersistenceIntent);
+        extractor.VerifyAll();
+    }
+
+    [Fact]
     public async Task PrepareAsync_CurrentSavedRawFallback_ReturnsRawInputWithoutExtraction()
     {
         var extractor = new Mock<IJobAnalysisExtractionService>(MockBehavior.Strict);

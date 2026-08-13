@@ -2,7 +2,7 @@
 
 import { use, useEffect, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { AlertTriangle, ArrowLeft, Edit, Send } from "lucide-react"
+import { AlertTriangle, ArrowLeft, CheckCircle2, Edit, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -26,6 +26,10 @@ import {
   getEffectiveJobAnalysisLifecycle,
   isCurrentJobAnalysis,
 } from "@/lib/job-analysis-lifecycle"
+import {
+  canFinalizePublishedJobWithoutAnalysis,
+  shouldAutoRequestJobAnalysis,
+} from "@/lib/recruiter-job-edit-flow"
 import { CandidateJobPreview } from "./_components/CandidateJobPreview"
 import { AnalysisStateCard } from "./_components/AnalysisStateCard"
 import { SkillAnalysisSummaryCard } from "./_components/SkillAnalysisSummaryCard"
@@ -40,6 +44,8 @@ function createIdempotencyKey() {
     ? crypto.randomUUID()
     : undefined
 }
+
+const EMPTY_GUID = "00000000-0000-0000-0000-000000000000"
 
 export default function JobPreviewPage({ params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = use(params)
@@ -57,6 +63,10 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
   const requestAnalysisMutation = useRequestJobAnalysis(jobId)
   const retryAnalysisMutation = useRetryJobAnalysis(jobId, preview?.analysisRunId || "")
   const finalizeJobMutation = useFinalizeJob(jobId)
+  const isPublishedJob = job?.status === "PUBLISHED"
+  const canCompleteWithoutAnalysis = job
+    ? canFinalizePublishedJobWithoutAnalysis(job.status, job.requiresAnalysis)
+    : false
 
   const refreshAuthoritativeState = () => {
     void refreshJob()
@@ -69,7 +79,7 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
     }
 
     autoStartedRef.current = true
-    if (lifecycle === "NOT_REQUESTED" || lifecycle === "STALE") {
+    if (shouldAutoRequestJobAnalysis(job.requiresAnalysis, lifecycle)) {
       const timer = window.setTimeout(() => {
         setActionError(null)
         requestAnalysisMutation.mutate(
@@ -88,7 +98,7 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
     }
 
     router.replace("/recruiter/jobs/" + jobId + "/preview")
-  }, [job, jobId, lifecycle, previewLoaded, previewLoading, refreshJob, refetchAnalysis, requestAnalysisMutation, router, searchParams])
+  }, [job, jobId, lifecycle, previewLoaded, previewLoading, refreshJob, refetchAnalysis, requestAnalysisMutation, router, searchParams, t])
 
   const retryAnalysis = () => {
     if (!job || !preview?.analysisRunId || lifecycle !== "FAILED") return
@@ -105,19 +115,20 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
   }
 
   const finalize = (confirmNoStandardSkills: boolean) => {
-    if (!job || !preview || lifecycle !== "READY" || !currentAnalysis) return
+    if (!job) return
+    if (!canCompleteWithoutAnalysis && (!preview || lifecycle !== "READY" || !currentAnalysis)) return
     setActionError(null)
     finalizeJobMutation.mutate(
       {
-        analysisRunId: preview.analysisRunId,
+        analysisRunId: canCompleteWithoutAnalysis ? EMPTY_GUID : preview!.analysisRunId,
         expectedJobRevision: job.analysisRevision,
-        expectedDecisionVersion: preview.decisionVersion,
+        expectedDecisionVersion: canCompleteWithoutAnalysis ? 0 : preview!.decisionVersion,
         confirmNoStandardSkills,
       },
       {
         onSuccess: () => router.push("/recruiter/jobs"),
         onError: (error) => {
-          setActionError(getErrorMessage(error, t("publishError")))
+          setActionError(getErrorMessage(error, isPublishedJob ? t("updateError") : t("publishError")))
           refreshAuthoritativeState()
         },
       },
@@ -125,6 +136,10 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
   }
 
   const handleFinalize = () => {
+    if (canCompleteWithoutAnalysis) {
+      finalize(false)
+      return
+    }
     if (!preview || !preview.canFinalize || lifecycle !== "READY" || !currentAnalysis) return
     const hasAcceptedStandardSkill = preview.suggestions.some(
       (suggestion) => suggestion.decisionStatus === "ACCEPTED" && suggestion.resolvedSkillId != null,
@@ -153,7 +168,7 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
     )
   }
 
-  const canPublish = preview?.canFinalize === true && lifecycle === "READY" && currentAnalysis
+  const canPublish = canCompleteWithoutAnalysis || (preview?.canFinalize === true && lifecycle === "READY" && currentAnalysis)
   const showAnalysisSummary = lifecycle === "READY" && currentAnalysis && Boolean(preview?.suggestions.length)
 
   return (
@@ -164,21 +179,25 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
             <ArrowLeft className="mr-1 size-4" />{t("goBackList")}
           </Button>
           <div>
-            <h1 className="text-xl font-bold">{t("pageTitle")}</h1>
-            <p className="text-xs text-muted-foreground">{t("pageDesc", { code: job.jobCode, rev: job.analysisRevision })}</p>
+            <h1 className="text-xl font-bold">{isPublishedJob ? t("publishedPageTitle") : t("pageTitle")}</h1>
+            <p className="text-xs text-muted-foreground">
+              {isPublishedJob
+                ? t("publishedPageDesc", { code: job.jobCode, rev: job.analysisRevision })
+                : t("pageDesc", { code: job.jobCode, rev: job.analysisRevision })}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => router.push("/recruiter/jobs/" + job.id + "/edit")}>
-            <Edit className="mr-1 size-4" />{t("editDraft")}
+            <Edit className="mr-1 size-4" />{isPublishedJob ? t("editPublished") : t("editDraft")}
           </Button>
           <Button size="sm" onClick={handleFinalize} disabled={!canPublish || finalizeJobMutation.isPending}>
-            <Send className="mr-1.5 size-4" />{preview?.finalActionLabel || t("publishBtn")}
+            <Send className="mr-1.5 size-4" />{isPublishedJob ? t("finalizeChanges") : t("publishBtn")}
           </Button>
         </div>
       </div>
 
-      {preview && !preview.canFinalize && preview.blockingReasons.length > 0 && (
+      {!canCompleteWithoutAnalysis && preview && !preview.canFinalize && preview.blockingReasons.length > 0 && (
         <Card className="border-amber-300 bg-amber-50">
           <CardContent className="flex items-start gap-3 p-4">
             <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600" />
@@ -192,15 +211,28 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
         </Card>
       )}
 
-      <AnalysisStateCard
-        preview={preview || null}
-        lifecycle={lifecycle}
-        isLoading={previewLoading}
-        isCurrentAnalysis={currentAnalysis}
-        onEditDraft={() => router.push("/recruiter/jobs/" + jobId + "/edit")}
-        onRetryAnalysis={retryAnalysis}
-        isRetrying={retryAnalysisMutation.isPending}
-      />
+      {canCompleteWithoutAnalysis ? (
+        <Card className="border-emerald-200 bg-emerald-50/50">
+          <CardContent className="flex items-center gap-3 p-4">
+            <CheckCircle2 className="size-5 text-emerald-600" />
+            <div>
+              <p className="text-sm font-medium text-emerald-900">{t("analysisNotRequiredTitle")}</p>
+              <p className="text-xs text-emerald-700">{t("analysisNotRequiredDesc")}</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <AnalysisStateCard
+          preview={preview || null}
+          lifecycle={lifecycle}
+          isLoading={previewLoading}
+          isCurrentAnalysis={currentAnalysis}
+          onEditDraft={() => router.push("/recruiter/jobs/" + jobId + "/edit")}
+          onRetryAnalysis={retryAnalysis}
+          isRetrying={retryAnalysisMutation.isPending}
+          mode={isPublishedJob ? "published-update" : "draft"}
+        />
+      )}
 
       {actionError && <Card className="border-destructive/40 bg-destructive/5"><CardContent className="p-4 text-sm text-destructive">{actionError}</CardContent></Card>}
 
@@ -218,7 +250,9 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => finalize(true)}>{t("publishAnyway")}</AlertDialogAction>
+            <AlertDialogAction onClick={() => finalize(true)}>
+              {isPublishedJob ? t("updateAnyway") : t("publishAnyway")}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -774,17 +774,19 @@ namespace ITHunterview.Service.UseCase
             {
                 string actionTag = fromSubscription ? $"ConsumeFeature:{featureKey}:Sub" : $"ConsumeFeature:{featureKey}:Coin";
                 var log = UserActivityLogs.Create(
-                    userId,
-                    "recruiter",
-                    ActivityLogCategory.DATA_MUTATION,
-                    "recruiter@ithunterview.com",
-                    actionTag,
-                    ActivityLogStatus.SUCCESS,
-                    "127.0.0.1",
-                    "System/FeatureUsage",
-                    "JobPostings",
-                    featureKey,
-                    referenceId
+                    userId: userId,
+                    actorRole: "recruiter",
+                    category: ActivityLogCategory.DATA_MUTATION,
+                    actorEmail: "recruiter@ithunterview.com",
+                    action: actionTag,
+                    status: ActivityLogStatus.SUCCESS,
+                    ipAddress: "127.0.0.1",
+                    userAgent: "System/FeatureUsage",
+                    tableName: "JobPostings",
+                    operationType: featureKey,
+                    snapshotDiff: referenceId is null
+                        ? null
+                        : JsonSerializer.Serialize(new { referenceId })
                 );
                 _context.UserActivityLogs.Add(log);
                 return Task.FromResult<Guid?>(log.Id);

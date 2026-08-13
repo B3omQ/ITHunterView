@@ -17,6 +17,7 @@ interface AnalysisStateCardProps {
   onEditDraft: () => void
   onRetryAnalysis: () => void
   isRetrying: boolean
+  mode?: "draft" | "published-update"
 }
 
 export function AnalysisStateCard({
@@ -27,8 +28,10 @@ export function AnalysisStateCard({
   onEditDraft,
   onRetryAnalysis,
   isRetrying,
+  mode = "draft",
 }: AnalysisStateCardProps) {
   const t = useTranslations("RecruiterJobPreviewComp.AnalysisStateCard")
+  const isPublishedUpdate = mode === "published-update"
 
   if (isLoading) {
     return (
@@ -56,9 +59,9 @@ export function AnalysisStateCard({
   if (lifecycle === "STALE") {
     return (
       <ActionCard
-        title={t("staleTitle")}
-        description={t("staleDesc")}
-        actionLabel={t("editDraft")}
+        title={isPublishedUpdate ? t("publishedStaleTitle") : t("staleTitle")}
+        description={isPublishedUpdate ? t("publishedStaleDesc") : t("staleDesc")}
+        actionLabel={isPublishedUpdate ? t("editPublished") : t("editDraft")}
         onAction={onEditDraft}
         isPending={false}
       />
@@ -151,7 +154,7 @@ export function AnalysisStateCard({
           </p>
           <p className="text-xs text-emerald-700">
             {isCurrentAnalysis
-              ? t("readyDesc")
+              ? (isPublishedUpdate ? t("publishedReadyDesc") : t("readyDesc"))
               : t("readyStaleDesc")}
           </p>
         </div>

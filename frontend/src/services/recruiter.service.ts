@@ -61,6 +61,7 @@ export interface JobPosting {
   parseStatus?: 'PENDING' | 'PROCESSING' | 'READY' | 'SUCCESS' | 'FAILED' | 'NOT_REQUESTED' | 'STALE';
   parseError?: string | null;
   analysisRevision: number;
+  requiresAnalysis: boolean;
   isBanned?: boolean;
   banReason?: string;
   pushedTopUntil?: string;

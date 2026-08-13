@@ -280,8 +280,8 @@ export default function JobPostingsPage() {
                   <PopoverTrigger
                     title="Click to view job posting limits & quota info"
                     className={`group relative flex items-center justify-center h-8 w-8 rounded-full border shadow-2xs hover:shadow-md active:scale-95 transition-all cursor-pointer ${isSlotFull
-                        ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 text-amber-800 dark:text-amber-300 hover:border-amber-400"
-                        : "bg-amber-50/80 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:border-amber-300"
+                      ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 text-amber-800 dark:text-amber-300 hover:border-amber-400"
+                      : "bg-amber-50/80 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:border-amber-300"
                       }`}
                   >
                     <div className="relative flex items-center justify-center">
@@ -297,8 +297,8 @@ export default function JobPostingsPage() {
                           <span>{t("quotaTitle")}</span>
                         </div>
                         <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${isSlotFull
-                            ? "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300"
-                            : "bg-[#E7F3FF] dark:bg-blue-950/50 text-[#1877F2] dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                          ? "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300"
+                          : "bg-[#E7F3FF] dark:bg-blue-950/50 text-[#1877F2] dark:text-blue-300 border-blue-200 dark:border-blue-800"
                           }`}>
                           {isSlotFull ? t("quotaFullAlert") : t("quotaAvailAlert")}
                         </span>
@@ -309,8 +309,8 @@ export default function JobPostingsPage() {
                         <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
                           <span className="font-medium text-zinc-600 dark:text-zinc-400">{t("quotaStatus")}</span>
                           <span className={`font-bold text-xs px-2 py-0.5 rounded-full border ${isSlotFull
-                              ? "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300"
-                              : "bg-[#E7F3FF] text-[#1877F2] border-[#1877F2]/20"
+                            ? "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300"
+                            : "bg-[#E7F3FF] text-[#1877F2] border-[#1877F2]/20"
                             }`}>
                             {isSlotFull ? t("quotaFullPay") : t("quotaFreeAvail")}
                           </span>
@@ -454,7 +454,7 @@ export default function JobPostingsPage() {
                 <TableHead className="w-[11%] min-w-[110px] py-3 px-2.5 sm:px-3">
                   <button
                     onClick={() => handleSort("date")}
-                    className={`flex items-center text-xs font-semibold uppercase tracking-wider ${sortField === "date" ? "text-[#1877F2] dark:text-blue-400" : "text-[#65676B] dark:text-zinc-400"
+                    className={`flex items-center text-xs font-semibold uppercase tracking-wider whitespace-normal text-left ${sortField === "date" ? "text-[#1877F2] dark:text-blue-400" : "text-[#65676B] dark:text-zinc-400"
                       } hover:text-[#050505] dark:hover:text-white transition-colors group cursor-pointer`}
                   >
                     {t("colPostedDate")}
@@ -604,33 +604,33 @@ export default function JobPostingsPage() {
 
                     {/* Cột 4.5: Hạn hiển thị hệ thống */}
                     <TableCell className="px-2.5 sm:px-3 py-3 align-top text-xs text-[#050505] dark:text-zinc-300 font-medium font-mono whitespace-nowrap">
-                        {job.expiresAt ? (
-                          (() => {
-                            const expDate = new Date(job.expiresAt);
-                            const today = new Date();
-                            const diffTime = expDate.getTime() - today.getTime();
-                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                            const isUrgent = diffDays <= 5 && diffDays > 0;
-                            const isExpired = diffDays <= 0;
+                      {job.expiresAt ? (
+                        (() => {
+                          const expDate = new Date(job.expiresAt);
+                          const today = new Date();
+                          const diffTime = expDate.getTime() - today.getTime();
+                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                          const isUrgent = diffDays <= 5 && diffDays > 0;
+                          const isExpired = diffDays <= 0;
 
-                            return (
-                              <div className="mt-1 flex flex-col gap-1.5">
-                                <span className={`font-medium flex flex-col items-start gap-1 ${isExpired ? 'text-red-600 dark:text-red-400' : isUrgent ? 'text-orange-600 dark:text-orange-400' : 'text-zinc-600 dark:text-zinc-300'}`}>
-                                  <span>{formatDate(job.expiresAt)}</span>
-                                  {isExpired ? (
-                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 w-fit">{t("hiddenBadge")}</span>
-                                  ) : (
-                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border w-fit ${isUrgent ? 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800' : 'bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'}`}>
-                                      {t("daysLeft", { days: diffDays })}
-                                    </span>
-                                  )}
-                                </span>
-                              </div>
-                            );
-                          })()
-                        ) : (
-                          <span className="text-zinc-500 mt-1 block">-</span>
-                        )}
+                          return (
+                            <div className="mt-1 flex flex-col gap-1.5">
+                              <span className={`font-medium flex flex-col items-start gap-1 ${isExpired ? 'text-red-600 dark:text-red-400' : isUrgent ? 'text-orange-600 dark:text-orange-400' : 'text-zinc-600 dark:text-zinc-300'}`}>
+                                <span>{formatDate(job.expiresAt)}</span>
+                                {isExpired ? (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 w-fit">{t("hiddenBadge")}</span>
+                                ) : (
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border w-fit ${isUrgent ? 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800' : 'bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700'}`}>
+                                    {t("daysLeft", { days: diffDays })}
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        <span className="text-zinc-500 mt-1 block">-</span>
+                      )}
                     </TableCell>
 
                     {/* Cột 5: Ứng Viên */}
@@ -768,8 +768,8 @@ export default function JobPostingsPage() {
                     disabled={loading}
                     onClick={() => setPage(pageNum)}
                     className={`h-8 w-8 text-xs font-semibold rounded-md shadow-2xs transition-all ${isCurrent
-                        ? "bg-[#1877F2] hover:bg-[#166FE5] text-white border-[#1877F2]"
-                        : "border-[#CED0D4] dark:border-zinc-800 text-[#050505] dark:text-zinc-300 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
+                      ? "bg-[#1877F2] hover:bg-[#166FE5] text-white border-[#1877F2]"
+                      : "border-[#CED0D4] dark:border-zinc-800 text-[#050505] dark:text-zinc-300 hover:bg-[#E7F3FF] hover:text-[#1877F2] dark:hover:bg-blue-950/40 dark:hover:text-blue-400"
                       }`}
                   >
                     {pageNum}

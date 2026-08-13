@@ -203,9 +203,14 @@ namespace ITHunterview.Service.UseCase
                 throw new UnauthorizedAccessException("You do not have permission to update this job posting.");
             }
 
-            if (job.Status == JobStatus.PUBLISHED || job.Status == JobStatus.PENDING_REVIEW)
+            if (job.Status == JobStatus.PENDING_REVIEW)
             {
-                return new ResponseBase<JobPostingDetailDto>("Published or pending review jobs cannot be edited directly. Please clone as a new draft.");
+                return new ResponseBase<JobPostingDetailDto>("Jobs pending review cannot be edited directly.");
+            }
+
+            if (job.Status != JobStatus.DRAFT && job.Status != JobStatus.PUBLISHED)
+            {
+                return new ResponseBase<JobPostingDetailDto>($"Jobs with status {job.Status} cannot be edited.");
             }
 
             if (job.IsBanned)
@@ -218,7 +223,6 @@ namespace ITHunterview.Service.UseCase
                 return new ResponseBase<JobPostingDetailDto>("Thời hạn ứng tuyển phải ở tương lai.");
             }
             var oldSnapshot = _inputBuilder.Build(job);
-            var oldSemanticHash = _inputBuilder.ComputeSemanticHash(oldSnapshot);
             var text = NormalizeRichTextFields(dto.Description, dto.Requirements, dto.Benefits, dto.IncomeText);
 
             job.JobCode = dto.JobCode;
@@ -242,11 +246,18 @@ namespace ITHunterview.Service.UseCase
 
             var newSnapshot = _inputBuilder.Build(job);
             var newSemanticHash = _inputBuilder.ComputeSemanticHash(newSnapshot);
-            bool semanticChanged = oldSemanticHash != newSemanticHash;
+            var analysisSourceChanged =
+                !string.Equals(oldSnapshot.Description, newSnapshot.Description, StringComparison.Ordinal) ||
+                !string.Equals(oldSnapshot.Requirements, newSnapshot.Requirements, StringComparison.Ordinal);
             job.SemanticContentHash = newSemanticHash;
 
-            if (semanticChanged)
+            if (analysisSourceChanged)
             {
+                if (job.Status == JobStatus.PUBLISHED && !job.EffectiveAnalysisRevision.HasValue)
+                {
+                    job.EffectiveAnalysisRevision = job.AnalysisRevision;
+                }
+
                 job.AnalysisRevision += 1;
                 job.ActiveAnalysisRunId = null;
                 job.AnalysisInputHash = null;
@@ -259,7 +270,7 @@ namespace ITHunterview.Service.UseCase
             var detail = MapToDetailDto(job);
             detail.Skills = await _jobPostingRepository.GetSkillsByJobIdAsync(job.Id);
 
-            return new ResponseBase<JobPostingDetailDto>(detail, "Job draft updated successfully.");
+            return new ResponseBase<JobPostingDetailDto>(detail, "Job posting updated successfully.");
         }
 
         public async Task<ResponseBase<bool>> CloseJobAsync(Guid id, Guid recruiterId)
@@ -473,8 +484,23 @@ namespace ITHunterview.Service.UseCase
                 ParseStatus = j.ParseStatus ?? "PENDING",
                 ParseError = j.ParseError,
                 AnalysisRevision = j.AnalysisRevision,
+                RequiresAnalysis = ComputeRequiresAnalysis(j),
                 PushedTopUntil = j.PushedTopUntil
             };
+        }
+
+        private static bool ComputeRequiresAnalysis(JobPostings job)
+        {
+            var parseStatus = job.ParseStatus?.ToUpperInvariant();
+
+            if (job.Status == JobStatus.DRAFT)
+            {
+                return parseStatus is "NOT_REQUESTED" or "STALE" or "PENDING" or "PROCESSING" or "FAILED";
+            }
+
+            return job.Status == JobStatus.PUBLISHED
+                && job.EffectiveAnalysisRevision != job.AnalysisRevision
+                && parseStatus is "STALE" or "PENDING" or "PROCESSING" or "READY" or "FAILED" or "RAW_FALLBACK";
         }
 
         private static NormalizedJobText NormalizeRichTextFields(

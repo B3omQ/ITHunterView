@@ -53,4 +53,30 @@ describe('AnalysisStateCard quality states', () => {
     expect(screen.getByText(/3\/4/)).toBeInTheDocument()
     expect(screen.getByText(/vẫn có thể kiểm tra và xuất bản/i)).toBeInTheDocument()
   })
+
+  it('uses published-update wording while a changed description needs analysis', () => {
+    render(
+      <NextIntlClientProvider
+        locale="vi"
+        messages={{
+          RecruiterJobPreviewComp: {
+            AnalysisStateCard: {
+              publishedStaleTitle: "Nội dung phân tích của tin đang đăng đã thay đổi.",
+              publishedStaleDesc: "AI cần phân tích lại thay đổi trước khi hoàn tất cập nhật.",
+              editPublished: "Chỉnh sửa thay đổi",
+            },
+          },
+        }}
+      >
+        <AnalysisStateCard
+          {...baseProps}
+          lifecycle="STALE"
+          mode="published-update"
+        />
+      </NextIntlClientProvider>,
+    )
+
+    expect(screen.getByText("Nội dung phân tích của tin đang đăng đã thay đổi.")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Chỉnh sửa thay đổi/i })).toBeInTheDocument()
+  })
 })
