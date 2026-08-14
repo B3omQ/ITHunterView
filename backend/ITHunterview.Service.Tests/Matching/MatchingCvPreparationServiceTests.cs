@@ -54,4 +54,52 @@ public sealed class MatchingCvPreparationServiceTests
         extractor.VerifyNoOtherCalls();
         sources.VerifyNoOtherCalls();
     }
+
+    [Theory]
+    [InlineData("FAILED")]
+    [InlineData("PENDING")]
+    [InlineData("PROCESSING")]
+    [InlineData(null)]
+    public async Task PrepareAsync_NonSuccessLifecycle_DoesNotReuseLeftoverAnalysis(string? parseStatus)
+    {
+        var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
+        validator.Setup(value => value.ValidateAndCanonicalize("fresh-canonical"))
+            .Returns(new CvAnalysisValidationResult(
+                CvAnalysisQuality.COMPLETE,
+                "fresh-canonical",
+                null,
+                Array.Empty<CvAnalysisDiagnostic>(),
+                string.Empty));
+        var extractor = new Mock<ICvTextExtractorService>(MockBehavior.Strict);
+        extractor.Setup(value => value.ExtractParsedDataFromRawTextAsync(
+                "raw CV", "pasted_text", "resume.txt", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("fresh-canonical");
+        var sources = new Mock<IMatchingSourceRepository>(MockBehavior.Strict);
+        var service = new MatchingCvPreparationService(
+            validator.Object,
+            extractor.Object,
+            sources.Object,
+            Options.Create(new CloudinarySettings { CloudName = "demo" }));
+        var snapshot = new MatchingInputSnapshotV1(
+            MatchingInputSnapshotBuilder.SchemaVersion,
+            MatchingMode.JdFit,
+            new MatchingCvSnapshot(
+                "pasted_text",
+                null,
+                "resume.txt",
+                "raw CV",
+                "leftover-analysis-must-not-be-reused",
+                "cv-analysis/v2",
+                null,
+                "source-hash",
+                parseStatus),
+            new MatchingJdSnapshot("raw_jd", null, null, "JD", null, null),
+            DateTime.UtcNow);
+
+        var result = await service.PrepareAsync(Guid.NewGuid(), snapshot);
+
+        result.CanonicalJson.Should().Be("fresh-canonical");
+        validator.Verify(value => value.ValidateAndCanonicalize("leftover-analysis-must-not-be-reused"), Times.Never);
+        extractor.VerifyAll();
+    }
 }

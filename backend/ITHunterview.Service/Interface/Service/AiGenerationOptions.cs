@@ -24,22 +24,22 @@ public sealed record AiGenerationOptions(
     public static readonly AiGenerationOptions CvAnalysisJsonExtraction = new(
         Temperature: 0m,
         TopP: 0.1m,
-        MaxOutputTokens: 8192,
+        MaxOutputTokens: 16384,
         ResponseMimeType: "application/json",
         ProfileId: "cv-analysis-json/v1",
         MaxTransportAttempts: 1,
-        ThinkingBudget: 1000,
-        ThinkingLevel: "minimal");
+        ThinkingBudget: 3000,
+        ThinkingLevel: "medium");
 
     public static readonly AiGenerationOptions CvAnalysisJsonRetry = new(
         Temperature: 0m,
         TopP: 0.1m,
-        MaxOutputTokens: 12288,
+        MaxOutputTokens: 20480,
         ResponseMimeType: "application/json",
         ProfileId: "cv-analysis-json-retry/v1",
         MaxTransportAttempts: 1,
-        ThinkingBudget: 1000,
-        ThinkingLevel: "minimal");
+        ThinkingBudget: 2000,
+        ThinkingLevel: "medium");
 
     public static readonly AiGenerationOptions JdMatchingJsonScoring = new(
         Temperature: 0.2m,

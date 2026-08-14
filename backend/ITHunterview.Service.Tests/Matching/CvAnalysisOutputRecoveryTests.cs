@@ -69,7 +69,7 @@ public sealed class CvAnalysisOutputRecoveryTests
         result.Diagnostics.Should().Contain(x => x.Code == "RECOVERED_COMPLETE_CV_CONTENT");
         using var recovered = JsonDocument.Parse(result.Json!);
         recovered.RootElement.GetProperty("schema_version").GetString().Should().Be("cv-analysis/v2");
-        recovered.RootElement.GetProperty("analysis_quality").GetString().Should().Be("PARTIAL");
+        recovered.RootElement.TryGetProperty("analysis_quality", out _).Should().BeFalse();
         recovered.RootElement.GetProperty("verbatim_sections")
             .GetProperty("professional_experience_and_projects").GetArrayLength().Should().Be(2);
     }
@@ -120,11 +120,46 @@ public sealed class CvAnalysisOutputRecoveryTests
     public void Recover_TruncatedEnvelope_IsAcceptedAsUsablePartialByRealValidator()
     {
         var recovered = CvAnalysisOutputRecovery.Recover(TruncatedAfterTwoExperiences());
-        var validation = new CvAnalysisResponseValidator().ValidateAndCanonicalize(recovered.Json!);
+        var validation = new CvAnalysisResponseValidator().ValidateRecovered(recovered);
 
         validation.IsUsable.Should().BeTrue();
         validation.Quality.Should().Be(CvAnalysisQuality.PARTIAL);
         validation.Diagnostics.Should().Contain(x => x.Code == "OUTPUT_TRUNCATED");
+    }
+
+    [Fact]
+    public void Recover_TruncatedBeforeCalculationBasis_DoesNotInventCalculationBasis()
+    {
+        var result = CvAnalysisOutputRecovery.Recover(TruncatedBeforeCalculationBasis());
+
+        result.Mode.Should().Be(CvAnalysisRecoveryMode.RECOVERED_PARTIAL);
+        using var recovered = JsonDocument.Parse(result.Json!);
+        var summary = recovered.RootElement.GetProperty("matching_evidence").GetProperty("experience_summary");
+        summary.TryGetProperty("calculation_basis", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Recover_MoreThanFormerCap_RetainsEveryCompletedUnit()
+    {
+        var result = CvAnalysisOutputRecovery.Recover(TruncatedAfterCompletedExperiences(35));
+
+        result.Mode.Should().Be(CvAnalysisRecoveryMode.RECOVERED_PARTIAL);
+        using var recovered = JsonDocument.Parse(result.Json!);
+        recovered.RootElement.GetProperty("verbatim_sections")
+            .GetProperty("professional_experience_and_projects").GetArrayLength().Should().Be(35);
+    }
+
+    [Fact]
+    public void Recover_AcceptedCountsEqualSerializedUnits()
+    {
+        var result = CvAnalysisOutputRecovery.Recover(TruncatedAfterCompletedExperiences(35));
+
+        using var recovered = JsonDocument.Parse(result.Json!);
+        var serializedCount = recovered.RootElement.GetProperty("verbatim_sections")
+            .GetProperty("professional_experience_and_projects").GetArrayLength();
+        result.Coverage!.AcceptedExperienceEntryCount.Should().Be(serializedCount);
+        result.Coverage.InputExperienceEntryCount.Should().Be(36);
+        result.Coverage.DiscardedExperienceEntryCount.Should().Be(1);
     }
 
     private static string TruncatedAfterTwoExperiences() => """
@@ -167,4 +202,26 @@ public sealed class CvAnalysisOutputRecoveryTests
           "matching_metrics": {"job_titles_normalized":[],"skills_normalized":[],"total_years_exp":0,"domains":[]},
           "matching_evidence": {"requirement_signals":[],"experience_summary":{"total_professional_months":0,"calculation_basis":"","periods":[]},"seniority_signals":[]
         """;
+
+    private static string TruncatedBeforeCalculationBasis() => """
+        {
+          "schema_version": "cv-analysis/v2",
+          "verbatim_sections": {"personal_info":{"name":"A","title":"Engineer","summary":""},"education":[],"languages":[],"skills_section":["C#"],"professional_experience_and_projects":[],"certifications_and_awards":[],"other_information":""},
+          "matching_metrics": {"job_titles_normalized":["Engineer"],"skills_normalized":["C#"],"total_years_exp":3,"domains":[]},
+          "matching_evidence": {"requirement_signals":[],"experience_summary":{"total_professional_months":36,"calculation_basis":"unfinished
+        """;
+
+    private static string TruncatedAfterCompletedExperiences(int completedCount)
+    {
+        var entries = string.Join(",", Enumerable.Range(0, completedCount).Select(index =>
+            $$"""{"company_or_project_name":"Project {{index}}","role":"Engineer","timeline":"2020-2021","entry_type":"project","details_and_responsibilities":["Delivered {{index}}"],"technologies_used":["C#"]}"""));
+        return $$"""
+            {
+              "schema_version":"cv-analysis/v2",
+              "verbatim_sections":{
+                "personal_info":{"name":"A","title":"Engineer","summary":""},
+                "education":[],"languages":[],"skills_section":["C#"],
+                "professional_experience_and_projects":[{{entries}},{"company_or_project_name":"unfinished
+            """;
+    }
 }

@@ -385,7 +385,7 @@ namespace ITHunterview.Service.UseCase
         {
             if (!string.IsNullOrWhiteSpace(cv.ParsedData) && cv.ParseStatus == "SUCCESS")
             {
-                var stored = _cvAnalysisResponseValidator.ValidateAndCanonicalize(cv.ParsedData);
+                var stored = ValidateStoredCvJson(cv.ParsedData);
                 if (stored.IsUsable)
                 {
                     ApplyValidatedCv(cv, stored);
@@ -398,7 +398,7 @@ namespace ITHunterview.Service.UseCase
             try
             {
                 var parsedData = await _cvTextExtractorService.ExtractParsedDataFromUrlAsync(cv.FileUrl, cv.RawText);
-                var validation = _cvAnalysisResponseValidator.ValidateAndCanonicalize(parsedData);
+                var validation = ValidateStoredCvJson(parsedData);
                 if (!validation.IsUsable)
                 {
                     throw new CvAnalysisValidationException(validation);
@@ -430,6 +430,11 @@ namespace ITHunterview.Service.UseCase
             cv.AnalysisCoverageJson = CvAnalysisMetadataReader.SerializeCoverage(validation.Coverage);
             cv.AnalysisDiagnosticsJson = CvAnalysisMetadataReader.SerializeDiagnostics(validation.Diagnostics);
         }
+
+        private CvAnalysisValidationResult ValidateStoredCvJson(string canonicalJson) =>
+            _cvAnalysisResponseValidator is ICvAnalysisRecoveryAwareValidator recoveryAware
+                ? recoveryAware.ValidateStoredCanonical(canonicalJson)
+                : _cvAnalysisResponseValidator.ValidateAndCanonicalize(canonicalJson);
 
         public async Task MatchCvWithAllJobsHardcodeAsync(Guid cvId, Guid userId)
         {

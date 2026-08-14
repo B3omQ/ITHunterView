@@ -29,7 +29,7 @@ public sealed class HardcodeCvJobMatchingUseCaseTests
 
         var score = await context.CvJobMatchScores.SingleAsync();
         score.Status.Should().Be("Completed");
-        score.MatchScore.Should().Be(1m);
+        score.MatchScore.Should().Be(100m);
         score.MatchDetails.Should().Contain("available_cv_metrics");
         score.CvAnalysisQuality.Should().Be(CvAnalysisQuality.PARTIAL);
     }
@@ -48,7 +48,7 @@ public sealed class HardcodeCvJobMatchingUseCaseTests
 
         var score = await context.CvJobMatchScores.SingleAsync();
         score.Status.Should().Be("Completed");
-        score.MatchScore.Should().Be(1m);
+        score.MatchScore.Should().Be(100m);
         score.MatchDetails.Should().Contain("available_cv_metrics");
     }
 

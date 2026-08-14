@@ -2,9 +2,8 @@ using ITHunterview.Service.DTOs.Cv.Matching;
 
 namespace ITHunterview.Service.Interface.Service.Matching;
 
-public interface ICvAnalysisResponseValidator
+public interface ICvAnalysisRecoveryAwareValidator
 {
-    CvAnalysisValidationResult ValidateAndCanonicalize(string responseJson);
     CvAnalysisValidationResult ValidateRecovered(CvAnalysisRecoveryResult recovery);
     CvAnalysisValidationResult ValidateStoredCanonical(string canonicalJson);
 }

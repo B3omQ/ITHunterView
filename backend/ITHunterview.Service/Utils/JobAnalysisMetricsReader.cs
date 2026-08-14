@@ -38,16 +38,17 @@ namespace ITHunterview.Service.Utils
 
                 var hasCoverage = TryGetPath(document.RootElement, "analysis_coverage", out var coverage)
                                   && coverage.ValueKind == JsonValueKind.Object;
+                var yearsValue = 0;
+                var hasValidExperience = metrics.TryGetProperty("total_years_exp", out var years)
+                                         && years.ValueKind == JsonValueKind.Number
+                                         && years.TryGetInt32(out yearsValue)
+                                         && yearsValue >= 0;
                 return new JobAnalysisMetrics
                 {
                     Titles = ReadStringArray(metrics, "job_titles_normalized"),
                     Skills = ReadStringArray(metrics, "skills_normalized"),
                     Domains = ReadStringArray(metrics, "domains"),
-                    TotalYearsExperience = metrics.TryGetProperty("total_years_exp", out var years)
-                        && years.ValueKind == JsonValueKind.Number
-                        && years.TryGetInt32(out var value)
-                        ? Math.Max(0, value)
-                        : 0,
+                    TotalYearsExperience = hasValidExperience ? yearsValue : 0,
                     TitleAvailable = ReadAvailability(
                         hasCoverage ? coverage : default,
                         "title_metrics_available",
@@ -63,9 +64,7 @@ namespace ITHunterview.Service.Utils
                     ExperienceAvailable = ReadAvailability(
                         hasCoverage ? coverage : default,
                         "experience_metric_available",
-                        metrics,
-                        "total_years_exp",
-                        JsonValueKind.Number),
+                        hasValidExperience),
                     DomainsAvailable = ReadAvailability(
                         hasCoverage ? coverage : default,
                         "domain_metrics_available",
@@ -132,6 +131,21 @@ namespace ITHunterview.Service.Utils
                                   && (requiredKind != JsonValueKind.Array ||
                                       ProjectArrayStrings(metric).Count > 0);
 
+            if (coverage.ValueKind == JsonValueKind.Object
+                && coverage.TryGetProperty(coverageProperty, out var availability)
+                && availability.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            {
+                return availability.GetBoolean() && metricAvailable;
+            }
+
+            return metricAvailable;
+        }
+
+        private static bool ReadAvailability(
+            JsonElement coverage,
+            string coverageProperty,
+            bool metricAvailable)
+        {
             if (coverage.ValueKind == JsonValueKind.Object
                 && coverage.TryGetProperty(coverageProperty, out var availability)
                 && availability.ValueKind is JsonValueKind.True or JsonValueKind.False)

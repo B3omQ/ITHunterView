@@ -18,7 +18,7 @@ public sealed record CvAnalysisCoverage(
 public sealed record CvAnalysisDiagnostic(string Code, string JsonPath);
 
 public sealed record CvAnalysisProjection(
-    CvAnalysisDocument Document,
     CvAnalysisCoverage Coverage,
     IReadOnlyList<CvAnalysisDiagnostic> Diagnostics,
-    bool HasUsableMatchingContent);
+    bool HasUsableMatchingContent,
+    bool HasStructuralDegradation);

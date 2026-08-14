@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Service.Config;
+using ITHunterview.Service.DTOs.Ai;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Infrastructure.Persistence;
@@ -14,7 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace ITHunterview.Service.Service
 {
-    public class AiService : IAiService
+    public class AiService : IAiService, IAiServiceWithCompletionMetadata
     {
         private readonly IAiProviderFactory _providerFactory;
         private readonly Microsoft.Extensions.DependencyInjection.IServiceScopeFactory _scopeFactory;
@@ -64,6 +65,21 @@ namespace ITHunterview.Service.Service
             AiGenerationOptions? options,
             CancellationToken cancellationToken,
             string featureCode = "GENERAL_GENERATE")
+            => (await GenerateTextWithMetadataAsync(
+                prompt,
+                systemPrompt,
+                providerName,
+                options,
+                cancellationToken,
+                featureCode)).Text;
+
+        public async Task<AiTextGenerationResult> GenerateTextWithMetadataAsync(
+            string prompt,
+            string systemPrompt,
+            string providerName,
+            AiGenerationOptions? options,
+            CancellationToken cancellationToken,
+            string featureCode = "GENERAL_GENERATE")
         {
             cancellationToken.ThrowIfCancellationRequested();
             var activeProviderName = string.IsNullOrWhiteSpace(providerName)
@@ -86,15 +102,27 @@ namespace ITHunterview.Service.Service
                 }
             }
 
-            string result = null;
+            AiTextGenerationResult? result = null;
             string status = "SUCCESS";
             var stopwatch = Stopwatch.StartNew();
 
             try
             {
-                result = options is null
-                    ? await provider.GenerateTextAsync(prompt, systemPrompt, cancellationToken)
-                    : await provider.GenerateTextAsync(prompt, systemPrompt, options, cancellationToken);
+                if (provider is IAiProviderWithCompletionMetadata metadataProvider)
+                {
+                    result = await metadataProvider.GenerateTextWithMetadataAsync(
+                        prompt,
+                        systemPrompt,
+                        options,
+                        cancellationToken);
+                }
+                else
+                {
+                    var text = options is null
+                        ? await provider.GenerateTextAsync(prompt, systemPrompt, cancellationToken)
+                        : await provider.GenerateTextAsync(prompt, systemPrompt, options, cancellationToken);
+                    result = new AiTextGenerationResult(text, AiCompletionState.Unknown);
+                }
                 return result;
             }
             catch
@@ -112,8 +140,8 @@ namespace ITHunterview.Service.Service
                     using var scope = _scopeFactory.CreateScope();
                     var context = scope.ServiceProvider.GetRequiredService<ITHunterviewContext>();
                     
-                    var pTokens = prompt?.Length / 4 ?? 0;
-                    var cTokens = result?.Length / 4 ?? 0;
+                    var pTokens = result?.PromptTokens ?? (prompt?.Length / 4 ?? 0);
+                    var cTokens = result?.CandidateTokens ?? result?.Text.Length / 4 ?? 0;
                     var tTokens = pTokens + cTokens;
                     var cost = Math.Round((decimal)tTokens * 0.000004m, 6);
 

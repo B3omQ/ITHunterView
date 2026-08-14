@@ -5,6 +5,7 @@ using DocumentFormat.OpenXml.Wordprocessing;
 using FluentAssertions;
 using ITHunterview.Service.Config;
 using ITHunterview.Service.Constant.Prompts;
+using ITHunterview.Service.DTOs.Ai;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Exceptions;
 using ITHunterview.Service.Interface.Persistence;
@@ -56,11 +57,11 @@ public sealed class CvTextExtractorServiceTests
                 options.ProfileId == "cv-analysis-json/v1" &&
                 options.Temperature == 0m &&
                 options.TopP == 0.1m &&
-                options.MaxOutputTokens == 8192 &&
+                options.MaxOutputTokens == 16384 &&
                 options.ResponseMimeType == "application/json" &&
                 options.MaxTransportAttempts == 1 &&
-                options.ThinkingBudget == 1000 &&
-                options.ThinkingLevel == "minimal"),
+                options.ThinkingBudget == 3000 &&
+                options.ThinkingLevel == "medium"),
             It.IsAny<CancellationToken>(),
             "CV_EXTRACTION"), Times.Once);
         aiService.Verify(x => x.GenerateTextAsync(
@@ -211,7 +212,7 @@ public sealed class CvTextExtractorServiceTests
     }
 
     [Fact]
-    public async Task ExtractParsedDataFromRawTextAsync_WhenPartial_ReturnsCanonicalJsonWithoutSecondCall()
+    public async Task ExtractParsedDataFromRawTextAsync_WhenPartial_RetriesOnceThenReturnsBestCanonicalJson()
     {
         var aiService = CreateAiServiceReturning(ValidSchemaOnly);
         var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
@@ -235,8 +236,8 @@ public sealed class CvTextExtractorServiceTests
             It.IsAny<string>(),
             "Gemini",
             It.IsAny<AiGenerationOptions>(),
-            It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Once);
-        validator.Verify(x => x.ValidateAndCanonicalize(ValidSchemaOnly), Times.Once);
+            It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Exactly(2));
+        validator.Verify(x => x.ValidateAndCanonicalize(ValidSchemaOnly), Times.Exactly(2));
     }
 
     [Fact]
@@ -270,7 +271,7 @@ public sealed class CvTextExtractorServiceTests
     {
         var aiService = CreateAiServiceReturningSequence(TruncatedCvResponse, ValidSchemaOnly);
         var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
-        validator.Setup(x => x.ValidateAndCanonicalize(It.Is<string>(json => json.Contains("\"analysis_quality\":\"PARTIAL\"", StringComparison.Ordinal))))
+        validator.Setup(x => x.ValidateAndCanonicalize(It.Is<string>(json => json.Contains("professional_experience_and_projects", StringComparison.Ordinal))))
             .Returns(CvAnalysisValidationResult.Partial(
                 "{\"partial\":true}",
                 EmptyCoverage(),
@@ -296,7 +297,7 @@ public sealed class CvTextExtractorServiceTests
     {
         var aiService = CreateAiServiceReturningSequence(TruncatedCvResponse, "not json");
         var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
-        validator.Setup(x => x.ValidateAndCanonicalize(It.Is<string>(json => json.Contains("\"analysis_quality\":\"PARTIAL\"", StringComparison.Ordinal))))
+        validator.Setup(x => x.ValidateAndCanonicalize(It.Is<string>(json => json.Contains("professional_experience_and_projects", StringComparison.Ordinal))))
             .Returns(CvAnalysisValidationResult.Partial(
                 "{\"partial\":true}",
                 EmptyCoverage(),
@@ -316,7 +317,7 @@ public sealed class CvTextExtractorServiceTests
     }
 
     [Fact]
-    public async Task Extract_ReadablePartial_ReturnsImmediatelyWithoutRetry()
+    public async Task Extract_ReadablePartial_RetriesOnceThenReturnsBest()
     {
         var aiService = CreateAiServiceReturning(ValidSchemaOnly);
         var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
@@ -336,7 +337,7 @@ public sealed class CvTextExtractorServiceTests
         result.Should().Be("{\"partial\":true}");
         aiService.Verify(x => x.GenerateTextAsync(
             It.IsAny<string>(), It.IsAny<string>(), "Gemini",
-            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Once);
+            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Exactly(2));
     }
 
     [Fact]
@@ -540,7 +541,7 @@ public sealed class CvTextExtractorServiceTests
             .ReturnsAsync(TruncatedCvResponse)
             .ThrowsAsync(new HttpRequestException("provider unavailable"));
         var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
-        validator.Setup(x => x.ValidateAndCanonicalize(It.Is<string>(json => json.Contains("\"analysis_quality\":\"PARTIAL\"", StringComparison.Ordinal))))
+        validator.Setup(x => x.ValidateAndCanonicalize(It.Is<string>(json => json.Contains("professional_experience_and_projects", StringComparison.Ordinal))))
             .Returns(CvAnalysisValidationResult.Partial(
                 "{\"partial\":true}", EmptyCoverage(),
                 new[] { new CvAnalysisDiagnostic("OUTPUT_TRUNCATED", "$") }));
@@ -551,6 +552,79 @@ public sealed class CvTextExtractorServiceTests
 
         result.Should().Be("{\"partial\":true}");
         aiService.Verify(x => x.GenerateTextAsync(
+            It.IsAny<string>(), It.IsAny<string>(), "Gemini",
+            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task Extract_MaxTokensValidJson_RetriesOnceAndReturnsCompleteSecondAttempt()
+    {
+        var aiService = new Mock<IAiService>(MockBehavior.Strict);
+        aiService.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("Gemini");
+        var metadataService = aiService.As<IAiServiceWithCompletionMetadata>();
+        metadataService.SetupSequence(x => x.GenerateTextWithMetadataAsync(
+                It.IsAny<string>(), It.IsAny<string>(), "Gemini",
+                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_EXTRACTION"))
+            .ReturnsAsync(new AiTextGenerationResult(
+                ValidSchemaOnly, AiCompletionState.OutputLimited, "MAX_TOKENS"))
+            .ReturnsAsync(new AiTextGenerationResult(
+                ValidSchemaOnly, AiCompletionState.Complete, "STOP"));
+        var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
+        var recoveryAware = validator.As<ICvAnalysisRecoveryAwareValidator>();
+        recoveryAware.SetupSequence(x => x.ValidateRecovered(It.IsAny<CvAnalysisRecoveryResult>()))
+            .Returns(CvAnalysisValidationResult.Partial(
+                "{\"attempt\":1}",
+                EmptyCoverage(),
+                new[] { new CvAnalysisDiagnostic("OUTPUT_TRUNCATED", "$") }))
+            .Returns(CvAnalysisValidationResult.Complete(
+                "{\"attempt\":2}",
+                EmptyCoverage()));
+        var service = CreateService(aiService, validator);
+
+        var result = await service.ExtractParsedDataFromRawTextAsync(
+            "Jane Doe\nEngineer", "pasted_text", "resume.txt", CancellationToken.None);
+
+        result.Should().Be("{\"attempt\":2}");
+        metadataService.Verify(x => x.GenerateTextWithMetadataAsync(
+            It.IsAny<string>(), It.IsAny<string>(), "Gemini",
+            It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Exactly(2));
+        recoveryAware.Verify(x => x.ValidateRecovered(
+            It.Is<CvAnalysisRecoveryResult>(value => value.WasTruncated)), Times.Once);
+    }
+
+    [Fact]
+    public async Task Extract_FirstRicherPartialSecondPoorerPartial_ReturnsFirst()
+    {
+        var aiService = new Mock<IAiService>(MockBehavior.Strict);
+        aiService.Setup(x => x.GetActiveProviderNameAsync()).ReturnsAsync("Gemini");
+        var metadataService = aiService.As<IAiServiceWithCompletionMetadata>();
+        metadataService.SetupSequence(x => x.GenerateTextWithMetadataAsync(
+                It.IsAny<string>(), It.IsAny<string>(), "Gemini",
+                It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_EXTRACTION"))
+            .ReturnsAsync(new AiTextGenerationResult(
+                ValidSchemaOnly, AiCompletionState.OutputLimited, "MAX_TOKENS"))
+            .ReturnsAsync(new AiTextGenerationResult(
+                ValidSchemaOnly, AiCompletionState.OutputLimited, "MAX_TOKENS"));
+        var validator = new Mock<ICvAnalysisResponseValidator>(MockBehavior.Strict);
+        var recoveryAware = validator.As<ICvAnalysisRecoveryAwareValidator>();
+        var richer = new CvAnalysisCoverage(8, 8, 0, 5, 5, 0, 3, 3, 0, true, true, true, true);
+        var poorer = new CvAnalysisCoverage(2, 2, 0, 1, 1, 0, 1, 1, 0, true, false, false, false);
+        recoveryAware.SetupSequence(x => x.ValidateRecovered(It.IsAny<CvAnalysisRecoveryResult>()))
+            .Returns(CvAnalysisValidationResult.Partial(
+                "{\"attempt\":1,\"content\":\"richer\"}",
+                richer,
+                new[] { new CvAnalysisDiagnostic("OUTPUT_TRUNCATED", "$") }))
+            .Returns(CvAnalysisValidationResult.Partial(
+                "{\"attempt\":2}",
+                poorer,
+                new[] { new CvAnalysisDiagnostic("OUTPUT_TRUNCATED", "$") }));
+        var service = CreateService(aiService, validator);
+
+        var result = await service.ExtractParsedDataFromRawTextAsync(
+            "Jane Doe\nEngineer", "pasted_text", "resume.txt", CancellationToken.None);
+
+        result.Should().Be("{\"attempt\":1,\"content\":\"richer\"}");
+        metadataService.Verify(x => x.GenerateTextWithMetadataAsync(
             It.IsAny<string>(), It.IsAny<string>(), "Gemini",
             It.IsAny<AiGenerationOptions>(), It.IsAny<CancellationToken>(), "CV_EXTRACTION"), Times.Exactly(2));
     }

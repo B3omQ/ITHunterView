@@ -24,8 +24,12 @@ public sealed record CvAnalysisValidationResult(
         Quality is CvAnalysisQuality.COMPLETE or CvAnalysisQuality.PARTIAL &&
         !string.IsNullOrWhiteSpace(CanonicalJson);
 
-    public static CvAnalysisValidationResult Complete(string canonicalJson, CvAnalysisCoverage coverage) =>
-        new(CvAnalysisQuality.COMPLETE, canonicalJson, coverage, Array.Empty<CvAnalysisDiagnostic>(), string.Empty);
+    public static CvAnalysisValidationResult Complete(
+        string canonicalJson,
+        CvAnalysisCoverage coverage,
+        IReadOnlyList<CvAnalysisDiagnostic>? diagnostics = null) =>
+        new(CvAnalysisQuality.COMPLETE, canonicalJson, coverage,
+            diagnostics ?? Array.Empty<CvAnalysisDiagnostic>(), string.Empty);
 
     public static CvAnalysisValidationResult Partial(
         string canonicalJson,
