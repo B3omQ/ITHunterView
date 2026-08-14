@@ -23,5 +23,10 @@ namespace ITHunterview.Service.DTOs.JobSearch
         public List<string>? JobExpertises { get; set; }
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 10;
+        /// <summary>
+        /// If true, also include jobs with no salary info (negotiable / thỏa thuận)
+        /// when a salary range filter is active.
+        /// </summary>
+        public bool IncludeNegotiable { get; set; } = false;
     }
 }

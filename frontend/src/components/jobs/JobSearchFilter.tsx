@@ -119,6 +119,7 @@ export function JobSearchFilter() {
   const urlCompanyTypes = parseArrayParam(searchParams.get('companyTypes'));
   const urlMinSalary = searchParams.get('minSalary') ? parseInt(searchParams.get('minSalary')!) : 0;
   const urlMaxSalary = searchParams.get('maxSalary') ? parseInt(searchParams.get('maxSalary')!) : 10000;
+  const urlIncludeNegotiable = searchParams.get('includeNegotiable') === 'true';
 
   // Local States for Inputs/Modals (to avoid premature URL updates)
   const [keyword, setKeyword] = useState(urlQuery);
@@ -132,6 +133,7 @@ export function JobSearchFilter() {
   const [pendingCompanyIndustries, setPendingCompanyIndustries] = useState<string[]>(urlCompanyIndustries);
   const [pendingCompanyTypes, setPendingCompanyTypes] = useState<string[]>(urlCompanyTypes);
   const [pendingSalary, setPendingSalary] = useState<number[]>([urlMinSalary, urlMaxSalary]);
+  const [pendingIncludeNegotiable, setPendingIncludeNegotiable] = useState<boolean>(urlIncludeNegotiable);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
@@ -151,6 +153,7 @@ export function JobSearchFilter() {
     setPendingCompanyIndustries(urlCompanyIndustries);
     setPendingCompanyTypes(urlCompanyTypes);
     setPendingSalary([urlMinSalary, urlMaxSalary]);
+    setPendingIncludeNegotiable(urlIncludeNegotiable);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -168,6 +171,7 @@ export function JobSearchFilter() {
       companyIndustries: pendingCompanyIndustries,
       companyTypes: pendingCompanyTypes,
       salary: pendingSalary,
+      includeNegotiable: pendingIncludeNegotiable,
       ...updates
     };
 
@@ -184,6 +188,10 @@ export function JobSearchFilter() {
     // Salary bounds check
     if (current.salary[0] > 0) params.set('minSalary', current.salary[0].toString()); else params.delete('minSalary');
     if (current.salary[1] < 10000) params.set('maxSalary', current.salary[1].toString()); else params.delete('maxSalary');
+    // Include negotiable — only relevant when salary filter is active
+    const salaryActive = current.salary[0] > 0 || current.salary[1] < 10000;
+    if (salaryActive && current.includeNegotiable) params.set('includeNegotiable', 'true');
+    else params.delete('includeNegotiable');
 
     params.set('page', '1');
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -203,6 +211,7 @@ export function JobSearchFilter() {
     setPendingCompanyIndustries([]);
     setPendingCompanyTypes([]);
     setPendingSalary([0, 10000]);
+    setPendingIncludeNegotiable(false);
   };
 
   const hasActiveFilters =
@@ -213,7 +222,8 @@ export function JobSearchFilter() {
     pendingCompanyIndustries.length > 0 ||
     pendingCompanyTypes.length > 0 ||
     pendingSalary[0] > 0 ||
-    pendingSalary[1] < 10000;
+    pendingSalary[1] < 10000 ||
+    pendingIncludeNegotiable;
 
   // Quick Filter Action
   const applyQuickFilter = (key: string, val: any) => {
@@ -349,6 +359,15 @@ export function JobSearchFilter() {
                   step={100}
                   onValueChange={(val) => setPendingSalary(val as number[])}
                 />
+                {/* Include Negotiable checkbox */}
+                <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-slate-600 hover:text-slate-900">
+                  <Checkbox
+                    id="quick-include-negotiable"
+                    checked={pendingIncludeNegotiable}
+                    onCheckedChange={(v) => setPendingIncludeNegotiable(!!v)}
+                  />
+                  Bao gồm lương thỏa thuận
+                </label>
                 <Button className="w-full mt-2" size="sm" onClick={() => applyQuickFilter('salary', pendingSalary)}>Apply</Button>
               </div>
             </PopoverContent>
@@ -390,7 +409,8 @@ export function JobSearchFilter() {
                   jobExpertises: [],
                   companyIndustries: [],
                   companyTypes: [],
-                  salary: [0, 10000]
+                  salary: [0, 10000],
+                  includeNegotiable: false
                 });
               }}
               className="h-9 text-sm text-slate-500 hover:text-slate-900 px-3"
@@ -494,6 +514,15 @@ export function JobSearchFilter() {
                       <span>$0</span>
                       <span>$10,000+</span>
                     </div>
+                    {/* Include Negotiable checkbox */}
+                    <label className="flex items-center gap-2 mt-2 cursor-pointer select-none text-sm text-slate-600 hover:text-slate-900">
+                      <Checkbox
+                        id="modal-include-negotiable"
+                        checked={pendingIncludeNegotiable}
+                        onCheckedChange={(v) => setPendingIncludeNegotiable(!!v)}
+                      />
+                      Bao gồm lương thỏa thuận
+                    </label>
                   </div>
 
                   {/* Row 4: Job Domain */}

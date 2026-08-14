@@ -54,17 +54,5 @@ namespace ITHunterview.WebAPI.Controllers
             }
             return Ok(result);
         }
-
-        [AllowAnonymous]
-        [HttpDelete("seed-data")]
-        public async Task<ActionResult<ResponseBase<bool>>> DeleteSeedJobs()
-        {
-            var result = await _jobPostingsUseCase.DeleteSeedJobsAsync();
-            if (!result.Success)
-            {
-                return BadRequest(result);
-            }
-            return Ok(result);
-        }
     }
 }

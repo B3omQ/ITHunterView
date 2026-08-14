@@ -42,10 +42,5 @@ export const staffJobService = {
   unbanJob: async (id: string): Promise<BaseResponse<boolean>> => {
     const res = await api.post<BaseResponse<boolean>>(`/api/staff/job-postings/${id}/unban`);
     return res.data;
-  },
-
-  deleteSeedJobs: async (): Promise<BaseResponse<boolean>> => {
-    const res = await api.delete<BaseResponse<boolean>>(`/api/staff/job-postings/seed-data`);
-    return res.data;
   }
 };
