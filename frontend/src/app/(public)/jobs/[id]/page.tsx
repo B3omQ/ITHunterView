@@ -13,11 +13,16 @@ import { ApplyJobModal } from '@/components/jobs/ApplyJobModal';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
 import { JobPostingMarkdownContent } from '@/components/jobs/JobPostingMarkdownContent';
 import { WorkLocationScheduleContent } from '@/components/jobs/WorkLocationScheduleContent';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { jobService } from '@/services/job.service';
 
 export default function PublicJobDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { data, isLoading, isError } = useJobDetail(params.id as string, false);
+  const queryClient = useQueryClient();
+  const { accessToken, user } = useAuthStore();
+  const isCandidate = !!accessToken && user?.role?.name?.toLowerCase() === 'candidate';
+  const { data, isLoading, isError } = useJobDetail(params.id as string, isCandidate);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
 
   if (isLoading) return <PageLoader />;
@@ -26,15 +31,12 @@ export default function PublicJobDetailPage() {
   const job = data.data;
 
   const handleApplyClick = () => {
-    const { accessToken, user } = useAuthStore.getState();
-    const isAuthenticated = !!accessToken;
-
-    if (!isAuthenticated) {
+    if (!accessToken) {
       router.push(`/login?redirect=/jobs/${params.id}`);
       return;
     }
 
-    if (user?.role?.name?.toLowerCase() !== 'candidate') {
+    if (!isCandidate) {
       alert('Only candidates can apply for jobs.');
       return;
     }
@@ -42,12 +44,29 @@ export default function PublicJobDetailPage() {
     setIsApplyModalOpen(true);
   };
 
+  const toggleSaveMutation = useMutation({
+    mutationFn: async (jobId: string) => {
+      if (job?.isSaved) {
+        await jobService.unsaveJob(jobId);
+      } else {
+        await jobService.saveJob(jobId);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['job-detail', params.id, isCandidate] });
+    },
+  });
+
   const handleSaveClick = () => {
-    const { accessToken } = useAuthStore.getState();
     if (!accessToken) {
       router.push(`/login?redirect=/jobs/${params.id}`);
       return;
     }
+    if (!isCandidate) {
+      alert('Only candidates can save jobs.');
+      return;
+    }
+    toggleSaveMutation.mutate(params.id as string);
   };
 
   return (
@@ -71,9 +90,23 @@ export default function PublicJobDetailPage() {
             </div>
 
             <div className="flex flex-col gap-3 w-full md:w-auto">
-              <Button size="lg" className="w-full" onClick={handleApplyClick}>Apply Now</Button>
-              <Button size="lg" variant="outline" className="w-full" onClick={handleSaveClick}>
-                <Bookmark className="w-4 h-4 mr-2" /> Save Job
+              <Button 
+                size="lg" 
+                className="w-full" 
+                onClick={handleApplyClick}
+                disabled={job.isApplied}
+              >
+                {job.isApplied ? 'Applied' : 'Apply Now'}
+              </Button>
+              <Button 
+                size="lg" 
+                variant={job.isSaved ? "default" : "outline"} 
+                className="w-full" 
+                onClick={handleSaveClick}
+                disabled={toggleSaveMutation.isPending}
+              >
+                <Bookmark className={`w-4 h-4 mr-2 ${job.isSaved ? 'fill-current' : ''}`} /> 
+                {job.isSaved ? 'Saved' : 'Save Job'}
               </Button>
             </div>
           </div>
@@ -154,7 +187,9 @@ export default function PublicJobDetailPage() {
         onClose={() => setIsApplyModalOpen(false)}
         jobId={job.id}
         jobTitle={job.title}
-        onSuccess={() => {}}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['job-detail', params.id, isCandidate] });
+        }}
       />
     </div>
   );
