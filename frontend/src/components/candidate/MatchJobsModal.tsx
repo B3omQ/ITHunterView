@@ -198,45 +198,61 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
               </div>
             ) : (
               [...matches]
-                .sort((a, b) => (getScorePercent(b) ?? -1) - (getScorePercent(a) ?? -1))
-                .map((match) => (
-                <div key={match.jobId + match.matchMethod} className="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-300 transition-colors shadow-sm">
-                  <div className="flex flex-col gap-1 min-w-0 flex-1">
-                    <h5 className="text-sm font-semibold text-slate-900 truncate" title={match.jdTitle}>
-                      {match.jdTitle || "Unknown Job"}
-                    </h5>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 font-medium",
-                        match.matchMethod === 'hardcode' ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"
-                      )}>
-                        {getMatchMethodLabel(match.matchMethod)}
-                      </span>
-                      <span className="text-slate-500">
-                        {new Date(match.updatedAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
+                .filter((match) => match.status !== 'EXPIRED' && match.status !== 'BANNED')
+                .sort((a, b) => {
+                  const aIsNew = a.updatedAt && (Date.now() - new Date(a.updatedAt).getTime()) <= 24 * 60 * 60 * 1000 ? 1 : 0;
+                  const bIsNew = b.updatedAt && (Date.now() - new Date(b.updatedAt).getTime()) <= 24 * 60 * 60 * 1000 ? 1 : 0;
+                  if (aIsNew !== bIsNew) return bIsNew - aIsNew; // NEW matches first
+                  return (getScorePercent(b) ?? -1) - (getScorePercent(a) ?? -1); // Then sort by score
+                })
+                .map((match) => {
+                  const isNew = match.updatedAt && (Date.now() - new Date(match.updatedAt).getTime()) <= 24 * 60 * 60 * 1000;
+                  return (
+                    <div key={match.jobId + match.matchMethod} className="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-300 transition-colors shadow-sm">
+                      <div className="flex flex-col gap-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h5 className="text-sm font-semibold text-slate-900 truncate" title={match.jdTitle}>
+                            {match.jdTitle || "Unknown Job"}
+                          </h5>
+                          {isNew && (
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 font-bold bg-emerald-500 text-white text-[10px] animate-pulse">
+                              NEW
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className={cn(
+                            "inline-flex items-center rounded-full px-2 py-0.5 font-medium",
+                            match.matchMethod === 'hardcode' ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"
+                          )}>
+                            {getMatchMethodLabel(match.matchMethod)}
+                          </span>
+                          <span className="text-slate-500">
+                            {new Date(match.updatedAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
 
-                  <div className="flex items-center gap-4 pl-4 shrink-0">
-                    <div className="flex flex-col items-end">
-                      <span className={cn(
-                        "text-lg font-bold",
-                        (getScorePercent(match) ?? -1) >= 70 ? "text-green-600" :
-                          (getScorePercent(match) ?? -1) >= 50 ? "text-amber-600" : "text-slate-600"
-                      )}>
-                        {getScorePercent(match) === null ? "—" : `${Math.round(getScorePercent(match)!)}%`}
-                      </span>
-                      <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Match Score</span>
+                      <div className="flex items-center gap-4 pl-4 shrink-0">
+                        <div className="flex flex-col items-end">
+                          <span className={cn(
+                            "text-lg font-bold",
+                            (getScorePercent(match) ?? -1) >= 70 ? "text-green-600" :
+                              (getScorePercent(match) ?? -1) >= 50 ? "text-amber-600" : "text-slate-600"
+                          )}>
+                            {getScorePercent(match) === null ? "—" : `${Math.round(getScorePercent(match)!)}%`}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Match Score</span>
+                        </div>
+                        <Link href={match.sourceJobId ? `/jobs/${match.sourceJobId}` : `/candidate/cv-matching/new?jobId=${match.jobId}`} target="_blank">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600">
+                            <ChevronRight className="h-5 w-5" />
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
-                    <Link href={match.sourceJobId ? `/jobs/${match.sourceJobId}` : `/candidate/cv-matching/new?jobId=${match.jobId}`} target="_blank">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600">
-                        <ChevronRight className="h-5 w-5" />
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              ))
+                  );
+                })
             )}
           </div>
         </div>

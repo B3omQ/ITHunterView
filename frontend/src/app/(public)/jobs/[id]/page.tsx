@@ -17,6 +17,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { jobService } from '@/services/job.service';
 
 export default function PublicJobDetailPage() {
+  const [mounted, setMounted] = useState(false);
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -28,7 +29,11 @@ export default function PublicJobDetailPage() {
   const { data, isLoading, isError } = useJobDetail(jobId, isCandidate);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
 
-  if (isLoading) return <PageLoader />;
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || isLoading) return <PageLoader />;
   if (!jobId || isError || !data?.data) return <EmptyState title="Job not found" description="This job posting may have expired or been removed." />;
 
   const job = data.data;
@@ -191,7 +196,7 @@ export default function PublicJobDetailPage() {
         jobId={job.id}
         jobTitle={job.title}
         onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ['job-detail', params.id, isCandidate] });
+          queryClient.invalidateQueries({ queryKey: ['job-detail', jobId, isCandidate] });
         }}
       />
     </div>
