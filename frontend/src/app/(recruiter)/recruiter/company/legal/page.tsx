@@ -184,7 +184,7 @@ export default function LegalVerificationPage() {
       {company.status === 'REJECTED' && (
         <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-800 flex flex-col gap-1">
           <p className="font-semibold flex items-center gap-1.5">{t('rejected')}</p>
-          <p className="text-red-700/80 text-xs" dangerouslySetInnerHTML={{__html: t('rejectedDesc', { reason: company.rejectReason || t('noReason') })}}>
+          <p className="text-red-700/80 text-xs" dangerouslySetInnerHTML={{__html: t.raw('rejectedDesc').replace('{reason}', company.rejectReason || t('noReason'))}}>
           </p>
         </div>
       )}
@@ -192,7 +192,7 @@ export default function LegalVerificationPage() {
       {company.status === 'VERIFIED' && !company.hasPendingChange && company.rejectReason && (
         <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-800 flex flex-col gap-1">
           <p className="font-semibold flex items-center gap-1.5">{t('updateRejected')}</p>
-          <p className="text-red-700/80 text-xs" dangerouslySetInnerHTML={{__html: t('updateRejectedDesc', { reason: company.rejectReason })}}>
+          <p className="text-red-700/80 text-xs" dangerouslySetInnerHTML={{__html: t.raw('updateRejectedDesc').replace('{reason}', company.rejectReason || '')}}>
           </p>
         </div>
       )}
