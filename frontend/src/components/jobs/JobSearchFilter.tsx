@@ -24,6 +24,7 @@ import {
 // import { useJobMetadata } from '@/hooks/useJobs';
 import { MatchJobsModal } from '@/components/candidate/MatchJobsModal';
 import { useAuthStore } from '@/store/auth.store';
+import { useTranslations } from 'next-intl';
 
 // Helper to parse array params safely
 const parseArrayParam = (param: string | null) => param ? param.split(',').filter(Boolean) : [];
@@ -101,6 +102,7 @@ const FilterCombobox = ({
 };
 
 export function JobSearchFilter() {
+  const t = useTranslations('JobSearchFilter');
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -243,7 +245,7 @@ export function JobSearchFilter() {
         <div className="flex-[2] relative flex items-center">
           <Search className="absolute left-3.5 h-4 w-4 text-slate-400" />
           <Input
-            placeholder="Enter keyword skills, job title, company..."
+            placeholder={t('keywordPlaceholder')}
             className="pl-10 pr-10 h-9 text-sm border-slate-300 focus-visible:ring-primary"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
@@ -270,7 +272,7 @@ export function JobSearchFilter() {
                 <Button variant="outline" className="w-full justify-between h-9 text-sm font-normal border-slate-300 bg-white">
                   <div className="flex items-center gap-2 truncate text-slate-600">
                     <MapPin className="h-4 w-4 text-slate-400" />
-                    {location || "All Cities"}
+                    {location || t('allCities')}
                   </div>
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
@@ -278,9 +280,9 @@ export function JobSearchFilter() {
             />
             <PopoverContent className="w-[300px] p-0" align="start">
               <Command filter={customFilter}>
-                <CommandInput placeholder="Search location..." />
+                <CommandInput placeholder={t('searchLocationPlaceholder')} />
                 <CommandList>
-                  <CommandEmpty>No location found.</CommandEmpty>
+                  <CommandEmpty>{t('noLocationFound')}</CommandEmpty>
                   <CommandGroup>
                     <ScrollArea className="h-[300px]">
                       <CommandItem onSelect={() => {
@@ -288,7 +290,7 @@ export function JobSearchFilter() {
                         applyFilters({ location: "" });
                         setLocationOpen(false);
                       }}>
-                        All Cities
+                        {t('allCities')}
                       </CommandItem>
                       {VIETNAM_PROVINCES.map((loc) => (
                         <CommandItem key={loc} onSelect={() => {
@@ -309,7 +311,7 @@ export function JobSearchFilter() {
 
         {/* Search Button */}
         <Button type="submit" className="md:w-32 h-9 text-sm font-semibold">
-          Search
+          {t('searchButton')}
         </Button>
       </form>
 
@@ -317,7 +319,7 @@ export function JobSearchFilter() {
       <div className="flex flex-wrap items-center gap-3 w-full">
         <div className="w-[180px]">
           <FilterCombobox
-            title="Level"
+            title={t('level')}
             options={LEVELS}
             selected={pendingLevels}
             onChange={(val) => applyQuickFilter('levels', val)}
@@ -325,7 +327,7 @@ export function JobSearchFilter() {
         </div>
         <div className="w-[180px]">
           <FilterCombobox
-            title="Working Model"
+            title={t('workingModel')}
             options={WORKING_MODELS}
             selected={pendingWorkingModels}
             onChange={(val) => applyQuickFilter('workingModels', val)}
@@ -339,7 +341,7 @@ export function JobSearchFilter() {
               render={
                 <Button variant="outline" className={cn("justify-between font-normal h-9 w-full bg-white text-sm", (pendingSalary[0] > 0 || pendingSalary[1] < 10000) && "border-primary text-primary")}>
                   <span className="truncate mr-2">
-                    {(pendingSalary[0] > 0 || pendingSalary[1] < 10000) ? `$${pendingSalary[0]} - $${pendingSalary[1]}` : 'Salary (USD)'}
+                    {(pendingSalary[0] > 0 || pendingSalary[1] < 10000) ? `$${pendingSalary[0]} - $${pendingSalary[1]}` : t('salaryUsd')}
                   </span>
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
@@ -348,7 +350,7 @@ export function JobSearchFilter() {
             <PopoverContent className="w-80 p-6" align="start">
               <div className="flex flex-col gap-6">
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold text-sm">Salary Range</span>
+                  <span className="font-semibold text-sm">{t('salaryRange')}</span>
                   <span className="text-sm font-medium text-primary">${pendingSalary[0]} - ${pendingSalary[1]}</span>
                 </div>
                 <Slider
@@ -366,9 +368,9 @@ export function JobSearchFilter() {
                     checked={pendingIncludeNegotiable}
                     onCheckedChange={(v) => setPendingIncludeNegotiable(!!v)}
                   />
-                  Bao gồm lương thỏa thuận
+                  {t('includeNegotiable')}
                 </label>
-                <Button className="w-full mt-2" size="sm" onClick={() => applyQuickFilter('salary', pendingSalary)}>Apply</Button>
+                <Button className="w-full mt-2" size="sm" onClick={() => applyQuickFilter('salary', pendingSalary)}>{t('apply')}</Button>
               </div>
             </PopoverContent>
           </Popover>
@@ -376,24 +378,13 @@ export function JobSearchFilter() {
 
         <div className="w-[180px]">
           <FilterCombobox
-            title="Job Domain"
+            title={t('jobDomain')}
             options={JOB_DOMAINS}
             selected={pendingJobDomains}
             onChange={(val) => applyQuickFilter('jobDomains', val)}
-            searchPlaceholder="Search domain..."
+            searchPlaceholder={t('searchDomainPlaceholder')}
           />
         </div>
-        {/* Specialization quick filter — temporarily hidden
-        <div className="w-[180px]">
-          <FilterCombobox
-            title="Specialization"
-            options={specializationOptions}
-            selected={pendingJobExpertises}
-            onChange={(val) => applyQuickFilter('jobExpertises', val)}
-            searchPlaceholder="Search specialization..."
-          />
-        </div>
-        */}
 
         {/* Filter Button (Opens Modal) */}
         <div className="ml-auto flex items-center gap-2">
@@ -415,7 +406,7 @@ export function JobSearchFilter() {
               }}
               className="h-9 text-sm text-slate-500 hover:text-slate-900 px-3"
             >
-              Clear Filters
+              {t('clearFilters')}
             </Button>
           )}
 
@@ -426,7 +417,7 @@ export function JobSearchFilter() {
               onClick={() => setIsMatchModalOpen(true)}
             >
               <Sparkles className="h-4 w-4" />
-              Smart Match
+              {t('smartMatch')}
             </Button>
           )}
 
@@ -435,13 +426,13 @@ export function JobSearchFilter() {
               render={
                 <Button variant="outline" className="h-9 flex items-center gap-2 text-sm text-slate-700 bg-white">
                   <Filter className="h-4 w-4" />
-                  All Filters
+                  {t('allFilters')}
                 </Button>
               }
             />
             <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
               <DialogHeader className="p-6 pb-4 border-b">
-                <DialogTitle className="text-xl">Advanced Filters</DialogTitle>
+                <DialogTitle className="text-xl">{t('advancedFilters')}</DialogTitle>
               </DialogHeader>
 
               {/* PART 3: Advanced Filter Modal Body */}
@@ -450,7 +441,7 @@ export function JobSearchFilter() {
 
                   {/* Row 1: Level */}
                   <div className="space-y-3">
-                    <h4 className="font-medium text-sm text-slate-700">Level</h4>
+                    <h4 className="font-medium text-sm text-slate-700">{t('level')}</h4>
                     <div className="flex flex-wrap gap-2">
                       {LEVELS.map(lvl => {
                         const isSelected = pendingLevels.includes(lvl);
@@ -472,7 +463,7 @@ export function JobSearchFilter() {
 
                   {/* Row 2: Working Model */}
                   <div className="space-y-3">
-                    <h4 className="font-medium text-sm text-slate-700">Working Model</h4>
+                    <h4 className="font-medium text-sm text-slate-700">{t('workingModel')}</h4>
                     <div className="flex flex-wrap gap-2">
                       {WORKING_MODELS.map(wm => {
                         const isSelected = pendingWorkingModels.includes(wm);
@@ -495,7 +486,7 @@ export function JobSearchFilter() {
                   {/* Row 3: Salary */}
                   <div className="space-y-4 pt-2">
                     <div className="flex justify-between items-center">
-                      <h4 className="font-medium text-sm text-slate-700">Monthly Salary (USD)</h4>
+                      <h4 className="font-medium text-sm text-slate-700">{t('salaryUsd')}</h4>
                       <span className="text-sm font-semibold text-primary px-3 py-1 bg-primary/10 rounded-full">
                         ${pendingSalary[0]} - ${pendingSalary[1]}
                       </span>
@@ -521,18 +512,18 @@ export function JobSearchFilter() {
                         checked={pendingIncludeNegotiable}
                         onCheckedChange={(v) => setPendingIncludeNegotiable(!!v)}
                       />
-                      Bao gồm lương thỏa thuận
+                      {t('includeNegotiable')}
                     </label>
                   </div>
 
                   {/* Row 4: Job Domain */}
                   <div className="space-y-3">
-                    <h4 className="font-medium text-sm text-slate-700">Job Domain</h4>
+                    <h4 className="font-medium text-sm text-slate-700">{t('jobDomain')}</h4>
                     <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
                       <Command filter={customFilter}>
-                        <CommandInput placeholder="Search domain..." className="border-none h-10" />
+                        <CommandInput placeholder={t('searchDomainPlaceholder')} className="border-none h-10" />
                         <CommandList>
-                          <CommandEmpty>No domain found.</CommandEmpty>
+                          <CommandEmpty>{t('noDomainFound')}</CommandEmpty>
                           <CommandGroup>
                             <ScrollArea className="h-[200px]">
                               {JOB_DOMAINS.map(jd => (
@@ -555,45 +546,14 @@ export function JobSearchFilter() {
                     </div>
                   </div>
 
-                  {/* Row 4.5: Specialization — temporarily hidden
-                  <div className="space-y-3">
-                    <h4 className="font-medium text-sm text-slate-700">Specialization</h4>
-                    <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
-                      <Command filter={customFilter}>
-                        <CommandInput placeholder="Search specialization..." className="border-none h-10" />
-                        <CommandList>
-                          <CommandEmpty>No specialization found.</CommandEmpty>
-                          <CommandGroup>
-                            <ScrollArea className="h-[200px]">
-                              {specializationOptions.map(spec => (
-                                <CommandItem
-                                  key={spec}
-                                  value={spec}
-                                  onSelect={() => {
-                                    setPendingJobExpertises(prev => prev.includes(spec) ? prev.filter(x => x !== spec) : [...prev, spec]);
-                                  }}
-                                  className="flex items-center gap-2 cursor-pointer px-3 py-2"
-                                >
-                                  <Checkbox checked={pendingJobExpertises.includes(spec)} className="pointer-events-none" />
-                                  <span className="truncate">{spec}</span>
-                                </CommandItem>
-                              ))}
-                            </ScrollArea>
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </div>
-                  </div>
-                  */}
-
                   {/* Row 5: Company Industry */}
                   <div className="space-y-3">
-                    <h4 className="font-medium text-sm text-slate-700">Company Industry</h4>
+                    <h4 className="font-medium text-sm text-slate-700">{t('companyIndustry')}</h4>
                     <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
                       <Command filter={customFilter}>
-                        <CommandInput placeholder="Search industry..." className="border-none h-10" />
+                        <CommandInput placeholder={t('searchIndustryPlaceholder')} className="border-none h-10" />
                         <CommandList>
-                          <CommandEmpty>No industry found.</CommandEmpty>
+                          <CommandEmpty>{t('noIndustryFound')}</CommandEmpty>
                           <CommandGroup>
                             <ScrollArea className="h-[200px]">
                               {COMPANY_INDUSTRIES.map(ci => (
@@ -618,7 +578,7 @@ export function JobSearchFilter() {
 
                   {/* Row 6: Company Type */}
                   <div className="space-y-3 pb-6">
-                    <h4 className="font-medium text-sm text-slate-700">Company Type</h4>
+                    <h4 className="font-medium text-sm text-slate-700">{t('companyType')}</h4>
                     <div className="flex flex-wrap gap-2">
                       {COMPANY_TYPES.map(ct => {
                         const isSelected = pendingCompanyTypes.includes(ct);
@@ -644,10 +604,10 @@ export function JobSearchFilter() {
               {/* Modal Footer */}
               <DialogFooter className="p-4 border-t flex sm:justify-between items-center bg-slate-50">
                 <Button variant="ghost" onClick={resetFilters} className="text-slate-500 hover:text-slate-900">
-                  Reset Filter
+                  {t('resetFilter')}
                 </Button>
                 <Button onClick={() => applyFilters()} className="w-32">
-                  Apply
+                  {t('apply')}
                 </Button>
               </DialogFooter>
             </DialogContent>
