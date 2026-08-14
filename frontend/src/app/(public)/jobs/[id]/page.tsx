@@ -18,6 +18,7 @@ import { jobService } from '@/services/job.service';
 
 export default function PublicJobDetailPage() {
   const [mounted, setMounted] = useState(false);
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -27,7 +28,18 @@ export default function PublicJobDetailPage() {
   const jobId = (typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] : '') || '';
   
   const { data, isLoading, isError } = useJobDetail(jobId, isCandidate);
-  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const toggleSaveMutation = useMutation({
+    mutationFn: async (idToSave: string) => {
+      if (data?.data?.isSaved) {
+        await jobService.unsaveJob(idToSave);
+      } else {
+        await jobService.saveJob(idToSave);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['job-detail', jobId, isCandidate] });
+    },
+  });
 
   React.useEffect(() => {
     setMounted(true);
@@ -51,19 +63,6 @@ export default function PublicJobDetailPage() {
 
     setIsApplyModalOpen(true);
   };
-
-  const toggleSaveMutation = useMutation({
-    mutationFn: async (idToSave: string) => {
-      if (job?.isSaved) {
-        await jobService.unsaveJob(idToSave);
-      } else {
-        await jobService.saveJob(idToSave);
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['job-detail', jobId, isCandidate] });
-    },
-  });
 
   const handleSaveClick = () => {
     if (!accessToken) {

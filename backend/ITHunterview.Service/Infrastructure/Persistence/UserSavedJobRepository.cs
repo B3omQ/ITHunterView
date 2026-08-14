@@ -24,7 +24,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             var savedJobsQuery = from usj in _context.UserSavedJobs
                                  join job in _context.JobPostings on usj.JobId equals job.Id
                                  join company in _context.Companies on job.CompanyId equals company.Id
-                                 where usj.UserId == userId && job.Status == JobStatus.PUBLISHED && !job.IsBanned
+                                 where usj.UserId == userId && job.Status == JobStatus.PUBLISHED && !job.IsBanned && job.DeletedAt == null
                                  select new { usj, job, company };
 
             var totalItems = await savedJobsQuery.CountAsync();
