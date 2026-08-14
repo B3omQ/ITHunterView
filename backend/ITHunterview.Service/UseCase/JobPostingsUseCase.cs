@@ -579,6 +579,12 @@ BEGIN
     ) OR ""title"" LIKE '%(RealisticSeed)%' OR ""title"" LIKE '%(RealisticSeedV2)%';
 
     IF target_job_ids IS NOT NULL THEN
+        DELETE FROM ""job_skill_decisions"" WHERE ""job_analysis_run_id"" IN (SELECT ""id"" FROM ""job_analysis_runs"" WHERE ""job_id"" = ANY(target_job_ids));
+        DELETE FROM ""application_history"" WHERE ""application_id"" IN (SELECT ""id"" FROM ""job_applications"" WHERE ""job_id"" = ANY(target_job_ids));
+        DELETE FROM ""interview_answers"" WHERE ""session_id"" IN (SELECT ""id"" FROM ""interview_sessions"" WHERE ""job_id"" = ANY(target_job_ids));
+        DELETE FROM ""interview_reports"" WHERE ""session_id"" IN (SELECT ""id"" FROM ""interview_sessions"" WHERE ""job_id"" = ANY(target_job_ids));
+        DELETE FROM ""interview_sessions"" WHERE ""job_id"" = ANY(target_job_ids);
+
         DELETE FROM ""job_skill_requirements"" WHERE ""job_id"" = ANY(target_job_ids);
         DELETE FROM ""cv_job_match_scores"" WHERE ""job_id"" = ANY(target_job_ids);
         DELETE FROM ""user_saved_jobs"" WHERE ""job_id"" = ANY(target_job_ids);
