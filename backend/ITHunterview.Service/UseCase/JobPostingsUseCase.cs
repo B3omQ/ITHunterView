@@ -572,6 +572,7 @@ DO $$
 DECLARE
     target_job_ids UUID[];
 BEGIN
+    -- 1. Collect target job IDs
     SELECT array_agg(id) INTO target_job_ids
     FROM ""job_postings""
     WHERE ""company_id"" IN (
@@ -579,12 +580,35 @@ BEGIN
     ) OR ""title"" LIKE '%(RealisticSeed)%' OR ""title"" LIKE '%(RealisticSeedV2)%';
 
     IF target_job_ids IS NOT NULL THEN
-        DELETE FROM ""job_skill_decisions"" WHERE ""job_analysis_run_id"" IN (SELECT ""id"" FROM ""job_analysis_runs"" WHERE ""job_id"" = ANY(target_job_ids));
-        DELETE FROM ""application_history"" WHERE ""application_id"" IN (SELECT ""id"" FROM ""job_applications"" WHERE ""job_id"" = ANY(target_job_ids));
-        DELETE FROM ""interview_answers"" WHERE ""session_id"" IN (SELECT ""id"" FROM ""interview_sessions"" WHERE ""job_id"" = ANY(target_job_ids));
-        DELETE FROM ""interview_reports"" WHERE ""session_id"" IN (SELECT ""id"" FROM ""interview_sessions"" WHERE ""job_id"" = ANY(target_job_ids));
+        -- 2. Break circular FK: job_postings -> job_analysis_runs
+        UPDATE ""job_postings""
+        SET ""active_analysis_run_id"" = NULL, ""effective_analysis_run_id"" = NULL
+        WHERE ""id"" = ANY(target_job_ids);
+
+        -- 3. Delete dependents of job_analysis_runs
+        DELETE FROM ""job_skill_decisions""
+        WHERE ""job_analysis_run_id"" IN (
+            SELECT ""id"" FROM ""job_analysis_runs"" WHERE ""job_id"" = ANY(target_job_ids)
+        );
+
+        -- 4. Delete dependents of job_applications
+        DELETE FROM ""application_history""
+        WHERE ""application_id"" IN (
+            SELECT ""id"" FROM ""job_applications"" WHERE ""job_id"" = ANY(target_job_ids)
+        );
+
+        -- 5. Delete dependents of interview_sessions
+        DELETE FROM ""interview_answers""
+        WHERE ""session_id"" IN (
+            SELECT ""id"" FROM ""interview_sessions"" WHERE ""job_id"" = ANY(target_job_ids)
+        );
+        DELETE FROM ""interview_reports""
+        WHERE ""session_id"" IN (
+            SELECT ""id"" FROM ""interview_sessions"" WHERE ""job_id"" = ANY(target_job_ids)
+        );
         DELETE FROM ""interview_sessions"" WHERE ""job_id"" = ANY(target_job_ids);
 
+        -- 6. Delete all direct children of job_postings
         DELETE FROM ""job_skill_requirements"" WHERE ""job_id"" = ANY(target_job_ids);
         DELETE FROM ""cv_job_match_scores"" WHERE ""job_id"" = ANY(target_job_ids);
         DELETE FROM ""user_saved_jobs"" WHERE ""job_id"" = ANY(target_job_ids);
@@ -593,6 +617,7 @@ BEGIN
         DELETE FROM ""job_reviews"" WHERE ""job_id"" = ANY(target_job_ids);
         DELETE FROM ""job_analysis_runs"" WHERE ""job_id"" = ANY(target_job_ids);
 
+        -- 7. Finally delete the job postings themselves
         DELETE FROM ""job_postings"" WHERE ""id"" = ANY(target_job_ids);
     END IF;
 END $$;";
