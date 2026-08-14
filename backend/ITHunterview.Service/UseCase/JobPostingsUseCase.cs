@@ -67,6 +67,11 @@ namespace ITHunterview.Service.UseCase
 
             var jobIds = items.Select(j => j.Id).ToList();
             var jobSkills = await _jobPostingRepository.GetSkillsForJobsAsync(jobIds);
+            var actualAppCounts = await _context.JobApplications
+                .Where(ja => jobIds.Contains(ja.JobId))
+                .GroupBy(ja => ja.JobId)
+                .Select(g => new { JobId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.JobId, x => x.Count);
 
             var summaryList = items.Select(j => new JobPostingSummaryDto
             {
@@ -76,7 +81,7 @@ namespace ITHunterview.Service.UseCase
                 Location = j.Location,
 
                 Status = j.Status,
-                ApplicationCount = j.ApplicationCount,
+                ApplicationCount = actualAppCounts.TryGetValue(j.Id, out var appCount) ? appCount : 0,
                 ViewCount = j.ViewCount,
                 PublishedAt = j.PublishedAt,
                 ApplicationDeadline = j.ApplicationDeadline,
