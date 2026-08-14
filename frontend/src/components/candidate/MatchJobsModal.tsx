@@ -229,7 +229,7 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
                       </span>
                       <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Match Score</span>
                     </div>
-                    <Link href={`/jobs/${match.sourceJobId || match.jobId}`} target="_blank">
+                    <Link href={match.sourceJobId ? `/jobs/${match.sourceJobId}` : `/candidate/cv-matching/new?jobId=${match.jobId}`} target="_blank">
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600">
                         <ChevronRight className="h-5 w-5" />
                       </Button>

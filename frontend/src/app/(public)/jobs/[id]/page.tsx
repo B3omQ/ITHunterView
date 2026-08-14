@@ -22,17 +22,20 @@ export default function PublicJobDetailPage() {
   const queryClient = useQueryClient();
   const { accessToken, user } = useAuthStore();
   const isCandidate = !!accessToken && user?.role?.name?.toLowerCase() === 'candidate';
-  const { data, isLoading, isError } = useJobDetail(params.id as string, isCandidate);
+  const rawId = params?.id;
+  const jobId = (typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] : '') || '';
+  
+  const { data, isLoading, isError } = useJobDetail(jobId, isCandidate);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
 
   if (isLoading) return <PageLoader />;
-  if (isError || !data?.data) return <EmptyState title="Job not found" description="This job posting may have expired or been removed." />;
+  if (!jobId || isError || !data?.data) return <EmptyState title="Job not found" description="This job posting may have expired or been removed." />;
 
   const job = data.data;
 
   const handleApplyClick = () => {
     if (!accessToken) {
-      router.push(`/login?redirect=/jobs/${params.id}`);
+      router.push(`/login?redirect=/jobs/${jobId}`);
       return;
     }
 
@@ -45,28 +48,28 @@ export default function PublicJobDetailPage() {
   };
 
   const toggleSaveMutation = useMutation({
-    mutationFn: async (jobId: string) => {
+    mutationFn: async (idToSave: string) => {
       if (job?.isSaved) {
-        await jobService.unsaveJob(jobId);
+        await jobService.unsaveJob(idToSave);
       } else {
-        await jobService.saveJob(jobId);
+        await jobService.saveJob(idToSave);
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['job-detail', params.id, isCandidate] });
+      queryClient.invalidateQueries({ queryKey: ['job-detail', jobId, isCandidate] });
     },
   });
 
   const handleSaveClick = () => {
     if (!accessToken) {
-      router.push(`/login?redirect=/jobs/${params.id}`);
+      router.push(`/login?redirect=/jobs/${jobId}`);
       return;
     }
     if (!isCandidate) {
       alert('Only candidates can save jobs.');
       return;
     }
-    toggleSaveMutation.mutate(params.id as string);
+    toggleSaveMutation.mutate(jobId);
   };
 
   return (
