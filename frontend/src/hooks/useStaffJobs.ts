@@ -44,12 +44,18 @@ export const useStaffJobs = () => {
     return response;
   };
 
+  const deleteSeedJobs = async () => {
+    const response = await staffJobService.deleteSeedJobs();
+    return response;
+  };
+
   return {
     data,
     loading,
     error,
     fetchJobs,
     banJob,
-    unbanJob
+    unbanJob,
+    deleteSeedJobs
   };
 };

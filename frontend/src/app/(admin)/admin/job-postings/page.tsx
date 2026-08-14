@@ -42,6 +42,7 @@ import {
   SearchX,
   ChevronLeft,
   ChevronRight,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import JobDetailModal from '@/components/jobs/JobDetailModal';
@@ -49,12 +50,13 @@ import { useTranslations } from 'next-intl';
 
 export default function AdminJobPostingsPage() {
   const t = useTranslations('AdminJobPostings');
-  const { data, loading, fetchJobs, banJob, unbanJob } = useStaffJobs();
+  const { data, loading, fetchJobs, banJob, unbanJob, deleteSeedJobs } = useStaffJobs();
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [isDeletingSeed, setIsDeletingSeed] = useState(false);
 
   const connection = useSignalR('/hubs/notification');
 
@@ -142,6 +144,25 @@ export default function AdminJobPostingsPage() {
     }
   };
 
+  const handleDeleteSeed = async () => {
+    if (confirm("Are you sure you want to completely delete all seed jobs? This action cannot be undone.")) {
+      setIsDeletingSeed(true);
+      try {
+        const res = await deleteSeedJobs();
+        if (res.success) {
+          toast.success("Seed jobs successfully deleted!");
+          fetchJobs(1, pageSize); // refresh
+        } else {
+          toast.error(res.message || "Failed to delete seed jobs.");
+        }
+      } catch (err: any) {
+        toast.error("An error occurred while deleting seed jobs.");
+      } finally {
+        setIsDeletingSeed(false);
+      }
+    }
+  };
+
   const openDetailModal = (id: string) => {
     setViewJobId(id);
     setIsDetailModalOpen(true);
@@ -167,6 +188,12 @@ export default function AdminJobPostingsPage() {
             <p className="text-[#65676B] dark:text-zinc-400 mt-1.5 text-sm">
               {t("desc")}
             </p>
+          </div>
+          <div>
+            <Button variant="destructive" onClick={handleDeleteSeed} disabled={isDeletingSeed}>
+              <Trash2 className="w-4 h-4 mr-2" />
+              {isDeletingSeed ? "Deleting..." : "Delete Seed Jobs"}
+            </Button>
           </div>
         </div>
 

@@ -24,5 +24,6 @@ namespace ITHunterview.Service.Interface.UseCase
         Task<ResponseBase<JobPostingDetailDto>> PushTopJobAsync(Guid id, Guid recruiterId);
         Task<ResponseBase<bool>> BanJobAsync(Guid id, string reason);
         Task<ResponseBase<bool>> UnbanJobAsync(Guid id);
+        Task<ResponseBase<bool>> DeleteSeedJobsAsync();
     }
 }
