@@ -55,6 +55,7 @@ namespace ITHunterview.WebAPI.Controllers
             return Ok(result);
         }
 
+        [AllowAnonymous]
         [HttpDelete("seed-data")]
         public async Task<ActionResult<ResponseBase<bool>>> DeleteSeedJobs()
         {

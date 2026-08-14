@@ -595,7 +595,8 @@ END $$;";
             }
             catch (Exception ex)
             {
-                return new ResponseBase<bool>("Failed to delete seed jobs: " + ex.Message);
+                Console.WriteLine("DELETE SEED JOBS EXCEPTION: " + ex.ToString());
+                return new ResponseBase<bool>("Failed to delete seed jobs: " + ex.Message + " | Inner: " + ex.InnerException?.Message);
             }
         }
     }
