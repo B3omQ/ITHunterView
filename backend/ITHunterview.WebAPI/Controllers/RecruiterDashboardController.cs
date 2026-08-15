@@ -3,6 +3,7 @@ using ITHunterview.Service.DTOs.Dashboard;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace ITHunterview.WebAPI.Controllers;
@@ -22,7 +23,9 @@ public class RecruiterDashboardController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<ResponseBase<RecruiterDashboardResponseDto>>> GetDashboard([FromQuery] DashboardFilterRequest request)
     {
-        var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userIdStr = User.FindFirstValue("userId") 
+                        ?? User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)
+                        ?? User.FindFirstValue("sub");
         if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
         {
             return Unauthorized();
