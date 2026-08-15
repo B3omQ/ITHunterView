@@ -52,6 +52,7 @@ public sealed class CvJdMatchingWorkerUseCaseTests
         await worker.ProcessClaimedJobAsync(job.Id, "worker-a", claimed.LeaseToken);
 
         job.Status.Should().Be("Completed");
+        job.ProcessingStage.Should().Be("completed");
         job.MatchScore.Should().BeNull();
         job.MatchDetails.Should().Be(details);
         job.ErrorCode.Should().BeNull();
@@ -126,10 +127,57 @@ public sealed class CvJdMatchingWorkerUseCaseTests
 
         claimed.Should().ContainSingle().Which.JobId.Should().Be(job.Id);
         job.Status.Should().Be("Processing");
+        job.ProcessingStage.Should().Be("preparing_cv");
         job.AttemptCount.Should().Be(1);
         job.LeaseOwner.Should().Be("worker-a");
         job.LeaseToken.Should().Be(claimed[0].LeaseToken);
         job.LeaseExpiresAt.Should().Be(UtcNow.Add(CvJdMatchingWorkerUseCase.LeaseDuration));
+    }
+
+    [Fact]
+    public async Task ProcessClaimedJob_ProgressAwareProcessor_PersistsRealStageBoundaries()
+    {
+        await using var context = CreateContext();
+        var job = CreateJob();
+        context.CvJobMatchScores.Add(job);
+        await context.SaveChangesAsync();
+
+        var processor = new Mock<ICvJdOneToOneMatchingProcessor>(MockBehavior.Strict);
+        processor.As<ICvJdOneToOneMatchingProgressProcessor>()
+            .Setup(x => x.ExecuteWithProgressAsync(
+                job.Id,
+                It.IsAny<MatchingInputSnapshotV1>(),
+                It.IsAny<MatchingProgressCallback>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(async (
+                Guid _,
+                MatchingInputSnapshotV1 _,
+                MatchingProgressCallback reportProgress,
+                CancellationToken cancellationToken) =>
+            {
+                await reportProgress(MatchingProcessingStages.PreparingJd, cancellationToken);
+                job.ProcessingStage.Should().Be(MatchingProcessingStages.PreparingJd);
+                await reportProgress(MatchingProcessingStages.MatchingRequirements, cancellationToken);
+                job.ProcessingStage.Should().Be(MatchingProcessingStages.MatchingRequirements);
+                return new CvJdMatchingExecutionResult(82m, ScoredDetails(82m), null);
+            });
+        var worker = CreateWorker(context, processor.Object, CreateFeatureUsageMock().Object);
+        var repository = new CvJdMatchingJobRepository(context);
+        var claimed = (await repository.ClaimRunnableJobsAsync(
+            1,
+            "worker-progress",
+            UtcNow,
+            CvJdMatchingWorkerUseCase.LeaseDuration))[0];
+
+        await worker.ProcessClaimedJobAsync(job.Id, "worker-progress", claimed.LeaseToken);
+
+        job.Status.Should().Be("Completed");
+        job.ProcessingStage.Should().Be(MatchingProcessingStages.Completed);
+        processor.As<ICvJdOneToOneMatchingProgressProcessor>().VerifyAll();
+        processor.Verify(x => x.ExecuteAsync(
+            It.IsAny<Guid>(),
+            It.IsAny<MatchingInputSnapshotV1>(),
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -165,6 +213,7 @@ public sealed class CvJdMatchingWorkerUseCaseTests
         await worker.ProcessClaimedJobAsync(job.Id, "worker-a", claimed.LeaseToken);
 
         job.Status.Should().Be("Completed");
+        job.ProcessingStage.Should().Be("completed");
         job.MatchScore.Should().Be(82m);
         job.MatchDetails.Should().Be(ScoredDetails(82m));
         job.SfiaExtractResult.Should().Be("sfia");
@@ -232,6 +281,7 @@ public sealed class CvJdMatchingWorkerUseCaseTests
         await worker.ProcessClaimedJobAsync(job.Id, "worker-a", claimed.LeaseToken);
 
         job.Status.Should().Be("RetryScheduled");
+        job.ProcessingStage.Should().Be("waiting_for_retry");
         job.ErrorCode.Should().Be("AI_PROVIDER_TIMEOUT");
         job.NextAttemptAt.Should().NotBeNull();
         featureUsage.Verify(x => x.RefundFeatureReservationAsync(

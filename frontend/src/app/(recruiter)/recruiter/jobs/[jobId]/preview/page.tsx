@@ -197,7 +197,7 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
         </div>
       </div>
 
-      {!canCompleteWithoutAnalysis && preview && !preview.canFinalize && preview.blockingReasons.length > 0 && (
+      {/* {!canCompleteWithoutAnalysis && preview && !preview.canFinalize && preview.blockingReasons.length > 0 && (
         <Card className="border-amber-300 bg-amber-50">
           <CardContent className="flex items-start gap-3 p-4">
             <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600" />
@@ -209,7 +209,7 @@ export default function JobPreviewPage({ params }: { params: Promise<{ jobId: st
             </div>
           </CardContent>
         </Card>
-      )}
+      )} */}
 
       {canCompleteWithoutAnalysis ? (
         <Card className="border-emerald-200 bg-emerald-50/50">

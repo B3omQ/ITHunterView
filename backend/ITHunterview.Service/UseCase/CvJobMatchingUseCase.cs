@@ -24,7 +24,10 @@ using ITHunterview.Service.DTOs.JobAnalysis;
 namespace ITHunterview.Service.UseCase
 {
 
-    public class CvJobMatchingUseCase : ICvJobMatchingUseCase, ICvJdOneToOneMatchingEngine
+    public class CvJobMatchingUseCase :
+        ICvJobMatchingUseCase,
+        ICvJdOneToOneMatchingEngine,
+        ICvJdOneToOneMatchingProgressEngine
     {
         private readonly ITHunterviewContext _context;
         private readonly IAiEmbeddingService _aiService;
@@ -504,6 +507,7 @@ namespace ITHunterview.Service.UseCase
                 RawJdText = null,
                 MatchScore = 0,
                 Status = "Pending",
+                ProcessingStage = MatchingProcessingStages.Queued,
                 UpdatedAt = DateTime.UtcNow
             };
 
@@ -512,10 +516,24 @@ namespace ITHunterview.Service.UseCase
             return matchScore.Id;
         }
 
-        public async Task<CvJdMatchingExecutionResult> ExecuteAsync(
+        public Task<CvJdMatchingExecutionResult> ExecuteAsync(
             Guid matchId,
             MatchingInputSnapshotV1 snapshot,
             CancellationToken cancellationToken = default)
+            => ExecuteEngineAsync(matchId, snapshot, null, cancellationToken);
+
+        public Task<CvJdMatchingExecutionResult> ExecuteWithProgressAsync(
+            Guid matchId,
+            MatchingInputSnapshotV1 snapshot,
+            MatchingProgressCallback progressCallback,
+            CancellationToken cancellationToken = default)
+            => ExecuteEngineAsync(matchId, snapshot, progressCallback, cancellationToken);
+
+        private async Task<CvJdMatchingExecutionResult> ExecuteEngineAsync(
+            Guid matchId,
+            MatchingInputSnapshotV1 snapshot,
+            MatchingProgressCallback? progressCallback,
+            CancellationToken cancellationToken)
         {
             var job = await _context.CvJobMatchScores
                 .AsNoTracking()
@@ -529,7 +547,8 @@ namespace ITHunterview.Service.UseCase
                 request: null,
                 snapshot,
                 manageLifecycle: false,
-                cancellationToken);
+                cancellationToken,
+                progressCallback);
         }
 
         private async Task<CvJdMatchingExecutionResult> ProcessMatchingJobCoreAsync(
@@ -538,7 +557,8 @@ namespace ITHunterview.Service.UseCase
             MatchingRequestDto? request,
             MatchingInputSnapshotV1? snapshot = null,
             bool manageLifecycle = true,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            MatchingProgressCallback? progressCallback = null)
         {
             var matchRecord = await _context.CvJobMatchScores
                 .SingleOrDefaultAsync(x => x.Id == jobId && x.MatchType == "AI", cancellationToken);
@@ -552,13 +572,18 @@ namespace ITHunterview.Service.UseCase
                     _matchingJdPreparationService is not null &&
                     _rawJdFallbackMatchingService is not null)
                 {
-                    var preparedResult = await ProcessPreparedSnapshotAsync(userId, snapshot, cancellationToken);
+                    var preparedResult = await ProcessPreparedSnapshotAsync(
+                        userId,
+                        snapshot,
+                        cancellationToken,
+                        progressCallback);
                     if (!manageLifecycle)
                     {
                         return preparedResult;
                     }
 
                     matchRecord.Status = "Completed";
+                    matchRecord.ProcessingStage = MatchingProcessingStages.Completed;
                     matchRecord.MatchScore = preparedResult.Score;
                     matchRecord.MatchDetails = preparedResult.MatchDetails;
                     matchRecord.CvAnalysisQuality = preparedResult.CvAnalysisQuality;
@@ -572,6 +597,7 @@ namespace ITHunterview.Service.UseCase
                 if (manageLifecycle)
                 {
                     matchRecord.Status = "Processing";
+                    matchRecord.ProcessingStage = MatchingProcessingStages.PreparingCv;
                     matchRecord.UpdatedAt = DateTime.UtcNow;
                     await _context.SaveChangesAsync(cancellationToken);
                 }
@@ -788,6 +814,7 @@ namespace ITHunterview.Service.UseCase
                     }
 
                     matchRecord.Status = "Completed";
+                    matchRecord.ProcessingStage = MatchingProcessingStages.Completed;
                     matchRecord.MatchScore = finalResult.FinalScore;
                     matchRecord.MatchDetails = finalResult.JsonString;
                     matchRecord.CvAnalysisQuality = stageTwoCv.Quality;
@@ -807,6 +834,7 @@ namespace ITHunterview.Service.UseCase
                         matchRecord.Id,
                         classification.ErrorCode);
                     matchRecord.Status = "Failed";
+                    matchRecord.ProcessingStage = MatchingProcessingStages.Failed;
                     matchRecord.ErrorMessage = classification.ErrorCode;
                     matchRecord.MatchDetails = string.Empty;
                     matchRecord.UpdatedAt = DateTime.UtcNow;
@@ -832,6 +860,7 @@ namespace ITHunterview.Service.UseCase
 
                 var failureCode = MatchingFailureClassifier.Classify(ex).ErrorCode;
                 matchRecord.Status = "Failed";
+                matchRecord.ProcessingStage = MatchingProcessingStages.Failed;
                 matchRecord.ErrorMessage = failureCode;
                 matchRecord.MatchDetails = string.Empty;
                 matchRecord.UpdatedAt = DateTime.UtcNow;
@@ -866,6 +895,7 @@ namespace ITHunterview.Service.UseCase
                 }
 
                 matchRecord.Status = "Failed";
+                matchRecord.ProcessingStage = MatchingProcessingStages.Failed;
                 matchRecord.ErrorMessage = "MATCHING_SOURCE_ACCESS_REVOKED";
                 matchRecord.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
@@ -899,14 +929,19 @@ namespace ITHunterview.Service.UseCase
         private async Task<CvJdMatchingExecutionResult> ProcessPreparedSnapshotAsync(
             Guid userId,
             MatchingInputSnapshotV1 snapshot,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            MatchingProgressCallback? progressCallback)
         {
             // Keep extraction ordered: all preparation services are scoped and may
             // share the current DbContext. Prompt-pair metadata is deliberately
             // absent from this decision; source/quality state alone selects the path.
+            await ReportProgressAsync(progressCallback, MatchingProcessingStages.PreparingCv, cancellationToken);
             var preparedCv = await _matchingCvPreparationService!.PrepareAsync(userId, snapshot, cancellationToken);
+            await ReportProgressAsync(progressCallback, MatchingProcessingStages.PreparingJd, cancellationToken);
             var preparedJd = await _matchingJdPreparationService!.PrepareAsync(snapshot, cancellationToken);
             var cvContext = _cvStageTwoContextBuilder.Build(preparedCv.CanonicalJson);
+
+            await ReportProgressAsync(progressCallback, MatchingProcessingStages.MatchingRequirements, cancellationToken);
 
             JdFitScoreCalculation score;
             JdAnalysisQuality jdQuality;
@@ -972,6 +1007,14 @@ namespace ITHunterview.Service.UseCase
                 jdIntent,
                 score.CompletionDisposition);
         }
+
+        private static Task ReportProgressAsync(
+            MatchingProgressCallback? progressCallback,
+            string processingStage,
+            CancellationToken cancellationToken)
+            => progressCallback is null
+                ? Task.CompletedTask
+                : progressCallback(processingStage, cancellationToken);
 
         private static bool TryClassifyMatchingPromptAvailability(
             Exception exception,
@@ -1061,6 +1104,7 @@ namespace ITHunterview.Service.UseCase
                 JobId = matchRecord.JobId,
                 JdTitle = matchRecord.JdTitle,
                 Status = matchRecord.Status,
+                ProcessingStage = ResolveProcessingStage(matchRecord),
                 ErrorCode = matchRecord.ErrorCode,
                 ErrorMessage = matchRecord.ErrorMessage,
                 CanRetry = string.Equals(matchRecord.Status, "Failed", StringComparison.Ordinal)
@@ -1076,6 +1120,29 @@ namespace ITHunterview.Service.UseCase
                 JdFit = new JdFitResultDto { Score = report.ScorePercent },
                 JdAnalysis = jdAnalysis,
                 CvAnalysis = BuildCvAnalysisResult(matchRecord)
+            };
+        }
+
+        private static string ResolveProcessingStage(CvJobMatchScores matchRecord)
+        {
+            if (MatchingProcessingStages.IsKnown(matchRecord.ProcessingStage))
+                return matchRecord.ProcessingStage!;
+
+            return matchRecord.Status switch
+            {
+                "Completed" => MatchingProcessingStages.Completed,
+                "Failed" => MatchingProcessingStages.Failed,
+                "Processing" when string.Equals(
+                    matchRecord.ErrorCode,
+                    ICvJdMatchingJobRepository.ResultFinalizationPending,
+                    StringComparison.Ordinal) => MatchingProcessingStages.Finalizing,
+                "Processing" => MatchingProcessingStages.PreparingCv,
+                "RetryScheduled" when string.Equals(
+                    matchRecord.ErrorCode,
+                    ICvJdMatchingJobRepository.ResultFinalizationPending,
+                    StringComparison.Ordinal) => MatchingProcessingStages.Finalizing,
+                "RetryScheduled" => MatchingProcessingStages.WaitingForRetry,
+                _ => MatchingProcessingStages.Queued
             };
         }
 

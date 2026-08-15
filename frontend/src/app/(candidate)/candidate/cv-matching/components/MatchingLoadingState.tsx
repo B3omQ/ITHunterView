@@ -2,44 +2,60 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle2, Loader2 } from 'lucide-react';
-import { MATCHING_LOADING_STEPS } from '@/hooks/useCvMatchingForm';
+import {
+  MATCHING_PROGRESS_STEPS,
+  type MatchingProgressView,
+} from '@/lib/matching-progress';
 import { useTranslations } from "next-intl";
 
 interface MatchingLoadingStateProps {
-  progressPercent: number;
-  loadingStep: number;
+  progress: MatchingProgressView;
 }
 
-export function MatchingLoadingState({ progressPercent, loadingStep }: MatchingLoadingStateProps) {
+export function MatchingLoadingState({ progress }: MatchingLoadingStateProps) {
   const t = useTranslations("CandidateCVMatching");
+  const isComplete = progress.stage === 'completed';
 
   return (
-    <Card className="max-w-xl mx-auto w-full mt-12 border-muted">
+    <Card className="max-w-xl mx-auto w-full mt-12 border-muted shadow-none">
       <CardHeader className="space-y-1 text-center">
         <CardTitle className="text-xl font-bold flex items-center justify-center gap-2">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          {t("analyzingSuitability")}
+          {isComplete ? (
+            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+          ) : (
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          )}
+          {isComplete ? t('progressCompleted') : t('analyzingSuitability')}
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="mx-auto max-w-md leading-relaxed">
           {t("loadingDesc")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {(progress.isSubmitting || progress.isWaitingForRetry) && (
+          <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+            {progress.isSubmitting ? t('submittingRequest') : t('waitingForRetry')}
+          </div>
+        )}
+
         <div className="space-y-2">
           <div className="flex justify-between text-sm font-semibold">
             <span>{t("progressLabel")}</span>
-            <span>{progressPercent}%</span>
+            <span>{progress.progressPercent}%</span>
           </div>
-          <Progress value={progressPercent} className="w-full" />
+          <Progress
+            value={progress.progressPercent}
+            className="w-full"
+            aria-label={t('progressLabel')}
+          />
         </div>
 
-        {/* List steps */}
         <div className="space-y-3 bg-muted/40 p-4 rounded-lg border">
-          {MATCHING_LOADING_STEPS.map((translationKey, idx) => {
-            const isDone = idx < loadingStep;
-            const isCurrent = idx === loadingStep;
+          {MATCHING_PROGRESS_STEPS.map((translationKey, idx) => {
+            const isDone = idx < progress.completedStepCount;
+            const isCurrent = idx === progress.currentStepIndex;
             return (
-              <div key={idx} className="flex items-start gap-2.5 text-sm transition-opacity duration-300">
+              <div key={translationKey} className="flex items-start gap-2.5 text-sm transition-opacity duration-300">
                 {isDone ? (
                   <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600 shrink-0 mt-0.5" />
                 ) : isCurrent ? (
@@ -49,7 +65,7 @@ export function MatchingLoadingState({ progressPercent, loadingStep }: MatchingL
                     {idx + 1}
                   </div>
                 )}
-                <span className={isDone ? 'text-emerald-700/80 font-medium line-through' : isCurrent ? 'text-foreground font-semibold' : 'text-muted-foreground'}>
+                <span className={isDone ? 'text-emerald-700 font-medium' : isCurrent ? 'text-foreground font-semibold' : 'text-muted-foreground'}>
                   {t(translationKey)}
                 </span>
               </div>

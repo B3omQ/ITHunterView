@@ -34,6 +34,7 @@ public sealed class CvJdMatchingSubmissionUseCaseTests
         second.IsExisting.Should().BeTrue();
         second.JobId.Should().Be(first.JobId);
         context.CvJobMatchScores.Count().Should().Be(1);
+        context.CvJobMatchScores.Single().ProcessingStage.Should().Be("queued");
         featureUsage.Verify(x => x.ReserveFeatureAsync(
             userId,
             CvJdMatchingSubmissionUseCase.FeatureKey,

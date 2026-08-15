@@ -11,7 +11,9 @@ namespace ITHunterview.Service.Service.Matching;
 /// state, leases, retries and billing stay in the worker; this component only
 /// passes an immutable snapshot to the engine and returns its result.
 /// </summary>
-public sealed class CvJdOneToOneMatchingProcessor : ICvJdOneToOneMatchingProcessor
+public sealed class CvJdOneToOneMatchingProcessor :
+    ICvJdOneToOneMatchingProcessor,
+    ICvJdOneToOneMatchingProgressProcessor
 {
     private readonly ICvJdOneToOneMatchingEngine _engine;
 
@@ -27,5 +29,18 @@ public sealed class CvJdOneToOneMatchingProcessor : ICvJdOneToOneMatchingProcess
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         return _engine.ExecuteAsync(matchId, snapshot, cancellationToken);
+    }
+
+    public Task<CvJdMatchingExecutionResult> ExecuteWithProgressAsync(
+        Guid matchId,
+        MatchingInputSnapshotV1 snapshot,
+        MatchingProgressCallback progressCallback,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        ArgumentNullException.ThrowIfNull(progressCallback);
+        return _engine is ICvJdOneToOneMatchingProgressEngine progressEngine
+            ? progressEngine.ExecuteWithProgressAsync(matchId, snapshot, progressCallback, cancellationToken)
+            : _engine.ExecuteAsync(matchId, snapshot, cancellationToken);
     }
 }

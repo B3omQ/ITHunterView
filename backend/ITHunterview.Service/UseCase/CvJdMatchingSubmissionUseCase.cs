@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
+using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.Persistence;
@@ -102,6 +103,7 @@ public sealed class CvJdMatchingSubmissionUseCase : ICvJdMatchingSubmissionUseCa
                 MatchScore = null,
                 MatchDetails = string.Empty,
                 Status = "Pending",
+                ProcessingStage = MatchingProcessingStages.Queued,
                 UpdatedAt = now,
                 MatchType = "AI",
                 InputSnapshotJson = snapshot.Json,

@@ -20,18 +20,9 @@ import {
   shouldOfferMatchingRetry,
 } from '@/lib/matching-failure';
 import { normalizeCompletedMatchReport } from '@/lib/matching-report';
+import { getMatchingProgress } from '@/lib/matching-progress';
 
 export type MatchingStep = 'select' | 'loading' | 'result';
-
-export const MATCHING_LOADING_STEPS = [
-  'step1',
-  'step2',
-  'step3',
-  'step4',
-  'step5',
-  'step6',
-  'step7',
-] as const;
 
 export function useCvMatchingForm() {
   const searchParams = useSearchParams();
@@ -96,10 +87,6 @@ export function useCvMatchingForm() {
     ?? '';
   const effectiveSelectedCvId = selectedCvId || defaultCvId;
 
-  // States cho loading progress
-  const [progressPercent, setProgressPercent] = useState(0);
-  const [loadingStep, setLoadingStep] = useState(0);
-
   const resolvePollingResult = useCallback((result: MatchingResultDto, jobId: string) => {
     if (result.status === 'Completed') {
       setPollingJobId(null);
@@ -116,8 +103,6 @@ export function useCvMatchingForm() {
       setMatchReport(normalizeCompletedMatchReport(result));
       setCvAnalysis(result.cvAnalysis ?? null);
       setMatchedCvId(result.cvId || null);
-      setProgressPercent(100);
-      setLoadingStep(MATCHING_LOADING_STEPS.length - 1);
       setTimeout(() => setStep('result'), 600);
       return;
     }
@@ -141,27 +126,12 @@ export function useCvMatchingForm() {
     }
   }, [pollQuery.data?.data, pollingJobId, resolvePollingResult]);
 
-  // Giả lập Loading Progress
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (step === 'loading') {
-      interval = setInterval(() => {
-        setProgressPercent((prev) => {
-          if (prev >= 98) {
-            return 98; // Hold until API completes
-          }
-          const nextPercent = prev + Math.floor(Math.random() * 15) + 5;
-          const currentStep = Math.min(
-            Math.floor((nextPercent / 100) * MATCHING_LOADING_STEPS.length),
-            MATCHING_LOADING_STEPS.length - 1
-          );
-          setLoadingStep(currentStep);
-          return Math.min(nextPercent, 98);
-        });
-      }, 500);
-    }
-    return () => clearInterval(interval);
-  }, [step]);
+  const polledResult = pollQuery.data?.data;
+  const matchingProgress = getMatchingProgress(
+    polledResult?.status,
+    polledResult?.processingStage,
+    step === 'loading' && !pollingJobId,
+  );
 
   // Xử lý Upload File
   const processUpload = async (file: File) => {
@@ -300,9 +270,6 @@ export function useCvMatchingForm() {
     setResultError(null);
     setMatchReport(null);
     setCvAnalysis(null);
-    setProgressPercent(0);
-    setCvAnalysis(null);
-    setLoadingStep(0);
     setStep('loading');
 
     try {
@@ -353,8 +320,6 @@ export function useCvMatchingForm() {
     }
 
     retryInFlightRef.current = true;
-    setProgressPercent(0);
-    setLoadingStep(0);
     setStep('loading');
     try {
       const res = await retryMutation.mutateAsync({
@@ -421,8 +386,7 @@ export function useCvMatchingForm() {
       jdText,
       selectedJobId,
       currentJobId,
-      progressPercent,
-      loadingStep,
+      matchingProgress,
       matchReport,
       cvAnalysis,
       matchedCvId,
