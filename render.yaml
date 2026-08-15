@@ -52,6 +52,9 @@ services:
         sync: false
       - key: PayOS__ChecksumKey
         sync: false
+      - key: AssemblyAi__ApiKey
+        sync: false
+        
 
 
 databases:
