@@ -97,6 +97,82 @@ namespace ITHunterview.Service.Tests.UseCase
         }
 
         [Fact]
+        public async Task MatchCvWithAllJobsAsync_PastedJdHistory_DoesNotAbortSavedJobMatching()
+        {
+            await using var context = CreateBulkMatchingContext();
+            var (cv, job, user, profile) = CreateBulkMatchingEntities();
+            var pastedJdMatch = new CvJobMatchScores
+            {
+                Id = Guid.NewGuid(),
+                UserId = cv.UserId,
+                CvId = cv.Id,
+                JobId = null,
+                RawJdText = "Pasted job description",
+                MatchScore = 73m,
+                MatchDetails = "pasted-jd-result",
+                Status = "Completed",
+                MatchType = "AI",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            context.Users.Add(user);
+            context.CandidateProfiles.Add(profile);
+            context.Cvs.Add(cv);
+            context.JobPostings.Add(job);
+            context.CvJobMatchScores.Add(pastedJdMatch);
+            await context.SaveChangesAsync();
+
+            await CreateBulkMatchingUseCase(context, cv.ParsedData!)
+                .MatchCvWithAllJobsAsync(cv.Id, cv.UserId);
+
+            var scores = await context.CvJobMatchScores.ToListAsync();
+            scores.Should().HaveCount(2);
+            scores.Single(score => score.JobId == job.Id).Status.Should().Be("Completed");
+            var preservedPastedJdMatch = scores.Single(score => score.Id == pastedJdMatch.Id);
+            preservedPastedJdMatch.JobId.Should().BeNull();
+            preservedPastedJdMatch.MatchScore.Should().Be(73m);
+            preservedPastedJdMatch.MatchDetails.Should().Be("pasted-jd-result");
+        }
+
+        [Fact]
+        public async Task MatchJobWithAllCvsAsync_PastedCvHistory_DoesNotAbortSavedCvMatching()
+        {
+            await using var context = CreateBulkMatchingContext();
+            var (cv, job, user, profile) = CreateBulkMatchingEntities();
+            var pastedCvMatch = new CvJobMatchScores
+            {
+                Id = Guid.NewGuid(),
+                UserId = Guid.NewGuid(),
+                CvId = null,
+                JobId = job.Id,
+                RawJdText = job.Requirements,
+                MatchScore = 64m,
+                MatchDetails = "pasted-cv-result",
+                Status = "Completed",
+                MatchType = "AI",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            context.Users.Add(user);
+            context.CandidateProfiles.Add(profile);
+            context.Cvs.Add(cv);
+            context.JobPostings.Add(job);
+            context.CvJobMatchScores.Add(pastedCvMatch);
+            await context.SaveChangesAsync();
+
+            await CreateBulkMatchingUseCase(context, cv.ParsedData!)
+                .MatchJobWithAllCvsAsync(job.Id, job.RecruiterId);
+
+            var scores = await context.CvJobMatchScores.ToListAsync();
+            scores.Should().HaveCount(2);
+            scores.Single(score => score.CvId == cv.Id).Status.Should().Be("Completed");
+            var preservedPastedCvMatch = scores.Single(score => score.Id == pastedCvMatch.Id);
+            preservedPastedCvMatch.CvId.Should().BeNull();
+            preservedPastedCvMatch.MatchScore.Should().Be(64m);
+            preservedPastedCvMatch.MatchDetails.Should().Be("pasted-cv-result");
+        }
+
+        [Fact]
         public async Task GetMatchingResultAsync_MapsPartialCvAnalysisWithoutChangingCompletedStatus()
         {
             var options = new DbContextOptionsBuilder<ITHunterviewContext>()
@@ -500,6 +576,146 @@ namespace ITHunterview.Service.Tests.UseCase
                 modelBuilder.Entity<JobPostings>().Ignore(x => x.DomainEmbedding);
                 modelBuilder.Entity<OptimizeSession>().Ignore(x => x.CvDocument);
             }
+        }
+
+        private sealed class BulkMatchingTestContext : ITHunterviewContext
+        {
+            public BulkMatchingTestContext(DbContextOptions<ITHunterviewContext> options)
+                : base(options)
+            {
+            }
+
+            protected override void OnModelCreating(ModelBuilder modelBuilder)
+            {
+                base.OnModelCreating(modelBuilder);
+                var vectorConverter = new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<Vector?, string?>(
+                    vector => vector == null ? null : SerializeVector(vector),
+                    value => value == null ? null : DeserializeVector(value));
+                modelBuilder.Entity<Cvs>().Property(value => value.TitleEmbedding).HasConversion(vectorConverter);
+                modelBuilder.Entity<Cvs>().Property(value => value.SkillsEmbedding).HasConversion(vectorConverter);
+                modelBuilder.Entity<Cvs>().Property(value => value.ExperienceEmbedding).HasConversion(vectorConverter);
+                modelBuilder.Entity<Cvs>().Property(value => value.DomainEmbedding).HasConversion(vectorConverter);
+                modelBuilder.Entity<JobPostings>().Property(value => value.TitleEmbedding).HasConversion(vectorConverter);
+                modelBuilder.Entity<JobPostings>().Property(value => value.SkillsEmbedding).HasConversion(vectorConverter);
+                modelBuilder.Entity<JobPostings>().Property(value => value.ExperienceEmbedding).HasConversion(vectorConverter);
+                modelBuilder.Entity<JobPostings>().Property(value => value.DomainEmbedding).HasConversion(vectorConverter);
+                foreach (var entityType in modelBuilder.Model.GetEntityTypes()
+                             .Where(type => type.ClrType != typeof(Cvs)
+                                            && type.ClrType != typeof(JobPostings)
+                                            && type.ClrType != typeof(CvJobMatchScores)
+                                            && type.ClrType != typeof(JobSkillRequirements)
+                                            && type.ClrType != typeof(Skills)
+                                            && type.ClrType != typeof(User)
+                                            && type.ClrType != typeof(CandidateProfiles))
+                             .Select(type => type.ClrType)
+                             .Distinct()
+                             .ToList())
+                {
+                    modelBuilder.Ignore(entityType);
+                }
+            }
+        }
+
+        private static string SerializeVector(Vector vector)
+            => string.Join(",", vector.ToArray());
+
+        private static Vector DeserializeVector(string value)
+            => new(value.Split(',').Select(item => float.Parse(item)).ToArray());
+
+        private static ITHunterviewContext CreateBulkMatchingContext()
+        {
+            var options = new DbContextOptionsBuilder<ITHunterviewContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+                .Options;
+            return new BulkMatchingTestContext(options);
+        }
+
+        private static (Cvs Cv, JobPostings Job, User User, CandidateProfiles Profile) CreateBulkMatchingEntities()
+        {
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = "candidate@example.test",
+                Status = UserStatus.ACTIVE
+            };
+            var profile = new CandidateProfiles
+            {
+                UserId = user.Id,
+                IsVisibleToRecruiters = true,
+                User = user
+            };
+            var embedding = new Vector(new float[] { 1, 0, 0 });
+            var cv = new Cvs
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                User = user,
+                IsPrimary = true,
+                FileName = "cv.pdf",
+                FileUrl = "https://example.test/cv.pdf",
+                FileType = "application/pdf",
+                RawText = "immutable CV source",
+                ParsedData = "{\"matching_metrics\":{\"job_titles_normalized\":[\"Backend Developer\"],\"skills_normalized\":[\"C#\"],\"total_years_exp\":3,\"domains\":[\"fintech\"]}}",
+                ParseStatus = "SUCCESS",
+                TitleEmbedding = embedding,
+                SkillsEmbedding = embedding,
+                ExperienceEmbedding = embedding,
+                DomainEmbedding = embedding,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            var job = new JobPostings
+            {
+                Id = Guid.NewGuid(),
+                JobCode = Guid.NewGuid().ToString("N"),
+                RecruiterId = Guid.NewGuid(),
+                CompanyId = Guid.NewGuid(),
+                Title = "Backend Developer",
+                Description = "Build APIs",
+                Requirements = "C#, three years, fintech",
+                Benefits = string.Empty,
+                Currency = "VND",
+                Location = "Remote",
+                Status = JobStatus.PUBLISHED,
+                ParseStatus = "SUCCESS",
+                ParsedData = cv.ParsedData,
+                TitleEmbedding = embedding,
+                SkillsEmbedding = embedding,
+                ExperienceEmbedding = embedding,
+                DomainEmbedding = embedding,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            user.CandidateProfile = profile;
+            user.Cvs.Add(cv);
+            return (cv, job, user, profile);
+        }
+
+        private static CvJobMatchingUseCase CreateBulkMatchingUseCase(
+            ITHunterviewContext context,
+            string cvParsedData)
+        {
+            var validator = new Mock<ICvAnalysisResponseValidator>();
+            validator
+                .Setup(service => service.ValidateAndCanonicalize(cvParsedData))
+                .Returns(CvAnalysisValidationResult.Complete(
+                    cvParsedData,
+                    new CvAnalysisCoverage(
+                        1, 1, 0,
+                        1, 1, 0,
+                        1, 1, 0,
+                        true, true, true, true)));
+            return new CvJobMatchingUseCase(
+                context,
+                Mock.Of<IAiEmbeddingService>(),
+                Mock.Of<ICvTextExtractorService>(),
+                NullLogger<CvJobMatchingUseCase>.Instance,
+                Mock.Of<IPromptManagementService>(),
+                Mock.Of<IAiService>(),
+                Mock.Of<ICandidateFeatureUsageUseCase>(),
+                Mock.Of<IMatchingInputPreflightUseCase>(),
+                Mock.Of<IMatchingSourceRepository>(),
+                validator.Object);
         }
 
         private static CvJobMatchingUseCase CreateDatabaseUseCase(ITHunterviewContext context) => new(

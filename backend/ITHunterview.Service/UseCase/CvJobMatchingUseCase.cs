@@ -336,8 +336,10 @@ namespace ITHunterview.Service.UseCase
             await GenerateEmbeddingsForCvAsync(cv);
 
             var existingScores = await _context.CvJobMatchScores
-                .Where(s => s.CvId == cvId && s.UserId == userId)
-                .ToDictionaryAsync(s => s.JobId);
+                // Saved-CV/pasted-JD history intentionally has no JobId and cannot
+                // correspond to any published job in this bulk matching pass.
+                .Where(s => s.CvId == cvId && s.UserId == userId && s.JobId.HasValue)
+                .ToDictionaryAsync(s => s.JobId!.Value);
 
             // Fetch all jobs that have embeddings and are successfully parsed
             var jobs = await _context.JobPostings.AsNoTracking()
@@ -410,8 +412,10 @@ namespace ITHunterview.Service.UseCase
             await GenerateEmbeddingsForJobAsync(job);
 
             var existingScores = await _context.CvJobMatchScores
-                .Where(s => s.JobId == jobId) // Fix Duplicate Bug: Bỏ lọc theo Recruiter UserId
-                .ToDictionaryAsync(s => s.CvId);
+                // Saved-JD/pasted-CV history intentionally has no CvId and cannot
+                // correspond to any saved CV in this bulk matching pass.
+                .Where(s => s.JobId == jobId && s.CvId.HasValue) // Do not filter by recruiter UserId.
+                .ToDictionaryAsync(s => s.CvId!.Value);
 
             var cvs = await _context.Cvs
                 .Include(c => c.User)
