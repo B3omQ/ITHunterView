@@ -4,32 +4,36 @@ using ITHunterview.Service.DTOs.Cv.Matching;
 namespace ITHunterview.Service.Service.Matching;
 
 /// <summary>
-/// Converts a readable provider payload to the fixed CV v2 shape. It performs
-/// structural conversion only: no grounding, inference, aliasing, sorting, or
-/// experience recalculation belongs at this boundary.
+/// Inspects the fixed CV v2 structure without producing a rewritten document.
+/// Diagnostics describe readability only; the provider JSON remains untouched.
 /// </summary>
 public sealed class CvAnalysisDocumentProjector
 {
     private const int MaxDiagnostics = 100;
+
     private static readonly HashSet<string> EntryTypes = new(StringComparer.Ordinal)
     {
         "professional_experience", "internship", "freelance", "academic_project",
         "personal_project", "volunteer_experience", "unknown"
     };
+
     private static readonly HashSet<string> SignalCategories = new(StringComparer.Ordinal)
     {
         "tech_skill", "experience", "domain_knowledge", "language", "education", "soft_skill"
     };
+
     private static readonly HashSet<string> EvidenceStrengths = new(StringComparer.Ordinal)
     {
         "listed", "applied", "outcome"
     };
+
     private static readonly HashSet<string> SourceTypes = new(StringComparer.Ordinal)
     {
         "headline", "summary", "skills_section", "professional_experience", "internship",
         "freelance", "academic_project", "personal_project", "volunteer_experience",
         "education", "language_section", "certification", "other"
     };
+
     private static readonly HashSet<string> CalculationBases = new(StringComparer.Ordinal)
     {
         "explicit_timeline", "partial_timeline", "insufficient_timeline"
@@ -37,23 +41,16 @@ public sealed class CvAnalysisDocumentProjector
 
     public CvAnalysisProjection Project(JsonElement root)
     {
-        var state = new ProjectionState();
-        var document = new CvAnalysisDocument
-        {
-            SchemaVersion = root.GetProperty("schema_version").GetString()!.Trim()
-        };
+        var state = new InspectionState();
 
-        var verbatim = ReadObject(root, "verbatim_sections", "$.verbatim_sections", "VERBATIM_SECTIONS_INVALID", state);
-        document.VerbatimSections = ProjectVerbatim(verbatim, state);
+        var verbatim = RequireObject(root, "verbatim_sections", "$.verbatim_sections", "VERBATIM_SECTIONS_INVALID", state);
+        InspectVerbatim(verbatim, state);
 
-        var metrics = ReadObject(root, "matching_metrics", "$.matching_metrics", "MATCHING_METRICS_INVALID", state);
-        document.MatchingMetrics = ProjectMetrics(metrics, state);
+        var metrics = RequireObject(root, "matching_metrics", "$.matching_metrics", "MATCHING_METRICS_INVALID", state);
+        InspectMetrics(metrics, state);
 
-        var evidence = ReadObject(root, "matching_evidence", "$.matching_evidence", "MATCHING_EVIDENCE_INVALID", state);
-        document.MatchingEvidence = ProjectEvidence(
-            evidence,
-            document.VerbatimSections.ProfessionalExperienceAndProjects.Count,
-            state);
+        var evidence = RequireObject(root, "matching_evidence", "$.matching_evidence", "MATCHING_EVIDENCE_INVALID", state);
+        InspectEvidence(evidence, state);
 
         var coverage = new CvAnalysisCoverage(
             state.InputExperienceEntries,
@@ -71,474 +68,349 @@ public sealed class CvAnalysisDocumentProjector
             state.DomainMetricsAvailable);
 
         return new CvAnalysisProjection(
-            document,
             coverage,
             state.Diagnostics,
-            HasUsableMatchingContent(document, coverage));
+            state.HasUsableMatchingContent,
+            state.HasStructuralDegradation);
     }
 
-    private static CvVerbatimSections ProjectVerbatim(JsonElement? section, ProjectionState state)
+    private static void InspectVerbatim(JsonElement? section, InspectionState state)
     {
-        var result = new CvVerbatimSections();
-        var personal = ReadObject(section, "personal_info", "$.verbatim_sections.personal_info", "PERSONAL_INFO_INVALID", state);
-        result.PersonalInfo = new CvPersonalInfo
-        {
-            Name = ReadString(personal, "name", "$.verbatim_sections.personal_info.name", state),
-            Title = ReadString(personal, "title", "$.verbatim_sections.personal_info.title", state),
-            Summary = ReadString(personal, "summary", "$.verbatim_sections.personal_info.summary", state)
-        };
+        var personal = RequireObject(section, "personal_info", "$.verbatim_sections.personal_info", "PERSONAL_INFO_INVALID", state);
+        RequireString(personal, "name", "$.verbatim_sections.personal_info.name", state, useful: false);
+        RequireString(personal, "title", "$.verbatim_sections.personal_info.title", state);
+        RequireString(personal, "summary", "$.verbatim_sections.personal_info.summary", state);
 
-        result.Education = ReadObjectArray(
-            section,
-            "education",
-            "$.verbatim_sections.education",
-            20,
-            "EDUCATION_ENTRY_INVALID",
-            state,
-            (item, path) => new CvEducation
-            {
-                Institution = ReadString(item, "institution", $"{path}.institution", state),
-                Degree = ReadString(item, "degree", $"{path}.degree", state),
-                Major = ReadString(item, "major", $"{path}.major", state),
-                Timeline = ReadString(item, "timeline", $"{path}.timeline", state)
-            });
+        InspectObjectArray(section, "education", "$.verbatim_sections.education", "EDUCATION_ENTRY_INVALID", state,
+            static (item, path, itemState) =>
+                RequireString(item, "institution", $"{path}.institution", itemState) |
+                RequireString(item, "degree", $"{path}.degree", itemState) |
+                RequireString(item, "major", $"{path}.major", itemState) |
+                RequireString(item, "timeline", $"{path}.timeline", itemState));
 
-        result.Languages = ReadObjectArray(
-            section,
-            "languages",
-            "$.verbatim_sections.languages",
-            20,
-            "LANGUAGE_ENTRY_INVALID",
-            state,
-            (item, path) => new CvLanguage
-            {
-                Language = ReadString(item, "language", $"{path}.language", state),
-                CertificationsOrLevel = ReadString(item, "certifications_or_level", $"{path}.certifications_or_level", state)
-            });
+        InspectObjectArray(section, "languages", "$.verbatim_sections.languages", "LANGUAGE_ENTRY_INVALID", state,
+            static (item, path, itemState) =>
+                RequireString(item, "language", $"{path}.language", itemState) |
+                RequireString(item, "certifications_or_level", $"{path}.certifications_or_level", itemState));
 
-        result.SkillsSection = ReadStringArray(
-            section,
-            "skills_section",
-            "$.verbatim_sections.skills_section",
-            80,
-            state);
+        InspectStringArray(section, "skills_section", "$.verbatim_sections.skills_section", state);
 
-        var experienceArray = ReadArray(
-            section,
-            "professional_experience_and_projects",
-            "$.verbatim_sections.professional_experience_and_projects",
-            state);
-        state.InputExperienceEntries = experienceArray?.GetArrayLength() ?? 0;
-        if (experienceArray is { } experiences)
+        var experiences = RequireArray(section, "professional_experience_and_projects",
+            "$.verbatim_sections.professional_experience_and_projects", state);
+        state.InputExperienceEntries = experiences?.GetArrayLength() ?? 0;
+        if (experiences is { } experienceArray)
         {
             var index = 0;
-            foreach (var item in experiences.EnumerateArray())
+            foreach (var item in experienceArray.EnumerateArray())
             {
-                var path = $"$.verbatim_sections.professional_experience_and_projects[{index}]";
-                index++;
-                if (result.ProfessionalExperienceAndProjects.Count >= 30)
-                {
-                    state.Add("EXPERIENCE_ENTRIES_TRUNCATED", "$.verbatim_sections.professional_experience_and_projects");
-                    continue;
-                }
+                var path = $"$.verbatim_sections.professional_experience_and_projects[{index++}]";
                 if (item.ValueKind != JsonValueKind.Object)
                 {
-                    state.Add("EXPERIENCE_ENTRY_INVALID", path);
+                    state.AddStructural("EXPERIENCE_ENTRY_INVALID", path);
                     continue;
                 }
 
-                var entryType = ReadString(item, "entry_type", $"{path}.entry_type", state);
-                AddUnknownEnumDiagnostic(entryType, EntryTypes, "ENTRY_TYPE_UNKNOWN", $"{path}.entry_type", state);
-                result.ProfessionalExperienceAndProjects.Add(new CvExperienceOrProject
+                var hasValue = false;
+                hasValue |= RequireString(item, "company_or_project_name", $"{path}.company_or_project_name", state);
+                hasValue |= RequireString(item, "role", $"{path}.role", state);
+                hasValue |= RequireString(item, "timeline", $"{path}.timeline", state);
+                hasValue |= RequireString(item, "entry_type", $"{path}.entry_type", state, allowed: EntryTypes,
+                    unknownCode: "ENTRY_TYPE_UNKNOWN");
+                hasValue |= InspectStringArray(item, "details_and_responsibilities", $"{path}.details_and_responsibilities", state);
+                hasValue |= InspectStringArray(item, "technologies_used", $"{path}.technologies_used", state);
+                if (hasValue)
                 {
-                    CompanyOrProjectName = ReadString(item, "company_or_project_name", $"{path}.company_or_project_name", state),
-                    Role = ReadString(item, "role", $"{path}.role", state),
-                    Timeline = ReadString(item, "timeline", $"{path}.timeline", state),
-                    EntryType = entryType,
-                    DetailsAndResponsibilities = ReadStringArray(item, "details_and_responsibilities", $"{path}.details_and_responsibilities", 100, state),
-                    TechnologiesUsed = ReadStringArray(item, "technologies_used", $"{path}.technologies_used", 80, state)
-                });
-                state.AcceptedExperienceEntries++;
+                    state.AcceptedExperienceEntries++;
+                }
+                else
+                {
+                    state.AddStructural("EXPERIENCE_ENTRY_EMPTY", path);
+                }
             }
         }
 
-        result.CertificationsAndAwards = ReadStringArray(
-            section,
-            "certifications_and_awards",
-            "$.verbatim_sections.certifications_and_awards",
-            40,
-            state);
-        result.OtherInformation = ReadString(section, "other_information", "$.verbatim_sections.other_information", state);
-        return result;
+        InspectStringArray(section, "certifications_and_awards", "$.verbatim_sections.certifications_and_awards", state);
+        RequireString(section, "other_information", "$.verbatim_sections.other_information", state);
     }
 
-    private static CvMatchingMetrics ProjectMetrics(JsonElement? metrics, ProjectionState state)
+    private static void InspectMetrics(JsonElement? metrics, InspectionState state)
     {
-        var result = new CvMatchingMetrics();
-        result.JobTitlesNormalized = ReadStringArray(
-            metrics,
-            "job_titles_normalized",
-            "$.matching_metrics.job_titles_normalized",
-            40,
-            state,
-            available => state.TitleMetricsAvailable = available);
-        result.SkillsNormalized = ReadStringArray(
-            metrics,
-            "skills_normalized",
-            "$.matching_metrics.skills_normalized",
-            100,
-            state,
-            available => state.SkillMetricsAvailable = available);
-        result.Domains = ReadStringArray(
-            metrics,
-            "domains",
-            "$.matching_metrics.domains",
-            40,
-            state,
-            available => state.DomainMetricsAvailable = available);
-        result.TotalYearsExperience = ReadInt(
-            metrics,
-            "total_years_exp",
-            "$.matching_metrics.total_years_exp",
-            state,
-            value => value >= 0,
-            available => state.ExperienceMetricAvailable = available);
-        return result;
+        state.TitleMetricsAvailable = InspectStringArray(metrics, "job_titles_normalized",
+            "$.matching_metrics.job_titles_normalized", state);
+        state.SkillMetricsAvailable = InspectStringArray(metrics, "skills_normalized",
+            "$.matching_metrics.skills_normalized", state);
+        state.DomainMetricsAvailable = InspectStringArray(metrics, "domains",
+            "$.matching_metrics.domains", state);
+
+        if (metrics is { ValueKind: JsonValueKind.Object } value &&
+            value.TryGetProperty("total_years_exp", out var years) &&
+            years.ValueKind == JsonValueKind.Number && years.TryGetInt32(out var totalYears) && totalYears >= 0)
+        {
+            state.ExperienceMetricAvailable = true;
+            state.HasUsableMatchingContent = true;
+        }
+        else
+        {
+            state.AddStructural("INTEGER_INVALID", "$.matching_metrics.total_years_exp");
+        }
     }
 
-    private static CvMatchingEvidence ProjectEvidence(JsonElement? evidence, int experienceCount, ProjectionState state)
+    private static void InspectEvidence(JsonElement? evidence, InspectionState state)
     {
-        var result = new CvMatchingEvidence();
-        var signals = ReadArray(evidence, "requirement_signals", "$.matching_evidence.requirement_signals", state);
+        var signals = RequireArray(evidence, "requirement_signals", "$.matching_evidence.requirement_signals", state);
         state.InputRequirementSignals = signals?.GetArrayLength() ?? 0;
         if (signals is { } signalArray)
         {
             var index = 0;
             foreach (var item in signalArray.EnumerateArray())
             {
-                var path = $"$.matching_evidence.requirement_signals[{index}]";
-                index++;
-                if (result.RequirementSignals.Count >= 100)
-                {
-                    state.Add("REQUIREMENT_SIGNALS_TRUNCATED", "$.matching_evidence.requirement_signals");
-                    continue;
-                }
+                var path = $"$.matching_evidence.requirement_signals[{index++}]";
                 if (item.ValueKind != JsonValueKind.Object)
                 {
-                    state.Add("REQUIREMENT_SIGNAL_INVALID", path);
+                    state.AddStructural("REQUIREMENT_SIGNAL_INVALID", path);
                     continue;
                 }
 
-                var category = ReadString(item, "category", $"{path}.category", state);
-                var strength = ReadString(item, "evidence_strength", $"{path}.evidence_strength", state);
-                var sourceType = ReadString(item, "source_type", $"{path}.source_type", state);
-                AddUnknownEnumDiagnostic(category, SignalCategories, "SIGNAL_CATEGORY_UNKNOWN", $"{path}.category", state);
-                AddUnknownEnumDiagnostic(strength, EvidenceStrengths, "EVIDENCE_STRENGTH_UNKNOWN", $"{path}.evidence_strength", state);
-                AddUnknownEnumDiagnostic(sourceType, SourceTypes, "SOURCE_TYPE_UNKNOWN", $"{path}.source_type", state);
-                var sourceIndex = ReadInt(item, "source_index", $"{path}.source_index", state);
-                if (sourceIndex < 0 || (IsExperienceSource(sourceType) && sourceIndex >= experienceCount))
+                var hasValue = false;
+                hasValue |= RequireString(item, "name", $"{path}.name", state);
+                hasValue |= RequireString(item, "category", $"{path}.category", state, allowed: SignalCategories,
+                    unknownCode: "SIGNAL_CATEGORY_UNKNOWN");
+                hasValue |= RequireString(item, "evidence_strength", $"{path}.evidence_strength", state,
+                    allowed: EvidenceStrengths, unknownCode: "EVIDENCE_STRENGTH_UNKNOWN");
+                hasValue |= RequireString(item, "source_type", $"{path}.source_type", state, allowed: SourceTypes,
+                    unknownCode: "SOURCE_TYPE_UNKNOWN");
+                RequireInteger(item, "source_index", $"{path}.source_index", state, nullable: false);
+                hasValue |= InspectStringArray(item, "evidence", $"{path}.evidence", state);
+                if (hasValue)
                 {
-                    state.Add("SOURCE_INDEX_OUT_OF_RANGE", $"{path}.source_index");
+                    state.AcceptedRequirementSignals++;
                 }
-
-                result.RequirementSignals.Add(new CvRequirementSignal
+                else
                 {
-                    Name = ReadString(item, "name", $"{path}.name", state),
-                    Category = category,
-                    EvidenceStrength = strength,
-                    SourceType = sourceType,
-                    SourceIndex = sourceIndex,
-                    Evidence = ReadStringArray(item, "evidence", $"{path}.evidence", 5, state)
-                });
-                state.AcceptedRequirementSignals++;
+                    state.AddStructural("REQUIREMENT_SIGNAL_EMPTY", path);
+                }
             }
         }
 
-        var summary = ReadObject(evidence, "experience_summary", "$.matching_evidence.experience_summary", "EXPERIENCE_SUMMARY_INVALID", state);
-        var basis = ReadString(summary, "calculation_basis", "$.matching_evidence.experience_summary.calculation_basis", state);
-        AddUnknownEnumDiagnostic(basis, CalculationBases, "CALCULATION_BASIS_UNKNOWN", "$.matching_evidence.experience_summary.calculation_basis", state);
-        result.ExperienceSummary = new CvExperienceSummary
-        {
-            TotalProfessionalMonths = ReadInt(summary, "total_professional_months", "$.matching_evidence.experience_summary.total_professional_months", state, value => value >= 0),
-            CalculationBasis = basis
-        };
+        var summary = RequireObject(evidence, "experience_summary", "$.matching_evidence.experience_summary",
+            "EXPERIENCE_SUMMARY_INVALID", state);
+        RequireNonNegativeInteger(summary, "total_professional_months",
+            "$.matching_evidence.experience_summary.total_professional_months", state);
+        RequireString(summary, "calculation_basis", "$.matching_evidence.experience_summary.calculation_basis", state,
+            allowed: CalculationBases, unknownCode: "CALCULATION_BASIS_UNKNOWN");
 
-        var periods = ReadArray(summary, "periods", "$.matching_evidence.experience_summary.periods", state);
+        var periods = RequireArray(summary, "periods", "$.matching_evidence.experience_summary.periods", state);
         state.InputExperiencePeriods = periods?.GetArrayLength() ?? 0;
         if (periods is { } periodArray)
         {
             var index = 0;
             foreach (var item in periodArray.EnumerateArray())
             {
-                var path = $"$.matching_evidence.experience_summary.periods[{index}]";
-                index++;
-                if (result.ExperienceSummary.Periods.Count >= 30)
-                {
-                    state.Add("EXPERIENCE_PERIODS_TRUNCATED", "$.matching_evidence.experience_summary.periods");
-                    continue;
-                }
+                var path = $"$.matching_evidence.experience_summary.periods[{index++}]";
                 if (item.ValueKind != JsonValueKind.Object)
                 {
-                    state.Add("EXPERIENCE_PERIOD_INVALID", path);
+                    state.AddStructural("EXPERIENCE_PERIOD_INVALID", path);
                     continue;
                 }
 
-                var entryType = ReadString(item, "entry_type", $"{path}.entry_type", state);
-                AddUnknownEnumDiagnostic(entryType, EntryTypes, "ENTRY_TYPE_UNKNOWN", $"{path}.entry_type", state);
-                var startYear = ReadNullableInt(item, "start_year", $"{path}.start_year", state);
-                var startMonth = ReadNullableInt(item, "start_month", $"{path}.start_month", state);
-                var endYear = ReadNullableInt(item, "end_year", $"{path}.end_year", state);
-                var endMonth = ReadNullableInt(item, "end_month", $"{path}.end_month", state);
-                AddRangeDiagnostic(startYear, 1900, 2200, "YEAR_OUT_OF_RANGE", $"{path}.start_year", state);
-                AddRangeDiagnostic(endYear, 1900, 2200, "YEAR_OUT_OF_RANGE", $"{path}.end_year", state);
-                AddRangeDiagnostic(startMonth, 1, 12, "MONTH_OUT_OF_RANGE", $"{path}.start_month", state);
-                AddRangeDiagnostic(endMonth, 1, 12, "MONTH_OUT_OF_RANGE", $"{path}.end_month", state);
-
-                var sourceIndex = ReadInt(item, "source_index", $"{path}.source_index", state);
-                if (sourceIndex < 0 || sourceIndex >= experienceCount)
+                var hasValue = false;
+                RequireInteger(item, "source_index", $"{path}.source_index", state, nullable: false);
+                hasValue |= RequireString(item, "entry_type", $"{path}.entry_type", state, allowed: EntryTypes,
+                    unknownCode: "ENTRY_TYPE_UNKNOWN");
+                hasValue |= RequireString(item, "organization", $"{path}.organization", state);
+                hasValue |= RequireString(item, "role", $"{path}.role", state);
+                hasValue |= RequireString(item, "timeline_raw", $"{path}.timeline_raw", state);
+                RequireInteger(item, "start_year", $"{path}.start_year", state, nullable: true);
+                RequireInteger(item, "start_month", $"{path}.start_month", state, nullable: true);
+                RequireInteger(item, "end_year", $"{path}.end_year", state, nullable: true);
+                RequireInteger(item, "end_month", $"{path}.end_month", state, nullable: true);
+                RequireBoolean(item, "is_current", $"{path}.is_current", state);
+                hasValue |= RequireString(item, "evidence", $"{path}.evidence", state);
+                if (hasValue)
                 {
-                    state.Add("SOURCE_INDEX_OUT_OF_RANGE", $"{path}.source_index");
+                    state.AcceptedExperiencePeriods++;
                 }
-
-                result.ExperienceSummary.Periods.Add(new CvExperiencePeriod
+                else
                 {
-                    SourceIndex = sourceIndex,
-                    EntryType = entryType,
-                    Organization = ReadString(item, "organization", $"{path}.organization", state),
-                    Role = ReadString(item, "role", $"{path}.role", state),
-                    TimelineRaw = ReadString(item, "timeline_raw", $"{path}.timeline_raw", state),
-                    StartYear = startYear,
-                    StartMonth = startMonth,
-                    EndYear = endYear,
-                    EndMonth = endMonth,
-                    IsCurrent = ReadBool(item, "is_current", $"{path}.is_current", state),
-                    Evidence = ReadString(item, "evidence", $"{path}.evidence", state)
-                });
-                state.AcceptedExperiencePeriods++;
+                    state.AddStructural("EXPERIENCE_PERIOD_EMPTY", path);
+                }
             }
         }
 
-        result.SenioritySignals = ReadObjectArray(
-            evidence,
-            "seniority_signals",
-            "$.matching_evidence.seniority_signals",
-            40,
-            "SENIORITY_SIGNAL_INVALID",
-            state,
-            (item, path) =>
+        InspectObjectArray(evidence, "seniority_signals", "$.matching_evidence.seniority_signals",
+            "SENIORITY_SIGNAL_INVALID", state,
+            static (item, path, itemState) =>
             {
-                var sourceType = ReadString(item, "source_type", $"{path}.source_type", state);
-                AddUnknownEnumDiagnostic(sourceType, SourceTypes, "SOURCE_TYPE_UNKNOWN", $"{path}.source_type", state);
-                var sourceIndex = ReadInt(item, "source_index", $"{path}.source_index", state);
-                if (sourceIndex < 0 || (IsExperienceSource(sourceType) && sourceIndex >= experienceCount))
-                {
-                    state.Add("SOURCE_INDEX_OUT_OF_RANGE", $"{path}.source_index");
-                }
-                return new CvSenioritySignal
-                {
-                    Name = ReadString(item, "name", $"{path}.name", state),
-                    SourceType = sourceType,
-                    SourceIndex = sourceIndex,
-                    Evidence = ReadString(item, "evidence", $"{path}.evidence", state)
-                };
+                var hasValue = RequireString(item, "name", $"{path}.name", itemState);
+                hasValue |= RequireString(item, "source_type", $"{path}.source_type", itemState,
+                    allowed: SourceTypes, unknownCode: "SOURCE_TYPE_UNKNOWN");
+                RequireInteger(item, "source_index", $"{path}.source_index", itemState, nullable: false);
+                hasValue |= RequireString(item, "evidence", $"{path}.evidence", itemState);
+                return hasValue;
             });
-        return result;
     }
 
-    private static bool HasUsableMatchingContent(CvAnalysisDocument document, CvAnalysisCoverage coverage) =>
-        !string.IsNullOrWhiteSpace(document.VerbatimSections.PersonalInfo.Title) ||
-        !string.IsNullOrWhiteSpace(document.VerbatimSections.PersonalInfo.Summary) ||
-        document.VerbatimSections.Education.Count > 0 ||
-        document.VerbatimSections.Languages.Count > 0 ||
-        document.VerbatimSections.SkillsSection.Count > 0 ||
-        document.VerbatimSections.ProfessionalExperienceAndProjects.Count > 0 ||
-        document.VerbatimSections.CertificationsAndAwards.Count > 0 ||
-        !string.IsNullOrWhiteSpace(document.VerbatimSections.OtherInformation) ||
-        document.MatchingMetrics.JobTitlesNormalized.Count > 0 ||
-        document.MatchingMetrics.SkillsNormalized.Count > 0 ||
-        coverage.ExperienceMetricAvailable ||
-        document.MatchingMetrics.Domains.Count > 0 ||
-        document.MatchingEvidence.RequirementSignals.Count > 0 ||
-        document.MatchingEvidence.ExperienceSummary.Periods.Count > 0 ||
-        document.MatchingEvidence.SenioritySignals.Count > 0;
+    private static JsonElement? RequireObject(JsonElement owner, string property, string path, string code, InspectionState state) =>
+        RequireObject((JsonElement?)owner, property, path, code, state);
 
-    private static JsonElement? ReadObject(JsonElement owner, string property, string path, string code, ProjectionState state) =>
-        ReadObject((JsonElement?)owner, property, path, code, state);
-
-    private static JsonElement? ReadObject(JsonElement? owner, string property, string path, string code, ProjectionState state)
+    private static JsonElement? RequireObject(JsonElement? owner, string property, string path, string code, InspectionState state)
     {
         if (owner is { ValueKind: JsonValueKind.Object } value &&
             value.TryGetProperty(property, out var child) && child.ValueKind == JsonValueKind.Object)
         {
             return child;
         }
-        state.Add(code, path);
+
+        state.AddStructural(code, path);
         return null;
     }
 
-    private static JsonElement? ReadArray(JsonElement? owner, string property, string path, ProjectionState state)
+    private static JsonElement? RequireArray(JsonElement? owner, string property, string path, InspectionState state)
     {
         if (owner is { ValueKind: JsonValueKind.Object } value &&
             value.TryGetProperty(property, out var child) && child.ValueKind == JsonValueKind.Array)
         {
             return child;
         }
-        state.Add("ARRAY_INVALID", path);
+
+        state.AddStructural("ARRAY_INVALID", path);
         return null;
     }
 
-    private static string ReadString(JsonElement? owner, string property, string path, ProjectionState state)
-    {
-        if (owner is { ValueKind: JsonValueKind.Object } value && value.TryGetProperty(property, out var child) && child.ValueKind == JsonValueKind.String)
-        {
-            return child.GetString()?.Trim() ?? string.Empty;
-        }
-        state.Add("STRING_INVALID", path);
-        return string.Empty;
-    }
-
-    private static int ReadInt(
+    private static bool RequireString(
         JsonElement? owner,
         string property,
         string path,
-        ProjectionState state,
-        Func<int, bool>? range = null,
-        Action<bool>? availability = null)
+        InspectionState state,
+        bool useful = true,
+        HashSet<string>? allowed = null,
+        string? unknownCode = null)
     {
-        if (owner is { ValueKind: JsonValueKind.Object } value && value.TryGetProperty(property, out var child) &&
-            child.ValueKind == JsonValueKind.Number && child.TryGetInt32(out var result) && (range?.Invoke(result) ?? true))
+        if (owner is not { ValueKind: JsonValueKind.Object } value ||
+            !value.TryGetProperty(property, out var child) || child.ValueKind != JsonValueKind.String)
         {
-            availability?.Invoke(true);
-            return result;
+            state.AddStructural("STRING_INVALID", path);
+            return false;
         }
-        availability?.Invoke(false);
-        state.Add("INTEGER_INVALID", path);
-        return 0;
-    }
 
-    private static int? ReadNullableInt(JsonElement owner, string property, string path, ProjectionState state)
-    {
-        if (!owner.TryGetProperty(property, out var child) || child.ValueKind == JsonValueKind.Null)
+        var text = child.GetString();
+        if (!string.IsNullOrWhiteSpace(text))
         {
-            return null;
+            if (useful)
+            {
+                state.HasUsableMatchingContent = true;
+            }
+            if (allowed is not null && !allowed.Contains(text) && unknownCode is not null)
+            {
+                state.AddWarning(unknownCode, path);
+            }
+            return useful;
         }
-        if (child.ValueKind == JsonValueKind.Number && child.TryGetInt32(out var result))
-        {
-            return result;
-        }
-        state.Add("NULLABLE_INTEGER_INVALID", path);
-        return null;
-    }
 
-    private static bool ReadBool(JsonElement owner, string property, string path, ProjectionState state)
-    {
-        if (owner.TryGetProperty(property, out var child) && child.ValueKind is JsonValueKind.True or JsonValueKind.False)
-        {
-            return child.GetBoolean();
-        }
-        state.Add("BOOLEAN_INVALID", path);
         return false;
     }
 
-    private static List<string> ReadStringArray(
-        JsonElement? owner,
-        string property,
-        string path,
-        int cap,
-        ProjectionState state,
-        Action<bool>? availability = null)
+    private static bool InspectStringArray(JsonElement? owner, string property, string path, InspectionState state)
     {
-        var array = ReadArray(owner, property, path, state);
-        availability?.Invoke(array is not null);
+        var array = RequireArray(owner, property, path, state);
         if (array is null)
         {
-            return new List<string>();
+            return false;
         }
 
-        var result = new List<string>();
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var hasValue = false;
         var index = 0;
         foreach (var child in array.Value.EnumerateArray())
         {
-            if (result.Count >= cap)
-            {
-                state.Add("ARRAY_TRUNCATED", path);
-                break;
-            }
             if (child.ValueKind != JsonValueKind.String)
             {
-                state.Add("STRING_ARRAY_ENTRY_INVALID", $"{path}[{index}]");
-                index++;
+                state.AddStructural("STRING_ARRAY_ENTRY_INVALID", $"{path}[{index++}]");
                 continue;
             }
-            var text = child.GetString()?.Trim() ?? string.Empty;
-            if (seen.Add(text))
+
+            if (!string.IsNullOrWhiteSpace(child.GetString()))
             {
-                result.Add(text);
+                hasValue = true;
+                state.HasUsableMatchingContent = true;
             }
             index++;
         }
-        return result;
+        return hasValue;
     }
 
-    private static List<T> ReadObjectArray<T>(
+    private static void InspectObjectArray(
         JsonElement? owner,
         string property,
         string path,
-        int cap,
         string invalidCode,
-        ProjectionState state,
-        Func<JsonElement, string, T> projector)
+        InspectionState state,
+        Func<JsonElement, string, InspectionState, bool> inspect)
     {
-        var array = ReadArray(owner, property, path, state);
-        var result = new List<T>();
+        var array = RequireArray(owner, property, path, state);
         if (array is null)
         {
-            return result;
+            return;
         }
+
         var index = 0;
         foreach (var item in array.Value.EnumerateArray())
         {
-            var itemPath = $"{path}[{index}]";
-            index++;
-            if (result.Count >= cap)
-            {
-                state.Add("ARRAY_TRUNCATED", path);
-                break;
-            }
+            var itemPath = $"{path}[{index++}]";
             if (item.ValueKind != JsonValueKind.Object)
             {
-                state.Add(invalidCode, itemPath);
+                state.AddStructural(invalidCode, itemPath);
                 continue;
             }
-            result.Add(projector(item, itemPath));
+
+            if (!inspect(item, itemPath, state))
+            {
+                state.AddStructural($"{invalidCode}_EMPTY", itemPath);
+            }
         }
-        return result;
     }
 
-    private static void AddUnknownEnumDiagnostic(string value, HashSet<string> allowed, string code, string path, ProjectionState state)
+    private static void RequireNonNegativeInteger(JsonElement? owner, string property, string path, InspectionState state)
     {
-        if (!string.IsNullOrWhiteSpace(value) && !allowed.Contains(value))
+        if (owner is { ValueKind: JsonValueKind.Object } value && value.TryGetProperty(property, out var child) &&
+            child.ValueKind == JsonValueKind.Number && child.TryGetInt32(out var number) && number >= 0)
         {
-            state.Add(code, path);
+            state.HasUsableMatchingContent = true;
+            return;
         }
+
+        state.AddStructural("INTEGER_INVALID", path);
     }
 
-    private static void AddRangeDiagnostic(int? value, int min, int max, string code, string path, ProjectionState state)
+    private static void RequireInteger(JsonElement owner, string property, string path, InspectionState state, bool nullable)
     {
-        if (value.HasValue && (value.Value < min || value.Value > max))
+        if (!owner.TryGetProperty(property, out var child))
         {
-            state.Add(code, path);
+            state.AddStructural(nullable ? "NULLABLE_INTEGER_INVALID" : "INTEGER_INVALID", path);
+            return;
         }
+        if ((nullable && child.ValueKind == JsonValueKind.Null) ||
+            (child.ValueKind == JsonValueKind.Number && child.TryGetInt32(out _)))
+        {
+            return;
+        }
+
+        state.AddStructural(nullable ? "NULLABLE_INTEGER_INVALID" : "INTEGER_INVALID", path);
     }
 
-    private static bool IsExperienceSource(string sourceType) =>
-        sourceType is "professional_experience" or "internship" or "freelance" or
-            "academic_project" or "personal_project" or "volunteer_experience";
+    private static void RequireBoolean(JsonElement owner, string property, string path, InspectionState state)
+    {
+        if (owner.TryGetProperty(property, out var child) && child.ValueKind is JsonValueKind.True or JsonValueKind.False)
+        {
+            return;
+        }
+        state.AddStructural("BOOLEAN_INVALID", path);
+    }
 
-    private sealed class ProjectionState
+    private sealed class InspectionState
     {
         public List<CvAnalysisDiagnostic> Diagnostics { get; } = new();
+        public bool HasUsableMatchingContent { get; set; }
+        public bool HasStructuralDegradation { get; private set; }
         public int InputExperienceEntries { get; set; }
         public int AcceptedExperienceEntries { get; set; }
         public int InputRequirementSignals { get; set; }
@@ -550,7 +422,15 @@ public sealed class CvAnalysisDocumentProjector
         public bool ExperienceMetricAvailable { get; set; }
         public bool DomainMetricsAvailable { get; set; }
 
-        public void Add(string code, string path)
+        public void AddStructural(string code, string path)
+        {
+            HasStructuralDegradation = true;
+            Add(code, path);
+        }
+
+        public void AddWarning(string code, string path) => Add(code, path);
+
+        private void Add(string code, string path)
         {
             if (Diagnostics.Count >= MaxDiagnostics || Diagnostics.Any(x => x.Code == code && x.JsonPath == path))
             {

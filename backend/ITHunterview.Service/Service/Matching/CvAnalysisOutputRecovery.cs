@@ -367,19 +367,15 @@ public static class CvAnalysisOutputRecovery
         public int InputExperiencePeriodCount { get; private set; }
         public int AcceptedExperiencePeriodCount { get; private set; }
 
-        public bool TitleMetricsAvailable =>
-            _completedArrays.Contains("$.matching_metrics.job_titles_normalized") ||
-            _arrayValues.ContainsKey("$.matching_metrics.job_titles_normalized[]");
+        public bool TitleMetricsAvailable => HasNonEmptyStringArrayValue("$.matching_metrics.job_titles_normalized[]");
 
-        public bool SkillMetricsAvailable =>
-            _completedArrays.Contains("$.matching_metrics.skills_normalized") ||
-            _arrayValues.ContainsKey("$.matching_metrics.skills_normalized[]");
+        public bool SkillMetricsAvailable => HasNonEmptyStringArrayValue("$.matching_metrics.skills_normalized[]");
 
-        public bool ExperienceMetricAvailable => _scalars.ContainsKey("$.matching_metrics.total_years_exp");
+        public bool ExperienceMetricAvailable =>
+            _scalars.TryGetValue("$.matching_metrics.total_years_exp", out var years) &&
+            years.ValueKind == JsonValueKind.Number && years.TryGetInt32(out var value) && value >= 0;
 
-        public bool DomainMetricsAvailable =>
-            _completedArrays.Contains("$.matching_metrics.domains") ||
-            _arrayValues.ContainsKey("$.matching_metrics.domains[]");
+        public bool DomainMetricsAvailable => HasNonEmptyStringArrayValue("$.matching_metrics.domains[]");
 
         public bool HasUsableContent =>
             HasNonEmptyPersonalContent() ||
@@ -394,8 +390,8 @@ public static class CvAnalysisOutputRecovery
             HasAnyArrayValue("$.matching_evidence.requirement_signals[]") ||
             HasAnyArrayValue("$.matching_evidence.experience_summary.periods[]") ||
             HasAnyArrayValue("$.matching_evidence.seniority_signals[]") ||
-            _scalars.ContainsKey("$.matching_metrics.total_years_exp") ||
-            _scalars.ContainsKey("$.verbatim_sections.other_information");
+            ExperienceMetricAvailable ||
+            HasNonEmptyStringScalar("$.verbatim_sections.other_information");
 
         public void AddObject(string path, JsonElement value)
         {
@@ -405,7 +401,10 @@ public static class CvAnalysisOutputRecovery
             }
             else if (ObjectArrayPaths.Contains(path))
             {
-                AddArrayValue(path, value);
+                if (!AddArrayValue(path, value))
+                {
+                    return;
+                }
                 if (path == "$.verbatim_sections.professional_experience_and_projects[]")
                 {
                     AcceptedExperienceCount++;
@@ -416,7 +415,6 @@ public static class CvAnalysisOutputRecovery
                 }
                 else if (path == "$.matching_evidence.experience_summary.periods[]")
                 {
-                    AcceptedRequirementSignalCount += 0;
                     AcceptedExperiencePeriodCount++;
                 }
             }
@@ -469,59 +467,91 @@ public static class CvAnalysisOutputRecovery
 
         public string BuildEnvelope(CvAnalysisCoverage coverage, IReadOnlyList<CvAnalysisDiagnostic> diagnostics)
         {
-            var personalInfo = _objects.TryGetValue("$.verbatim_sections.personal_info", out var personal)
-                ? personal
-                : JsonSerializer.SerializeToElement(new { name = "", title = "", summary = "" });
-
-            var verbatim = new Dictionary<string, object?>
-            {
-                ["personal_info"] = personalInfo,
-                ["education"] = Values("$.verbatim_sections.education[]"),
-                ["languages"] = Values("$.verbatim_sections.languages[]"),
-                ["skills_section"] = Values("$.verbatim_sections.skills_section[]"),
-                ["professional_experience_and_projects"] = Values("$.verbatim_sections.professional_experience_and_projects[]"),
-                ["certifications_and_awards"] = Values("$.verbatim_sections.certifications_and_awards[]"),
-                ["other_information"] = ScalarOrNull("$.verbatim_sections.other_information")
-            };
-
-            var metrics = new Dictionary<string, object?>
-            {
-                ["job_titles_normalized"] = Values("$.matching_metrics.job_titles_normalized[]"),
-                ["skills_normalized"] = Values("$.matching_metrics.skills_normalized[]"),
-                ["total_years_exp"] = ScalarOrNull("$.matching_metrics.total_years_exp"),
-                ["domains"] = Values("$.matching_metrics.domains[]")
-            };
-
-            var summary = _objects.TryGetValue("$.matching_evidence.experience_summary", out var summaryObject)
-                ? summaryObject
-                : JsonSerializer.SerializeToElement(new Dictionary<string, object?>
-                {
-                    ["total_professional_months"] = ScalarOrNull("$.matching_evidence.experience_summary.total_professional_months"),
-                    ["calculation_basis"] = ScalarOrNull("$.matching_evidence.experience_summary.calculation_basis") is { } basis
-                        ? basis
-                        : "insufficient_timeline",
-                    ["periods"] = Values("$.matching_evidence.experience_summary.periods[]")
-                });
-
-            var evidence = new Dictionary<string, object?>
-            {
-                ["requirement_signals"] = Values("$.matching_evidence.requirement_signals[]"),
-                ["experience_summary"] = summary,
-                ["seniority_signals"] = Values("$.matching_evidence.seniority_signals[]")
-            };
-
             var envelope = new Dictionary<string, object?>
             {
-                ["schema_version"] = SupportedSchema,
-                ["analysis_quality"] = "PARTIAL",
-                ["analysis_coverage"] = coverage,
-                ["analysis_diagnostics"] = diagnostics.Take(MaxDiagnostics).ToArray(),
-                ["verbatim_sections"] = verbatim,
-                ["matching_metrics"] = metrics,
-                ["matching_evidence"] = evidence
+                ["schema_version"] = SupportedSchema
             };
 
+            var verbatim = new Dictionary<string, object?>();
+            AddObjectIfPresent(verbatim, "personal_info", "$.verbatim_sections.personal_info");
+            AddArrayIfObserved(verbatim, "education", "$.verbatim_sections.education", "$.verbatim_sections.education[]");
+            AddArrayIfObserved(verbatim, "languages", "$.verbatim_sections.languages", "$.verbatim_sections.languages[]");
+            AddArrayIfObserved(verbatim, "skills_section", "$.verbatim_sections.skills_section", "$.verbatim_sections.skills_section[]");
+            AddArrayIfObserved(verbatim, "professional_experience_and_projects",
+                "$.verbatim_sections.professional_experience_and_projects",
+                "$.verbatim_sections.professional_experience_and_projects[]");
+            AddArrayIfObserved(verbatim, "certifications_and_awards",
+                "$.verbatim_sections.certifications_and_awards",
+                "$.verbatim_sections.certifications_and_awards[]");
+            AddScalarIfPresent(verbatim, "other_information", "$.verbatim_sections.other_information");
+            if (verbatim.Count > 0)
+            {
+                envelope["verbatim_sections"] = verbatim;
+            }
+
+            var metrics = new Dictionary<string, object?>();
+            AddArrayIfObserved(metrics, "job_titles_normalized", "$.matching_metrics.job_titles_normalized",
+                "$.matching_metrics.job_titles_normalized[]");
+            AddArrayIfObserved(metrics, "skills_normalized", "$.matching_metrics.skills_normalized",
+                "$.matching_metrics.skills_normalized[]");
+            AddScalarIfPresent(metrics, "total_years_exp", "$.matching_metrics.total_years_exp");
+            AddArrayIfObserved(metrics, "domains", "$.matching_metrics.domains", "$.matching_metrics.domains[]");
+            if (metrics.Count > 0)
+            {
+                envelope["matching_metrics"] = metrics;
+            }
+
+            var summary = new Dictionary<string, object?>();
+            AddScalarIfPresent(summary, "total_professional_months",
+                "$.matching_evidence.experience_summary.total_professional_months");
+            AddScalarIfPresent(summary, "calculation_basis",
+                "$.matching_evidence.experience_summary.calculation_basis");
+            AddArrayIfObserved(summary, "periods", "$.matching_evidence.experience_summary.periods",
+                "$.matching_evidence.experience_summary.periods[]");
+
+            var evidence = new Dictionary<string, object?>();
+            AddArrayIfObserved(evidence, "requirement_signals", "$.matching_evidence.requirement_signals",
+                "$.matching_evidence.requirement_signals[]");
+            if (summary.Count > 0)
+            {
+                evidence["experience_summary"] = summary;
+            }
+            AddArrayIfObserved(evidence, "seniority_signals", "$.matching_evidence.seniority_signals",
+                "$.matching_evidence.seniority_signals[]");
+            if (evidence.Count > 0)
+            {
+                envelope["matching_evidence"] = evidence;
+            }
+
             return JsonSerializer.Serialize(envelope, EnvelopeSerializerOptions);
+        }
+
+        private void AddObjectIfPresent(Dictionary<string, object?> target, string name, string path)
+        {
+            if (_objects.TryGetValue(path, out var value))
+            {
+                target[name] = value;
+            }
+        }
+
+        private void AddScalarIfPresent(Dictionary<string, object?> target, string name, string path)
+        {
+            if (_scalars.TryGetValue(path, out var value))
+            {
+                target[name] = value;
+            }
+        }
+
+        private void AddArrayIfObserved(
+            Dictionary<string, object?> target,
+            string name,
+            string arrayPath,
+            string itemPath)
+        {
+            if (_completedArrays.Contains(arrayPath) || _arrayValues.ContainsKey(itemPath))
+            {
+                target[name] = Values(itemPath);
+            }
         }
 
         private bool HasNonEmptyPersonalContent()
@@ -540,13 +570,21 @@ public static class CvAnalysisOutputRecovery
 
         private bool HasAnyArrayValue(string path) => _arrayValues.TryGetValue(path, out var values) && values.Count > 0;
 
+        private bool HasNonEmptyStringArrayValue(string path) =>
+            _arrayValues.TryGetValue(path, out var values) &&
+            values.Any(value => value.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(value.GetString()));
+
+        private bool HasNonEmptyStringScalar(string path) =>
+            _scalars.TryGetValue(path, out var value) && value.ValueKind == JsonValueKind.String &&
+            !string.IsNullOrWhiteSpace(value.GetString());
+
         private List<JsonElement> Values(string path) =>
             _arrayValues.TryGetValue(path, out var values) ? values : new List<JsonElement>();
 
         private JsonElement? ScalarOrNull(string path) =>
             _scalars.TryGetValue(path, out var value) ? value : null;
 
-        private void AddArrayValue(string path, JsonElement value)
+        private bool AddArrayValue(string path, JsonElement value)
         {
             if (!_arrayValues.TryGetValue(path, out var values))
             {
@@ -554,27 +592,9 @@ public static class CvAnalysisOutputRecovery
                 _arrayValues[path] = values;
             }
 
-            if (values.Count < ArrayCap(path))
-            {
-                values.Add(value);
-            }
+            values.Add(value);
+            return true;
         }
-
-        private static int ArrayCap(string path) => path switch
-        {
-            "$.verbatim_sections.education[]" => 20,
-            "$.verbatim_sections.languages[]" => 20,
-            "$.verbatim_sections.skills_section[]" => 80,
-            "$.verbatim_sections.professional_experience_and_projects[]" => 30,
-            "$.verbatim_sections.certifications_and_awards[]" => 40,
-            "$.matching_metrics.job_titles_normalized[]" => 40,
-            "$.matching_metrics.skills_normalized[]" => 100,
-            "$.matching_metrics.domains[]" => 40,
-            "$.matching_evidence.requirement_signals[]" => 100,
-            "$.matching_evidence.experience_summary.periods[]" => 30,
-            "$.matching_evidence.seniority_signals[]" => 40,
-            _ => 100
-        };
     }
 
     private sealed class ContainerFrame(string path, bool isObject, long start)

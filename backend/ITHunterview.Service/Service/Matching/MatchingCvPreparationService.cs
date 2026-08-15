@@ -41,7 +41,12 @@ public sealed class MatchingCvPreparationService : IMatchingCvPreparationService
         ArgumentNullException.ThrowIfNull(snapshot);
         var cv = snapshot.Cv ?? throw new InvalidOperationException("MATCHING_CV_PREPARATION_INVALID");
 
-        var stored = Validate(cv.AnalysisJson);
+        var stored = string.Equals(cv.SourceParseStatus, "SUCCESS", StringComparison.Ordinal)
+            ? ValidateStored(cv.AnalysisJson)
+            : CvAnalysisValidationResult.Invalid(
+                "CV_ANALYSIS_EMPTY_OUTPUT",
+                "STORED_ANALYSIS_NOT_READY",
+                "$");
         if (stored.IsUsable)
         {
             return ToPrepared(stored, null);
@@ -51,7 +56,7 @@ public sealed class MatchingCvPreparationService : IMatchingCvPreparationService
         var parsed = source.FileUrl is not null
             ? await _extractor.ExtractParsedDataFromUrlAsync(source.FileUrl, source.RawText, ct)
             : await _extractor.ExtractParsedDataFromRawTextAsync(source.RawText, "pasted_text", source.FileName, ct);
-        var extracted = Validate(parsed);
+        var extracted = ValidateStored(parsed);
         if (!extracted.IsUsable)
         {
             throw new CvAnalysisValidationException(extracted);
@@ -60,10 +65,12 @@ public sealed class MatchingCvPreparationService : IMatchingCvPreparationService
         return ToPrepared(extracted, source.PersistenceIntent);
     }
 
-    private CvAnalysisValidationResult Validate(string? json) =>
+    private CvAnalysisValidationResult ValidateStored(string? json) =>
         string.IsNullOrWhiteSpace(json)
             ? CvAnalysisValidationResult.Invalid("CV_ANALYSIS_EMPTY_OUTPUT", "EMPTY_STORED_ANALYSIS", "$")
-            : _validator.ValidateAndCanonicalize(json);
+            : _validator is ICvAnalysisRecoveryAwareValidator recoveryAware
+                ? recoveryAware.ValidateStoredCanonical(json)
+                : _validator.ValidateAndCanonicalize(json);
 
     private async Task<ResolvedCvSource> ResolveSourceAsync(
         Guid userId,

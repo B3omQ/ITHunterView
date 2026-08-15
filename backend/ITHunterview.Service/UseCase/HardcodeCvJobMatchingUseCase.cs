@@ -385,7 +385,7 @@ namespace ITHunterview.Service.UseCase
         {
             if (!string.IsNullOrWhiteSpace(cv.ParsedData) && cv.ParseStatus == "SUCCESS")
             {
-                var stored = _cvAnalysisResponseValidator.ValidateAndCanonicalize(cv.ParsedData);
+                var stored = ValidateStoredCvJson(cv.ParsedData);
                 if (stored.IsUsable)
                 {
                     ApplyValidatedCv(cv, stored);
@@ -398,7 +398,7 @@ namespace ITHunterview.Service.UseCase
             try
             {
                 var parsedData = await _cvTextExtractorService.ExtractParsedDataFromUrlAsync(cv.FileUrl, cv.RawText);
-                var validation = _cvAnalysisResponseValidator.ValidateAndCanonicalize(parsedData);
+                var validation = ValidateStoredCvJson(parsedData);
                 if (!validation.IsUsable)
                 {
                     throw new CvAnalysisValidationException(validation);
@@ -431,6 +431,11 @@ namespace ITHunterview.Service.UseCase
             cv.AnalysisDiagnosticsJson = CvAnalysisMetadataReader.SerializeDiagnostics(validation.Diagnostics);
         }
 
+        private CvAnalysisValidationResult ValidateStoredCvJson(string canonicalJson) =>
+            _cvAnalysisResponseValidator is ICvAnalysisRecoveryAwareValidator recoveryAware
+                ? recoveryAware.ValidateStoredCanonical(canonicalJson)
+                : _cvAnalysisResponseValidator.ValidateAndCanonicalize(canonicalJson);
+
         public async Task MatchCvWithAllJobsHardcodeAsync(Guid cvId, Guid userId)
         {
             var cv = await _context.Cvs.FindAsync(cvId);
@@ -441,8 +446,10 @@ namespace ITHunterview.Service.UseCase
             var cvMetrics = ExtractMetrics(cv.ParsedData);
 
             var existingScores = await _context.CvJobMatchScores
-                .Where(s => s.CvId == cvId && s.UserId == userId)
-                .ToDictionaryAsync(s => s.JobId);
+                // Saved-CV/pasted-JD history intentionally has no JobId and cannot
+                // correspond to any published job in this bulk matching pass.
+                .Where(s => s.CvId == cvId && s.UserId == userId && s.JobId.HasValue)
+                .ToDictionaryAsync(s => s.JobId!.Value);
 
             var jobs = await _context.JobPostings.AsNoTracking().Where(j => j.Status == ITHunterview.Domain.Enums.JobStatus.PUBLISHED).ToListAsync();
             
@@ -467,8 +474,10 @@ namespace ITHunterview.Service.UseCase
             var jobMetrics = await ExtractJobMetricsAsync(job);
 
             var existingScores = await _context.CvJobMatchScores
-                .Where(s => s.JobId == jobId) // Fix Duplicate Bug: Bỏ lọc theo Recruiter UserId
-                .ToDictionaryAsync(s => s.CvId);
+                // Saved-JD/pasted-CV history intentionally has no CvId and cannot
+                // correspond to any saved CV in this bulk matching pass.
+                .Where(s => s.JobId == jobId && s.CvId.HasValue) // Do not filter by recruiter UserId.
+                .ToDictionaryAsync(s => s.CvId!.Value);
 
             var cvs = await _context.Cvs
                 .Include(c => c.User)

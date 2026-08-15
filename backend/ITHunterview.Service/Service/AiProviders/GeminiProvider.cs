@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Service.Config;
+using ITHunterview.Service.DTOs.Ai;
 using ITHunterview.Service.Interface.Service;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Service.Matching;
@@ -14,7 +15,7 @@ using Microsoft.Extensions.Logging;
 
 namespace ITHunterview.Service.Service.AiProviders
 {
-    public class GeminiProvider : IAiProvider
+    public class GeminiProvider : IAiProvider, IAiProviderWithCompletionMetadata
     {
         private readonly HttpClient _httpClient;
         private readonly ProviderConfig _config;
@@ -83,6 +84,13 @@ namespace ITHunterview.Service.Service.AiProviders
             => await GenerateTextAsync(prompt, systemPrompt, null, cancellationToken);
 
         public async Task<string> GenerateTextAsync(
+            string prompt,
+            string systemPrompt,
+            AiGenerationOptions? options,
+            CancellationToken cancellationToken)
+            => (await GenerateTextWithMetadataAsync(prompt, systemPrompt, options, cancellationToken)).Text;
+
+        public async Task<AiTextGenerationResult> GenerateTextWithMetadataAsync(
             string prompt,
             string systemPrompt,
             AiGenerationOptions? options,
@@ -309,12 +317,26 @@ namespace ITHunterview.Service.Service.AiProviders
 
                 if (answer.Length > 0)
                 {
-                    return answer.ToString();
+                    return new AiTextGenerationResult(
+                        answer.ToString(),
+                        MapCompletionState(finishReason),
+                        finishReason,
+                        promptTokens,
+                        candidateTokens,
+                        thoughtTokens,
+                        totalTokens);
                 }
 
                 if (reachedOutputLimit)
                 {
-                    return string.Empty;
+                    return new AiTextGenerationResult(
+                        string.Empty,
+                        AiCompletionState.OutputLimited,
+                        finishReason,
+                        promptTokens,
+                        candidateTokens,
+                        thoughtTokens,
+                        totalTokens);
                 }
             }
 
@@ -332,6 +354,24 @@ namespace ITHunterview.Service.Service.AiProviders
             }
 
             return count;
+        }
+
+        private static AiCompletionState MapCompletionState(string? finishReason)
+        {
+            if (string.IsNullOrWhiteSpace(finishReason) ||
+                string.Equals(finishReason, "UNKNOWN", StringComparison.OrdinalIgnoreCase))
+            {
+                return AiCompletionState.Unknown;
+            }
+            if (string.Equals(finishReason, "STOP", StringComparison.OrdinalIgnoreCase))
+            {
+                return AiCompletionState.Complete;
+            }
+            if (string.Equals(finishReason, "MAX_TOKENS", StringComparison.OrdinalIgnoreCase))
+            {
+                return AiCompletionState.OutputLimited;
+            }
+            return AiCompletionState.Interrupted;
         }
     }
 }

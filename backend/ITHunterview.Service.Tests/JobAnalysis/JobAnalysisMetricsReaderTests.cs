@@ -100,6 +100,22 @@ namespace ITHunterview.Service.Tests.JobAnalysis
             Assert.False(metrics.DomainsAvailable);
         }
 
+        [Theory]
+        [InlineData("-1")]
+        [InlineData("\"three\"")]
+        [InlineData("null")]
+        public void Read_InvalidExperienceMetric_IsUnavailableInsteadOfBecomingZeroEvidence(string value)
+        {
+            var json =
+                "{\"matching_metrics\":{\"job_titles_normalized\":[],\"skills_normalized\":[]," +
+                "\"total_years_exp\":" + value + ",\"domains\":[]}}";
+
+            var metrics = JobAnalysisMetricsReader.Read(json);
+
+            Assert.Equal(0, metrics.TotalYearsExperience);
+            Assert.False(metrics.ExperienceAvailable);
+        }
+
         [Fact]
         public void JdAnalysisMetadataReader_RoundTripsCoverageAndDiagnostics()
         {

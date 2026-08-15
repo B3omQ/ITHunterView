@@ -29,9 +29,44 @@ public sealed class HardcodeCvJobMatchingUseCaseTests
 
         var score = await context.CvJobMatchScores.SingleAsync();
         score.Status.Should().Be("Completed");
-        score.MatchScore.Should().Be(1m);
+        score.MatchScore.Should().Be(100m);
         score.MatchDetails.Should().Contain("available_cv_metrics");
         score.CvAnalysisQuality.Should().Be(CvAnalysisQuality.PARTIAL);
+    }
+
+    [Fact]
+    public async Task MatchCvWithAllJobs_PastedJdHistory_DoesNotAbortSavedJobMatching()
+    {
+        await using var context = CreateContext();
+        var (cv, job) = CreateEntities(includeCvDomains: true);
+        var pastedJdMatch = new CvJobMatchScores
+        {
+            Id = Guid.NewGuid(),
+            UserId = cv.UserId,
+            CvId = cv.Id,
+            JobId = null,
+            RawJdText = "Pasted job description",
+            MatchScore = 73m,
+            MatchDetails = "pasted-jd-result",
+            Status = "Completed",
+            MatchType = "AI",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        context.Cvs.Add(cv);
+        context.JobPostings.Add(job);
+        context.CvJobMatchScores.Add(pastedJdMatch);
+        await context.SaveChangesAsync();
+
+        await CreateUseCase(context).MatchCvWithAllJobsHardcodeAsync(cv.Id, cv.UserId);
+
+        var scores = await context.CvJobMatchScores.ToListAsync();
+        scores.Should().HaveCount(2);
+        scores.Single(score => score.JobId == job.Id).Status.Should().Be("Completed");
+        var preservedPastedJdMatch = scores.Single(score => score.Id == pastedJdMatch.Id);
+        preservedPastedJdMatch.JobId.Should().BeNull();
+        preservedPastedJdMatch.MatchScore.Should().Be(73m);
+        preservedPastedJdMatch.MatchDetails.Should().Be("pasted-jd-result");
     }
 
     [Fact]
@@ -48,7 +83,7 @@ public sealed class HardcodeCvJobMatchingUseCaseTests
 
         var score = await context.CvJobMatchScores.SingleAsync();
         score.Status.Should().Be("Completed");
-        score.MatchScore.Should().Be(1m);
+        score.MatchScore.Should().Be(100m);
         score.MatchDetails.Should().Contain("available_cv_metrics");
     }
 
@@ -129,6 +164,59 @@ public sealed class HardcodeCvJobMatchingUseCaseTests
         score.MatchScore.Should().BeNull();
         score.ErrorCode.Should().BeNull();
         score.MatchDetails.Should().Contain("SCORE_UNAVAILABLE");
+    }
+
+    [Fact]
+    public async Task MatchJobWithAllCvs_PastedCvHistory_DoesNotAbortSavedCvMatching()
+    {
+        await using var context = CreateContext();
+        var (cv, job) = CreateEntities(includeCvDomains: true);
+        cv.IsPrimary = true;
+        var user = new User
+        {
+            Id = cv.UserId,
+            Email = "candidate@example.test",
+            Status = UserStatus.ACTIVE
+        };
+        var profile = new CandidateProfiles
+        {
+            UserId = user.Id,
+            IsVisibleToRecruiters = true,
+            User = user
+        };
+        user.CandidateProfile = profile;
+        cv.User = user;
+        user.Cvs.Add(cv);
+        var pastedCvMatch = new CvJobMatchScores
+        {
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            CvId = null,
+            JobId = job.Id,
+            RawJdText = job.Requirements,
+            MatchScore = 64m,
+            MatchDetails = "pasted-cv-result",
+            Status = "Completed",
+            MatchType = "AI",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        context.Users.Add(user);
+        context.CandidateProfiles.Add(profile);
+        context.Cvs.Add(cv);
+        context.JobPostings.Add(job);
+        context.CvJobMatchScores.Add(pastedCvMatch);
+        await context.SaveChangesAsync();
+
+        await CreateUseCase(context).MatchJobWithAllCvsHardcodeAsync(job.Id, job.RecruiterId);
+
+        var scores = await context.CvJobMatchScores.ToListAsync();
+        scores.Should().HaveCount(2);
+        scores.Single(score => score.CvId == cv.Id).Status.Should().Be("Completed");
+        var preservedPastedCvMatch = scores.Single(score => score.Id == pastedCvMatch.Id);
+        preservedPastedCvMatch.CvId.Should().BeNull();
+        preservedPastedCvMatch.MatchScore.Should().Be(64m);
+        preservedPastedCvMatch.MatchDetails.Should().Be("pasted-cv-result");
     }
 
     private static HardcodeCvJobMatchingUseCase CreateUseCase(ITHunterviewContext context)

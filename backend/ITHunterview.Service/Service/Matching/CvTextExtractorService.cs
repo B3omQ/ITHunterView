@@ -12,6 +12,7 @@ using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using ITHunterview.Service.Config;
 using ITHunterview.Service.Constant.Prompts;
+using ITHunterview.Service.DTOs.Ai;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Exceptions;
 using ITHunterview.Service.Interface.Service;
@@ -267,16 +268,30 @@ namespace ITHunterview.Service.Service.Matching
                     ? AiGenerationOptions.CvAnalysisJsonExtraction
                     : AiGenerationOptions.CvAnalysisJsonRetry;
 
-                string? aiResponse;
+                AiTextGenerationResult generation;
                 try
                 {
-                    aiResponse = await _aiService.GenerateTextAsync(
-                        userPrompt,
-                        composedSystemPrompt,
-                        provider,
-                        options,
-                        cancellationToken,
-                        featureCode: "CV_EXTRACTION");
+                    if (_aiService is IAiServiceWithCompletionMetadata metadataService)
+                    {
+                        generation = await metadataService.GenerateTextWithMetadataAsync(
+                            userPrompt,
+                            composedSystemPrompt,
+                            provider,
+                            options,
+                            cancellationToken,
+                            featureCode: "CV_EXTRACTION");
+                    }
+                    else
+                    {
+                        var text = await _aiService.GenerateTextAsync(
+                            userPrompt,
+                            composedSystemPrompt,
+                            provider,
+                            options,
+                            cancellationToken,
+                            featureCode: "CV_EXTRACTION");
+                        generation = new AiTextGenerationResult(text, AiCompletionState.Unknown);
+                    }
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -301,20 +316,15 @@ namespace ITHunterview.Service.Service.Matching
                     throw new CvAnalysisValidationException(best.Validation);
                 }
 
-                var candidate = EvaluateCvResponse(aiResponse, attempt);
+                var candidate = EvaluateCvResponse(generation, attempt);
                 best = IsBetter(candidate, best) ? candidate : best;
-                LogCandidate(provider, sourceType, rawCvText.Length, options.ProfileId, aiResponse, candidate);
+                LogCandidate(provider, sourceType, rawCvText.Length, options.ProfileId, generation, candidate);
 
                 if (candidate.Validation.Quality == CvAnalysisQuality.COMPLETE)
                 {
                     return candidate.Validation.CanonicalJson;
                 }
 
-                if (candidate.Validation.Quality == CvAnalysisQuality.PARTIAL &&
-                    !candidate.Recovery.WasTruncated)
-                {
-                    return candidate.Validation.CanonicalJson;
-                }
             }
 
             if (best?.IsUsable == true)
@@ -329,13 +339,29 @@ namespace ITHunterview.Service.Service.Matching
                     "$"));
         }
 
-        private CvAnalysisAttemptCandidate EvaluateCvResponse(string? response, int attempt)
+        private CvAnalysisAttemptCandidate EvaluateCvResponse(AiTextGenerationResult generation, int attempt)
         {
-            var recovery = CvAnalysisOutputRecovery.Recover(response);
+            var recovery = CvAnalysisOutputRecovery.Recover(generation.Text);
+            if (generation.CompletionState is AiCompletionState.OutputLimited or AiCompletionState.Interrupted)
+            {
+                var diagnostics = recovery.Diagnostics
+                    .Append(new CvAnalysisDiagnostic("OUTPUT_TRUNCATED", "$"))
+                    .DistinctBy(value => (value.Code, value.JsonPath))
+                    .Take(100)
+                    .ToArray();
+                recovery = recovery with
+                {
+                    Mode = recovery.HasCandidateJson ? CvAnalysisRecoveryMode.RECOVERED_PARTIAL : recovery.Mode,
+                    WasTruncated = true,
+                    Diagnostics = diagnostics
+                };
+            }
             var validation = recovery.HasCandidateJson
-                ? _cvAnalysisResponseValidator.ValidateAndCanonicalize(recovery.Json!)
+                ? _cvAnalysisResponseValidator is ICvAnalysisRecoveryAwareValidator recoveryAware
+                    ? recoveryAware.ValidateRecovered(recovery)
+                    : _cvAnalysisResponseValidator.ValidateAndCanonicalize(recovery.Json!)
                 : ToInvalidValidation(recovery);
-            return new CvAnalysisAttemptCandidate(attempt, recovery, validation);
+            return new CvAnalysisAttemptCandidate(attempt, recovery, validation, generation);
         }
 
         private static CvAnalysisValidationResult ToInvalidValidation(CvAnalysisRecoveryResult recovery)
@@ -361,7 +387,7 @@ namespace ITHunterview.Service.Service.Matching
             string sourceType,
             int inputLength,
             string profileId,
-            string? response,
+            AiTextGenerationResult generation,
             CvAnalysisAttemptCandidate candidate)
         {
             var warningCodes = candidate.Validation.Diagnostics
@@ -377,8 +403,8 @@ namespace ITHunterview.Service.Service.Matching
                 candidate.Attempt,
                 profileId,
                 inputLength,
-                response?.Length ?? 0,
-                HashIdentifier(response),
+                generation.Text.Length,
+                HashIdentifier(generation.Text),
                 candidate.Recovery.Mode,
                 candidate.Recovery.WasTruncated,
                 candidate.Validation.Quality,
@@ -389,19 +415,25 @@ namespace ITHunterview.Service.Service.Matching
                 coverage?.DiscardedExperienceEntryCount ?? 0,
                 coverage?.AcceptedRequirementSignalCount ?? 0,
                 coverage?.DiscardedRequirementSignalCount ?? 0,
-                warningCodes
+                warningCodes,
+                generation.CompletionState,
+                generation.FinishReason,
+                generation.PromptTokens,
+                generation.CandidateTokens,
+                generation.ThoughtTokens,
+                generation.TotalTokens
             };
 
             if (candidate.Validation.IsUsable)
             {
                 _logger.LogInformation(
-                    "CV analysis attempt accepted. Provider={Provider}; SourceType={SourceType}; Attempt={Attempt}; ProfileId={ProfileId}; InputLength={InputLength}; ResponseLength={ResponseLength}; ResponseHash={ResponseHash}; RecoveryMode={RecoveryMode}; WasTruncated={WasTruncated}; Quality={Quality}; FailureCode={FailureCode}; DiagnosticCode={DiagnosticCode}; JsonPath={JsonPath}; AcceptedExperienceEntries={AcceptedExperienceEntries}; DiscardedExperienceEntries={DiscardedExperienceEntries}; AcceptedSignals={AcceptedSignals}; DiscardedSignals={DiscardedSignals}; WarningCodes={WarningCodes}",
+                    "CV analysis attempt accepted. Provider={Provider}; SourceType={SourceType}; Attempt={Attempt}; ProfileId={ProfileId}; InputLength={InputLength}; ResponseLength={ResponseLength}; ResponseHash={ResponseHash}; RecoveryMode={RecoveryMode}; WasTruncated={WasTruncated}; Quality={Quality}; FailureCode={FailureCode}; DiagnosticCode={DiagnosticCode}; JsonPath={JsonPath}; AcceptedExperienceEntries={AcceptedExperienceEntries}; DiscardedExperienceEntries={DiscardedExperienceEntries}; AcceptedSignals={AcceptedSignals}; DiscardedSignals={DiscardedSignals}; WarningCodes={WarningCodes}; CompletionState={CompletionState}; FinishReason={FinishReason}; PromptTokens={PromptTokens}; CandidateTokens={CandidateTokens}; ThoughtTokens={ThoughtTokens}; TotalTokens={TotalTokens}",
                     logValues);
             }
             else
             {
                 _logger.LogWarning(
-                    "CV analysis attempt rejected. Provider={Provider}; SourceType={SourceType}; Attempt={Attempt}; ProfileId={ProfileId}; InputLength={InputLength}; ResponseLength={ResponseLength}; ResponseHash={ResponseHash}; RecoveryMode={RecoveryMode}; WasTruncated={WasTruncated}; Quality={Quality}; FailureCode={FailureCode}; DiagnosticCode={DiagnosticCode}; JsonPath={JsonPath}; AcceptedExperienceEntries={AcceptedExperienceEntries}; DiscardedExperienceEntries={DiscardedExperienceEntries}; AcceptedSignals={AcceptedSignals}; DiscardedSignals={DiscardedSignals}; WarningCodes={WarningCodes}",
+                    "CV analysis attempt rejected. Provider={Provider}; SourceType={SourceType}; Attempt={Attempt}; ProfileId={ProfileId}; InputLength={InputLength}; ResponseLength={ResponseLength}; ResponseHash={ResponseHash}; RecoveryMode={RecoveryMode}; WasTruncated={WasTruncated}; Quality={Quality}; FailureCode={FailureCode}; DiagnosticCode={DiagnosticCode}; JsonPath={JsonPath}; AcceptedExperienceEntries={AcceptedExperienceEntries}; DiscardedExperienceEntries={DiscardedExperienceEntries}; AcceptedSignals={AcceptedSignals}; DiscardedSignals={DiscardedSignals}; WarningCodes={WarningCodes}; CompletionState={CompletionState}; FinishReason={FinishReason}; PromptTokens={PromptTokens}; CandidateTokens={CandidateTokens}; ThoughtTokens={ThoughtTokens}; TotalTokens={TotalTokens}",
                     logValues);
             }
         }
@@ -410,21 +442,32 @@ namespace ITHunterview.Service.Service.Matching
         {
             if (current is null) return true;
 
+            var usableComparison = candidate.IsUsable.CompareTo(current.IsUsable);
+            if (usableComparison != 0) return usableComparison > 0;
+
             var qualityComparison = QualityRank(candidate.Validation.Quality)
                 .CompareTo(QualityRank(current.Validation.Quality));
             if (qualityComparison != 0) return qualityComparison > 0;
 
-            var metricComparison = AvailableMetricCount(candidate.Validation.Coverage)
-                .CompareTo(AvailableMetricCount(current.Validation.Coverage));
-            if (metricComparison != 0) return metricComparison > 0;
+            var truncationComparison = (!candidate.Recovery.WasTruncated)
+                .CompareTo(!current.Recovery.WasTruncated);
+            if (truncationComparison != 0) return truncationComparison > 0;
 
             var acceptedComparison = AcceptedUnitCount(candidate.Validation.Coverage)
                 .CompareTo(AcceptedUnitCount(current.Validation.Coverage));
             if (acceptedComparison != 0) return acceptedComparison > 0;
 
-            var diagnosticComparison = candidate.Validation.Diagnostics.Count
-                .CompareTo(current.Validation.Diagnostics.Count);
-            if (diagnosticComparison != 0) return diagnosticComparison < 0;
+            var metricComparison = AvailableMetricCount(candidate.Validation.Coverage)
+                .CompareTo(AvailableMetricCount(current.Validation.Coverage));
+            if (metricComparison != 0) return metricComparison > 0;
+
+            var discardedComparison = DiscardedUnitCount(candidate.Validation.Coverage)
+                .CompareTo(DiscardedUnitCount(current.Validation.Coverage));
+            if (discardedComparison != 0) return discardedComparison < 0;
+
+            var lengthComparison = candidate.Validation.CanonicalJson.Length
+                .CompareTo(current.Validation.CanonicalJson.Length);
+            if (lengthComparison != 0) return lengthComparison > 0;
 
             return candidate.Attempt < current.Attempt;
         }
@@ -447,10 +490,16 @@ namespace ITHunterview.Service.Service.Matching
             coverage.AcceptedRequirementSignalCount +
             coverage.AcceptedExperiencePeriodCount;
 
+        private static int DiscardedUnitCount(CvAnalysisCoverage? coverage) => coverage is null ? int.MaxValue :
+            coverage.DiscardedExperienceEntryCount +
+            coverage.DiscardedRequirementSignalCount +
+            coverage.DiscardedExperiencePeriodCount;
+
         private sealed record CvAnalysisAttemptCandidate(
             int Attempt,
             CvAnalysisRecoveryResult Recovery,
-            CvAnalysisValidationResult Validation)
+            CvAnalysisValidationResult Validation,
+            AiTextGenerationResult Generation)
         {
             public bool IsUsable => Validation.IsUsable;
         }

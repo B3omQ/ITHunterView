@@ -157,7 +157,7 @@ namespace ITHunterview.Service.UseCase
 
             _logger.LogInformation("On-demand parsing CV {CvId} in AI matching.", cv.Id);
             var parsedData = await _cvTextExtractorService.ExtractParsedDataFromUrlAsync(cv.FileUrl, cv.RawText);
-            var validation = _cvAnalysisResponseValidator.ValidateAndCanonicalize(parsedData);
+            var validation = ValidateStoredCvJson(parsedData);
             if (!validation.IsUsable) throw new CvAnalysisValidationException(validation);
 
             cv.ParsedData = validation.CanonicalJson;
@@ -176,7 +176,7 @@ namespace ITHunterview.Service.UseCase
                     "$");
             }
 
-            var result = _cvAnalysisResponseValidator.ValidateAndCanonicalize(cv.ParsedData);
+            var result = ValidateStoredCvJson(cv.ParsedData);
             if (!result.IsUsable)
             {
                 _logger.LogWarning("Stored CV analysis requires reparsing. CvId={CvId}; FailureCode={FailureCode}", cv.Id, result.FailureCode);
@@ -187,6 +187,11 @@ namespace ITHunterview.Service.UseCase
             ApplyCvAnalysisMetadata(cv, result);
             return result;
         }
+
+        private CvAnalysisValidationResult ValidateStoredCvJson(string canonicalJson) =>
+            _cvAnalysisResponseValidator is ICvAnalysisRecoveryAwareValidator recoveryAware
+                ? recoveryAware.ValidateStoredCanonical(canonicalJson)
+                : _cvAnalysisResponseValidator.ValidateAndCanonicalize(canonicalJson);
 
         private static void ApplyCvAnalysisMetadata(Cvs cv, CvAnalysisValidationResult validation)
         {
@@ -331,8 +336,10 @@ namespace ITHunterview.Service.UseCase
             await GenerateEmbeddingsForCvAsync(cv);
 
             var existingScores = await _context.CvJobMatchScores
-                .Where(s => s.CvId == cvId && s.UserId == userId)
-                .ToDictionaryAsync(s => s.JobId);
+                // Saved-CV/pasted-JD history intentionally has no JobId and cannot
+                // correspond to any published job in this bulk matching pass.
+                .Where(s => s.CvId == cvId && s.UserId == userId && s.JobId.HasValue)
+                .ToDictionaryAsync(s => s.JobId!.Value);
 
             // Fetch all jobs that have embeddings and are successfully parsed
             var jobs = await _context.JobPostings.AsNoTracking()
@@ -405,8 +412,10 @@ namespace ITHunterview.Service.UseCase
             await GenerateEmbeddingsForJobAsync(job);
 
             var existingScores = await _context.CvJobMatchScores
-                .Where(s => s.JobId == jobId) // Fix Duplicate Bug: Bỏ lọc theo Recruiter UserId
-                .ToDictionaryAsync(s => s.CvId);
+                // Saved-JD/pasted-CV history intentionally has no CvId and cannot
+                // correspond to any saved CV in this bulk matching pass.
+                .Where(s => s.JobId == jobId && s.CvId.HasValue) // Do not filter by recruiter UserId.
+                .ToDictionaryAsync(s => s.CvId!.Value);
 
             var cvs = await _context.Cvs
                 .Include(c => c.User)
@@ -579,9 +588,10 @@ namespace ITHunterview.Service.UseCase
                 
                 if (snapshot != null)
                 {
-                    if (!string.IsNullOrWhiteSpace(snapshot.Cv.AnalysisJson))
+                    if (string.Equals(snapshot.Cv.SourceParseStatus, "SUCCESS", StringComparison.Ordinal) &&
+                        !string.IsNullOrWhiteSpace(snapshot.Cv.AnalysisJson))
                     {
-                        cvAnalysis = _cvAnalysisResponseValidator.ValidateAndCanonicalize(snapshot.Cv.AnalysisJson);
+                        cvAnalysis = ValidateStoredCvJson(snapshot.Cv.AnalysisJson);
                         if (cvAnalysis.IsUsable)
                         {
                             cvText = cvAnalysis.CanonicalJson;
@@ -686,7 +696,7 @@ namespace ITHunterview.Service.UseCase
                 {
                     if (!string.IsNullOrWhiteSpace(parsedData))
                     {
-                        cvAnalysis = _cvAnalysisResponseValidator.ValidateAndCanonicalize(parsedData);
+                        cvAnalysis = ValidateStoredCvJson(parsedData);
                         if (!cvAnalysis.IsUsable)
                         {
                             throw new CvAnalysisValidationException(cvAnalysis);
@@ -750,7 +760,7 @@ namespace ITHunterview.Service.UseCase
                     throw new InvalidOperationException("CV_ANALYSIS_INVALID_FOR_MATCHING");
                 }
                 var stageTwoCv = _cvStageTwoContextBuilder.Build(cvText);
-                cvAnalysis ??= _cvAnalysisResponseValidator.ValidateAndCanonicalize(cvText);
+                cvAnalysis ??= ValidateStoredCvJson(cvText);
                 if (!cvAnalysis.IsUsable)
                 {
                     throw new CvAnalysisValidationException(cvAnalysis);
