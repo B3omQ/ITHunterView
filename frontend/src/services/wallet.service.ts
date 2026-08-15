@@ -57,7 +57,7 @@ export const walletService = {
       .get<ApiResponse<PaginatedResponse<PaymentDto>>>('/api/v1/wallet/my-payments', { params })
       .then((res) => res.data),
 
-  getAdminPayments: (params?: { page?: number; pageSize?: number }) =>
+  getAdminPayments: (params?: any) =>
     api
       .get<ApiResponse<PaginatedResponse<PaymentDto>>>('/api/v1/wallet/admin/payments', { params })
       .then((res) => res.data),

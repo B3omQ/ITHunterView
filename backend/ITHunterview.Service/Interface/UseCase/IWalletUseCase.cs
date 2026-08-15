@@ -15,7 +15,7 @@ namespace ITHunterview.Service.Interface.UseCase
         Task<ResponseBase<CreatePaymentResponseDto>> CreateCustomCoinTopupPaymentAsync(Guid userId, CreateCustomCoinTopupDto dto);
         Task<ResponseBase<PaymentDto>> ProcessPaymentCallbackAsync(Guid actorUserId, PaymentSimulationDto simulationDto);
         Task ProcessWebhookAsync(long orderCode, string transactionDateTime);
-        Task<ResponseBase<PagedResult<PaymentDto>>> GetPagedPaymentsAsync(int page, int pageSize);
+        Task<ResponseBase<PagedResult<PaymentDto>>> GetPagedPaymentsAsync(int page, int pageSize, int? year = null, int? month = null, DateTime? fromDate = null, DateTime? toDate = null);
         Task<ResponseBase<PagedResult<PaymentDto>>> GetMyPaymentsAsync(Guid userId, int page, int pageSize, string? status = null, string? targetType = null);
         Task AddBonusCoinsAsync(Guid userId, int amount, string description);
     }

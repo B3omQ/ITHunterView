@@ -139,9 +139,15 @@ namespace ITHunterview.WebAPI.Controllers
         /// </summary>
         [HttpGet("admin/payments")]
         [Authorize(Policy = "StaffOrAdmin")]
-        public async Task<IActionResult> GetPagedPayments([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetPagedPayments(
+            [FromQuery] int page = 1, 
+            [FromQuery] int pageSize = 10,
+            [FromQuery] int? year = null,
+            [FromQuery] int? month = null,
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null)
         {
-            var result = await _walletUseCase.GetPagedPaymentsAsync(page, pageSize);
+            var result = await _walletUseCase.GetPagedPaymentsAsync(page, pageSize, year, month, fromDate, toDate);
             if (!result.Success)
             {
                 return BadRequest(result);
