@@ -19,15 +19,12 @@ namespace ITHunterview.Service.Service
 
     public class SkillNormalizationService : ISkillNormalizationService
     {
-        private static readonly Regex PunctuationRegex = new Regex(@"[^\w\s\+#\-\.]", RegexOptions.Compiled);
-
         public string Normalize(string value)
         {
-            if (string.IsNullOrWhiteSpace(value)) return string.Empty;
-            string cleaned = PunctuationRegex.Replace(value.Trim(), "").ToLowerInvariant();
-            return string.Join(" ", cleaned.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+            return StringNormalizationHelper.NormalizeITTerm(value);
         }
     }
+
 
 
     public sealed class SkillResolution
