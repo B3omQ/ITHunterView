@@ -206,6 +206,7 @@ namespace ITHunterview.Service.Tests.UseCase
 
             result.Should().NotBeNull();
             result!.Status.Should().Be("Completed");
+            result.ProcessingStage.Should().Be(MatchingProcessingStages.Completed);
             result.CvAnalysis.Should().NotBeNull();
             result.CvAnalysis!.Quality.Should().Be("PARTIAL");
             result.CvAnalysis.ScoreBasis.Should().Be("available_cv_metrics");

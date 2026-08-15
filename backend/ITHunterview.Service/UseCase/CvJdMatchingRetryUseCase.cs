@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Entities;
+using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Infrastructure.Persistence;
 using ITHunterview.Service.Interface.Persistence;
@@ -86,6 +87,7 @@ public sealed class CvJdMatchingRetryUseCase : ICvJdMatchingRetryUseCase
                 MatchScore = null,
                 MatchDetails = string.Empty,
                 Status = "Pending",
+                ProcessingStage = MatchingProcessingStages.Queued,
                 ErrorMessage = null,
                 UpdatedAt = now,
                 MatchType = "AI",

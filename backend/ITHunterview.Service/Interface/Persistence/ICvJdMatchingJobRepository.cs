@@ -36,6 +36,14 @@ public interface ICvJdMatchingJobRepository
         Guid leaseToken,
         CancellationToken cancellationToken = default);
 
+    Task<bool> UpdateProcessingStageAsync(
+        Guid jobId,
+        string workerId,
+        Guid leaseToken,
+        string processingStage,
+        DateTime utcNow,
+        CancellationToken cancellationToken = default);
+
     Task<bool> CompleteAsync(
         Guid jobId,
         string workerId,

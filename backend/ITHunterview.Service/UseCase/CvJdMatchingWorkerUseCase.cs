@@ -101,16 +101,37 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
             CvJdMatchingExecutionResult result;
             try
             {
-                result = await _processor.ExecuteAsync(
-                    job.Id,
-                    snapshot,
-                    timeoutCts.Token);
+                MatchingProgressCallback progressCallback =
+                    (processingStage, stageCancellationToken) => ReportProcessingStageAsync(
+                        job.Id,
+                        workerId,
+                        leaseToken,
+                        processingStage,
+                        stageCancellationToken,
+                        cancellationToken);
+                result = _processor is ICvJdOneToOneMatchingProgressProcessor progressProcessor
+                    ? await progressProcessor.ExecuteWithProgressAsync(
+                        job.Id,
+                        snapshot,
+                        progressCallback,
+                        timeoutCts.Token)
+                    : await _processor.ExecuteAsync(
+                        job.Id,
+                        snapshot,
+                        timeoutCts.Token);
             }
             finally
             {
                 ITHunterview.Service.Utils.UserContext.CurrentUserId =
                     previousUserId;
             }
+            await ReportProcessingStageAsync(
+                job.Id,
+                workerId,
+                leaseToken,
+                MatchingProcessingStages.Finalizing,
+                timeoutCts.Token,
+                cancellationToken);
             var stagedResult = _stagedResultReader.ReadOrCreateSafeFallback(
                             result.Score,
                             result.MatchDetails);
@@ -197,6 +218,54 @@ public sealed class CvJdMatchingWorkerUseCase : ICvJdMatchingWorkerUseCase
             var classification = MatchingFailureClassifier.Classify(ex);
             _logger.LogWarning("Matching job {JobId} failed with code {ErrorCode}; retryable={Retryable}.", job.Id, classification.ErrorCode, classification.Retryable);
             await FailOrRetryAsync(job, workerId, leaseToken, classification, cancellationToken);
+        }
+    }
+
+    private async Task ReportProcessingStageAsync(
+        Guid jobId,
+        string workerId,
+        Guid leaseToken,
+        string processingStage,
+        CancellationToken attemptCancellationToken,
+        CancellationToken hostCancellationToken)
+    {
+        try
+        {
+            var updated = await _jobRepository.UpdateProcessingStageAsync(
+                jobId,
+                workerId,
+                leaseToken,
+                processingStage,
+                DateTime.UtcNow,
+                attemptCancellationToken);
+            if (!updated)
+            {
+                _logger.LogDebug(
+                    "Matching progress stage {ProcessingStage} was not persisted because the lease is no longer active for job {JobId}.",
+                    processingStage,
+                    jobId);
+            }
+        }
+        catch (OperationCanceledException) when (!hostCancellationToken.IsCancellationRequested)
+        {
+            _logger.LogDebug(
+                "Matching progress stage {ProcessingStage} was skipped after the attempt deadline for job {JobId}.",
+                processingStage,
+                jobId);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            // Progress is observability data. A transient write failure must never
+            // turn an otherwise valid matching result into a failed job.
+            _logger.LogWarning(
+                exception,
+                "Matching progress stage {ProcessingStage} could not be persisted for job {JobId}; processing continues.",
+                processingStage,
+                jobId);
         }
     }
 

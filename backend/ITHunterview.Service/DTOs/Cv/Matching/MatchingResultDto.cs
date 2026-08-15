@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.JobAnalysis;
 
 namespace ITHunterview.Service.DTOs.Cv.Matching
@@ -15,6 +16,7 @@ namespace ITHunterview.Service.DTOs.Cv.Matching
         public int ProcessingTimeMs { get; set; }
         
         public string Status { get; set; } = "Pending";
+        public string ProcessingStage { get; set; } = MatchingProcessingStages.Queued;
         public string? ErrorCode { get; set; }
         public string? ErrorMessage { get; set; }
         public bool CanRetry { get; set; }

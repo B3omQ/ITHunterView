@@ -41,6 +41,15 @@ export interface MatchJdResponse {
 
 export type JdAnalysisQuality = 'COMPLETE' | 'PARTIAL' | 'INVALID';
 export type CvAnalysisQuality = 'COMPLETE' | 'PARTIAL' | 'INVALID';
+export type MatchingProcessingStage =
+  | 'queued'
+  | 'preparing_cv'
+  | 'preparing_jd'
+  | 'matching_requirements'
+  | 'finalizing'
+  | 'waiting_for_retry'
+  | 'completed'
+  | 'failed';
 
 export interface CvAnalysisCoverage {
   inputExperienceEntryCount: number;
@@ -128,6 +137,7 @@ export interface MatchingResultDto {
   jobId?: string;
   jdTitle?: string;
   status: string;
+  processingStage?: MatchingProcessingStage;
   errorCode?: string;
   errorMessage?: string;
   canRetry: boolean;

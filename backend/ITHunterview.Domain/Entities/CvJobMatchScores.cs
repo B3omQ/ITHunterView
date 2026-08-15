@@ -40,6 +40,9 @@ namespace ITHunterview.Domain.Entities
         [Column("status")]
         public string Status { get; set; } = "Pending";
 
+        [Column("processing_stage")]
+        public string? ProcessingStage { get; set; }
+
         [Column("error_message")]
         public string? ErrorMessage { get; set; }
 

@@ -177,10 +177,7 @@ function CvMatchingContent() {
 
       {/* 2. Giao diện Loading (Progress Steps) */}
       {state.step === 'loading' && (
-        <MatchingLoadingState 
-          progressPercent={state.progressPercent} 
-          loadingStep={state.loadingStep} 
-        />
+        <MatchingLoadingState progress={state.matchingProgress} />
       )}
 
       {/* 3. Giao diện Kết quả (Sử dụng Sub-Components) */}
