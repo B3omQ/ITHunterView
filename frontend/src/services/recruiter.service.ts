@@ -260,7 +260,7 @@ export const recruiterService = {
 
   getCandidateProfile: async (id: string) => {
     try {
-      const response = await api.get<ApiResponse<any>>(`/api/candidateprofile/${id}`);
+      const response = await api.get<ApiResponse<any>>(`/api/v1/recruiter/candidates/${id}/profile`);
       return { success: true, data: response.data };
     } catch (error: any) {
       return {
