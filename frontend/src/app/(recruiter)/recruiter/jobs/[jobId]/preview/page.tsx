@@ -35,9 +35,7 @@ import { AnalysisStateCard } from "./_components/AnalysisStateCard"
 import { SkillAnalysisSummaryCard } from "./_components/SkillAnalysisSummaryCard"
 import { useTranslations } from "next-intl"
 
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error && error.message ? error.message : fallback
-}
+import { getErrorMessage } from "@/lib/utils"
 
 function createIdempotencyKey() {
   return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"

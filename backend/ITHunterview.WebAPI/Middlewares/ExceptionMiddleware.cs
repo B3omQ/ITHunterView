@@ -56,25 +56,24 @@ namespace ITHunterview.WebAPI.Middlewares
                     break;
                 case KeyNotFoundException:
                     statusCode = HttpStatusCode.NotFound;
-                    message = _localizer[exception.Message];
+                    message = GetLocalizedMessage(exception.Message);
                     break;
                 case ArgumentException:
                     statusCode = HttpStatusCode.BadRequest;
-                    message = _localizer[exception.Message];
+                    message = GetLocalizedMessage(exception.Message);
                     break;
                 case UnauthorizedAccessException:
                     statusCode = HttpStatusCode.Unauthorized;
-                    message = _localizer[exception.Message];
+                    message = GetLocalizedMessage(exception.Message);
                     break;
                 case InvalidOperationException:
                     statusCode = HttpStatusCode.Conflict; // 409 — business rule violation
-                    message = _localizer[exception.Message];
+                    message = GetLocalizedMessage(exception.Message);
                     break;
                 default:
-                    // Trong môi trường phát triển (Development), trả về chi tiết Exception để dễ debug
-                    if (_env.IsDevelopment())
+                    if (!string.IsNullOrWhiteSpace(exception.Message))
                     {
-                        message = exception.Message;
+                        message = GetLocalizedMessage(exception.Message);
                     }
                     break;
             }
@@ -92,6 +91,15 @@ namespace ITHunterview.WebAPI.Middlewares
             var json = JsonSerializer.Serialize(response, options);
 
             await context.Response.WriteAsync(json);
+        }
+
+        private string GetLocalizedMessage(string rawMessage)
+        {
+            if (string.IsNullOrWhiteSpace(rawMessage)) return _localizer["SystemError"];
+            var localized = _localizer[rawMessage];
+            return (localized.ResourceNotFound || string.IsNullOrWhiteSpace(localized.Value))
+                ? rawMessage
+                : localized.Value;
         }
     }
 }

@@ -25,9 +25,7 @@ export const recruiterJobKeys = {
   majors: () => [...recruiterJobKeys.metadata(), 'majors'] as const,
 }
 
-function getErrorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error && error.message ? error.message : fallback
-}
+import { getErrorMessage } from '@/lib/utils'
 
 function unwrap<T>(result: { success: boolean; data?: ApiResponse<T>; message?: string }, fallback: string): T {
   if (!result.success || !result.data?.success || result.data.data === undefined || result.data.data === null) {
