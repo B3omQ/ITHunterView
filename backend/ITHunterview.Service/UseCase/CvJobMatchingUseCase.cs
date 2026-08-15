@@ -1287,8 +1287,7 @@ namespace ITHunterview.Service.UseCase
                         select new { Score = s, Cv = c };
 
             var authorizedRows = await query.ToListAsync();
-            var total = authorizedRows.Count;
-            var items = authorizedRows
+            var deduplicatedRows = authorizedRows
                 .Select(row => new
                 {
                     row.Score,
@@ -1298,9 +1297,17 @@ namespace ITHunterview.Service.UseCase
                         row.Score.MatchScore,
                         row.Score.MatchType)
                 })
-                .OrderByDescending(row => row.Report.ScorePercent)
+                .GroupBy(x => x.Score.CvId)
+                .Select(g => g.OrderByDescending(x => x.Report.ScorePercent ?? -1)
+                              .ThenByDescending(x => x.Score.UpdatedAt)
+                              .First())
+                .OrderByDescending(row => row.Report.ScorePercent ?? -1)
                 .ThenByDescending(row => row.Score.UpdatedAt)
                 .ThenBy(row => row.Score.Id)
+                .ToList();
+
+            var total = deduplicatedRows.Count;
+            var items = deduplicatedRows
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();

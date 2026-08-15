@@ -29,9 +29,14 @@ namespace ITHunterview.Service.UseCase;
         public async Task<RecruiterDashboardResponseDto> GetDashboardAsync(DashboardFilterRequest request, Guid recruiterId)
         {
             var user = await _userRepository.GetUserWithRoleAsync(recruiterId);
-            if (user == null || user.RecruiterProfile?.CompanyId == null)
+            if (user == null)
             {
-                throw new UnauthorizedAccessException("Recruiter is not associated with any company.");
+                throw new KeyNotFoundException("User not found.");
+            }
+
+            if (user.RecruiterProfile?.CompanyId == null)
+            {
+                return new RecruiterDashboardResponseDto();
             }
 
             var companyId = user.RecruiterProfile.CompanyId.Value;

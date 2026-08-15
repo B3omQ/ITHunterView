@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { useAdminPayments } from '@/hooks/useAdminPayments';
 import { useSignalR } from '@/hooks/useSignalR';
 import type { PaymentDto } from '@/types/wallet.types';
+import { DashboardFilterBar } from '@/components/shared/DashboardFilterBar';
 
 import {
   Table,
@@ -43,8 +44,16 @@ export default function FinancePage() {
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-
-  const { data, isLoading, isError, refetch } = useAdminPayments({ page, pageSize });
+  const [filters, setFilters] = useState<any>({});
+ 
+  const { data, isLoading, isError, refetch } = useAdminPayments({ 
+    page, 
+    pageSize,
+    year: filters.year,
+    month: filters.month,
+    fromDate: filters.fromDate,
+    toDate: filters.toDate
+  });
   const result = data?.data;
   const queryClient = useQueryClient();
   const connection = useSignalR('/hubs/notification');
@@ -86,10 +95,11 @@ export default function FinancePage() {
   const handleResetFilters = () => {
     setSearch('');
     setStatusFilter('ALL');
+    setFilters({});
     setPage(1);
   };
-
-  const isFilterActive = search !== '' || statusFilter !== 'ALL';
+ 
+  const isFilterActive = search !== '' || statusFilter !== 'ALL' || Object.values(filters).some(v => v !== null && v !== '');
   const startResult = totalCount > 0 ? (page - 1) * pageSize + 1 : 0;
   const endResult = Math.min(page * pageSize, totalCount);
 
@@ -133,6 +143,9 @@ export default function FinancePage() {
             </p>
           </div>
         </div>
+
+        {/* Dashboard Filter Bar */}
+        <DashboardFilterBar onFilterChange={setFilters} />
 
         {/* TẦNG 1: TOOLBAR (Search Bar, Status Filter, Reset Filters) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

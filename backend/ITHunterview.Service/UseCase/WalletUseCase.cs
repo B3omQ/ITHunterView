@@ -812,13 +812,56 @@ namespace ITHunterview.Service.UseCase
             await _hubContext.Clients.All.SendAsync("ReceiveNewPayment", paymentDto);
         }
 
-        public async Task<ResponseBase<PagedResult<PaymentDto>>> GetPagedPaymentsAsync(int page, int pageSize)
+        public async Task<ResponseBase<PagedResult<PaymentDto>>> GetPagedPaymentsAsync(
+            int page, 
+            int pageSize, 
+            int? year = null, 
+            int? month = null, 
+            DateTime? fromDate = null, 
+            DateTime? toDate = null)
         {
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
             if (pageSize > 100) pageSize = 100;
 
-            var query = _context.Payments.OrderByDescending(p => p.CreatedAt);
+            // Ensure DateTime kinds are set to Utc for Npgsql/Postgres compatibility
+            if (fromDate.HasValue)
+            {
+                fromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+            }
+            if (toDate.HasValue)
+            {
+                toDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc);
+            }
+
+            var query = _context.Payments.AsQueryable();
+
+            // Apply filters
+            if (fromDate.HasValue && !toDate.HasValue)
+            {
+                query = query.Where(x => x.CreatedAt >= fromDate.Value);
+            }
+            else if (!fromDate.HasValue && toDate.HasValue)
+            {
+                query = query.Where(x => x.CreatedAt <= toDate.Value);
+            }
+            else if (fromDate.HasValue && toDate.HasValue)
+            {
+                query = query.Where(x => x.CreatedAt >= fromDate.Value && x.CreatedAt <= toDate.Value);
+            }
+            else
+            {
+                if (year.HasValue)
+                {
+                    query = query.Where(x => x.CreatedAt.Year == year.Value);
+                }
+                if (month.HasValue)
+                {
+                    query = query.Where(x => x.CreatedAt.Month == month.Value);
+                }
+            }
+
+            query = query.OrderByDescending(p => p.CreatedAt);
             var total = await query.CountAsync();
             var items = await query
                 .Skip((page - 1) * pageSize)
