@@ -7,12 +7,27 @@ interface AiParseStatusBadgeProps {
   error?: string | null
   className?: string
   forCandidate?: boolean
+  jobStatus?: string
 }
 
-export function AiParseStatusBadge({ status, error, className, forCandidate = false }: AiParseStatusBadgeProps) {
+export function AiParseStatusBadge({ status, error, className, forCandidate = false, jobStatus }: AiParseStatusBadgeProps) {
   const normalized = status?.toUpperCase()
+  const normalizedJobStatus = jobStatus?.toUpperCase()
 
   if (forCandidate || !normalized) return null
+
+  // Closed or expired jobs are no longer pending review or processing
+  if (normalizedJobStatus === 'CLOSED' || normalizedJobStatus === 'EXPIRED') {
+    if (normalized === 'FAILED') {
+      return <StatusBadge className={className} title={error || 'An error occurred while scanning skills with AI.'} icon={<AlertCircle className="size-3 text-rose-500" />} tone="red">AI Scan Error</StatusBadge>
+    }
+    return <StatusBadge className={className} title="AI completed scanning job description." icon={<Sparkles className="size-3 text-emerald-500 fill-emerald-500/20 shrink-0" />} tone="green">AI Scanned & Tagged</StatusBadge>
+  }
+
+  // Published jobs with ready or success status display AI Scanned & Tagged
+  if (normalizedJobStatus === 'PUBLISHED' && (normalized === 'READY' || normalized === 'SUCCESS')) {
+    return <StatusBadge className={className} title="AI completed scanning job description, extracted and tagged standard skills for candidate matching." icon={<Sparkles className="size-3 text-emerald-500 fill-emerald-500/20 shrink-0" />} tone="green">AI Scanned & Tagged</StatusBadge>
+  }
 
   if (normalized === 'PENDING' || normalized === 'PROCESSING') {
     return <StatusBadge className={className} title="AI system is scanning job description (JD) to extract skills and requirements..." icon={<Loader2 className="size-3 animate-spin text-amber-500" />} tone="amber">AI Scanning JD...</StatusBadge>

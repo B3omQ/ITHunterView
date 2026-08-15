@@ -14,6 +14,7 @@ import { CompanyLogo } from '@/components/shared/CompanyLogo';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { JobPostingMarkdownContent } from '@/components/jobs/JobPostingMarkdownContent';
 import { WorkLocationScheduleContent } from '@/components/jobs/WorkLocationScheduleContent';
+import { useTranslations } from 'next-intl';
 
 interface JobDetailPanelProps {
   jobId: string;
@@ -21,6 +22,7 @@ interface JobDetailPanelProps {
 }
 
 export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPanelProps) {
+  const t = useTranslations('JobDetailPanel');
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useJobDetail(jobId, isCandidateMode);
@@ -29,7 +31,7 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
   const { saveJob, unsaveJob, isSaving, isUnsaving } = useJobActions();
 
   if (isLoading) return <div className="h-full flex items-center justify-center"><PageLoader /></div>;
-  if (isError || !data?.data) return <div className="h-full flex items-center justify-center p-8"><EmptyState title="Job not found" description="This job posting may have expired or been removed." /></div>;
+  if (isError || !data?.data) return <div className="h-full flex items-center justify-center p-8"><EmptyState title={t('jobNotFound')} description={t('jobNotFoundDesc')} /></div>;
 
   const job = data.data;
 
@@ -43,7 +45,7 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
     }
 
     if (user?.role?.name?.toLowerCase() !== 'candidate') {
-      alert('Only candidates can apply for jobs.');
+      alert(t('onlyCandidatesCanApply'));
       return;
     }
 
@@ -87,12 +89,12 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
               <DollarSign className="w-5 h-5 text-slate-700" />
               <span className="font-semibold text-sm underline cursor-pointer decoration-slate-400 underline-offset-2">
                 {!job.minSalary && !job.maxSalary
-                  ? "Negotiable"
+                  ? t('negotiable')
                   : (job.minSalary && !job.maxSalary)
-                    ? `From ${job.minSalary.toLocaleString()} ${job.currency}`
+                    ? t('fromSalary', { amount: job.minSalary.toLocaleString(), currency: job.currency })
                     : (!job.minSalary && job.maxSalary)
-                      ? `Up to ${job.maxSalary.toLocaleString()} ${job.currency}`
-                      : `${job.minSalary?.toLocaleString()} - ${job.maxSalary?.toLocaleString()} ${job.currency}`
+                      ? t('upToSalary', { amount: job.maxSalary.toLocaleString(), currency: job.currency })
+                      : t('salaryRange', { min: (job.minSalary ?? 0).toLocaleString(), max: (job.maxSalary ?? 0).toLocaleString(), currency: job.currency })
                 }
               </span>
             </div>
@@ -104,14 +106,14 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
           <div className="flex items-center gap-3 mb-6">
             {job.isApplied ? (
               <Button disabled variant="outline" className="flex-1 text-base font-bold h-12 bg-emerald-50 text-emerald-700 border-emerald-200">
-                Applied
+                {t('applied')}
               </Button>
             ) : (
               <Button onClick={handleApplyClick} className="flex-1 text-base font-bold h-12" size="lg">
-                Apply now
+                {t('applyNow')}
               </Button>
             )}
-            <Button variant="outline" onClick={handleSaveClick} disabled={isSaving || isUnsaving} className="w-12 h-12 shrink-0 p-0 border-slate-200" title={job.isSaved ? "Unsave Job" : "Save Job"}>
+            <Button variant="outline" onClick={handleSaveClick} disabled={isSaving || isUnsaving} className="w-12 h-12 shrink-0 p-0 border-slate-200" title={job.isSaved ? t('unsaveJob') : t('saveJob')}>
               {job.isSaved ? (
                 <Heart className="w-6 h-6 text-primary fill-primary" />
               ) : (
@@ -149,7 +151,7 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
         <div className="flex flex-col gap-4 text-sm">
           {job.skills && job.skills.length > 0 && (
             <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
-              <span className="font-bold text-slate-900 w-28 shrink-0 py-1">Skills:</span>
+              <span className="font-bold text-slate-900 w-28 shrink-0 py-1">{t('skills')}</span>
               <div className="flex flex-wrap gap-2">
                 {job.skills.map((skill, idx) => (
                   <Badge key={idx} variant="outline" className="font-normal border-slate-200 text-slate-700 bg-white hover:bg-slate-50 px-3 py-1">
@@ -160,22 +162,9 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
             </div>
           )}
 
-          {/* jobExpertise — temporarily hidden
-          {job.jobExpertise && (
-            <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
-              <span className="font-bold text-slate-900 w-28 shrink-0 py-1">Job Expertise:</span>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="font-normal border-slate-200 text-slate-700 bg-white hover:bg-slate-50 px-3 py-1">
-                  {job.jobExpertise}
-                </Badge>
-              </div>
-            </div>
-          )}
-          */}
-
           {job.jobDomain && job.jobDomain.length > 0 && (
             <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
-              <span className="font-bold text-slate-900 w-28 shrink-0 py-1">Job Domain:</span>
+              <span className="font-bold text-slate-900 w-28 shrink-0 py-1">{t('jobDomain')}</span>
               <div className="flex flex-wrap gap-2">
                 {job.jobDomain.map((domain: string, idx: number) => (
                   <Badge key={idx} variant="outline" className="font-normal border-slate-200 text-slate-700 bg-white hover:bg-slate-50 px-3 py-1">
@@ -193,35 +182,35 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
         <div className="flex flex-col gap-8">
           {job.description && (
             <section>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Job Description</h2>
+              <h2 className="text-xl font-bold text-slate-900 mb-4">{t('jobDescription')}</h2>
               <JobPostingMarkdownContent value={job.description} legacyMode="bullet" />
             </section>
           )}
 
           {job.incomeText && (
             <section>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Income</h2>
+              <h2 className="text-xl font-bold text-slate-900 mb-4">{t('income')}</h2>
               <JobPostingMarkdownContent value={job.incomeText} legacyMode="lines" />
             </section>
           )}
 
           {job.workLocationText && (
             <section>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Work Location & Schedule</h2>
+              <h2 className="text-xl font-bold text-slate-900 mb-4">{t('workLocationSchedule')}</h2>
               <WorkLocationScheduleContent workLocationText={job.workLocationText} />
             </section>
           )}
 
           {job.requirements && (
             <section>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Requirements</h2>
+              <h2 className="text-xl font-bold text-slate-900 mb-4">{t('requirements')}</h2>
               <JobPostingMarkdownContent value={job.requirements} legacyMode="bullet" />
             </section>
           )}
 
           {job.benefits && (
             <section>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Benefits</h2>
+              <h2 className="text-xl font-bold text-slate-900 mb-4">{t('benefits')}</h2>
               <JobPostingMarkdownContent value={job.benefits} legacyMode="bullet" />
             </section>
           )}
@@ -243,17 +232,17 @@ export function JobDetailPanel({ jobId, isCandidateMode = false }: JobDetailPane
       <Dialog open={showUnsaveDialog} onOpenChange={setShowUnsaveDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Unsave Job?</DialogTitle>
+            <DialogTitle>{t('unsaveDialogTitle')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to remove &quot;{job.title}&quot; from your saved jobs?
+              {t('unsaveDialogDesc', { title: job.title })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowUnsaveDialog(false)} disabled={isUnsaving}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button variant="destructive" onClick={handleConfirmUnsave} disabled={isUnsaving}>
-              {isUnsaving ? 'Unsaving...' : 'Unsave'}
+              {isUnsaving ? t('unsaving') : t('unsave')}
             </Button>
           </DialogFooter>
         </DialogContent>

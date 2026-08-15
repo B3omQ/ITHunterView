@@ -15,6 +15,7 @@ export interface JobSearchQuery {
   companyTypes?: string[];
   jobExpertises?: string[];
   maxSalary?: number;
+  includeNegotiable?: boolean;
   page?: number;
   pageSize?: number;
 }

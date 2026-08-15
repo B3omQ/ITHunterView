@@ -13,28 +13,50 @@ import { ApplyJobModal } from '@/components/jobs/ApplyJobModal';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
 import { JobPostingMarkdownContent } from '@/components/jobs/JobPostingMarkdownContent';
 import { WorkLocationScheduleContent } from '@/components/jobs/WorkLocationScheduleContent';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { jobService } from '@/services/job.service';
 
 export default function PublicJobDetailPage() {
+  const [mounted, setMounted] = useState(false);
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const params = useParams();
   const router = useRouter();
-  const { data, isLoading, isError } = useJobDetail(params.id as string, false);
-  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const { accessToken, user } = useAuthStore();
+  const isCandidate = !!accessToken && user?.role?.name?.toLowerCase() === 'candidate';
+  const rawId = params?.id;
+  const jobId = (typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] : '') || '';
+  
+  const { data, isLoading, isError } = useJobDetail(jobId, isCandidate);
+  const toggleSaveMutation = useMutation({
+    mutationFn: async (idToSave: string) => {
+      if (data?.data?.isSaved) {
+        await jobService.unsaveJob(idToSave);
+      } else {
+        await jobService.saveJob(idToSave);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['job-detail', jobId, isCandidate] });
+    },
+  });
 
-  if (isLoading) return <PageLoader />;
-  if (isError || !data?.data) return <EmptyState title="Job not found" description="This job posting may have expired or been removed." />;
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || isLoading) return <PageLoader />;
+  if (!jobId || isError || !data?.data) return <EmptyState title="Job not found" description="This job posting may have expired or been removed." />;
 
   const job = data.data;
 
   const handleApplyClick = () => {
-    const { accessToken, user } = useAuthStore.getState();
-    const isAuthenticated = !!accessToken;
-
-    if (!isAuthenticated) {
-      router.push(`/login?redirect=/jobs/${params.id}`);
+    if (!accessToken) {
+      router.push(`/login?redirect=/jobs/${jobId}`);
       return;
     }
 
-    if (user?.role?.name?.toLowerCase() !== 'candidate') {
+    if (!isCandidate) {
       alert('Only candidates can apply for jobs.');
       return;
     }
@@ -43,11 +65,15 @@ export default function PublicJobDetailPage() {
   };
 
   const handleSaveClick = () => {
-    const { accessToken } = useAuthStore.getState();
     if (!accessToken) {
-      router.push(`/login?redirect=/jobs/${params.id}`);
+      router.push(`/login?redirect=/jobs/${jobId}`);
       return;
     }
+    if (!isCandidate) {
+      alert('Only candidates can save jobs.');
+      return;
+    }
+    toggleSaveMutation.mutate(jobId);
   };
 
   return (
@@ -71,9 +97,23 @@ export default function PublicJobDetailPage() {
             </div>
 
             <div className="flex flex-col gap-3 w-full md:w-auto">
-              <Button size="lg" className="w-full" onClick={handleApplyClick}>Apply Now</Button>
-              <Button size="lg" variant="outline" className="w-full" onClick={handleSaveClick}>
-                <Bookmark className="w-4 h-4 mr-2" /> Save Job
+              <Button 
+                size="lg" 
+                className="w-full" 
+                onClick={handleApplyClick}
+                disabled={job.isApplied}
+              >
+                {job.isApplied ? 'Applied' : 'Apply Now'}
+              </Button>
+              <Button 
+                size="lg" 
+                variant={job.isSaved ? "default" : "outline"} 
+                className="w-full" 
+                onClick={handleSaveClick}
+                disabled={toggleSaveMutation.isPending}
+              >
+                <Bookmark className={`w-4 h-4 mr-2 ${job.isSaved ? 'fill-current' : ''}`} /> 
+                {job.isSaved ? 'Saved' : 'Save Job'}
               </Button>
             </div>
           </div>
@@ -154,7 +194,9 @@ export default function PublicJobDetailPage() {
         onClose={() => setIsApplyModalOpen(false)}
         jobId={job.id}
         jobTitle={job.title}
-        onSuccess={() => {}}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['job-detail', jobId, isCandidate] });
+        }}
       />
     </div>
   );

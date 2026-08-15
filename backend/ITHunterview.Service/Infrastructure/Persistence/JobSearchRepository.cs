@@ -36,12 +36,28 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             if (query.MinSalary.HasValue)
             {
-                jobsQuery = jobsQuery.Where(j => j.MinSalary >= query.MinSalary.Value || j.MaxSalary >= query.MinSalary.Value);
+                if (query.IncludeNegotiable)
+                    jobsQuery = jobsQuery.Where(j =>
+                        (!j.MinSalary.HasValue && !j.MaxSalary.HasValue) ||
+                        j.MinSalary >= query.MinSalary.Value ||
+                        j.MaxSalary >= query.MinSalary.Value);
+                else
+                    jobsQuery = jobsQuery.Where(j =>
+                        j.MinSalary >= query.MinSalary.Value ||
+                        j.MaxSalary >= query.MinSalary.Value);
             }
 
             if (query.MaxSalary.HasValue)
             {
-                jobsQuery = jobsQuery.Where(j => j.MinSalary <= query.MaxSalary.Value || j.MaxSalary <= query.MaxSalary.Value);
+                if (query.IncludeNegotiable)
+                    jobsQuery = jobsQuery.Where(j =>
+                        (!j.MinSalary.HasValue && !j.MaxSalary.HasValue) ||
+                        j.MinSalary <= query.MaxSalary.Value ||
+                        j.MaxSalary <= query.MaxSalary.Value);
+                else
+                    jobsQuery = jobsQuery.Where(j =>
+                        j.MinSalary <= query.MaxSalary.Value ||
+                        j.MaxSalary <= query.MaxSalary.Value);
             }
 
             if (query.PostedWithinDays.HasValue)

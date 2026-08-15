@@ -570,7 +570,7 @@ export default function JobPostingsPage() {
                         </Link>
                         {/* Subtitle row for tags */}
                         <div className="flex items-center gap-2 min-h-[22px] overflow-hidden">
-                          <AiParseStatusBadge status={job.parseStatus} error={job.parseError} className="text-[11px] px-2 py-0.5 font-medium shadow-none shrink-0" />
+                          <AiParseStatusBadge status={job.parseStatus} error={job.parseError} jobStatus={job.status} className="text-[11px] px-2 py-0.5 font-medium shadow-none shrink-0" />
                           {job.pushedTopUntil && new Date(job.pushedTopUntil) >= new Date() && (
                             <span
                               title="Job is being featured in Top 24h on home page"

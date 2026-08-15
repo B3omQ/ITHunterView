@@ -20,9 +20,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             await SeedSubscriptionsAsync(context);
             await SeedCoinConfigAsync(context);
             await SeedCustomCoinTopupPriceAsync(context);
-            await SeedJobPostingsAsync(context);
+            // await SeedJobPostingsAsync(context);
             await SeedSfiaSkillsAsync(context);
-            await SeedRealisticSpecificJDsAsync(context);
+            // await SeedRealisticSpecificJDsAsync(context);
 
             // Cập nhật trạng thái ParseStatus của các Job mẫu được seed sang SUCCESS để không hiển thị kẹt ở trạng thái AI Processing
             var pendingJobs = await context.JobPostings.Where(j => j.ParseStatus == "PENDING" || j.ParseStatus == null).ToListAsync();

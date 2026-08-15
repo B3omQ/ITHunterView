@@ -52,7 +52,7 @@ function CandidateJobsContent() {
   useEffect(() => {
     if (connection) {
       connection.on("JobCreated", (job) => {
-        toast.success(`Một bài đăng mới phù hợp vừa được tạo: ${job.title}`);
+        toast.success(t('jobCreatedToast', { title: job.title }));
         refetch();
       });
       connection.on("JobStatusChanged", () => {

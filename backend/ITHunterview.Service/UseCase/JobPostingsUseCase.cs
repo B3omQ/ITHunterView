@@ -66,7 +66,14 @@ namespace ITHunterview.Service.UseCase
             var (items, totalCount) = await _jobPostingRepository.GetPagedAsync(search, status, page, pageSize, recruiterId);
 
             var jobIds = items.Select(j => j.Id).ToList();
-            var jobSkills = await _jobPostingRepository.GetSkillsForJobsAsync(jobIds);
+            var jobSkills = jobIds.Count > 0 ? await _jobPostingRepository.GetSkillsForJobsAsync(jobIds) : new Dictionary<Guid, List<string>>();
+            var actualAppCounts = jobIds.Count > 0
+                ? await _context.JobApplications
+                    .Where(ja => jobIds.Contains(ja.JobId))
+                    .GroupBy(ja => ja.JobId)
+                    .Select(g => new { JobId = g.Key, Count = g.Count() })
+                    .ToDictionaryAsync(x => x.JobId, x => x.Count)
+                : new Dictionary<Guid, int>();
 
             var summaryList = items.Select(j => new JobPostingSummaryDto
             {
@@ -76,7 +83,7 @@ namespace ITHunterview.Service.UseCase
                 Location = j.Location,
 
                 Status = j.Status,
-                ApplicationCount = j.ApplicationCount,
+                ApplicationCount = actualAppCounts.TryGetValue(j.Id, out var appCount) ? appCount : 0,
                 ViewCount = j.ViewCount,
                 PublishedAt = j.PublishedAt,
                 ApplicationDeadline = j.ApplicationDeadline,
@@ -287,6 +294,12 @@ namespace ITHunterview.Service.UseCase
             }
 
             job.Status = JobStatus.CLOSED;
+            if (string.Equals(job.ParseStatus, "PENDING", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(job.ParseStatus, "PROCESSING", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(job.ParseStatus, "READY", StringComparison.OrdinalIgnoreCase))
+            {
+                job.ParseStatus = "SUCCESS";
+            }
             job.UpdatedAt = DateTime.UtcNow;
 
             await _jobPostingRepository.UpdateAsync(job);

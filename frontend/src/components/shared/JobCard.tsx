@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DollarSign, Briefcase, Heart, Monitor, CheckSquare, MapPin, Flame } from 'lucide-react';
 import type { JobCardDto } from '@/types/job.types';
 import { CompanyLogo } from '@/components/shared/CompanyLogo';
+import { useTranslations } from 'next-intl';
 
 interface JobCardProps {
   job: JobCardDto;
@@ -17,13 +18,14 @@ interface JobCardProps {
   onClick?: (e: React.MouseEvent) => void;
 }
 
-const getDaysAgo = (dateStr?: string) => {
+const getDaysAgo = (dateStr: string | undefined, t: any) => {
   if (!dateStr) return null;
   const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
-  return days > 0 ? `Posted ${days} days ago` : 'Posted today';
+  return days > 0 ? t('postedDaysAgo', { days }) : t('postedToday');
 };
 
 export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoadingAction, isActive, onClick }: JobCardProps) {
+  const t = useTranslations('JobCard');
   const jobLink = isCandidateMode ? `/jobs/${job.id}` : `/jobs/${job.id}`;
   const isTop = job.isPushedTop || (job.pushedTopUntil && new Date(job.pushedTopUntil) >= new Date());
 
@@ -42,7 +44,7 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
         {isTop && !isActive && (
           <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden pointer-events-none">
             <div className="absolute top-2 -right-7 rotate-45 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-[9px] uppercase px-8 py-0.5 shadow-md flex items-center justify-center tracking-wider">
-              TOP 24H
+              {t('featuredTop')}
             </div>
           </div>
         )}
@@ -54,23 +56,23 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
             <div className="flex items-center gap-2 flex-wrap">
               {job.publishedAt && (
                 <span className="text-sm text-slate-400 font-medium">
-                  {getDaysAgo(job.publishedAt)}
+                  {getDaysAgo(job.publishedAt, t)}
                 </span>
               )}
               {isTop && (
                 <Badge variant="secondary" className="bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-red-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/30 px-2 py-0 text-[11px] font-bold gap-1 animate-pulse">
                   <Flame className="h-3 w-3 fill-orange-500 text-orange-500" />
-                  Nổi bật Top
+                  {t('featuredTop')}
                 </Badge>
               )}
               {job.isApplied && (
                 <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none px-2 py-0.5 text-xs font-semibold ml-auto">
-                  Applied
+                  {t('applied')}
                 </Badge>
               )}
               {job.status === 'EXPIRED' && (
                 <Badge variant="secondary" className="bg-slate-200 text-slate-600 hover:bg-slate-200 border-none px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ml-auto">
-                  Hết hạn
+                  {t('expired')}
                 </Badge>
               )}
             </div>
@@ -93,12 +95,12 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
               <DollarSign className="w-4 h-4 text-slate-700" />
               <span className="font-semibold text-sm underline cursor-pointer decoration-slate-400 underline-offset-2 text-slate-700">
                 {!job.minSalary && !job.maxSalary 
-                  ? "Negotiable" 
+                  ? t('negotiable') 
                   : (job.minSalary && !job.maxSalary)
-                    ? `From ${job.minSalary.toLocaleString()} ${job.currency}`
+                    ? t('fromSalary', { amount: job.minSalary.toLocaleString(), currency: job.currency })
                     : (!job.minSalary && job.maxSalary)
-                      ? `Up to ${job.maxSalary.toLocaleString()} ${job.currency}`
-                      : `${job.minSalary?.toLocaleString()} - ${job.maxSalary?.toLocaleString()} ${job.currency}`
+                      ? t('upToSalary', { amount: job.maxSalary.toLocaleString(), currency: job.currency })
+                      : t('salaryRange', { min: (job.minSalary ?? 0).toLocaleString(), max: (job.maxSalary ?? 0).toLocaleString(), currency: job.currency })
                 }
               </span>
             </div>
@@ -110,17 +112,9 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
             {job.level && (
               <div className="flex items-center gap-2 text-slate-600 text-sm">
                 <CheckSquare className="w-4 h-4 text-slate-400 shrink-0" />
-                <span className="leading-snug underline decoration-slate-300 underline-offset-4">{job.level === 'Fresher' ? 'Fresher Accepted' : job.level}</span>
+                <span className="leading-snug underline decoration-slate-300 underline-offset-4">{job.level === 'Fresher' ? t('fresherAccepted') : job.level}</span>
               </div>
             )}
-            {/* jobExpertise — temporarily hidden
-            {job.jobExpertise && (
-              <div className="flex items-center gap-2 text-slate-600 text-sm">
-                <Briefcase className="w-4 h-4 text-slate-400 shrink-0" />
-                <span className="leading-snug underline decoration-slate-300 underline-offset-4">{job.jobExpertise}</span>
-              </div>
-            )}
-            */}
             {job.jobDomain && job.jobDomain.length > 0 && (
               <div className="flex items-center gap-2 text-slate-600 text-sm">
                 <Briefcase className="w-4 h-4 text-slate-400 shrink-0" />
@@ -132,7 +126,7 @@ export function JobCard({ job, isCandidateMode = false, onSave, onUnsave, isLoad
             <div className="flex items-center gap-2 text-slate-600 text-sm">
               <Monitor className="w-4 h-4 text-slate-400 shrink-0" />
               <div className="flex items-center gap-1.5 flex-wrap leading-snug">
-                <span>{job.workingModel || 'At office'}</span>
+                <span>{job.workingModel || t('atOffice')}</span>
                 <span className="text-slate-300">•</span>
                 <MapPin className="w-3.5 h-3.5 text-slate-400" />
                 <span>{job.location}</span>

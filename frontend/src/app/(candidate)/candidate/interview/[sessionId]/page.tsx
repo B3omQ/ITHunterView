@@ -623,10 +623,6 @@ export default function CandidateInterviewActivePage() {
               <span className="text-[10px] text-muted-foreground">
                 *Press <span className="font-semibold text-foreground">Shift + Enter</span> for a new line.
               </span>
-              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                <Cpu className="h-3 w-3 text-primary" />
-                Active Model: Gemini
-              </span>
             </div>
           </div>
         </div>

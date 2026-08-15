@@ -437,7 +437,7 @@ export default function CreateJobPage() {
                 />
                 <p 
                   className="text-[11.5px] text-zinc-500 dark:text-zinc-400 mt-1 italic leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: t("sysVisibilityNotice") }}
+                  dangerouslySetInnerHTML={{ __html: t.raw("sysVisibilityNotice") }}
                 />
               </div>
             </div>
