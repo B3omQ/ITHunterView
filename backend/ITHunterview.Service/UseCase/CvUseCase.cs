@@ -42,6 +42,15 @@ namespace ITHunterview.Service.UseCase
 
         public async Task<CvResponseDto> CreateCvAsync(Guid userId, CreateCvRequestDto request)
         {
+            if (!request.IsTemporary)
+            {
+                var existingCvs = await _cvRepository.GetByUserIdAsync(userId);
+                if (existingCvs.Count() >= 10)
+                {
+                    throw new InvalidOperationException("MaxCvLimitReached");
+                }
+            }
+
             string? warningMessage = null;
 
             if (request.IsPrimary)

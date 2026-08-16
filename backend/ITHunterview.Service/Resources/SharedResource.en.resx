@@ -9,4 +9,7 @@
   <data name="SystemError" xml:space="preserve">
     <value>A system error occurred. Please try again later.</value>
   </data>
+  <data name="MaxCvLimitReached" xml:space="preserve">
+    <value>You have reached the limit of 10 CVs. Please delete some before uploading a new one.</value>
+  </data>
 </root>
