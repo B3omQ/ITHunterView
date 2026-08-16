@@ -70,6 +70,19 @@ namespace ITHunterview.Service.UseCase
                 jobPosting.ApplicationCount += 1;
                 jobPosting.UpdatedAt = DateTime.UtcNow;
                 await _jobPostingRepository.UpdateAsync(jobPosting);
+
+                // Notify the recruiter
+                var candidateName = !string.IsNullOrWhiteSpace(profile.FirstName) || !string.IsNullOrWhiteSpace(profile.LastName)
+                    ? $"{profile.LastName} {profile.FirstName}".Trim()
+                    : "Một ứng viên";
+
+                await _notificationUseCase.CreateNotificationAsync(new DTOs.Notification.CreateNotificationDto
+                {
+                    UserId = jobPosting.RecruiterId,
+                    Title = "Ứng viên mới ứng tuyển",
+                    Message = $"{candidateName} vừa ứng tuyển vào vị trí: {jobPosting.Title}",
+                    Type = NotificationType.APPLICATION
+                });
             }
 
             return true;
