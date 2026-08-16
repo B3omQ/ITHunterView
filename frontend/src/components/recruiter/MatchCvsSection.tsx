@@ -197,16 +197,6 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
                           )}
                         </div>
                         <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-500">
-                          <span className={cn(
-                            "inline-flex items-center rounded-md px-2 py-0.5 font-semibold text-[10px] uppercase tracking-wider",
-                            match.matchMethod === 'hardcode' ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"
-                          )}>
-                            {match.matchMethod === 'hardcode' ? (
-                              <><FileCode className="w-3 h-3 mr-1" /> {getMatchMethodLabel(match.matchMethod)}</>
-                            ) : (
-                              <><Brain className="w-3 h-3 mr-1" /> {getMatchMethodLabel(match.matchMethod)}</>
-                            )}
-                          </span>
                           <span>Matched on {new Date(match.updatedAt).toLocaleDateString()}</span>
                         </div>
                       </div>
