@@ -455,6 +455,7 @@
     "selectResume": "Select a resume from the list to view its preview",
     "fileTooLarge": "File is too large. Max 5MB allowed.",
     "uploadFailed": "Failed to upload CV. Please try again.",
+    "maxCvLimitReached": "You have reached the limit of 10 CVs. Please delete some before uploading a new one.",
     "unknownSize": "Unknown size",
     "primary": "Primary",
     "analyzingAI": "Analyzing AI...",

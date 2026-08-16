@@ -455,6 +455,7 @@
     "selectResume": "Chọn một hồ sơ từ danh sách để xem trước",
     "fileTooLarge": "Tệp quá lớn. Tối đa 5MB.",
     "uploadFailed": "Lỗi khi tải lên CV. Vui lòng thử lại.",
+    "maxCvLimitReached": "Bạn đã đạt giới hạn tối đa 10 CV. Vui lòng xóa bớt CV cũ.",
     "unknownSize": "Không rõ kích thước",
     "primary": "Chính",
     "analyzingAI": "Đang phân tích AI...",

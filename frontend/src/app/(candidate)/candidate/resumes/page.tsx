@@ -49,6 +49,11 @@ export default function ResumesPage() {
   };
 
   const handleFile = async (file: File) => {
+    if (cvs.length >= 10) {
+      alert(t('maxCvLimitReached'));
+      return;
+    }
+
     if (file.size > 5 * 1024 * 1024) {
       alert(t('fileTooLarge'));
       return;
@@ -133,14 +138,34 @@ export default function ResumesPage() {
         <div className="flex flex-col gap-6 lg:col-span-5">
           {/* Upload Zone */}
           <div
-            onDragOver={onDragOver}
+            onDragOver={(e) => {
+              if (cvs.length >= 10) {
+                e.preventDefault();
+                return;
+              }
+              onDragOver(e);
+            }}
             onDragLeave={onDragLeave}
-            onDrop={onDrop}
-            onClick={() => fileInputRef.current?.click()}
+            onDrop={(e) => {
+              if (cvs.length >= 10) {
+                e.preventDefault();
+                alert(t('maxCvLimitReached'));
+                return;
+              }
+              onDrop(e);
+            }}
+            onClick={() => {
+              if (cvs.length >= 10) {
+                alert(t('maxCvLimitReached'));
+                return;
+              }
+              fileInputRef.current?.click();
+            }}
             className={cn(
               "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed bg-muted/30 p-8 text-center transition-colors hover:bg-muted/50",
               isDragging ? "border-primary bg-primary/5" : "border-border",
-              isUploading && "pointer-events-none opacity-60"
+              isUploading && "pointer-events-none opacity-60",
+              cvs.length >= 10 && "opacity-60 cursor-not-allowed border-muted-foreground/30 hover:bg-muted/30"
             )}
           >
             <input
