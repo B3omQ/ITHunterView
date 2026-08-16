@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useGenerateLearningPath, useExtractFromCvJd, useExtractFromInterview, useTargetRoles, usePreviewContext } from '@/hooks/useLearningPath';
+import { useGenerateLearningPath, useExtractFromCvJd, useExtractFromInterview, useTargetRoles } from '@/hooks/useLearningPath';
 import { useGetMatchHistory } from '@/hooks/useCvMatch';
 import { useGetInterviewSessions } from '@/hooks/useInterview';
 import { Button } from '@/components/ui/button';
@@ -70,8 +70,7 @@ export default function NewLearningPathPage() {
   
   const [customProfile, setCustomProfile] = useState<any>(null);
 
-  const { data: cvJdPreview } = usePreviewContext('cv-jd', selectedMatchScoreId);
-  const { data: interviewPreview } = usePreviewContext('interview', selectedSessionId);
+
 
   const [confirmedRoleId, setConfirmedRoleId] = useState('');
 
@@ -320,18 +319,7 @@ export default function NewLearningPathPage() {
                     {extractFromCvJdMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Extract'}
                   </Button>
                 </div>
-                {cvJdPreview?.data && (
-                  <details className="mt-2 text-xs border rounded-md bg-muted/50 overflow-hidden">
-                    <summary className="p-2 cursor-pointer hover:bg-muted font-medium text-muted-foreground flex items-center">
-                      🐛 Debug: View AI Context Data
-                    </summary>
-                    <div className="p-3 border-t bg-background">
-                      <pre className="whitespace-pre-wrap font-mono text-[10px] leading-tight text-foreground/80">
-                        {cvJdPreview.data.contextPreview}
-                      </pre>
-                    </div>
-                  </details>
-                )}
+
               </div>
 
               <div className="space-y-2">
@@ -364,18 +352,7 @@ export default function NewLearningPathPage() {
                     {extractFromInterviewMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Extract'}
                   </Button>
                 </div>
-                {interviewPreview?.data && (
-                  <details className="mt-2 text-xs border rounded-md bg-muted/50 overflow-hidden">
-                    <summary className="p-2 cursor-pointer hover:bg-muted font-medium text-muted-foreground flex items-center">
-                      🐛 Debug: View AI Context Data
-                    </summary>
-                    <div className="p-3 border-t bg-background">
-                      <pre className="whitespace-pre-wrap font-mono text-[10px] leading-tight text-foreground/80">
-                        {interviewPreview.data.contextPreview}
-                      </pre>
-                    </div>
-                  </details>
-                )}
+
               </div>
             </div>
           </div>
