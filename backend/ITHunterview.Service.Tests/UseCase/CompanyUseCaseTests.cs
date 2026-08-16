@@ -18,6 +18,7 @@ namespace ITHunterview.Service.Tests.UseCase
         private readonly Mock<ICompanyRepository> _companyRepoMock;
         private readonly Mock<IUserRepository> _userRepoMock;
         private readonly Mock<IWalletUseCase> _walletMock;
+        private readonly Mock<INotificationUseCase> _notificationUseCaseMock;
         private readonly CompanyUseCase _useCase;
 
         public CompanyUseCaseTests()
@@ -25,11 +26,13 @@ namespace ITHunterview.Service.Tests.UseCase
             _companyRepoMock = new Mock<ICompanyRepository>();
             _userRepoMock = new Mock<IUserRepository>();
             _walletMock = new Mock<IWalletUseCase>();
+            _notificationUseCaseMock = new Mock<INotificationUseCase>();
 
             _useCase = new CompanyUseCase(
                 _companyRepoMock.Object,
                 _userRepoMock.Object,
-                _walletMock.Object
+                _walletMock.Object,
+                _notificationUseCaseMock.Object
             );
         }
 
