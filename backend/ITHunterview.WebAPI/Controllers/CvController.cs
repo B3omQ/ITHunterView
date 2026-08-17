@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Cv;
+using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Interface.UseCase;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,6 +27,7 @@ namespace ITHunterview.WebAPI.Controllers
         private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
         private readonly IMatchingInputPreflightUseCase _matchingInputPreflightUseCase;
         private readonly ITHunterview.WebAPI.BackgroundServices.ICvMatchingQueue _matchingQueue;
+        private readonly ICandidateJobScanUseCase? _candidateJobScanUseCase;
 
         public CvController(
             ICvUseCase cvUseCase, 
@@ -38,7 +40,8 @@ namespace ITHunterview.WebAPI.Controllers
             ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService cvTextExtractorService,
             ICandidateFeatureUsageUseCase featureUsageUseCase,
             IMatchingInputPreflightUseCase matchingInputPreflightUseCase,
-            ITHunterview.WebAPI.BackgroundServices.ICvMatchingQueue matchingQueue)
+            ITHunterview.WebAPI.BackgroundServices.ICvMatchingQueue matchingQueue,
+            ICandidateJobScanUseCase? candidateJobScanUseCase = null)
         {
             _cvUseCase = cvUseCase;
             _cvJobMatchingUseCase = cvJobMatchingUseCase;
@@ -50,6 +53,7 @@ namespace ITHunterview.WebAPI.Controllers
             _featureUsageUseCase = featureUsageUseCase;
             _matchingInputPreflightUseCase = matchingInputPreflightUseCase;
             _matchingQueue = matchingQueue;
+            _candidateJobScanUseCase = candidateJobScanUseCase;
         }
 
         [HttpPost]
@@ -224,37 +228,10 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpPost("{id:guid}/match-jobs")]
-        public async Task<ActionResult<ResponseBase<string>>> MatchJobs(Guid id)
+        [Authorize(Policy = "CandidateOnly")]
+        public Task<ActionResult<ResponseBase<string>>> MatchJobs(Guid id)
         {
-            var userIdStr = User.FindFirstValue("userId");
-            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
-            {
-                return Unauthorized();
-            }
-
-            try
-            {
-                // Verify that CV belongs to user
-                await _cvUseCase.GetCvByIdAsync(id, userId);
-
-                // Queue the matching task
-                await _matchingQueue.QueueMatchRequestAsync(new ITHunterview.WebAPI.BackgroundServices.CvMatchingRequest
-                {
-                    CvId = id,
-                    UserId = userId,
-                    IsHardcode = false
-                });
-
-                return Accepted(new ResponseBase<string>("Matching queued", "CV matching process has been started in the background."));
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound(new ResponseBase<string>("CV not found"));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ResponseBase<string>(null, ex.Message));
-            }
+            return Task.FromResult<ActionResult<ResponseBase<string>>>(StatusCode(StatusCodes.Status410Gone, new ResponseBase<string>("CANDIDATE_AI_BULK_RETIRED")));
         }
 
         [HttpGet("match-history")]
@@ -293,7 +270,8 @@ namespace ITHunterview.WebAPI.Controllers
             };
         }
         [HttpPost("{id:guid}/match-jobs-hardcode")]
-        public async Task<ActionResult<ResponseBase<string>>> MatchJobsHardcode(Guid id)
+        [Authorize(Policy = "CandidateOnly")]
+        public async Task<ActionResult<ResponseBase<CandidateJobScanAcceptedDto>>> MatchJobsHardcode(Guid id, CancellationToken ct)
         {
             var userIdStr = User.FindFirstValue("userId");
             if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
@@ -303,27 +281,28 @@ namespace ITHunterview.WebAPI.Controllers
 
             try
             {
-                // Verify that CV belongs to user
-                await _cvUseCase.GetCvByIdAsync(id, userId);
-
-                // Queue the matching task
-                await _matchingQueue.QueueMatchRequestAsync(new ITHunterview.WebAPI.BackgroundServices.CvMatchingRequest
-                {
-                    CvId = id,
-                    UserId = userId,
-                    IsHardcode = true
-                });
-
-                return Accepted(new ResponseBase<string>("Matching queued", "CV matched with jobs using Hardcode successfully in the background."));
+                var accepted = await (_candidateJobScanUseCase ?? throw new InvalidOperationException("CANDIDATE_SCAN_NOT_REGISTERED")).CreateRunAsync(userId, id, ct);
+                return Accepted(new ResponseBase<CandidateJobScanAcceptedDto>(accepted, "Candidate scan accepted"));
             }
             catch (KeyNotFoundException)
             {
-                return NotFound(new ResponseBase<string>("CV not found"));
+                return NotFound(new ResponseBase<CandidateJobScanAcceptedDto>("CV not found"));
             }
             catch (Exception ex)
             {
-                return BadRequest(new ResponseBase<string>(null, ex.Message));
+                return BadRequest(new ResponseBase<CandidateJobScanAcceptedDto>(ex.Message));
             }
+        }
+
+        [HttpGet("{id:guid}/job-scan/latest")]
+        [Authorize(Policy = "CandidateOnly")]
+        public async Task<ActionResult<ResponseBase<ITHunterview.Service.DTOs.Common.PagedResult<CandidateJobScanResultDto>>>> GetLatestJobScan(Guid id, int page = 1, int pageSize = 20, CancellationToken ct = default)
+        {
+            var userIdStr = User.FindFirstValue("userId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId)) return Unauthorized();
+            var latest = await (_candidateJobScanUseCase ?? throw new InvalidOperationException("CANDIDATE_SCAN_NOT_REGISTERED")).GetLatestSuccessfulAsync(userId, id, page, pageSize, ct);
+            if (latest.TotalCount == 0) return NotFound(new ResponseBase<ITHunterview.Service.DTOs.Common.PagedResult<CandidateJobScanResultDto>>("Candidate scan not found"));
+            return Ok(new ResponseBase<ITHunterview.Service.DTOs.Common.PagedResult<CandidateJobScanResultDto>>(latest, "Candidate scan retrieved"));
         }
 
         [HttpPut("{id:guid}/primary")]

@@ -22,19 +22,22 @@ namespace ITHunterview.WebAPI.Controllers
         private readonly ICvJobMatchingUseCase _cvJobMatchingUseCase;
         private readonly IHardcodeCvJobMatchingUseCase _hardcodeCvJobMatchingUseCase;
         private readonly IJobAnalysisUseCase _jobAnalysisUseCase;
+        private readonly IRecruiterCvScanUseCase _recruiterCvScanUseCase;
 
         public JobPostingsController(
             IJobPostingsUseCase jobPostingsUseCase, 
             IUserUseCase userUseCase, 
             ICvJobMatchingUseCase cvJobMatchingUseCase,
             IHardcodeCvJobMatchingUseCase hardcodeCvJobMatchingUseCase,
-            IJobAnalysisUseCase jobAnalysisUseCase)
+            IJobAnalysisUseCase jobAnalysisUseCase,
+            IRecruiterCvScanUseCase recruiterCvScanUseCase)
         {
             _jobPostingsUseCase = jobPostingsUseCase;
             _userUseCase = userUseCase;
             _cvJobMatchingUseCase = cvJobMatchingUseCase;
             _hardcodeCvJobMatchingUseCase = hardcodeCvJobMatchingUseCase;
             _jobAnalysisUseCase = jobAnalysisUseCase;
+            _recruiterCvScanUseCase = recruiterCvScanUseCase;
         }
 
         [HttpGet]
@@ -237,105 +240,39 @@ namespace ITHunterview.WebAPI.Controllers
         [Authorize(Policy = "RecruiterOnly")]
         public async Task<ActionResult<ResponseBase<string>>> MatchCvs(Guid id)
         {
-            try
-            {
-                var jobResult = await _jobPostingsUseCase.GetJobByIdAsync(id);
-                if (!jobResult.Success)
-                {
-                    return NotFound(new ResponseBase<string>("Job not found"));
-                }
-
-                var recruiterId = await ResolveRecruiterIdAsync();
-                if (recruiterId == Guid.Empty)
-                {
-                    return Unauthorized();
-                }
-                if (jobResult.Data!.RecruiterId != recruiterId)
-                {
-                    return Forbid();
-                }
-
-                var userIdStr = User.FindFirstValue("userId");
-                if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
-                {
-                    return Unauthorized();
-                }
-
-                await _cvJobMatchingUseCase.MatchJobWithAllCvsAsync(id, userId);
-                return Ok(new ResponseBase<string>("Matching completed", "Job matched with CVs successfully"));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ResponseBase<string>(null, ex.Message));
-            }
+            return StatusCode(
+                StatusCodes.Status410Gone,
+                new ResponseBase<string>(null, "LEGACY_BULK_MATCHING_DISABLED: Use POST /api/jobpostings/{jobId}/match-cvs-hardcode."));
         }
 
         [HttpPost("{id:guid}/match-cvs-hardcode")]
         [Authorize(Policy = "RecruiterOnly")]
-        public async Task<ActionResult<ResponseBase<string>>> MatchCvsHardcode(Guid id)
+        public async Task<ActionResult<ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.RecruiterCvScanRunDto>>> MatchCvsHardcode(
+            Guid id,
+            CancellationToken ct)
         {
-            try
-            {
-                var jobResult = await _jobPostingsUseCase.GetJobByIdAsync(id);
-                if (!jobResult.Success)
-                {
-                    return NotFound(new ResponseBase<string>("Job not found"));
-                }
+            if (!TryResolveAuthenticatedUserId(out var recruiterUserId)) return Unauthorized();
 
-                var recruiterId = await ResolveRecruiterIdAsync();
-                if (recruiterId == Guid.Empty)
-                {
-                    return Unauthorized();
-                }
-                if (jobResult.Data!.RecruiterId != recruiterId)
-                {
-                    return Forbid();
-                }
-
-                var userIdStr = User.FindFirstValue("userId");
-                if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
-                {
-                    return Unauthorized();
-                }
-
-                await _hardcodeCvJobMatchingUseCase.MatchJobWithAllCvsHardcodeAsync(id, userId);
-                return Ok(new ResponseBase<string>("Matching completed", "Job matched with CVs using Hardcode successfully"));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ResponseBase<string>(null, ex.Message));
-            }
+            var result = await _recruiterCvScanUseCase.ScanAsync(recruiterUserId, id, ct);
+            return Ok(new ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.RecruiterCvScanRunDto>(
+                result,
+                "Recruiter CV scan completed."));
         }
 
         [HttpGet("{id:guid}/matches")]
         [Authorize(Policy = "RecruiterOnly")]
-        public async Task<ActionResult<ResponseBase<PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>>> GetJobMatches(Guid id, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<ActionResult<ResponseBase<PagedResult<ITHunterview.Service.DTOs.Cv.Matching.RecruiterCvScanResultDto>>>> GetJobMatches(
+            Guid id,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            CancellationToken ct = default)
         {
-            try
-            {
-                var jobResult = await _jobPostingsUseCase.GetJobByIdAsync(id);
-                if (!jobResult.Success)
-                {
-                    return NotFound(new ResponseBase<PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>("Job not found"));
-                }
+            if (!TryResolveAuthenticatedUserId(out var recruiterUserId)) return Unauthorized();
 
-                var recruiterId = await ResolveRecruiterIdAsync();
-                if (recruiterId == Guid.Empty)
-                {
-                    return Unauthorized();
-                }
-                if (jobResult.Data!.RecruiterId != recruiterId)
-                {
-                    return Forbid();
-                }
-
-                var result = await _cvJobMatchingUseCase.GetJobMatchHistoryAsync(id, recruiterId, page, pageSize);
-                return Ok(new ResponseBase<PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>(result, "Job matches retrieved"));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new ResponseBase<PagedResult<ITHunterview.Service.DTOs.Cv.Matching.MatchHistoryDto>>(null, ex.Message));
-            }
+            var result = await _recruiterCvScanUseCase.GetLatestSuccessfulAsync(recruiterUserId, id, page, pageSize, ct);
+            return Ok(new ResponseBase<PagedResult<ITHunterview.Service.DTOs.Cv.Matching.RecruiterCvScanResultDto>>(
+                result,
+                "Recruiter scan results retrieved."));
         }
 
         [HttpPost("reparse-pending")]
@@ -376,6 +313,14 @@ namespace ITHunterview.WebAPI.Controllers
                             ?? User.FindFirst("sub")?.Value;
             
             return _userUseCase.ResolveRecruiterIdAsync(userIdStr);
+        }
+
+        private bool TryResolveAuthenticatedUserId(out Guid userId)
+        {
+            var rawUserId = User.FindFirstValue("userId")
+                            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                            ?? User.FindFirst("sub")?.Value;
+            return Guid.TryParse(rawUserId, out userId);
         }
     }
 }

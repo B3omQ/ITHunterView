@@ -108,6 +108,38 @@ public sealed class HardcodeCvJobMatchingUseCaseTests
     }
 
     [Fact]
+    public async Task MatchCvWithAllJobs_ExistingPendingUnscoredResult_PreservesPriorMatchType()
+    {
+        await using var context = CreateContext();
+        var (cv, job) = CreateEntities(includeCvDomains: true);
+        job.ParsedData = """{"matching_metrics":{"job_titles_normalized":[],"skills_normalized":[],"total_years_exp":0,"domains":[]}}""";
+        var pending = new CvJobMatchScores
+        {
+            Id = Guid.NewGuid(),
+            UserId = cv.UserId,
+            CvId = cv.Id,
+            JobId = job.Id,
+            RawJdText = job.Title,
+            MatchType = "AI",
+            Status = "Pending",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        context.Cvs.Add(cv);
+        context.JobPostings.Add(job);
+        context.CvJobMatchScores.Add(pending);
+        await context.SaveChangesAsync();
+
+        await CreateUseCase(context).MatchCvWithAllJobsHardcodeAsync(cv.Id, cv.UserId);
+
+        var score = await context.CvJobMatchScores.SingleAsync();
+        score.Status.Should().Be("Completed");
+        score.MatchScore.Should().BeNull();
+        score.MatchType.Should().Be("AI");
+        score.MatchDetails.Should().Contain("SCORE_UNAVAILABLE");
+    }
+
+    [Fact]
     public async Task MatchCvWithAllJobs_PartialStructuredRequirements_PreservesOutcomesButDoesNotInventOverallScore()
     {
         await using var context = CreateContext();

@@ -52,6 +52,9 @@ namespace ITHunterview.Domain.Entities
         [Column("match_type")]
         public string MatchType { get; set; } = "AI";
 
+        [Column("product_scope")]
+        public CvJobMatchProductScope? ProductScope { get; set; }
+
         [Column("sfia_extract_result")]
         public string? SfiaExtractResult { get; set; }
 

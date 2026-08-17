@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ITHunterview.Domain.Enums;
 
 namespace ITHunterview.Domain.Entities
 {
@@ -28,5 +29,26 @@ namespace ITHunterview.Domain.Entities
 
         [Column("unlocked_at")]
         public DateTime UnlockedAt { get; set; } = DateTime.UtcNow;
+
+        [Column("status")]
+        public RecruiterCvUnlockStatus Status { get; set; }
+
+        [Column("source_scan_result_id")]
+        public Guid? SourceScanResultId { get; set; }
+
+        [Column("snapshot_storage_key")]
+        public string? SnapshotStorageKey { get; set; }
+
+        [Column("snapshot_file_name")]
+        public string? SnapshotFileName { get; set; }
+
+        [Column("snapshot_content_hash")]
+        public string? SnapshotContentHash { get; set; }
+
+        [Column("snapshot_created_at")]
+        public DateTime? SnapshotCreatedAt { get; set; }
+
+        [Column("failure_code")]
+        public string? FailureCode { get; set; }
     }
 }
