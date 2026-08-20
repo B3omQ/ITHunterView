@@ -9,6 +9,8 @@ using ITHunterview.Service.DTOs.Company;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.UseCase;
 
+using ITHunterview.Service.DTOs.Notification;
+
 namespace ITHunterview.Service.UseCase
 {
     public class CompanyUseCase : ICompanyUseCase
@@ -16,12 +18,18 @@ namespace ITHunterview.Service.UseCase
         private readonly ICompanyRepository _companyRepository;
         private readonly IUserRepository _userRepository;
         private readonly IWalletUseCase _walletUseCase;
+        private readonly INotificationUseCase _notificationUseCase;
 
-        public CompanyUseCase(ICompanyRepository companyRepository, IUserRepository userRepository, IWalletUseCase walletUseCase)
+        public CompanyUseCase(
+            ICompanyRepository companyRepository, 
+            IUserRepository userRepository, 
+            IWalletUseCase walletUseCase,
+            INotificationUseCase notificationUseCase)
         {
             _companyRepository = companyRepository;
             _userRepository = userRepository;
             _walletUseCase = walletUseCase;
+            _notificationUseCase = notificationUseCase;
         }
 
         public async Task<CompanyDto> CreateCompanyAsync(CreateCompanyDto dto, Guid userId)
@@ -130,6 +138,14 @@ namespace ITHunterview.Service.UseCase
                     company.IsNewbieRewardClaimed = true;
                     await _companyRepository.UpdateAsync(company);
                     await _walletUseCase.AddBonusCoinsAsync(targetUserId.Value, 25000, "Thưởng hoàn tất & xác thực hồ sơ công ty thành công (25.000 Coin)");
+
+                    await _notificationUseCase.CreateNotificationAsync(new CreateNotificationDto
+                    {
+                        UserId = targetUserId.Value,
+                        Title = "Congratulations! 25,000 Bonus Coins for Company Verification",
+                        Message = $"Your company profile '{company.Name}' has been successfully verified. 25,000 bonus coins have been added to your wallet!",
+                        Type = NotificationType.PROMOTION
+                    });
                 }
             }
         }

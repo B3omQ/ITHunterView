@@ -9,4 +9,7 @@
   <data name="SystemError" xml:space="preserve">
     <value>Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.</value>
   </data>
+  <data name="MaxCvLimitReached" xml:space="preserve">
+    <value>Bạn đã đạt giới hạn tối đa 10 CV. Vui lòng xoá bớt CV cũ.</value>
+  </data>
 </root>
