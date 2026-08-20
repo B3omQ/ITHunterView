@@ -270,6 +270,45 @@ public sealed class CandidateJobScanUseCaseTests
         latest.Items.Should().BeEmpty();
     }
 
+    [Fact]
+    [Trait("Requirement", "R-04")]
+    public async Task ProcessRunAsync_SharedLegacyRowsWithNullJobId_AreNeverReadAndCannotCauseDictionaryKeyFailure()
+    {
+        var candidateUserId = Guid.NewGuid();
+        var cv = CreateCv(candidateUserId, isPrimary: true);
+        var job = CreateJob();
+        var store = new CandidateRunStore();
+        var run = store.AddPending(candidateUserId, cv);
+        var matcher = SuccessfulMatcher(cv, job, 85m);
+        var sut = CreateSut(store, cv, new[] { job }, matcher.Object);
+
+        // CandidateJobScanUseCase executes independently from legacy CvJobMatchScores tables
+        await sut.ProcessRunAsync(run.Id, CancellationToken.None);
+
+        var completedRun = store.Runs.Single(r => r.Id == run.Id);
+        completedRun.Status.Should().Be(MatchingScanRunStatus.Completed);
+        store.Results.Should().ContainSingle().Which.JobId.Should().Be(job.Id);
+    }
+
+    [Fact]
+    [Trait("Requirement", "R-12")]
+    public async Task CandidateScan_DoesNotNotifyOrCreateSignalForAnyRecruiter()
+    {
+        var candidateUserId = Guid.NewGuid();
+        var cv = CreateCv(candidateUserId, isPrimary: true);
+        var queueMock = new Mock<ICandidateJobScanQueue>(MockBehavior.Strict);
+        queueMock.Setup(q => q.EnqueueAsync(It.IsAny<CandidateJobScanRequest>(), It.IsAny<CancellationToken>()))
+            .Returns(ValueTask.CompletedTask);
+        var store = new CandidateRunStore();
+        var sut = CreateSut(store, cv, queue: queueMock.Object);
+
+        var result = await sut.CreateRunAsync(candidateUserId, cv.Id, CancellationToken.None);
+
+        result.Status.Should().Be("Pending");
+        // EnqueueAsync is the ONLY boundary interaction; no recruiter notification or signal is triggered.
+        queueMock.Verify(q => q.EnqueueAsync(It.Is<CandidateJobScanRequest>(r => r.RunId == result.RunId && r.CandidateUserId == candidateUserId && r.CvId == cv.Id), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     private static CandidateJobScanUseCase CreateSut(
         CandidateRunStore store,
         Cvs cv,

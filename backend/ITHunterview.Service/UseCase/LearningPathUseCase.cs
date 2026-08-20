@@ -194,8 +194,16 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
         public async Task<ExtractSfiaProfileResponseDto> ExtractFromCvJdAsync(Guid candidateId, Guid matchScoreId)
         {
             var matchScore = await _context.CvJobMatchScores
-                .FirstOrDefaultAsync(m => m.Id == matchScoreId && m.UserId == candidateId);
-            if (matchScore != null && !string.IsNullOrWhiteSpace(matchScore.SfiaExtractResult))
+                .FirstOrDefaultAsync(m => m.Id == matchScoreId
+                    && m.UserId == candidateId
+                    && m.Status == "Completed"
+                    && m.HistoryHiddenAt == null
+                    && (m.ProductScope == ITHunterview.Domain.Enums.CvJobMatchProductScope.CandidateOneToOne ||
+                        (m.ProductScope == null && _context.FeatureUsageReservations.Any(r => (r.ReferenceId == m.Id || r.Id == m.BillingReservationId) && r.FeatureKey == "CvJdMatching"))));
+            if (matchScore == null)
+                throw new InvalidOperationException("Chưa có dữ liệu matching CV-JD.");
+
+            if (!string.IsNullOrWhiteSpace(matchScore.SfiaExtractResult))
             {
                 try
                 {
@@ -395,13 +403,22 @@ Do NOT include any markdown blocks like ```json, just return the raw JSON object
             if (matchScoreId.HasValue)
             {
                 matchRecord = await _context.CvJobMatchScores
-                    .FirstOrDefaultAsync(m => m.Id == matchScoreId.Value && m.UserId == candidateId);
+                    .FirstOrDefaultAsync(m => m.Id == matchScoreId.Value
+                        && m.UserId == candidateId
+                        && m.Status == "Completed"
+                        && m.HistoryHiddenAt == null
+                        && (m.ProductScope == ITHunterview.Domain.Enums.CvJobMatchProductScope.CandidateOneToOne ||
+                            (m.ProductScope == null && _context.FeatureUsageReservations.Any(r => (r.ReferenceId == m.Id || r.Id == m.BillingReservationId) && r.FeatureKey == "CvJdMatching"))));
             }
             else
             {
                 // Lấy bản ghi Completed mới nhất của candidate
                 matchRecord = await _context.CvJobMatchScores
-                    .Where(m => m.UserId == candidateId && m.Status == "Completed")
+                    .Where(m => m.UserId == candidateId
+                        && m.Status == "Completed"
+                        && m.HistoryHiddenAt == null
+                        && (m.ProductScope == ITHunterview.Domain.Enums.CvJobMatchProductScope.CandidateOneToOne ||
+                            (m.ProductScope == null && _context.FeatureUsageReservations.Any(r => (r.ReferenceId == m.Id || r.Id == m.BillingReservationId) && r.FeatureKey == "CvJdMatching"))))
                     .OrderByDescending(m => m.UpdatedAt)
                     .FirstOrDefaultAsync();
             }

@@ -114,7 +114,8 @@ public sealed class CvJdMatchingSubmissionUseCase : ICvJdMatchingSubmissionUseCa
                 MaxAttempts = 3,
                 CreatedAt = now,
                 NextAttemptAt = now,
-                ManualRetryUsed = false
+                ManualRetryUsed = false,
+                ProductScope = CvJobMatchProductScope.CandidateOneToOne
             };
 
             _jobRepository.AddPending(job);

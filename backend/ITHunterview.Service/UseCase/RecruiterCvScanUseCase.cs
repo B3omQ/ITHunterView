@@ -139,27 +139,78 @@ public sealed class RecruiterCvScanUseCase : IRecruiterCvScanUseCase
             pageSize,
             ct);
         var cvIds = items.Select(item => item.CvId).ToArray();
-        var unlockedCvIds = await _context.RecruiterUnlockedCvs
+
+        // Batch: which CVs has this recruiter unlocked?
+        var unlockedMap = await _context.RecruiterUnlockedCvs
             .AsNoTracking()
             .Where(unlock =>
                 unlock.RecruiterId == recruiterUserId &&
                 unlock.Status == RecruiterCvUnlockStatus.Completed &&
                 cvIds.Contains(unlock.CvId))
-            .Select(unlock => unlock.CvId)
-            .ToListAsync(ct);
-        var unlocked = unlockedCvIds.ToHashSet();
+            .ToDictionaryAsync(unlock => unlock.CvId, ct);
+
+        // Batch: candidate profiles for unlocked CVs
+        var unlockedCvIds = unlockedMap.Keys.ToHashSet();
+        Dictionary<Guid, string?> candidateNames = [];
+        Dictionary<Guid, Guid> cvUserIds = [];
+        Dictionary<Guid, string?> cvFileNames = [];
+        Dictionary<Guid, string?> cvFileUrls = [];
+
+        if (unlockedCvIds.Count > 0)
+        {
+            var cvRecords = await _context.Cvs
+                .AsNoTracking()
+                .Where(cv => unlockedCvIds.Contains(cv.Id) && cv.DeletedAt == null)
+                .Select(cv => new { cv.Id, cv.UserId, cv.FileName, cv.FileUrl })
+                .ToListAsync(ct);
+
+            foreach (var cv in cvRecords)
+            {
+                cvUserIds[cv.Id] = cv.UserId;
+                cvFileNames[cv.Id] = cv.FileName;
+                cvFileUrls[cv.Id] = cv.FileUrl;
+            }
+
+            var candidateUserIds = cvUserIds.Values.ToHashSet();
+            var profiles = await _context.CandidateProfiles
+                .AsNoTracking()
+                .Where(p => candidateUserIds.Contains(p.UserId))
+                .Select(p => new { p.UserId, p.FirstName, p.LastName })
+                .ToListAsync(ct);
+
+            var profileByUser = profiles.ToDictionary(p => p.UserId);
+            foreach (var kv in cvUserIds)
+            {
+                if (profileByUser.TryGetValue(kv.Value, out var profile))
+                {
+                    var name = string.Join(" ", new[] { profile.FirstName, profile.LastName }
+                        .Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
+                    candidateNames[kv.Key] = string.IsNullOrWhiteSpace(name) ? null : name;
+                }
+            }
+        }
 
         return new PagedResult<RecruiterCvScanResultDto>
         {
-            Items = items.Select(item => new RecruiterCvScanResultDto
+            Items = items.Select(item =>
             {
-                ScanResultId = item.Id,
-                AnonymousLabel = $"Candidate #{item.Rank}",
-                Rank = item.Rank,
-                MatchScore = item.MatchScore,
-                MatchDetails = item.MatchDetails,
-                IsUnlocked = unlocked.Contains(item.CvId),
-                UnlockCost = UnlockCost
+                var isUnlocked = unlockedMap.ContainsKey(item.CvId);
+                return new RecruiterCvScanResultDto
+                {
+                    ScanResultId = item.Id,
+                    AnonymousLabel = $"Candidate #{item.Rank}",
+                    Rank = item.Rank,
+                    MatchScore = item.MatchScore,
+                    MatchDetails = item.MatchDetails,
+                    IsUnlocked = isUnlocked,
+                    UnlockCost = UnlockCost,
+                    // Populate identity fields only when IsUnlocked == true (R-10)
+                    CandidateName = isUnlocked ? candidateNames.GetValueOrDefault(item.CvId) : null,
+                    CandidateUserId = isUnlocked && cvUserIds.TryGetValue(item.CvId, out var uid) ? uid : null,
+                    CvId = isUnlocked ? item.CvId : null,
+                    CvFileName = isUnlocked ? cvFileNames.GetValueOrDefault(item.CvId) : null,
+                    FileUrl = isUnlocked ? cvFileUrls.GetValueOrDefault(item.CvId) : null,
+                };
             }).ToList(),
             TotalCount = totalCount,
             Page = page,
@@ -184,7 +235,7 @@ public sealed class RecruiterCvScanUseCase : IRecruiterCvScanUseCase
         var job = await _context.JobPostings
             .SingleOrDefaultAsync(item =>
                 item.Id == jobId &&
-                item.RecruiterId == profile.Id &&
+                (item.RecruiterId == profile.Id || item.RecruiterId == recruiterUserId || item.RecruiterId == profile.UserId) &&
                 item.CompanyId == profile.CompanyId &&
                 item.DeletedAt == null &&
                 (!requireScannableJob || item.Status == JobStatus.PUBLISHED),

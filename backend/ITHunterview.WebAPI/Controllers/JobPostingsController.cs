@@ -4,11 +4,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Common;
+using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.DTOs.Job;
 using ITHunterview.Service.DTOs.JobAnalysis;
 using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.UseCase;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ITHunterview.WebAPI.Controllers
@@ -19,25 +21,22 @@ namespace ITHunterview.WebAPI.Controllers
     {
         private readonly IJobPostingsUseCase _jobPostingsUseCase;
         private readonly IUserUseCase _userUseCase;
-        private readonly ICvJobMatchingUseCase _cvJobMatchingUseCase;
-        private readonly IHardcodeCvJobMatchingUseCase _hardcodeCvJobMatchingUseCase;
         private readonly IJobAnalysisUseCase _jobAnalysisUseCase;
         private readonly IRecruiterCvScanUseCase _recruiterCvScanUseCase;
+        private readonly IRecruiterCvUnlockUseCase _recruiterCvUnlockUseCase;
 
         public JobPostingsController(
             IJobPostingsUseCase jobPostingsUseCase, 
             IUserUseCase userUseCase, 
-            ICvJobMatchingUseCase cvJobMatchingUseCase,
-            IHardcodeCvJobMatchingUseCase hardcodeCvJobMatchingUseCase,
             IJobAnalysisUseCase jobAnalysisUseCase,
-            IRecruiterCvScanUseCase recruiterCvScanUseCase)
+            IRecruiterCvScanUseCase recruiterCvScanUseCase,
+            IRecruiterCvUnlockUseCase recruiterCvUnlockUseCase)
         {
             _jobPostingsUseCase = jobPostingsUseCase;
             _userUseCase = userUseCase;
-            _cvJobMatchingUseCase = cvJobMatchingUseCase;
-            _hardcodeCvJobMatchingUseCase = hardcodeCvJobMatchingUseCase;
             _jobAnalysisUseCase = jobAnalysisUseCase;
             _recruiterCvScanUseCase = recruiterCvScanUseCase;
+            _recruiterCvUnlockUseCase = recruiterCvUnlockUseCase;
         }
 
         [HttpGet]
@@ -247,21 +246,28 @@ namespace ITHunterview.WebAPI.Controllers
 
         [HttpPost("{id:guid}/match-cvs-hardcode")]
         [Authorize(Policy = "RecruiterOnly")]
-        public async Task<ActionResult<ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.RecruiterCvScanRunDto>>> MatchCvsHardcode(
+        public async Task<ActionResult<ResponseBase<RecruiterCvScanRunDto>>> MatchCvsHardcode(
             Guid id,
             CancellationToken ct)
         {
             if (!TryResolveAuthenticatedUserId(out var recruiterUserId)) return Unauthorized();
 
-            var result = await _recruiterCvScanUseCase.ScanAsync(recruiterUserId, id, ct);
-            return Ok(new ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.RecruiterCvScanRunDto>(
-                result,
-                "Recruiter CV scan completed."));
+            try
+            {
+                var result = await _recruiterCvScanUseCase.ScanAsync(recruiterUserId, id, ct);
+                return Ok(new ResponseBase<RecruiterCvScanRunDto>(
+                    result,
+                    "Recruiter CV scan completed."));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new ResponseBase<RecruiterCvScanRunDto>(ex.Message));
+            }
         }
 
         [HttpGet("{id:guid}/matches")]
         [Authorize(Policy = "RecruiterOnly")]
-        public async Task<ActionResult<ResponseBase<PagedResult<ITHunterview.Service.DTOs.Cv.Matching.RecruiterCvScanResultDto>>>> GetJobMatches(
+        public async Task<ActionResult<ResponseBase<PagedResult<RecruiterCvScanResultDto>>>> GetJobMatches(
             Guid id,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
@@ -269,10 +275,17 @@ namespace ITHunterview.WebAPI.Controllers
         {
             if (!TryResolveAuthenticatedUserId(out var recruiterUserId)) return Unauthorized();
 
-            var result = await _recruiterCvScanUseCase.GetLatestSuccessfulAsync(recruiterUserId, id, page, pageSize, ct);
-            return Ok(new ResponseBase<PagedResult<ITHunterview.Service.DTOs.Cv.Matching.RecruiterCvScanResultDto>>(
-                result,
-                "Recruiter scan results retrieved."));
+            try
+            {
+                var result = await _recruiterCvScanUseCase.GetLatestSuccessfulAsync(recruiterUserId, id, page, pageSize, ct);
+                return Ok(new ResponseBase<PagedResult<RecruiterCvScanResultDto>>(
+                    result,
+                    "Recruiter scan results retrieved."));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new ResponseBase<PagedResult<RecruiterCvScanResultDto>>(ex.Message));
+            }
         }
 
         [HttpPost("reparse-pending")]
@@ -284,26 +297,40 @@ namespace ITHunterview.WebAPI.Controllers
         }
 
         [HttpPost("unlock-candidate")]
-        public async Task<ActionResult<ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.UnlockCandidateResponseDto>>> UnlockCandidate([FromBody] ITHunterview.Service.DTOs.Cv.Matching.UnlockCandidateRequestDto dto)
+        [Authorize(Policy = "RecruiterOnly")]
+        public async Task<ActionResult<ResponseBase<UnlockCandidateResponseDto>>> UnlockCandidate(
+            [FromBody] UnlockCandidateRequestDto dto)
         {
+            if (!TryResolveAuthenticatedUserId(out var recruiterUserId))
+            {
+                return Unauthorized(new ResponseBase<UnlockCandidateResponseDto>("Could not resolve recruiter user."));
+            }
+
+            if (dto == null || dto.ScanResultId == Guid.Empty)
+            {
+                return BadRequest(new ResponseBase<UnlockCandidateResponseDto>("ScanResultId is required."));
+            }
+
             try
             {
-                var userIdStr = User.FindFirstValue("userId");
-                if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
-                {
-                    return Unauthorized();
-                }
-
-                var result = await _cvJobMatchingUseCase.UnlockCandidateCvAsync(userId, dto);
-                if (result.Success)
-                {
-                    return Ok(new ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.UnlockCandidateResponseDto>(result, result.Message));
-                }
-                return BadRequest(new ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.UnlockCandidateResponseDto>(result, result.Message));
+                var result = await _recruiterCvUnlockUseCase.UnlockAsync(recruiterUserId, dto.ScanResultId, HttpContext.RequestAborted);
+                return Ok(new ResponseBase<UnlockCandidateResponseDto>(result, result.Message));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new ResponseBase<UnlockCandidateResponseDto>(ex.Message));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new ResponseBase<UnlockCandidateResponseDto>(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ResponseBase<UnlockCandidateResponseDto>(ex.Message));
             }
             catch (Exception ex)
             {
-                return BadRequest(new ResponseBase<ITHunterview.Service.DTOs.Cv.Matching.UnlockCandidateResponseDto>(null, ex.Message));
+                return BadRequest(new ResponseBase<UnlockCandidateResponseDto>(ex.Message));
             }
         }
 

@@ -158,15 +158,13 @@ public class CvControllerMatchingTests
         return new CvController(
             Mock.Of<ICvUseCase>(),
             matching,
-            Mock.Of<IHardcodeCvJobMatchingUseCase>(),
             submission,
             retry ?? Mock.Of<ICvJdMatchingRetryUseCase>(),
             history ?? Mock.Of<ICvJdMatchingHistoryUseCase>(),
-            Mock.Of<IServiceScopeFactory>(),
             Mock.Of<ICvTextExtractorService>(),
             Mock.Of<ICandidateFeatureUsageUseCase>(),
             Mock.Of<IMatchingInputPreflightUseCase>(),
-            Mock.Of<ITHunterview.WebAPI.BackgroundServices.ICvMatchingQueue>())
+            Mock.Of<ICandidateJobScanUseCase>())
         {
             ControllerContext = new ControllerContext
             {

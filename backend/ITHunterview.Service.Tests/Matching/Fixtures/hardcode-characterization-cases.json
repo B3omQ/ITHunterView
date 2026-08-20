@@ -1,0 +1,556 @@
+{
+  "cvAnalyses": {
+    "complete": {
+      "schema_version": "cv-analysis/v2",
+      "verbatim_sections": {
+        "personal_info": {
+          "name": "Synthetic Candidate",
+          "title": "Backend Engineer",
+          "summary": "Builds typed APIs and financial systems."
+        },
+        "education": [],
+        "languages": [],
+        "skills_section": ["C#", "PostgreSQL"],
+        "professional_experience_and_projects": [
+          {
+            "company_or_project_name": "Synthetic Finance Lab",
+            "role": "Backend Engineer",
+            "timeline": "2022-2026",
+            "entry_type": "professional_experience",
+            "details_and_responsibilities": ["Built payment APIs."],
+            "technologies_used": ["C#", "PostgreSQL"]
+          }
+        ],
+        "certifications_and_awards": [],
+        "other_information": ""
+      },
+      "matching_metrics": {
+        "job_titles_normalized": ["Backend Engineer"],
+        "skills_normalized": ["C#", "PostgreSQL"],
+        "total_years_exp": 4,
+        "domains": ["fintech"]
+      },
+      "matching_evidence": {
+        "requirement_signals": [
+          {
+            "name": "C#",
+            "category": "tech_skill",
+            "evidence_strength": "applied",
+            "source_type": "professional_experience",
+            "source_index": 0,
+            "evidence": ["Built payment APIs with C#."]
+          }
+        ],
+        "experience_summary": {
+          "total_professional_months": 48,
+          "calculation_basis": "explicit_timeline",
+          "periods": [
+            {
+              "source_index": 0,
+              "entry_type": "professional_experience",
+              "organization": "Synthetic Finance Lab",
+              "role": "Backend Engineer",
+              "timeline_raw": "2022-2026",
+              "start_year": 2022,
+              "start_month": 1,
+              "end_year": 2026,
+              "end_month": 1,
+              "is_current": false,
+              "evidence": "2022-2026"
+            }
+          ]
+        },
+        "seniority_signals": []
+      }
+    },
+    "partial": {
+      "schema_version": "cv-analysis/v2",
+      "verbatim_sections": {
+        "personal_info": {
+          "name": "Synthetic Candidate",
+          "title": "Backend Engineer",
+          "summary": "Builds typed APIs and financial systems."
+        },
+        "education": [],
+        "languages": [],
+        "skills_section": ["C#", "PostgreSQL"],
+        "professional_experience_and_projects": [
+          {
+            "company_or_project_name": "Synthetic Finance Lab",
+            "role": "Backend Engineer",
+            "timeline": "2022-2026",
+            "entry_type": "professional_experience",
+            "details_and_responsibilities": ["Built payment APIs."],
+            "technologies_used": ["C#", "PostgreSQL"]
+          }
+        ],
+        "certifications_and_awards": [],
+        "other_information": ""
+      },
+      "matching_metrics": {
+        "job_titles_normalized": ["Backend Engineer"],
+        "skills_normalized": ["C#", "PostgreSQL"],
+        "total_years_exp": 4
+      },
+      "matching_evidence": {
+        "requirement_signals": [
+          {
+            "name": "C#",
+            "category": "tech_skill",
+            "evidence_strength": "applied",
+            "source_type": "professional_experience",
+            "source_index": 0,
+            "evidence": ["Built payment APIs with C#."]
+          }
+        ],
+        "experience_summary": {
+          "total_professional_months": 48,
+          "calculation_basis": "explicit_timeline",
+          "periods": [
+            {
+              "source_index": 0,
+              "entry_type": "professional_experience",
+              "organization": "Synthetic Finance Lab",
+              "role": "Backend Engineer",
+              "timeline_raw": "2022-2026",
+              "start_year": 2022,
+              "start_month": 1,
+              "end_year": 2026,
+              "end_month": 1,
+              "is_current": false,
+              "evidence": "2022-2026"
+            }
+          ]
+        },
+        "seniority_signals": []
+      }
+    }
+  },
+  "expectedCvAnalyses": {
+    "complete": {
+      "quality": "COMPLETE",
+      "coverage": {
+        "input_experience_entry_count": 1,
+        "accepted_experience_entry_count": 1,
+        "discarded_experience_entry_count": 0,
+        "input_requirement_signal_count": 1,
+        "accepted_requirement_signal_count": 1,
+        "discarded_requirement_signal_count": 0,
+        "input_experience_period_count": 1,
+        "accepted_experience_period_count": 1,
+        "discarded_experience_period_count": 0,
+        "title_metrics_available": true,
+        "skill_metrics_available": true,
+        "experience_metric_available": true,
+        "domain_metrics_available": true
+      },
+      "diagnostics": [],
+      "canonical": {
+        "schema_version": "cv-analysis/v2",
+        "verbatim_sections": {
+          "personal_info": {
+            "name": "Synthetic Candidate",
+            "title": "Backend Engineer",
+            "summary": "Builds typed APIs and financial systems."
+          },
+          "education": [],
+          "languages": [],
+          "skills_section": ["C#", "PostgreSQL"],
+          "professional_experience_and_projects": [
+            {
+              "company_or_project_name": "Synthetic Finance Lab",
+              "role": "Backend Engineer",
+              "timeline": "2022-2026",
+              "entry_type": "professional_experience",
+              "details_and_responsibilities": ["Built payment APIs."],
+              "technologies_used": ["C#", "PostgreSQL"]
+            }
+          ],
+          "certifications_and_awards": [],
+          "other_information": ""
+        },
+        "matching_metrics": {
+          "job_titles_normalized": ["Backend Engineer"],
+          "skills_normalized": ["C#", "PostgreSQL"],
+          "total_years_exp": 4,
+          "domains": ["fintech"]
+        },
+        "matching_evidence": {
+          "requirement_signals": [
+            {
+              "name": "C#",
+              "category": "tech_skill",
+              "evidence_strength": "applied",
+              "source_type": "professional_experience",
+              "source_index": 0,
+              "evidence": ["Built payment APIs with C#."]
+            }
+          ],
+          "experience_summary": {
+            "total_professional_months": 48,
+            "calculation_basis": "explicit_timeline",
+            "periods": [
+              {
+                "source_index": 0,
+                "entry_type": "professional_experience",
+                "organization": "Synthetic Finance Lab",
+                "role": "Backend Engineer",
+                "timeline_raw": "2022-2026",
+                "start_year": 2022,
+                "start_month": 1,
+                "end_year": 2026,
+                "end_month": 1,
+                "is_current": false,
+                "evidence": "2022-2026"
+              }
+            ]
+          },
+          "seniority_signals": []
+        },
+        "analysis_quality": "COMPLETE",
+        "analysis_coverage": {
+          "input_experience_entry_count": 1,
+          "accepted_experience_entry_count": 1,
+          "discarded_experience_entry_count": 0,
+          "input_requirement_signal_count": 1,
+          "accepted_requirement_signal_count": 1,
+          "discarded_requirement_signal_count": 0,
+          "input_experience_period_count": 1,
+          "accepted_experience_period_count": 1,
+          "discarded_experience_period_count": 0,
+          "title_metrics_available": true,
+          "skill_metrics_available": true,
+          "experience_metric_available": true,
+          "domain_metrics_available": true
+        },
+        "analysis_diagnostics": []
+      }
+    },
+    "partial": {
+      "quality": "PARTIAL",
+      "coverage": {
+        "input_experience_entry_count": 1,
+        "accepted_experience_entry_count": 1,
+        "discarded_experience_entry_count": 0,
+        "input_requirement_signal_count": 1,
+        "accepted_requirement_signal_count": 1,
+        "discarded_requirement_signal_count": 0,
+        "input_experience_period_count": 1,
+        "accepted_experience_period_count": 1,
+        "discarded_experience_period_count": 0,
+        "title_metrics_available": true,
+        "skill_metrics_available": true,
+        "experience_metric_available": true,
+        "domain_metrics_available": false
+      },
+      "diagnostics": [
+        {
+          "code": "ARRAY_INVALID",
+          "json_path": "$.matching_metrics.domains"
+        }
+      ],
+      "canonical": {
+        "schema_version": "cv-analysis/v2",
+        "verbatim_sections": {
+          "personal_info": {
+            "name": "Synthetic Candidate",
+            "title": "Backend Engineer",
+            "summary": "Builds typed APIs and financial systems."
+          },
+          "education": [],
+          "languages": [],
+          "skills_section": ["C#", "PostgreSQL"],
+          "professional_experience_and_projects": [
+            {
+              "company_or_project_name": "Synthetic Finance Lab",
+              "role": "Backend Engineer",
+              "timeline": "2022-2026",
+              "entry_type": "professional_experience",
+              "details_and_responsibilities": ["Built payment APIs."],
+              "technologies_used": ["C#", "PostgreSQL"]
+            }
+          ],
+          "certifications_and_awards": [],
+          "other_information": ""
+        },
+        "matching_metrics": {
+          "job_titles_normalized": ["Backend Engineer"],
+          "skills_normalized": ["C#", "PostgreSQL"],
+          "total_years_exp": 4
+        },
+        "matching_evidence": {
+          "requirement_signals": [
+            {
+              "name": "C#",
+              "category": "tech_skill",
+              "evidence_strength": "applied",
+              "source_type": "professional_experience",
+              "source_index": 0,
+              "evidence": ["Built payment APIs with C#."]
+            }
+          ],
+          "experience_summary": {
+            "total_professional_months": 48,
+            "calculation_basis": "explicit_timeline",
+            "periods": [
+              {
+                "source_index": 0,
+                "entry_type": "professional_experience",
+                "organization": "Synthetic Finance Lab",
+                "role": "Backend Engineer",
+                "timeline_raw": "2022-2026",
+                "start_year": 2022,
+                "start_month": 1,
+                "end_year": 2026,
+                "end_month": 1,
+                "is_current": false,
+                "evidence": "2022-2026"
+              }
+            ]
+          },
+          "seniority_signals": []
+        },
+        "analysis_quality": "PARTIAL",
+        "analysis_coverage": {
+          "input_experience_entry_count": 1,
+          "accepted_experience_entry_count": 1,
+          "discarded_experience_entry_count": 0,
+          "input_requirement_signal_count": 1,
+          "accepted_requirement_signal_count": 1,
+          "discarded_requirement_signal_count": 0,
+          "input_experience_period_count": 1,
+          "accepted_experience_period_count": 1,
+          "discarded_experience_period_count": 0,
+          "title_metrics_available": true,
+          "skill_metrics_available": true,
+          "experience_metric_available": true,
+          "domain_metrics_available": false
+        },
+        "analysis_diagnostics": [
+          {
+            "code": "ARRAY_INVALID",
+            "json_path": "$.matching_metrics.domains"
+          }
+        ]
+      }
+    }
+  },
+  "cases": [
+    {
+      "name": "structured_all_dimensions",
+      "cvAnalysis": "complete",
+      "expectedMatchScore": 71.500,
+      "expectedStatus": "Completed",
+      "expectedMatchType": "Hardcode",
+      "expectedMatchDetails": {
+        "Method": "HardcodeV3",
+        "JdSchemaVersion": "jd-analysis-effective/v1",
+        "TitleScore": 100.0,
+        "SkillsScore": 50.0,
+        "ExperienceScore": 80.0,
+        "DomainScore": 100.0,
+        "FinalScore": 71.50,
+        "ScoreBasis": "complete_cv_metrics",
+        "CvAnalysisQuality": "COMPLETE",
+        "AvailableDimensions": ["title", "skills", "experience", "domain"],
+        "Weights": {
+          "TitleWeight": 0.15,
+          "SkillsWeight": 0.45,
+          "ExperienceWeight": 0.30,
+          "DomainWeight": 0.10
+        },
+        "GroupOutcomes": [
+          {
+            "GroupId": "grp-core",
+            "Operator": "all_of",
+            "MatchedItems": 1,
+            "RequiredItems": 2,
+            "Satisfied": false,
+            "Coverage": 0.5,
+            "EvaluatedBySkillComponent": true,
+            "NotEvaluatedReason": null,
+            "MatchedItemIds": ["grp-core:item-csharp"]
+          }
+        ]
+      },
+      "jobAnalysis": {
+        "schema_version": "jd-analysis-effective/v1",
+        "analysis_quality": "COMPLETE",
+        "analysis_coverage": {
+          "input_group_count": 1,
+          "accepted_group_count": 1,
+          "discarded_group_count": 0,
+          "input_item_count": 2,
+          "accepted_item_count": 2,
+          "discarded_item_count": 0,
+          "requirement_set_complete": true
+        },
+        "matching_metrics": {
+          "job_titles_normalized": ["Backend Engineer"],
+          "skills_normalized": [],
+          "total_years_exp": 5,
+          "domains": ["fintech"],
+          "requirement_groups": [
+            {
+              "group_id": "grp-core",
+              "source_requirement_id": "req-core",
+              "intent": "qualification",
+              "operator": "all_of",
+              "min_satisfied": 2,
+              "importance": "must_have",
+              "source_section": "requirements",
+              "requirement_verbatim": "C# and Go are required.",
+              "items": [
+                {
+                  "item_id": "grp-core:item-csharp",
+                  "category": "tech_skill",
+                  "skill_name": "C#",
+                  "raw_mention": "C#",
+                  "min_years": null,
+                  "max_years": null
+                },
+                {
+                  "item_id": "grp-core:item-go",
+                  "category": "tech_skill",
+                  "skill_name": "Go",
+                  "raw_mention": "Go",
+                  "min_years": null,
+                  "max_years": null
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "legacy_metrics_partial_cv",
+      "cvAnalysis": "partial",
+      "expectedMatchScore": 75.00,
+      "expectedStatus": "Completed",
+      "expectedMatchType": "Hardcode",
+      "expectedMatchDetails": {
+        "Method": "Hardcode",
+        "JdSchemaVersion": "legacy",
+        "TitleScore": 100.0,
+        "SkillsScore": 50.0,
+        "ExperienceScore": 100.0,
+        "DomainScore": 0,
+        "FinalScore": 75.00,
+        "ScoreBasis": "available_cv_metrics",
+        "CvAnalysisQuality": "PARTIAL",
+        "AvailableDimensions": ["title", "skills", "experience"],
+        "Weights": {
+          "TitleWeight": 0.15,
+          "SkillsWeight": 0.45,
+          "ExperienceWeight": 0.30,
+          "DomainWeight": 0.10
+        },
+        "GroupOutcomes": null
+      },
+      "jobAnalysis": {
+        "matching_metrics": {
+          "job_titles_normalized": ["Backend Engineer"],
+          "skills_normalized": ["C#", "Go"],
+          "total_years_exp": 4,
+          "domains": ["fintech"]
+        }
+      }
+    },
+    {
+      "name": "partial_requirement_set_unscored",
+      "cvAnalysis": "complete",
+      "expectedMatchScore": null,
+      "expectedStatus": "Completed",
+      "expectedMatchType": "Hardcode",
+      "expectedMatchDetails": {
+        "Method": "Hardcode",
+        "ScoreBasis": "no_safe_dimensions",
+        "ResultCode": "SCORE_UNAVAILABLE",
+        "InternalReasonCode": "PARTIAL_REQUIREMENT_SET",
+        "CvAnalysisQuality": "COMPLETE",
+        "JdAnalysisQuality": "PARTIAL",
+        "JdSchemaVersion": "jd-analysis-effective/v1",
+        "GroupOutcomes": [
+          {
+            "GroupId": "grp-partial",
+            "Operator": "all_of",
+            "MatchedItems": 1,
+            "RequiredItems": 1,
+            "Satisfied": true,
+            "Coverage": 1,
+            "EvaluatedBySkillComponent": true,
+            "NotEvaluatedReason": null,
+            "MatchedItemIds": ["grp-partial:item-csharp"]
+          }
+        ]
+      },
+      "jobAnalysis": {
+        "schema_version": "jd-analysis-effective/v1",
+        "analysis_quality": "PARTIAL",
+        "analysis_coverage": {
+          "input_group_count": 2,
+          "accepted_group_count": 1,
+          "discarded_group_count": 1,
+          "input_item_count": 2,
+          "accepted_item_count": 1,
+          "discarded_item_count": 1,
+          "requirement_set_complete": false
+        },
+        "matching_metrics": {
+          "job_titles_normalized": ["Backend Engineer"],
+          "skills_normalized": [],
+          "total_years_exp": 4,
+          "domains": ["fintech"],
+          "requirement_groups": [
+            {
+              "group_id": "grp-partial",
+              "source_requirement_id": "req-partial",
+              "intent": "qualification",
+              "operator": "all_of",
+              "min_satisfied": 1,
+              "importance": "must_have",
+              "source_section": "requirements",
+              "requirement_verbatim": "C# is required.",
+              "items": [
+                {
+                  "item_id": "grp-partial:item-csharp",
+                  "category": "tech_skill",
+                  "skill_name": "C#",
+                  "raw_mention": "C#",
+                  "min_years": null,
+                  "max_years": null
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "no_safe_dimensions_unscored",
+      "cvAnalysis": "partial",
+      "expectedMatchScore": null,
+      "expectedStatus": "Completed",
+      "expectedMatchType": "Hardcode",
+      "expectedMatchDetails": {
+        "Method": "Hardcode",
+        "ScoreBasis": "no_safe_dimensions",
+        "ResultCode": "SCORE_UNAVAILABLE",
+        "InternalReasonCode": "NO_SAFE_DIMENSIONS",
+        "CvAnalysisQuality": "PARTIAL",
+        "JdAnalysisQuality": "COMPLETE",
+        "JdSchemaVersion": "legacy",
+        "GroupOutcomes": null
+      },
+      "jobAnalysis": {
+        "matching_metrics": {
+          "job_titles_normalized": [],
+          "skills_normalized": [],
+          "total_years_exp": 0,
+          "domains": []
+        }
+      }
+    }
+  ]
+}

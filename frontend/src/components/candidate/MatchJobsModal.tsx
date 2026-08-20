@@ -5,15 +5,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle2, AlertCircle, RefreshCcw, Briefcase, ChevronRight, FileText } from 'lucide-react';
+import { AlertCircle, RefreshCcw, Briefcase, ChevronRight, FileText } from 'lucide-react';
 import { cvService } from '@/services/cv.service';
 import { useGetMyCvs } from '@/hooks/useCv';
-import type { Cv, MatchHistoryDto } from '@/types/cv.types';
+import { useCandidateJobScan } from '@/hooks/useCandidateJobScan';
+import type { CandidateJobScanResultDto } from '@/types/cv.types';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useSignalR } from '@/hooks/useSignalR';
 import { toast } from 'sonner';
-import { getMatchMethodLabel, getScorePercent } from '@/lib/matching-score';
 
 interface MatchJobsModalProps {
   isOpen: boolean;
@@ -27,24 +27,26 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
   const [selectedCvId, setSelectedCvId] = useState<string>('');
   const [isScanning, setIsScanning] = useState(false);
   const [isBackgroundScanning, setIsBackgroundScanning] = useState(false);
-  const [matches, setMatches] = useState<MatchHistoryDto[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [useAI, setUseAI] = useState(false);
+
+  const { data: scanResponse, isLoading: isLoadingHistory, refetch } = useCandidateJobScan(
+    isOpen && selectedCvId ? selectedCvId : undefined
+  );
+  const matches: CandidateJobScanResultDto[] = scanResponse?.data?.items || [];
 
   const connection = useSignalR('/hubs/notification');
 
   useEffect(() => {
     if (connection) {
       connection.on('ReceiveNotification', (notification: any) => {
-        if (notification.type === 'CvMatchComplete' && notification.cvId === selectedCvId) {
+        if (notification.type === 'CandidateJobScanComplete' && notification.cvId === selectedCvId) {
           setIsBackgroundScanning(false);
           toast.success(notification.message || 'Matching complete!');
-          fetchMatches();
-        } else if (notification.type === 'CvMatchError' && notification.cvId === selectedCvId) {
+          refetch();
+        } else if (notification.type === 'CandidateJobScanError' && notification.cvId === selectedCvId) {
           setIsBackgroundScanning(false);
           toast.error(notification.message || 'An error occurred during matching.');
-          setError(notification.message);
+          setError(notification.message || 'An error occurred during matching.');
         }
       });
     }
@@ -53,7 +55,7 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
         connection.off('ReceiveNotification');
       }
     };
-  }, [connection, selectedCvId]);
+  }, [connection, selectedCvId, refetch]);
 
   useEffect(() => {
     if (isOpen && cvs.length > 0 && !selectedCvId) {
@@ -64,27 +66,6 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
 
   const selectedCv = cvs.find((c) => c.id === selectedCvId);
 
-  const fetchMatches = async () => {
-    if (!selectedCvId) return;
-    try {
-      setIsLoadingHistory(true);
-      const res = await cvService.getMatchHistory(1, 20, selectedCvId);
-      if (res.success && res.data) {
-        setMatches(res.data.items);
-      }
-    } catch (err: any) {
-      console.error(err);
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isOpen && selectedCvId) {
-      fetchMatches();
-    }
-  }, [isOpen, selectedCvId]);
-
   const handleScan = async () => {
     if (!selectedCvId) {
       setError('Please select a resume before scanning.');
@@ -93,20 +74,14 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
     try {
       setIsScanning(true);
       setError(null);
-      let res;
-      if (useAI) {
-        res = await cvService.matchJobs(selectedCvId);
-      } else {
-        res = await cvService.matchJobsHardcode(selectedCvId);
-      }
+      const res = await cvService.matchJobsHardcode(selectedCvId);
 
-      // If backend accepted the request for background processing
-      if (res?.message?.includes('queued') || res?.message?.includes('background')) {
+      // If backend accepted the request for background processing (202 Accepted)
+      if (res?.message?.includes('queued') || res?.message?.includes('background') || res?.message?.includes('accepted') || res?.data) {
         setIsBackgroundScanning(true);
         toast.success("Matching started in background. You will be notified when it's done.");
       } else {
-        // Fallback if backend processed it synchronously
-        await fetchMatches();
+        await refetch();
       }
     } catch (err: any) {
       const serverMsg = err?.response?.data?.message || err?.response?.data?.title || err?.message || 'Failed to scan for matches.';
@@ -186,7 +161,7 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
             {isLoadingHistory && matches.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-sm text-slate-500">
                 <RefreshCcw className="h-6 w-6 animate-spin mb-3 text-slate-400" />
-                <p>Loading history...</p>
+                <p>Loading matches...</p>
               </div>
             ) : matches.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center p-6 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
@@ -197,62 +172,41 @@ export function MatchJobsModal({ isOpen, onClose }: MatchJobsModalProps) {
                 </p>
               </div>
             ) : (
-              [...matches]
-                .filter((match) => match.status !== 'EXPIRED' && match.status !== 'BANNED')
-                .sort((a, b) => {
-                  const aIsNew = a.updatedAt && (Date.now() - new Date(a.updatedAt).getTime()) <= 24 * 60 * 60 * 1000 ? 1 : 0;
-                  const bIsNew = b.updatedAt && (Date.now() - new Date(b.updatedAt).getTime()) <= 24 * 60 * 60 * 1000 ? 1 : 0;
-                  if (aIsNew !== bIsNew) return bIsNew - aIsNew; // NEW matches first
-                  return (getScorePercent(b) ?? -1) - (getScorePercent(a) ?? -1); // Then sort by score
-                })
-                .map((match) => {
-                  const isNew = match.updatedAt && (Date.now() - new Date(match.updatedAt).getTime()) <= 24 * 60 * 60 * 1000;
-                  return (
-                    <div key={match.jobId + match.matchMethod} className="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-300 transition-colors shadow-sm">
-                      <div className="flex flex-col gap-1 min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <h5 className="text-sm font-semibold text-slate-900 truncate" title={match.jdTitle}>
-                            {match.jdTitle || "Unknown Job"}
-                          </h5>
-                          {isNew && (
-                            <span className="inline-flex items-center rounded-full px-2 py-0.5 font-bold bg-emerald-500 text-white text-[10px] animate-pulse">
-                              NEW
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className={cn(
-                            "inline-flex items-center rounded-full px-2 py-0.5 font-medium",
-                            match.matchMethod === 'hardcode' ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"
-                          )}>
-                            {getMatchMethodLabel(match.matchMethod)}
-                          </span>
-                          <span className="text-slate-500">
-                            {new Date(match.updatedAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4 pl-4 shrink-0">
-                        <div className="flex flex-col items-end">
-                          <span className={cn(
-                            "text-lg font-bold",
-                            (getScorePercent(match) ?? -1) >= 70 ? "text-green-600" :
-                              (getScorePercent(match) ?? -1) >= 50 ? "text-amber-600" : "text-slate-600"
-                          )}>
-                            {getScorePercent(match) === null ? "—" : `${Math.round(getScorePercent(match)!)}%`}
-                          </span>
-                          <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Match Score</span>
-                        </div>
-                        <Link href={match.sourceJobId ? `/jobs/${match.sourceJobId}` : `/candidate/cv-matching/new?jobId=${match.jobId}`} target="_blank">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600">
-                            <ChevronRight className="h-5 w-5" />
-                          </Button>
-                        </Link>
+              matches.map((match) => {
+                const score = match.matchScore;
+                return (
+                  <div key={match.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-300 transition-colors shadow-sm">
+                    <div className="flex flex-col gap-1 min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
+                          #{match.rank}
+                        </span>
+                        <h5 className="text-sm font-semibold text-slate-900 truncate" title={match.jobTitle || match.jobTitleSnapshot || "Unknown Job"}>
+                          {match.jobTitle || match.jobTitleSnapshot || "Unknown Job"}
+                        </h5>
                       </div>
                     </div>
-                  );
-                })
+
+                    <div className="flex items-center gap-4 pl-4 shrink-0">
+                      <div className="flex flex-col items-end">
+                        <span className={cn(
+                          "text-lg font-bold",
+                          score !== null && score !== undefined && score >= 70 ? "text-green-600" :
+                            score !== null && score !== undefined && score >= 50 ? "text-amber-600" : "text-slate-600"
+                        )}>
+                          {score === null || score === undefined ? "—" : `${Math.round(score)}%`}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Match Score</span>
+                      </div>
+                      <Link href={`/jobs/${match.jobId}`} target="_blank">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600">
+                          <ChevronRight className="h-5 w-5" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

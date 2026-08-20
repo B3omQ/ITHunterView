@@ -25,12 +25,12 @@ public sealed class CandidateJobScanWorker(
                 try
                 {
                     await useCase.ProcessRunAsync(request.RunId, stoppingToken);
-                    await hubContext.Clients.Group(request.CandidateUserId.ToString()).SendAsync("ReceiveNotification", new { Type = "CandidateJobScanComplete", RunId = request.RunId }, stoppingToken);
+                    await hubContext.Clients.Group(request.CandidateUserId.ToString()).SendAsync("ReceiveNotification", new { Type = "CandidateJobScanComplete", RunId = request.RunId, CvId = request.CvId }, stoppingToken);
                 }
                 catch (Exception exception)
                 {
                     logger.LogError(exception, "Candidate scan failed for RunId {RunId}", request.RunId);
-                    await hubContext.Clients.Group(request.CandidateUserId.ToString()).SendAsync("ReceiveNotification", new { Type = "CandidateJobScanError", RunId = request.RunId }, stoppingToken);
+                    await hubContext.Clients.Group(request.CandidateUserId.ToString()).SendAsync("ReceiveNotification", new { Type = "CandidateJobScanError", RunId = request.RunId, CvId = request.CvId }, stoppingToken);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { }

@@ -19,40 +19,33 @@ namespace ITHunterview.WebAPI.Controllers
     {
         private readonly ICvUseCase _cvUseCase;
         private readonly ICvJobMatchingUseCase _cvJobMatchingUseCase;
-        private readonly IHardcodeCvJobMatchingUseCase _hardcodeCvJobMatchingUseCase;
         private readonly ICvJdMatchingSubmissionUseCase _matchingSubmissionUseCase;
         private readonly ICvJdMatchingRetryUseCase _matchingRetryUseCase;
         private readonly ICvJdMatchingHistoryUseCase _matchingHistoryUseCase;
         private readonly ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService _cvTextExtractorService;
         private readonly ICandidateFeatureUsageUseCase _featureUsageUseCase;
         private readonly IMatchingInputPreflightUseCase _matchingInputPreflightUseCase;
-        private readonly ITHunterview.WebAPI.BackgroundServices.ICvMatchingQueue _matchingQueue;
-        private readonly ICandidateJobScanUseCase? _candidateJobScanUseCase;
+        private readonly ICandidateJobScanUseCase _candidateJobScanUseCase;
 
         public CvController(
             ICvUseCase cvUseCase, 
             ICvJobMatchingUseCase cvJobMatchingUseCase,
-            IHardcodeCvJobMatchingUseCase hardcodeCvJobMatchingUseCase,
             ICvJdMatchingSubmissionUseCase matchingSubmissionUseCase,
             ICvJdMatchingRetryUseCase matchingRetryUseCase,
             ICvJdMatchingHistoryUseCase matchingHistoryUseCase,
-            IServiceScopeFactory serviceScopeFactory,
             ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService cvTextExtractorService,
             ICandidateFeatureUsageUseCase featureUsageUseCase,
             IMatchingInputPreflightUseCase matchingInputPreflightUseCase,
-            ITHunterview.WebAPI.BackgroundServices.ICvMatchingQueue matchingQueue,
-            ICandidateJobScanUseCase? candidateJobScanUseCase = null)
+            ICandidateJobScanUseCase candidateJobScanUseCase)
         {
             _cvUseCase = cvUseCase;
             _cvJobMatchingUseCase = cvJobMatchingUseCase;
-            _hardcodeCvJobMatchingUseCase = hardcodeCvJobMatchingUseCase;
             _matchingSubmissionUseCase = matchingSubmissionUseCase;
             _matchingRetryUseCase = matchingRetryUseCase;
             _matchingHistoryUseCase = matchingHistoryUseCase;
             _cvTextExtractorService = cvTextExtractorService;
             _featureUsageUseCase = featureUsageUseCase;
             _matchingInputPreflightUseCase = matchingInputPreflightUseCase;
-            _matchingQueue = matchingQueue;
             _candidateJobScanUseCase = candidateJobScanUseCase;
         }
 
@@ -281,7 +274,7 @@ namespace ITHunterview.WebAPI.Controllers
 
             try
             {
-                var accepted = await (_candidateJobScanUseCase ?? throw new InvalidOperationException("CANDIDATE_SCAN_NOT_REGISTERED")).CreateRunAsync(userId, id, ct);
+                var accepted = await _candidateJobScanUseCase.CreateRunAsync(userId, id, ct);
                 return Accepted(new ResponseBase<CandidateJobScanAcceptedDto>(accepted, "Candidate scan accepted"));
             }
             catch (KeyNotFoundException)
@@ -300,7 +293,7 @@ namespace ITHunterview.WebAPI.Controllers
         {
             var userIdStr = User.FindFirstValue("userId");
             if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId)) return Unauthorized();
-            var latest = await (_candidateJobScanUseCase ?? throw new InvalidOperationException("CANDIDATE_SCAN_NOT_REGISTERED")).GetLatestSuccessfulAsync(userId, id, page, pageSize, ct);
+            var latest = await _candidateJobScanUseCase.GetLatestSuccessfulAsync(userId, id, page, pageSize, ct);
             if (latest.TotalCount == 0) return NotFound(new ResponseBase<ITHunterview.Service.DTOs.Common.PagedResult<CandidateJobScanResultDto>>("Candidate scan not found"));
             return Ok(new ResponseBase<ITHunterview.Service.DTOs.Common.PagedResult<CandidateJobScanResultDto>>(latest, "Candidate scan retrieved"));
         }

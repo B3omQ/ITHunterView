@@ -5,6 +5,7 @@ using ITHunterview.Service.DTOs.Cv.Matching;
 using ITHunterview.Service.Interface.Persistence;
 using ITHunterview.Service.Interface.Service.Matching;
 using ITHunterview.Service.Interface.UseCase;
+using Microsoft.EntityFrameworkCore;
 
 namespace ITHunterview.Service.UseCase;
 
@@ -135,7 +136,6 @@ public sealed class CandidateJobScanUseCase : ICandidateJobScanUseCase
                 exception.Message,
                 DateTime.UtcNow,
                 CancellationToken.None);
-            throw;
         }
     }
 

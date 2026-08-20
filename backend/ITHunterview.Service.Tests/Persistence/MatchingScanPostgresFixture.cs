@@ -472,7 +472,8 @@ internal static class MatchingScanInMemoryContextFactory
             typeof(CandidateJobScanRun),
             typeof(CandidateJobScanResult),
             typeof(RecruiterCvScanRun),
-            typeof(RecruiterCvScanResult)
+            typeof(RecruiterCvScanResult),
+            typeof(RecruiterUnlockedCvs)
         ];
 
         public MatchingScanRepositoryTestContext(DbContextOptions<ITHunterviewContext> options)
@@ -495,6 +496,7 @@ internal static class MatchingScanInMemoryContextFactory
             modelBuilder.Entity<CandidateJobScanResult>().HasKey(result => result.Id);
             modelBuilder.Entity<RecruiterCvScanRun>().HasKey(run => run.Id);
             modelBuilder.Entity<RecruiterCvScanResult>().HasKey(result => result.Id);
+            modelBuilder.Entity<RecruiterUnlockedCvs>().HasKey(u => u.Id);
         }
     }
 }

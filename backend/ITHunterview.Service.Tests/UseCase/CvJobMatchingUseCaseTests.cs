@@ -289,6 +289,7 @@ namespace ITHunterview.Service.Tests.UseCase
                 UserId = userId,
                 Status = "Completed",
                 MatchType = "Hardcode",
+                ProductScope = ITHunterview.Domain.Enums.CvJobMatchProductScope.CandidateOneToOne,
                 MatchScore = 0.818m,
                 MatchDetails = "{\"Method\":\"HardcodeV3\",\"FinalScore\":0.818}",
                 UpdatedAt = DateTime.UtcNow
@@ -318,6 +319,7 @@ namespace ITHunterview.Service.Tests.UseCase
                 Id = matchId,
                 UserId = userId,
                 Status = "Completed",
+                ProductScope = ITHunterview.Domain.Enums.CvJobMatchProductScope.CandidateOneToOne,
                 MatchType = "AI",
                 MatchScore = null,
                 MatchDetails = "{\"contract\":\"jd-matching/v5\",\"scoreAvailable\":false,\"completionDisposition\":\"unscored_refundable\",\"jdFit\":{\"scorePercent\":null,\"resultCode\":\"INSUFFICIENT_DATA\",\"requirementGroups\":[],\"criticalGaps\":[]}}",
@@ -517,6 +519,7 @@ namespace ITHunterview.Service.Tests.UseCase
                 DateTime updatedAt) => new()
                 {
                     Id = id,
+                    CvId = Guid.NewGuid(),
                     JobId = sourceJobId,
                     MatchScore = score,
                     MatchType = type,

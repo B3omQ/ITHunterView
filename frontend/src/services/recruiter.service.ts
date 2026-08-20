@@ -285,7 +285,7 @@ export const recruiterService = {
 
   getJobMatches: async (jobId: string, page = 1, pageSize = 10) => {
     try {
-      const response = await api.get<ApiResponse<PaginatedResult<import('@/types/cv.types').MatchHistoryDto>>>(`/api/jobpostings/${jobId}/matches?page=${page}&pageSize=${pageSize}`);
+      const response = await api.get<ApiResponse<PaginatedResult<import('@/types/cv.types').RecruiterCvScanResultDto>>>(`/api/jobpostings/${jobId}/matches?page=${page}&pageSize=${pageSize}`);
       return { success: true, data: response.data };
     } catch (error: any) {
       return {
@@ -319,9 +319,9 @@ export const recruiterService = {
     }
   },
 
-  unlockCandidateCv: async (cvId: string, jobId?: string) => {
+  unlockCandidateCv: async (scanResultId: string) => {
     try {
-      const response = await api.post<ApiResponse<import('@/types/cv.types').UnlockCandidateResponse>>('/api/jobpostings/unlock-candidate', { cvId, jobId });
+      const response = await api.post<ApiResponse<import('@/types/cv.types').UnlockCandidateResponse>>('/api/jobpostings/unlock-candidate', { scanResultId });
       return { success: true, data: response.data };
     } catch (error: any) {
       return {

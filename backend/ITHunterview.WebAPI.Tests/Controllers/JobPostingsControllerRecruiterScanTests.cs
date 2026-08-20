@@ -59,13 +59,11 @@ public sealed class JobPostingsControllerRecruiterScanTests
         var recruiterUserId = Guid.NewGuid();
         var profileId = Guid.NewGuid();
         var jobId = Guid.NewGuid();
-        var legacy = new Mock<ICvJobMatchingUseCase>(MockBehavior.Strict);
-        var controller = CreateController(recruiterUserId, profileId, profileId, jobId, Mock.Of<IRecruiterCvScanUseCase>(), legacy.Object);
+        var controller = CreateController(recruiterUserId, profileId, profileId, jobId, Mock.Of<IRecruiterCvScanUseCase>());
 
         var action = await controller.MatchCvs(jobId);
 
         action.Result.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status410Gone);
-        legacy.Verify(useCase => useCase.MatchJobWithAllCvsAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]
@@ -106,19 +104,77 @@ public sealed class JobPostingsControllerRecruiterScanTests
         }
     }
 
+    [Fact]
+    [Trait("Requirement", "R-10")]
+    public async Task UnlockCandidate_ValidScanResultId_ReturnsOkWithResponse()
+    {
+        var recruiterUserId = Guid.NewGuid();
+        var profileId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var scanResultId = Guid.NewGuid();
+        var unlockUseCase = new Mock<IRecruiterCvUnlockUseCase>(MockBehavior.Strict);
+        var expectedResponse = new UnlockCandidateResponseDto
+        {
+            UnlockId = Guid.NewGuid(),
+            ScanResultId = scanResultId,
+            CvId = Guid.NewGuid(),
+            CandidateUserId = Guid.NewGuid(),
+            CandidateName = "Jane Doe",
+            Email = "jane@example.test",
+            Phone = "+84900000002",
+            FileName = "jane_cv.pdf",
+            FileUrl = "https://signed.storage/cv.pdf",
+            UnlockedVia = "COINS",
+            CoinsSpent = 50,
+            UnlockedAt = DateTime.UtcNow,
+            IsRetainedCopy = true,
+            Success = true
+        };
+        unlockUseCase.Setup(u => u.UnlockAsync(recruiterUserId, scanResultId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
+
+        var controller = CreateController(recruiterUserId, profileId, profileId, jobId, Mock.Of<IRecruiterCvScanUseCase>(), unlockUseCase: unlockUseCase.Object);
+
+        var action = await controller.UnlockCandidate(new UnlockCandidateRequestDto { ScanResultId = scanResultId });
+
+        var ok = action.Result.Should().BeOfType<OkObjectResult>().Subject;
+        var response = ok.Value.Should().BeOfType<ResponseBase<UnlockCandidateResponseDto>>().Subject;
+        response.Data.Should().BeEquivalentTo(expectedResponse);
+        unlockUseCase.Verify(u => u.UnlockAsync(recruiterUserId, scanResultId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    [Trait("Requirement", "R-10")]
+    public async Task UnlockCandidate_EmptyScanResultId_ReturnsBadRequest()
+    {
+        var recruiterUserId = Guid.NewGuid();
+        var profileId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var controller = CreateController(recruiterUserId, profileId, profileId, jobId, Mock.Of<IRecruiterCvScanUseCase>());
+
+        var action = await controller.UnlockCandidate(new UnlockCandidateRequestDto { ScanResultId = Guid.Empty });
+
+        action.Result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
     private static JobPostingsController CreateController(
         Guid recruiterUserId,
         Guid resolvedRecruiterProfileId,
         Guid jobOwnerProfileId,
         Guid jobId,
         IRecruiterCvScanUseCase scan,
-        ICvJobMatchingUseCase? legacyMatching = null)
+        IRecruiterCvUnlockUseCase? unlockUseCase = null)
     {
         var jobs = new Mock<IJobPostingsUseCase>();
         jobs.Setup(useCase => useCase.GetJobByIdAsync(jobId)).ReturnsAsync(new ResponseBase<JobPostingDetailDto>(new JobPostingDetailDto { Id = jobId, RecruiterId = jobOwnerProfileId }));
         var users = new Mock<IUserUseCase>();
         users.Setup(useCase => useCase.ResolveRecruiterIdAsync(recruiterUserId.ToString())).ReturnsAsync(resolvedRecruiterProfileId);
-        var controller = new JobPostingsController(jobs.Object, users.Object, legacyMatching ?? Mock.Of<ICvJobMatchingUseCase>(), Mock.Of<IHardcodeCvJobMatchingUseCase>(), Mock.Of<IJobAnalysisUseCase>(), scan)
+        var controller = new JobPostingsController(
+            jobs.Object,
+            users.Object,
+            Mock.Of<IJobAnalysisUseCase>(),
+            scan,
+            unlockUseCase ?? Mock.Of<IRecruiterCvUnlockUseCase>())
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, recruiterUserId.ToString()), new Claim("userId", recruiterUserId.ToString())], "test")) } }
         };

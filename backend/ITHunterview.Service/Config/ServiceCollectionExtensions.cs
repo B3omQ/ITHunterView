@@ -35,6 +35,9 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IJobApplicationRepository, JobApplicationRepository>();
 
             services.AddScoped<ICvRepository, CvRepository>();
+            services.AddScoped<ICandidateJobScanRepository, CandidateJobScanRepository>();
+            services.AddScoped<IRecruiterCvScanRepository, RecruiterCvScanRepository>();
+            services.AddScoped<IRecruiterCvUnlockRepository, RecruiterCvUnlockRepository>();
             services.AddScoped<IMatchingSourceRepository, MatchingSourceRepository>();
             services.AddScoped<IMatchingSourceAnalysisPersistence, MatchingSourceAnalysisPersistence>();
             services.AddScoped<IFeatureUsageReservationRepository, FeatureUsageReservationRepository>();
@@ -83,6 +86,8 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IGoogleAuthService, GoogleAuthService>();
             services.AddScoped<IFileUploadService, CloudinaryService>();
             services.AddHttpClient<IAiEmbeddingService, GeminiEmbeddingService>();
+            services.AddHttpClient<ICloudinaryStorageClient, CloudinaryStorageClient>();
+            services.AddScoped<IRecruiterUnlockedCvSnapshotStore, CloudinaryRecruiterUnlockedCvSnapshotStore>();
 
             // PayOS Payment Gateway
             services.Configure<PayOsSettings>(configuration.GetSection("PayOS"));
@@ -101,6 +106,7 @@ namespace ITHunterview.Service.Config
             services.AddScoped<IJdRequirementProjector, JdRequirementProjector>();
             services.AddScoped<JdHardcodeRequirementEvaluator>();
             services.AddScoped<HardcodeJdRequirementScoringService>();
+            services.AddScoped<IHardcodeCvJobPairMatcher, HardcodeCvJobPairMatcher>();
             services.AddScoped<JdMatchingRequirementContextBuilder>();
             services.AddScoped<JdMatchingResponseAdapter>();
             services.AddScoped<IJdMatchReportReader, JdMatchReportReader>();
@@ -145,7 +151,9 @@ namespace ITHunterview.Service.Config
             services.AddScoped<ICvJdMatchingRetryUseCase, CvJdMatchingRetryUseCase>();
             services.AddScoped<ICvJdMatchingHistoryUseCase, CvJdMatchingHistoryUseCase>();
             services.AddScoped<IMatchingInputPreflightUseCase, MatchingInputPreflightUseCase>();
-            services.AddScoped<IHardcodeCvJobMatchingUseCase, HardcodeCvJobMatchingUseCase>();
+            services.AddScoped<ICandidateJobScanUseCase, CandidateJobScanUseCase>();
+            services.AddScoped<IRecruiterCvScanUseCase, RecruiterCvScanUseCase>();
+            services.AddScoped<IRecruiterCvUnlockUseCase, RecruiterCvUnlockUseCase>();
             services.AddScoped<IMajorUseCase, MajorUseCase>();
             services.AddScoped<IUserGovernanceUseCase, UserGovernanceUseCase>();
             services.AddScoped<IAuditLogUseCase, AuditLogUseCase>();

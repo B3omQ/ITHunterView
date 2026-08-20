@@ -55,10 +55,10 @@ public sealed class CvControllerCandidateScanTests
     }
 
     private static CvController CreateController(Guid userId, ICandidateJobScanUseCase scan) => new(
-        Mock.Of<ICvUseCase>(), Mock.Of<ICvJobMatchingUseCase>(), Mock.Of<IHardcodeCvJobMatchingUseCase>(),
+        Mock.Of<ICvUseCase>(), Mock.Of<ICvJobMatchingUseCase>(),
         Mock.Of<ICvJdMatchingSubmissionUseCase>(), Mock.Of<ICvJdMatchingRetryUseCase>(), Mock.Of<ICvJdMatchingHistoryUseCase>(),
-        Mock.Of<IServiceScopeFactory>(), Mock.Of<ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService>(),
+        Mock.Of<ITHunterview.Service.Interface.Service.Matching.ICvTextExtractorService>(),
         Mock.Of<ICandidateFeatureUsageUseCase>(), Mock.Of<IMatchingInputPreflightUseCase>(),
-        Mock.Of<ITHunterview.WebAPI.BackgroundServices.ICvMatchingQueue>(), scan)
+        scan)
     { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("userId", userId.ToString())], "test")) } } };
 }

@@ -14,14 +14,12 @@ public sealed class JobPostingsControllerMatchingTests
     [Trait("Requirement", "R-04")]
     public async Task MatchCvs_LegacyMixedBulkRouteIsGoneWithoutCallingLegacyMatchingEngine()
     {
-        var legacyMatching = new Mock<ICvJobMatchingUseCase>(MockBehavior.Strict);
         var controller = new JobPostingsController(
             Mock.Of<IJobPostingsUseCase>(),
             Mock.Of<IUserUseCase>(),
-            legacyMatching.Object,
-            Mock.Of<IHardcodeCvJobMatchingUseCase>(),
             Mock.Of<IJobAnalysisUseCase>(),
-            Mock.Of<IRecruiterCvScanUseCase>())
+            Mock.Of<IRecruiterCvScanUseCase>(),
+            Mock.Of<IRecruiterCvUnlockUseCase>())
         {
             ControllerContext = new ControllerContext
             {
@@ -35,6 +33,5 @@ public sealed class JobPostingsControllerMatchingTests
         var action = await controller.MatchCvs(Guid.NewGuid());
 
         action.Result.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(StatusCodes.Status410Gone);
-        legacyMatching.Verify(useCase => useCase.MatchJobWithAllCvsAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
     }
 }
