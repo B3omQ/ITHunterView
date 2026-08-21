@@ -23,7 +23,7 @@ namespace ITHunterview.Service.Tests.UseCase
     public class WalletUseCaseTests
     {
         private readonly Mock<ITHunterviewContext> _contextMock;
-        private readonly Mock<PayOSClient> _payOSMock;
+        private readonly PayOSClient _payOS;
         private readonly Mock<IConfiguration> _configurationMock;
         private readonly Mock<IHubContext<NotificationHub>> _hubContextMock;
         private readonly Mock<ILogger<WalletUseCase>> _loggerMock;
@@ -34,16 +34,16 @@ namespace ITHunterview.Service.Tests.UseCase
             var options = new DbContextOptions<ITHunterviewContext>();
 
             _contextMock = new Mock<ITHunterviewContext>(options);
-            _payOSMock = new Mock<PayOSClient>(MockBehavior.Loose, "clientId", "apiKey", "checksumKey");
+            _payOS = new PayOSClient("clientId", "apiKey", "checksumKey");
             _configurationMock = new Mock<IConfiguration>();
             _hubContextMock = new Mock<IHubContext<NotificationHub>>();
             _loggerMock = new Mock<ILogger<WalletUseCase>>();
 
             _useCase = new WalletUseCase(
-                _contextMock.Object, 
-                _payOSMock.Object, 
-                _configurationMock.Object, 
-                _hubContextMock.Object, 
+                _contextMock.Object,
+                _payOS,
+                _configurationMock.Object,
+                _hubContextMock.Object,
                 _loggerMock.Object);
         }
 

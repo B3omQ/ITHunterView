@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import type { MatchHistoryDto } from '@/types/cv.types';
+import type { MatchHistoryDto, RecruiterCvScanResultDto } from '@/types/cv.types';
 import type { ApplicantDto } from '@/types/job-application.types';
 import { getMatchBandLabel, getMatchMethodLabel, getScorePercent } from '@/lib/matching-score';
 
@@ -25,6 +25,63 @@ export function exportMatchingResultsToExcel(jobTitle: string, matches: MatchHis
     { wch: 25 }, // Phương pháp
     { wch: 28 }, // Mức độ phù hợp
     { wch: 15 }, // Trạng thái
+    { wch: 45 }, // Link File CV
+    { wch: 22 }, // Thời gian
+  ];
+  worksheet['!cols'] = columnWidths;
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Kết quả Match CV');
+
+  const cleanTitle = (jobTitle || 'Job').replace(/[/\\?%*:|"<>]/g, '_');
+  const fileName = `Danh_Sach_Ung_Vien_Phu_Hop_${cleanTitle}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+  XLSX.writeFile(workbook, fileName);
+}
+
+export function exportRecruiterScanResultsToExcel(jobTitle: string, matches: RecruiterCvScanResultDto[]) {
+  if (!matches || matches.length === 0) {
+    throw new Error('No matching candidate data to export.');
+  }
+
+  const exportData = matches.map((match, index) => {
+    const isUnlocked = match.isUnlocked === true;
+    const formattedDate = match.matchedAt
+      ? new Date(match.matchedAt).toLocaleDateString('vi-VN', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : 'N/A';
+
+    return {
+      'STT': index + 1,
+      'Thứ hạng': match.rank,
+      'Tên ứng viên / File CV': isUnlocked
+        ? (match.candidateName || match.cvFileName || match.anonymousLabel)
+        : match.anonymousLabel,
+      'Vị trí tuyển dụng (JD)': jobTitle,
+      'Điểm phù hợp tổng thể': `${Math.round(match.matchScore)}%`,
+      'Trạng thái mở khóa': isUnlocked ? 'Đã mở khóa' : 'Chưa mở khóa (Khóa)',
+      'Email': isUnlocked ? (match.candidateEmail || 'N/A') : 'Ẩn (Chưa mở khóa)',
+      'Số điện thoại': isUnlocked ? (match.candidatePhone || 'N/A') : 'Ẩn (Chưa mở khóa)',
+      'Link File CV': isUnlocked ? (match.fileUrl || 'N/A') : 'Ẩn (Chưa mở khóa)',
+      'Thời gian Đánh giá': formattedDate,
+    };
+  });
+
+  const worksheet = XLSX.utils.json_to_sheet(exportData);
+  const columnWidths = [
+    { wch: 6 },  // STT
+    { wch: 10 }, // Thứ hạng
+    { wch: 30 }, // Tên ứng viên / File CV
+    { wch: 32 }, // Vị trí tuyển dụng
+    { wch: 22 }, // Điểm phù hợp
+    { wch: 25 }, // Trạng thái mở khóa
+    { wch: 25 }, // Email
+    { wch: 18 }, // SĐT
     { wch: 45 }, // Link File CV
     { wch: 22 }, // Thời gian
   ];

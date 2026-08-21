@@ -2,11 +2,24 @@ using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Entities.Cv;
 using ITHunterview.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace ITHunterview.Service.Infrastructure.Persistence
 {
     public class ITHunterviewContext : DbContext
     {
+        private static readonly ValueConverter<MatchingScanRunStatus, string> MatchingScanRunStatusConverter = new(
+            status => ToDatabaseValue(status),
+            value => ParseMatchingScanRunStatus(value));
+
+        private static readonly ValueConverter<RecruiterCvUnlockStatus, string> RecruiterCvUnlockStatusConverter = new(
+            status => ToDatabaseValue(status),
+            value => ParseRecruiterCvUnlockStatus(value));
+
+        private static readonly ValueConverter<CvJobMatchProductScope, string> CvJobMatchProductScopeConverter = new(
+            scope => ToDatabaseValue(scope),
+            value => ParseCvJobMatchProductScope(value));
+
         public ITHunterviewContext(DbContextOptions<ITHunterviewContext> options) : base(options)
         {
         }
@@ -53,6 +66,10 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
         // AI Engine
         public virtual DbSet<CvJobMatchScores> CvJobMatchScores { get; set; } = null!;
+        public virtual DbSet<CandidateJobScanRun> CandidateJobScanRuns { get; set; } = null!;
+        public virtual DbSet<CandidateJobScanResult> CandidateJobScanResults { get; set; } = null!;
+        public virtual DbSet<RecruiterCvScanRun> RecruiterCvScanRuns { get; set; } = null!;
+        public virtual DbSet<RecruiterCvScanResult> RecruiterCvScanResults { get; set; } = null!;
         public virtual DbSet<InterviewQuestionBank> InterviewQuestionBank { get; set; } = null!;
         public virtual DbSet<InterviewSessions> InterviewSessions { get; set; } = null!;
         public virtual DbSet<InterviewAnswers> InterviewAnswers { get; set; } = null!;
@@ -415,6 +432,14 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                     "ck_cv_job_match_scores_cv_analysis_quality",
                     "\"cv_analysis_quality\" IS NULL OR \"cv_analysis_quality\" IN ('COMPLETE', 'PARTIAL', 'INVALID')"));
 
+                entity.Property(e => e.ProductScope)
+                      .HasConversion(CvJobMatchProductScopeConverter)
+                      .HasColumnName("product_scope")
+                      .HasMaxLength(32);
+                entity.ToTable(table => table.HasCheckConstraint(
+                    "ck_cv_job_match_scores_product_scope",
+                    "\"product_scope\" IS NULL OR \"product_scope\" IN ('CANDIDATE_ONE_TO_ONE')"));
+
                 entity.Property(e => e.InputSnapshotJson).HasColumnType("jsonb");
                 entity.Property(e => e.InputHash).HasMaxLength(64);
                 entity.Property(e => e.IdempotencyRequestHash).HasMaxLength(64);
@@ -424,6 +449,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 entity.Property(e => e.ManualRetryUsed).HasDefaultValue(false);
 
                 entity.HasIndex(e => new { e.UserId, e.HistoryHiddenAt, e.UpdatedAt });
+
+                entity.HasIndex(e => new { e.ProductScope, e.UserId, e.UpdatedAt })
+                    .IsDescending(false, false, true);
 
                 entity.HasIndex(e => new { e.UserId, e.IdempotencyKey })
                     .IsUnique()
@@ -447,6 +475,177 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 entity.HasOne<CvJobMatchScores>()
                     .WithMany()
                     .HasForeignKey(e => e.RetryOfJobId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<CandidateJobScanRun>(entity =>
+            {
+                entity.ToTable("candidate_job_scan_runs");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.CandidateUserId).HasColumnName("candidate_user_id");
+                entity.Property(e => e.CvId).HasColumnName("cv_id");
+                entity.Property(e => e.CvFileNameSnapshot).HasColumnName("cv_file_name_snapshot");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+                entity.Property(e => e.StartedAt).HasColumnName("started_at");
+                entity.Property(e => e.CompletedAt).HasColumnName("completed_at");
+                entity.Property(e => e.ErrorCode).HasColumnName("error_code").HasMaxLength(128);
+                entity.Property(e => e.ErrorMessage).HasColumnName("error_message").HasMaxLength(1000);
+
+                entity.Property(e => e.Status)
+                    .HasColumnName("status")
+                    .HasConversion(MatchingScanRunStatusConverter)
+                    .HasMaxLength(16);
+                entity.ToTable(table => table.HasCheckConstraint(
+                    "ck_candidate_job_scan_runs_status",
+                    "\"status\" IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')"));
+
+                entity.HasIndex(e => new { e.CandidateUserId, e.CvId, e.Status, e.CreatedAt })
+                    .IsDescending(false, false, false, true);
+
+                entity.HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey(e => e.CandidateUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne<Cvs>()
+                    .WithMany()
+                    .HasForeignKey(e => e.CvId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<CandidateJobScanResult>(entity =>
+            {
+                entity.ToTable("candidate_job_scan_results");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.RunId).HasColumnName("run_id");
+                entity.Property(e => e.JobId).HasColumnName("job_id");
+                entity.Property(e => e.JobTitleSnapshot).HasColumnName("job_title_snapshot");
+                entity.Property(e => e.MatchScore).HasColumnName("match_score");
+                entity.Property(e => e.MatchDetails).HasColumnName("match_details");
+                entity.Property(e => e.Rank).HasColumnName("rank");
+
+                entity.Property(e => e.CvAnalysisQuality)
+                    .HasColumnName("cv_analysis_quality")
+                    .HasConversion<string>()
+                    .HasMaxLength(16);
+                entity.Property(e => e.CvAnalysisCoverageJson)
+                    .HasColumnName("cv_analysis_coverage_json")
+                    .HasColumnType("jsonb");
+                entity.Property(e => e.CvAnalysisDiagnosticsJson)
+                    .HasColumnName("cv_analysis_diagnostics_json")
+                    .HasColumnType("jsonb");
+                entity.ToTable(table => table.HasCheckConstraint(
+                    "ck_candidate_job_scan_results_cv_analysis_quality",
+                    "\"cv_analysis_quality\" IS NULL OR \"cv_analysis_quality\" IN ('COMPLETE', 'PARTIAL', 'INVALID')"));
+
+                entity.HasIndex(e => new { e.RunId, e.JobId }).IsUnique();
+
+                entity.HasOne<CandidateJobScanRun>()
+                    .WithMany()
+                    .HasForeignKey(e => e.RunId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne<JobPostings>()
+                    .WithMany()
+                    .HasForeignKey(e => e.JobId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<RecruiterCvScanRun>(entity =>
+            {
+                entity.ToTable("recruiter_cv_scan_runs");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.RecruiterUserId).HasColumnName("recruiter_user_id");
+                entity.Property(e => e.RecruiterProfileId).HasColumnName("recruiter_profile_id");
+                entity.Property(e => e.CompanyId).HasColumnName("company_id");
+                entity.Property(e => e.JobId).HasColumnName("job_id");
+                entity.Property(e => e.JobTitleSnapshot).HasColumnName("job_title_snapshot");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+                entity.Property(e => e.StartedAt).HasColumnName("started_at");
+                entity.Property(e => e.CompletedAt).HasColumnName("completed_at");
+                entity.Property(e => e.ErrorCode).HasColumnName("error_code").HasMaxLength(128);
+                entity.Property(e => e.ErrorMessage).HasColumnName("error_message").HasMaxLength(1000);
+
+                entity.Property(e => e.Status)
+                    .HasColumnName("status")
+                    .HasConversion(MatchingScanRunStatusConverter)
+                    .HasMaxLength(16);
+                entity.ToTable(table => table.HasCheckConstraint(
+                    "ck_recruiter_cv_scan_runs_status",
+                    "\"status\" IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')"));
+
+                entity.HasIndex(e => new { e.RecruiterUserId, e.CompanyId, e.JobId, e.Status, e.CreatedAt })
+                    .IsDescending(false, false, false, false, true);
+
+                entity.HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey(e => e.RecruiterUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne<RecruiterProfiles>()
+                    .WithMany()
+                    .HasForeignKey(e => e.RecruiterProfileId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne<Companies>()
+                    .WithMany()
+                    .HasForeignKey(e => e.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne<JobPostings>()
+                    .WithMany()
+                    .HasForeignKey(e => e.JobId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<RecruiterCvScanResult>(entity =>
+            {
+                entity.ToTable("recruiter_cv_scan_results");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.RunId).HasColumnName("run_id");
+                entity.Property(e => e.CvId).HasColumnName("cv_id");
+                entity.Property(e => e.CandidateUserId).HasColumnName("candidate_user_id");
+                entity.Property(e => e.MatchScore).HasColumnName("match_score");
+                entity.Property(e => e.MatchDetails).HasColumnName("match_details");
+                entity.Property(e => e.Rank).HasColumnName("rank");
+
+                entity.Property(e => e.CvAnalysisQuality)
+                    .HasColumnName("cv_analysis_quality")
+                    .HasConversion<string>()
+                    .HasMaxLength(16);
+                entity.Property(e => e.CvAnalysisCoverageJson)
+                    .HasColumnName("cv_analysis_coverage_json")
+                    .HasColumnType("jsonb");
+                entity.Property(e => e.CvAnalysisDiagnosticsJson)
+                    .HasColumnName("cv_analysis_diagnostics_json")
+                    .HasColumnType("jsonb");
+                entity.ToTable(table => table.HasCheckConstraint(
+                    "ck_recruiter_cv_scan_results_cv_analysis_quality",
+                    "\"cv_analysis_quality\" IS NULL OR \"cv_analysis_quality\" IN ('COMPLETE', 'PARTIAL', 'INVALID')"));
+
+                entity.HasIndex(e => new { e.RunId, e.CvId }).IsUnique();
+
+                entity.HasOne<RecruiterCvScanRun>()
+                    .WithMany()
+                    .HasForeignKey(e => e.RunId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne<Cvs>()
+                    .WithMany()
+                    .HasForeignKey(e => e.CvId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey(e => e.CandidateUserId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
@@ -577,6 +776,38 @@ namespace ITHunterview.Service.Infrastructure.Persistence
             modelBuilder.Entity<RecruiterUnlockedCvs>(entity =>
             {
                 entity.HasIndex(e => new { e.RecruiterId, e.CvId }).IsUnique();
+
+                entity.Property(e => e.Status)
+                    .HasColumnName("status")
+                    .HasConversion(RecruiterCvUnlockStatusConverter)
+                    .HasMaxLength(16)
+                    .HasDefaultValue(RecruiterCvUnlockStatus.Completed)
+                    .HasSentinel((RecruiterCvUnlockStatus)(-1));
+                entity.Property(e => e.JobId).HasColumnName("job_id");
+                entity.Property(e => e.SourceScanResultId).HasColumnName("source_scan_result_id");
+                entity.Property(e => e.SnapshotStorageKey).HasColumnName("snapshot_storage_key");
+                entity.Property(e => e.SnapshotFileName).HasColumnName("snapshot_file_name");
+                entity.Property(e => e.SnapshotContentHash).HasColumnName("snapshot_content_hash");
+                entity.Property(e => e.SnapshotCreatedAt).HasColumnName("snapshot_created_at");
+                entity.Property(e => e.FailureCode).HasColumnName("failure_code").HasMaxLength(128);
+                entity.ToTable(table => table.HasCheckConstraint(
+                    "ck_recruiter_unlocked_cvs_status",
+                    "\"status\" IN ('PENDING', 'COMPLETED', 'FAILED')"));
+
+                entity.HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey(e => e.RecruiterId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne<Cvs>()
+                    .WithMany()
+                    .HasForeignKey(e => e.CvId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne<RecruiterCvScanResult>()
+                    .WithMany()
+                    .HasForeignKey(e => e.SourceScanResultId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // OptimizeSession
@@ -591,6 +822,52 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                       .HasColumnType("jsonb");
             });
         }
+
+        private static string ToDatabaseValue(MatchingScanRunStatus status) => status switch
+        {
+            MatchingScanRunStatus.Pending => "PENDING",
+            MatchingScanRunStatus.Processing => "PROCESSING",
+            MatchingScanRunStatus.Completed => "COMPLETED",
+            MatchingScanRunStatus.Failed => "FAILED",
+            _ => throw new ArgumentOutOfRangeException(nameof(status), status, null)
+        };
+
+        private static MatchingScanRunStatus ParseMatchingScanRunStatus(string value) => value switch
+        {
+            "PENDING" => MatchingScanRunStatus.Pending,
+            "PROCESSING" => MatchingScanRunStatus.Processing,
+            "COMPLETED" => MatchingScanRunStatus.Completed,
+            "FAILED" => MatchingScanRunStatus.Failed,
+            _ => throw new ArgumentOutOfRangeException(nameof(value), value, null)
+        };
+
+        private static string ToDatabaseValue(RecruiterCvUnlockStatus status) => status switch
+        {
+            RecruiterCvUnlockStatus.Pending => "PENDING",
+            RecruiterCvUnlockStatus.Completed => "COMPLETED",
+            RecruiterCvUnlockStatus.Failed => "FAILED",
+            _ => throw new ArgumentOutOfRangeException(nameof(status), status, null)
+        };
+
+        private static RecruiterCvUnlockStatus ParseRecruiterCvUnlockStatus(string value) => value switch
+        {
+            "PENDING" => RecruiterCvUnlockStatus.Pending,
+            "COMPLETED" => RecruiterCvUnlockStatus.Completed,
+            "FAILED" => RecruiterCvUnlockStatus.Failed,
+            _ => throw new ArgumentOutOfRangeException(nameof(value), value, null)
+        };
+
+        private static string ToDatabaseValue(CvJobMatchProductScope scope) => scope switch
+        {
+            CvJobMatchProductScope.CandidateOneToOne => "CANDIDATE_ONE_TO_ONE",
+            _ => throw new ArgumentOutOfRangeException(nameof(scope), scope, null)
+        };
+
+        private static CvJobMatchProductScope ParseCvJobMatchProductScope(string value) => value switch
+        {
+            "CANDIDATE_ONE_TO_ONE" => CvJobMatchProductScope.CandidateOneToOne,
+            _ => throw new ArgumentOutOfRangeException(nameof(value), value, null)
+        };
     }
 }
 

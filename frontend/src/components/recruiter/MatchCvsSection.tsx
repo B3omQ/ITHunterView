@@ -2,14 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Brain, FileCode, Users, RefreshCcw, AlertCircle, FileText, Download, Eye, FileSpreadsheet, Lock, Sparkles, Coins } from 'lucide-react';
+import { Users, RefreshCcw, AlertCircle, FileText, Download, Eye, FileSpreadsheet, Lock, Sparkles, Coins, Mail, Phone } from 'lucide-react';
 import { recruiterService } from '@/services/recruiter.service';
-import type { MatchHistoryDto } from '@/types/cv.types';
+import type { RecruiterCvScanResultDto } from '@/types/cv.types';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { exportMatchingResultsToExcel } from '@/utils/excel-export.util';
-import { getMatchMethodLabel, getScorePercent } from '@/lib/matching-score';
+import { exportRecruiterScanResultsToExcel } from '@/utils/excel-export.util';
 import {
   Dialog,
   DialogContent,
@@ -27,12 +26,12 @@ interface MatchCvsSectionProps {
 
 export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSectionProps) {
   const [isScanning, setIsScanning] = useState(false);
-  const [matches, setMatches] = useState<MatchHistoryDto[]>([]);
+  const [matches, setMatches] = useState<RecruiterCvScanResultDto[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Unlock Modal state
-  const [unlockTarget, setUnlockTarget] = useState<MatchHistoryDto | null>(null);
+  const [unlockTarget, setUnlockTarget] = useState<RecruiterCvScanResultDto | null>(null);
   const [isUnlocking, setIsUnlocking] = useState(false);
 
   const fetchMatches = async () => {
@@ -43,7 +42,7 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
       if (res.success && res.data && res.data.data) {
         setMatches(res.data.data.items || []);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
     } finally {
       setIsLoadingHistory(false);
@@ -51,7 +50,27 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
   };
 
   useEffect(() => {
-    fetchMatches();
+    let ignore = false;
+    const load = async () => {
+      if (!jobId) return;
+      try {
+        setIsLoadingHistory(true);
+        const res = await recruiterService.getJobMatches(jobId, 1, 20);
+        if (!ignore && res.success && res.data && res.data.data) {
+          setMatches(res.data.data.items || []);
+        }
+      } catch (err: unknown) {
+        console.error(err);
+      } finally {
+        if (!ignore) {
+          setIsLoadingHistory(false);
+        }
+      }
+    };
+    void load();
+    return () => {
+      ignore = true;
+    };
   }, [jobId]);
 
   const handleScan = async () => {
@@ -59,10 +78,12 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
       setIsScanning(true);
       setError(null);
       await recruiterService.matchJobWithCvsHardcode(jobId);
-
       await fetchMatches();
-    } catch (err: any) {
-      const serverMsg = err?.response?.data?.message || err?.response?.data?.title || err?.message || 'Failed to scan for matches.';
+    } catch (err: unknown) {
+      const serverMsg = (err as { response?: { data?: { message?: string; title?: string } }; message?: string })?.response?.data?.message
+        || (err as { response?: { data?: { title?: string } } })?.response?.data?.title
+        || (err as { message?: string })?.message
+        || 'Failed to scan for matches.';
       setError(serverMsg);
     } finally {
       setIsScanning(false);
@@ -86,18 +107,19 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
         toast.error('Không có dữ liệu ứng viên để xuất Excel. Hãy nhấn "Scan DB" trước.');
         return;
       }
-      exportMatchingResultsToExcel(matches[0]?.jdTitle || 'Job', matches);
+      exportRecruiterScanResultsToExcel('Job', matches);
       toast.success('Đã xuất file Excel thành công!');
-    } catch (err: any) {
-      toast.error(err.message || 'Lỗi khi xuất file Excel.');
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message || 'Lỗi khi xuất file Excel.';
+      toast.error(msg);
     }
   };
 
   const handleConfirmUnlock = async () => {
-    if (!unlockTarget || !unlockTarget.cvId) return;
+    if (!unlockTarget || !unlockTarget.scanResultId) return;
     try {
       setIsUnlocking(true);
-      const res = await recruiterService.unlockCandidateCv(unlockTarget.cvId, jobId);
+      const res = await recruiterService.unlockCandidateCv(unlockTarget.scanResultId);
       if (res.success && res.data && res.data.success) {
         toast.success(res.data.message || 'Mở khóa hồ sơ thành công!');
         setUnlockTarget(null);
@@ -105,8 +127,9 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
       } else {
         toast.error(res.data?.message || res.message || 'Không thể mở khóa. Vui lòng nạp thêm Coin.');
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Lỗi hệ thống khi mở khóa.');
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message || 'Lỗi hệ thống khi mở khóa.';
+      toast.error(msg);
     } finally {
       setIsUnlocking(false);
     }
@@ -169,15 +192,15 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
               </div>
               <p className="text-base font-semibold text-slate-900">No candidates matched yet</p>
               <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
-                Click "Scan DB" to run our matching engine and find the best CVs for this position.
+                Click &quot;Scan DB&quot; to run our matching engine and find the best CVs for this position.
               </p>
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
-              {matches.map((match, index) => {
-                const isUnlocked = match.isUnlocked !== false;
+              {matches.map((match) => {
+                const isUnlocked = match.isUnlocked === true;
                 return (
-                  <div key={`${match.cvId || index}-${match.matchType || 'unknown'}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 hover:bg-slate-50 transition-colors">
+                  <div key={match.scanResultId} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 hover:bg-slate-50 transition-colors">
                     <div className="flex items-start gap-4">
                       <div className={cn(
                         "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl",
@@ -187,8 +210,8 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
                       </div>
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                          <h4 className={cn("text-base font-bold", isUnlocked ? "text-slate-900" : "text-slate-500 italic")}>
-                            {match.cvFileName || "Ứng viên chưa mở khóa"}
+                          <h4 className={cn("text-base font-bold", isUnlocked ? "text-slate-900" : "text-slate-700")}>
+                            {isUnlocked ? (match.candidateName || match.cvFileName || match.anonymousLabel) : match.anonymousLabel}
                           </h4>
                           {!isUnlocked && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200">
@@ -196,8 +219,24 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
                             </span>
                           )}
                         </div>
+                        {isUnlocked && (match.candidateEmail || match.candidatePhone) && (
+                          <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-slate-600">
+                            {match.candidateEmail && (
+                              <span className="flex items-center gap-1">
+                                <Mail className="h-3.5 w-3.5 text-slate-400" />
+                                {match.candidateEmail}
+                              </span>
+                            )}
+                            {match.candidatePhone && (
+                              <span className="flex items-center gap-1">
+                                <Phone className="h-3.5 w-3.5 text-slate-400" />
+                                {match.candidatePhone}
+                              </span>
+                            )}
+                          </div>
+                        )}
                         <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-500">
-                          <span>Matched on {new Date(match.updatedAt).toLocaleDateString()}</span>
+                          <span>Matched on {match.matchedAt ? new Date(match.matchedAt).toLocaleDateString() : 'N/A'}</span>
                         </div>
                       </div>
                     </div>
@@ -206,10 +245,10 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
                       <div className="flex flex-col items-end">
                         <span className={cn(
                           "text-2xl font-black",
-                          (getScorePercent(match) ?? -1) >= 70 ? "text-emerald-600" :
-                            (getScorePercent(match) ?? -1) >= 50 ? "text-amber-600" : "text-slate-600"
+                          match.matchScore >= 70 ? "text-emerald-600" :
+                            match.matchScore >= 50 ? "text-amber-600" : "text-slate-600"
                         )}>
-                          {getScorePercent(match) === null ? "—" : `${Math.round(getScorePercent(match)!)}%`}
+                          {`${Math.round(match.matchScore)}%`}
                         </span>
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Match Score</span>
                       </div>
@@ -217,8 +256,8 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
                       <div className="flex gap-2">
                         {isUnlocked ? (
                           <>
-                            {match.candidateId && (
-                              <a href={`/recruiter/candidates/${match.candidateId}`} target="_blank" rel="noreferrer">
+                            {match.candidateUserId && (
+                              <a href={`/recruiter/candidates/${match.candidateUserId}`} target="_blank" rel="noreferrer">
                                 <Button variant="default" size="sm" className="gap-2 bg-slate-900 hover:bg-slate-800 text-white">
                                   <Eye className="h-4 w-4" />
                                   View Profile
@@ -261,7 +300,7 @@ export function MatchCvsSection({ jobId, jobStatus, jobParseStatus }: MatchCvsSe
               Mở khóa Hồ sơ Ứng viên
             </DialogTitle>
             <DialogDescription className="text-sm text-slate-600 pt-2">
-              Mở khóa để xem đầy đủ Họ tên, Thông tin liên hệ và Tải file CV gốc của ứng viên này.
+              Mở khóa để xem đầy đủ Họ tên, Thông tin liên hệ và Tải file CV gốc của {unlockTarget?.anonymousLabel || 'ứng viên này'}.
             </DialogDescription>
           </DialogHeader>
 

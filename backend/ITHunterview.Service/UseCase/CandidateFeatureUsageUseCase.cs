@@ -690,6 +690,7 @@ namespace ITHunterview.Service.UseCase
                 .Where(m => m.UserId == userId
                             && m.Id != referenceId
                             && m.BillingReservationId == null
+                            && m.ProductScope == CvJobMatchProductScope.CandidateOneToOne
                             && m.UpdatedAt >= startUtc
                             && m.UpdatedAt <= endUtc
                             && m.Status != "Failed")
@@ -799,12 +800,23 @@ namespace ITHunterview.Service.UseCase
             switch (featureKey)
             {
                 case "CvJdMatching":
-                    return await _context.CvJobMatchScores
-                        .Where(m => m.UserId == userId &&
-                                    m.UpdatedAt >= start &&
-                                    m.UpdatedAt <= end &&
-                                    m.Status != "Failed")
+                    var activeReservations = await _context.FeatureUsageReservations
+                        .Where(r => r.UserId == userId
+                                    && r.FeatureKey == "CvJdMatching"
+                                    && r.CreatedAt >= start
+                                    && r.CreatedAt <= end
+                                    && r.Status != "Released"
+                                    && r.Status != "Refunded")
                         .CountAsync();
+                    var legacyMatchingRows = await _context.CvJobMatchScores
+                        .Where(m => m.UserId == userId
+                                    && m.BillingReservationId == null
+                                    && m.ProductScope == CvJobMatchProductScope.CandidateOneToOne
+                                    && m.UpdatedAt >= start
+                                    && m.UpdatedAt <= end
+                                    && m.Status != "Failed")
+                        .CountAsync();
+                    return activeReservations + legacyMatchingRows;
 
                 case "CvOptimize":
                     return await _context.OptimizeSessions

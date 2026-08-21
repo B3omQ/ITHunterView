@@ -111,16 +111,56 @@ export interface MatchHistoryDto {
   unlockCost?: number;
 }
 
+export interface CandidateJobScanResultDto {
+  id: string;
+  runId: string;
+  jobId: string;
+  jobTitle?: string | null;
+  jobTitleSnapshot?: string | null;
+  matchScore?: number | null;
+  matchDetails?: string | null;
+  cvAnalysisQuality?: CvAnalysisQuality | null;
+  cvAnalysisCoverageJson?: string | null;
+  cvAnalysisDiagnosticsJson?: string | null;
+  rank: number;
+}
+
+export interface RecruiterCvScanResultDto {
+  scanResultId: string;
+  anonymousLabel: string;
+  rank: number;
+  matchScore: number;
+  matchDetails?: string;
+  isUnlocked: boolean;
+  unlockCost: number;
+  candidateName?: string | null;
+  candidateEmail?: string | null;
+  candidatePhone?: string | null;
+  cvFileName?: string | null;
+  fileUrl?: string | null;
+  candidateUserId?: string | null;
+  cvId?: string | null;
+  matchedAt: string;
+}
+
 export interface UnlockCandidateResponse {
-  success: boolean;
-  message: string;
-  unlockedVia: 'SUBSCRIPTION' | 'COINS';
-  coinsDeducted: number;
-  remainingCoins: number;
+  unlockId?: string;
+  scanResultId?: string;
   cvId?: string;
-  candidateId?: string;
-  cvFileName?: string;
+  candidateUserId?: string;
+  candidateName?: string;
+  email?: string;
+  phone?: string;
+  fileName?: string;
   fileUrl?: string;
+  unlockedVia: 'SUBSCRIPTION' | 'COINS' | string;
+  coinsSpent?: number;
+  coinsDeducted?: number;
+  remainingCoins?: number;
+  unlockedAt?: string;
+  isRetainedCopy?: boolean;
+  success: boolean;
+  message?: string;
 }
 
 export interface PagedResult<T> {

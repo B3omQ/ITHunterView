@@ -14,8 +14,8 @@ using Microsoft.EntityFrameworkCore;
 namespace ITHunterview.Service.UseCase;
 
 /// <summary>
-/// Creates one controlled retry from an immutable failed-job snapshot. The
-/// original job remains a permanent audit record and can only be retried once.
+/// Handles manual retry for failed one-to-one matching jobs. Creates a new
+/// child job referencing the failed parent, copying the immutable input snapshot.
 /// </summary>
 public sealed class CvJdMatchingRetryUseCase : ICvJdMatchingRetryUseCase
 {
@@ -42,7 +42,7 @@ public sealed class CvJdMatchingRetryUseCase : ICvJdMatchingRetryUseCase
         if (userId == Guid.Empty)
             throw new ArgumentException("USER_ID_REQUIRED", nameof(userId));
         if (failedJobId == Guid.Empty)
-            throw new ArgumentException("MATCHING_JOB_ID_REQUIRED", nameof(failedJobId));
+            throw new ArgumentException("JOB_ID_REQUIRED", nameof(failedJobId));
 
         var normalizedKey = NormalizeIdempotencyKey(idempotencyKey);
         var (transaction, ownsTransaction) = await BeginTransactionAsync(cancellationToken);
@@ -58,6 +58,9 @@ public sealed class CvJdMatchingRetryUseCase : ICvJdMatchingRetryUseCase
             {
                 if (existing.RetryOfJobId != failedJobId)
                     throw new InvalidOperationException("IDEMPOTENCY_KEY_REUSED");
+
+                if (ownsTransaction)
+                    await transaction!.CommitAsync(cancellationToken);
                 return new MatchingSubmissionResult(existing.Id, true);
             }
 
@@ -101,7 +104,8 @@ public sealed class CvJdMatchingRetryUseCase : ICvJdMatchingRetryUseCase
                 CreatedAt = now,
                 NextAttemptAt = now,
                 ManualRetryUsed = false,
-                RetryOfJobId = failedJob.Id
+                RetryOfJobId = failedJob.Id,
+                ProductScope = CvJobMatchProductScope.CandidateOneToOne
             };
 
             failedJob.ManualRetryUsed = true;

@@ -39,6 +39,10 @@ export const cvService = {
   getMatchHistory: (page: number = 1, pageSize: number = 10, cvId?: string) =>
     api.get<ApiResponse<import('@/types/cv.types').PagedResult<import('@/types/cv.types').MatchHistoryDto>>>(`/api/cvs/match-history?page=${page}&pageSize=${pageSize}${cvId ? `&cvId=${cvId}` : ''}`).then((r) => r.data),
 
+  getLatestJobScan: (cvId: string, page: number = 1, pageSize: number = 20) =>
+    api.get<ApiResponse<import('@/types/cv.types').PagedResult<import('@/types/cv.types').CandidateJobScanResultDto>>>(`/api/cvs/${cvId}/job-scan/latest?page=${page}&pageSize=${pageSize}`).then((r) => r.data),
+
   deleteMatchHistory: (jobId: string) =>
     api.delete<ApiResponse<string>>(`/api/cvs/match-history/${jobId}`).then((r) => r.data),
 };
+

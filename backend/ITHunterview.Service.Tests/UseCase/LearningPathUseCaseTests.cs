@@ -245,7 +245,9 @@ namespace ITHunterview.Service.Tests.UseCase
                 new CvJobMatchScores 
                 { 
                     Id = matchScoreId, 
-                    UserId = candidateId, 
+                    UserId = candidateId,
+                    Status = "Completed",
+                    ProductScope = ITHunterview.Domain.Enums.CvJobMatchProductScope.CandidateOneToOne,
                     SfiaExtractResult = "{\"customRoleName\": \"Cached Role\"}" 
                 }
             };
@@ -273,6 +275,8 @@ namespace ITHunterview.Service.Tests.UseCase
                 {
                     Id = matchScoreId,
                     UserId = ownerCandidateId,
+                    Status = "Completed",
+                    ProductScope = ITHunterview.Domain.Enums.CvJobMatchProductScope.CandidateOneToOne,
                     MatchDetails = "{\"jdFit\":{\"score\":90}}",
                     SfiaExtractResult = "{\"customRoleName\":\"Private cached role\"}"
                 }
@@ -297,6 +301,8 @@ namespace ITHunterview.Service.Tests.UseCase
                 {
                     Id = matchScoreId,
                     UserId = candidateId,
+                    Status = "Completed",
+                    ProductScope = ITHunterview.Domain.Enums.CvJobMatchProductScope.CandidateOneToOne,
                     MatchType = "AI",
                     MatchScore = 81.8m,
                     JdTitle = "Backend Developer",
@@ -393,6 +399,8 @@ namespace ITHunterview.Service.Tests.UseCase
                 {
                     Id = matchScoreId,
                     UserId = candidateId,
+                    Status = "Completed",
+                    ProductScope = ITHunterview.Domain.Enums.CvJobMatchProductScope.CandidateOneToOne,
                     MatchScore = 42m,
                     MatchDetails = malformedDetails
                 }
@@ -419,7 +427,9 @@ namespace ITHunterview.Service.Tests.UseCase
                 new CvJobMatchScores 
                 { 
                     Id = matchScoreId, 
-                    UserId = candidateId, 
+                    UserId = candidateId,
+                    Status = "Completed",
+                    ProductScope = ITHunterview.Domain.Enums.CvJobMatchProductScope.CandidateOneToOne,
                     MatchScore = 60m,
                     MatchDetails = "{\"jdFit\": {\"poolA\": {\"score\": 60}, \"requirementScores\": []}}",
                     JdTitle = "Backend Dev"

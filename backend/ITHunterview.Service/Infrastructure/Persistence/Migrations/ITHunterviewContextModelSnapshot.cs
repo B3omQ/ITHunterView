@@ -320,6 +320,126 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.ToTable("candidate_experiences");
                 });
 
+            modelBuilder.Entity("ITHunterview.Domain.Entities.CandidateJobScanResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CvAnalysisCoverageJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("cv_analysis_coverage_json");
+
+                    b.Property<string>("CvAnalysisDiagnosticsJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("cv_analysis_diagnostics_json");
+
+                    b.Property<string>("CvAnalysisQuality")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("cv_analysis_quality");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<string>("JobTitleSnapshot")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("job_title_snapshot");
+
+                    b.Property<string>("MatchDetails")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("match_details");
+
+                    b.Property<decimal?>("MatchScore")
+                        .HasColumnType("numeric")
+                        .HasColumnName("match_score");
+
+                    b.Property<int>("Rank")
+                        .HasColumnType("integer")
+                        .HasColumnName("rank");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("run_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobId");
+
+                    b.HasIndex("RunId", "JobId")
+                        .IsUnique();
+
+                    b.ToTable("candidate_job_scan_results", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_candidate_job_scan_results_cv_analysis_quality", "\"cv_analysis_quality\" IS NULL OR \"cv_analysis_quality\" IN ('COMPLETE', 'PARTIAL', 'INVALID')");
+                        });
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.CandidateJobScanRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CandidateUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("candidate_user_id");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CvFileNameSnapshot")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("cv_file_name_snapshot");
+
+                    b.Property<Guid>("CvId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cv_id");
+
+                    b.Property<string>("ErrorCode")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("error_code");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("error_message");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CvId");
+
+                    b.HasIndex("CandidateUserId", "CvId", "Status", "CreatedAt")
+                        .IsDescending(false, false, false, true);
+
+                    b.ToTable("candidate_job_scan_runs", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_candidate_job_scan_runs_status", "\"status\" IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')");
+                        });
+                });
+
             modelBuilder.Entity("ITHunterview.Domain.Entities.CandidateProfiles", b =>
                 {
                     b.Property<Guid>("Id")
@@ -871,6 +991,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("processing_stage");
 
+                    b.Property<string>("ProductScope")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("product_scope");
+
                     b.Property<string>("RawJdText")
                         .HasColumnType("text")
                         .HasColumnName("raw_jd_text");
@@ -915,6 +1040,9 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("\"match_type\" = 'AI' AND \"idempotency_key\" IS NOT NULL");
 
+                    b.HasIndex("ProductScope", "UserId", "UpdatedAt")
+                        .IsDescending(false, false, true);
+
                     b.HasIndex("Status", "NextAttemptAt", "CreatedAt")
                         .HasFilter("\"match_type\" = 'AI' AND \"status\" IN ('Pending', 'RetryScheduled')");
 
@@ -925,6 +1053,8 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_cv_job_match_scores_cv_analysis_quality", "\"cv_analysis_quality\" IS NULL OR \"cv_analysis_quality\" IN ('COMPLETE', 'PARTIAL', 'INVALID')");
 
                             t.HasCheckConstraint("ck_cv_job_match_scores_jd_analysis_quality", "\"jd_analysis_quality\" IS NULL OR \"jd_analysis_quality\" IN ('COMPLETE', 'PARTIAL', 'INVALID')");
+
+                            t.HasCheckConstraint("ck_cv_job_match_scores_product_scope", "\"product_scope\" IS NULL OR \"product_scope\" IN ('CANDIDATE_ONE_TO_ONE')");
                         });
                 });
 
@@ -2261,6 +2391,139 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.ToTable("Prompts");
                 });
 
+            modelBuilder.Entity("ITHunterview.Domain.Entities.RecruiterCvScanResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CandidateUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("candidate_user_id");
+
+                    b.Property<string>("CvAnalysisCoverageJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("cv_analysis_coverage_json");
+
+                    b.Property<string>("CvAnalysisDiagnosticsJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("cv_analysis_diagnostics_json");
+
+                    b.Property<string>("CvAnalysisQuality")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("cv_analysis_quality");
+
+                    b.Property<Guid>("CvId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cv_id");
+
+                    b.Property<string>("MatchDetails")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("match_details");
+
+                    b.Property<decimal?>("MatchScore")
+                        .HasColumnType("numeric")
+                        .HasColumnName("match_score");
+
+                    b.Property<int>("Rank")
+                        .HasColumnType("integer")
+                        .HasColumnName("rank");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("run_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CandidateUserId");
+
+                    b.HasIndex("CvId");
+
+                    b.HasIndex("RunId", "CvId")
+                        .IsUnique();
+
+                    b.ToTable("recruiter_cv_scan_results", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_recruiter_cv_scan_results_cv_analysis_quality", "\"cv_analysis_quality\" IS NULL OR \"cv_analysis_quality\" IN ('COMPLETE', 'PARTIAL', 'INVALID')");
+                        });
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.RecruiterCvScanRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ErrorCode")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("error_code");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("error_message");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<string>("JobTitleSnapshot")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("job_title_snapshot");
+
+                    b.Property<Guid>("RecruiterProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recruiter_profile_id");
+
+                    b.Property<Guid>("RecruiterUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recruiter_user_id");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("JobId");
+
+                    b.HasIndex("RecruiterProfileId");
+
+                    b.HasIndex("RecruiterUserId", "CompanyId", "JobId", "Status", "CreatedAt")
+                        .IsDescending(false, false, false, false, true);
+
+                    b.ToTable("recruiter_cv_scan_runs", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_recruiter_cv_scan_runs_status", "\"status\" IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')");
+                        });
+                });
+
             modelBuilder.Entity("ITHunterview.Domain.Entities.RecruiterProfiles", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2317,6 +2580,11 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("cv_id");
 
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("failure_code");
+
                     b.Property<Guid?>("JobId")
                         .HasColumnType("uuid")
                         .HasColumnName("job_id");
@@ -2324,6 +2592,34 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("RecruiterId")
                         .HasColumnType("uuid")
                         .HasColumnName("recruiter_id");
+
+                    b.Property<string>("SnapshotContentHash")
+                        .HasColumnType("text")
+                        .HasColumnName("snapshot_content_hash");
+
+                    b.Property<DateTime?>("SnapshotCreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("snapshot_created_at");
+
+                    b.Property<string>("SnapshotFileName")
+                        .HasColumnType("text")
+                        .HasColumnName("snapshot_file_name");
+
+                    b.Property<string>("SnapshotStorageKey")
+                        .HasColumnType("text")
+                        .HasColumnName("snapshot_storage_key");
+
+                    b.Property<Guid?>("SourceScanResultId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_scan_result_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("COMPLETED")
+                        .HasColumnName("status");
 
                     b.Property<DateTime>("UnlockedAt")
                         .HasColumnType("timestamp with time zone")
@@ -2336,10 +2632,17 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CvId");
+
+                    b.HasIndex("SourceScanResultId");
+
                     b.HasIndex("RecruiterId", "CvId")
                         .IsUnique();
 
-                    b.ToTable("recruiter_unlocked_cvs");
+                    b.ToTable("recruiter_unlocked_cvs", t =>
+                        {
+                            t.HasCheckConstraint("ck_recruiter_unlocked_cvs_status", "\"status\" IN ('PENDING', 'COMPLETED', 'FAILED')");
+                        });
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.RefreshToken", b =>
@@ -3045,6 +3348,36 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ITHunterview.Domain.Entities.CandidateJobScanResult", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.JobPostings", null)
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ITHunterview.Domain.Entities.CandidateJobScanRun", null)
+                        .WithMany()
+                        .HasForeignKey("RunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.CandidateJobScanRun", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CandidateUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ITHunterview.Domain.Entities.Cvs", null)
+                        .WithMany()
+                        .HasForeignKey("CvId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ITHunterview.Domain.Entities.CandidateProfiles", b =>
                 {
                     b.HasOne("ITHunterview.Domain.Entities.User", "User")
@@ -3192,6 +3525,54 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Navigation("Prompt");
                 });
 
+            modelBuilder.Entity("ITHunterview.Domain.Entities.RecruiterCvScanResult", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CandidateUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ITHunterview.Domain.Entities.Cvs", null)
+                        .WithMany()
+                        .HasForeignKey("CvId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ITHunterview.Domain.Entities.RecruiterCvScanRun", null)
+                        .WithMany()
+                        .HasForeignKey("RunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.RecruiterCvScanRun", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.Companies", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ITHunterview.Domain.Entities.JobPostings", null)
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ITHunterview.Domain.Entities.RecruiterProfiles", null)
+                        .WithMany()
+                        .HasForeignKey("RecruiterProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ITHunterview.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("RecruiterUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ITHunterview.Domain.Entities.RecruiterProfiles", b =>
                 {
                     b.HasOne("ITHunterview.Domain.Entities.Companies", "Company")
@@ -3208,6 +3589,26 @@ namespace ITHunterview.Service.Infrastructure.Persistence.Migrations
                     b.Navigation("Company");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ITHunterview.Domain.Entities.RecruiterUnlockedCvs", b =>
+                {
+                    b.HasOne("ITHunterview.Domain.Entities.Cvs", null)
+                        .WithMany()
+                        .HasForeignKey("CvId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ITHunterview.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("RecruiterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ITHunterview.Domain.Entities.RecruiterCvScanResult", null)
+                        .WithMany()
+                        .HasForeignKey("SourceScanResultId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("ITHunterview.Domain.Entities.RefreshToken", b =>
