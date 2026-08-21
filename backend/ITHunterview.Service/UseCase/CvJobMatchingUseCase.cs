@@ -1225,7 +1225,7 @@ namespace ITHunterview.Service.UseCase
                         join j in _context.JobPostings on s.JobId equals j.Id into jobs
                         from j in jobs.DefaultIfEmpty()
                         where s.UserId == userId && s.HistoryHiddenAt == null
-                              && (s.JobId == null || (j != null && j.Status == ITHunterview.Domain.Enums.JobStatus.PUBLISHED && !j.IsBanned && j.DeletedAt == null))
+                              && (s.JobId == null || j == null || (!j.IsBanned && j.DeletedAt == null))
                         select new { Score = s, Cv = c, Job = j };
 
             if (cvId.HasValue)
