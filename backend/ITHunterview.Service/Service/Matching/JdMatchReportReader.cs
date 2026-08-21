@@ -306,6 +306,15 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
 
     private static string DetectMethod(JsonElement root, string? matchType, bool hasDocument)
     {
+        if (string.Equals(matchType, "Hardcode", StringComparison.OrdinalIgnoreCase))
+        {
+            return MatchMethodCodes.Hardcode;
+        }
+        if (string.Equals(matchType, "Vector", StringComparison.OrdinalIgnoreCase))
+        {
+            return MatchMethodCodes.Vector;
+        }
+
         if (hasDocument)
         {
             var method = ReadString(root, "Method");
@@ -317,17 +326,10 @@ public sealed class JdMatchReportReader : IJdMatchReportReader
             if (TryGet(root, "FinalScore", out _) &&
                 (TryGet(root, "TitleScore", out _) || TryGet(root, "SkillsScore", out _)))
             {
-                return MatchMethodCodes.Vector;
+                return MatchMethodCodes.Hardcode;
             }
         }
-        if (string.Equals(matchType, "Hardcode", StringComparison.OrdinalIgnoreCase))
-        {
-            return MatchMethodCodes.Hardcode;
-        }
-        if (string.Equals(matchType, "Vector", StringComparison.OrdinalIgnoreCase))
-        {
-            return MatchMethodCodes.Vector;
-        }
+
         return MatchMethodCodes.LegacyUnknown;
     }
 

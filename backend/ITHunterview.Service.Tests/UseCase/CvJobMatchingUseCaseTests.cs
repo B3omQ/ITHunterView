@@ -306,6 +306,34 @@ namespace ITHunterview.Service.Tests.UseCase
         }
 
         [Fact]
+        public async Task GetMatchHistoryAsync_HardcodeWithoutMethodProperty_CorrectlyIdentifiesHardcode()
+        {
+            var options = new DbContextOptionsBuilder<ITHunterviewContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
+            await using var context = new MatchingTestContext(options);
+            var userId = Guid.NewGuid();
+            context.CvJobMatchScores.Add(new CvJobMatchScores
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Status = "Completed",
+                MatchType = "Hardcode",
+                MatchScore = 75.0m,
+                MatchDetails = "{\"TitleScore\":100,\"SkillsScore\":70,\"FinalScore\":75.0}",
+                UpdatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+
+            var history = await CreateDatabaseUseCase(context).GetMatchHistoryAsync(userId, 1, 10);
+
+            history.Items.Should().ContainSingle();
+            history.Items[0].ScorePercent.Should().Be(75.0m);
+            history.Items[0].ScoreAvailable.Should().BeTrue();
+            history.Items[0].MatchMethod.Should().Be("hardcode");
+        }
+
+        [Fact]
         public async Task GetMatchingResultAndHistory_UnscoredV5_KeepCompletedResultWithoutInventingZero()
         {
             var options = new DbContextOptionsBuilder<ITHunterviewContext>()
