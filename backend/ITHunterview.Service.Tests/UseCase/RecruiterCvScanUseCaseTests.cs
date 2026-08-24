@@ -222,6 +222,7 @@ public sealed class RecruiterCvScanUseCaseTests
         using (new AssertionScope())
         {
             locked.IsUnlocked.Should().BeFalse();
+            locked.MatchedAt.Should().NotBeNull();
             json.Should().NotContain(scenario.EligibleCandidateUserId.ToString(), "a locked result must not disclose candidate identity");
             json.Should().NotContain(scenario.EligibleCvId.ToString(), "a locked result must not disclose CV identity");
             json.Should().NotContain(scenario.EligibleCvFileName, "a locked result must not disclose the real filename");
