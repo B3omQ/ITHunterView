@@ -204,6 +204,7 @@ public sealed class RecruiterCvScanUseCase : IRecruiterCvScanUseCase
                     MatchDetails = item.MatchDetails,
                     IsUnlocked = isUnlocked,
                     UnlockCost = UnlockCost,
+                    MatchedAt = latest.CompletedAt ?? latest.CreatedAt,
                     // Populate identity fields only when IsUnlocked == true (R-10)
                     CandidateName = isUnlocked ? candidateNames.GetValueOrDefault(item.CvId) : null,
                     CandidateUserId = isUnlocked && cvUserIds.TryGetValue(item.CvId, out var uid) ? uid : null,

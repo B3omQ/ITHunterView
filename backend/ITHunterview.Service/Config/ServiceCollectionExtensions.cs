@@ -194,6 +194,7 @@ namespace ITHunterview.Service.Config
             // Job Analysis V2 Pipeline
             services.AddScoped<IJobAnalysisRepository, JobAnalysisRepository>();
             services.AddScoped<IJobAnalysisUseCase, JobAnalysisUseCase>();
+            services.AddScoped<IJdAnalysisTestUseCase, JdAnalysisTestUseCase>();
             services.AddScoped<IJobAnalysisProcessor, JobAnalysisProcessor>();
             services.AddScoped<IJobAnalysisInputBuilder, JobAnalysisInputBuilder>();
             services.AddScoped<IJdAnalysisResponseValidator, JdAnalysisResponseValidator>();

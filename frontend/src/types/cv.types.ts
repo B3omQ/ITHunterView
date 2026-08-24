@@ -140,7 +140,7 @@ export interface RecruiterCvScanResultDto {
   fileUrl?: string | null;
   candidateUserId?: string | null;
   cvId?: string | null;
-  matchedAt: string;
+  matchedAt?: string | null;
 }
 
 export interface UnlockCandidateResponse {

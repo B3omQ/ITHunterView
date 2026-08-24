@@ -20,6 +20,7 @@ public sealed class RecruiterCvScanResultDto
     public string MatchDetails { get; init; } = string.Empty;
     public bool IsUnlocked { get; init; }
     public int UnlockCost { get; init; }
+    public DateTime? MatchedAt { get; init; }
 
     // Populated only when IsUnlocked == true (R-10: candidate identity must not leak in locked state)
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
