@@ -160,8 +160,8 @@ export function ApplyJobModal({ isOpen, onClose, jobId, jobTitle, onSuccess }: A
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="sm:max-w-[520px]">
-        <form onSubmit={handleSubmit}>
+      <DialogContent className="sm:max-w-[520px] overflow-hidden">
+        <form onSubmit={handleSubmit} className="w-full min-w-0 space-y-4">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold">Apply for {jobTitle}</DialogTitle>
             <DialogDescription>
@@ -169,9 +169,9 @@ export function ApplyJobModal({ isOpen, onClose, jobId, jobTitle, onSuccess }: A
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-5 py-5">
+          <div className="space-y-4 py-2 w-full min-w-0">
             {/* ── CV Section ─────────────────────────────────────────── */}
-            <div className="space-y-3">
+            <div className="space-y-3 w-full min-w-0">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">
                   CV / Resume {myCvs.length === 0 && <span className="text-destructive">*</span>}
@@ -187,25 +187,23 @@ export function ApplyJobModal({ isOpen, onClose, jobId, jobTitle, onSuccess }: A
                   Loading your CVs…
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2 w-full min-w-0">
                   {/* Existing CVs list */}
                   {myCvs.length > 0 && !uploadFile && (
-                    <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                    <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1 w-full min-w-0">
                       {myCvs.map((cv) => (
                         <button
                           key={cv.id}
                           type="button"
                           onClick={() => setSelectedCvId(cv.id)}
-                          className={`w-full flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all ${
-                            selectedCvId === cv.id
+                          className={`w-full min-w-0 flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all ${selectedCvId === cv.id
                               ? 'border-primary bg-primary/5 ring-1 ring-primary'
                               : 'border-border hover:border-primary/40 hover:bg-muted/40'
-                          }`}
+                            }`}
                         >
                           <FileText
-                            className={`w-5 h-5 shrink-0 ${
-                              selectedCvId === cv.id ? 'text-primary' : 'text-muted-foreground'
-                            }`}
+                            className={`w-5 h-5 shrink-0 ${selectedCvId === cv.id ? 'text-primary' : 'text-muted-foreground'
+                              }`}
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{cv.fileName}</p>
@@ -226,7 +224,7 @@ export function ApplyJobModal({ isOpen, onClose, jobId, jobTitle, onSuccess }: A
 
                   {/* Uploaded new file preview */}
                   {uploadFile && (
-                    <div className="flex items-center gap-3 rounded-lg border border-primary bg-primary/5 px-3 py-2.5">
+                    <div className="flex items-center gap-3 rounded-lg border border-primary bg-primary/5 px-3 py-2.5 w-full min-w-0">
                       <FileText className="w-5 h-5 text-primary shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{uploadFile.name}</p>
@@ -264,8 +262,8 @@ export function ApplyJobModal({ isOpen, onClose, jobId, jobTitle, onSuccess }: A
                     {uploadFile
                       ? 'Replace with another file'
                       : myCvs.length > 0
-                      ? 'Or upload a different CV'
-                      : 'Upload CV (PDF, DOC, DOCX · max 10 MB)'}
+                        ? 'Or upload a different CV'
+                        : 'Upload CV (PDF, DOC, DOCX · max 10 MB)'}
                   </button>
 
                   {!uploadFile && !selectedCvId && myCvs.length === 0 && (
@@ -278,7 +276,7 @@ export function ApplyJobModal({ isOpen, onClose, jobId, jobTitle, onSuccess }: A
             </div>
 
             {/* ── Cover Letter ───────────────────────────────────────── */}
-            <div className="space-y-2">
+            <div className="space-y-2 w-full min-w-0">
               <div className="flex items-center justify-between">
                 <Label htmlFor="coverLetter" className="text-sm font-medium">Cover Letter</Label>
                 <span className="text-xs text-muted-foreground">Optional</span>
@@ -289,7 +287,7 @@ export function ApplyJobModal({ isOpen, onClose, jobId, jobTitle, onSuccess }: A
                 value={coverLetter}
                 onChange={(e) => setCoverLetter(e.target.value)}
                 rows={4}
-                className="resize-none"
+                className="w-full min-w-0 max-w-full resize-none"
               />
             </div>
           </div>
