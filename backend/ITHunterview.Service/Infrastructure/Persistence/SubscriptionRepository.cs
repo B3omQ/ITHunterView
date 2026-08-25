@@ -84,7 +84,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
                 }).ToList();
             }
 
-            return items.OrderBy(x => x.Price).ToList();
+            return items.OrderBy(x => x.Price).ThenBy(x => x.Id).ToList();
         }
 
         public Task<bool> IsSubscriptionUsedAsync(int id)
@@ -141,6 +141,7 @@ namespace ITHunterview.Service.Infrastructure.Persistence
 
             int totalCount = allItems.Count;
             var items = allItems.OrderBy(x => x.Price)
+                                .ThenBy(x => x.Id)
                                 .Skip((page - 1) * pageSize)
                                 .Take(pageSize)
                                 .ToList();

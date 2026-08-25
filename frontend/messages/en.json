@@ -2455,6 +2455,7 @@
     "formSelectRole": "Select role",
     "formFeatureLimitTitle": "Feature Limit Configuration",
     "formCvMatchLimit": "CV-JD Match Limit per Month",
+    "formCvOptimizeLimit": "CV Optimize Limit per Month",
     "formMockInterviewLimit": "Mock Interview Limit per Month",
     "formLearningPathLimit": "Learning Path Generation Limit per Period",
     "formLearningPathSlotLimit": "Learning Path Slot Limit (-1 for unlimited)",

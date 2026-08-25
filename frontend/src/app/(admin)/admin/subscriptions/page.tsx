@@ -74,6 +74,16 @@ export default function SubscriptionsAdminPage() {
   const duplicateMutation = useDuplicateSubscription();
   const updateStatusMutation = useUpdateSubscriptionStatus();
 
+  const getErrorMessage = (err: any, fallback: string) => {
+    return (
+      err?.response?.data?.message ||
+      err?.response?.data?.Message ||
+      (typeof err?.response?.data === 'string' ? err.response.data : null) ||
+      err?.message ||
+      fallback
+    );
+  };
+
   const handleCreateOrUpdate = async (formData: any) => {
     if (editingSub) {
       updateMutation.mutate(
@@ -89,7 +99,7 @@ export default function SubscriptionsAdminPage() {
             }
           },
           onError: (err: any) => {
-            toast.error(err.response?.data?.message || 'An error occurred');
+            toast.error(getErrorMessage(err, 'Failed to update package'));
           },
         }
       );
@@ -104,7 +114,7 @@ export default function SubscriptionsAdminPage() {
           }
         },
         onError: (err: any) => {
-          toast.error(err.response?.data?.message || 'An error occurred');
+          toast.error(getErrorMessage(err, 'Failed to create package'));
         },
       });
     }
@@ -119,6 +129,9 @@ export default function SubscriptionsAdminPage() {
           toast.error(res.message || 'Failed to duplicate package');
         }
       },
+      onError: (err: any) => {
+        toast.error(getErrorMessage(err, 'Failed to duplicate package'));
+      },
     });
   };
 
@@ -129,10 +142,13 @@ export default function SubscriptionsAdminPage() {
       {
         onSuccess: (res) => {
           if (res.success) {
-            toast.success(t('toastStatusChangeSuccess').replace('{status}', nextStatus));
+            toast.success(t('toastStatusChangeSuccess', { status: nextStatus }));
           } else {
             toast.error(res.message || 'Failed to change status');
           }
+        },
+        onError: (err: any) => {
+          toast.error(getErrorMessage(err, 'Failed to change status'));
         },
       }
     );

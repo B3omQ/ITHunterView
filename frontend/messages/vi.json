@@ -2455,6 +2455,7 @@
     "formSelectRole": "Chọn đối tượng",
     "formFeatureLimitTitle": "Cấu Hình Giới Hạn Tính Năng",
     "formCvMatchLimit": "Giới Hạn Phân Tích CV-JD Mỗi Tháng",
+    "formCvOptimizeLimit": "Giới Hạn Tối Ưu Hóa CV Mỗi Tháng",
     "formMockInterviewLimit": "Giới Hạn Phỏng Vấn Thử Mỗi Tháng",
     "formLearningPathLimit": "Giới Hạn Tạo Lộ Trình Học Mỗi Kỳ",
     "formLearningPathSlotLimit": "Giới Hạn Số Slot Lộ Trình Học (-1 là vô hạn)",
