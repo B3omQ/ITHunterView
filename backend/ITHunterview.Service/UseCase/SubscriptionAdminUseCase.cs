@@ -341,6 +341,7 @@ namespace ITHunterview.Service.UseCase
             else if (config.Role.Equals("RECRUITER", StringComparison.OrdinalIgnoreCase))
             {
                 config.CvMatchLimit = null;
+                config.CvOptimizeLimit = null;
                 config.MockInterviewLimit = null;
                 config.LearningPathLimit = null;
                 config.LearningPathSlotLimit = null;
@@ -363,6 +364,7 @@ namespace ITHunterview.Service.UseCase
 
             return string.Equals(a.Role, b.Role, StringComparison.OrdinalIgnoreCase) &&
                    a.CvMatchLimit == b.CvMatchLimit &&
+                   a.CvOptimizeLimit == b.CvOptimizeLimit &&
                    a.MockInterviewLimit == b.MockInterviewLimit &&
                    a.LearningPathLimit == b.LearningPathLimit &&
                    a.LearningPathSlotLimit == b.LearningPathSlotLimit &&

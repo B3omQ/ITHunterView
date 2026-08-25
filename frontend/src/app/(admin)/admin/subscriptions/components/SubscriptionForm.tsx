@@ -31,6 +31,7 @@ const formSchema = z.object({
   role: z.enum(['CANDIDATE', 'RECRUITER']),
   // Candidate AI limits
   cvMatchLimit: z.coerce.number().nullable().optional(),
+  cvOptimizeLimit: z.coerce.number().nullable().optional(),
   mockInterviewLimit: z.coerce.number().nullable().optional(),
   learningPathLimit: z.coerce.number().nullable().optional(),
   learningPathSlotLimit: z.coerce.number().nullable().optional(),
@@ -64,6 +65,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
       durationDays: 30,
       role: 'CANDIDATE',
       cvMatchLimit: null,
+      cvOptimizeLimit: null,
       mockInterviewLimit: null,
       learningPathLimit: null,
       learningPathSlotLimit: null,
@@ -86,6 +88,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
         durationDays: initialData.durationDays,
         role: cfg.role || 'CANDIDATE',
         cvMatchLimit: cfg.cvMatchLimit ?? null,
+        cvOptimizeLimit: cfg.cvOptimizeLimit ?? null,
         mockInterviewLimit: cfg.mockInterviewLimit ?? null,
         learningPathLimit: cfg.learningPathLimit ?? null,
         learningPathSlotLimit: cfg.learningPathSlotLimit ?? null,
@@ -102,6 +105,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
         durationDays: 30,
         role: 'CANDIDATE',
         cvMatchLimit: null,
+        cvOptimizeLimit: null,
         mockInterviewLimit: null,
         learningPathLimit: null,
         learningPathSlotLimit: null,
@@ -123,6 +127,7 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
     featuresConfig.coinCredit = values.coinCredit;
     if (values.role === 'CANDIDATE') {
       featuresConfig.cvMatchLimit = values.cvMatchLimit;
+      featuresConfig.cvOptimizeLimit = values.cvOptimizeLimit;
       featuresConfig.mockInterviewLimit = values.mockInterviewLimit;
       featuresConfig.learningPathLimit = values.learningPathLimit;
       featuresConfig.learningPathSlotLimit = values.learningPathSlotLimit;
@@ -231,6 +236,20 @@ export function SubscriptionForm({ initialData, onSubmit, isLoading }: Subscript
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('formCvMatchLimit')}</FormLabel>
+                    <FormControl>
+                      <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {/* CV Optimize Limit */}
+              <FormField
+                control={form.control}
+                name="cvOptimizeLimit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('formCvOptimizeLimit')}</FormLabel>
                     <FormControl>
                       <Input type="number" disabled={isUsed} {...field} value={field.value ?? ''} />
                     </FormControl>

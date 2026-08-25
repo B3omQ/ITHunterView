@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Common;
+using ITHunterview.Service.DTOs.FeatureUsage;
 using ITHunterview.Service.DTOs.Job;
 
 namespace ITHunterview.Service.Interface.UseCase
@@ -21,7 +22,7 @@ namespace ITHunterview.Service.Interface.UseCase
         Task<ResponseBase<bool>> CloseJobAsync(Guid id, Guid recruiterId);
         Task<ResponseBase<string>> ReparsePendingJobsAsync(int limit = 50);
         Task<ResponseBase<JobPostingDetailDto>> ExtendJobAsync(Guid id, Guid recruiterId);
-        Task<ResponseBase<JobPostingDetailDto>> PushTopJobAsync(Guid id, Guid recruiterId);
+        Task<ResponseBase<JobPostingDetailDto>> PushTopJobAsync(Guid id, Guid recruiterId, FeatureConsumptionExpectation expectation);
         Task<ResponseBase<bool>> BanJobAsync(Guid id, string reason);
         Task<ResponseBase<bool>> UnbanJobAsync(Guid id);
     }

@@ -11,6 +11,7 @@ import {
   type Skill,
   type UpdateJobPostingDto,
 } from '@/services/recruiter.service'
+import type { PushTopBillingExpectation } from '@/types/job.types'
 
 export const recruiterJobKeys = {
   all: ['recruiter-jobs'] as const,
@@ -83,7 +84,8 @@ export function useJobs(initialPage = 1, initialPageSize = 7, initialStatus = 'A
   })
 
   const pushTopMutation = useMutation({
-    mutationFn: async (id: string) => await recruiterService.pushTopJob(id),
+    mutationFn: async ({ id, expectation }: { id: string; expectation: PushTopBillingExpectation }) =>
+      await recruiterService.pushTopJob(id, expectation),
     onSuccess: (res) => {
       if (res.success) {
         void queryClient.invalidateQueries({ queryKey: recruiterJobKeys.lists() })
@@ -108,9 +110,9 @@ export function useJobs(initialPage = 1, initialPageSize = 7, initialStatus = 'A
     }
   }
 
-  const pushTopJob = async (id: string) => {
+  const pushTopJob = async (id: string, expectation: PushTopBillingExpectation) => {
     try {
-      return await pushTopMutation.mutateAsync(id)
+      return await pushTopMutation.mutateAsync({ id, expectation })
     } catch (error) {
       return { success: false, message: getErrorMessage(error, 'Đẩy Top không thành công.') }
     }

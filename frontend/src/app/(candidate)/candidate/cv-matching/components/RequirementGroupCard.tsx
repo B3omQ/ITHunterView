@@ -23,20 +23,35 @@ const categoryKeys: Record<string, string> = {
   soft_skill: "categorySoftSkill",
 };
 
+const genericIntents = new Set(["qualification", "experience_duration", "unspecified"]);
+
+function resolveMeaningfulIntent(intent?: string | null): string | null {
+  if (!intent) return null;
+  const trimmed = intent.trim();
+  if (!trimmed || genericIntents.has(trimmed.toLowerCase())) {
+    return null;
+  }
+  return trimmed;
+}
+
 export function RequirementGroupCard({ group, groupIndex, showSourceClause = true }: RequirementGroupCardProps) {
   const t = useTranslations("CandidateCVMatching");
   const [isOpen, setIsOpen] = useState(false);
   const items = group.items ?? [];
-  const groupTitle = (showSourceClause ? group.requirementVerbatim : null)
-    || group.intent
-    || t("requirementSubgroupFallback", { index: groupIndex + 1 });
+  const meaningfulIntent = resolveMeaningfulIntent(group.intent);
+  const groupTitle = (showSourceClause ? group.requirementVerbatim?.trim() : null)
+    || meaningfulIntent
+    || (showSourceClause ? t("requirementSubgroupFallback", { index: groupIndex + 1 }) : null);
   const categoryLabels = [...new Set(items.map((item) => categoryKeys[item.category ?? ""] ?? "categoryOther"))];
   const isHistoricalSingletonOneOf = group.operator === "one_of" && items.length === 1;
 
   if (group.operator === "all_of" || !group.operator || isHistoricalSingletonOneOf) {
+    const hasHeader = Boolean(groupTitle) || (!isHistoricalSingletonOneOf && (group.operator === "one_of" || group.operator === "at_least_n"));
     return (
-      <section className="space-y-3 rounded-lg border p-4" aria-label={groupTitle}>
-        <GroupHeader group={group} title={groupTitle} categoryLabels={categoryLabels} showOperator={!isHistoricalSingletonOneOf} />
+      <div className="space-y-3" aria-label={groupTitle || group.requirementVerbatim || t("requirementSubgroupFallback", { index: groupIndex + 1 })}>
+        {hasHeader ? (
+          <GroupHeader group={group} title={groupTitle} categoryLabels={categoryLabels} showOperator={!isHistoricalSingletonOneOf} />
+        ) : null}
         {items.length > 0 ? items.map((item, itemIndex) => (
           <RequirementItemRow
             key={item.itemId ?? `${group.groupId ?? groupIndex}-${itemIndex}`}
@@ -44,14 +59,14 @@ export function RequirementGroupCard({ group, groupIndex, showSourceClause = tru
             importance={group.importance}
           />
         )) : <p className="text-sm text-muted-foreground">{t("requirementDetailsUnavailable")}</p>}
-      </section>
+      </div>
     );
   }
 
   const labels = items.map(getRequirementItemLabel);
   const summary = group.operator === "at_least_n"
     ? `${t("atLeastSummary", { required: group.minSatisfied ?? 1, total: items.length })}: ${labels.join(" | ")}`
-    : labels.join(" | ") || groupTitle;
+    : labels.join(" | ") || groupTitle || t("requirementSubgroupFallback", { index: groupIndex + 1 });
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="overflow-hidden rounded-lg border">
@@ -90,7 +105,7 @@ function GroupHeader({
   showOperator,
 }: {
   group: MatchRequirementGroupReport;
-  title: string;
+  title?: string | null;
   categoryLabels: string[];
   showOperator: boolean;
 }) {
@@ -98,7 +113,7 @@ function GroupHeader({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-sm font-semibold leading-relaxed">{title}</h3>
+        {title ? <h3 className="text-sm font-semibold leading-relaxed">{title}</h3> : null}
         {group.importance ? (
           <Badge variant={group.importance === "must_have" ? "default" : "secondary"}>
             {group.importance === "must_have" ? t("mustHave") : t("niceToHave")}
@@ -107,9 +122,11 @@ function GroupHeader({
         {showOperator && group.operator === "one_of" ? <Badge variant="outline">{t("operatorOneOf")}</Badge> : null}
         {showOperator && group.operator === "at_least_n" ? <Badge variant="outline">{t("operatorAtLeastN")}</Badge> : null}
       </div>
-      <div className="flex flex-wrap gap-1.5">
-        {categoryLabels.map((key) => <Badge key={key} variant="outline" className="text-[10px] font-normal">{t(key)}</Badge>)}
-      </div>
+      {categoryLabels.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {categoryLabels.map((key) => <Badge key={key} variant="outline" className="text-[10px] font-normal">{t(key)}</Badge>)}
+        </div>
+      ) : null}
     </div>
   );
 }

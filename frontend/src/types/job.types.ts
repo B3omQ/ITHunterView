@@ -81,3 +81,13 @@ export interface JobDetailViewDto {
   pushedTopUntil?: string;
   isPushedTop?: boolean;
 }
+
+export type PushTopBillingExpectation =
+  | {
+      expectedPaymentMethod: 'SUBSCRIPTION_QUOTA';
+      expectedCoinCost: null;
+    }
+  | {
+      expectedPaymentMethod: 'COIN';
+      expectedCoinCost: number;
+    };

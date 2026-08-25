@@ -14,6 +14,7 @@ namespace ITHunterview.Service.Interface.UseCase
         /// <param name="featureKey">Tên tính năng ("CvJdMatching", "MockInterview", "CvOptimize")</param>
         /// <returns>Thông tin phần quyền lợi đã tiêu thụ; caller dùng để hoàn lại nếu tác vụ thất bại.</returns>
         Task<FeatureConsumptionResult> TryConsumeFeatureAsync(Guid userId, string featureKey, string? referenceId = null);
+        Task<FeatureConsumptionResult> TryConsumePushTopAsync(Guid userId, string? referenceId, FeatureConsumptionExpectation expectation);
         Task RefundFeatureUsageAsync(Guid userId, FeatureConsumptionResult consumption, string description);
         Task RefundFeatureUsageByReferenceAsync(Guid userId, Guid referenceId, string description);
 
