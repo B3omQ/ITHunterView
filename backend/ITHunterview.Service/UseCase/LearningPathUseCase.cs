@@ -158,16 +158,17 @@ The result MUST be a valid JSON object strictly following this schema:
       ""tasks"": [
         { ""task_index"": 0, ""title"": ""Task 1: Code Review & Quality Standards"", ""description"": ""..."", ""estimated_hours"": 8 },
         { ""task_index"": 1, ""title"": ""Task 2: Advanced Design Patterns Implementation"", ""description"": ""..."", ""estimated_hours"": 12 },
-        { ""task_index"": 2, ""title"": ""Task 3: Automated Unit Testing & Coverage"", ""description"": ""..."", ""estimated_hours"": 10 }
+        { ""task_index"": 2, ""title"": ""Task 3: Automated Unit Testing & Coverage"", ""description"": ""..."", ""estimated_hours"": 10 },
+        { ""task_index"": 3, ""title"": ""Task 4: Performance Profiling"", ""description"": ""..."", ""estimated_hours"": 5 }
       ]
     }
   ],
-  ""progress"": { ""total_modules"": 1, ""completed_modules"": 0, ""total_tasks"": 3, ""completed_tasks"": 0, ""percentage"": 0 }
+  ""progress"": { ""total_modules"": 1, ""completed_modules"": 0, ""total_tasks"": 4, ""completed_tasks"": 0, ""percentage"": 0 }
 }
 Rules:
 1. You MUST process EVERY skill listed in the input gap summary. Do NOT skip any skills.
 2. Create exactly one module per 1 level jump per skill. If a skill has a gap of 2 levels (e.g. level 1 to 3), you MUST create 2 sequential modules for that skill. The total number of modules MUST equal the sum of all `gap_delta` values across all skills.
-3. For EACH module, you MUST generate EXACTLY 3 or 4 distinct, practical, actionable tasks. (DO NOT generate 1, DO NOT generate 2 tasks). Under no circumstances should any module have fewer than 3 tasks. Tasks MUST be high-quality, deeply technical, and specific to the candidate's context (avoid generic fluff).
+3. For EACH module, you MUST generate EXACTLY 3 or 4 distinct, practical, actionable tasks. (DO NOT generate 1, DO NOT generate 2 tasks). Generating fewer than 3 tasks is a CRITICAL FAILURE. This is a strict constraint. Tasks MUST be high-quality, deeply technical, and specific to the candidate's context (avoid generic fluff).
 4. The title of each module MUST clearly state the skill code and the level jump (e.g., 'Module 1: PROG Level 3 to 4' or 'Module 1: Foundational Scaling (PROG Lvl 3 to 4)'). Ensure this perfectly matches the `sfia_target` fields.
 Do NOT include any markdown blocks like ```json, just return the raw JSON object.";
 
