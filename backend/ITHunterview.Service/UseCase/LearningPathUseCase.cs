@@ -166,8 +166,8 @@ The result MUST be a valid JSON object strictly following this schema:
 }
 Rules:
 1. Create one module per 1 level jump per skill. If gap is 2 levels, create 2 sequential modules for that skill.
-2. For EACH module, generate 3 to 5 distinct, practical, actionable tasks with realistic estimated hours. DO NOT generate only 1 task per module.
-3. The title of each module should be a clear descriptive topic title (e.g., 'Module 1: Foundational Scaling'). Do NOT include level numbers (like Lvl 3 to 4) inside the title string to avoid level mismatches; the exact levels are strictly defined in `sfia_target`.
+2. For EACH module, generate 3 to 5 distinct, practical, actionable tasks with realistic estimated hours. Tasks MUST be high-quality, deeply technical, and specific to the candidate's context (avoid generic fluff). DO NOT generate only 1 task per module.
+3. The title of each module MUST clearly state the skill code and the level jump (e.g., 'Module 1: PROG Level 3 to 4' or 'Module 1: Foundational Scaling (PROG Lvl 3 to 4)'). Ensure this perfectly matches the `sfia_target` fields.
 Do NOT include any markdown blocks like ```json, just return the raw JSON object.";
 
             var userPromptBuilder = new StringBuilder();
@@ -274,7 +274,7 @@ You will be provided a list of all 147 SFIA skills AND a guide on SFIA Generic L
 Your job is to:
 1. Define a highly relevant `customRoleName` based on the candidate's target job and context.
 2. Provide a short `customRoleDescription`.
-3. Identify ALL distinct SFIA skills (aim for 3 to 6 key skills) required to address EVERY gap, missing requirement, and area of improvement listed in the candidate's context. DO NOT merge all gaps into a single skill (e.g., only REQM). Map each different technical or functional weakness (such as programming/PROG, database/DBAD, testing/TEST, architecture/SWDN, requirements/REQM, systems design/DESN) to its specific SFIA skill code so the learning path covers the full spectrum of missing competencies.
+3. Identify exactly 3 to 4 CORE SFIA skills that represent the most critical areas for improvement in the candidate's context. Prioritize the highest impact gaps (e.g., core programming, architecture, or specific technical gaps). Do NOT extract more than 4 skills to keep the learning path highly focused.
 4. For EACH identified skill, provide:
    - `skillCode`: the SFIA skill code.
    - `targetLevel`: the expected proficiency level for the role (1-7).
