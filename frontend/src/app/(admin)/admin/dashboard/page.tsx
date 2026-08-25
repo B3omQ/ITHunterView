@@ -10,11 +10,6 @@ import {
   CartesianGrid,
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
   Legend,
 } from "recharts";
 import { useTranslations } from "next-intl";
@@ -103,8 +98,8 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-7">
-          <Card className="col-span-1 lg:col-span-4">
+        <div className="grid gap-4 grid-cols-1">
+          <Card>
             <CardHeader>
               <CardTitle>User & Revenue Growth</CardTitle>
             </CardHeader>
@@ -122,61 +117,6 @@ export default function AdminDashboard() {
                     <Line yAxisId="right" type="monotone" name="Users" dataKey="users" stroke="#8b5cf6" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="col-span-1 lg:col-span-3">
-            <CardHeader>
-              <CardTitle>AI Token Usage (Weekly)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.tokenUsage} margin={{ top: 5, right: 0, bottom: 5, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                    <XAxis dataKey="day" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value / 1000}k`} />
-                    <RechartsTooltip cursor={{ fill: '#f3f4f6' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} />
-                    <Bar dataKey="tokens" name="Tokens" fill="#ec4899" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="col-span-1 lg:col-span-3">
-            <CardHeader>
-              <CardTitle>Subscriptions Breakdown</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px] w-full flex items-center justify-center">
-                {data.subscriptionBreakdown.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={data.subscriptionBreakdown}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {data.subscriptionBreakdown.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }} />
-                      <Legend verticalAlign="bottom" height={36} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="text-muted-foreground flex flex-col items-center">
-                    <Activity className="w-8 h-8 mb-2 opacity-20" />
-                    <p>No active subscriptions yet</p>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
