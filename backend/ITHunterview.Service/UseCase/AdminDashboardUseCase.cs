@@ -94,22 +94,28 @@ public class AdminDashboardUseCase : IAdminDashboardUseCase
         // Use audit log for AI token usage (mock logic depending on actual log types)
         var totalTokens = await auditLogsQuery.CountAsync() * 15; // Mock calculation based on actual DB schema
 
-        var last7Days = DateTime.UtcNow.AddDays(-7);
+        var last7Days = Enumerable.Range(0, 7)
+            .Select(i => DateTime.UtcNow.AddDays(-6 + i).Date)
+            .ToList();
+
         var tokenUsageData = await auditLogsQuery
-            .Where(x => x.CreatedAt >= last7Days)
+            .Where(x => x.CreatedAt >= last7Days.Min())
             .GroupBy(x => x.CreatedAt.Date)
             .Select(g => new
             {
                 Date = g.Key,
                 Count = g.Count()
             })
-            .OrderBy(x => x.Date)
             .ToListAsync();
 
-        var tokenUsageDtos = tokenUsageData.Select(x => new TokenUsageDto
+        var tokenUsageDtos = last7Days.Select(date =>
         {
-            Day = x.Date.DayOfWeek.ToString().Substring(0, 3),
-            Tokens = x.Count * 15 // Mock logic
+            var data = tokenUsageData.FirstOrDefault(x => x.Date == date);
+            return new TokenUsageDto
+            {
+                Day = date.DayOfWeek.ToString().Substring(0, 3),
+                Tokens = data != null ? data.Count * 15 : 0
+            };
         }).ToList();
 
         var subscriptionBreakdown = await _context.UserSubscriptions
