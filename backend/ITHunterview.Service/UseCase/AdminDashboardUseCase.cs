@@ -92,8 +92,36 @@ public class AdminDashboardUseCase : IAdminDashboardUseCase
         var transactions = await paymentsQuery.CountAsync();
         
         // Use audit log for AI token usage (mock logic depending on actual log types)
-        // var totalTokens = await auditLogsQuery.Where(x => x.Action == "AI_USAGE").SumAsync(x => x.TokenCount);
         var totalTokens = await auditLogsQuery.CountAsync() * 15; // Mock calculation based on actual DB schema
+
+        var last7Days = DateTime.UtcNow.AddDays(-7);
+        var tokenUsageData = await auditLogsQuery
+            .Where(x => x.CreatedAt >= last7Days)
+            .GroupBy(x => x.CreatedAt.Date)
+            .Select(g => new
+            {
+                Date = g.Key,
+                Count = g.Count()
+            })
+            .OrderBy(x => x.Date)
+            .ToListAsync();
+
+        var tokenUsageDtos = tokenUsageData.Select(x => new TokenUsageDto
+        {
+            Day = x.Date.DayOfWeek.ToString().Substring(0, 3),
+            Tokens = x.Count * 15 // Mock logic
+        }).ToList();
+
+        var subscriptionBreakdown = await _context.UserSubscriptions
+            .Where(us => us.Status == UserSubscriptionStatus.ACTIVE)
+            .Join(_context.Subscriptions, us => us.SubId, s => s.Id, (us, s) => new { s.Name })
+            .GroupBy(x => x.Name)
+            .Select(g => new SubscriptionBreakdownDto
+            {
+                Name = g.Key,
+                Value = g.Count()
+            })
+            .ToListAsync();
 
         // Grouping for charts
         var usersByMonth = await usersQuery
@@ -129,8 +157,8 @@ public class AdminDashboardUseCase : IAdminDashboardUseCase
             TokensGrowthPercentage = 5m,
             TransactionsGrowthPercentage = 8m,
             UserRevenueGrowth = userRevenueGrowth,
-            TokenUsage = new List<TokenUsageDto>(),
-            SubscriptionBreakdown = new List<SubscriptionBreakdownDto>()
+            TokenUsage = tokenUsageDtos,
+            SubscriptionBreakdown = subscriptionBreakdown
         };
     }
 }
