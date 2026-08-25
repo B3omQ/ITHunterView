@@ -6,6 +6,9 @@ import Link from "next/link"
 import { useJobs } from "@/hooks/useJobs"
 import { useSignalR } from "@/hooks/useSignalR"
 import { useWalletBalance } from "@/hooks/useWallet"
+import { usePublicCoinConfig } from "@/hooks/useCoin"
+import type { PushTopBillingExpectation } from "@/types/job.types"
+import type { JobPostingSummary } from "@/services/recruiter.service"
 import { AiParseStatusBadge } from "@/components/shared/AiParseStatusBadge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -45,11 +48,12 @@ import {
   Copy,
   Check
 } from "lucide-react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 
 export default function JobPostingsPage() {
   const router = useRouter()
   const t = useTranslations("RecruiterJobs")
+  const locale = useLocale()
 
   // 1. TanStack Query & Service state management (Strictly following kinh-mantra: page -> hook -> service)
   const {
@@ -94,10 +98,11 @@ export default function JobPostingsPage() {
   const jobExtendUsed = walletData?.jobExtendUsed ?? 0
   const isExtendQuotaFull = jobExtendLimit !== -1 && (jobExtendLimit === 0 || jobExtendUsed >= jobExtendLimit)
   const coinBalance = walletData?.balance ?? 0
+  const formattedCoinBalance = new Intl.NumberFormat(locale).format(coinBalance)
   const extendCoinCost = 10000
   const canPayWithCoins = coinBalance >= extendCoinCost
 
-  const [extendingJob, setExtendingJob] = useState<any | null>(null)
+  const [extendingJob, setExtendingJob] = useState<JobPostingSummary | null>(null)
   const [extendSubmitting, setExtendSubmitting] = useState(false)
 
   const handleConfirmExtend = async () => {
@@ -115,27 +120,67 @@ export default function JobPostingsPage() {
     }
   }
 
+  const {
+    data: coinConfigRes,
+    isLoading: isPushTopPriceLoading,
+    isError: isPushTopPriceError,
+    refetch: refetchCoinConfig,
+  } = usePublicCoinConfig()
+  const pushTopCoinCost = coinConfigRes?.data?.featureCosts?.pushTop
+  const hasValidPushTopCoinCost =
+    typeof pushTopCoinCost === "number" &&
+    Number.isFinite(pushTopCoinCost) &&
+    pushTopCoinCost >= 0
+  const formattedPushTopCoinCost = typeof pushTopCoinCost === "number"
+    ? new Intl.NumberFormat(locale).format(pushTopCoinCost)
+    : ""
+
   const jobPushTopLimit = walletData?.pushTopLimit ?? 0
   const jobPushTopUsed = walletData?.pushTopUsed ?? 0
   const isPushTopQuotaFull = jobPushTopLimit !== -1 && (jobPushTopLimit === 0 || jobPushTopUsed >= jobPushTopLimit)
-  const pushTopCoinCost = 5000
-  const canPayPushTopWithCoins = coinBalance >= pushTopCoinCost
+  const isPushTopPriceUnavailable =
+    isPushTopQuotaFull &&
+    (isPushTopPriceLoading || isPushTopPriceError || !hasValidPushTopCoinCost)
+  const canPayPushTopWithCoins =
+    typeof pushTopCoinCost === "number" &&
+    hasValidPushTopCoinCost &&
+    coinBalance >= pushTopCoinCost
 
-  const [pushingTopJob, setPushingTopJob] = useState<any | null>(null)
+  const [pushingTopJob, setPushingTopJob] = useState<JobPostingSummary | null>(null)
   const [pushTopSubmitting, setPushTopSubmitting] = useState(false)
 
   const handleConfirmPushTop = async () => {
     if (!pushingTopJob) return
-    setPushTopSubmitting(true)
-    const res = await pushTopJob(pushingTopJob.id)
-    setPushTopSubmitting(false)
-    if (res.success) {
-      alert(res.message || t("pushTopSuccess"))
-      setPushingTopJob(null)
-      refresh()
-      refetchWallet()
+    let expectation: PushTopBillingExpectation
+    if (!isPushTopQuotaFull) {
+      expectation = {
+        expectedPaymentMethod: "SUBSCRIPTION_QUOTA",
+        expectedCoinCost: null,
+      }
     } else {
-      alert(res.message || t("pushTopFail"))
+      if (!hasValidPushTopCoinCost) return
+      expectation = {
+        expectedPaymentMethod: "COIN",
+        expectedCoinCost: pushTopCoinCost,
+      }
+    }
+
+    setPushTopSubmitting(true)
+    try {
+      const res = await pushTopJob(pushingTopJob.id, expectation)
+      if (res.success) {
+        alert(res.message || t("pushTopSuccess"))
+        setPushingTopJob(null)
+        refresh()
+        await Promise.all([refetchWallet(), refetchCoinConfig()])
+      } else if ("status" in res && res.status === 409) {
+        await Promise.all([refetchWallet(), refetchCoinConfig()])
+        alert(t("pushTopStateChanged"))
+      } else {
+        alert(res.message || t("pushTopFail"))
+      }
+    } finally {
+      setPushTopSubmitting(false)
     }
   }
 
@@ -209,7 +254,7 @@ export default function JobPostingsPage() {
       : <ArrowDown className="ml-1.5 h-3.5 w-3.5 text-[#1877F2] dark:text-blue-400 font-bold" />
   }
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return "N/A"
     return new Date(dateStr).toLocaleDateString("en-US", {
       day: "2-digit",
@@ -219,7 +264,7 @@ export default function JobPostingsPage() {
   }
 
   // Render Status Badge matching Pill style for all statuses
-  const renderStatusBadge = (job: any) => {
+  const renderStatusBadge = (job: JobPostingSummary) => {
     if (job.isBanned) {
       return (
         <div className="flex flex-col items-center gap-0.5">
@@ -673,7 +718,7 @@ export default function JobPostingsPage() {
                             <MoreHorizontal className="h-4 w-4" />
                           </PopoverTrigger>
                           <PopoverContent align="end" className="w-52 p-1.5 rounded-xl border border-[#CED0D4] dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl flex flex-col gap-0.5">
-                            {!job.isBanned && (
+                            {job.status === "PUBLISHED" && !job.isBanned && (
                               <button
                                 onClick={() => setExtendingJob(job)}
                                 className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-400 rounded-lg transition-colors cursor-pointer text-left"
@@ -877,7 +922,7 @@ export default function JobPostingsPage() {
                     <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                     <div>
                       <p className="font-semibold">{t("insufficientCoin")}</p>
-                      <p className="text-amber-700 dark:text-amber-300/80 mt-0.5" dangerouslySetInnerHTML={{ __html: t.raw("insufficientExtendMsg").replace('{balance}', coinBalance.toLocaleString()) }} />
+                      <p className="text-amber-700 dark:text-amber-300/80 mt-0.5" dangerouslySetInnerHTML={{ __html: t.raw("insufficientExtendMsg").replace('{balance}', formattedCoinBalance) }} />
                     </div>
                   </div>
                   <div className="flex gap-2 justify-end">
@@ -986,26 +1031,41 @@ export default function JobPostingsPage() {
                   <span className="font-medium text-zinc-700 dark:text-zinc-300">{t("costPush")}</span>
                   {!isPushTopQuotaFull ? (
                     <span className="text-xs font-bold text-[#1877F2] dark:text-blue-400 flex items-center gap-1" dangerouslySetInnerHTML={{ __html: t.raw("freeDeducted") }} />
+                  ) : isPushTopPriceLoading ? (
+                    <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                      {t("pushPriceLoading")}
+                    </span>
+                  ) : isPushTopPriceError || !hasValidPushTopCoinCost ? (
+                    <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+                      {t("pushPriceUnavailable")}
+                    </span>
+                  ) : pushTopCoinCost === 0 ? (
+                    <span className="text-xs font-bold text-[#1877F2] dark:text-blue-400">
+                      {t("pushConfiguredFree")}
+                    </span>
                   ) : (
                     <div className="text-right">
                       <span className="text-sm font-bold text-amber-600 dark:text-amber-400 flex items-center justify-end gap-1">
-                        <Coins className="h-4 w-4" /> 5,000 Coin
+                        <Coins className="h-4 w-4" /> {formattedPushTopCoinCost} Coin
                       </span>
                       <div className="text-[11px] text-zinc-500 mt-0.5">
-                        Balance: <strong>{coinBalance.toLocaleString()} Coin</strong>
+                        Balance: <strong>{formattedCoinBalance} Coin</strong>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
 
-              {isPushTopQuotaFull && !canPayPushTopWithCoins && (
+              {isPushTopQuotaFull && hasValidPushTopCoinCost && !canPayPushTopWithCoins && (
                 <div className="p-3 bg-red-50/90 dark:bg-red-950/40 border border-red-200 dark:border-red-800/80 rounded-xl flex items-start gap-3 text-red-800 dark:text-red-300 text-xs">
                   <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="font-bold">{t("insufficientCoin")}</p>
                     <p className="mt-0.5 opacity-90">
-                      {t("insufficientPushMsg")}
+                      {t("insufficientPushMsg", {
+                        balance: formattedCoinBalance,
+                        cost: formattedPushTopCoinCost,
+                      })}
                     </p>
                     <Link
                       href="/recruiter/billing"
@@ -1027,7 +1087,7 @@ export default function JobPostingsPage() {
                 {t("cancel")}
               </Button>
               <Button
-                disabled={pushTopSubmitting || (isPushTopQuotaFull && !canPayPushTopWithCoins)}
+                disabled={pushTopSubmitting || isPushTopPriceUnavailable || (isPushTopQuotaFull && !canPayPushTopWithCoins)}
                 onClick={handleConfirmPushTop}
                 className="bg-[#1877F2] hover:bg-[#166FE5] text-white font-bold gap-2 px-5 shadow-md shadow-blue-500/20"
               >
@@ -1036,7 +1096,13 @@ export default function JobPostingsPage() {
                 ) : (
                   <Rocket className="h-4 w-4 fill-white" />
                 )}
-                {!isPushTopQuotaFull ? t("pushNowFree") : t("confirmPush5k")}
+                {!isPushTopQuotaFull
+                  ? t("pushNowFree")
+                  : isPushTopPriceUnavailable
+                    ? t("pushPriceUnavailableShort")
+                    : pushTopCoinCost === 0
+                      ? t("pushNowConfiguredFree")
+                      : t("confirmPushCoin", { cost: formattedPushTopCoinCost })}
               </Button>
             </div>
           </div>

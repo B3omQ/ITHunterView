@@ -37,6 +37,7 @@ function PublicJobsContent() {
     companyName: searchParams.get('companyName') || undefined,
     minSalary: searchParams.get('minSalary') ? parseFloat(searchParams.get('minSalary') as string) : undefined,
     maxSalary: searchParams.get('maxSalary') ? parseFloat(searchParams.get('maxSalary') as string) : undefined,
+    includeNegotiable: searchParams.get('includeNegotiable') === 'true',
     levels: parseArray(searchParams.get('levels')),
     workingModels: parseArray(searchParams.get('workingModels')),
     jobDomains: parseArray(searchParams.get('jobDomains')),

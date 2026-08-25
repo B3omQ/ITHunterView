@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using ITHunterview.Domain.Entities;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Common;
+using ITHunterview.Service.DTOs.FeatureUsage;
 using ITHunterview.Service.DTOs.Job;
 using ITHunterview.Service.Utils;
 using ITHunterview.Service.Interface.Persistence;
@@ -320,6 +321,11 @@ namespace ITHunterview.Service.UseCase
                 return new ResponseBase<JobPostingDetailDto>("Bạn không có quyền gia hạn tin tuyển dụng này.");
             }
 
+            if (job.Status != JobStatus.PUBLISHED)
+            {
+                return new ResponseBase<JobPostingDetailDto>("Chỉ có thể gia hạn tin tuyển dụng đang hoạt động (Active).");
+            }
+
             if (job.IsBanned)
             {
                 return new ResponseBase<JobPostingDetailDto>("Không thể gia hạn tin tuyển dụng đã bị khóa.");
@@ -337,7 +343,6 @@ namespace ITHunterview.Service.UseCase
                     : job.ExpiresAt.Value;
 
                 job.ExpiresAt = baseTime.AddDays(15);
-                job.Status = JobStatus.PUBLISHED;
                 job.UpdatedAt = DateTime.UtcNow;
 
                 await _jobPostingRepository.UpdateAsync(job);
@@ -355,7 +360,7 @@ namespace ITHunterview.Service.UseCase
             return new ResponseBase<JobPostingDetailDto>(detail, $"Đã gia hạn tin tuyển dụng đến {job.ExpiresAt.Value:dd/MM/yyyy} thành công.");
         }
 
-        public async Task<ResponseBase<JobPostingDetailDto>> PushTopJobAsync(Guid id, Guid recruiterId)
+        public async Task<ResponseBase<JobPostingDetailDto>> PushTopJobAsync(Guid id, Guid recruiterId, FeatureConsumptionExpectation expectation)
         {
             var job = await _jobPostingRepository.GetByIdAsync(id);
             if (job == null)
@@ -383,14 +388,15 @@ namespace ITHunterview.Service.UseCase
             {
                 // Consume and update run in one transaction. If saving the job fails,
                 // the wallet deduction and usage log are rolled back together.
-                await _featureUsageUseCase.TryConsumeFeatureAsync(recruiterId, "PushTop", job.Id.ToString());
+                await _featureUsageUseCase.TryConsumePushTopAsync(recruiterId, job.Id.ToString(), expectation);
 
-                DateTime baseTime = (!job.PushedTopUntil.HasValue || job.PushedTopUntil.Value < DateTime.UtcNow)
-                    ? DateTime.UtcNow
+                var now = DateTime.UtcNow;
+                var baseTime = !job.PushedTopUntil.HasValue || job.PushedTopUntil.Value < now
+                    ? now
                     : job.PushedTopUntil.Value;
 
                 job.PushedTopUntil = baseTime.AddHours(24);
-                job.UpdatedAt = DateTime.UtcNow;
+                job.UpdatedAt = now;
 
                 await _jobPostingRepository.UpdateAsync(job);
                 await transaction.CommitAsync();

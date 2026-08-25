@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using ITHunterview.Domain.Enums;
 using ITHunterview.Service.DTOs.Common;
 using ITHunterview.Service.DTOs.Cv.Matching;
+using ITHunterview.Service.DTOs.FeatureUsage;
 using ITHunterview.Service.DTOs.Job;
 using ITHunterview.Service.DTOs.JobAnalysis;
 using ITHunterview.Service.Interface.UseCase;
@@ -201,12 +202,12 @@ namespace ITHunterview.WebAPI.Controllers
         
         [HttpPost("{id}/extend")]
         [HttpPatch("{id}/extend")]
+        [Authorize(Policy = "RecruiterOnly")]
         public async Task<ActionResult<ResponseBase<JobPostingDetailDto>>> ExtendJob(Guid id)
         {
-            var recruiterId = await ResolveRecruiterIdAsync();
-            if (recruiterId == Guid.Empty)
+            if (!TryResolveAuthenticatedUserId(out var recruiterId))
             {
-                return BadRequest(new ResponseBase<JobPostingDetailDto>("Could not resolve recruiter user."));
+                return Unauthorized(new ResponseBase<JobPostingDetailDto>("Could not resolve recruiter user."));
             }
 
             var result = await _jobPostingsUseCase.ExtendJobAsync(id, recruiterId);
@@ -219,19 +220,27 @@ namespace ITHunterview.WebAPI.Controllers
 
         [HttpPost("{id}/push-top")]
         [HttpPatch("{id}/push-top")]
-        public async Task<ActionResult<ResponseBase<JobPostingDetailDto>>> PushTopJob(Guid id)
+        [Authorize(Policy = "RecruiterOnly")]
+        public async Task<ActionResult<ResponseBase<JobPostingDetailDto>>> PushTopJob(
+            Guid id,
+            [FromBody] PushTopJobRequestDto request)
         {
-            var recruiterId = await ResolveRecruiterIdAsync();
-            if (recruiterId == Guid.Empty)
+            if (!TryResolveAuthenticatedUserId(out var recruiterUserId))
             {
-                return BadRequest(new ResponseBase<JobPostingDetailDto>("Could not resolve recruiter user."));
+                return Unauthorized(new ResponseBase<JobPostingDetailDto>(
+                    "Could not resolve authenticated recruiter user."));
             }
 
-            var result = await _jobPostingsUseCase.PushTopJobAsync(id, recruiterId);
-            if (!result.Success)
+            if (request == null)
             {
-                return BadRequest(result);
+                return BadRequest(new ResponseBase<JobPostingDetailDto>("Request body is required."));
             }
+
+            var expectation = new FeatureConsumptionExpectation(
+                request.ExpectedPaymentMethod!.Value,
+                request.ExpectedCoinCost);
+
+            var result = await _jobPostingsUseCase.PushTopJobAsync(id, recruiterUserId, expectation);
             return Ok(result);
         }
 

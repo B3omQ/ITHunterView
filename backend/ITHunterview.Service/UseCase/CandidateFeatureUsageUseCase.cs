@@ -32,7 +32,25 @@ namespace ITHunterview.Service.UseCase
             _reservationRepository = reservationRepository;
         }
 
-        public async Task<FeatureConsumptionResult> TryConsumeFeatureAsync(Guid userId, string featureKey, string? referenceId = null)
+        public Task<FeatureConsumptionResult> TryConsumePushTopAsync(
+            Guid userId,
+            string? referenceId,
+            FeatureConsumptionExpectation expectation)
+        {
+            ArgumentNullException.ThrowIfNull(expectation);
+            return TryConsumeFeatureAsyncInternal(userId, "PushTop", referenceId, expectation);
+        }
+
+        public Task<FeatureConsumptionResult> TryConsumeFeatureAsync(Guid userId, string featureKey, string? referenceId = null)
+        {
+            return TryConsumeFeatureAsyncInternal(userId, featureKey, referenceId, null);
+        }
+
+        private async Task<FeatureConsumptionResult> TryConsumeFeatureAsyncInternal(
+            Guid userId,
+            string featureKey,
+            string? referenceId,
+            FeatureConsumptionExpectation? expectation)
         {
             if (string.IsNullOrEmpty(featureKey))
                 throw new ArgumentException("Feature key không được để trống", nameof(featureKey));
@@ -104,6 +122,14 @@ namespace ITHunterview.Service.UseCase
 
                                 if (limit == -1) // Không giới hạn
                                 {
+                                    if (expectation != null)
+                                    {
+                                        PushTopBillingExpectationPolicy.Enforce(
+                                            expectation,
+                                            FeatureConsumptionPaymentMethod.SUBSCRIPTION_QUOTA,
+                                            liveFeatureCoinCost: 0);
+                                    }
+
                                     var usageLogId = await RecordFeatureUsageLogAsync(userId, featureKey, referenceId, true);
                                     await _context.SaveChangesAsync();
                                     if (ownsTransaction)
@@ -118,6 +144,14 @@ namespace ITHunterview.Service.UseCase
                                     int usedCount = await GetUsedCountInPeriodAsync(userId, featureKey, activeSub.StartDate, activeSub.EndDate);
                                     if (usedCount < limit)
                                     {
+                                        if (expectation != null)
+                                        {
+                                            PushTopBillingExpectationPolicy.Enforce(
+                                                expectation,
+                                                FeatureConsumptionPaymentMethod.SUBSCRIPTION_QUOTA,
+                                                liveFeatureCoinCost: 0);
+                                        }
+
                                         var usageLogId = await RecordFeatureUsageLogAsync(userId, featureKey, referenceId, true);
                                         await _context.SaveChangesAsync();
                                         if (ownsTransaction)
@@ -147,7 +181,9 @@ namespace ITHunterview.Service.UseCase
                     }
 
                     // 3. Không có Subscription hoặc đã hết hạn mức -> Tiêu tốn Coin từ ví Pay-as-you-go
-                    // Truy vấn từ bảng chuyên biệt CoinFeatures
+                    // Preserve the legacy pricing path for every feature. The Push Top-only
+                    // expectation below validates the resolved result without changing how
+                    // quotas or Coin prices are calculated.
                     var dbFeature = await _context.CoinFeatures
                         .AsNoTracking()
                         .FirstOrDefaultAsync(cf => cf.FeatureKey == featureKey);
@@ -159,7 +195,6 @@ namespace ITHunterview.Service.UseCase
                     }
                     else
                     {
-                        // Fallback default
                         var defaultCosts = GetDefaultCosts();
                         coinCost = featureKey switch
                         {
@@ -173,6 +208,14 @@ namespace ITHunterview.Service.UseCase
                             "PushTop" => defaultCosts.PushTop,
                             _ => 0
                         };
+                    }
+
+                    if (expectation != null)
+                    {
+                        PushTopBillingExpectationPolicy.Enforce(
+                            expectation,
+                            FeatureConsumptionPaymentMethod.COIN,
+                            coinCost);
                     }
 
                     if (coinCost == 0)

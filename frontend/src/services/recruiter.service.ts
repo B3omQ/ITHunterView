@@ -1,4 +1,7 @@
 import api from '@/services/api-client';
+import axios from 'axios';
+import { getErrorMessage } from '@/lib/utils';
+import type { PushTopBillingExpectation } from '@/types/job.types';
 
 export interface JobSkillRequirement {
   skillId: number;
@@ -210,14 +213,15 @@ export const recruiterService = {
     }
   },
 
-  pushTopJob: async (id: string) => {
+  pushTopJob: async (id: string, expectation: PushTopBillingExpectation) => {
     try {
-      const response = await api.post<ApiResponse<any>>(`/api/jobpostings/${id}/push-top`);
+      const response = await api.post<ApiResponse<JobPosting>>(`/api/jobpostings/${id}/push-top`, expectation);
       return { success: true, data: response.data, message: response.data?.message || 'Đẩy Top thành công!' };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
-        message: error.response?.data?.message || error.message || 'Đẩy Top thất bại',
+        status: axios.isAxiosError(error) ? error.response?.status : undefined,
+        message: getErrorMessage(error, 'Đẩy Top thất bại'),
       };
     }
   },
