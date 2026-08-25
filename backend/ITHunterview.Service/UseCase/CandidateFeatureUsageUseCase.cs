@@ -86,6 +86,33 @@ namespace ITHunterview.Service.UseCase
                         .OrderByDescending(us => us.EndDate)
                         .FirstOrDefaultAsync();
 
+                    if (activeSub == null)
+                    {
+                        var defaultSub = await _context.Subscriptions
+                            .FirstOrDefaultAsync(s => s.Status == SubscriptionStatus.ACTIVE && s.Name == "Basic");
+
+                        if (defaultSub == null)
+                        {
+                            defaultSub = await _context.Subscriptions
+                                .FirstOrDefaultAsync(s => s.Status == SubscriptionStatus.ACTIVE && s.Price == 0 && s.FeaturesConfig != null && s.FeaturesConfig.Contains("CANDIDATE"));
+                        }
+
+                        if (defaultSub != null)
+                        {
+                            activeSub = new UserSubscriptions
+                            {
+                                Id = Guid.NewGuid(),
+                                UserId = userId,
+                                SubId = defaultSub.Id,
+                                StartDate = DateTime.UtcNow,
+                                EndDate = DateTime.UtcNow.AddDays(defaultSub.DurationDays),
+                                Status = UserSubscriptionStatus.ACTIVE
+                            };
+                            _context.UserSubscriptions.Add(activeSub);
+                            try { await _context.SaveChangesAsync(); } catch { }
+                        }
+                    }
+
                     if (activeSub != null)
                     {
                         // Lấy Subscription details bằng cách join thủ công tránh lỗi thiếu navigation property

@@ -10,6 +10,8 @@ using ITHunterview.Service.Interface.UseCase;
 using ITHunterview.Service.Utils;
 using ITHunterview.Service.Interface.Infrastructure;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
+using ITHunterview.Service.Infrastructure.Persistence;
 
 namespace ITHunterview.Service.UseCase
 {
@@ -25,6 +27,7 @@ namespace ITHunterview.Service.UseCase
         private readonly IConfiguration _configuration;
         private readonly IAuditLogQueue _auditLogQueue;
         private readonly IActorProvider _actorProvider;
+        private readonly ITHunterviewContext? _context;
 
         public AuthUseCase(
             IUserRepository userRepository,
@@ -36,7 +39,8 @@ namespace ITHunterview.Service.UseCase
             IGoogleAuthService googleAuthService,
             IConfiguration configuration,
             IAuditLogQueue auditLogQueue,
-            IActorProvider actorProvider)
+            IActorProvider actorProvider,
+            ITHunterviewContext? context = null)
         {
             _userRepository = userRepository;
             _tokenRepository = tokenRepository;
@@ -48,6 +52,7 @@ namespace ITHunterview.Service.UseCase
             _configuration = configuration;
             _auditLogQueue = auditLogQueue;
             _actorProvider = actorProvider;
+            _context = context;
         }
 
         // ─── LOGIN ──────────────────────────────────────────────────────────────
@@ -223,6 +228,7 @@ namespace ITHunterview.Service.UseCase
                 }
 
                 await _userRepository.AddUserAsync(user);
+                await EnsureDefaultSubscriptionAsync(user.Id, roleType);
 
                 // Reload with role
                 user = await _userRepository.GetUserWithRoleAsync(user.Id);
@@ -367,6 +373,8 @@ namespace ITHunterview.Service.UseCase
             user.UpdatedAt = DateTime.UtcNow;
             await _userRepository.UpdateUserAsync(user);
 
+            await EnsureDefaultSubscriptionAsync(user.Id, user.Role?.Name);
+
             await _emailVerificationRepository.MarkUsedAsync(verifyRecord.Id);
 
             return ResponseBase.Ok("Email verified successfully! You can login now.");
@@ -488,6 +496,50 @@ namespace ITHunterview.Service.UseCase
             catch
             {
                 // Avoid failures affecting the main business flow
+            }
+        }
+
+        private async Task EnsureDefaultSubscriptionAsync(Guid userId, string? roleName)
+        {
+            if (_context == null) return;
+
+            try
+            {
+                var hasActiveSub = await _context.UserSubscriptions
+                    .AnyAsync(us => us.UserId == userId && us.Status == UserSubscriptionStatus.ACTIVE && us.EndDate >= DateTime.UtcNow);
+
+                if (!hasActiveSub)
+                {
+                    var isRecruiter = string.Equals(roleName, "recruiter", StringComparison.OrdinalIgnoreCase);
+                    var targetSubName = isRecruiter ? "Free" : "Basic";
+                    var defaultSub = await _context.Subscriptions
+                        .FirstOrDefaultAsync(s => s.Status == SubscriptionStatus.ACTIVE && s.Name == targetSubName);
+
+                    if (defaultSub == null)
+                    {
+                        var targetRole = isRecruiter ? "RECRUITER" : "CANDIDATE";
+                        defaultSub = await _context.Subscriptions
+                            .FirstOrDefaultAsync(s => s.Status == SubscriptionStatus.ACTIVE && s.Price == 0 && s.FeaturesConfig != null && s.FeaturesConfig.Contains(targetRole));
+                    }
+
+                    if (defaultSub != null)
+                    {
+                        _context.UserSubscriptions.Add(new UserSubscriptions
+                        {
+                            Id = Guid.NewGuid(),
+                            UserId = userId,
+                            SubId = defaultSub.Id,
+                            StartDate = DateTime.UtcNow,
+                            EndDate = DateTime.UtcNow.AddDays(defaultSub.DurationDays),
+                            Status = UserSubscriptionStatus.ACTIVE
+                        });
+                        await _context.SaveChangesAsync();
+                    }
+                }
+            }
+            catch
+            {
+                // Safe fallback if concurrency or DB issue occurs
             }
         }
     }

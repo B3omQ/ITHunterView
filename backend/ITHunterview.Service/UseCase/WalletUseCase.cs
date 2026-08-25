@@ -91,6 +91,42 @@ namespace ITHunterview.Service.UseCase
             var isRecruiter = await _context.RecruiterProfiles.AnyAsync(r => r.UserId == userId) || 
                               await _context.Users.Where(u => u.Id == userId && u.Role != null && u.Role.Name != null && u.Role.Name.ToLower() == "recruiter").AnyAsync();
 
+            if (activeSub == null)
+            {
+                var targetSubName = isRecruiter ? "Free" : "Basic";
+                var defaultSub = await _context.Subscriptions
+                    .FirstOrDefaultAsync(s => s.Status == SubscriptionStatus.ACTIVE && s.Name == targetSubName);
+
+                if (defaultSub == null)
+                {
+                    var targetRole = isRecruiter ? "RECRUITER" : "CANDIDATE";
+                    defaultSub = await _context.Subscriptions
+                        .FirstOrDefaultAsync(s => s.Status == SubscriptionStatus.ACTIVE && s.Price == 0 && s.FeaturesConfig != null && s.FeaturesConfig.Contains(targetRole));
+                }
+
+                if (defaultSub != null)
+                {
+                    activeSub = new UserSubscriptions
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = userId,
+                        SubId = defaultSub.Id,
+                        StartDate = DateTime.UtcNow,
+                        EndDate = DateTime.UtcNow.AddDays(defaultSub.DurationDays),
+                        Status = UserSubscriptionStatus.ACTIVE
+                    };
+                    _context.UserSubscriptions.Add(activeSub);
+                    try
+                    {
+                        await _context.SaveChangesAsync();
+                    }
+                    catch
+                    {
+                        // Ignore concurrency conflict if already created concurrently
+                    }
+                }
+            }
+
             if (activeSub != null)
             {
                 var subscription = await _context.Subscriptions

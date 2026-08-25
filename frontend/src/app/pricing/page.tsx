@@ -165,7 +165,13 @@ export default function PricingPage() {
                                                 </li>
                                                 <li className={`flex items-start gap-2.5 text-xs ${isPopular ? 'text-white/95' : 'text-muted-foreground'}`}>
                                                   <CheckIcon className={`${isPopular ? 'text-white' : 'text-indigo-600'} mt-0.5 flex-shrink-0`} size={14} />
-                                                  <span>{sub.featuresConfig.unlockCvLimit ? `${sub.featuresConfig.unlockCvLimit} ${t('cvUnlocks')}` : t('unlimitedCvUnlocks')}</span>
+                                                  <span>
+                                                    {sub.featuresConfig.unlockCvLimit === 0 
+                                                      ? t('noCvUnlocks') 
+                                                      : sub.featuresConfig.unlockCvLimit != null && sub.featuresConfig.unlockCvLimit > 0 
+                                                        ? `${sub.featuresConfig.unlockCvLimit} ${t('cvUnlocks')}` 
+                                                        : t('unlimitedCvUnlocks')}
+                                                  </span>
                                                 </li>
                                                 <li className={`flex items-start gap-2.5 text-xs ${isPopular ? 'text-white/95' : 'text-muted-foreground'}`}>
                                                   <CheckIcon className={`${isPopular ? 'text-white' : 'text-indigo-600'} mt-0.5 flex-shrink-0`} size={14} />

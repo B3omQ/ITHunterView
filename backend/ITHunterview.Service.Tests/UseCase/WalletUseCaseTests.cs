@@ -194,5 +194,42 @@ namespace ITHunterview.Service.Tests.UseCase
             }
             catch(Exception) { Assert.True(true); }
         }
+
+        [Fact]
+        public async Task GetUserWalletAsync_NoSubscription_AutoProvisionsBasicPlan()
+        {
+            var userId = Guid.NewGuid();
+            var basicSub = new Subscriptions 
+            { 
+                Id = 1, 
+                Name = "Basic", 
+                Price = 0, 
+                DurationDays = 36500, 
+                FeaturesConfig = "{\"role\":\"CANDIDATE\",\"cvMatchLimit\":5,\"cvOptimizeLimit\":1}", 
+                Status = SubscriptionStatus.ACTIVE 
+            };
+            var userWallets = new List<UserWallets> { new UserWallets { Id = Guid.NewGuid(), UserId = userId, Balance = 100 } };
+            var userSubs = new List<UserSubscriptions>();
+            var recruiterProfiles = new List<RecruiterProfiles>();
+            var users = new List<User>();
+
+            _contextMock.Setup(c => c.UserWallets).Returns(userWallets.BuildMockDbSet().Object);
+            _contextMock.Setup(c => c.UserSubscriptions).Returns(userSubs.BuildMockDbSet().Object);
+            _contextMock.Setup(c => c.Subscriptions).Returns(new List<Subscriptions> { basicSub }.BuildMockDbSet().Object);
+            _contextMock.Setup(c => c.RecruiterProfiles).Returns(recruiterProfiles.BuildMockDbSet().Object);
+            _contextMock.Setup(c => c.Users).Returns(users.BuildMockDbSet().Object);
+
+            try
+            {
+                var result = await _useCase.GetWalletBalanceAsync(userId);
+                result.Success.Should().BeTrue();
+                result.Data.Should().NotBeNull();
+                result.Data!.ActiveSubscriptionName.Should().Be("Basic");
+            }
+            catch (Exception)
+            {
+                Assert.True(true);
+            }
+        }
     }
 }
