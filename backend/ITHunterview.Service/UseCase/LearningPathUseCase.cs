@@ -165,9 +165,10 @@ The result MUST be a valid JSON object strictly following this schema:
   ""progress"": { ""total_modules"": 1, ""completed_modules"": 0, ""total_tasks"": 3, ""completed_tasks"": 0, ""percentage"": 0 }
 }
 Rules:
-1. Create one module per 1 level jump per skill. If gap is 2 levels, create 2 sequential modules for that skill.
-2. For EACH module, generate 3 to 5 distinct, practical, actionable tasks with realistic estimated hours. Tasks MUST be high-quality, deeply technical, and specific to the candidate's context (avoid generic fluff). DO NOT generate only 1 task per module.
-3. The title of each module MUST clearly state the skill code and the level jump (e.g., 'Module 1: PROG Level 3 to 4' or 'Module 1: Foundational Scaling (PROG Lvl 3 to 4)'). Ensure this perfectly matches the `sfia_target` fields.
+1. You MUST process EVERY skill listed in the input gap summary. Do NOT skip any skills.
+2. Create exactly one module per 1 level jump per skill. If a skill has a gap of 2 levels (e.g. level 1 to 3), you MUST create 2 sequential modules for that skill. The total number of modules MUST equal the sum of all `gap_delta` values across all skills.
+3. For EACH module, you MUST generate EXACTLY 3 or 4 distinct, practical, actionable tasks. (DO NOT generate 1, DO NOT generate 2 tasks). Under no circumstances should any module have fewer than 3 tasks. Tasks MUST be high-quality, deeply technical, and specific to the candidate's context (avoid generic fluff).
+4. The title of each module MUST clearly state the skill code and the level jump (e.g., 'Module 1: PROG Level 3 to 4' or 'Module 1: Foundational Scaling (PROG Lvl 3 to 4)'). Ensure this perfectly matches the `sfia_target` fields.
 Do NOT include any markdown blocks like ```json, just return the raw JSON object.";
 
             var userPromptBuilder = new StringBuilder();
@@ -274,7 +275,7 @@ You will be provided a list of all 147 SFIA skills AND a guide on SFIA Generic L
 Your job is to:
 1. Define a highly relevant `customRoleName` based on the candidate's target job and context.
 2. Provide a short `customRoleDescription`.
-3. Identify exactly 3 to 4 CORE SFIA skills that represent the most critical areas for improvement in the candidate's context. Prioritize the highest impact gaps (e.g., core programming, architecture, or specific technical gaps). Do NOT extract more than 4 skills to keep the learning path highly focused.
+3. Identify a MAXIMUM of 3 to 4 CORE SFIA skills that represent the most critical areas for improvement. You MUST NOT return more than 4 skills in the `skills` array. If you find more than 4 gaps, STRICTLY ignore the less important ones. Returning 5 or more skills is a CRITICAL FAILURE. Keep the learning path highly focused.
 4. For EACH identified skill, provide:
    - `skillCode`: the SFIA skill code.
    - `targetLevel`: the expected proficiency level for the role (1-7).
