@@ -269,11 +269,11 @@ You will be provided a list of all 147 SFIA skills AND a guide on SFIA Generic L
 Your job is to:
 1. Define a highly relevant `customRoleName` based on the candidate's target job and context.
 2. Provide a short `customRoleDescription`.
-3. Identify the EXACT SFIA skills the candidate needs to develop or demonstrate to bridge the gaps identified in the context. DO NOT snap to predefined templates. Tailor this specifically to the context.
+3. Identify ALL distinct SFIA skills (aim for 3 to 6 key skills) required to address EVERY gap, missing requirement, and area of improvement listed in the candidate's context. DO NOT merge all gaps into a single skill (e.g., only REQM). Map each different technical or functional weakness (such as programming/PROG, database/DBAD, testing/TEST, architecture/SWDN, requirements/REQM, systems design/DESN) to its specific SFIA skill code so the learning path covers the full spectrum of missing competencies.
 4. For EACH identified skill, provide:
    - `skillCode`: the SFIA skill code.
    - `targetLevel`: the expected proficiency level for the role (1-7).
-   - `currentLevel`: estimate the candidate's CURRENT proficiency level (0-7).
+   - `currentLevel`: estimate the candidate's CURRENT proficiency level (0-7, where gap_delta = targetLevel - currentLevel > 0).
    - `justification`: brief reasoning for the gap and levels assigned.
 The result MUST be a valid JSON object strictly following this schema:
 {
