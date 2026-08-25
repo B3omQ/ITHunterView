@@ -158,7 +158,9 @@ export default function LearningPathDetailPage({ params }: { params: Promise<{ i
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className={`font-semibold text-lg ${currentModCompleted ? 'text-muted-foreground' : ''}`}>{module.title}</h4>
+                          <h4 className={`font-semibold text-lg ${currentModCompleted ? 'text-muted-foreground' : ''}`}>
+                            {module.title ? module.title.replace(/\s*\(Lvl\s*\d+\s*to\s*\d+\)/gi, '').replace(/\s*\(Level\s*\d+\s*to\s*\d+\)/gi, '') : `Module ${index + 1}`}
+                          </h4>
                         </div>
                         {module.tasks && module.tasks.length > 0 && (
                           <p className="text-xs text-muted-foreground font-normal mt-0.5">

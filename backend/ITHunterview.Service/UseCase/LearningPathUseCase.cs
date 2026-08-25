@@ -152,17 +152,22 @@ The result MUST be a valid JSON object strictly following this schema:
   ""modules"": [
     {
       ""module_index"": 0,
-      ""title"": ""Module 1: PROG Level 3 to 4"",
+      ""title"": ""Module 1: Foundational Programming & Refactoring"",
       ""description"": ""..."",
       ""sfia_target"": { ""skill_code"": ""PROG"", ""from_level"": 3, ""to_level"": 4 },
       ""tasks"": [
-        { ""task_index"": 0, ""title"": ""..."", ""description"": ""..."", ""estimated_hours"": 8 }
+        { ""task_index"": 0, ""title"": ""Task 1: Code Review & Quality Standards"", ""description"": ""..."", ""estimated_hours"": 8 },
+        { ""task_index"": 1, ""title"": ""Task 2: Advanced Design Patterns Implementation"", ""description"": ""..."", ""estimated_hours"": 12 },
+        { ""task_index"": 2, ""title"": ""Task 3: Automated Unit Testing & Coverage"", ""description"": ""..."", ""estimated_hours"": 10 }
       ]
     }
   ],
-  ""progress"": { ""total_modules"": 1, ""completed_modules"": 0, ""total_tasks"": 1, ""completed_tasks"": 0, ""percentage"": 0 }
+  ""progress"": { ""total_modules"": 1, ""completed_modules"": 0, ""total_tasks"": 3, ""completed_tasks"": 0, ""percentage"": 0 }
 }
-Rule: Create one module per 1 level jump per skill. If gap is 2 levels, create 2 sequential modules for that skill.
+Rules:
+1. Create one module per 1 level jump per skill. If gap is 2 levels, create 2 sequential modules for that skill.
+2. For EACH module, generate 3 to 5 distinct, practical, actionable tasks with realistic estimated hours. DO NOT generate only 1 task per module.
+3. The title of each module should be a clear descriptive topic title (e.g., 'Module 1: Foundational Scaling'). Do NOT include level numbers (like Lvl 3 to 4) inside the title string to avoid level mismatches; the exact levels are strictly defined in `sfia_target`.
 Do NOT include any markdown blocks like ```json, just return the raw JSON object.";
 
             var userPromptBuilder = new StringBuilder();
